@@ -12,6 +12,7 @@ from typing import Any, Dict, List, Optional, Tuple
 import numpy as np
 import pandas as pd
 
+from ..config import get_settings
 from ..utils.helpers import (
     calculate_cvar,
     calculate_max_drawdown,
@@ -92,6 +93,7 @@ class RiskManager:
             risk_limits: Risk limit configuration
         """
         self.logger = get_structured_logger("risk_manager")
+        self.settings = get_settings()
         self.portfolio = portfolio or {}
         self.limits = risk_limits or RiskLimits()
 
@@ -114,8 +116,13 @@ class RiskManager:
         # Monte Carlo simulation parameters
         self.mc_simulations = 10000
         self.mc_days = 1  # 1-day VaR
+        
+        # Mock fallback tracking
+        self.mock_data_used = set()  # Track which metrics used mock data
 
-        self.logger.info("Risk manager initialized", limits=self.limits.__dict__)
+        self.logger.info("Risk manager initialized", 
+                        limits=self.limits.__dict__,
+                        allow_mock_fallbacks=self.settings.allow_mock_fallbacks)
 
     def calculate_var(
         self, confidence: float = 0.95, method: str = "monte_carlo"
@@ -192,7 +199,20 @@ class RiskManager:
                         )
                         portfolio_return += random_return * position_weight
                     else:
+                        # Check if mock fallbacks are allowed
+                        if not self.settings.allow_mock_fallbacks:
+                            self.logger.warning(
+                                f"Insufficient historical data for {symbol}, mock fallbacks disabled"
+                            )
+                            continue
+                            
                         # Fallback to normal distribution
+                        self.mock_data_used.add("monte_carlo_var_normal_fallback")
+                        if self.settings.mock_fallback_warning:
+                            self.logger.warning(
+                                f"Using mock normal distribution for {symbol} - insufficient historical data"
+                            )
+                        
                         random_return = np.random.normal(0, 0.02)  # 2% daily vol
                         position_weight = (
                             abs(position["market_value"]) / self.portfolio.total_value
@@ -260,7 +280,19 @@ class RiskManager:
                         self.return_history[symbol][-252:]
                     )  # Last year
                 else:
+                    # Check if mock fallbacks are allowed
+                    if not self.settings.allow_mock_fallbacks:
+                        self.logger.warning(
+                            f"Insufficient historical data for {symbol}, mock fallbacks disabled"
+                        )
+                        continue
+                        
                     # Fallback to random data
+                    self.mock_data_used.add("parametric_var_random_fallback")
+                    if self.settings.mock_fallback_warning:
+                        self.logger.warning(
+                            f"Using mock random data for {symbol} - insufficient historical data"
+                        )
                     returns_matrix.append(np.random.normal(0, 0.02, 252))
 
             if not returns_matrix:

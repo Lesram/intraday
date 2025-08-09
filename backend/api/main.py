@@ -22,9 +22,12 @@ from fastapi import (
     Response,
     WebSocket,
     WebSocketDisconnect,
+    status,
 )
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from pydantic import BaseModel, ValidationError
 
 # Prometheus imports
 try:
@@ -90,7 +93,94 @@ from ..mlops.model_manager import ModelManager
 from ..models.ensemble_model import EnsembleModel, ModelPrediction
 from ..risk.risk_manager import RiskManager
 from ..strategies.trading_strategies import SignalType, StrategyManager, TradingSignal
-from ..utils.logger import audit_logger, performance_logger
+from backend.utils.logger import get_logger, get_audit_logger
+
+# Structured error models for API responses
+class ErrorDetail(BaseModel):
+    """Detailed error information"""
+    code: str
+    message: str
+    context: Optional[Dict[str, Any]] = None
+
+class ErrorResponse(BaseModel):
+    """Standardized error response structure"""
+    error: ErrorDetail
+    timestamp: str
+    request_id: Optional[str] = None
+    
+class ValidationErrorResponse(BaseModel):
+    """Validation error response with field details"""
+    error: ErrorDetail
+    validation_errors: List[Dict[str, Any]]
+    timestamp: str
+    request_id: Optional[str] = None
+
+# Initialize logging and utilities
+logger = get_logger(__name__)
+audit_logger = get_audit_logger()
+
+# Request ID generation for error tracking
+import uuid
+
+def generate_request_id() -> str:
+    """Generate unique request ID for error tracking"""
+    return str(uuid.uuid4())[:8]
+
+# API Response Models for OpenAPI documentation
+class SignalResponse(BaseModel):
+    """Trading signal API response"""
+    symbol: str
+    signal_type: str
+    strength: float
+    confidence: float
+    price: Optional[float] = None
+    timestamp: str
+    features: Optional[Dict[str, Any]] = None
+
+class SystemStatusResponse(BaseModel):
+    """System status API response"""
+    status: str
+    timestamp: str
+    uptime_seconds: int
+    version: str
+    environment: str
+    components: Dict[str, Any]
+    background_tasks: Dict[str, Any]
+    warnings: List[str]
+    metrics: Dict[str, Any]
+
+class HealthCheckResponse(BaseModel):
+    """Health check API response"""
+    status: str
+    timestamp: str
+    components: Dict[str, bool]
+
+# Security and Authentication
+security = HTTPBearer()
+
+def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)) -> str:
+    """
+    Basic JWT token verification (placeholder implementation)
+    In production, replace with proper JWT validation
+    """
+    token = credentials.credentials
+    
+    # Simple development token validation - REPLACE IN PRODUCTION
+    if token == "dev-token-12345":
+        return "development-user"
+    elif token.startswith("prod-"):
+        # In production, validate JWT with proper secret key
+        # jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
+        return "authenticated-user"
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid authentication credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+# Optional security dependency for protected endpoints
+OptionalAuth = Depends(verify_token)
 
 # WebSocket client manager
 class WebSocketClientManager:
@@ -316,7 +406,8 @@ async def lifespan(app: FastAPI):
     """
     # Startup
     logging.info("Starting algorithmic trading platform...")
-    startup_tasks = []
+    background_tasks = {}  # Track all background tasks
+    startup_success = False
     
     try:
         settings = get_settings()
@@ -359,15 +450,29 @@ async def lifespan(app: FastAPI):
         # Initialize WebSocket manager
         app.state.ws_manager = ws_manager
         
-        # Start background tasks
+        # Start and track background tasks
         logging.info("Starting market data stream...")
-        startup_tasks.append(asyncio.create_task(start_market_data_stream(app)))
+        background_tasks['market_data'] = asyncio.create_task(
+            start_market_data_stream(app), name="market_data_stream"
+        )
         
         logging.info("Starting WebSocket heartbeat...")
-        startup_tasks.append(asyncio.create_task(app.state.ws_manager.start_heartbeat()))
+        background_tasks['websocket_heartbeat'] = asyncio.create_task(
+            app.state.ws_manager.start_heartbeat(), name="websocket_heartbeat"
+        )
+        
+        # Start model auto-retraining task
+        logging.info("Starting model auto-retraining...")
+        background_tasks['model_retraining'] = asyncio.create_task(
+            start_model_retraining_loop(app), name="model_retraining"
+        )
+        
+        # Store background tasks in app state for shutdown access
+        app.state.background_tasks = background_tasks
         
         # Wait for critical services to be ready
         await asyncio.sleep(1)  # Give services time to initialize
+        startup_success = True
         
         audit_logger.info("trading_platform_started", 
                          timestamp=datetime.now(),
@@ -379,7 +484,8 @@ async def lifespan(app: FastAPI):
                              'ensemble_model': True,
                              'risk_manager': True,
                              'strategy_manager': True
-                         })
+                         },
+                         background_tasks=list(background_tasks.keys()))
         
         logging.info("Trading platform startup completed successfully")
         
@@ -387,13 +493,16 @@ async def lifespan(app: FastAPI):
 
     except Exception as e:
         logging.error(f"Error during startup: {e}", exc_info=True)
-        # Cancel any running startup tasks
-        for task in startup_tasks:
-            task.cancel()
-            try:
-                await task
-            except asyncio.CancelledError:
-                pass
+        # Cancel any running background tasks on startup failure
+        if not startup_success:
+            for task_name, task in background_tasks.items():
+                if not task.done():
+                    logging.warning(f"Cancelling background task: {task_name}")
+                    task.cancel()
+                    try:
+                        await task
+                    except asyncio.CancelledError:
+                        pass
         raise
 
     # Shutdown
@@ -402,6 +511,19 @@ async def lifespan(app: FastAPI):
     shutdown_tasks = []
     
     try:
+        # Cancel all tracked background tasks first
+        if hasattr(app.state, 'background_tasks'):
+            for task_name, task in app.state.background_tasks.items():
+                if not task.done():
+                    logging.info(f"Cancelling background task: {task_name}")
+                    task.cancel()
+                    try:
+                        await asyncio.wait_for(task, timeout=5.0)
+                    except (asyncio.CancelledError, asyncio.TimeoutError):
+                        logging.warning(f"Task {task_name} cancellation completed")
+                    except Exception as e:
+                        logging.error(f"Error cancelling task {task_name}: {e}")
+        
         # Stop WebSocket manager
         if hasattr(app.state, 'ws_manager'):
             shutdown_tasks.append(asyncio.create_task(app.state.ws_manager.stop_heartbeat()))
@@ -424,7 +546,9 @@ async def lifespan(app: FastAPI):
                 timeout=10.0
             )
         
-        audit_logger.info("trading_platform_shutdown", timestamp=datetime.now())
+        audit_logger.info("trading_platform_shutdown", 
+                         timestamp=datetime.now(),
+                         background_tasks_cancelled=len(background_tasks))
         logging.info("Trading platform shutdown completed")
         
     except asyncio.TimeoutError:
@@ -444,6 +568,39 @@ async def start_market_data_stream(app: FastAPI):
             logging.info(f"Market data stream started successfully for symbols: {symbols}")
         except Exception as e:
             logging.error(f"Error starting market data stream: {e}")
+
+
+async def start_model_retraining_loop(app: FastAPI):
+    """Start background model retraining loop"""
+    if hasattr(app.state, 'model_manager') and app.state.model_manager:
+        try:
+            logging.info("Starting model auto-retraining loop...")
+            while True:
+                try:
+                    # Check for models that need retraining every hour
+                    await asyncio.sleep(3600)  # 1 hour
+                    
+                    if hasattr(app.state.model_manager, 'auto_retrain_models'):
+                        retrained_models = await app.state.model_manager.auto_retrain_models()
+                        if retrained_models:
+                            logging.info(f"Auto-retrained models: {list(retrained_models.keys())}")
+                            audit_logger.info("models_auto_retrained", 
+                                            models=list(retrained_models.keys()),
+                                            timestamp=datetime.now())
+                    
+                except asyncio.CancelledError:
+                    logging.info("Model retraining loop cancelled")
+                    raise
+                except Exception as e:
+                    logging.error(f"Error in model retraining loop: {e}")
+                    # Continue loop despite errors
+                    await asyncio.sleep(300)  # Wait 5 minutes before retry
+                    
+        except asyncio.CancelledError:
+            logging.info("Model retraining loop stopped")
+            raise
+        except Exception as e:
+            logging.error(f"Fatal error in model retraining loop: {e}")
 
 
 async def cleanup_alpaca_client(alpaca_client: AlpacaClient):
@@ -485,6 +642,173 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Request timing and logging middleware
+@app.middleware("http")
+async def timing_middleware(request: Request, call_next):
+    """Add request timing and logging for observability"""
+    start_time = time.time()
+    request_id = generate_request_id()
+    
+    # Add request ID to headers for tracing
+    request.state.request_id = request_id
+    
+    # Log request start
+    logger.info(f"Request started: {request.method} {request.url.path}", 
+               extra={
+                   "request_id": request_id,
+                   "method": request.method,
+                   "path": request.url.path,
+                   "client_ip": request.client.host if request.client else None
+               })
+    
+    # Process request
+    try:
+        response = await call_next(request)
+        
+        # Calculate timing
+        process_time = time.time() - start_time
+        
+        # Add timing headers
+        response.headers["X-Process-Time"] = str(process_time)
+        response.headers["X-Request-ID"] = request_id
+        
+        # Log response
+        logger.info(f"Request completed: {request.method} {request.url.path} - {response.status_code} ({process_time:.3f}s)",
+                   extra={
+                       "request_id": request_id,
+                       "method": request.method,
+                       "path": request.url.path,
+                       "status_code": response.status_code,
+                       "process_time": process_time
+                   })
+        
+        # Update Prometheus metrics if available
+        if PROMETHEUS_AVAILABLE:
+            REQUEST_COUNT.labels(
+                method=request.method,
+                endpoint=request.url.path,
+                status=response.status_code
+            ).inc()
+            REQUEST_DURATION.labels(
+                method=request.method,
+                endpoint=request.url.path
+            ).observe(process_time)
+        
+        return response
+        
+    except Exception as e:
+        # Log error
+        process_time = time.time() - start_time
+        logger.error(f"Request failed: {request.method} {request.url.path} - {str(e)} ({process_time:.3f}s)",
+                    extra={
+                        "request_id": request_id,
+                        "method": request.method,
+                        "path": request.url.path,
+                        "error": str(e),
+                        "process_time": process_time
+                    })
+        
+        # Re-raise to let error handlers process
+        raise
+
+# Structured error handlers for consistent API responses
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    """Handle HTTP exceptions with structured error response"""
+    request_id = generate_request_id()
+    
+    error_detail = ErrorDetail(
+        code=f"HTTP_{exc.status_code}",
+        message=exc.detail,
+        context={
+            "status_code": exc.status_code,
+            "path": str(request.url),
+            "method": request.method
+        }
+    )
+    
+    error_response = ErrorResponse(
+        error=error_detail,
+        timestamp=datetime.now().isoformat(),
+        request_id=request_id
+    )
+    
+    # Log error for monitoring
+    logger.error(f"HTTP Exception: {exc.status_code} - {exc.detail}", 
+                extra={"request_id": request_id, "path": str(request.url)})
+    
+    return JSONResponse(
+        status_code=exc.status_code,
+        content=error_response.dict()
+    )
+
+@app.exception_handler(ValidationError)
+async def validation_exception_handler(request: Request, exc: ValidationError):
+    """Handle Pydantic validation errors with field details"""
+    request_id = generate_request_id()
+    
+    error_detail = ErrorDetail(
+        code="VALIDATION_ERROR",
+        message="Request validation failed",
+        context={
+            "path": str(request.url),
+            "method": request.method
+        }
+    )
+    
+    validation_response = ValidationErrorResponse(
+        error=error_detail,
+        validation_errors=[
+            {
+                "field": ".".join(str(loc) for loc in error.get("loc", [])),
+                "message": error.get("msg", ""),
+                "type": error.get("type", ""),
+                "input": error.get("input")
+            }
+            for error in exc.errors()
+        ],
+        timestamp=datetime.now().isoformat(),
+        request_id=request_id
+    )
+    
+    logger.warning(f"Validation error: {len(exc.errors())} fields failed validation",
+                  extra={"request_id": request_id, "path": str(request.url)})
+    
+    return JSONResponse(
+        status_code=422,
+        content=validation_response.dict()
+    )
+
+@app.exception_handler(Exception)
+async def general_exception_handler(request: Request, exc: Exception):
+    """Handle unexpected errors with structured response and logging"""
+    request_id = generate_request_id()
+    
+    error_detail = ErrorDetail(
+        code="INTERNAL_SERVER_ERROR",
+        message="An unexpected error occurred",
+        context={
+            "path": str(request.url),
+            "method": request.method,
+            "error_type": exc.__class__.__name__
+        }
+    )
+    
+    error_response = ErrorResponse(
+        error=error_detail,
+        timestamp=datetime.now().isoformat(),
+        request_id=request_id
+    )
+    
+    # Log full exception for debugging
+    logger.exception(f"Unhandled exception: {exc.__class__.__name__}: {str(exc)}", 
+                    extra={"request_id": request_id, "path": str(request.url)})
+    
+    return JSONResponse(
+        status_code=500,
+        content=error_response.dict()
+    )
 
 
 # Dependency providers for lightweight injection
@@ -562,7 +886,7 @@ async def get_metrics():
 
 
 # Health check endpoint
-@app.get("/health")
+@app.get("/health", response_model=HealthCheckResponse, tags=["System Health"])
 async def health_check(
     risk_manager: RiskManager = Depends(get_risk_manager),
     ensemble_model: EnsembleModel = Depends(get_ensemble_model),
@@ -588,8 +912,126 @@ async def health_check(
     }
 
 
+# Enhanced system status endpoint
+@app.get("/api/v1/system/status", response_model=SystemStatusResponse, tags=["System Health"])
+async def system_status(
+    risk_manager: RiskManager = Depends(get_risk_manager),
+    ensemble_model: EnsembleModel = Depends(get_ensemble_model),
+    strategy_manager: StrategyManager = Depends(get_strategy_manager),
+    alpaca_client: AlpacaClient = Depends(get_alpaca_client),
+    sentiment_analyzer: SocialSentimentAnalyzer = Depends(get_sentiment_analyzer),
+    feature_engineer: FeatureEngineer = Depends(get_feature_engineer),
+    model_manager: ModelManager = Depends(get_model_manager),
+    ws_manager: WebSocketClientManager = Depends(get_ws_manager),
+):
+    """Comprehensive system status endpoint with normalized response structure"""
+    import time
+    
+    current_time = datetime.now()
+    app_state = getattr(app, 'state', None)
+    
+    # Calculate uptime (approximate from last risk check if available)
+    uptime_seconds = 0
+    if risk_manager and hasattr(risk_manager, 'last_risk_check'):
+        uptime_seconds = (current_time - risk_manager.last_risk_check.replace(tzinfo=None)).total_seconds()
+    
+    # Component status with detailed info
+    components = {}
+    
+    # Risk Manager Status
+    components["risk_manager"] = {
+        "available": risk_manager is not None,
+        "status": "operational" if risk_manager else "unavailable",
+        "mock_fallbacks_used": list(getattr(risk_manager, 'mock_data_used', [])) if risk_manager else [],
+        "circuit_breaker_active": getattr(risk_manager, 'circuit_breaker_active', False) if risk_manager else False,
+        "daily_trades": getattr(risk_manager, 'daily_trades', 0) if risk_manager else 0
+    }
+    
+    # Model Status  
+    model_status = {}
+    if ensemble_model:
+        model_status = ensemble_model.get_model_status()
+    
+    components["ensemble_model"] = {
+        "available": ensemble_model is not None,
+        "status": "operational" if ensemble_model else "unavailable", 
+        "models": model_status
+    }
+    
+    # WebSocket Manager Status
+    active_connections = len(ws_manager.clients) if ws_manager else 0
+    components["websocket_manager"] = {
+        "available": ws_manager is not None,
+        "status": "operational" if ws_manager else "unavailable",
+        "active_connections": active_connections,
+        "heartbeat_active": hasattr(ws_manager, '_heartbeat_task') and ws_manager._heartbeat_task is not None if ws_manager else False
+    }
+    
+    # Alpaca Client Status
+    components["alpaca_client"] = {
+        "available": alpaca_client is not None,
+        "status": "operational" if alpaca_client else "unavailable",
+        "connected": getattr(alpaca_client, 'connected', False) if alpaca_client else False,
+        "test_mode": getattr(alpaca_client, 'test_mode', True) if alpaca_client else True
+    }
+    
+    # Other Components
+    for name, component in [
+        ("strategy_manager", strategy_manager),
+        ("sentiment_analyzer", sentiment_analyzer), 
+        ("feature_engineer", feature_engineer),
+        ("model_manager", model_manager)
+    ]:
+        components[name] = {
+            "available": component is not None,
+            "status": "operational" if component else "unavailable"
+        }
+    
+    # Background Tasks Status
+    background_tasks_info = {}
+    if app_state and hasattr(app_state, 'background_tasks'):
+        for task_name, task in app_state.background_tasks.items():
+            background_tasks_info[task_name] = {
+                "running": not task.done(),
+                "cancelled": task.cancelled(),
+                "exception": str(task.exception()) if task.done() and task.exception() else None
+            }
+    
+    # Overall system health
+    all_critical_components_up = all([
+        components["risk_manager"]["available"],
+        components["ensemble_model"]["available"],
+        components["alpaca_client"]["available"],
+        components["websocket_manager"]["available"]
+    ])
+    
+    system_health = "healthy" if all_critical_components_up else "degraded"
+    
+    # Mock fallbacks warning
+    mock_warnings = []
+    if components["risk_manager"]["mock_fallbacks_used"]:
+        mock_warnings.append("Risk calculations using mock data fallbacks")
+    
+    return {
+        "status": system_health,
+        "timestamp": current_time.isoformat(),
+        "uptime_seconds": int(uptime_seconds),
+        "version": "1.0.0-branch1",
+        "environment": "development",  # Could be loaded from settings
+        "components": components,
+        "background_tasks": background_tasks_info,
+        "warnings": mock_warnings,
+        "metrics": {
+            "total_components": len(components),
+            "operational_components": sum(1 for c in components.values() if c["status"] == "operational"),
+            "websocket_connections": active_connections,
+            "mock_fallbacks_active": len(components["risk_manager"]["mock_fallbacks_used"]) > 0
+        }
+    }
+
+
 # Trading Signals Endpoints
-@app.get("/api/v1/signals/{symbol}")
+@app.get("/api/v1/signals/{symbol}", response_model=SignalResponse, tags=["Trading Signals"])
 async def get_trading_signal(
     symbol: str,
     strategy_manager: StrategyManager = Depends(get_strategy_manager),
@@ -654,7 +1096,7 @@ async def get_trading_signal(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.get("/api/v1/signals")
+@app.get("/api/v1/signals", response_model=Dict[str, SignalResponse], tags=["Trading Signals"])
 async def get_all_signals(
     symbols: str = "AAPL,GOOGL,MSFT,TSLA,NVDA",
     strategy_manager: StrategyManager = Depends(get_strategy_manager),
@@ -705,6 +1147,123 @@ async def get_all_signals(
                 signals[symbol] = {"error": str(e)}
 
         return {"signals": signals, "timestamp": datetime.now().isoformat()}
+
+    except Exception as e:
+        logging.exception(f"Error in get_all_signals: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# Advanced Signals Endpoint with Optional Authentication
+@app.get("/api/v1/signals/advanced", response_model=Dict[str, Any], tags=["Trading Signals", "Protected"])
+async def get_advanced_signals(
+    symbols: str = "AAPL,GOOGL,MSFT,TSLA,NVDA",
+    include_features: bool = False,
+    include_risk_metrics: bool = False,
+    current_user: str = Depends(verify_token) if security else None,  # Optional auth
+    strategy_manager: StrategyManager = Depends(get_strategy_manager),
+    alpaca_client: AlpacaClient = Depends(get_alpaca_client),
+    feature_engineer: FeatureEngineer = Depends(get_feature_engineer),
+    risk_manager: RiskManager = Depends(get_risk_manager),
+):
+    """
+    Advanced trading signals with optional authentication and enhanced data
+    Authentication is required for access to full features and risk metrics
+    """
+    try:
+        symbol_list = [s.strip() for s in symbols.split(",")]
+        enhanced_signals = {}
+        
+        # Enhanced features available only to authenticated users
+        is_authenticated = current_user is not None
+        
+        for symbol in symbol_list:
+            try:
+                # Get market data
+                price_data = await alpaca_client.get_historical_data(
+                    symbol, timeframe="1Day", limit=100
+                )
+                
+                if not price_data.empty:
+                    # Compute features
+                    features = feature_engineer.compute_all_features(price_data)
+                    
+                    # Generate enhanced signal
+                    signal = await strategy_manager.generate_combined_signal(
+                        symbol, price_data, features
+                    )
+                    
+                    # Base signal data
+                    signal_data = {
+                        "symbol": signal.symbol,
+                        "signal_type": signal.signal_type.value,
+                        "confidence": signal.confidence,
+                        "target_price": signal.target_price,
+                        "position_size": signal.position_size,
+                        "timestamp": signal.timestamp.isoformat(),
+                        "metadata": signal.metadata or {},
+                        "authenticated": is_authenticated
+                    }
+                    
+                    # Add enhanced data for authenticated users
+                    if is_authenticated and include_features and features is not None:
+                        # Include latest technical indicators
+                        signal_data["technical_features"] = {
+                            "rsi": float(features.get("RSI", 0)) if "RSI" in features else None,
+                            "macd": float(features.get("MACD", 0)) if "MACD" in features else None,
+                            "bb_position": float(features.get("bb_position", 0)) if "bb_position" in features else None,
+                            "volume_ratio": float(features.get("volume_ratio", 1)) if "volume_ratio" in features else None
+                        }
+                    
+                    # Add risk metrics for authenticated users
+                    if is_authenticated and include_risk_metrics and risk_manager:
+                        try:
+                            risk_metrics = await risk_manager.evaluate_trade_risk(
+                                symbol, signal.position_size, signal.target_price
+                            )
+                            signal_data["risk_assessment"] = {
+                                "risk_score": risk_metrics.get("risk_score", 0),
+                                "var_1d": risk_metrics.get("var_1d", 0),
+                                "position_risk": risk_metrics.get("position_risk", "unknown"),
+                                "max_position_size": risk_metrics.get("max_position_size", 0)
+                            }
+                        except Exception as risk_error:
+                            signal_data["risk_assessment"] = {"error": str(risk_error)}
+                    
+                    enhanced_signals[symbol] = signal_data
+                    
+                else:
+                    enhanced_signals[symbol] = {"error": "No market data available"}
+                    
+            except Exception as symbol_error:
+                logger.warning(f"Error processing symbol {symbol}: {symbol_error}")
+                enhanced_signals[symbol] = {"error": str(symbol_error)}
+        
+        # Response metadata
+        response = {
+            "signals": enhanced_signals,
+            "metadata": {
+                "timestamp": datetime.now().isoformat(),
+                "authenticated": is_authenticated,
+                "symbols_requested": len(symbol_list),
+                "symbols_processed": len(enhanced_signals),
+                "features_included": include_features and is_authenticated,
+                "risk_metrics_included": include_risk_metrics and is_authenticated
+            }
+        }
+        
+        # Add audit log for authenticated requests
+        if is_authenticated:
+            audit_logger.info("advanced_signals_requested", 
+                            user=current_user, 
+                            symbols=symbol_list,
+                            include_features=include_features,
+                            include_risk_metrics=include_risk_metrics)
+        
+        return response
+        
+    except Exception as e:
+        logger.exception(f"Error in get_advanced_signals: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
     except HTTPException:
         # Re-raise HTTP exceptions without modification

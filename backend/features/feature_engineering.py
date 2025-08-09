@@ -20,6 +20,7 @@ except ImportError:
     TALIB_AVAILABLE = False
     talib = None
 
+from ..config import get_settings
 from ..utils.helpers import (
     bollinger_bands,
     exponential_moving_average,
@@ -33,6 +34,7 @@ class FeatureEngineer:
     """
     Feature engineering pipeline for market data.
     Computes technical indicators, market regime features, and sentiment features.
+    Supports lightweight feature mode for real-time performance.
     """
 
     def __init__(self, config: Optional[Dict] = None):
@@ -43,8 +45,9 @@ class FeatureEngineer:
             config: Configuration dictionary with indicator parameters
         """
         self.logger = get_structured_logger("feature_engineer")
+        self.settings = get_settings()
 
-        # Default configuration
+        # Default configuration with settings awareness
         self.config = {
             # Moving average periods
             "sma_periods": [5, 10, 20, 50, 200],
@@ -68,12 +71,16 @@ class FeatureEngineer:
             "cci_period": 20,
             # Market regime
             "adx_period": 14,
-            # Lookback periods for features
-            "lookback_periods": [5, 10, 20],
+            # Lookback periods for features - limited by settings
+            "lookback_periods": [5, 10, min(20, self.settings.max_rolling_window)],
             # Feature normalization
             "normalize_features": True,
             "normalization_method": "zscore",  # 'zscore', 'minmax', 'robust'
-            "normalization_window": 252,  # 1 year
+            "normalization_window": min(252, self.settings.max_rolling_window),
+            # Performance settings from config
+            "feature_mode": self.settings.feature_mode,
+            "enable_heavy_features": self.settings.enable_heavy_features,
+            "enable_autocorr_features": self.settings.enable_autocorr_features,
         }
 
         # Update with provided config
@@ -115,29 +122,40 @@ class FeatureEngineer:
             result_df = result_df.sort_values("timestamp").reset_index(drop=True)
 
         try:
+            # Check feature mode for performance optimization
+            feature_mode = self.config.get("feature_mode", "full")
+            enable_heavy_features = self.config.get("enable_heavy_features", True)
+            
+            # Core features (always computed)
             # 1. Moving Averages
             result_df = self._add_moving_averages(result_df)
 
-            # 2. Momentum Indicators
+            # 2. Momentum Indicators  
             result_df = self._add_momentum_indicators(result_df)
 
             # 3. Volatility Indicators
             result_df = self._add_volatility_indicators(result_df)
 
-            # 4. Volume Indicators
-            result_df = self._add_volume_indicators(result_df)
+            if feature_mode == "full" or enable_heavy_features:
+                # Heavy computational features (skip in realtime_light mode)
+                # 4. Volume Indicators
+                result_df = self._add_volume_indicators(result_df)
 
-            # 5. Oscillators
-            result_df = self._add_oscillators(result_df)
+                # 5. Oscillators
+                result_df = self._add_oscillators(result_df)
 
-            # 6. Market Regime Indicators
-            result_df = self._add_market_regime_indicators(result_df)
+                # 6. Market Regime Indicators
+                result_df = self._add_market_regime_indicators(result_df)
 
-            # 7. Price-based Features
-            result_df = self._add_price_features(result_df)
+                # 7. Price-based Features
+                result_df = self._add_price_features(result_df)
 
-            # 8. Lookback Features
-            result_df = self._add_lookback_features(result_df)
+                # 8. Lookback Features (potentially expensive)
+                if self.config.get("enable_autocorr_features", True):
+                    result_df = self._add_lookback_features(result_df)
+            else:
+                # Light mode - add essential features only
+                result_df = self._add_essential_features(result_df)
 
             # 9. Normalize features if requested
             if self.config.get("normalize_features", False):
@@ -628,6 +646,41 @@ class FeatureEngineer:
                 # Sentiment volatility
                 df[f"{col}_volatility"] = df[col].rolling(window=20).std()
 
+        return df
+
+    def _add_essential_features(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Add essential features for realtime_light mode.
+        Focuses on fast-to-compute features that provide good signal.
+        """
+        try:
+            # Basic price relationships
+            df["price_range"] = (df["high"] - df["low"]) / df["close"]
+            df["body_ratio"] = abs(df["close"] - df["open"]) / (df["high"] - df["low"])
+            
+            # Simple volume features
+            df["volume_ratio"] = df["volume"] / df["volume"].rolling(10, min_periods=1).mean()
+            
+            # Basic momentum (fast RSI)
+            if self.config.get("rsi_fast_period"):
+                rsi_fast = rsi(df["close"], self.config["rsi_fast_period"])
+                df[f"rsi_{self.config['rsi_fast_period']}"] = rsi_fast
+            
+            # Essential moving average signals
+            sma_5 = df["close"].rolling(5, min_periods=1).mean()
+            sma_20 = df["close"].rolling(20, min_periods=1).mean()
+            df["sma_cross_signal"] = np.where(sma_5 > sma_20, 1, -1)
+            
+            # Price position relative to recent range
+            high_20 = df["high"].rolling(20, min_periods=1).max()
+            low_20 = df["low"].rolling(20, min_periods=1).min()
+            df["price_position"] = (df["close"] - low_20) / (high_20 - low_20)
+            
+            self.logger.debug("Essential features computed for realtime_light mode")
+            
+        except Exception as e:
+            self.logger.error(f"Error adding essential features: {e}")
+            
         return df
 
     def get_feature_importance_ranking(

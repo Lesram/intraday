@@ -117,6 +117,16 @@ class Settings(BaseSettings):
     xgboost_weight: float = config("XGBOOST_WEIGHT", default=0.4, cast=float)
     random_forest_weight: float = config("RANDOM_FOREST_WEIGHT", default=0.2, cast=float)
 
+    # Feature engineering configuration
+    feature_mode: str = config("FEATURE_MODE", default="full")  # "full", "realtime_light"
+    enable_heavy_features: bool = config("ENABLE_HEAVY_FEATURES", default=True, cast=bool)
+    max_rolling_window: int = config("MAX_ROLLING_WINDOW", default=252, cast=int)  # Trading days
+    enable_autocorr_features: bool = config("ENABLE_AUTOCORR_FEATURES", default=True, cast=bool)
+    
+    # Risk management configuration  
+    allow_mock_fallbacks: bool = config("ALLOW_MOCK_FALLBACKS", default=True, cast=bool)
+    mock_fallback_warning: bool = config("MOCK_FALLBACK_WARNING", default=True, cast=bool)
+
     # Performance settings
     workers: int = config("WORKERS", default=4, cast=int)
     max_connections: int = config("MAX_CONNECTIONS", default=1000, cast=int)
