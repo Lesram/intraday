@@ -110,6 +110,7 @@ class AlpacaClient:
         self.api_key = api_key
         self.secret_key = secret_key
         self.paper = paper
+        self.connected = False
 
         # Initialize clients
         self._init_clients()
@@ -153,6 +154,7 @@ class AlpacaClient:
 
             # Test connection
             account = self.trading_client.get_account()
+            self.connected = True
             self.logger.info(
                 "Connected to Alpaca",
                 account_number=account.account_number,

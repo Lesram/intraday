@@ -963,3 +963,21 @@ class RiskManager:
                 "Position sizing recommendation failed", symbol=symbol, error=str(e)
             )
             return {"symbol": symbol, "recommended_position_pct": 0, "error": str(e)}
+
+    def get_positions(self) -> Dict:
+        """Get current portfolio positions."""
+        if hasattr(self.portfolio, 'get_positions'):
+            return self.portfolio.get_positions()
+        elif isinstance(self.portfolio, dict):
+            return self.portfolio
+        else:
+            return {}
+
+    def get_portfolio_value(self) -> float:
+        """Get current portfolio total value."""
+        if hasattr(self.portfolio, 'total_value'):
+            return float(self.portfolio.total_value)
+        elif hasattr(self.portfolio, 'get_total_value'):
+            return float(self.portfolio.get_total_value())
+        else:
+            return 0.0

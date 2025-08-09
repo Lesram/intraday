@@ -669,3 +669,16 @@ class FeatureEngineer:
         )
 
         return selected_features
+
+    def compute_all_features(self, price_data: pd.DataFrame) -> pd.DataFrame:
+        """
+        Compute all features for the given price data.
+        Alias for compute_technical_indicators for backward compatibility.
+
+        Args:
+            price_data: DataFrame with OHLCV data
+
+        Returns:
+            DataFrame with all computed features
+        """
+        return self.compute_technical_indicators(price_data)

@@ -60,18 +60,16 @@ class TestHealthEndpoints:
 class TestTradingSignalEndpoints:
     """Test trading signal endpoints"""
     
-    @patch('backend.api.main.app_state')
-    def test_get_trading_signal_success(self, mock_state, client, sample_price_data, sample_features):
+    @patch('backend.api.main.app_state', {
+        'strategy_manager': AsyncMock(),
+        'alpaca_client': AsyncMock(),
+        'feature_engineer': MagicMock()
+    })
+    def test_get_trading_signal_success(self, client, sample_price_data, sample_features):
         """Test successful signal generation"""
-        from backend.strategies.trading_strategies import TradingSignal, SignalType
-        
-        # Configure mocks
-        mock_state.return_value = {
-            'strategy_manager': AsyncMock(),
-            'alpaca_client': AsyncMock(),
-            'feature_engineer': MagicMock()
-        }
-        
+        from backend.strategies.trading_strategies import TradingSignal, SignalType 
+        from backend.api.main import app_state
+
         mock_signal = TradingSignal(
             symbol="AAPL",
             signal_type=SignalType.BUY,
@@ -82,9 +80,10 @@ class TestTradingSignalEndpoints:
             metadata={"strategy": "test"}
         )
         
-        mock_state.return_value['strategy_manager'].generate_combined_signal.return_value = mock_signal
-        mock_state.return_value['alpaca_client'].get_historical_data.return_value = sample_price_data
-        mock_state.return_value['feature_engineer'].compute_all_features.return_value = sample_features
+        # Configure the mock objects
+        app_state['strategy_manager'].generate_combined_signal = AsyncMock(return_value=mock_signal)
+        app_state['alpaca_client'].get_historical_data = AsyncMock(return_value=sample_price_data)
+        app_state['feature_engineer'].compute_all_features = MagicMock(return_value=sample_features)
         
         response = client.get("/api/v1/signals/AAPL")
         
