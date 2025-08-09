@@ -6,8 +6,8 @@ Handles all interactions with Alpaca's trading and market data APIs.
 import asyncio
 import logging
 from dataclasses import dataclass
-from datetime import datetime, timedelta
-from typi, timezoneng import Any, Callable, Dict, List, Optional
+from datetime import datetime, timedelta, timezone
+from typing import Any, Callable, Dict, List, Optional
 
 import numpy as np
 import pandas as pd
