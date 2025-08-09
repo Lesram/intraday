@@ -1,5 +1,5 @@
 """
-FastAPI Gateway - Main API Server with Lifespan and Dependency Injection
+FastAPI Gateway - Main API Server
 Provides REST and WebSocket endpoints for the algorithmic trading platform
 """
 
@@ -289,17 +289,7 @@ async def lifespan(app: FastAPI):
         
         # Initialize core components and store in app.state
         logging.info("Initializing AlpacaClient...")
-        # Initialize AlpacaClient with test mode for dummy credentials
-        api_key = settings.alpaca_api_key or "dummy_key_for_testing"
-        secret_key = settings.alpaca_secret_key or "dummy_secret_for_testing"
-        test_mode = api_key == "dummy_key_for_testing" or secret_key == "dummy_secret_for_testing"
-        
-        app.state.alpaca_client = AlpacaClient(
-            api_key=api_key,
-            secret_key=secret_key,
-            paper=True,
-            test_mode=test_mode
-        )
+        app.state.alpaca_client = AlpacaClient()
         
         logging.info("Initializing SocialSentimentAnalyzer...")
         app.state.sentiment_analyzer = SocialSentimentAnalyzer()
@@ -403,11 +393,8 @@ async def start_market_data_stream(app: FastAPI):
     """Start real-time market data streaming"""
     if hasattr(app.state, 'alpaca_client') and app.state.alpaca_client:
         try:
-            # Get default symbols from settings
-            settings = get_settings()
-            symbols = settings.default_symbols
-            await app.state.alpaca_client.connect_data_stream(symbols=symbols)
-            logging.info(f"Market data stream started successfully for symbols: {symbols}")
+            await app.state.alpaca_client.connect_data_stream()
+            logging.info("Market data stream started successfully")
         except Exception as e:
             logging.error(f"Error starting market data stream: {e}")
 
@@ -415,8 +402,7 @@ async def start_market_data_stream(app: FastAPI):
 async def cleanup_alpaca_client(alpaca_client: AlpacaClient):
     """Cleanup Alpaca client connections"""
     try:
-        # disconnect() is synchronous, not async
-        alpaca_client.disconnect()
+        await alpaca_client.disconnect()
         logging.info("Alpaca client disconnected successfully")
     except Exception as e:
         logging.error(f"Error stopping market data stream: {e}")
@@ -425,9 +411,8 @@ async def cleanup_alpaca_client(alpaca_client: AlpacaClient):
 async def flush_audit_logs():
     """Flush any pending audit log entries"""
     try:
-        # Get the underlying standard logger and flush its handlers
-        underlying_logger = logging.getLogger("audit")
-        for handler in underlying_logger.handlers:
+        # Force flush audit logger
+        for handler in audit_logger.handlers:
             if hasattr(handler, 'flush'):
                 handler.flush()
         logging.info("Audit logs flushed successfully")
@@ -621,12 +606,7 @@ async def get_trading_signal(
 
 
 @app.get("/api/v1/signals")
-async def get_all_signals(
-    symbols: str = "AAPL,GOOGL,MSFT,TSLA,NVDA",
-    strategy_manager: StrategyManager = Depends(get_strategy_manager),
-    alpaca_client: AlpacaClient = Depends(get_alpaca_client),
-    feature_engineer: FeatureEngineer = Depends(get_feature_engineer),
-):
+async def get_all_signals(symbols: str = "AAPL,GOOGL,MSFT,TSLA,NVDA"):
     """Get trading signals for multiple symbols"""
     try:
         symbol_list = [s.strip() for s in symbols.split(",")]
@@ -634,38 +614,12 @@ async def get_all_signals(
 
         for symbol in symbol_list:
             try:
-                # Generate signal for each symbol
-                price_data = await alpaca_client.get_historical_data(
-                    symbol, timeframe="1Day", limit=100
-                )
-                if not price_data.empty:
-                    features = feature_engineer.compute_all_features(price_data)
-                    signal = await strategy_manager.generate_combined_signal(
-                        symbol, price_data, features
-                    )
-                    
-                    if PYDANTIC_AVAILABLE:
-                        signals[symbol] = TradingSignalResponse(
-                            symbol=signal.symbol,
-                            signal_type=signal.signal_type.value,
-                            confidence=signal.confidence,
-                            target_price=signal.target_price,
-                            position_size=signal.position_size,
-                            timestamp=signal.timestamp.isoformat(),
-                            metadata=signal.metadata,
-                        ).dict()
-                    else:
-                        signals[symbol] = {
-                            "symbol": signal.symbol,
-                            "signal_type": signal.signal_type.value,
-                            "confidence": signal.confidence,
-                            "target_price": signal.target_price,
-                            "position_size": signal.position_size,
-                            "timestamp": signal.timestamp.isoformat(),
-                            "metadata": signal.metadata,
-                        }
+                # This would ideally be done in parallel
+                signal_response = await get_trading_signal(symbol)
+                if PYDANTIC_AVAILABLE:
+                    signals[symbol] = signal_response.dict()
                 else:
-                    signals[symbol] = {"error": "No market data available"}
+                    signals[symbol] = signal_response
             except Exception as e:
                 logging.warning(f"Error getting signal for {symbol}: {e}")
                 signals[symbol] = {"error": str(e)}
@@ -680,16 +634,376 @@ async def get_all_signals(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# WebSocket endpoint for real-time data with improved backpressure handling
-@app.websocket("/ws/realtime/{client_id}")
-async def websocket_endpoint(
-    websocket: WebSocket,
-    client_id: str,
-    ws_manager: WebSocketClientManager = Depends(get_ws_manager),
+# Model Prediction Endpoints
+@app.get("/api/v1/predictions/{symbol}")
+async def get_prediction(
+    symbol: str,
+    ensemble_model: EnsembleModel = Depends(get_ensemble_model),
+    alpaca_client: AlpacaClient = Depends(get_alpaca_client),
+    feature_engineer: FeatureEngineer = Depends(get_feature_engineer),
 ):
-    """WebSocket endpoint for real-time trading data with backpressure handling"""
+    """Get AI model prediction for a symbol"""
+    try:
+        if not ensemble_model:
+            raise HTTPException(status_code=503, detail="Ensemble model not available")
+
+        # Get data
+        price_data = await alpaca_client.get_historical_data(
+            symbol, timeframe="1Day", limit=100
+        )
+        features = feature_engineer.compute_all_features(price_data)
+
+        # Get prediction
+        prediction = ensemble_model.predict(price_data, features, symbol)
+
+        if PYDANTIC_AVAILABLE:
+            return ModelPredictionResponse(
+                symbol=prediction.symbol,
+                ensemble_prediction=prediction.ensemble_prediction,
+                ensemble_confidence=prediction.ensemble_confidence,
+                individual_predictions=prediction.predictions,
+                timestamp=prediction.timestamp.isoformat(),
+            )
+        else:
+            return {
+                "symbol": prediction.symbol,
+                "ensemble_prediction": prediction.ensemble_prediction,
+                "ensemble_confidence": prediction.ensemble_confidence,
+                "individual_predictions": prediction.predictions,
+                "timestamp": prediction.timestamp.isoformat(),
+            }
+
+    except HTTPException:
+        # Re-raise HTTP exceptions without modification
+        raise
+    except Exception as e:
+        logging.error(f"Error getting prediction for {symbol}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# Portfolio Management Endpoints
+@app.get("/api/v1/portfolio/status")
+async def get_portfolio_status(
+    risk_manager: RiskManager = Depends(get_risk_manager),
+):
+    """Get current portfolio status"""
+    try:
+        if not risk_manager:
+            raise HTTPException(status_code=503, detail="Risk manager not available")
+
+        portfolio_value = risk_manager.get_portfolio_value()
+        positions = risk_manager.get_positions()
+        risk_metrics = risk_manager.get_risk_metrics()
+
+        # Calculate P&L (simplified)
+        daily_pnl = 0.0
+        total_pnl = 0.0
+
+        if PYDANTIC_AVAILABLE:
+            return PortfolioStatus(
+                total_value=portfolio_value,
+                cash=portfolio_value * 0.1,  # Placeholder
+                positions=positions,
+                daily_pnl=daily_pnl,
+                total_pnl=total_pnl,
+                risk_metrics=risk_metrics,
+            )
+        else:
+            return {
+                "total_value": portfolio_value,
+                "cash": portfolio_value * 0.1,
+                "positions": positions,
+                "daily_pnl": daily_pnl,
+                "total_pnl": total_pnl,
+                "risk_metrics": risk_metrics,
+            }
+
+    except HTTPException:
+        # Re-raise HTTP exceptions without modification
+        raise
+    except Exception as e:
+        logging.error(f"Error getting portfolio status: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# Trading Endpoints
+@app.post("/api/v1/trades")
+async def submit_trade(trade_request: dict):
+    """Submit a trade order"""
+    try:
+        if not app_state["alpaca_client"]:
+            raise HTTPException(status_code=503, detail="Trading client not available")
+
+        symbol = trade_request.get("symbol")
+        side = trade_request.get("side")
+        quantity = trade_request.get("quantity")
+        order_type = trade_request.get("order_type", "market")
+
+        if not all([symbol, side, quantity]):
+            raise HTTPException(status_code=400, detail="Missing required fields")
+
+        # Risk check
+        if app_state["risk_manager"]:
+            risk_check = await app_state["risk_manager"].assess_position_risk(
+                symbol, quantity, side
+            )
+            if not risk_check["approved"]:
+                raise HTTPException(
+                    status_code=403, detail=f"Trade rejected: {risk_check['reason']}"
+                )
+
+        # Submit order
+        order = await app_state["alpaca_client"].submit_order(
+            symbol=symbol, qty=quantity, side=side, type=order_type, time_in_force="day"
+        )
+
+        audit_logger.info(
+            "trade_submitted",
+            symbol=symbol,
+            side=side,
+            quantity=quantity,
+            order_id=order.get("id", "unknown"),
+        )
+
+        return {"status": "submitted", "order": order}
+
+    except HTTPException:
+        # Re-raise HTTP exceptions without modification
+        raise
+    except Exception as e:
+        logging.error(f"Error submitting trade: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# Market Data Endpoints
+@app.get("/api/v1/market-data/{symbol}")
+async def get_market_data(symbol: str, timeframe: str = "1Day", limit: int = 100):
+    """Get historical market data"""
+    try:
+        if not app_state["alpaca_client"]:
+            raise HTTPException(
+                status_code=503, detail="Market data client not available"
+            )
+
+        data = await app_state["alpaca_client"].get_historical_data(
+            symbol, timeframe, limit
+        )
+
+        return {
+            "symbol": symbol,
+            "timeframe": timeframe,
+            "data": data.to_dict("records") if not data.empty else [],
+            "count": len(data),
+        }
+
+    except HTTPException:
+        # Re-raise HTTP exceptions without modification
+        raise
+    except Exception as e:
+        logging.error(f"Error getting market data for {symbol}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# Sentiment Analysis Endpoint
+@app.get("/api/v1/sentiment/{symbol}")
+async def get_sentiment(symbol: str):
+    """Get social sentiment for a symbol"""
+    try:
+        if not app_state["sentiment_analyzer"]:
+            raise HTTPException(
+                status_code=503, detail="Sentiment analyzer not available"
+            )
+
+        sentiment_data = await app_state["sentiment_analyzer"].get_aggregated_sentiment(
+            symbol
+        )
+
+        return {
+            "symbol": symbol,
+            "sentiment": sentiment_data,
+            "timestamp": datetime.now().isoformat(),
+        }
+
+    except HTTPException:
+        # Re-raise HTTP exceptions without modification
+        raise
+    except Exception as e:
+        logging.error(f"Error getting sentiment for {symbol}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# Model Management Endpoints
+@app.post("/api/v1/models/train")
+async def train_model(training_request: dict, background_tasks: BackgroundTasks):
+    """Train a new model"""
+    try:
+        model_id = training_request.get("model_id", "default")
+        symbols = training_request.get("symbols", ["AAPL"])
+        training_days = training_request.get("training_period_days", 30)
+
+        # Start training in background
+        background_tasks.add_task(
+            train_model_background, model_id, symbols, training_days
+        )
+
+        return {
+            "status": "training_started",
+            "model_id": model_id,
+            "message": "Model training started in background",
+        }
+
+    except Exception as e:
+        logging.error(f"Error starting model training: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+async def train_model_background(model_id: str, symbols: List[str], training_days: int):
+    """Background task for model training"""
+    try:
+        # Get training data
+        end_date = datetime.now()
+        start_date = end_date - timedelta(days=training_days)
+
+        training_data = None
+        for symbol in symbols:
+            data = await app_state["alpaca_client"].get_historical_data(
+                symbol, timeframe="1Day", limit=training_days
+            )
+            if training_data is None:
+                training_data = data
+            else:
+                training_data = training_data.append(data)
+
+        # Generate features
+        features = app_state["feature_engineer"].compute_all_features(training_data)
+
+        # Train model
+        await app_state["model_manager"].train_and_register_model(
+            model_id, training_data, features
+        )
+
+        audit_logger.info(
+            "model_training_completed",
+            model_id=model_id,
+            symbols=symbols,
+            training_days=training_days,
+        )
+
+    except Exception as e:
+        logging.error(f"Error in background model training: {e}")
+        audit_logger.error("model_training_failed", model_id=model_id, error=str(e))
+
+
+@app.get("/api/v1/models/status")
+async def get_models_status():
+    """Get status of all models"""
+    try:
+        if not app_state["model_manager"]:
+            raise HTTPException(status_code=503, detail="Model manager not available")
+
+        return app_state["model_manager"].get_model_status()
+
+    except Exception as e:
+        logging.error(f"Error getting models status: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# Risk Management Endpoints
+@app.get("/api/v1/risk/metrics")
+async def get_risk_metrics():
+    """Get current risk metrics"""
+    try:
+        if not app_state["risk_manager"]:
+            raise HTTPException(status_code=503, detail="Risk manager not available")
+
+        metrics = app_state["risk_manager"].get_risk_metrics()
+        return {"risk_metrics": metrics, "timestamp": datetime.now().isoformat()}
+
+    except Exception as e:
+        logging.error(f"Error getting risk metrics: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/v1/risk/limits")
+async def update_risk_limits(limits: dict):
+    """Update risk limits"""
+    try:
+        if not app_state["risk_manager"]:
+            raise HTTPException(status_code=503, detail="Risk manager not available")
+
+        # Update limits (implementation depends on RiskManager interface)
+        audit_logger.info("risk_limits_updated", limits=limits)
+
+        return {"status": "updated", "limits": limits}
+
+    except HTTPException:
+        # Re-raise HTTP exceptions without modification
+        raise
+    except Exception as e:
+        logging.error(f"Error updating risk limits: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# System Status Endpoints
+@app.get("/api/v1/system/status")
+async def get_system_status():
+    """Get comprehensive system status"""
+    try:
+        status = {
+            "timestamp": datetime.now().isoformat(),
+            "uptime": "N/A",  # Would calculate actual uptime
+            "components": {
+                "risk_manager": {
+                    "status": "active" if app_state["risk_manager"] else "inactive",
+                    "metrics": (
+                        app_state["risk_manager"].get_risk_metrics()
+                        if app_state["risk_manager"]
+                        else {}
+                    ),
+                },
+                "ensemble_model": {
+                    "status": "active" if app_state["ensemble_model"] else "inactive",
+                    "model_info": (
+                        app_state["ensemble_model"].get_model_status()
+                        if app_state["ensemble_model"]
+                        else {}
+                    ),
+                },
+                "strategy_manager": {
+                    "status": "active" if app_state["strategy_manager"] else "inactive",
+                    "strategies": (
+                        app_state["strategy_manager"].get_strategy_status()
+                        if app_state["strategy_manager"]
+                        else {}
+                    ),
+                },
+                "alpaca_client": {
+                    "status": "active" if app_state["alpaca_client"] else "inactive",
+                    "connected": (
+                        app_state["alpaca_client"].is_connected()
+                        if app_state["alpaca_client"]
+                        else False
+                    ),
+                },
+            },
+            "active_websockets": len(app_state["active_websockets"]),
+        }
+
+        return status
+
+    except Exception as e:
+        logging.error(f"Error getting system status: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# WebSocket endpoint for real-time data
+@app.websocket("/ws/realtime/{client_id}")
+async def websocket_endpoint(websocket: WebSocket, client_id: str):
+    """WebSocket endpoint for real-time trading data"""
     await websocket.accept()
-    await ws_manager.add_client(client_id, websocket)
+    app_state["active_websockets"].append(websocket)
+
+    audit_logger.info("websocket_connected", client_id=client_id)
 
     try:
         while True:
@@ -697,103 +1011,77 @@ async def websocket_endpoint(
             data = await websocket.receive_text()
             message = json.loads(data)
 
-            if PROMETHEUS_AVAILABLE:
-                WS_MESSAGES.labels(direction='received', message_type=message.get('type', 'unknown')).inc()
-
             message_type = message.get("type")
-            client_info = ws_manager.clients.get(client_id)
-            
-            if not client_info:
-                break
 
             if message_type == "subscribe_signals":
                 symbols = message.get("symbols", [])
-                client_info['subscriptions'].add('signals')
                 # Start sending signals for these symbols
-                await send_realtime_signals(ws_manager, client_id, symbols)
+                await send_realtime_signals(websocket, symbols)
 
             elif message_type == "subscribe_portfolio":
-                client_info['subscriptions'].add('portfolio')
                 # Send portfolio updates
-                await send_portfolio_updates(ws_manager, client_id)
-
-            elif message_type == "pong":
-                client_info['last_ping'] = time.time()
+                await send_portfolio_updates(websocket)
 
             elif message_type == "ping":
-                await ws_manager.broadcast_message(
-                    {"type": "pong", "timestamp": time.time()},
-                    subscription_filter=None
-                )
+                await websocket.send_text(json.dumps({"type": "pong"}))
 
     except WebSocketDisconnect:
-        await ws_manager.remove_client(client_id)
+        app_state["active_websockets"].remove(websocket)
+        audit_logger.info("websocket_disconnected", client_id=client_id)
     except Exception as e:
         logging.error(f"WebSocket error for client {client_id}: {e}")
-        await ws_manager.remove_client(client_id)
-
-
-async def send_realtime_signals(ws_manager: WebSocketClientManager, client_id: str, symbols: List[str]):
-    """Send real-time trading signals to specific client"""
-    try:
-        # This would be triggered by market data events in production
-        # For now, send periodic updates
-        asyncio.create_task(_periodic_signal_updates(ws_manager, client_id, symbols))
-    except Exception as e:
-        logging.error(f"Error setting up realtime signals: {e}")
-
-
-async def _periodic_signal_updates(ws_manager: WebSocketClientManager, client_id: str, symbols: List[str]):
-    """Background task for periodic signal updates"""
-    while client_id in ws_manager.clients:
         try:
+            await websocket.close()
+        except:
+            pass
+        if websocket in app_state["active_websockets"]:
+            app_state["active_websockets"].remove(websocket)
+
+
+async def send_realtime_signals(websocket: WebSocket, symbols: List[str]):
+    """Send real-time trading signals"""
+    try:
+        # In a real implementation, this would be triggered by market data events
+        # For now, we'll send periodic updates
+        while True:
             for symbol in symbols:
-                # Mock signal generation - in production this would be event-driven
-                signal_data = {
-                    "type": "signal_update",
-                    "data": {
-                        "symbol": symbol,
-                        "signal_type": "hold",
-                        "confidence": 0.5,
-                        "timestamp": datetime.now().isoformat()
-                    }
-                }
-                
-                await ws_manager.broadcast_message(signal_data, subscription_filter='signals')
-            
+                try:
+                    signal_response = await get_trading_signal(symbol)
+                    if PYDANTIC_AVAILABLE:
+                        signal_data = signal_response.dict()
+                    else:
+                        signal_data = signal_response
+
+                    await websocket.send_text(
+                        json.dumps({"type": "signal_update", "data": signal_data})
+                    )
+                except Exception as e:
+                    logging.warning(f"Error sending signal for {symbol}: {e}")
+
             await asyncio.sleep(60)  # Send updates every minute
-            
-        except Exception as e:
-            logging.error(f"Error in periodic signal updates: {e}")
-            break
 
-
-async def send_portfolio_updates(ws_manager: WebSocketClientManager, client_id: str):
-    """Send real-time portfolio updates to specific client"""
-    try:
-        asyncio.create_task(_periodic_portfolio_updates(ws_manager, client_id))
     except Exception as e:
-        logging.error(f"Error setting up portfolio updates: {e}")
+        logging.error(f"Error in realtime signals: {e}")
 
 
-async def _periodic_portfolio_updates(ws_manager: WebSocketClientManager, client_id: str):
-    """Background task for periodic portfolio updates"""
-    while client_id in ws_manager.clients:
-        try:
-            portfolio_data = {
-                "type": "portfolio_update",
-                "data": {
-                    "total_value": 100000.0,  # Mock data
-                    "timestamp": datetime.now().isoformat()
-                }
-            }
-            
-            await ws_manager.broadcast_message(portfolio_data, subscription_filter='portfolio')
+async def send_portfolio_updates(websocket: WebSocket):
+    """Send real-time portfolio updates"""
+    try:
+        while True:
+            portfolio_status = await get_portfolio_status()
+            if PYDANTIC_AVAILABLE:
+                portfolio_data = portfolio_status.dict()
+            else:
+                portfolio_data = portfolio_status
+
+            await websocket.send_text(
+                json.dumps({"type": "portfolio_update", "data": portfolio_data})
+            )
+
             await asyncio.sleep(30)  # Send updates every 30 seconds
-            
-        except Exception as e:
-            logging.error(f"Error in periodic portfolio updates: {e}")
-            break
+
+    except Exception as e:
+        logging.error(f"Error in portfolio updates: {e}")
 
 
 # Error handlers

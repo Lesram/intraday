@@ -7,7 +7,7 @@ import os
 from typing import List, Optional
 
 from decouple import config
-from pydantic import Field, ConfigDict
+from pydantic import Field, ConfigDict, field_validator
 from pydantic_settings import BaseSettings
 
 
@@ -68,18 +68,28 @@ class Settings(BaseSettings):
     )
 
     # Trading Configuration
-    default_symbols: List[str] = [
-        "AAPL",
-        "MSFT",
-        "GOOGL",
-        "AMZN",
-        "TSLA",
-        "BTC/USD",
-        "ETH/USD",
-    ]
+    default_symbols: List[str] = Field(
+        default=[
+            "AAPL",
+            "MSFT",
+            "GOOGL",
+            "AMZN",
+            "TSLA",
+            "BTC/USD",
+            "ETH/USD",
+        ]
+    )
     trading_hours_start: str = "09:30"
     trading_hours_end: str = "16:00"
     timezone: str = "America/New_York"
+
+    @field_validator('default_symbols', mode='before')
+    @classmethod
+    def parse_comma_separated_list(cls, v):
+        """Parse comma-separated string into list"""
+        if isinstance(v, str):
+            return [item.strip() for item in v.split(",") if item.strip()]
+        return v
 
     # Strategy Configuration
     ensemble_weights: dict = {"lstm": 0.5, "xgboost": 0.3, "random_forest": 0.2}
@@ -101,6 +111,16 @@ class Settings(BaseSettings):
         "Bitcoin",
     ]
     sentiment_update_interval: int = 300  # 5 minutes
+
+    # Model weights
+    lstm_weight: float = config("LSTM_WEIGHT", default=0.4, cast=float)
+    xgboost_weight: float = config("XGBOOST_WEIGHT", default=0.4, cast=float)
+    random_forest_weight: float = config("RANDOM_FOREST_WEIGHT", default=0.2, cast=float)
+
+    # Performance settings
+    workers: int = config("WORKERS", default=4, cast=int)
+    max_connections: int = config("MAX_CONNECTIONS", default=1000, cast=int)
+    request_timeout: int = config("REQUEST_TIMEOUT", default=30, cast=int)
 
 
 # Global settings instance

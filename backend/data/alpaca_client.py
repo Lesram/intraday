@@ -92,7 +92,7 @@ class AlpacaClient:
     Supports both paper and live trading modes.
     """
 
-    def __init__(self, api_key: str, secret_key: str, paper: bool = True):
+    def __init__(self, api_key: str, secret_key: str, paper: bool = True, test_mode: bool = False):
         """
         Initialize Alpaca trading and data client.
 
@@ -100,6 +100,7 @@ class AlpacaClient:
             api_key: Alpaca API key
             secret_key: Alpaca secret key
             paper: Whether to use paper trading (True) or live trading (False)
+            test_mode: Whether to skip real API calls for testing (True) or not (False)
         """
         if not ALPACA_AVAILABLE:
             raise ImportError(
@@ -110,6 +111,7 @@ class AlpacaClient:
         self.api_key = api_key
         self.secret_key = secret_key
         self.paper = paper
+        self.test_mode = test_mode
         self.connected = False
 
         # Initialize clients
@@ -152,18 +154,28 @@ class AlpacaClient:
                 api_key=self.api_key, secret_key=self.secret_key
             )
 
-            # Test connection
-            account = self.trading_client.get_account()
-            self.connected = True
-            self.logger.info(
-                "Connected to Alpaca",
-                account_number=account.account_number,
-                buying_power=float(account.buying_power),
-            )
+            # Test connection only if not in test mode
+            if not self.test_mode:
+                account = self.trading_client.get_account()
+                self.connected = True
+                self.logger.info(
+                    "Connected to Alpaca",
+                    account_number=account.account_number,
+                    buying_power=float(account.buying_power),
+                )
+            else:
+                # In test mode, assume connection is successful
+                self.connected = True
+                self.logger.info("AlpacaClient initialized in test mode")
 
         except Exception as e:
             self.logger.error("Failed to initialize Alpaca clients", error=str(e))
-            raise
+            if not self.test_mode:
+                raise
+            else:
+                # In test mode, log error but continue
+                self.connected = False
+                self.logger.warning("Test mode: continuing despite initialization error")
 
     async def connect_data_stream(
         self,
