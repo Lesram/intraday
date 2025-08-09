@@ -28,7 +28,7 @@ from fastapi.responses import JSONResponse
 
 # Prometheus imports
 try:
-    from prometheus_client import Counter, Histogram, generate_latest, CONTENT_TYPE_LATEST
+    from prometheus_client import Counter, Histogram, Gauge, generate_latest, CONTENT_TYPE_LATEST
     PROMETHEUS_AVAILABLE = True
     
     # Prometheus metrics
@@ -51,6 +51,21 @@ try:
         'websocket_messages_total',
         'WebSocket messages sent/received',
         ['direction', 'message_type']
+    )
+    WS_QUEUE_SIZE = Gauge(
+        'websocket_queue_size',
+        'Current WebSocket queue size',
+        ['client_id']
+    )
+    WS_MESSAGES_DROPPED = Counter(
+        'websocket_messages_dropped_total',
+        'WebSocket messages dropped due to backpressure',
+        ['client_id', 'reason']
+    )
+    WS_SUBSCRIBER_TIMEOUTS = Counter(
+        'websocket_subscriber_timeouts_total',
+        'WebSocket subscriber timeouts',
+        ['client_id']
     )
     
 except ImportError:
@@ -139,6 +154,10 @@ class WebSocketClientManager:
                 continue
                 
             try:
+                # Update queue size metric
+                if PROMETHEUS_AVAILABLE:
+                    WS_QUEUE_SIZE.labels(client_id=client_id).set(client_info['queue'].qsize())
+                
                 # Non-blocking put with backpressure policy
                 client_info['queue'].put_nowait(message)
             except asyncio.QueueFull:
@@ -147,7 +166,14 @@ class WebSocketClientManager:
                     client_info['queue'].get_nowait()
                     client_info['queue'].put_nowait(message)
                     logging.warning(f"Queue full for client {client_id}, dropped old message")
+                    
+                    # Update metrics
+                    if PROMETHEUS_AVAILABLE:
+                        WS_MESSAGES_DROPPED.labels(client_id=client_id, reason='queue_full').inc()
+                        
                 except asyncio.QueueEmpty:
+                    # Queue became empty between checks, just put the message
+                    client_info['queue'].put_nowait(message)
                     pass
                     
     async def _message_sender(self, client_id: str) -> None:
@@ -201,6 +227,10 @@ class WebSocketClientManager:
                     # Check if client is stale (no pong for 60 seconds)
                     if current_time - client_info['last_ping'] > 60:
                         stale_clients.append(client_id)
+                        
+                        # Track timeout in metrics
+                        if PROMETHEUS_AVAILABLE:
+                            WS_SUBSCRIBER_TIMEOUTS.labels(client_id=client_id).inc()
                         continue
                         
                     try:
@@ -208,6 +238,10 @@ class WebSocketClientManager:
                     except asyncio.QueueFull:
                         # Client can't keep up, mark as stale
                         stale_clients.append(client_id)
+                        
+                        # Track queue full timeout
+                        if PROMETHEUS_AVAILABLE:
+                            WS_SUBSCRIBER_TIMEOUTS.labels(client_id=client_id).inc()
                 
                 # Remove stale clients
                 for client_id in stale_clients:
@@ -690,6 +724,9 @@ async def websocket_endpoint(
     """WebSocket endpoint for real-time trading data with backpressure handling"""
     await websocket.accept()
     await ws_manager.add_client(client_id, websocket)
+    
+    # Track background tasks for this client
+    background_tasks = {}
 
     try:
         while True:
@@ -709,13 +746,39 @@ async def websocket_endpoint(
             if message_type == "subscribe_signals":
                 symbols = message.get("symbols", [])
                 client_info['subscriptions'].add('signals')
-                # Start sending signals for these symbols
-                await send_realtime_signals(ws_manager, client_id, symbols)
+                
+                # Cancel previous signals task if exists
+                if "signals" in background_tasks:
+                    background_tasks["signals"].cancel()
+                
+                # Start new background task for signals
+                background_tasks["signals"] = asyncio.create_task(
+                    send_realtime_signals(ws_manager, client_id, symbols)
+                )
 
             elif message_type == "subscribe_portfolio":
                 client_info['subscriptions'].add('portfolio')
-                # Send portfolio updates
-                await send_portfolio_updates(ws_manager, client_id)
+                
+                # Cancel previous portfolio task if exists  
+                if "portfolio" in background_tasks:
+                    background_tasks["portfolio"].cancel()
+                    
+                # Start new background task for portfolio
+                background_tasks["portfolio"] = asyncio.create_task(
+                    send_portfolio_updates(ws_manager, client_id)
+                )
+
+            elif message_type == "unsubscribe_signals":
+                client_info['subscriptions'].discard('signals')
+                if "signals" in background_tasks:
+                    background_tasks["signals"].cancel()
+                    del background_tasks["signals"]
+
+            elif message_type == "unsubscribe_portfolio":
+                client_info['subscriptions'].discard('portfolio')
+                if "portfolio" in background_tasks:
+                    background_tasks["portfolio"].cancel()
+                    del background_tasks["portfolio"]
 
             elif message_type == "pong":
                 client_info['last_ping'] = time.time()
@@ -727,73 +790,88 @@ async def websocket_endpoint(
                 )
 
     except WebSocketDisconnect:
-        await ws_manager.remove_client(client_id)
+        pass
     except Exception as e:
         logging.error(f"WebSocket error for client {client_id}: {e}")
+    finally:
+        # Cancel all background tasks for this client
+        for task_name, task in background_tasks.items():
+            if not task.done():
+                task.cancel()
+                try:
+                    await task
+                except asyncio.CancelledError:
+                    pass
+                except Exception as e:
+                    logging.warning(f"Error cancelling {task_name} task for client {client_id}: {e}")
+        
+        # Remove client from manager
         await ws_manager.remove_client(client_id)
 
 
 async def send_realtime_signals(ws_manager: WebSocketClientManager, client_id: str, symbols: List[str]):
-    """Send real-time trading signals to specific client"""
+    """Send real-time trading signals to specific client - runs as background task"""
     try:
-        # This would be triggered by market data events in production
-        # For now, send periodic updates
-        asyncio.create_task(_periodic_signal_updates(ws_manager, client_id, symbols))
+        while client_id in ws_manager.clients:
+            try:
+                client_info = ws_manager.clients.get(client_id)
+                if not client_info or 'signals' not in client_info.get('subscriptions', set()):
+                    break
+                    
+                for symbol in symbols:
+                    # Mock signal generation - in production this would be event-driven
+                    signal_data = {
+                        "type": "signal_update",
+                        "data": {
+                            "symbol": symbol,
+                            "signal_type": "hold",
+                            "confidence": 0.5,
+                            "timestamp": datetime.now().isoformat()
+                        }
+                    }
+                    
+                    await ws_manager.broadcast_message(signal_data, subscription_filter='signals')
+                
+                await asyncio.sleep(60)  # Send updates every minute
+                
+            except Exception as e:
+                logging.error(f"Error in periodic signal updates: {e}")
+                break
+    except asyncio.CancelledError:
+        logging.info(f"Signal updates cancelled for client {client_id}")
+        raise
     except Exception as e:
         logging.error(f"Error setting up realtime signals: {e}")
 
 
-async def _periodic_signal_updates(ws_manager: WebSocketClientManager, client_id: str, symbols: List[str]):
-    """Background task for periodic signal updates"""
-    while client_id in ws_manager.clients:
-        try:
-            for symbol in symbols:
-                # Mock signal generation - in production this would be event-driven
-                signal_data = {
-                    "type": "signal_update",
+async def send_portfolio_updates(ws_manager: WebSocketClientManager, client_id: str):
+    """Send real-time portfolio updates to specific client - runs as background task"""
+    try:
+        while client_id in ws_manager.clients:
+            try:
+                client_info = ws_manager.clients.get(client_id)
+                if not client_info or 'portfolio' not in client_info.get('subscriptions', set()):
+                    break
+                    
+                portfolio_data = {
+                    "type": "portfolio_update", 
                     "data": {
-                        "symbol": symbol,
-                        "signal_type": "hold",
-                        "confidence": 0.5,
+                        "total_value": 100000.0,  # Mock data
                         "timestamp": datetime.now().isoformat()
                     }
                 }
                 
-                await ws_manager.broadcast_message(signal_data, subscription_filter='signals')
-            
-            await asyncio.sleep(60)  # Send updates every minute
-            
-        except Exception as e:
-            logging.error(f"Error in periodic signal updates: {e}")
-            break
-
-
-async def send_portfolio_updates(ws_manager: WebSocketClientManager, client_id: str):
-    """Send real-time portfolio updates to specific client"""
-    try:
-        asyncio.create_task(_periodic_portfolio_updates(ws_manager, client_id))
+                await ws_manager.broadcast_message(portfolio_data, subscription_filter='portfolio')
+                await asyncio.sleep(30)  # Send updates every 30 seconds
+                
+            except Exception as e:
+                logging.error(f"Error in periodic portfolio updates: {e}")
+                break
+    except asyncio.CancelledError:
+        logging.info(f"Portfolio updates cancelled for client {client_id}")
+        raise
     except Exception as e:
         logging.error(f"Error setting up portfolio updates: {e}")
-
-
-async def _periodic_portfolio_updates(ws_manager: WebSocketClientManager, client_id: str):
-    """Background task for periodic portfolio updates"""
-    while client_id in ws_manager.clients:
-        try:
-            portfolio_data = {
-                "type": "portfolio_update",
-                "data": {
-                    "total_value": 100000.0,  # Mock data
-                    "timestamp": datetime.now().isoformat()
-                }
-            }
-            
-            await ws_manager.broadcast_message(portfolio_data, subscription_filter='portfolio')
-            await asyncio.sleep(30)  # Send updates every 30 seconds
-            
-        except Exception as e:
-            logging.error(f"Error in periodic portfolio updates: {e}")
-            break
 
 
 # Error handlers
