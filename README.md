@@ -471,3 +471,5 @@ This software is for educational and research purposes only. Trading financial i
 ---
 
 **Built with ❤️ for algorithmic trading enthusiasts**
+#   F o r c e   r e f r e s h  
+ 
