@@ -1,0 +1,290 @@
+"""
+Logging configuration and utilities for the Algorithmic Trading Platform.
+Provides structured logging with audit trail capabilities.
+"""
+
+import json
+import logging
+import sys
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any, Dict, Optional
+
+import structlog
+from structlog import get_logger
+
+# Configure structlog
+structlog.configure(
+    processors=[
+        structlog.stdlib.filter_by_level,
+        structlog.stdlib.add_logger_name,
+        structlog.stdlib.add_log_level,
+        structlog.stdlib.PositionalArgumentsFormatter(),
+        structlog.processors.TimeStamper(fmt="ISO"),
+        structlog.processors.StackInfoRenderer(),
+        structlog.processors.format_exc_info,
+        structlog.processors.UnicodeDecoder(),
+        structlog.processors.JSONRenderer(),
+    ],
+    context_class=dict,
+    logger_factory=structlog.stdlib.LoggerFactory(),
+    wrapper_class=structlog.stdlib.BoundLogger,
+    cache_logger_on_first_use=True,
+)
+
+
+class AuditLogger:
+    """Specialized logger for audit trail and compliance events."""
+
+    def __init__(self, log_file: str = "audit_trail.log"):
+        self.logger = get_logger("audit")
+        self.log_file = Path(log_file)
+        self.log_file.parent.mkdir(parents=True, exist_ok=True)
+
+        # File handler for audit logs
+        file_handler = logging.FileHandler(self.log_file)
+        file_handler.setLevel(logging.INFO)
+        formatter = logging.Formatter(
+            "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+        )
+        file_handler.setFormatter(formatter)
+
+        # Add handler to the logger
+        logging.getLogger("audit").addHandler(file_handler)
+        logging.getLogger("audit").setLevel(logging.INFO)
+
+    def info(self, event_type: str, **kwargs):
+        """Log info level event with structured data."""
+        event = {
+            "event_type": event_type,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            **kwargs,
+        }
+        self.logger.info(f"Event: {event_type}", **event)
+
+    def warning(self, event_type: str, **kwargs):
+        """Log warning level event with structured data."""
+        event = {
+            "event_type": event_type,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            **kwargs,
+        }
+        self.logger.warning(f"Event: {event_type}", **event)
+
+    def error(self, event_type: str, **kwargs):
+        """Log error level event with structured data."""
+        event = {
+            "event_type": event_type,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            **kwargs,
+        }
+        self.logger.error(f"Event: {event_type}", **event)
+
+    def log_trade_execution(
+        self,
+        strategy: str,
+        symbol: str,
+        side: str,
+        quantity: float,
+        price: float,
+        order_id: str,
+        timestamp: Optional[datetime] = None,
+    ) -> None:
+        """Log trade execution for audit trail."""
+        if timestamp is None:
+            timestamp = datetime.now(timezone.utc)
+
+        event = {
+            "event_type": "trade_execution",
+            "timestamp": timestamp.isoformat(),
+            "strategy": strategy,
+            "symbol": symbol,
+            "side": side,
+            "quantity": quantity,
+            "price": price,
+            "order_id": order_id,
+            "event_id": f"trade_{order_id}_{int(timestamp.timestamp())}",
+        }
+
+        self.logger.info("Trade executed", **event)
+
+    def log_risk_event(
+        self,
+        event_type: str,
+        description: str,
+        severity: str = "INFO",
+        data: Optional[Dict] = None,
+    ) -> None:
+        """Log risk management events."""
+        event = {
+            "event_type": f"risk_{event_type}",
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "description": description,
+            "severity": severity,
+            "data": data or {},
+            "event_id": f"risk_{int(datetime.now(timezone.utc).timestamp())}",
+        }
+
+        if severity.upper() == "ERROR":
+            self.logger.error("Risk event", **event)
+        elif severity.upper() == "WARNING":
+            self.logger.warning("Risk event", **event)
+        else:
+            self.logger.info("Risk event", **event)
+
+    def log_strategy_signal(
+        self,
+        strategy: str,
+        symbol: str,
+        signal: str,
+        confidence: Optional[float] = None,
+        data: Optional[Dict] = None,
+    ) -> None:
+        """Log trading strategy signals."""
+        event = {
+            "event_type": "strategy_signal",
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "strategy": strategy,
+            "symbol": symbol,
+            "signal": signal,
+            "confidence": confidence,
+            "data": data or {},
+            "event_id": f"signal_{strategy}_{int(datetime.now(timezone.utc).timestamp())}",
+        }
+
+        self.logger.info("Strategy signal", **event)
+
+    def log_model_prediction(
+        self,
+        model_name: str,
+        symbol: str,
+        prediction: float,
+        confidence: Optional[float] = None,
+        features: Optional[Dict] = None,
+    ) -> None:
+        """Log ML model predictions."""
+        event = {
+            "event_type": "model_prediction",
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "model_name": model_name,
+            "symbol": symbol,
+            "prediction": prediction,
+            "confidence": confidence,
+            "features": features or {},
+            "event_id": f"pred_{model_name}_{int(datetime.now(timezone.utc).timestamp())}",
+        }
+
+        self.logger.info("Model prediction", **event)
+
+    def log_system_event(
+        self,
+        event_type: str,
+        description: str,
+        severity: str = "INFO",
+        data: Optional[Dict] = None,
+    ) -> None:
+        """Log general system events."""
+        event = {
+            "event_type": f"system_{event_type}",
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "description": description,
+            "severity": severity,
+            "data": data or {},
+            "event_id": f"sys_{int(datetime.now(timezone.utc).timestamp())}",
+        }
+
+        if severity.upper() == "ERROR":
+            self.logger.error("System event", **event)
+        elif severity.upper() == "WARNING":
+            self.logger.warning("System event", **event)
+        else:
+            self.logger.info("System event", **event)
+
+
+def setup_logging(
+    log_level: str = "INFO", log_file: Optional[str] = None
+) -> logging.Logger:
+    """Setup application logging configuration."""
+
+    # Set up the root logger
+    logging.basicConfig(
+        level=getattr(logging, log_level.upper()),
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        handlers=[logging.StreamHandler(sys.stdout)],
+    )
+
+    # Add file handler if specified
+    if log_file:
+        file_handler = logging.FileHandler(log_file)
+        file_handler.setLevel(getattr(logging, log_level.upper()))
+        formatter = logging.Formatter(
+            "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+        )
+        file_handler.setFormatter(formatter)
+        logging.getLogger().addHandler(file_handler)
+
+    return logging.getLogger(__name__)
+
+
+def get_structured_logger(name: str) -> structlog.BoundLogger:
+    """Get a structured logger instance."""
+    return get_logger(name)
+
+
+# Global audit logger instance
+audit_logger = AuditLogger()
+
+
+class PerformanceLogger:
+    """Logger for performance metrics and monitoring."""
+
+    def __init__(self):
+        self.logger = get_structured_logger("performance")
+
+    def log_latency(
+        self, operation: str, latency_ms: float, context: Optional[Dict] = None
+    ) -> None:
+        """Log operation latency metrics."""
+        self.logger.info(
+            "Operation latency",
+            operation=operation,
+            latency_ms=latency_ms,
+            timestamp=datetime.now(timezone.utc).isoformat(),
+            context=context or {},
+        )
+
+    def log_throughput(
+        self,
+        operation: str,
+        count: int,
+        time_window_sec: float,
+        context: Optional[Dict] = None,
+    ) -> None:
+        """Log throughput metrics."""
+        throughput = count / time_window_sec if time_window_sec > 0 else 0
+
+        self.logger.info(
+            "Operation throughput",
+            operation=operation,
+            count=count,
+            time_window_sec=time_window_sec,
+            throughput_per_sec=throughput,
+            timestamp=datetime.now(timezone.utc).isoformat(),
+            context=context or {},
+        )
+
+    def log_resource_usage(
+        self, cpu_percent: float, memory_mb: float, context: Optional[Dict] = None
+    ) -> None:
+        """Log resource usage metrics."""
+        self.logger.info(
+            "Resource usage",
+            cpu_percent=cpu_percent,
+            memory_mb=memory_mb,
+            timestamp=datetime.now(timezone.utc).isoformat(),
+            context=context or {},
+        )
+
+
+# Global performance logger
+performance_logger = PerformanceLogger()
