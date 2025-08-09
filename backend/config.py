@@ -7,12 +7,14 @@ import os
 from typing import List, Optional
 
 from decouple import config
-from pydantic import Field
+from pydantic import Field, ConfigDict
 from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
+    
+    model_config = ConfigDict(env_file=".env", case_sensitive=False)
 
     # Alpaca Trading API Configuration
     alpaca_api_key: str = config("ALPACA_API_KEY", default="")
@@ -99,10 +101,6 @@ class Settings(BaseSettings):
         "Bitcoin",
     ]
     sentiment_update_interval: int = 300  # 5 minutes
-
-    class Config:
-        env_file = ".env"
-        case_sensitive = False
 
 
 # Global settings instance

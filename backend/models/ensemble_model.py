@@ -403,15 +403,21 @@ class EnsembleModel:
 
         # Get predictions from each model
         for model_name, model in self.models.items():
-            if model_name == "lstm":
-                pred, conf = model.predict(price_data)
-            else:
-                # Use latest features for tree models
-                latest_features = features.tail(1)
-                pred, conf = model.predict(latest_features)
+            try:
+                if model_name == "lstm":
+                    pred, conf = model.predict(price_data)
+                else:
+                    # Use latest features for tree models
+                    latest_features = features.tail(1)
+                    pred, conf = model.predict(latest_features)
 
-            predictions[model_name] = pred
-            confidences[model_name] = conf
+                predictions[model_name] = pred
+                confidences[model_name] = conf
+            except Exception as e:
+                # Log the error but continue with other models
+                logging.warning(f"Model {model_name} failed during prediction: {e}")
+                # Skip this model - don't include it in predictions
+                continue
 
         # Calculate weighted ensemble prediction
         weighted_sum = sum(

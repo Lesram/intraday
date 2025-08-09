@@ -981,3 +981,93 @@ class RiskManager:
             return float(self.portfolio.get_total_value())
         else:
             return 0.0
+
+    async def assess_position_risk(self, symbol: str, quantity: int, side: str) -> dict:
+        """
+        Async wrapper for position risk assessment.
+        
+        Args:
+            symbol: Trading symbol
+            quantity: Order quantity
+            side: 'buy' or 'sell'
+            
+        Returns:
+            Dict with 'approved' bool and 'reason' string
+        """
+        try:
+            # Use the existing before_order method
+            validation_result = self.before_order(symbol, quantity, side)
+            
+            return {
+                'approved': validation_result.get('approved', True),
+                'reason': validation_result.get('reason', 'Risk check passed')
+            }
+            
+        except Exception as e:
+            self.logger.error(f"Risk assessment failed for {symbol}: {e}")
+            return {
+                'approved': False,
+                'reason': f'Risk assessment error: {str(e)}'
+            }
+
+    async def update_position_risk(self, symbol: str, current_price: float) -> dict:
+        """
+        Update risk monitoring for a position based on current market price.
+        
+        Args:
+            symbol: Symbol to update
+            current_price: Current market price
+            
+        Returns:
+            Dict with risk update information
+        """
+        try:
+            # Check if we have this position
+            positions = self.get_positions()
+            if symbol not in positions:
+                return {
+                    'symbol': symbol,
+                    'status': 'no_position',
+                    'alerts': []
+                }
+                
+            position = positions[symbol]
+            alerts = []
+            
+            # Calculate current P&L
+            if 'avg_cost' in position:
+                pnl_pct = (current_price - position['avg_cost']) / position['avg_cost']
+                
+                # Check stop loss
+                if hasattr(self.limits, 'stop_loss_pct') and pnl_pct < -abs(self.limits.stop_loss_pct):
+                    alerts.append({
+                        'type': 'stop_loss',
+                        'message': f'Position down {pnl_pct:.1%}, consider stop loss',
+                        'severity': 'high'
+                    })
+                
+                # Check daily loss limit
+                if hasattr(self.limits, 'daily_loss_limit'):
+                    position_loss = position.get('quantity', 0) * (position.get('avg_cost', current_price) - current_price)
+                    if position_loss > self.limits.daily_loss_limit:
+                        alerts.append({
+                            'type': 'daily_loss',
+                            'message': f'Position loss ${position_loss:.2f} exceeds daily limit',
+                            'severity': 'critical'
+                        })
+            
+            return {
+                'symbol': symbol,
+                'status': 'monitored',
+                'current_price': current_price,
+                'alerts': alerts
+            }
+            
+        except Exception as e:
+            self.logger.error(f"Failed to update position risk for {symbol}: {e}")
+            return {
+                'symbol': symbol,
+                'status': 'error',
+                'error': str(e),
+                'alerts': []
+            }

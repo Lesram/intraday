@@ -143,9 +143,19 @@ class FeatureEngineer:
             if self.config.get("normalize_features", False):
                 result_df = self._normalize_features(result_df)
 
-            # Drop rows with NaN values (from indicator calculations)
+            # Handle NaN values intelligently
             initial_rows = len(result_df)
-            result_df = result_df.dropna()
+            
+            # Instead of dropping all rows with any NaN, be more selective
+            # Only require that the basic price columns and short-term indicators are not NaN
+            essential_cols = ['open', 'high', 'low', 'close', 'volume']
+            if 'sma_5' in result_df.columns:
+                essential_cols.append('sma_5')
+            if 'sma_20' in result_df.columns:
+                essential_cols.append('sma_20')
+                
+            # Drop rows where essential columns are NaN
+            result_df = result_df.dropna(subset=essential_cols)
             dropped_rows = initial_rows - len(result_df)
 
             # Calculate processing time
@@ -552,16 +562,19 @@ class FeatureEngineer:
         ]
         feature_cols = [col for col in df.columns if col not in exclude_cols]
 
+        # Collect normalized columns to add them all at once (prevents DataFrame fragmentation)
+        normalized_columns = {}
+        
         for col in feature_cols:
             if df[col].dtype in ["float64", "int64"]:
                 if method == "zscore":
                     rolling_mean = df[col].rolling(window=window, min_periods=20).mean()
                     rolling_std = df[col].rolling(window=window, min_periods=20).std()
-                    df[f"{col}_norm"] = (df[col] - rolling_mean) / rolling_std
+                    normalized_columns[f"{col}_norm"] = (df[col] - rolling_mean) / rolling_std
                 elif method == "minmax":
                     rolling_min = df[col].rolling(window=window, min_periods=20).min()
                     rolling_max = df[col].rolling(window=window, min_periods=20).max()
-                    df[f"{col}_norm"] = (df[col] - rolling_min) / (
+                    normalized_columns[f"{col}_norm"] = (df[col] - rolling_min) / (
                         rolling_max - rolling_min
                     )
                 elif method == "robust":
@@ -573,7 +586,12 @@ class FeatureEngineer:
                         .rolling(window=window, min_periods=20)
                         .apply(lambda x: np.median(np.abs(x - np.median(x))))
                     )
-                    df[f"{col}_norm"] = (df[col] - rolling_median) / rolling_mad
+                    normalized_columns[f"{col}_norm"] = (df[col] - rolling_median) / rolling_mad
+
+        # Add all normalized columns at once to prevent fragmentation
+        if normalized_columns:
+            normalized_df = pd.DataFrame(normalized_columns, index=df.index)
+            df = pd.concat([df, normalized_df], axis=1)
 
         return df
 

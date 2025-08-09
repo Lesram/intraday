@@ -258,6 +258,9 @@ async def get_trading_signal(symbol: str):
                 "metadata": signal.metadata,
             }
 
+    except HTTPException:
+        # Re-raise HTTP exceptions without modification  
+        raise
     except Exception as e:
         logging.error(f"Error generating signal for {symbol}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -284,6 +287,9 @@ async def get_all_signals(symbols: str = "AAPL,GOOGL,MSFT,TSLA,NVDA"):
 
         return {"signals": signals, "timestamp": datetime.now().isoformat()}
 
+    except HTTPException:
+        # Re-raise HTTP exceptions without modification
+        raise
     except Exception as e:
         logging.error(f"Error getting signals: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -324,6 +330,9 @@ async def get_prediction(symbol: str):
                 "timestamp": prediction.timestamp.isoformat(),
             }
 
+    except HTTPException:
+        # Re-raise HTTP exceptions without modification
+        raise
     except Exception as e:
         logging.error(f"Error getting prediction for {symbol}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -364,6 +373,9 @@ async def get_portfolio_status():
                 "risk_metrics": risk_metrics,
             }
 
+    except HTTPException:
+        # Re-raise HTTP exceptions without modification
+        raise
     except Exception as e:
         logging.error(f"Error getting portfolio status: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -410,6 +422,9 @@ async def submit_trade(trade_request: dict):
 
         return {"status": "submitted", "order": order}
 
+    except HTTPException:
+        # Re-raise HTTP exceptions without modification
+        raise
     except Exception as e:
         logging.error(f"Error submitting trade: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -436,6 +451,9 @@ async def get_market_data(symbol: str, timeframe: str = "1Day", limit: int = 100
             "count": len(data),
         }
 
+    except HTTPException:
+        # Re-raise HTTP exceptions without modification
+        raise
     except Exception as e:
         logging.error(f"Error getting market data for {symbol}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -461,6 +479,9 @@ async def get_sentiment(symbol: str):
             "timestamp": datetime.now().isoformat(),
         }
 
+    except HTTPException:
+        # Re-raise HTTP exceptions without modification
+        raise
     except Exception as e:
         logging.error(f"Error getting sentiment for {symbol}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -570,6 +591,9 @@ async def update_risk_limits(limits: dict):
 
         return {"status": "updated", "limits": limits}
 
+    except HTTPException:
+        # Re-raise HTTP exceptions without modification
+        raise
     except Exception as e:
         logging.error(f"Error updating risk limits: {e}")
         raise HTTPException(status_code=500, detail=str(e))

@@ -124,17 +124,16 @@ class TestTradingSignalEndpoints:
 class TestModelPredictionEndpoints:
     """Test AI model prediction endpoints"""
     
-    @patch('backend.api.main.app_state')
-    def test_get_prediction_success(self, mock_state, client, sample_price_data, sample_features):
+    @patch('backend.api.main.app_state', {
+        'ensemble_model': MagicMock(),
+        'alpaca_client': AsyncMock(),
+        'feature_engineer': MagicMock()
+    })
+    def test_get_prediction_success(self, client, sample_price_data, sample_features):
         """Test successful prediction retrieval"""
         from backend.models.ensemble_model import ModelPrediction
-        
-        mock_state.return_value = {
-            'ensemble_model': AsyncMock(),
-            'alpaca_client': AsyncMock(),
-            'feature_engineer': MagicMock()
-        }
-        
+        from backend.api.main import app_state
+
         mock_prediction = ModelPrediction(
             symbol="AAPL",
             timestamp=datetime.now(),
@@ -144,44 +143,43 @@ class TestModelPredictionEndpoints:
             ensemble_confidence=0.75,
             metadata={}
         )
-        
-        mock_state.return_value['ensemble_model'].predict.return_value = mock_prediction
-        mock_state.return_value['alpaca_client'].get_historical_data.return_value = sample_price_data
-        mock_state.return_value['feature_engineer'].compute_all_features.return_value = sample_features
+
+        app_state['ensemble_model'].predict = MagicMock(return_value=mock_prediction)
+        app_state['alpaca_client'].get_historical_data = AsyncMock(return_value=sample_price_data)
+        app_state['feature_engineer'].compute_all_features = MagicMock(return_value=sample_features)
         
         response = client.get("/api/v1/predictions/AAPL")
         
         assert response.status_code in [200, 503]  # Success or service unavailable
     
-    @patch('backend.api.main.app_state')
-    def test_get_prediction_model_unavailable(self, mock_state, client):
+    @patch('backend.api.main.app_state', {'ensemble_model': None})
+    def test_get_prediction_model_unavailable(self, client):
         """Test prediction with unavailable model"""
-        mock_state.return_value = {'ensemble_model': None}
-        
         response = client.get("/api/v1/predictions/AAPL")
         assert response.status_code == 503
 
 class TestPortfolioEndpoints:
     """Test portfolio management endpoints"""
     
-    @patch('backend.api.main.app_state')
-    def test_get_portfolio_status(self, mock_state, client):
+    @patch('backend.api.main.app_state', {
+        'risk_manager': MagicMock()
+    })
+    def test_get_portfolio_status(self, client):
         """Test portfolio status retrieval"""
-        mock_state.return_value = {
-            'risk_manager': AsyncMock()
-        }
-        
-        mock_state.return_value['risk_manager'].get_portfolio_value.return_value = 150000.0
-        mock_state.return_value['risk_manager'].get_positions.return_value = {
+        from backend.api.main import app_state
+
+        app_state['risk_manager'].get_portfolio_value = MagicMock(return_value=150000.0)
+        app_state['risk_manager'].get_positions = MagicMock(return_value={
             'AAPL': {'quantity': 100, 'market_value': 15000}
-        }
-        mock_state.return_value['risk_manager'].get_risk_metrics.return_value = {
+        })
+        # Return a dict instead of MagicMock for Pydantic validation
+        app_state['risk_manager'].get_risk_metrics = MagicMock(return_value={
             'var_95': -0.02,
             'sharpe_ratio': 1.8
-        }
-        
+        })
+
         response = client.get("/api/v1/portfolio/status")
-        
+
         assert response.status_code in [200, 503]
         
         if response.status_code == 200:
@@ -193,25 +191,25 @@ class TestPortfolioEndpoints:
 class TestTradingEndpoints:
     """Test trade execution endpoints"""
     
-    @patch('backend.api.main.app_state')
-    def test_submit_trade_success(self, mock_state, client):
+    @patch('backend.api.main.app_state', {
+        'alpaca_client': AsyncMock(),
+        'risk_manager': MagicMock()
+    })
+    def test_submit_trade_success(self, client):
         """Test successful trade submission"""
-        mock_state.return_value = {
-            'alpaca_client': AsyncMock(),
-            'risk_manager': AsyncMock()
-        }
+        from backend.api.main import app_state
         
         # Mock successful risk check
-        mock_state.return_value['risk_manager'].assess_position_risk.return_value = {
+        app_state['risk_manager'].assess_position_risk = AsyncMock(return_value={
             'approved': True,
             'reason': 'Risk check passed'
-        }
+        })
         
         # Mock successful order submission
-        mock_state.return_value['alpaca_client'].submit_order.return_value = {
+        app_state['alpaca_client'].submit_order = AsyncMock(return_value={
             'id': 'order_123',
             'status': 'accepted'
-        }
+        })
         
         trade_data = {
             'symbol': 'AAPL',
@@ -229,19 +227,19 @@ class TestTradingEndpoints:
             assert "status" in data
             assert data["status"] == "submitted"
     
-    @patch('backend.api.main.app_state')
-    def test_submit_trade_risk_rejection(self, mock_state, client):
+    @patch('backend.api.main.app_state', {
+        'alpaca_client': AsyncMock(),
+        'risk_manager': MagicMock()
+    })
+    def test_submit_trade_risk_rejection(self, client):
         """Test trade rejection due to risk"""
-        mock_state.return_value = {
-            'alpaca_client': AsyncMock(),
-            'risk_manager': AsyncMock()
-        }
+        from backend.api.main import app_state
         
         # Mock risk rejection
-        mock_state.return_value['risk_manager'].assess_position_risk.return_value = {
+        app_state['risk_manager'].assess_position_risk = AsyncMock(return_value={
             'approved': False,
             'reason': 'Position size too large'
-        }
+        })
         
         trade_data = {
             'symbol': 'AAPL',
@@ -268,14 +266,14 @@ class TestTradingEndpoints:
 class TestMarketDataEndpoints:
     """Test market data endpoints"""
     
-    @patch('backend.api.main.app_state')
-    def test_get_market_data(self, mock_state, client, sample_price_data):
+    @patch('backend.api.main.app_state', {
+        'alpaca_client': AsyncMock()
+    })
+    def test_get_market_data(self, client, sample_price_data):
         """Test market data retrieval"""
-        mock_state.return_value = {
-            'alpaca_client': AsyncMock()
-        }
+        from backend.api.main import app_state
         
-        mock_state.return_value['alpaca_client'].get_historical_data.return_value = sample_price_data
+        app_state['alpaca_client'].get_historical_data.return_value = sample_price_data
         
         response = client.get("/api/v1/market-data/AAPL?timeframe=1Day&limit=50")
         
@@ -287,10 +285,9 @@ class TestMarketDataEndpoints:
             assert "data" in data
             assert data["symbol"] == "AAPL"
     
-    @patch('backend.api.main.app_state')
-    def test_get_market_data_no_client(self, mock_state, client):
+    @patch('backend.api.main.app_state', {'alpaca_client': None})
+    def test_get_market_data_no_client(self, client):
         """Test market data with unavailable client"""
-        mock_state.return_value = {'alpaca_client': None}
         
         response = client.get("/api/v1/market-data/AAPL")
         assert response.status_code == 503
@@ -298,12 +295,12 @@ class TestMarketDataEndpoints:
 class TestSentimentEndpoints:
     """Test sentiment analysis endpoints"""
     
-    @patch('backend.api.main.app_state')
-    def test_get_sentiment(self, mock_state, client):
+    @patch('backend.api.main.app_state', {
+        'sentiment_analyzer': AsyncMock()
+    })
+    def test_get_sentiment(self, client):
         """Test sentiment data retrieval"""
-        mock_state.return_value = {
-            'sentiment_analyzer': AsyncMock()
-        }
+        from backend.api.main import app_state
         
         mock_sentiment = {
             'overall_sentiment': 0.65,
@@ -311,8 +308,8 @@ class TestSentimentEndpoints:
             'bearish_ratio': 0.3,
             'volume': 1500
         }
-        
-        mock_state.return_value['sentiment_analyzer'].get_aggregated_sentiment.return_value = mock_sentiment
+
+        app_state['sentiment_analyzer'].get_aggregated_sentiment.return_value = mock_sentiment
         
         response = client.get("/api/v1/sentiment/AAPL")
         
@@ -457,24 +454,22 @@ class TestErrorHandling:
         )
         assert response.status_code in [400, 422, 503]
     
-    @patch('backend.api.main.app_state')
-    def test_service_unavailable(self, mock_state, client):
+    @patch('backend.api.main.app_state', {
+        'risk_manager': None,
+        'ensemble_model': None,
+        'strategy_manager': None,
+        'alpaca_client': None,
+        'sentiment_analyzer': None,
+        'feature_engineer': None,
+        'model_manager': None
+    })
+    def test_service_unavailable(self, client):
         """Test service unavailable scenarios"""
-        # Mock all services as None
-        mock_state.return_value = {
-            'risk_manager': None,
-            'ensemble_model': None,
-            'strategy_manager': None,
-            'alpaca_client': None,
-            'sentiment_analyzer': None,
-            'feature_engineer': None,
-            'model_manager': None
-        }
         
         # All these should return 503
         endpoints = [
             "/api/v1/signals/AAPL",
-            "/api/v1/predictions/AAPL",
+            "/api/v1/predictions/AAPL", 
             "/api/v1/portfolio/status",
             "/api/v1/market-data/AAPL",
             "/api/v1/sentiment/AAPL"
