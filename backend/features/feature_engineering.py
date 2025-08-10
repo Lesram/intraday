@@ -72,15 +72,15 @@ class FeatureEngineer:
             # Market regime
             "adx_period": 14,
             # Lookback periods for features - limited by settings
-            "lookback_periods": [5, 10, min(20, self.settings.max_rolling_window)],
+            "lookback_periods": [5, 10, min(20, self.settings.trading.max_rolling_window)],
             # Feature normalization
             "normalize_features": True,
             "normalization_method": "zscore",  # 'zscore', 'minmax', 'robust'
-            "normalization_window": min(252, self.settings.max_rolling_window),
+            "normalization_window": min(252, self.settings.trading.max_rolling_window),
             # Performance settings from config
-            "feature_mode": self.settings.feature_mode,
-            "enable_heavy_features": self.settings.enable_heavy_features,
-            "enable_autocorr_features": self.settings.enable_autocorr_features,
+            "feature_mode": self.settings.trading.feature_mode,
+            "enable_heavy_features": self.settings.trading.enable_heavy_features,
+            "enable_autocorr_features": self.settings.trading.enable_autocorr_features,
         }
 
         # Update with provided config

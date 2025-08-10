@@ -122,7 +122,7 @@ class RiskManager:
 
         self.logger.info("Risk manager initialized", 
                         limits=self.limits.__dict__,
-                        allow_mock_fallbacks=self.settings.allow_mock_fallbacks)
+                        allow_mock_fallbacks=self.settings.trading.allow_mock_fallbacks)
 
     def calculate_var(
         self, confidence: float = 0.95, method: str = "monte_carlo"
@@ -200,7 +200,7 @@ class RiskManager:
                         portfolio_return += random_return * position_weight
                     else:
                         # Check if mock fallbacks are allowed
-                        if not self.settings.allow_mock_fallbacks:
+                        if not self.settings.trading.allow_mock_fallbacks:
                             self.logger.warning(
                                 f"Insufficient historical data for {symbol}, mock fallbacks disabled"
                             )
@@ -208,7 +208,7 @@ class RiskManager:
                             
                         # Fallback to normal distribution
                         self.mock_data_used.add("monte_carlo_var_normal_fallback")
-                        if self.settings.mock_fallback_warning:
+                        if self.settings.trading.mock_fallback_warning:
                             self.logger.warning(
                                 f"Using mock normal distribution for {symbol} - insufficient historical data"
                             )
@@ -281,7 +281,7 @@ class RiskManager:
                     )  # Last year
                 else:
                     # Check if mock fallbacks are allowed
-                    if not self.settings.allow_mock_fallbacks:
+                    if not self.settings.trading.allow_mock_fallbacks:
                         self.logger.warning(
                             f"Insufficient historical data for {symbol}, mock fallbacks disabled"
                         )
@@ -289,7 +289,7 @@ class RiskManager:
                         
                     # Fallback to random data
                     self.mock_data_used.add("parametric_var_random_fallback")
-                    if self.settings.mock_fallback_warning:
+                    if self.settings.trading.mock_fallback_warning:
                         self.logger.warning(
                             f"Using mock random data for {symbol} - insufficient historical data"
                         )

@@ -239,6 +239,7 @@ class TradingConfig(BaseSettings):
     max_daily_loss_pct: float = Field(default=0.03, description="Maximum daily loss percentage")
     max_drawdown_pct: float = Field(default=0.06, description="Maximum drawdown percentage")
     max_position_pct: float = Field(default=0.10, description="Maximum position size percentage")
+    max_position_size: float = Field(default=10000.0, description="Maximum position size in dollars")
     max_leverage: float = Field(default=2.0, description="Maximum leverage")
     
     # Trading hours
@@ -309,6 +310,148 @@ class TradingConfig(BaseSettings):
         return v
 
 
+class OutboxConfig(BaseSettings):
+    """Outbox and idempotency configuration."""
+    
+    model_config = ConfigDict(env_prefix="OUTBOX_", case_sensitive=False)
+    
+    enabled: bool = Field(default=True, description="Enable outbox pattern")
+    poll_interval_ms: int = Field(default=200, description="Poll interval in milliseconds")
+    batch_size: int = Field(default=100, description="Batch size for processing")
+    max_attempts: int = Field(default=6, description="Maximum retry attempts")
+    base_delay_ms: int = Field(default=200, description="Base delay for exponential backoff")
+    max_delay_ms: int = Field(default=10000, description="Maximum delay between retries")
+    jitter_ms: int = Field(default=150, description="Jitter for backoff randomization")
+    broker_idempotency_header: str = Field(
+        default="X-Idempotency-Key", 
+        description="HTTP header name for broker idempotency"
+    )
+    
+    @field_validator('batch_size')
+    @classmethod
+    def validate_batch_size(cls, v):
+        if v <= 0:
+            raise ValueError('Batch size must be greater than 0')
+        return v
+    
+    @field_validator('max_attempts')
+    @classmethod
+    def validate_max_attempts(cls, v):
+        if not 1 <= v <= 10:
+            raise ValueError('Max attempts must be between 1 and 10')
+        return v
+    
+    @field_validator('base_delay_ms', 'max_delay_ms')
+    @classmethod
+    def validate_delays(cls, v):
+        if v <= 0:
+            raise ValueError('Delay values must be greater than 0')
+        return v
+    
+    @model_validator(mode='after')
+    def validate_delay_ordering(self):
+        if self.base_delay_ms > self.max_delay_ms:
+            raise ValueError('Base delay must not exceed max delay')
+        return self
+
+
+class ObservabilityConfig(BaseSettings):
+    """Observability configuration for OpenTelemetry, Prometheus, and logging."""
+    
+    model_config = ConfigDict(env_prefix="OBS_", case_sensitive=False)
+    
+    # General observability settings
+    enabled: bool = Field(default=True, description="Enable observability features")
+    
+    # Prometheus metrics settings
+    prometheus_enabled: bool = Field(default=True, description="Enable Prometheus metrics")
+    prometheus_path: str = Field(default="/metrics", description="Prometheus metrics endpoint path")
+    metric_namespace: str = Field(default="intraday", description="Prometheus metric namespace")
+    latency_buckets_ms: str = Field(
+        default="5,10,25,50,100,250,500,1000,2500,5000",
+        description="Prometheus latency histogram buckets in milliseconds"
+    )
+    
+    # OpenTelemetry tracing settings
+    otel_enabled: bool = Field(default=True, description="Enable OpenTelemetry tracing")
+    otel_service_name: str = Field(default="intraday-backend", description="OpenTelemetry service name")
+    otel_exporter_otlp_endpoint: Optional[str] = Field(
+        default="http://localhost:4317",
+        description="OpenTelemetry OTLP exporter endpoint"
+    )
+    otel_exporter_protocol: str = Field(
+        default="grpc",
+        description="OpenTelemetry exporter protocol (grpc or http/protobuf)"
+    )
+    otel_sampler: str = Field(
+        default="parentbased_traceidratio",
+        description="OpenTelemetry sampler type"
+    )
+    otel_sampler_arg: float = Field(
+        default=0.1,
+        description="OpenTelemetry sampler argument (e.g., sampling ratio)"
+    )
+    
+    # Log correlation settings
+    log_trace_correlation: bool = Field(
+        default=True,
+        description="Enable trace/span correlation in logs"
+    )
+    
+    @field_validator('latency_buckets_ms')
+    @classmethod
+    def validate_latency_buckets(cls, v):
+        """Validate and parse latency buckets."""
+        try:
+            buckets = [int(x.strip()) for x in v.split(',')]
+            if not all(b > 0 for b in buckets):
+                raise ValueError('All latency buckets must be positive')
+            if buckets != sorted(buckets):
+                raise ValueError('Latency buckets must be in ascending order')
+            return v
+        except (ValueError, AttributeError) as e:
+            raise ValueError(f'Invalid latency buckets format: {e}')
+    
+    @field_validator('prometheus_path')
+    @classmethod
+    def validate_prometheus_path(cls, v):
+        """Validate Prometheus metrics path."""
+        if not v.startswith('/'):
+            raise ValueError('Prometheus path must start with /')
+        return v
+    
+    @field_validator('otel_exporter_protocol')
+    @classmethod
+    def validate_otel_protocol(cls, v):
+        """Validate OpenTelemetry exporter protocol."""
+        allowed_protocols = ['grpc', 'http/protobuf']
+        if v not in allowed_protocols:
+            raise ValueError(f'OpenTelemetry protocol must be one of {allowed_protocols}')
+        return v
+    
+    @field_validator('otel_sampler_arg')
+    @classmethod
+    def validate_sampler_arg(cls, v):
+        """Validate OpenTelemetry sampler argument."""
+        if not 0.0 <= v <= 1.0:
+            raise ValueError('OpenTelemetry sampler argument must be between 0.0 and 1.0')
+        return v
+    
+    @model_validator(mode='after')
+    def validate_otel_endpoint(self):
+        """Validate OTEL endpoint is provided when tracing is enabled in production."""
+        if (self.otel_enabled and 
+            getattr(self, '_env', 'dev') == 'prod' and 
+            not self.otel_exporter_otlp_endpoint):
+            raise ValueError('OpenTelemetry OTLP endpoint is required in production')
+        return self
+    
+    def get_latency_buckets(self) -> list[float]:
+        """Get parsed latency buckets as floats (in seconds)."""
+        buckets_ms = [int(x.strip()) for x in self.latency_buckets_ms.split(',')]
+        return [b / 1000.0 for b in buckets_ms]  # Convert to seconds
+
+
 class Settings(BaseSettings):
     """Main settings class with nested configuration sections."""
     
@@ -326,6 +469,8 @@ class Settings(BaseSettings):
     metrics: MetricsConfig = Field(default_factory=MetricsConfig)
     database: DatabaseConfig = Field(default_factory=DatabaseConfig)
     trading: TradingConfig = Field(default_factory=TradingConfig)
+    outbox: OutboxConfig = Field(default_factory=OutboxConfig)
+    observability: ObservabilityConfig = Field(default_factory=ObservabilityConfig)
     
     def __init__(self, **data):
         """Initialize with legacy environment variable mapping."""
@@ -382,6 +527,7 @@ class Settings(BaseSettings):
             'MAX_DAILY_LOSS_PCT': 'trading.max_daily_loss_pct',
             'MAX_DRAWDOWN_PCT': 'trading.max_drawdown_pct',
             'MAX_POSITION_PCT': 'trading.max_position_pct',
+            'MAX_POSITION_SIZE': 'trading.max_position_size',
             'MAX_LEVERAGE': 'trading.max_leverage',
             'MODEL_REGISTRY_PATH': 'trading.model_registry_path',
             'DRIFT_DETECTION_THRESHOLD': 'trading.drift_detection_threshold',
@@ -518,6 +664,7 @@ def get_legacy_settings() -> dict:
         'max_daily_loss_pct': settings.trading.max_daily_loss_pct,
         'max_drawdown_pct': settings.trading.max_drawdown_pct,
         'max_position_pct': settings.trading.max_position_pct,
+        'max_position_size': settings.trading.max_position_size,
         'max_leverage': settings.trading.max_leverage,
         'trading_hours_start': settings.trading.trading_hours_start,
         'trading_hours_end': settings.trading.trading_hours_end,

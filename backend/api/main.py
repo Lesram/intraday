@@ -11,7 +11,7 @@ import weakref
 from contextlib import asynccontextmanager
 from dataclasses import asdict
 from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, AsyncGenerator, Dict, List, Optional, Set
 
 from fastapi import (
     BackgroundTasks,
@@ -96,6 +96,11 @@ from ..risk.risk_manager import RiskManager
 from ..strategies.trading_strategies import SignalType, StrategyManager, TradingSignal
 from backend.utils.logger import get_logger, audit_logger
 
+# B2.5 - Observability imports
+from backend.infra.observability import initialize_observability, ObservabilityConfig
+from backend.infra.logging import configure_structured_logging, get_logger as get_structured_logger
+from backend.infra.metrics import initialize_metrics_registry, get_metrics_registry
+
 # Authentication imports
 from backend.infra.security import (
     AuthenticatedUser,
@@ -107,6 +112,12 @@ from backend.infra.security import (
     require_roles
 )
 from backend.infra.users import get_user_repository
+
+# B2.4 - Outbox pattern imports
+from backend.infra.db import get_db_sessionmaker
+from backend.infra.outbox import OutboxDispatcher
+from backend.services.order_service import OrderService
+from sqlalchemy.ext.asyncio import AsyncSession
 
 # Structured error models for API responses
 class ErrorDetail(BaseModel):
@@ -437,6 +448,52 @@ if PYDANTIC_AVAILABLE:
         training_period_days: int = 30
         retrain_existing: bool = False
 
+    # B2.4 - Order submission models with outbox pattern
+    class OrderSubmissionRequest(BaseModel):
+        symbol: str
+        side: str  # 'buy' or 'sell'
+        qty: float
+        order_type: str = "market"  # 'market', 'limit', 'stop', 'stop_limit'
+        time_in_force: str = "gtc"  # 'gtc', 'day', 'ioc', 'fok'
+        limit_price: Optional[float] = None
+        stop_price: Optional[float] = None
+        client_order_id: Optional[str] = None
+        idempotency_key: Optional[str] = None
+
+    class OrderSubmissionResponse(BaseModel):
+        order_id: str
+        client_order_id: str
+        client_idempotency_key: str
+        status: str
+        symbol: str
+        side: str
+        qty: float
+        order_type: str
+        time_in_force: str
+        limit_price: Optional[float]
+        stop_price: Optional[float]
+        created_at: str
+        outbox_event_id: Optional[str] = None
+        submission_mode: str
+
+    class OrderStatusResponse(BaseModel):
+        order_id: str
+        client_order_id: str
+        broker_order_id: Optional[str]
+        status: str
+        symbol: str
+        side: str
+        qty: float
+        filled_qty: Optional[float]
+        order_type: str
+        time_in_force: str
+        limit_price: Optional[float]
+        stop_price: Optional[float]
+        created_at: Optional[str]
+        updated_at: Optional[str]
+        submitted_at: Optional[str]
+        filled_at: Optional[str]
+
 else:
     # Fallback classes if Pydantic not available
     class BaseModel:
@@ -456,6 +513,49 @@ async def lifespan(app: FastAPI):
     
     try:
         settings = get_settings()
+        
+        # B2.5 - Initialize observability first
+        logging.info("Initializing observability infrastructure...")
+        
+        # Configure structured logging
+        configure_structured_logging(
+            level=settings.app.log_level,
+            service_name=settings.observability.otel_service_name,
+            service_version=settings.app.version,
+            enable_trace_correlation=settings.observability.log_trace_correlation,
+            json_format=True,
+            extra_fields={"environment": settings.app.environment}
+        )
+        
+        # Initialize OpenTelemetry observability
+        observability_config = ObservabilityConfig(
+            service_name=settings.observability.otel_service_name,
+            service_version=settings.app.version,
+            otel_enabled=settings.observability.otel_enabled,
+            otel_exporter_otlp_endpoint=settings.observability.otel_exporter_otlp_endpoint,
+            otel_exporter_protocol=settings.observability.otel_exporter_protocol,
+            otel_sampler=settings.observability.otel_sampler,
+            otel_sampler_arg=settings.observability.otel_sampler_arg,
+            prometheus_enabled=settings.observability.prometheus_enabled,
+            prometheus_path=settings.observability.prometheus_path,
+            metric_namespace=settings.observability.metric_namespace,
+            latency_buckets_ms=settings.observability.latency_buckets_ms
+        )
+        
+        initialize_observability(observability_config)
+        
+        # Initialize metrics registry
+        app.state.metrics_registry = initialize_metrics_registry(
+            namespace=settings.observability.metric_namespace
+        )
+        
+        # Get structured logger for this module
+        structured_logger = get_structured_logger(__name__)
+        structured_logger.info("Observability initialized successfully", {
+            "otel_enabled": settings.observability.otel_enabled,
+            "prometheus_enabled": settings.observability.prometheus_enabled,
+            "trace_correlation": settings.observability.log_trace_correlation
+        })
         
         # Initialize core components and store in app.state
         logging.info("Initializing AlpacaClient...")
@@ -495,6 +595,21 @@ async def lifespan(app: FastAPI):
         # Initialize WebSocket manager
         app.state.ws_manager = ws_manager
         
+        # B2.4 - Initialize database and outbox infrastructure
+        if settings.outbox.enabled:
+            logging.info("Initializing database sessionmaker...")
+            app.state.db_sessionmaker = get_db_sessionmaker()
+            
+            logging.info("Initializing outbox dispatcher...")
+            app.state.outbox_dispatcher = OutboxDispatcher(
+                app.state.db_sessionmaker,
+                app.state.alpaca_client,
+                settings
+            )
+            
+            # Create shutdown event for outbox dispatcher
+            app.state.outbox_stop_event = asyncio.Event()
+        
         # Start and track background tasks
         logging.info("Starting market data stream...")
         background_tasks['market_data'] = asyncio.create_task(
@@ -511,6 +626,14 @@ async def lifespan(app: FastAPI):
         background_tasks['model_retraining'] = asyncio.create_task(
             start_model_retraining_loop(app), name="model_retraining"
         )
+        
+        # B2.4 - Start outbox dispatcher if enabled
+        if settings.outbox.enabled and hasattr(app.state, 'outbox_dispatcher'):
+            logging.info("Starting outbox dispatcher...")
+            background_tasks['outbox_dispatcher'] = asyncio.create_task(
+                app.state.outbox_dispatcher.run_forever(app.state.outbox_stop_event),
+                name="outbox_dispatcher"
+            )
         
         # Store background tasks in app state for shutdown access
         app.state.background_tasks = background_tasks
@@ -556,6 +679,11 @@ async def lifespan(app: FastAPI):
     shutdown_tasks = []
     
     try:
+        # B2.4 - Signal outbox dispatcher to stop first
+        if hasattr(app.state, 'outbox_stop_event'):
+            logging.info("Signaling outbox dispatcher to stop...")
+            app.state.outbox_stop_event.set()
+        
         # Cancel all tracked background tasks first
         if hasattr(app.state, 'background_tasks'):
             for task_name, task in app.state.background_tasks.items():
@@ -689,71 +817,146 @@ app.add_middleware(
 # Request timing and logging middleware
 @app.middleware("http")
 async def timing_middleware(request: Request, call_next):
-    """Add request timing and logging for observability"""
+    """Add request timing, tracing, and logging for comprehensive observability"""
     start_time = time.time()
     request_id = generate_request_id()
     
     # Add request ID to headers for tracing
     request.state.request_id = request_id
     
-    # Log request start
-    logger.info(f"Request started: {request.method} {request.url.path}", 
-               extra={
-                   "request_id": request_id,
-                   "method": request.method,
-                   "path": request.url.path,
-                   "client_ip": request.client.host if request.client else None
-               })
+    # Get structured logger and metrics registry
+    structured_logger = get_structured_logger(__name__)
+    metrics_registry = get_metrics_registry()
     
-    # Process request
-    try:
-        response = await call_next(request)
-        
-        # Calculate timing
-        process_time = time.time() - start_time
-        
-        # Add timing headers
-        response.headers["X-Process-Time"] = str(process_time)
-        response.headers["X-Request-ID"] = request_id
-        
-        # Log response
-        logger.info(f"Request completed: {request.method} {request.url.path} - {response.status_code} ({process_time:.3f}s)",
-                   extra={
-                       "request_id": request_id,
-                       "method": request.method,
-                       "path": request.url.path,
-                       "status_code": response.status_code,
-                       "process_time": process_time
-                   })
-        
-        # Update Prometheus metrics if available
-        if PROMETHEUS_AVAILABLE:
-            REQUEST_COUNT.labels(
+    # Log request start with structured context
+    structured_logger.log_http_request(
+        method=request.method,
+        path=request.url.path,
+        status_code=0,  # Will be updated on completion
+        duration_ms=0,  # Will be updated on completion
+        request_id=request_id
+    )
+    
+    # Start tracing span
+    from backend.infra.observability import trace_span, normalize_route
+    
+    with trace_span(
+        f"http_request", 
+        {
+            "http.method": request.method,
+            "http.route": normalize_route(request.url.path),
+            "http.scheme": request.url.scheme,
+            "http.host": request.headers.get("host", "unknown"),
+            "http.user_agent": request.headers.get("user-agent", "unknown"),
+            "http.request_id": request_id
+        }
+    ) as span:
+        try:
+            # Process request
+            response = await call_next(request)
+            
+            # Calculate timing
+            process_time = time.time() - start_time
+            duration_ms = process_time * 1000
+            
+            # Add timing headers  
+            response.headers["X-Process-Time"] = f"{process_time:.3f}"
+            response.headers["X-Request-ID"] = request_id
+            
+            # Update span with response info
+            span.set_attribute("http.status_code", response.status_code)
+            span.set_attribute("http.response_size", len(response.body) if hasattr(response, 'body') else 0)
+            
+            # Log structured response
+            structured_logger.log_http_request(
                 method=request.method,
-                endpoint=request.url.path,
-                status=response.status_code
-            ).inc()
-            REQUEST_DURATION.labels(
+                path=request.url.path,
+                status_code=response.status_code,
+                duration_ms=duration_ms,
+                request_id=request_id
+            )
+            
+            # Record standardized metrics
+            normalized_route = normalize_route(request.url.path)
+            
+            # HTTP request counter
+            status = "success" if 200 <= response.status_code < 400 else "error"
+            metrics_registry.inc_counter(
+                "http_requests_total",
+                {
+                    "route": normalized_route,
+                    "method": request.method,
+                    "status": status
+                }
+            )
+            
+            # HTTP latency histogram
+            metrics_registry.observe_histogram(
+                "http_request_duration_seconds",
+                process_time,
+                {
+                    "route": normalized_route,
+                    "method": request.method
+                }
+            )
+            
+            # Update legacy Prometheus metrics if available
+            if PROMETHEUS_AVAILABLE:
+                REQUEST_COUNT.labels(
+                    method=request.method,
+                    endpoint=normalized_route,
+                    status=response.status_code
+                ).inc()
+                REQUEST_DURATION.labels(
+                    method=request.method,
+                    endpoint=normalized_route
+                ).observe(process_time)
+            
+            return response
+            
+        except Exception as e:
+            # Calculate timing for error case
+            process_time = time.time() - start_time
+            duration_ms = process_time * 1000
+            
+            # Update span with error info
+            span.set_attribute("http.status_code", 500)
+            span.set_attribute("error", True)
+            span.set_attribute("error.type", type(e).__name__)
+            span.set_attribute("error.message", str(e))
+            
+            # Log structured error
+            structured_logger.log_http_request(
                 method=request.method,
-                endpoint=request.url.path
-            ).observe(process_time)
-        
-        return response
-        
-    except Exception as e:
-        # Log error
-        process_time = time.time() - start_time
-        logger.error(f"Request failed: {request.method} {request.url.path} - {str(e)} ({process_time:.3f}s)",
-                    extra={
-                        "request_id": request_id,
-                        "method": request.method,
-                        "path": request.url.path,
-                        "error": str(e),
-                        "process_time": process_time
-                    })
-        
-        # Re-raise to let error handlers process
-        raise
+                path=request.url.path,
+                status_code=500,
+                duration_ms=duration_ms,
+                request_id=request_id
+            )
+            
+            # Record error metrics
+            normalized_route = normalize_route(request.url.path)
+            metrics_registry.inc_counter(
+                "http_requests_total",
+                {
+                    "route": normalized_route,
+                    "method": request.method,
+                    "status": "error"
+                }
+            )
+            
+            # Record error latency
+            metrics_registry.observe_histogram(
+                "http_request_duration_seconds",
+                process_time,
+                {
+                    "route": normalized_route,
+                    "method": request.method
+                }
+            )
+            
+            # Re-raise to let error handlers process
+            raise
 
 # Structured error handlers for consistent API responses
 @app.exception_handler(HTTPException)
@@ -895,6 +1098,24 @@ def get_ws_manager(request: Request) -> WebSocketClientManager:
     return request.app.state.ws_manager
 
 
+# B2.4 - Database and outbox dependencies
+async def get_db_session(request: Request) -> AsyncGenerator[AsyncSession, None]:
+    """Get database session from app state sessionmaker"""
+    sessionmaker = request.app.state.db_sessionmaker
+    async with sessionmaker() as session:
+        try:
+            yield session
+        finally:
+            await session.close()
+
+
+async def get_order_service(
+    db_session: AsyncSession = Depends(get_db_session),
+) -> OrderService:
+    """Get OrderService instance with database session"""
+    return OrderService(db_session)
+
+
 # Middleware for Prometheus metrics
 @app.middleware("http")
 async def metrics_middleware(request: Request, call_next):
@@ -921,11 +1142,23 @@ async def metrics_middleware(request: Request, call_next):
 # Prometheus metrics endpoint
 @app.get("/metrics")
 async def get_metrics():
-    """Prometheus metrics endpoint"""
-    if not PROMETHEUS_AVAILABLE:
-        raise HTTPException(status_code=501, detail="Prometheus not available")
-    
-    return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
+    """Prometheus metrics endpoint with comprehensive observability metrics"""
+    try:
+        # Use our metrics registry for standardized metrics
+        metrics_registry = get_metrics_registry()
+        
+        # Get Prometheus exposition format data
+        metrics_data = metrics_registry.get_metrics_data()
+        content_type = metrics_registry.get_content_type()
+        
+        return Response(metrics_data, media_type=content_type)
+        
+    except Exception as e:
+        # Fallback to basic prometheus metrics if available
+        if PROMETHEUS_AVAILABLE:
+            return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
+        else:
+            raise HTTPException(status_code=501, detail=f"Metrics unavailable: {str(e)}")
 
 
 # Authentication endpoints
@@ -1595,19 +1828,200 @@ async def send_portfolio_updates(ws_manager: WebSocketClientManager, client_id: 
         logging.error(f"Error setting up portfolio updates: {e}")
 
 
-# Protected Trading Endpoints
-@app.post("/api/v1/trades/execute", tags=["Trading", "Protected"])
-async def execute_trade(
+# Protected Trading Endpoints with Outbox Pattern
+@app.post("/api/v1/orders/submit", 
+         response_model=OrderSubmissionResponse if PYDANTIC_AVAILABLE else Dict[str, Any],
+         tags=["Trading", "Protected", "Outbox"])
+async def submit_order(
+    request: OrderSubmissionRequest,
+    current_user: AuthenticatedUser = Depends(require_trader),
+    order_service: OrderService = Depends(get_order_service),
+    risk_manager: RiskManager = Depends(get_risk_manager),
+):
+    """
+    Submit an order with exactly-once guarantees using transactional outbox pattern.
+    
+    Features:
+    - Atomic order creation and outbox enqueuing
+    - Idempotency protection via client_order_id
+    - Background side-effect processing
+    - Complete audit trail
+    - Risk management validation
+    """
+    try:
+        # Validate trade parameters
+        if request.side.lower() not in ["buy", "sell"]:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Side must be 'buy' or 'sell'"
+            )
+        
+        if request.qty <= 0:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Quantity must be positive"
+            )
+        
+        # Risk management check
+        risk_check = risk_manager.check_trade_risk(
+            request.symbol, 
+            request.side.upper(), 
+            request.qty
+        )
+        if not risk_check.get("allowed", True):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Order rejected by risk management: {risk_check.get('reason')}"
+            )
+        
+        # Audit order request
+        audit_logger.info(
+            "Order submission requested via outbox",
+            extra={
+                "user": current_user.username,
+                "symbol": request.symbol,
+                "side": request.side,
+                "qty": request.qty,
+                "order_type": request.order_type,
+                "time_in_force": request.time_in_force,
+                "limit_price": request.limit_price,
+                "stop_price": request.stop_price,
+                "client_order_id": request.client_order_id,
+                "idempotency_key": request.idempotency_key,
+                "timestamp": datetime.now().isoformat()
+            }
+        )
+        
+        # Submit order transactionally via service layer
+        result = await order_service.submit_order_transactionally(
+            symbol=request.symbol,
+            side=request.side,
+            qty=request.qty,
+            order_type=request.order_type,
+            tif=request.time_in_force,
+            limit_price=request.limit_price,
+            stop_price=request.stop_price,
+            client_order_id=request.client_order_id,
+            idempotency_key=request.idempotency_key
+        )
+        
+        # Audit successful submission
+        audit_logger.info(
+            "Order submitted successfully via outbox",
+            extra={
+                "user": current_user.username,
+                "order_id": result["order_id"],
+                "client_order_id": result["client_order_id"],
+                "outbox_event_id": result.get("outbox_event_id"),
+                "submission_mode": result["submission_mode"],
+                "timestamp": datetime.now().isoformat()
+            }
+        )
+        
+        return result
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Order submission failed: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Order submission failed"
+        )
+
+
+@app.get("/api/v1/orders/{order_id}",
+         response_model=OrderStatusResponse if PYDANTIC_AVAILABLE else Dict[str, Any],
+         tags=["Trading", "Protected", "Outbox"])
+async def get_order_status(
+    order_id: str,
+    current_user: AuthenticatedUser = Depends(require_trader),
+    order_service: OrderService = Depends(get_order_service)
+):
+    """Get current order status and details."""
+    try:
+        order_status = await order_service.get_order_status(order_id)
+        
+        if not order_status:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Order not found: {order_id}"
+            )
+        
+        return order_status
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to get order status: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to get order status"
+        )
+
+
+@app.post("/api/v1/orders/{order_id}/cancel",
+          tags=["Trading", "Protected", "Outbox"])
+async def cancel_order(
+    order_id: str,
+    idempotency_key: Optional[str] = None,
+    current_user: AuthenticatedUser = Depends(require_trader),
+    order_service: OrderService = Depends(get_order_service)
+):
+    """Cancel an order with outbox pattern for exactly-once cancellation."""
+    try:
+        # Audit cancellation request
+        audit_logger.info(
+            "Order cancellation requested",
+            extra={
+                "user": current_user.username,
+                "order_id": order_id,
+                "idempotency_key": idempotency_key,
+                "timestamp": datetime.now().isoformat()
+            }
+        )
+        
+        result = await order_service.cancel_order(
+            order_id,
+            idempotency_key=idempotency_key
+        )
+        
+        # Audit cancellation result
+        audit_logger.info(
+            "Order cancellation processed",
+            extra={
+                "user": current_user.username,
+                "order_id": order_id,
+                "cancellation_mode": result.get("cancellation_mode"),
+                "status": result.get("status"),
+                "timestamp": datetime.now().isoformat()
+            }
+        )
+        
+        return result
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Order cancellation failed: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Order cancellation failed"
+        )
+
+
+# Legacy Trading Endpoint (deprecated - kept for backward compatibility)
+@app.post("/api/v1/trades/execute", tags=["Trading", "Protected", "Deprecated"])
+async def execute_trade_legacy(
     symbol: str,
     action: str,  # "BUY" or "SELL"
     quantity: int,
     order_type: str = "market",  # "market", "limit"
     limit_price: Optional[float] = None,
     current_user: AuthenticatedUser = Depends(require_trader),
-    alpaca_client: AlpacaClient = Depends(get_alpaca_client),
     risk_manager: RiskManager = Depends(get_risk_manager),
 ):
-    """Execute a trade order (requires trader or admin role)"""
+    """Execute a trade order (DEPRECATED - use /api/v1/orders/submit instead)"""
     try:
         # Validate trade parameters
         if action not in ["BUY", "SELL"]:
@@ -1632,7 +2046,7 @@ async def execute_trade(
         
         # Audit trade request
         audit_logger.info(
-            "Trade execution requested",
+            "Legacy trade execution requested",
             extra={
                 "user": current_user.username,
                 "symbol": symbol,
@@ -1653,7 +2067,8 @@ async def execute_trade(
             "order_type": order_type,
             "status": "submitted",
             "timestamp": datetime.now().isoformat(),
-            "executed_by": current_user.username
+            "executed_by": current_user.username,
+            "note": "DEPRECATED: Please use /api/v1/orders/submit for new integrations"
         }
         
         return trade_result
