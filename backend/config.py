@@ -127,6 +127,14 @@ class Settings(BaseSettings):
     allow_mock_fallbacks: bool = config("ALLOW_MOCK_FALLBACKS", default=True, cast=bool)
     mock_fallback_warning: bool = config("MOCK_FALLBACK_WARNING", default=True, cast=bool)
 
+    # Strategy scaling configuration (make heuristic scaling traceable)
+    volatility_scale_factor: float = config("VOLATILITY_SCALE_FACTOR", default=10.0, cast=float)
+    momentum_scale_factor: float = config("MOMENTUM_SCALE_FACTOR", default=100.0, cast=float)
+    
+    # Rate limiting configuration
+    websocket_rate_limit_per_minute: int = config("WS_RATE_LIMIT_PER_MINUTE", default=60, cast=int)
+    api_rate_limit_per_minute: int = config("API_RATE_LIMIT_PER_MINUTE", default=1000, cast=int)
+
     # Performance settings
     workers: int = config("WORKERS", default=4, cast=int)
     max_connections: int = config("MAX_CONNECTIONS", default=1000, cast=int)

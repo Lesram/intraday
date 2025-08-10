@@ -216,8 +216,11 @@ class LSTMModel:
             # Prepare input sequence
             X_pred = scaled_recent.reshape(1, self.sequence_length, 1)
 
-            # Make prediction
+            # Make prediction (predicting next period's scaled close price)
             prediction_scaled = self.model.predict(X_pred, verbose=0)[0][0]
+            
+            # Convert scaled prediction back to actual price
+            # Note: We predict next price directly, then convert to return for strategy use
             prediction = self.scaler.inverse_transform([[prediction_scaled]])[0][0]
 
             # Calculate confidence (simple approach using model certainty)
@@ -409,15 +412,19 @@ class EnsembleModel:
         # Train LSTM on price sequences
         results["lstm"] = await self.models["lstm"].train(price_data, target_column)
 
-        # Train tree-based models on features
+        # Train tree-based models on features with explicit index alignment
         target = price_data[target_column].shift(-1).dropna()  # Next period target
-        features_aligned = features.iloc[:-1]  # Align with target
+        
+        # Ensure explicit alignment using shared index to prevent silent misalignment
+        aligned_data = pd.concat([features, target.to_frame('target')], join='inner', axis=1).dropna()
+        features_aligned = aligned_data.drop(columns=['target'])
+        target_aligned = aligned_data['target']
 
         results["xgboost"] = await self.models["xgboost"].train(
-            features_aligned, target
+            features_aligned, target_aligned
         )
         results["random_forest"] = await self.models["random_forest"].train(
-            features_aligned, target
+            features_aligned, target_aligned
         )
 
         audit_logger.info(

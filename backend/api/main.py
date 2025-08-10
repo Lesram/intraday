@@ -359,6 +359,42 @@ if PYDANTIC_AVAILABLE:
         timestamp: str
         metadata: Dict[str, Any] = {}
 
+    class TechnicalFeatures(BaseModel):
+        rsi: Optional[float] = None
+        macd: Optional[float] = None
+        bb_position: Optional[float] = None
+        volume_ratio: Optional[float] = None
+
+    class RiskAssessment(BaseModel):
+        risk_score: float
+        var_1d: float
+        position_risk: str
+        max_position_size: float
+        
+    class AdvancedSignalResponse(BaseModel):
+        symbol: str
+        signal_type: str
+        confidence: float
+        target_price: float
+        position_size: float
+        timestamp: str
+        metadata: Dict[str, Any] = {}
+        authenticated: bool
+        technical_features: Optional[TechnicalFeatures] = None
+        risk_assessment: Optional[RiskAssessment] = None
+        
+    class AdvancedSignalsMetadata(BaseModel):
+        timestamp: str
+        authenticated: bool
+        symbols_requested: int
+        symbols_processed: int
+        features_included: bool
+        risk_metrics_included: bool
+        
+    class AdvancedSignalsResponse(BaseModel):
+        signals: Dict[str, AdvancedSignalResponse]
+        metadata: AdvancedSignalsMetadata
+
     class ModelPredictionResponse(BaseModel):
         symbol: str
         ensemble_prediction: float
@@ -561,11 +597,9 @@ async def start_market_data_stream(app: FastAPI):
     """Start real-time market data streaming"""
     if hasattr(app.state, 'alpaca_client') and app.state.alpaca_client:
         try:
-            # Get default symbols from settings
-            settings = get_settings()
-            symbols = settings.default_symbols
-            await app.state.alpaca_client.connect_data_stream(symbols=symbols)
-            logging.info(f"Market data stream started successfully for symbols: {symbols}")
+            # Connect to Alpaca data streams
+            await app.state.alpaca_client.connect_data_stream()
+            logging.info("Market data stream started successfully")
         except Exception as e:
             logging.error(f"Error starting market data stream: {e}")
 
@@ -740,7 +774,7 @@ async def http_exception_handler(request: Request, exc: HTTPException):
     
     return JSONResponse(
         status_code=exc.status_code,
-        content=error_response.dict()
+        content=error_response.model_dump()
     )
 
 @app.exception_handler(ValidationError)
@@ -777,7 +811,7 @@ async def validation_exception_handler(request: Request, exc: ValidationError):
     
     return JSONResponse(
         status_code=422,
-        content=validation_response.dict()
+        content=validation_response.model_dump()
     )
 
 @app.exception_handler(Exception)
@@ -807,7 +841,7 @@ async def general_exception_handler(request: Request, exc: Exception):
     
     return JSONResponse(
         status_code=500,
-        content=error_response.dict()
+        content=error_response.model_dump()
     )
 
 
@@ -1076,7 +1110,7 @@ async def get_trading_signal(
                 position_size=signal.position_size,
                 timestamp=signal.timestamp.isoformat(),
                 metadata=signal.metadata,
-            )
+            ).model_dump()
         else:
             return {
                 "symbol": signal.symbol,
@@ -1129,7 +1163,7 @@ async def get_all_signals(
                             position_size=signal.position_size,
                             timestamp=signal.timestamp.isoformat(),
                             metadata=signal.metadata,
-                        ).dict()
+                        ).model_dump()
                     else:
                         signals[symbol] = {
                             "symbol": signal.symbol,
@@ -1154,12 +1188,12 @@ async def get_all_signals(
 
 
 # Advanced Signals Endpoint with Optional Authentication
-@app.get("/api/v1/signals/advanced", response_model=Dict[str, Any], tags=["Trading Signals", "Protected"])
+@app.get("/api/v1/signals/advanced", response_model=AdvancedSignalsResponse if PYDANTIC_AVAILABLE else Dict[str, Any], tags=["Trading Signals", "Protected"])
 async def get_advanced_signals(
     symbols: str = "AAPL,GOOGL,MSFT,TSLA,NVDA",
     include_features: bool = False,
     include_risk_metrics: bool = False,
-    current_user: str = Depends(verify_token) if security else None,  # Optional auth
+    current_user: str = Depends(verify_token),  # Always required for protected endpoint
     strategy_manager: StrategyManager = Depends(get_strategy_manager),
     alpaca_client: AlpacaClient = Depends(get_alpaca_client),
     feature_engineer: FeatureEngineer = Depends(get_feature_engineer),
@@ -1280,18 +1314,35 @@ async def websocket_endpoint(
     client_id: str,
     ws_manager: WebSocketClientManager = Depends(get_ws_manager),
 ):
-    """WebSocket endpoint for real-time trading data with backpressure handling"""
+    """WebSocket endpoint for real-time trading data with backpressure handling and rate limiting"""
     await websocket.accept()
     await ws_manager.add_client(client_id, websocket)
     
-    # Track background tasks for this client
+    # Track background tasks and rate limiting for this client
     background_tasks = {}
+    message_count = 0
+    last_reset_time = time.time()
+    MAX_MESSAGES_PER_MINUTE = settings.websocket_rate_limit_per_minute  # Configurable rate limit
 
     try:
         while True:
             # Wait for client message
             data = await websocket.receive_text()
             message = json.loads(data)
+            
+            # Rate limiting check
+            current_time = time.time()
+            if current_time - last_reset_time >= 60:  # Reset counter every minute
+                message_count = 0
+                last_reset_time = current_time
+            
+            message_count += 1
+            if message_count > MAX_MESSAGES_PER_MINUTE:
+                await websocket.send_text(json.dumps({
+                    "type": "error",
+                    "message": "Rate limit exceeded. Maximum 60 messages per minute."
+                }))
+                continue
 
             if PROMETHEUS_AVAILABLE:
                 WS_MESSAGES.labels(direction='received', message_type=message.get('type', 'unknown')).inc()

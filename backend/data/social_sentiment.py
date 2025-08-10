@@ -92,11 +92,20 @@ class SocialSentimentAnalyzer:
             "Bitcoin",
             "ethtrader",
         ]
+        
+        # Rate limiting and circuit breaker configuration
+        self.request_timeout = 10  # seconds
+        self.max_retries = 3
+        self.retry_delay = 1.0  # seconds between retries
+        self.circuit_breaker_threshold = 5  # failures before opening circuit
+        self.circuit_breaker_cooldown = 300  # 5 minutes cooldown
+        self.circuit_open_until = {}  # Track when circuits should close
 
         # Sentiment data storage (in-memory for now)
         self.sentiment_history = defaultdict(lambda: deque(maxlen=1000))
         self.symbol_mentions = defaultdict(int)
         self.last_update = {}
+        self.failed_requests = defaultdict(int)  # Track failures per source
 
         # Rate limiting
         self.twitter_rate_limit = 0

@@ -390,7 +390,11 @@ class TestRouteContinuity:
                 response = client.get("/api/v1/signals/AAPL")
                 # Should return 503 when strategy manager is not available
                 assert response.status_code == 503
-                assert "Strategy manager not available" in response.json()["detail"]
+                # Check new structured error response format
+                response_data = response.json()
+                assert "error" in response_data
+                assert "message" in response_data["error"]
+                assert "Strategy manager not available" in response_data["error"]["message"]
 
     def test_all_endpoints_accessible(self):
         """Test that all defined endpoints are accessible"""
