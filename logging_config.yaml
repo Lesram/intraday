@@ -1,0 +1,52 @@
+version: 1
+disable_existing_loggers: False
+
+formatters:
+  json:
+    format: '{"timestamp": "%(asctime)s", "level": "%(levelname)s", "logger": "%(name)s", "message": "%(message)s", "module": "%(module)s", "function": "%(funcName)s", "line": %(lineno)d}'
+    datefmt: '%Y-%m-%dT%H:%M:%S'
+  
+  standard:
+    format: '%(asctime)s [%(levelname)s] %(name)s: %(message)s'
+    datefmt: '%Y-%m-%d %H:%M:%S'
+
+handlers:
+  console:
+    class: logging.StreamHandler
+    level: INFO
+    formatter: json
+    stream: ext://sys.stdout
+
+  file:
+    class: logging.handlers.RotatingFileHandler
+    level: INFO
+    formatter: json
+    filename: /app/logs/application.log
+    maxBytes: 52428800  # 50MB
+    backupCount: 5
+    encoding: utf8
+
+root:
+  level: INFO
+  handlers: [console]
+
+loggers:
+  uvicorn:
+    level: INFO
+    handlers: [console]
+    propagate: no
+
+  uvicorn.access:
+    level: INFO
+    handlers: [console]
+    propagate: no
+
+  backend:
+    level: INFO
+    handlers: [console, file]
+    propagate: no
+
+  audit:
+    level: INFO
+    handlers: [file]
+    propagate: no

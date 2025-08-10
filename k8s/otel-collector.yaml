@@ -1,0 +1,150 @@
+# OpenTelemetry Collector for observability
+# BRANCH 2.12 - Deploy Readiness
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: otel-collector
+  namespace: algotrading
+  labels:
+    app: otel-collector
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: otel-collector
+  template:
+    metadata:
+      labels:
+        app: otel-collector
+    spec:
+      securityContext:
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+      containers:
+      - name: otel-collector
+        image: otel/opentelemetry-collector-contrib:latest
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "200m"
+        ports:
+        - containerPort: 4317  # OTLP gRPC
+        - containerPort: 4318  # OTLP HTTP
+        - containerPort: 8888  # Prometheus metrics
+        - containerPort: 8889  # Health check
+        volumeMounts:
+        - name: config
+          mountPath: /etc/otel-collector-config.yaml
+          subPath: otel-collector-config.yaml
+          readOnly: true
+        command:
+        - /otelcol-contrib
+        - --config=/etc/otel-collector-config.yaml
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 8889
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 8889
+          initialDelaySeconds: 5
+          periodSeconds: 5
+      volumes:
+      - name: config
+        configMap:
+          name: otel-collector-config
+
+---
+# OpenTelemetry Collector Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: otel-collector
+  namespace: algotrading
+  labels:
+    app: otel-collector
+spec:
+  type: ClusterIP
+  ports:
+  - name: otlp-grpc
+    port: 4317
+    targetPort: 4317
+  - name: otlp-http
+    port: 4318
+    targetPort: 4318
+  - name: prometheus
+    port: 8888
+    targetPort: 8888
+  selector:
+    app: otel-collector
+
+---
+# ConfigMap for OpenTelemetry Collector
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: otel-collector-config
+  namespace: algotrading
+data:
+  otel-collector-config.yaml: |
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+            endpoint: 0.0.0.0:4317
+          http:
+            endpoint: 0.0.0.0:4318
+      
+    processors:
+      batch:
+        timeout: 1s
+        send_batch_size: 1024
+      
+      resource:
+        attributes:
+        - key: deployment.environment
+          value: "production"
+          action: insert
+        - key: k8s.namespace.name
+          from_attribute: k8s.namespace
+          action: insert
+    
+    exporters:
+      logging:
+        loglevel: info
+      
+      prometheus:
+        endpoint: "0.0.0.0:8888"
+        namespace: algotrading
+        const_labels:
+          environment: production
+      
+      jaeger:
+        endpoint: jaeger-collector:14250
+        tls:
+          insecure: true
+    
+    extensions:
+      health_check:
+        endpoint: 0.0.0.0:8889
+    
+    service:
+      extensions: [health_check]
+      pipelines:
+        traces:
+          receivers: [otlp]
+          processors: [batch, resource]
+          exporters: [logging, jaeger]
+        
+        metrics:
+          receivers: [otlp]
+          processors: [batch, resource]  
+          exporters: [logging, prometheus]

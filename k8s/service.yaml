@@ -1,0 +1,193 @@
+# Kubernetes Service and Ingress for Algorithmic Trading Platform
+# BRANCH 2.12 - Deploy Readiness
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: algotrading-api-service
+  namespace: algotrading
+  labels:
+    app: algotrading-api
+    component: api-server
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/path: "/metrics"
+    prometheus.io/port: "8000"
+spec:
+  selector:
+    app: algotrading-api
+  ports:
+  - name: http
+    protocol: TCP
+    port: 80
+    targetPort: 8000
+  - name: metrics
+    protocol: TCP
+    port: 8000
+    targetPort: 8000
+  type: ClusterIP
+  sessionAffinity: None
+
+---
+# Headless service for direct pod access (WebSocket connections)
+apiVersion: v1
+kind: Service
+metadata:
+  name: algotrading-api-headless
+  namespace: algotrading
+  labels:
+    app: algotrading-api
+    component: api-server
+spec:
+  selector:
+    app: algotrading-api
+  ports:
+  - name: http
+    protocol: TCP
+    port: 8000
+    targetPort: 8000
+  clusterIP: None
+  sessionAffinity: None
+
+---
+# ServiceMonitor for Prometheus
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: algotrading-api-metrics
+  namespace: algotrading
+  labels:
+    app: algotrading-api
+    component: metrics
+spec:
+  selector:
+    matchLabels:
+      app: algotrading-api
+  endpoints:
+  - port: metrics
+    path: /metrics
+    interval: 30s
+    scrapeTimeout: 10s
+    honorLabels: false
+
+---
+# Ingress for external access
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: algotrading-api-ingress
+  namespace: algotrading
+  labels:
+    app: algotrading-api
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "600"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "600"
+    nginx.ingress.kubernetes.io/proxy-body-size: "64m"
+    # WebSocket support
+    nginx.ingress.kubernetes.io/proxy-set-headers: |
+      Host $host;
+      X-Real-IP $remote_addr;
+      X-Forwarded-For $proxy_add_x_forwarded_for;
+      X-Forwarded-Proto $scheme;
+      Upgrade $http_upgrade;
+      Connection "upgrade";
+    # Rate limiting
+    nginx.ingress.kubernetes.io/rate-limit: "1000"
+    nginx.ingress.kubernetes.io/rate-limit-window: "1m"
+    # Health check
+    nginx.ingress.kubernetes.io/health-check-path: "/healthz"
+spec:
+  tls:
+  - hosts:
+    - api.algotrading.example.com
+    secretName: algotrading-tls-secret
+  rules:
+  - host: api.algotrading.example.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: algotrading-api-service
+            port:
+              number: 80
+
+---
+# PodDisruptionBudget for high availability
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: algotrading-api-pdb
+  namespace: algotrading
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: algotrading-api
+
+---
+# NetworkPolicy for security
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: algotrading-api-netpol
+  namespace: algotrading
+spec:
+  podSelector:
+    matchLabels:
+      app: algotrading-api
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  # Allow ingress from nginx-ingress-controller
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: ingress-nginx
+    ports:
+    - protocol: TCP
+      port: 8000
+  # Allow Prometheus scraping
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: monitoring
+    ports:
+    - protocol: TCP
+      port: 8000
+  # Allow internal cluster communication
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: algotrading
+    ports:
+    - protocol: TCP
+      port: 8000
+  egress:
+  # Allow DNS resolution
+  - to: []
+    ports:
+    - protocol: UDP
+      port: 53
+  # Allow database access
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: database
+    ports:
+    - protocol: TCP
+      port: 5432
+  # Allow external API calls (Alpaca, etc.)
+  - to: []
+    ports:
+    - protocol: TCP
+      port: 443
+    - protocol: TCP
+      port: 80

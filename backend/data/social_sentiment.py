@@ -4,14 +4,13 @@ Fetches social media data and computes sentiment using FinBERT.
 """
 
 import asyncio
+from collections import defaultdict, deque
+from datetime import UTC, datetime, timedelta
 import re
 import time
-from collections import defaultdict, deque
-from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import numpy as np
-import pandas as pd
 
 # Social media APIs (with fallbacks for development)
 try:
@@ -61,9 +60,9 @@ class SocialSentimentAnalyzer:
 
     def __init__(
         self,
-        twitter_credentials: Optional[Dict] = None,
-        subreddit_list: Optional[List[str]] = None,
-        reddit_credentials: Optional[Dict] = None,
+        twitter_credentials: dict | None = None,
+        subreddit_list: list[str] | None = None,
+        reddit_credentials: dict | None = None,
     ):
         """
         Initialize with API credentials and target subreddits.
@@ -92,7 +91,7 @@ class SocialSentimentAnalyzer:
             "Bitcoin",
             "ethtrader",
         ]
-        
+
         # Rate limiting and circuit breaker configuration
         self.request_timeout = 10  # seconds
         self.max_retries = 3
@@ -129,7 +128,7 @@ class SocialSentimentAnalyzer:
             finbert_enabled=self.model_loaded,
         )
 
-    def _init_twitter(self, credentials: Optional[Dict]):
+    def _init_twitter(self, credentials: dict | None):
         """Initialize Twitter API client."""
         if not TWEEPY_AVAILABLE:
             self.logger.warning("Tweepy not available, Twitter analysis disabled")
@@ -175,7 +174,7 @@ class SocialSentimentAnalyzer:
             self.logger.error("Failed to initialize Twitter client", error=str(e))
             self.twitter_client = None
 
-    def _init_reddit(self, credentials: Optional[Dict]):
+    def _init_reddit(self, credentials: dict | None):
         """Initialize Reddit API client."""
         if not PRAW_AVAILABLE:
             self.logger.warning("PRAW not available, Reddit analysis disabled")
@@ -319,7 +318,7 @@ class SocialSentimentAnalyzer:
 
         return text.strip()
 
-    def extract_symbols(self, text: str) -> List[str]:
+    def extract_symbols(self, text: str) -> list[str]:
         """Extract stock symbols and crypto mentions from text."""
         symbols = []
 
@@ -334,7 +333,7 @@ class SocialSentimentAnalyzer:
         return list(set(symbols))  # Remove duplicates
 
     async def stream_twitter_sentiment(
-        self, symbols: List[str], duration_hours: float = 1.0
+        self, symbols: list[str], duration_hours: float = 1.0
     ):
         """
         Continuously stream tweets for given symbols and compute sentiment.
@@ -364,12 +363,12 @@ class SocialSentimentAnalyzer:
             )
 
             # Stream tweets
-            end_time = datetime.now(timezone.utc) + timedelta(hours=duration_hours)
+            end_time = datetime.now(UTC) + timedelta(hours=duration_hours)
             tweet_count = 0
 
             if hasattr(self.twitter_client, "search_recent_tweets"):
                 # Twitter API v2
-                while datetime.now(timezone.utc) < end_time:
+                while datetime.now(UTC) < end_time:
                     try:
                         tweets = self.twitter_client.search_recent_tweets(
                             query=query,
@@ -408,7 +407,7 @@ class SocialSentimentAnalyzer:
         except Exception as e:
             self.logger.error("Twitter streaming failed", error=str(e))
 
-    async def _process_tweet(self, text: str, symbols: List[str]):
+    async def _process_tweet(self, text: str, symbols: list[str]):
         """Process individual tweet for sentiment."""
         try:
             # Extract mentioned symbols
@@ -422,7 +421,7 @@ class SocialSentimentAnalyzer:
 
             # Analyze sentiment
             sentiment = self.analyze_text_finbert(text)
-            timestamp = datetime.now(timezone.utc)
+            timestamp = datetime.now(UTC)
 
             # Store sentiment for each relevant symbol
             for symbol in relevant_symbols:
@@ -441,8 +440,8 @@ class SocialSentimentAnalyzer:
             self.logger.error("Tweet processing failed", error=str(e))
 
     async def fetch_reddit_headlines(
-        self, symbols: List[str], limit_per_subreddit: int = 50
-    ) -> Dict[str, List[Dict]]:
+        self, symbols: list[str], limit_per_subreddit: int = 50
+    ) -> dict[str, list[dict]]:
         """
         Fetch latest subreddit posts and compute sentiment scores.
 
@@ -536,7 +535,7 @@ class SocialSentimentAnalyzer:
 
     def get_aggregated_sentiment(
         self, symbol: str, hours_back: int = 24, min_mentions: int = 5
-    ) -> Optional[Dict[str, Any]]:
+    ) -> dict[str, Any] | None:
         """
         Return current aggregated sentiment score for a symbol.
 
@@ -553,7 +552,7 @@ class SocialSentimentAnalyzer:
                 return None
 
             # Filter recent data
-            cutoff_time = datetime.now(timezone.utc) - timedelta(hours=hours_back)
+            cutoff_time = datetime.now(UTC) - timedelta(hours=hours_back)
             recent_data = [
                 d
                 for d in self.sentiment_history[symbol]
@@ -567,7 +566,7 @@ class SocialSentimentAnalyzer:
             sentiments = [d["sentiment"] for d in recent_data]
 
             # Weighted average (more recent = higher weight)
-            now = datetime.now(timezone.utc)
+            now = datetime.now(UTC)
             weighted_sum = 0
             total_weight = 0
 
@@ -599,7 +598,7 @@ class SocialSentimentAnalyzer:
 
             result = {
                 "symbol": symbol,
-                "timestamp": datetime.now(timezone.utc),
+                "timestamp": datetime.now(UTC),
                 "hours_analyzed": hours_back,
                 "total_mentions": len(recent_data),
                 "avg_sentiment": np.mean(sentiments),
@@ -633,7 +632,7 @@ class SocialSentimentAnalyzer:
     def _calculate_sentiment_momentum(self, symbol: str, hours_back: int = 24) -> float:
         """Calculate sentiment momentum (recent vs older sentiment)."""
         try:
-            cutoff_time = datetime.now(timezone.utc) - timedelta(hours=hours_back)
+            cutoff_time = datetime.now(UTC) - timedelta(hours=hours_back)
             recent_data = [
                 d
                 for d in self.sentiment_history[symbol]
@@ -659,7 +658,7 @@ class SocialSentimentAnalyzer:
         except Exception:
             return 0.0
 
-    def get_sentiment_summary(self, symbols: List[str]) -> Dict[str, Any]:
+    def get_sentiment_summary(self, symbols: list[str]) -> dict[str, Any]:
         """Get sentiment summary for multiple symbols."""
         summary = {}
 

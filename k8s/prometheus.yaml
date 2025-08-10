@@ -1,0 +1,145 @@
+# Prometheus monitoring stack
+# BRANCH 2.12 - Deploy Readiness
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prometheus
+  namespace: algotrading
+  labels:
+    app: prometheus
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: prometheus
+  template:
+    metadata:
+      labels:
+        app: prometheus
+    spec:
+      securityContext:
+        runAsUser: 65534
+        runAsGroup: 65534
+        fsGroup: 65534
+      containers:
+      - name: prometheus
+        image: prom/prometheus:latest
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "200m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
+        ports:
+        - containerPort: 9090
+        volumeMounts:
+        - name: config
+          mountPath: /etc/prometheus/prometheus.yml
+          subPath: prometheus.yml
+          readOnly: true
+        - name: storage
+          mountPath: /prometheus
+        args:
+        - '--config.file=/etc/prometheus/prometheus.yml'
+        - '--storage.tsdb.path=/prometheus'
+        - '--web.console.libraries=/etc/prometheus/console_libraries'
+        - '--web.console.templates=/etc/prometheus/consoles'
+        - '--web.enable-lifecycle'
+        - '--storage.tsdb.retention.time=30d'
+        livenessProbe:
+          httpGet:
+            path: /-/healthy
+            port: 9090
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /-/ready
+            port: 9090
+          initialDelaySeconds: 5
+          periodSeconds: 5
+      volumes:
+      - name: config
+        configMap:
+          name: prometheus-config
+      - name: storage
+        persistentVolumeClaim:
+          claimName: prometheus-data
+
+---
+# Prometheus Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: prometheus
+  namespace: algotrading
+  labels:
+    app: prometheus
+spec:
+  type: ClusterIP
+  ports:
+  - port: 9090
+    targetPort: 9090
+  selector:
+    app: prometheus
+
+---
+# Prometheus PVC
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: prometheus-data
+  namespace: algotrading
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 50Gi
+  storageClassName: standard
+
+---
+# Prometheus ConfigMap
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-config
+  namespace: algotrading
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: 15s
+      evaluation_interval: 15s
+      
+    rule_files:
+      - "alert_rules.yml"
+
+    scrape_configs:
+      - job_name: 'algotrading-api'
+        static_configs:
+        - targets: ['algotrading-api-service:8000']
+        metrics_path: '/metrics'
+        scrape_interval: 10s
+        
+      - job_name: 'otel-collector'
+        static_configs:
+        - targets: ['otel-collector:8888']
+        scrape_interval: 10s
+        
+      - job_name: 'postgres-exporter'
+        static_configs:
+        - targets: ['postgres-exporter:9187']
+        scrape_interval: 30s
+        
+      - job_name: 'redis-exporter'  
+        static_configs:
+        - targets: ['redis-exporter:9121']
+        scrape_interval: 30s
+
+    alerting:
+      alertmanagers:
+      - static_configs:
+        - targets:
+          - alertmanager:9093

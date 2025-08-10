@@ -1,12 +1,13 @@
 """
 Test Configuration and Fixtures
 """
-import pytest
 import asyncio
-from unittest.mock import AsyncMock, MagicMock
-import pandas as pd
+from unittest.mock import AsyncMock
+
 import numpy as np
-from datetime import datetime, timedelta
+import pandas as pd
+import pytest
+
 
 # Test data fixtures
 @pytest.fixture
@@ -14,15 +15,15 @@ def sample_price_data():
     """Sample price data for testing"""
     dates = pd.date_range(start='2024-01-01', end='2024-01-31', freq='D')
     np.random.seed(42)
-    
+
     # Generate realistic stock price data
     base_price = 100.0
     returns = np.random.normal(0.001, 0.02, len(dates))  # 0.1% daily return, 2% volatility
     prices = [base_price]
-    
+
     for ret in returns[1:]:
         prices.append(prices[-1] * (1 + ret))
-    
+
     data = pd.DataFrame({
         'timestamp': dates,
         'open': [p * np.random.uniform(0.99, 1.01) for p in prices],
@@ -31,7 +32,7 @@ def sample_price_data():
         'close': prices,
         'volume': np.random.randint(100000, 1000000, len(dates))
     })
-    
+
     return data.set_index('timestamp')
 
 @pytest.fixture
@@ -39,7 +40,7 @@ def sample_features():
     """Sample feature data for testing"""
     np.random.seed(42)
     dates = pd.date_range(start='2024-01-01', end='2024-01-31', freq='D')
-    
+
     return pd.DataFrame({
         'sma_20': np.random.uniform(95, 105, len(dates)),
         'sma_50': np.random.uniform(95, 105, len(dates)),
@@ -108,27 +109,29 @@ async def async_setup():
 @pytest.fixture
 def client():
     """Create test client with mocked dependencies."""
-    from fastapi.testclient import TestClient
     from unittest.mock import Mock
+
+    from fastapi.testclient import TestClient
+
     from backend.api.main import app
     from backend.infra.users import UserRepository
-    
+
     # Mock all the app state dependencies that endpoints need
     mock_risk_manager = Mock()
     mock_risk_manager.get_risk_metrics.return_value = {"status": "healthy", "risk_level": "low"}
     mock_risk_manager.get_portfolio_risk.return_value = {"var": 0.05, "sharpe": 1.2}
-    
+
     mock_model_manager = Mock()
     mock_model_manager.get_model_status.return_value = {"status": "ready", "accuracy": 0.85}
     mock_model_manager.get_predictions.return_value = {"symbol": "AAPL", "prediction": "buy"}
-    
+
     mock_strategy_manager = Mock()
     mock_strategy_manager.get_signals.return_value = {"signal": "buy", "confidence": 0.8}
     mock_strategy_manager.get_strategy_status.return_value = {"active": True, "pnl": 1250.0}
-    
+
     mock_data_client = Mock()
     mock_data_client.get_market_data.return_value = {"price": 150.0, "volume": 1000000}
-    
+
     # Set up app state with all required dependencies
     app.state.risk_manager = mock_risk_manager
     app.state.model_manager = mock_model_manager
@@ -136,15 +139,16 @@ def client():
     app.state.data_client = mock_data_client
     app.state.user_repository = UserRepository()
     app.state.is_initialized = True
-    
+
     return TestClient(app)
 
 @pytest.fixture
 def mock_app_state():
     """Mock application state for testing."""
     from unittest.mock import Mock
+
     from backend.infra.users import UserRepository
-    
+
     # Mock the app state to avoid dependencies
     mock_state = Mock()
     mock_state.is_initialized = True

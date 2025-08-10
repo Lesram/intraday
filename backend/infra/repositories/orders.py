@@ -2,11 +2,11 @@
 Orders repository - handles order lifecycle and idempotency.
 Implements async CRUD operations with proper error handling.
 """
-import logging
-import uuid
 from datetime import datetime
 from decimal import Decimal
-from typing import Any, Dict
+import logging
+from typing import Any
+import uuid
 
 from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError
@@ -29,7 +29,7 @@ class DuplicateOrderError(Exception):
 
 class OrdersRepo:
     """Repository for order operations."""
-    
+
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
 
@@ -42,7 +42,7 @@ class OrdersRepo:
         qty: Decimal,
         order_type: str,
         tif: str,
-        attributes: Dict[str, Any] | None = None
+        attributes: dict[str, Any] | None = None
     ) -> Order:
         """
         Create order with idempotency protection.
@@ -66,7 +66,7 @@ class OrdersRepo:
         stmt = select(Order).where(Order.client_idempotency_key == client_key)
         result = await self.session.execute(stmt)
         existing_order = result.scalar_one_or_none()
-        
+
         if existing_order:
             logger.debug(
                 "Order already exists for idempotency key",
@@ -78,7 +78,7 @@ class OrdersRepo:
                 }
             )
             return existing_order
-        
+
         # Create new order
         new_order = Order(
             client_idempotency_key=client_key,
@@ -91,11 +91,11 @@ class OrdersRepo:
             submitted_at=datetime.utcnow(),
             attributes=attributes or {}
         )
-        
+
         try:
             self.session.add(new_order)
             await self.session.flush()  # Get the ID without committing
-            
+
             logger.info(
                 "New order created",
                 extra={
@@ -107,9 +107,9 @@ class OrdersRepo:
                     "order_type": order_type
                 }
             )
-            
+
             return new_order
-            
+
         except IntegrityError as e:
             await self.session.rollback()
             # Handle race condition - another process may have created the order
@@ -118,7 +118,7 @@ class OrdersRepo:
                 stmt = select(Order).where(Order.client_idempotency_key == client_key)
                 result = await self.session.execute(stmt)
                 existing_order = result.scalar_one_or_none()
-                
+
                 if existing_order:
                     logger.debug(
                         "Order created by another process",
@@ -128,7 +128,7 @@ class OrdersRepo:
                         }
                     )
                     return existing_order
-            
+
             logger.error(
                 "Failed to create order",
                 extra={
@@ -156,13 +156,13 @@ class OrdersRepo:
             .values(status=status, updated_at=datetime.utcnow())
             .returning(Order.id)
         )
-        
+
         result = await self.session.execute(stmt)
         updated_id = result.scalar_one_or_none()
-        
+
         if not updated_id:
             raise OrderNotFoundError(f"Order {order_id} not found")
-        
+
         logger.info(
             "Order status updated",
             extra={
@@ -177,7 +177,7 @@ class OrdersRepo:
         *,
         broker_order_id: str | None = None,
         status: str | None = None,
-        attributes: Dict[str, Any] | None = None
+        attributes: dict[str, Any] | None = None
     ) -> None:
         """
         Update order with broker response.
@@ -193,40 +193,40 @@ class OrdersRepo:
         """
         # Build update values
         values = {"updated_at": datetime.utcnow()}
-        
+
         if broker_order_id is not None:
             values["broker_order_id"] = broker_order_id
-            
+
         if status is not None:
             values["status"] = status
-            
+
         # For attributes, we need to merge with existing attributes
         if attributes:
             # First fetch current attributes
             stmt = select(Order.attributes).where(Order.id == order_id)
             result = await self.session.execute(stmt)
             current_attrs = result.scalar_one_or_none()
-            
+
             if current_attrs is None:
                 raise OrderNotFoundError(f"Order {order_id} not found")
-            
+
             # Merge attributes
             merged_attrs = {**(current_attrs or {}), **attributes}
             values["attributes"] = merged_attrs
-        
+
         stmt = (
             update(Order)
             .where(Order.id == order_id)
             .values(**values)
             .returning(Order.id)
         )
-        
+
         result = await self.session.execute(stmt)
         updated_id = result.scalar_one_or_none()
-        
+
         if not updated_id:
             raise OrderNotFoundError(f"Order {order_id} not found")
-        
+
         logger.info(
             "Order broker result attached",
             extra={
@@ -296,7 +296,7 @@ class OrdersRepo:
             List of active orders
         """
         active_statuses = ['accepted', 'submitting', 'submitted', 'partially_filled']
-        
+
         stmt = (
             select(Order)
             .where(Order.status.in_(active_statuses))

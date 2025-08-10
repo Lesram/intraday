@@ -5,24 +5,22 @@ Enhanced with comprehensive observability including tracing and metrics.
 """
 
 import asyncio
-import logging
-import time
+from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
-from typing import Any, Callable, Dict, List, Optional
+from datetime import UTC, datetime, timedelta
+import time
+from typing import Any
 
-import numpy as np
 import pandas as pd
+
+from backend.infra.logging import get_logger as get_structured_logger
 
 # B2.5 - Observability imports
 from backend.infra.observability import (
-    trace_span, 
-    record_latency, 
     record_alpaca_request,
-    get_tracer
+    record_latency,
+    trace_span,
 )
-from backend.infra.logging import get_logger as get_structured_logger
-from backend.infra.metrics import get_metrics_registry
 
 try:
     from alpaca.common.exceptions import APIError
@@ -66,7 +64,7 @@ except ImportError:
         pass
 
 
-from ..utils.helpers import generate_trade_id, validate_symbol
+from ..utils.helpers import validate_symbol
 from ..utils.logger import audit_logger, get_structured_logger
 
 
@@ -81,7 +79,7 @@ class MarketData:
     low: float
     close: float
     volume: float
-    vwap: Optional[float] = None
+    vwap: float | None = None
 
 
 @dataclass
@@ -93,7 +91,7 @@ class OrderResult:
     side: str
     quantity: float
     filled_quantity: float
-    price: Optional[float]
+    price: float | None
     status: str
     timestamp: datetime
 
@@ -130,11 +128,11 @@ class AlpacaClient:
         self._init_clients()
 
         # Data streams
-        self.stock_stream: Optional[StockDataStream] = None
-        self.crypto_stream: Optional[CryptoDataStream] = None
+        self.stock_stream: StockDataStream | None = None
+        self.crypto_stream: CryptoDataStream | None = None
 
         # Callbacks for real-time data
-        self.data_callbacks: List[Callable] = []
+        self.data_callbacks: list[Callable] = []
 
         # Connection status
         self.connected = False
@@ -191,9 +189,9 @@ class AlpacaClient:
 
     async def connect_data_stream(
         self,
-        symbols: List[str],
-        on_bar: Optional[Callable] = None,
-        on_quote: Optional[Callable] = None,
+        symbols: list[str],
+        on_bar: Callable | None = None,
+        on_quote: Callable | None = None,
     ):
         """
         Subscribe to real-time market data for given symbols.
@@ -256,8 +254,8 @@ class AlpacaClient:
         self,
         symbol: str,
         timeframe: str = "1Day",
-        start: Optional[str] = None,
-        end: Optional[str] = None,
+        start: str | None = None,
+        end: str | None = None,
         limit: int = 1000,
     ) -> pd.DataFrame:
         """
@@ -364,7 +362,7 @@ class AlpacaClient:
         side: str,
         order_type: str = "market",
         time_in_force: str = "gtc",
-        limit_price: Optional[float] = None,
+        limit_price: float | None = None,
     ) -> OrderResult:
         """
         Place an order and return the submitted order object.
@@ -383,7 +381,7 @@ class AlpacaClient:
         """
         start_time = time.time()
         structured_logger = get_structured_logger(__name__)
-        
+
         with trace_span(
             "alpaca_submit_order",
             {
@@ -489,7 +487,7 @@ class AlpacaClient:
             except Exception as e:
                 # Calculate error timing
                 error_duration = time.time() - start_time
-                
+
                 # Record error in Alpaca metrics
                 record_alpaca_request(
                     endpoint="/v2/orders",
@@ -497,12 +495,12 @@ class AlpacaClient:
                     status_code=500,  # Assume server error for exceptions
                     duration_seconds=error_duration
                 )
-                
+
                 # Update span with error info
                 span.set_attribute("error", True)
                 span.set_attribute("error.type", type(e).__name__)
                 span.set_attribute("error.message", str(e))
-                
+
                 # Log structured error event
                 structured_logger.log_order_event(
                     event="order_submit_failed",
@@ -537,7 +535,7 @@ class AlpacaClient:
         """
         start_time = time.time()
         structured_logger = get_structured_logger(__name__)
-        
+
         with trace_span(
             "alpaca_cancel_order",
             {
@@ -584,7 +582,7 @@ class AlpacaClient:
             except Exception as e:
                 # Calculate error timing
                 error_duration = time.time() - start_time
-                
+
                 # Record error in Alpaca metrics
                 record_alpaca_request(
                     endpoint="/v2/orders/{id}",
@@ -592,13 +590,13 @@ class AlpacaClient:
                     status_code=500,  # Assume server error for exceptions
                     duration_seconds=error_duration
                 )
-                
+
                 # Update span with error info
                 span.set_attribute("error", True)
                 span.set_attribute("error.type", type(e).__name__)
                 span.set_attribute("error.message", str(e))
                 span.set_attribute("alpaca.cancelled", False)
-                
+
                 # Log structured error event
                 structured_logger.log_order_event(
                     event="order_cancel_failed",
@@ -609,7 +607,7 @@ class AlpacaClient:
                 self.logger.error("Failed to cancel order", order_id=order_id, error=str(e))
                 return False
 
-    def get_account_status(self) -> Dict[str, Any]:
+    def get_account_status(self) -> dict[str, Any]:
         """
         Retrieve current account balance, equity, and open positions.
 
@@ -644,7 +642,7 @@ class AlpacaClient:
                 "portfolio_value": float(account.portfolio_value),
                 "day_trade_count": int(account.daytrade_count),
                 "positions": position_data,
-                "timestamp": datetime.now(timezone.utc),
+                "timestamp": datetime.now(UTC),
             }
 
             self.logger.info(
@@ -660,7 +658,7 @@ class AlpacaClient:
             self.logger.error("Failed to get account status", error=str(e))
             raise
 
-    def get_recent_orders(self, limit: int = 50) -> List[Dict[str, Any]]:
+    def get_recent_orders(self, limit: int = 50) -> list[dict[str, Any]]:
         """
         Get recent orders.
 
@@ -708,7 +706,7 @@ class AlpacaClient:
             self.logger.error("Failed to get recent orders", error=str(e))
             raise
 
-    def get_current_price(self, symbol: str) -> Optional[float]:
+    def get_current_price(self, symbol: str) -> float | None:
         """
         Get current price for a symbol.
 

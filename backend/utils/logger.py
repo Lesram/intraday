@@ -3,12 +3,10 @@ Logging configuration and utilities for the Algorithmic Trading Platform.
 Provides structured logging with audit trail capabilities.
 """
 
-import json
+from datetime import UTC, datetime
 import logging
-import sys
-from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, Optional
+import sys
 
 import structlog
 from structlog import get_logger
@@ -57,7 +55,7 @@ class AuditLogger:
         """Log info level event with structured data."""
         event = {
             "event_type": event_type,
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             **kwargs,
         }
         self.logger.info(f"Event: {event_type}", **event)
@@ -66,7 +64,7 @@ class AuditLogger:
         """Log warning level event with structured data."""
         event = {
             "event_type": event_type,
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             **kwargs,
         }
         self.logger.warning(f"Event: {event_type}", **event)
@@ -75,7 +73,7 @@ class AuditLogger:
         """Log error level event with structured data."""
         event = {
             "event_type": event_type,
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             **kwargs,
         }
         self.logger.error(f"Event: {event_type}", **event)
@@ -88,11 +86,11 @@ class AuditLogger:
         quantity: float,
         price: float,
         order_id: str,
-        timestamp: Optional[datetime] = None,
+        timestamp: datetime | None = None,
     ) -> None:
         """Log trade execution for audit trail."""
         if timestamp is None:
-            timestamp = datetime.now(timezone.utc)
+            timestamp = datetime.now(UTC)
 
         event = {
             "event_type": "trade_execution",
@@ -113,16 +111,16 @@ class AuditLogger:
         event_type: str,
         description: str,
         severity: str = "INFO",
-        data: Optional[Dict] = None,
+        data: dict | None = None,
     ) -> None:
         """Log risk management events."""
         event = {
             "event_type": f"risk_{event_type}",
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "description": description,
             "severity": severity,
             "data": data or {},
-            "event_id": f"risk_{int(datetime.now(timezone.utc).timestamp())}",
+            "event_id": f"risk_{int(datetime.now(UTC).timestamp())}",
         }
 
         if severity.upper() == "ERROR":
@@ -137,19 +135,19 @@ class AuditLogger:
         strategy: str,
         symbol: str,
         signal: str,
-        confidence: Optional[float] = None,
-        data: Optional[Dict] = None,
+        confidence: float | None = None,
+        data: dict | None = None,
     ) -> None:
         """Log trading strategy signals."""
         event = {
             "event_type": "strategy_signal",
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "strategy": strategy,
             "symbol": symbol,
             "signal": signal,
             "confidence": confidence,
             "data": data or {},
-            "event_id": f"signal_{strategy}_{int(datetime.now(timezone.utc).timestamp())}",
+            "event_id": f"signal_{strategy}_{int(datetime.now(UTC).timestamp())}",
         }
 
         self.logger.info("Strategy signal", **event)
@@ -159,19 +157,19 @@ class AuditLogger:
         model_name: str,
         symbol: str,
         prediction: float,
-        confidence: Optional[float] = None,
-        features: Optional[Dict] = None,
+        confidence: float | None = None,
+        features: dict | None = None,
     ) -> None:
         """Log ML model predictions."""
         event = {
             "event_type": "model_prediction",
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "model_name": model_name,
             "symbol": symbol,
             "prediction": prediction,
             "confidence": confidence,
             "features": features or {},
-            "event_id": f"pred_{model_name}_{int(datetime.now(timezone.utc).timestamp())}",
+            "event_id": f"pred_{model_name}_{int(datetime.now(UTC).timestamp())}",
         }
 
         self.logger.info("Model prediction", **event)
@@ -181,16 +179,16 @@ class AuditLogger:
         event_type: str,
         description: str,
         severity: str = "INFO",
-        data: Optional[Dict] = None,
+        data: dict | None = None,
     ) -> None:
         """Log general system events."""
         event = {
             "event_type": f"system_{event_type}",
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "description": description,
             "severity": severity,
             "data": data or {},
-            "event_id": f"sys_{int(datetime.now(timezone.utc).timestamp())}",
+            "event_id": f"sys_{int(datetime.now(UTC).timestamp())}",
         }
 
         if severity.upper() == "ERROR":
@@ -202,7 +200,7 @@ class AuditLogger:
 
 
 def setup_logging(
-    log_level: str = "INFO", log_file: Optional[str] = None
+    log_level: str = "INFO", log_file: str | None = None
 ) -> logging.Logger:
     """Setup application logging configuration."""
 
@@ -242,14 +240,14 @@ class PerformanceLogger:
         self.logger = get_structured_logger("performance")
 
     def log_latency(
-        self, operation: str, latency_ms: float, context: Optional[Dict] = None
+        self, operation: str, latency_ms: float, context: dict | None = None
     ) -> None:
         """Log operation latency metrics."""
         self.logger.info(
             "Operation latency",
             operation=operation,
             latency_ms=latency_ms,
-            timestamp=datetime.now(timezone.utc).isoformat(),
+            timestamp=datetime.now(UTC).isoformat(),
             context=context or {},
         )
 
@@ -258,7 +256,7 @@ class PerformanceLogger:
         operation: str,
         count: int,
         time_window_sec: float,
-        context: Optional[Dict] = None,
+        context: dict | None = None,
     ) -> None:
         """Log throughput metrics."""
         throughput = count / time_window_sec if time_window_sec > 0 else 0
@@ -269,19 +267,19 @@ class PerformanceLogger:
             count=count,
             time_window_sec=time_window_sec,
             throughput_per_sec=throughput,
-            timestamp=datetime.now(timezone.utc).isoformat(),
+            timestamp=datetime.now(UTC).isoformat(),
             context=context or {},
         )
 
     def log_resource_usage(
-        self, cpu_percent: float, memory_mb: float, context: Optional[Dict] = None
+        self, cpu_percent: float, memory_mb: float, context: dict | None = None
     ) -> None:
         """Log resource usage metrics."""
         self.logger.info(
             "Resource usage",
             cpu_percent=cpu_percent,
             memory_mb=memory_mb,
-            timestamp=datetime.now(timezone.utc).isoformat(),
+            timestamp=datetime.now(UTC).isoformat(),
             context=context or {},
         )
 

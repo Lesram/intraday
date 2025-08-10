@@ -1,0 +1,85 @@
+# OpenTelemetry Collector Configuration
+# BRANCH 2.12 - Deploy Readiness
+
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+  prometheus:
+    config:
+      scrape_configs:
+        - job_name: 'algotrading-api'
+          static_configs:
+            - targets: ['api:8000']
+          scrape_interval: 30s
+          metrics_path: /metrics
+
+processors:
+  batch:
+    timeout: 5s
+    send_batch_size: 1024
+
+  # Add resource attributes
+  resource:
+    attributes:
+      - key: service.name
+        value: algotrading-api
+        action: upsert
+      - key: service.version
+        value: 1.0.0
+        action: upsert
+      - key: deployment.environment
+        value: development
+        action: upsert
+
+  # Memory limiter to prevent OOM
+  memory_limiter:
+    limit_mib: 512
+    spike_limit_mib: 128
+
+exporters:
+  # Prometheus exporter
+  prometheus:
+    endpoint: "0.0.0.0:8889"
+    namespace: algotrading
+    const_labels:
+      service: algotrading-api
+
+  # OTLP exporter (for external observability platforms)
+  otlp:
+    endpoint: http://jaeger:4317
+    tls:
+      insecure: true
+
+  # Logging exporter for debugging
+  logging:
+    loglevel: info
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, resource, batch]
+      exporters: [otlp, logging]
+
+    metrics:
+      receivers: [otlp, prometheus]
+      processors: [memory_limiter, resource, batch]
+      exporters: [prometheus, logging]
+
+    logs:
+      receivers: [otlp]
+      processors: [memory_limiter, resource, batch]
+      exporters: [logging]
+
+  extensions: []
+
+  telemetry:
+    logs:
+      level: info
+    metrics:
+      address: 0.0.0.0:8888

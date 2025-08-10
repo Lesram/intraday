@@ -1,0 +1,26 @@
+# Production resource overrides
+# BRANCH 2.12 - Deploy Readiness
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: algotrading-api
+spec:
+  template:
+    spec:
+      containers:
+      - name: api
+        resources:
+          requests:
+            memory: "1Gi"
+            cpu: "500m"
+          limits:
+            memory: "2Gi"
+            cpu: "1000m"
+        env:
+        - name: APP_ENVIRONMENT
+          value: "production"
+        - name: APP_LOG_LEVEL
+          value: "INFO"
+        - name: WORKER_COUNT
+          value: "2"

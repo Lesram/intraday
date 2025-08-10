@@ -3,9 +3,8 @@ Security utilities for JWT authentication, password hashing, and RBAC.
 Provides FastAPI dependencies for authentication and authorization.
 """
 
+from datetime import UTC, datetime, timedelta
 import secrets
-from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, List, Optional, Set
 
 import bcrypt
 from fastapi import Depends, HTTPException, Request, status
@@ -19,9 +18,9 @@ from backend.config import get_settings
 
 class UserClaims(BaseModel):
     """JWT claims structure for authenticated users."""
-    
+
     sub: str  # subject (username)
-    roles: List[str]
+    roles: list[str]
     iss: str  # issuer
     aud: str  # audience
     exp: int  # expiration timestamp
@@ -31,9 +30,9 @@ class UserClaims(BaseModel):
 
 class AuthenticatedUser(BaseModel):
     """Authenticated user information from JWT token."""
-    
+
     username: str
-    roles: List[str]
+    roles: list[str]
     token_id: str
 
 
@@ -79,9 +78,9 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 
 
 def create_access_token(
-    subject: str, 
-    roles: List[str], 
-    expires_minutes: Optional[int] = None
+    subject: str,
+    roles: list[str],
+    expires_minutes: int | None = None
 ) -> str:
     """
     Create a JWT access token with user claims.
@@ -98,13 +97,13 @@ def create_access_token(
         ValueError: If token creation fails
     """
     settings = get_settings()
-    
+
     if expires_minutes is None:
         expires_minutes = settings.security.jwt_expire_minutes
-    
-    now = datetime.now(timezone.utc)
+
+    now = datetime.now(UTC)
     expire = now + timedelta(minutes=expires_minutes)
-    
+
     claims = UserClaims(
         sub=subject,
         roles=roles,
@@ -114,11 +113,11 @@ def create_access_token(
         iat=int(now.timestamp()),
         jti=secrets.token_urlsafe(16)  # Unique token ID
     )
-    
+
     try:
         encoded_jwt = jwt.encode(
-            claims.model_dump(), 
-            settings.security.jwt_secret_key, 
+            claims.model_dump(),
+            settings.security.jwt_secret_key,
             algorithm=settings.security.jwt_algorithm
         )
         return encoded_jwt
@@ -140,25 +139,25 @@ def verify_token(token: str) -> UserClaims:
         HTTPException: If token is invalid, expired, or malformed
     """
     settings = get_settings()
-    
+
     try:
         payload = jwt.decode(
-            token, 
-            settings.security.jwt_secret_key, 
+            token,
+            settings.security.jwt_secret_key,
             algorithms=[settings.security.jwt_algorithm],
             issuer=settings.security.jwt_issuer,
             audience=settings.security.jwt_audience
         )
-        
+
         # Validate required claims
         if not payload.get("sub"):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid token: missing subject"
             )
-        
+
         return UserClaims(**payload)
-        
+
     except JWTError as e:
         if "expired" in str(e).lower():
             raise HTTPException(
@@ -180,7 +179,7 @@ def verify_token(token: str) -> UserClaims:
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail=f"Invalid token: {str(e)}"
             )
-    except Exception as e:
+    except Exception:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Could not validate credentials"
@@ -198,18 +197,18 @@ def verify_api_key(api_key: str) -> bool:
         True if API key is valid, False otherwise
     """
     settings = get_settings()
-    
+
     if not settings.api_keys:
         return False
-    
+
     # Use constant-time comparison to prevent timing attacks
     return any(secrets.compare_digest(api_key, valid_key) for valid_key in settings.api_keys)
 
 
 async def get_current_user(
     request: Request,
-    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security_scheme)
-) -> Optional[AuthenticatedUser]:
+    credentials: HTTPAuthorizationCredentials | None = Depends(security_scheme)
+) -> AuthenticatedUser | None:
     """
     FastAPI dependency to extract current user from JWT token or API key.
     
@@ -224,7 +223,7 @@ async def get_current_user(
         HTTPException: If token is invalid
     """
     settings = get_settings()
-    
+
     # In dev mode, allow bypass
     if settings.app.dev_mode:
         # Check for dev bypass header
@@ -234,7 +233,7 @@ async def get_current_user(
                 roles=["admin", "trader"],
                 token_id="dev-bypass"
             )
-    
+
     # Try API key authentication first (X-API-Key header)
     api_key = request.headers.get("X-API-Key")
     if api_key and verify_api_key(api_key):
@@ -243,7 +242,7 @@ async def get_current_user(
             roles=["trader", "api"],  # API keys get trader permissions
             token_id="api-key"
         )
-    
+
     # Try JWT authentication
     if credentials and credentials.credentials:
         claims = verify_token(credentials.credentials)
@@ -252,12 +251,12 @@ async def get_current_user(
             roles=claims.roles,
             token_id=claims.jti
         )
-    
+
     return None
 
 
 async def get_authenticated_user(
-    current_user: Optional[AuthenticatedUser] = Depends(get_current_user)
+    current_user: AuthenticatedUser | None = Depends(get_current_user)
 ) -> AuthenticatedUser:
     """
     FastAPI dependency that requires authentication.
@@ -277,7 +276,7 @@ async def get_authenticated_user(
             detail="Authentication required",
             headers={"WWW-Authenticate": "Bearer"}
         )
-    
+
     return current_user
 
 
@@ -301,15 +300,15 @@ def require_roles(*required_roles: str):
     ) -> AuthenticatedUser:
         user_roles = set(current_user.roles)
         required_roles_set = set(required_roles)
-        
+
         if not required_roles_set.intersection(user_roles):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=f"Insufficient permissions. Required roles: {', '.join(required_roles)}"
             )
-        
+
         return current_user
-    
+
     return check_roles
 
 

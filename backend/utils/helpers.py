@@ -3,10 +3,10 @@ Helper utilities for the Algorithmic Trading Platform.
 Contains common mathematical, financial, and utility functions.
 """
 
+from datetime import datetime
 import hashlib
+from typing import Union
 import uuid
-from datetime import datetime, timezone
-from typing import List, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -30,11 +30,10 @@ def calculate_returns(
             return np.log(prices / prices.shift(1))
         else:
             return prices.pct_change()
+    elif method == "log":
+        return np.log(prices[1:] / prices[:-1])
     else:
-        if method == "log":
-            return np.log(prices[1:] / prices[:-1])
-        else:
-            return np.diff(prices) / prices[:-1]
+        return np.diff(prices) / prices[:-1]
 
 
 def calculate_sharpe_ratio(
@@ -203,7 +202,7 @@ def hash_string(text: str) -> str:
 
 
 def is_market_hours(
-    dt: Optional[datetime] = None, timezone_name: str = "America/New_York"
+    dt: datetime | None = None, timezone_name: str = "America/New_York"
 ) -> bool:
     """
     Check if given datetime is during market hours.
@@ -269,7 +268,7 @@ def exponential_moving_average(
 
 def bollinger_bands(
     prices: Union[pd.Series, np.ndarray], period: int = 20, std_dev: float = 2.0
-) -> Tuple:
+) -> tuple:
     """
     Calculate Bollinger Bands.
 
@@ -339,7 +338,7 @@ def format_currency(amount: float, currency: str = "USD") -> str:
         return f"{amount:,.2f} {currency}"
 
 
-def time_to_market_open() -> Optional[int]:
+def time_to_market_open() -> int | None:
     """
     Calculate seconds until next market open.
 

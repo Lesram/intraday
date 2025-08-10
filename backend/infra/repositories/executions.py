@@ -2,13 +2,13 @@
 Executions repository - tracks order fills and trades.
 Implements async CRUD operations with proper error handling.
 """
-import logging
-import uuid
 from datetime import datetime
 from decimal import Decimal
-from typing import Any, Dict, Optional
+import logging
+from typing import Any
+import uuid
 
-from sqlalchemy import select, and_
+from sqlalchemy import and_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -29,7 +29,7 @@ class DuplicateExecutionError(Exception):
 
 class ExecutionsRepo:
     """Repository for execution operations."""
-    
+
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
 
@@ -43,7 +43,7 @@ class ExecutionsRepo:
         price: Decimal,
         execution_id: str,  # Broker's execution ID
         timestamp: datetime | None = None,
-        attributes: Dict[str, Any] | None = None
+        attributes: dict[str, Any] | None = None
     ) -> Execution:
         """
         Create a new execution record.
@@ -74,11 +74,11 @@ class ExecutionsRepo:
             timestamp=timestamp or datetime.utcnow(),
             attributes=attributes or {}
         )
-        
+
         try:
             self.session.add(new_execution)
             await self.session.flush()  # Get the ID without committing
-            
+
             logger.info(
                 "New execution created",
                 extra={
@@ -91,9 +91,9 @@ class ExecutionsRepo:
                     "notional": str(qty * price)
                 }
             )
-            
+
             return new_execution
-            
+
         except IntegrityError as e:
             await self.session.rollback()
             if "execution_id" in str(e):
@@ -105,7 +105,7 @@ class ExecutionsRepo:
                     }
                 )
                 raise DuplicateExecutionError(f"Execution {execution_id} already exists") from e
-            
+
             logger.error(
                 "Failed to create execution",
                 extra={
@@ -126,7 +126,7 @@ class ExecutionsRepo:
         price: Decimal,
         execution_id: str,
         timestamp: datetime | None = None,
-        attributes: Dict[str, Any] | None = None
+        attributes: dict[str, Any] | None = None
     ) -> Execution:
         """
         Create execution with idempotency protection.
@@ -151,7 +151,7 @@ class ExecutionsRepo:
         stmt = select(Execution).where(Execution.execution_id == execution_id)
         result = await self.session.execute(stmt)
         existing_execution = result.scalar_one_or_none()
-        
+
         if existing_execution:
             logger.debug(
                 "Execution already exists",
@@ -164,7 +164,7 @@ class ExecutionsRepo:
                 }
             )
             return existing_execution
-        
+
         # Create new execution
         return await self.create_execution(
             order_id=order_id,
@@ -243,13 +243,13 @@ class ExecutionsRepo:
             List of executions
         """
         conditions = [Execution.symbol == symbol]
-        
+
         if start_time:
             conditions.append(Execution.timestamp >= start_time)
-            
+
         if end_time:
             conditions.append(Execution.timestamp <= end_time)
-        
+
         stmt = (
             select(Execution)
             .where(and_(*conditions))
@@ -283,16 +283,16 @@ class ExecutionsRepo:
             VWAP if executions exist, None otherwise
         """
         executions = await self.get_by_order_id(order_id)
-        
+
         if not executions:
             return None
-        
+
         total_notional = sum(execution.qty * execution.price for execution in executions)
         total_qty = sum(execution.qty for execution in executions)
-        
+
         if total_qty == 0:
             return None
-            
+
         return total_notional / total_qty
 
     async def get_recent_executions(
@@ -311,15 +311,15 @@ class ExecutionsRepo:
             List of recent executions
         """
         stmt = select(Execution)
-        
+
         if symbol:
             stmt = stmt.where(Execution.symbol == symbol)
-        
+
         stmt = (
             stmt.order_by(Execution.timestamp.desc())
             .limit(limit)
         )
-        
+
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
 
@@ -329,7 +329,7 @@ class ExecutionsRepo:
         side: str,
         qty: Decimal,
         price: Decimal
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Calculate PnL impact of a potential execution.
         
@@ -344,11 +344,11 @@ class ExecutionsRepo:
         """
         # Get recent executions for the symbol to calculate current position
         recent_executions = await self.get_by_symbol(symbol, limit=1000)
-        
+
         # Calculate current position
         position_qty = Decimal('0')
         total_cost = Decimal('0')
-        
+
         for execution in recent_executions:
             if execution.side == 'buy':
                 position_qty += execution.qty
@@ -356,12 +356,12 @@ class ExecutionsRepo:
             else:  # sell
                 position_qty -= execution.qty
                 total_cost -= execution.qty * execution.price
-        
+
         # Calculate current average cost
         avg_cost = None
         if position_qty != 0:
             avg_cost = abs(total_cost / position_qty)
-        
+
         # Calculate impact of new execution
         new_notional = qty * price
         if side == 'buy':
@@ -370,23 +370,23 @@ class ExecutionsRepo:
         else:  # sell
             new_position_qty = position_qty - qty
             new_total_cost = total_cost - new_notional
-        
+
         # Calculate new average cost
         new_avg_cost = None
         if new_position_qty != 0:
             new_avg_cost = abs(new_total_cost / new_position_qty)
-        
+
         # Calculate unrealized PnL change
         unrealized_pnl_change = None
         if avg_cost and new_avg_cost:
             current_market_value = position_qty * price
             current_unrealized = current_market_value - abs(total_cost)
-            
+
             new_market_value = new_position_qty * price
             new_unrealized = new_market_value - abs(new_total_cost)
-            
+
             unrealized_pnl_change = new_unrealized - current_unrealized
-        
+
         return {
             "current_position_qty": position_qty,
             "current_avg_cost": avg_cost,

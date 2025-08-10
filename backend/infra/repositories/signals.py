@@ -2,13 +2,13 @@
 Signals repository - tracks trading signals and model predictions.
 Implements async CRUD operations with proper error handling.
 """
-import logging
-import uuid
 from datetime import datetime
 from decimal import Decimal
-from typing import Any, Dict, Optional
+import logging
+from typing import Any
+import uuid
 
-from sqlalchemy import select, update, and_, or_, desc, func
+from sqlalchemy import and_, or_, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -29,7 +29,7 @@ class DuplicateSignalError(Exception):
 
 class SignalsRepo:
     """Repository for signal operations."""
-    
+
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
 
@@ -45,7 +45,7 @@ class SignalsRepo:
         target_price: Decimal | None = None,
         stop_loss: Decimal | None = None,
         expiry: datetime | None = None,
-        attributes: Dict[str, Any] | None = None
+        attributes: dict[str, Any] | None = None
     ) -> Signal:
         """
         Create a new trading signal.
@@ -80,11 +80,11 @@ class SignalsRepo:
             expiry=expiry,
             attributes=attributes or {}
         )
-        
+
         try:
             self.session.add(new_signal)
             await self.session.flush()  # Get the ID without committing
-            
+
             logger.info(
                 "New signal created",
                 extra={
@@ -97,9 +97,9 @@ class SignalsRepo:
                     "confidence": str(confidence)
                 }
             )
-            
+
             return new_signal
-            
+
         except IntegrityError as e:
             await self.session.rollback()
             logger.error(
@@ -145,7 +145,7 @@ class SignalsRepo:
             List of active signals
         """
         conditions = []
-        
+
         # Only include active signals (not expired)
         current_time = datetime.utcnow()
         conditions.append(
@@ -154,22 +154,22 @@ class SignalsRepo:
                 Signal.expiry > current_time
             )
         )
-        
+
         if symbol:
             conditions.append(Signal.symbol == symbol)
-            
+
         if model_name:
             conditions.append(Signal.model_name == model_name)
-            
+
         if signal_type:
             conditions.append(Signal.signal_type == signal_type)
-        
+
         stmt = (
             select(Signal)
             .where(and_(*conditions))
             .order_by(Signal.created_at.desc())
         )
-        
+
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
 
@@ -199,7 +199,7 @@ class SignalsRepo:
             .order_by(Signal.created_at.desc())
             .limit(1)
         )
-        
+
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
 
@@ -226,19 +226,19 @@ class SignalsRepo:
             Signal.created_at >= start_time,
             Signal.created_at <= end_time
         ]
-        
+
         if symbol:
             conditions.append(Signal.symbol == symbol)
-            
+
         if model_name:
             conditions.append(Signal.model_name == model_name)
-        
+
         stmt = (
             select(Signal)
             .where(and_(*conditions))
             .order_by(Signal.created_at.asc())
         )
-        
+
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
 
@@ -260,7 +260,7 @@ class SignalsRepo:
             List of high-confidence signals
         """
         current_time = datetime.utcnow()
-        
+
         stmt = (
             select(Signal)
             .where(
@@ -279,7 +279,7 @@ class SignalsRepo:
             )
             .limit(limit)
         )
-        
+
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
 
@@ -302,13 +302,13 @@ class SignalsRepo:
             )
             .returning(Signal.id)
         )
-        
+
         result = await self.session.execute(stmt)
         updated_id = result.scalar_one_or_none()
-        
+
         if not updated_id:
             raise SignalNotFoundError(f"Signal {signal_id} not found")
-        
+
         logger.info(
             "Signal expired",
             extra={"signal_id": str(signal_id)}
@@ -325,7 +325,7 @@ class SignalsRepo:
             Number of signals expired
         """
         current_time = datetime.utcnow()
-        
+
         stmt = (
             update(Signal)
             .where(
@@ -342,10 +342,10 @@ class SignalsRepo:
                 updated_at=current_time
             )
         )
-        
+
         result = await self.session.execute(stmt)
         expired_count = result.rowcount or 0
-        
+
         logger.info(
             "Signals expired by model",
             extra={
@@ -353,7 +353,7 @@ class SignalsRepo:
                 "expired_count": expired_count
             }
         )
-        
+
         return expired_count
 
     async def get_signal_performance_metrics(
@@ -361,7 +361,7 @@ class SignalsRepo:
         model_name: str,
         start_time: datetime | None = None,
         end_time: datetime | None = None
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Calculate performance metrics for signals from a specific model.
         
@@ -374,23 +374,23 @@ class SignalsRepo:
             Dictionary with performance metrics
         """
         conditions = [Signal.model_name == model_name]
-        
+
         if start_time:
             conditions.append(Signal.created_at >= start_time)
-            
+
         if end_time:
             conditions.append(Signal.created_at <= end_time)
-        
+
         # Get all signals for the model
         stmt = (
             select(Signal)
             .where(and_(*conditions))
             .order_by(Signal.created_at.asc())
         )
-        
+
         result = await self.session.execute(stmt)
         signals = list(result.scalars().all())
-        
+
         if not signals:
             return {
                 "model_name": model_name,
@@ -401,29 +401,29 @@ class SignalsRepo:
                 "directions": {},
                 "active_signals": 0
             }
-        
+
         # Calculate metrics
         total_signals = len(signals)
         avg_confidence = sum(s.confidence for s in signals) / total_signals
         avg_strength = sum(s.strength for s in signals) / total_signals
-        
+
         # Count signal types
         signal_types = {}
         for signal in signals:
             signal_types[signal.signal_type] = signal_types.get(signal.signal_type, 0) + 1
-        
+
         # Count directions
         directions = {}
         for signal in signals:
             directions[signal.direction] = directions.get(signal.direction, 0) + 1
-        
+
         # Count active signals
         current_time = datetime.utcnow()
         active_signals = sum(
             1 for s in signals
             if s.expiry is None or s.expiry > current_time
         )
-        
+
         return {
             "model_name": model_name,
             "total_signals": total_signals,
@@ -445,7 +445,7 @@ class SignalsRepo:
         symbol: str,
         min_models: int = 2,
         max_age_hours: int = 24
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Get consensus signals for a symbol from multiple models.
         
@@ -459,7 +459,7 @@ class SignalsRepo:
         """
         from datetime import timedelta
         cutoff_time = datetime.utcnow() - timedelta(hours=max_age_hours)
-        
+
         # Get recent active signals for the symbol
         conditions = [
             Signal.symbol == symbol,
@@ -469,16 +469,16 @@ class SignalsRepo:
                 Signal.expiry > datetime.utcnow()
             )
         ]
-        
+
         stmt = (
             select(Signal)
             .where(and_(*conditions))
             .order_by(Signal.created_at.desc())
         )
-        
+
         result = await self.session.execute(stmt)
         signals = list(result.scalars().all())
-        
+
         if len(signals) < min_models:
             return {
                 "symbol": symbol,
@@ -487,17 +487,15 @@ class SignalsRepo:
                 "min_models_required": min_models,
                 "signals": []
             }
-        
+
         # Group by model name and get latest signal from each
         model_signals = {}
         for signal in signals:
-            if signal.model_name not in model_signals:
+            if signal.model_name not in model_signals or signal.created_at > model_signals[signal.model_name].created_at:
                 model_signals[signal.model_name] = signal
-            elif signal.created_at > model_signals[signal.model_name].created_at:
-                model_signals[signal.model_name] = signal
-        
+
         latest_signals = list(model_signals.values())
-        
+
         if len(latest_signals) < min_models:
             return {
                 "symbol": symbol,
@@ -506,26 +504,26 @@ class SignalsRepo:
                 "min_models_required": min_models,
                 "signals": []
             }
-        
+
         # Calculate consensus metrics
         directions = [s.direction for s in latest_signals]
         signal_types = [s.signal_type for s in latest_signals]
-        
+
         # Find most common direction and signal type
         direction_counts = {d: directions.count(d) for d in set(directions)}
         type_counts = {t: signal_types.count(t) for t in set(signal_types)}
-        
+
         consensus_direction = max(direction_counts, key=direction_counts.get)
         consensus_type = max(type_counts, key=type_counts.get)
-        
+
         # Calculate agreement percentages
         direction_agreement = direction_counts[consensus_direction] / len(latest_signals)
         type_agreement = type_counts[consensus_type] / len(latest_signals)
-        
+
         # Calculate average confidence and strength
         avg_confidence = sum(s.confidence for s in latest_signals) / len(latest_signals)
         avg_strength = sum(s.strength for s in latest_signals) / len(latest_signals)
-        
+
         # Determine consensus strength
         if direction_agreement >= 0.8 and type_agreement >= 0.8:
             consensus_strength = "strong"
@@ -533,7 +531,7 @@ class SignalsRepo:
             consensus_strength = "moderate"
         else:
             consensus_strength = "weak"
-        
+
         return {
             "symbol": symbol,
             "consensus": consensus_strength,

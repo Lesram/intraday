@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Quick test of the FastAPI application"""
 
-import uvicorn
 import logging
+
+import uvicorn
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)

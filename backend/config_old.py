@@ -4,16 +4,15 @@ Handles environment variables and application settings.
 """
 
 import os
-from typing import List, Optional
 
 from decouple import config
-from pydantic import Field, ConfigDict, field_validator
+from pydantic import ConfigDict, Field, field_validator
 from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
-    
+
     model_config = ConfigDict(env_file=".env", case_sensitive=False)
 
     # Alpaca Trading API Configuration
@@ -67,7 +66,7 @@ class Settings(BaseSettings):
     security_dev_mode: bool = config("SECURITY_DEV_MODE", default=True, cast=bool)
 
     # API Keys for Machine-to-Machine Authentication
-    api_keys: List[str] = Field(default_factory=list)
+    api_keys: list[str] = Field(default_factory=list)
 
     @field_validator("api_keys", mode="before")
     @classmethod
@@ -103,7 +102,7 @@ class Settings(BaseSettings):
     )
 
     # Trading Configuration
-    default_symbols: List[str] = Field(
+    default_symbols: list[str] = Field(
         default=[
             "AAPL",
             "MSFT",
@@ -138,7 +137,7 @@ class Settings(BaseSettings):
     bollinger_std: float = 2.0
 
     # Sentiment Analysis Configuration
-    subreddit_list: List[str] = [
+    subreddit_list: list[str] = [
         "StockMarket",
         "investing",
         "wallstreetbets",
@@ -157,15 +156,15 @@ class Settings(BaseSettings):
     enable_heavy_features: bool = config("ENABLE_HEAVY_FEATURES", default=True, cast=bool)
     max_rolling_window: int = config("MAX_ROLLING_WINDOW", default=252, cast=int)  # Trading days
     enable_autocorr_features: bool = config("ENABLE_AUTOCORR_FEATURES", default=True, cast=bool)
-    
-    # Risk management configuration  
+
+    # Risk management configuration
     allow_mock_fallbacks: bool = config("ALLOW_MOCK_FALLBACKS", default=True, cast=bool)
     mock_fallback_warning: bool = config("MOCK_FALLBACK_WARNING", default=True, cast=bool)
 
     # Strategy scaling configuration (make heuristic scaling traceable)
     volatility_scale_factor: float = config("VOLATILITY_SCALE_FACTOR", default=10.0, cast=float)
     momentum_scale_factor: float = config("MOMENTUM_SCALE_FACTOR", default=100.0, cast=float)
-    
+
     # Rate limiting configuration
     websocket_rate_limit_per_minute: int = config("WS_RATE_LIMIT_PER_MINUTE", default=60, cast=int)
     api_rate_limit_per_minute: int = config("API_RATE_LIMIT_PER_MINUTE", default=1000, cast=int)

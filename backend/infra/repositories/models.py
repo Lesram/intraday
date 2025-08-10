@@ -2,12 +2,12 @@
 Models repository - manages ML model registry and metadata.
 Implements async CRUD operations with proper error handling.
 """
-import logging
-import uuid
 from datetime import datetime
-from typing import Any, Dict, Optional
+import logging
+from typing import Any
+import uuid
 
-from sqlalchemy import select, update, and_, desc
+from sqlalchemy import and_, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -28,7 +28,7 @@ class DuplicateModelError(Exception):
 
 class ModelsRepo:
     """Repository for ML model registry operations."""
-    
+
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
 
@@ -39,9 +39,9 @@ class ModelsRepo:
         version: str,
         model_type: str,
         status: str = 'training',
-        metadata: Dict[str, Any] | None = None,
-        config: Dict[str, Any] | None = None,
-        performance_metrics: Dict[str, Any] | None = None
+        metadata: dict[str, Any] | None = None,
+        config: dict[str, Any] | None = None,
+        performance_metrics: dict[str, Any] | None = None
     ) -> ModelRegistry:
         """
         Register a new model version.
@@ -70,11 +70,11 @@ class ModelsRepo:
             config=config or {},
             performance_metrics=performance_metrics or {}
         )
-        
+
         try:
             self.session.add(new_model)
             await self.session.flush()  # Get the ID without committing
-            
+
             logger.info(
                 "Model registered",
                 extra={
@@ -85,9 +85,9 @@ class ModelsRepo:
                     "status": status
                 }
             )
-            
+
             return new_model
-            
+
         except IntegrityError as e:
             await self.session.rollback()
             if "name" in str(e) and "version" in str(e):
@@ -99,7 +99,7 @@ class ModelsRepo:
                     }
                 )
                 raise DuplicateModelError(f"Model {name} version {version} already exists") from e
-            
+
             logger.error(
                 "Failed to register model",
                 extra={
@@ -141,13 +141,13 @@ class ModelsRepo:
             )
             .returning(ModelRegistry.id)
         )
-        
+
         result = await self.session.execute(stmt)
         updated_id = result.scalar_one_or_none()
-        
+
         if not updated_id:
             raise ModelNotFoundError(f"Model {name} version {version} not found")
-        
+
         logger.info(
             "Model status updated",
             extra={
@@ -161,7 +161,7 @@ class ModelsRepo:
         self,
         name: str,
         version: str,
-        performance_metrics: Dict[str, Any]
+        performance_metrics: dict[str, Any]
     ) -> None:
         """
         Update model performance metrics.
@@ -184,16 +184,16 @@ class ModelsRepo:
                 )
             )
         )
-        
+
         result = await self.session.execute(stmt)
         current_metrics = result.scalar_one_or_none()
-        
+
         if current_metrics is None:
             raise ModelNotFoundError(f"Model {name} version {version} not found")
-        
+
         # Merge metrics
         merged_metrics = {**(current_metrics or {}), **performance_metrics}
-        
+
         # Update with merged metrics
         stmt = (
             update(ModelRegistry)
@@ -209,13 +209,13 @@ class ModelsRepo:
             )
             .returning(ModelRegistry.id)
         )
-        
+
         result = await self.session.execute(stmt)
         updated_id = result.scalar_one_or_none()
-        
+
         if not updated_id:
             raise ModelNotFoundError(f"Model {name} version {version} not found")
-        
+
         logger.info(
             "Model performance metrics updated",
             extra={
@@ -282,16 +282,16 @@ class ModelsRepo:
             List of model versions ordered by version descending
         """
         conditions = [ModelRegistry.name == name]
-        
+
         if status:
             conditions.append(ModelRegistry.status == status)
-        
+
         stmt = (
             select(ModelRegistry)
             .where(and_(*conditions))
             .order_by(ModelRegistry.version.desc())
         )
-        
+
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
 
@@ -307,7 +307,7 @@ class ModelsRepo:
             .where(ModelRegistry.status == 'production')
             .order_by(ModelRegistry.name.asc(), ModelRegistry.version.desc())
         )
-        
+
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
 
@@ -327,17 +327,17 @@ class ModelsRepo:
             Latest model version if found, None otherwise
         """
         conditions = [ModelRegistry.name == name]
-        
+
         if status:
             conditions.append(ModelRegistry.status == status)
-        
+
         stmt = (
             select(ModelRegistry)
             .where(and_(*conditions))
             .order_by(ModelRegistry.version.desc())
             .limit(1)
         )
-        
+
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
 
@@ -370,7 +370,7 @@ class ModelsRepo:
                 updated_at=datetime.utcnow()
             )
         )
-        
+
         # Promote the specified version
         stmt = (
             update(ModelRegistry)
@@ -386,13 +386,13 @@ class ModelsRepo:
             )
             .returning(ModelRegistry.id)
         )
-        
+
         result = await self.session.execute(stmt)
         promoted_id = result.scalar_one_or_none()
-        
+
         if not promoted_id:
             raise ModelNotFoundError(f"Model {name} version {version} not found")
-        
+
         logger.info(
             "Model promoted to production",
             extra={
@@ -430,13 +430,13 @@ class ModelsRepo:
             )
             .returning(ModelRegistry.id)
         )
-        
+
         result = await self.session.execute(stmt)
         deprecated_id = result.scalar_one_or_none()
-        
+
         if not deprecated_id:
             raise ModelNotFoundError(f"Model {name} version {version} not found")
-        
+
         logger.info(
             "Model deprecated",
             extra={
@@ -449,7 +449,7 @@ class ModelsRepo:
         self,
         name: str,
         metric_key: str
-    ) -> list[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         Compare performance metrics across versions of a model.
         
@@ -465,14 +465,14 @@ class ModelsRepo:
             .where(ModelRegistry.name == name)
             .order_by(ModelRegistry.version.desc())
         )
-        
+
         result = await self.session.execute(stmt)
         models = list(result.scalars().all())
-        
+
         comparisons = []
         for model in models:
             metric_value = model.performance_metrics.get(metric_key) if model.performance_metrics else None
-            
+
             comparisons.append({
                 "version": model.version,
                 "status": model.status,
@@ -480,10 +480,10 @@ class ModelsRepo:
                 "created_at": model.created_at,
                 "updated_at": model.updated_at
             })
-        
+
         return comparisons
 
-    async def get_model_registry_summary(self) -> Dict[str, Any]:
+    async def get_model_registry_summary(self) -> dict[str, Any]:
         """
         Get summary statistics of the model registry.
         
@@ -493,7 +493,7 @@ class ModelsRepo:
         stmt = select(ModelRegistry)
         result = await self.session.execute(stmt)
         all_models = list(result.scalars().all())
-        
+
         if not all_models:
             return {
                 "total_models": 0,
@@ -502,23 +502,23 @@ class ModelsRepo:
                 "type_counts": {},
                 "latest_registration": None
             }
-        
+
         # Count by status
         status_counts = {}
         for model in all_models:
             status_counts[model.status] = status_counts.get(model.status, 0) + 1
-        
+
         # Count by type
         type_counts = {}
         for model in all_models:
             type_counts[model.model_type] = type_counts.get(model.model_type, 0) + 1
-        
+
         # Unique model names
         unique_names = set(model.name for model in all_models)
-        
+
         # Latest registration
         latest_model = max(all_models, key=lambda m: m.created_at)
-        
+
         return {
             "total_models": len(all_models),
             "unique_model_names": len(unique_names),
@@ -546,7 +546,7 @@ class ModelsRepo:
         """
         from datetime import timedelta
         cutoff_date = datetime.utcnow() - timedelta(days=older_than_days)
-        
+
         # For safety, we'll just count for now rather than actually delete
         # In production, you might want to move to archive table first
         stmt = (
@@ -558,10 +558,10 @@ class ModelsRepo:
                 )
             )
         )
-        
+
         result = await self.session.execute(stmt)
         deprecated_models = list(result.scalars().all())
-        
+
         logger.info(
             "Deprecated models cleanup check",
             extra={
@@ -570,6 +570,6 @@ class ModelsRepo:
                 "older_than_days": older_than_days
             }
         )
-        
+
         # Return count of models that would be cleaned up
         return len(deprecated_models)

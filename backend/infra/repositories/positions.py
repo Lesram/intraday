@@ -2,13 +2,13 @@
 Positions repository - tracks current portfolio positions.
 Implements async CRUD operations with proper error handling.
 """
-import logging
-import uuid
 from datetime import datetime
 from decimal import Decimal
-from typing import Any, Dict, Optional
+import logging
+from typing import Any
+import uuid
 
-from sqlalchemy import select, update, and_
+from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -29,7 +29,7 @@ class DuplicatePositionError(Exception):
 
 class PositionsRepo:
     """Repository for position operations."""
-    
+
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
 
@@ -41,7 +41,7 @@ class PositionsRepo:
         avg_cost: Decimal,
         market_value: Decimal | None = None,
         unrealized_pnl: Decimal | None = None,
-        attributes: Dict[str, Any] | None = None
+        attributes: dict[str, Any] | None = None
     ) -> Position:
         """
         Create or update position record.
@@ -64,7 +64,7 @@ class PositionsRepo:
         stmt = select(Position).where(Position.symbol == symbol)
         result = await self.session.execute(stmt)
         existing_position = result.scalar_one_or_none()
-        
+
         if existing_position:
             # Update existing position
             update_values = {
@@ -72,28 +72,28 @@ class PositionsRepo:
                 "avg_cost": avg_cost,
                 "updated_at": datetime.utcnow()
             }
-            
+
             if market_value is not None:
                 update_values["market_value"] = market_value
-                
+
             if unrealized_pnl is not None:
                 update_values["unrealized_pnl"] = unrealized_pnl
-                
+
             if attributes:
                 # Merge attributes
                 merged_attrs = {**(existing_position.attributes or {}), **attributes}
                 update_values["attributes"] = merged_attrs
-            
+
             stmt = (
                 update(Position)
                 .where(Position.symbol == symbol)
                 .values(**update_values)
                 .returning(Position)
             )
-            
+
             result = await self.session.execute(stmt)
             updated_position = result.scalar_one()
-            
+
             logger.info(
                 "Position updated",
                 extra={
@@ -104,9 +104,9 @@ class PositionsRepo:
                     "unrealized_pnl": str(unrealized_pnl) if unrealized_pnl else None
                 }
             )
-            
+
             return updated_position
-        
+
         # Create new position
         new_position = Position(
             symbol=symbol,
@@ -116,11 +116,11 @@ class PositionsRepo:
             unrealized_pnl=unrealized_pnl,
             attributes=attributes or {}
         )
-        
+
         try:
             self.session.add(new_position)
             await self.session.flush()  # Get the ID without committing
-            
+
             logger.info(
                 "New position created",
                 extra={
@@ -131,9 +131,9 @@ class PositionsRepo:
                     "unrealized_pnl": str(unrealized_pnl) if unrealized_pnl else None
                 }
             )
-            
+
             return new_position
-            
+
         except IntegrityError as e:
             await self.session.rollback()
             if "symbol" in str(e):
@@ -150,7 +150,7 @@ class PositionsRepo:
                     unrealized_pnl=unrealized_pnl,
                     attributes=attributes
                 )
-            
+
             logger.error(
                 "Failed to create position",
                 extra={
@@ -188,13 +188,13 @@ class PositionsRepo:
             )
             .returning(Position.symbol)
         )
-        
+
         result = await self.session.execute(stmt)
         updated_symbol = result.scalar_one_or_none()
-        
+
         if not updated_symbol:
             raise PositionNotFoundError(f"Position {symbol} not found")
-        
+
         logger.debug(
             "Position market data updated",
             extra={
@@ -225,13 +225,13 @@ class PositionsRepo:
             )
             .returning(Position.symbol)
         )
-        
+
         result = await self.session.execute(stmt)
         updated_symbol = result.scalar_one_or_none()
-        
+
         if not updated_symbol:
             raise PositionNotFoundError(f"Position {symbol} not found")
-        
+
         logger.info(
             "Position closed",
             extra={"symbol": symbol}
@@ -276,12 +276,12 @@ class PositionsRepo:
             List of positions
         """
         stmt = select(Position)
-        
+
         if not include_zero_qty:
             stmt = stmt.where(Position.qty != 0)
-        
+
         stmt = stmt.order_by(Position.symbol.asc())
-        
+
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
 
@@ -315,7 +315,7 @@ class PositionsRepo:
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
 
-    async def get_portfolio_summary(self) -> Dict[str, Any]:
+    async def get_portfolio_summary(self) -> dict[str, Any]:
         """
         Calculate portfolio-level summary metrics.
         
@@ -323,7 +323,7 @@ class PositionsRepo:
             Dictionary with portfolio summary
         """
         positions = await self.get_all_positions()
-        
+
         if not positions:
             return {
                 "total_positions": 0,
@@ -333,24 +333,24 @@ class PositionsRepo:
                 "total_unrealized_pnl": Decimal('0'),
                 "total_cost_basis": Decimal('0')
             }
-        
+
         long_positions = [p for p in positions if p.qty > 0]
         short_positions = [p for p in positions if p.qty < 0]
-        
+
         total_market_value = sum(
-            p.market_value for p in positions 
+            p.market_value for p in positions
             if p.market_value is not None
         )
-        
+
         total_unrealized_pnl = sum(
-            p.unrealized_pnl for p in positions 
+            p.unrealized_pnl for p in positions
             if p.unrealized_pnl is not None
         )
-        
+
         total_cost_basis = sum(
             abs(p.qty * p.avg_cost) for p in positions
         )
-        
+
         return {
             "total_positions": len(positions),
             "long_positions": len(long_positions),
@@ -361,7 +361,7 @@ class PositionsRepo:
             "symbols": [p.symbol for p in positions]
         }
 
-    async def get_position_risk_metrics(self, symbol: str) -> Dict[str, Any] | None:
+    async def get_position_risk_metrics(self, symbol: str) -> dict[str, Any] | None:
         """
         Calculate risk metrics for a specific position.
         
@@ -372,27 +372,27 @@ class PositionsRepo:
             Dictionary with risk metrics if position exists, None otherwise
         """
         position = await self.get_by_symbol(symbol)
-        
+
         if not position:
             return None
-        
+
         # Calculate basic risk metrics
         notional_value = abs(position.qty * position.avg_cost)
-        
+
         # Position concentration (would need portfolio total for full calculation)
         portfolio_summary = await self.get_portfolio_summary()
         position_weight = None
         if portfolio_summary["total_cost_basis"] > 0:
             position_weight = notional_value / portfolio_summary["total_cost_basis"]
-        
+
         # Unrealized P&L percentage
         unrealized_pnl_pct = None
         if position.unrealized_pnl is not None and notional_value > 0:
             unrealized_pnl_pct = position.unrealized_pnl / notional_value
-        
+
         # Position direction
         direction = "long" if position.qty > 0 else "short" if position.qty < 0 else "flat"
-        
+
         return {
             "symbol": symbol,
             "direction": direction,
@@ -409,7 +409,7 @@ class PositionsRepo:
 
     async def batch_update_market_data(
         self,
-        updates: list[Dict[str, Any]]
+        updates: list[dict[str, Any]]
     ) -> int:
         """
         Batch update market data for multiple positions.
@@ -421,12 +421,12 @@ class PositionsRepo:
             Number of positions updated
         """
         updated_count = 0
-        
+
         for update in updates:
             symbol = update["symbol"]
             market_value = update["market_value"]
             unrealized_pnl = update["unrealized_pnl"]
-            
+
             try:
                 await self.update_market_data(
                     symbol=symbol,
@@ -440,7 +440,7 @@ class PositionsRepo:
                     extra={"symbol": symbol}
                 )
                 continue
-        
+
         logger.info(
             "Batch market data update completed",
             extra={
@@ -449,5 +449,5 @@ class PositionsRepo:
                 "failed_updates": len(updates) - updated_count
             }
         )
-        
+
         return updated_count

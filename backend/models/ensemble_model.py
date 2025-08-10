@@ -3,11 +3,10 @@ AI/ML Ensemble Modeling System
 Combines LSTM, XGBoost, and RandomForest for comprehensive price prediction
 """
 
-import asyncio
-import logging
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Tuple
+import logging
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -24,11 +23,11 @@ except ImportError as e:
     TENSORFLOW_AVAILABLE = False
 
 try:
+    import joblib
     from sklearn.ensemble import RandomForestRegressor
     from sklearn.metrics import mean_absolute_error, mean_squared_error
     from sklearn.model_selection import TimeSeriesSplit
     from sklearn.preprocessing import StandardScaler
-    import joblib
 
     SKLEARN_AVAILABLE = True
     JOBLIB_AVAILABLE = True
@@ -46,8 +45,45 @@ except ImportError as e:
     XGBOOST_AVAILABLE = False
 
 from ..config import get_settings
-from ..utils.helpers import calculate_sharpe_ratio
-from ..utils.logger import audit_logger, performance_logger
+from ..utils.logger import audit_logger
+
+# Import MLOps components with fallback for backward compatibility
+try:
+    from ..mlops import SchemaMismatchError, get_model_manager
+    MLOPS_AVAILABLE = True
+
+    # Try to import observability components
+    try:
+        from ..infra.logging import get_structured_logger
+        from ..infra.metrics import get_metrics_registry
+        mlops_logger = get_structured_logger("models.ensemble")
+        mlops_metrics = get_metrics_registry()
+    except ImportError:
+        mlops_logger = logging.getLogger("models.ensemble")
+        mlops_metrics = None
+
+except ImportError as e:
+    logging.warning(f"MLOps integration not available: {e}")
+    MLOPS_AVAILABLE = False
+    mlops_logger = None
+    mlops_metrics = None
+
+    # Create dummy exception class for consistent exception handling
+    class SchemaMismatchError(Exception):
+        def __init__(self, message):
+            super().__init__(message)
+            self.expected_schema = {}
+            self.received_schema = {}
+
+# Import feature pipeline components (Branch 2.9)
+try:
+    from ..features.alignment import align_features_target
+    from ..features.types import FeatureFrame, FeatureSchema, SchemaValidationError
+    from ..features.validators import guard_no_lookahead
+    FEATURE_PIPELINE_AVAILABLE = True
+except ImportError as e:
+    logging.warning(f"Feature pipeline components not available: {e}")
+    FEATURE_PIPELINE_AVAILABLE = False
 
 
 @dataclass
@@ -56,11 +92,11 @@ class ModelPrediction:
 
     symbol: str
     timestamp: datetime
-    predictions: Dict[str, float]  # model_name -> prediction
-    confidence_scores: Dict[str, float]  # model_name -> confidence
+    predictions: dict[str, float]  # model_name -> prediction
+    confidence_scores: dict[str, float]  # model_name -> confidence
     ensemble_prediction: float
     ensemble_confidence: float
-    metadata: Dict[str, Any]
+    metadata: dict[str, Any]
 
 
 @dataclass
@@ -78,9 +114,9 @@ class ModelPerformance:
 class LSTMModel:
     """LSTM Neural Network for time series prediction with enhanced training controls"""
 
-    def __init__(self, sequence_length: int = 60, features: int = 1, 
+    def __init__(self, sequence_length: int = 60, features: int = 1,
                  max_epochs: int = 50, early_stopping_patience: int = 10,
-                 random_seed: Optional[int] = 42):
+                 random_seed: int | None = 42):
         self.sequence_length = sequence_length
         self.features = features
         self.max_epochs = max_epochs
@@ -90,7 +126,7 @@ class LSTMModel:
         self.scaler = None
         self.is_trained = False
         self.training_history = None
-        
+
         # Set random seeds for reproducibility
         if self.random_seed is not None:
             np.random.seed(self.random_seed)
@@ -101,7 +137,7 @@ class LSTMModel:
                 except ImportError:
                     logging.warning("TensorFlow not available for seed setting")
 
-    def build_model(self) -> Optional[Any]:
+    def build_model(self) -> Any | None:
         """Build LSTM architecture"""
         if not TENSORFLOW_AVAILABLE:
             logging.warning("TensorFlow not available, LSTM model disabled")
@@ -132,7 +168,7 @@ class LSTMModel:
             logging.error(f"Error building LSTM model: {e}")
             return None
 
-    def prepare_sequences(self, data: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+    def prepare_sequences(self, data: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
         """Prepare sequences for LSTM training"""
         X, y = [], []
         for i in range(self.sequence_length, len(data)):
@@ -170,7 +206,7 @@ class LSTMModel:
             # Enhanced callbacks for better training
             callbacks = [
                 keras.callbacks.EarlyStopping(
-                    patience=self.early_stopping_patience, 
+                    patience=self.early_stopping_patience,
                     restore_best_weights=True,
                     monitor='val_loss',
                     min_delta=0.001
@@ -203,7 +239,7 @@ class LSTMModel:
 
     def predict(
         self, data: pd.DataFrame, target_column: str = "close"
-    ) -> Tuple[float, float]:
+    ) -> tuple[float, float]:
         """Make prediction with confidence score"""
         if not self.is_trained or self.model is None or self.scaler is None:
             return 0.0, 0.0
@@ -218,7 +254,7 @@ class LSTMModel:
 
             # Make prediction (predicting next period's scaled close price)
             prediction_scaled = self.model.predict(X_pred, verbose=0)[0][0]
-            
+
             # Convert scaled prediction back to actual price
             # Note: We predict next price directly, then convert to return for strategy use
             prediction = self.scaler.inverse_transform([[prediction_scaled]])[0][0]
@@ -290,7 +326,7 @@ class XGBoostModel:
             # Store feature importance
             if self.model:
                 self.feature_importance = dict(
-                    zip(features.columns, self.model.feature_importances_)
+                    zip(features.columns, self.model.feature_importances_, strict=False)
                 )
                 self.is_trained = True
                 return True
@@ -300,7 +336,7 @@ class XGBoostModel:
 
         return False
 
-    def predict(self, features: pd.DataFrame) -> Tuple[float, float]:
+    def predict(self, features: pd.DataFrame) -> tuple[float, float]:
         """Make prediction with confidence score"""
         if not self.is_trained or self.model is None or self.scaler is None:
             return 0.0, 0.0
@@ -360,7 +396,7 @@ class RandomForestModel:
             logging.error(f"Error training Random Forest model: {e}")
             return False
 
-    def predict(self, features: pd.DataFrame) -> Tuple[float, float]:
+    def predict(self, features: pd.DataFrame) -> tuple[float, float]:
         """Make prediction with confidence score"""
         if not self.is_trained or self.model is None or self.scaler is None:
             return 0.0, 0.0
@@ -400,12 +436,19 @@ class EnsembleModel:
         self.performance_history = []
         self.settings = get_settings()
 
+        # MLOps integration
+        self.mlops_enabled = MLOPS_AVAILABLE and getattr(self.settings, 'mlops', {}).get('inference_telemetry_enabled', True)
+        if self.mlops_enabled:
+            self.model_manager = get_model_manager()
+        else:
+            self.model_manager = None
+
     async def train_models(
         self,
         price_data: pd.DataFrame,
         features: pd.DataFrame,
         target_column: str = "close",
-    ) -> Dict[str, bool]:
+    ) -> dict[str, bool]:
         """Train all models in the ensemble"""
         results = {}
 
@@ -414,7 +457,7 @@ class EnsembleModel:
 
         # Train tree-based models on features with explicit index alignment
         target = price_data[target_column].shift(-1).dropna()  # Next period target
-        
+
         # Ensure explicit alignment using shared index to prevent silent misalignment
         aligned_data = pd.concat([features, target.to_frame('target')], join='inner', axis=1).dropna()
         features_aligned = aligned_data.drop(columns=['target'])
@@ -436,9 +479,91 @@ class EnsembleModel:
     def predict(
         self, price_data: pd.DataFrame, features: pd.DataFrame, symbol: str
     ) -> ModelPrediction:
-        """Generate ensemble prediction"""
+        """Generate ensemble prediction with feature validation and MLOps integration"""
+        start_time = datetime.now()
         predictions = {}
         confidences = {}
+
+        # Branch 2.9: Feature validation and alignment
+        if FEATURE_PIPELINE_AVAILABLE:
+            try:
+                # For inference: align features with current price but no target (y=None)
+                price_series = price_data['close'] if 'close' in price_data.columns else price_data.iloc[:, -1]
+                feature_frame = align_features_target(features, price_series)
+
+                # Use validated features
+                features = feature_frame.X
+
+                # Run lookahead guard if enabled
+                settings = get_settings()
+                if getattr(settings.features, 'no_lookahead_enforced', True):
+                    try:
+                        guard_no_lookahead(features, price_series, list(features.columns))
+                    except Exception as e:
+                        if mlops_logger:
+                            mlops_logger.warning("Lookahead detected during inference",
+                                              extra={"symbol": symbol, "error": str(e)})
+                        if mlops_metrics:
+                            mlops_metrics.counter("feature_no_lookahead_violations_total",
+                                               {"bucket": "inference"}).inc()
+
+            except Exception as e:
+                if mlops_logger:
+                    mlops_logger.warning("Feature validation failed during inference",
+                                      extra={"symbol": symbol, "error": str(e)})
+
+        # MLOps: Check for schema mismatch and drift detection
+        if self.mlops_enabled and self.model_manager:
+            try:
+                # Get champion model for this symbol
+                champion = self.model_manager.registry.get_champion_model(symbol)
+                if champion:
+                    # Validate feature schema and reorder columns
+                    _, _, metadata = self.model_manager.registry.load_artifacts(symbol, champion.version)
+
+                    # Reorder columns by name for consistent schema
+                    if 'feature_schema' in metadata:
+                        expected_columns = metadata['feature_schema']['columns']
+                        if set(features.columns) == set(expected_columns):
+                            features = features[expected_columns]  # Reorder silently
+                        else:
+                            # Hard fail on missing/extra columns
+                            missing = set(expected_columns) - set(features.columns)
+                            extra = set(features.columns) - set(expected_columns)
+                            if missing or extra:
+                                raise SchemaValidationError(
+                                    f"Schema mismatch for {symbol}",
+                                    missing_columns=list(missing),
+                                    extra_columns=list(extra)
+                                )
+
+                    features = self.model_manager.registry.assert_feature_schema(features, metadata)
+
+                    # Check for data drift
+                    drift_result = self.model_manager.drift_detector.detect_data_drift(symbol, features)
+                    if drift_result and mlops_logger:
+                        mlops_logger.warning(f"Data drift detected for {symbol}", {
+                            "model": symbol,
+                            "drift_type": drift_result.drift_type.value,
+                            "severity": drift_result.severity,
+                            "psi_score": drift_result.psi_score
+                        })
+
+            except (SchemaMismatchError, SchemaValidationError) as e:
+                if mlops_logger:
+                    mlops_logger.error(f"Schema validation failed for {symbol}", {
+                        "error": str(e),
+                        "missing_columns": getattr(e, 'missing_columns', []),
+                        "extra_columns": getattr(e, 'extra_columns', [])
+                    })
+                if mlops_metrics:
+                    mlops_metrics.counter("feature_schema_validations_total",
+                                       {"result": "failed"}).inc()
+                # Re-raise for API to return 400 error
+                raise
+            except Exception as e:
+                if mlops_logger:
+                    mlops_logger.warning(f"MLOps validation failed for {symbol}: {e}")
 
         # Get predictions from each model
         for model_name, model in self.models.items():
@@ -483,6 +608,36 @@ class EnsembleModel:
             },
         )
 
+        # MLOps: Record inference telemetry
+        if self.mlops_enabled and self.model_manager:
+            try:
+                latency_ms = (datetime.now() - start_time).total_seconds() * 1000
+                champion = self.model_manager.registry.get_champion_model(symbol)
+                if champion:
+                    self.model_manager.registry.record_inference(
+                        symbol,
+                        champion.version,
+                        features.tail(1),  # Latest features only
+                        ensemble_prediction,
+                        None,  # Ground truth not available at inference time
+                        latency_ms
+                    )
+
+                # Record prediction metric
+                if mlops_metrics:
+                    mlops_metrics.inc_counter("ensemble_predictions_total", {
+                        "symbol": symbol,
+                        "models_active": str(len(predictions))
+                    })
+
+                    mlops_metrics.observe_histogram("ensemble_prediction_latency_seconds",
+                                                  latency_ms / 1000.0, {
+                                                      "symbol": symbol
+                                                  })
+            except Exception as e:
+                if mlops_logger:
+                    mlops_logger.warning(f"Failed to record inference telemetry: {e}")
+
         audit_logger.info(
             "ensemble_prediction_generated",
             symbol=symbol,
@@ -493,7 +648,7 @@ class EnsembleModel:
 
         return result
 
-    def update_weights(self, performance_metrics: Dict[str, ModelPerformance]):
+    def update_weights(self, performance_metrics: dict[str, ModelPerformance]):
         """Update ensemble weights based on model performance"""
         total_score = 0
         model_scores = {}
@@ -518,7 +673,7 @@ class EnsembleModel:
             performance_metrics={k: v.__dict__ for k, v in performance_metrics.items()},
         )
 
-    def get_model_status(self) -> Dict[str, Dict[str, Any]]:
+    def get_model_status(self) -> dict[str, dict[str, Any]]:
         """Get status of all models in ensemble"""
         status = {}
 
@@ -535,16 +690,15 @@ class EnsembleModel:
 
         return status
 
-    def save_models(self, model_dir: str = "backend/models/saved_models") -> Dict[str, bool]:
+    def save_models(self, model_dir: str = "backend/models/saved_models") -> dict[str, bool]:
         """Save all trained models to disk with model card"""
-        import os
         import json
         from pathlib import Path
-        
+
         results = {}
         model_path = Path(model_dir)
         model_path.mkdir(parents=True, exist_ok=True)
-        
+
         # Create model card with metadata
         model_card = {
             "created_at": datetime.now().isoformat(),
@@ -552,20 +706,20 @@ class EnsembleModel:
             "model_status": self.get_model_status(),
             "training_metadata": {}
         }
-        
+
         for model_name, model in self.models.items():
             try:
                 if not getattr(model, 'is_trained', False):
                     results[model_name] = False
                     continue
-                    
+
                 if model_name == "lstm" and TENSORFLOW_AVAILABLE:
                     # Save TensorFlow model
                     model_file = model_path / f"{model_name}_model.h5"
                     if model.model is not None:
                         model.model.save(str(model_file))
                         results[model_name] = True
-                        
+
                         # Add training history to model card
                         if hasattr(model, 'training_history') and model.training_history:
                             model_card["training_metadata"][model_name] = {
@@ -577,7 +731,7 @@ class EnsembleModel:
                             }
                     else:
                         results[model_name] = False
-                        
+
                 elif model_name in ["xgboost", "random_forest"] and JOBLIB_AVAILABLE:
                     # Save sklearn/xgboost models using joblib
                     model_file = model_path / f"{model_name}_model.joblib"
@@ -588,7 +742,7 @@ class EnsembleModel:
                             'feature_importance': getattr(model, 'feature_importance', None)
                         }, str(model_file))
                         results[model_name] = True
-                        
+
                         # Add model info to model card
                         model_card["training_metadata"][model_name] = {
                             "feature_importance": getattr(model, 'feature_importance', {}),
@@ -598,11 +752,11 @@ class EnsembleModel:
                         results[model_name] = False
                 else:
                     results[model_name] = False
-                    
+
             except Exception as e:
                 logging.error(f"Error saving {model_name} model: {e}")
                 results[model_name] = False
-        
+
         # Save model card
         try:
             with open(model_path / "model_card.json", 'w') as f:
@@ -610,43 +764,42 @@ class EnsembleModel:
             logging.info(f"Model card saved to {model_path / 'model_card.json'}")
         except Exception as e:
             logging.error(f"Error saving model card: {e}")
-        
-        audit_logger.info("ensemble_models_saved", 
-                         results=results, 
+
+        audit_logger.info("ensemble_models_saved",
+                         results=results,
                          model_dir=str(model_path),
                          timestamp=datetime.now())
-        
+
         return results
 
-    def load_models(self, model_dir: str = "backend/models/saved_models") -> Dict[str, bool]:
+    def load_models(self, model_dir: str = "backend/models/saved_models") -> dict[str, bool]:
         """Load all models from disk"""
-        import os
         import json
         from pathlib import Path
-        
+
         results = {}
         model_path = Path(model_dir)
-        
+
         if not model_path.exists():
             logging.warning(f"Model directory {model_path} does not exist")
             return {name: False for name in self.models.keys()}
-        
+
         # Load model card if available
         model_card_file = model_path / "model_card.json"
         model_card = {}
         if model_card_file.exists():
             try:
-                with open(model_card_file, 'r') as f:
+                with open(model_card_file) as f:
                     model_card = json.load(f)
                 logging.info(f"Loaded model card from {model_card_file}")
-                
+
                 # Restore ensemble weights
                 if "ensemble_weights" in model_card:
                     self.weights = model_card["ensemble_weights"]
-                    
+
             except Exception as e:
                 logging.error(f"Error loading model card: {e}")
-        
+
         for model_name, model in self.models.items():
             try:
                 if model_name == "lstm" and TENSORFLOW_AVAILABLE:
@@ -656,7 +809,7 @@ class EnsembleModel:
                         model.model = keras.models.load_model(str(model_file))
                         model.is_trained = True
                         results[model_name] = True
-                        
+
                         # Restore metadata from model card
                         if model_name in model_card.get("training_metadata", {}):
                             metadata = model_card["training_metadata"][model_name]
@@ -664,7 +817,7 @@ class EnsembleModel:
                             model.random_seed = metadata.get("random_seed", model.random_seed)
                     else:
                         results[model_name] = False
-                        
+
                 elif model_name in ["xgboost", "random_forest"] and JOBLIB_AVAILABLE:
                     # Load sklearn/xgboost models using joblib
                     model_file = model_path / f"{model_name}_model.joblib"
@@ -679,14 +832,190 @@ class EnsembleModel:
                         results[model_name] = False
                 else:
                     results[model_name] = False
-                    
+
             except Exception as e:
                 logging.error(f"Error loading {model_name} model: {e}")
                 results[model_name] = False
-        
-        audit_logger.info("ensemble_models_loaded", 
-                         results=results, 
+
+        audit_logger.info("ensemble_models_loaded",
+                         results=results,
                          model_dir=str(model_path),
                          timestamp=datetime.now())
-        
+
         return results
+
+    # MLOps Registry Integration Methods
+
+    def register_with_mlops(
+        self,
+        model_name: str,
+        training_data: pd.DataFrame,
+        features: pd.DataFrame,
+        metrics: dict[str, float],
+        version: str | None = None,
+        train_window: dict[str, str] | None = None
+    ) -> Any | None:  # Returns ModelVersion if successful
+        """
+        Register ensemble model with MLOps registry
+        
+        Args:
+            model_name: Name to register the model under
+            training_data: Training data used
+            features: Feature data used
+            metrics: Performance metrics
+            version: Version string (auto-generated if None)
+            train_window: Training time window info
+            
+        Returns:
+            ModelVersion if registration successful, None otherwise
+        """
+        if not self.mlops_enabled or not self.model_manager:
+            if mlops_logger:
+                mlops_logger.warning("MLOps registration attempted but MLOps not available")
+            return None
+
+        try:
+            # Prepare artifacts dictionary
+            artifacts = {
+                'ensemble_weights': self.weights,
+                'model_config': {
+                    'lstm_available': TENSORFLOW_AVAILABLE,
+                    'xgboost_available': XGBOOST_AVAILABLE,
+                    'sklearn_available': SKLEARN_AVAILABLE
+                },
+                'performance_history': self.performance_history[-10:] if self.performance_history else []
+            }
+
+            # Add individual model artifacts if available
+            for model_name_key, model in self.models.items():
+                if hasattr(model, 'model') and model.model is not None:
+                    artifacts[f'{model_name_key}_trained'] = True
+                    if hasattr(model, 'scaler') and model.scaler is not None:
+                        artifacts[f'{model_name_key}_scaler'] = model.scaler
+                    if hasattr(model, 'feature_importance'):
+                        artifacts[f'{model_name_key}_feature_importance'] = model.feature_importance
+                else:
+                    artifacts[f'{model_name_key}_trained'] = False
+
+            # Get feature dtypes
+            feature_dtypes = {col: str(features[col].dtype) for col in features.columns}
+
+            # Register with MLOps registry
+            model_version = self.model_manager.registry.register_model(
+                model_name,
+                self,  # Register the entire ensemble
+                training_data,
+                metrics,
+                train_window,
+                artifacts
+            )
+
+            if mlops_logger:
+                mlops_logger.info(f"Successfully registered ensemble model {model_name}", {
+                    "version": model_version.version,
+                    "artifact_hash": model_version.artifact_hash,
+                    "features_count": len(features.columns)
+                })
+
+            return model_version
+
+        except Exception as e:
+            if mlops_logger:
+                mlops_logger.error(f"Failed to register ensemble model {model_name}: {e}")
+            return None
+
+    def promote_to_champion(self, model_name: str, version: str) -> bool:
+        """
+        Promote a model version to champion status
+        
+        Args:
+            model_name: Name of the model
+            version: Version to promote
+            
+        Returns:
+            True if promotion successful, False otherwise
+        """
+        if not self.mlops_enabled or not self.model_manager:
+            return False
+
+        try:
+            success = self.model_manager.registry.promote_to_champion(model_name, version)
+
+            if success and mlops_logger:
+                mlops_logger.info(f"Promoted ensemble model {model_name} version {version} to champion")
+
+            return success
+
+        except Exception as e:
+            if mlops_logger:
+                mlops_logger.error(f"Failed to promote {model_name}/{version}: {e}")
+            return False
+
+    def get_champion_version(self, model_name: str) -> Any | None:  # Returns ModelVersion if found
+        """
+        Get the champion model version from registry
+        
+        Args:
+            model_name: Name of the model
+            
+        Returns:
+            ModelVersion if champion exists, None otherwise
+        """
+        if not self.mlops_enabled or not self.model_manager:
+            return None
+
+        try:
+            champion = self.model_manager.registry.get_champion_model(model_name)
+            return champion
+
+        except Exception as e:
+            if mlops_logger:
+                mlops_logger.error(f"Failed to get champion for {model_name}: {e}")
+            return None
+
+    def load_from_registry(self, model_name: str, version: str | None = None) -> bool:
+        """
+        Load ensemble model from MLOps registry
+        
+        Args:
+            model_name: Name of the model to load
+            version: Specific version to load (uses champion if None)
+            
+        Returns:
+            True if loading successful, False otherwise
+        """
+        if not self.mlops_enabled or not self.model_manager:
+            return False
+
+        try:
+            # Get version to load
+            if version is None:
+                champion = self.model_manager.registry.get_champion_model(model_name)
+                if not champion:
+                    if mlops_logger:
+                        mlops_logger.warning(f"No champion model found for {model_name}")
+                    return False
+                version = champion.version
+
+            # Load artifacts
+            model_obj, artifacts, metadata = self.model_manager.registry.load_artifacts(model_name, version)
+
+            # Restore ensemble configuration
+            if 'ensemble_weights' in artifacts:
+                self.weights = artifacts['ensemble_weights']
+
+            if 'performance_history' in artifacts:
+                self.performance_history = artifacts['performance_history']
+
+            # TODO: Restore individual model states if needed
+            # This would require serializing the TensorFlow/sklearn models properly
+
+            if mlops_logger:
+                mlops_logger.info(f"Successfully loaded ensemble model {model_name}/{version} from registry")
+
+            return True
+
+        except Exception as e:
+            if mlops_logger:
+                mlops_logger.error(f"Failed to load {model_name}/{version or 'champion'} from registry: {e}")
+            return False

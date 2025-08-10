@@ -4,7 +4,6 @@ Computes comprehensive technical indicators and market features for ML models.
 """
 
 import warnings
-from typing import Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -21,13 +20,16 @@ except ImportError:
     talib = None
 
 from ..config import get_settings
+from ..infra.metrics import get_metrics_registry
 from ..utils.helpers import (
     bollinger_bands,
     exponential_moving_average,
     rsi,
-    safe_divide,
 )
 from ..utils.logger import get_structured_logger, performance_logger
+from .alignment import align_features_target
+from .types import FeatureFrame
+from .validators import guard_no_lookahead, validate_ohlcv
 
 
 class FeatureEngineer:
@@ -37,7 +39,7 @@ class FeatureEngineer:
     Supports lightweight feature mode for real-time performance.
     """
 
-    def __init__(self, config: Optional[Dict] = None):
+    def __init__(self, config: dict | None = None):
         """
         Initialize feature engineer with configuration.
 
@@ -125,12 +127,12 @@ class FeatureEngineer:
             # Check feature mode for performance optimization
             feature_mode = self.config.get("feature_mode", "full")
             enable_heavy_features = self.config.get("enable_heavy_features", True)
-            
+
             # Core features (always computed)
             # 1. Moving Averages
             result_df = self._add_moving_averages(result_df)
 
-            # 2. Momentum Indicators  
+            # 2. Momentum Indicators
             result_df = self._add_momentum_indicators(result_df)
 
             # 3. Volatility Indicators
@@ -163,7 +165,7 @@ class FeatureEngineer:
 
             # Handle NaN values intelligently
             initial_rows = len(result_df)
-            
+
             # Instead of dropping all rows with any NaN, be more selective
             # Only require that the basic price columns and short-term indicators are not NaN
             essential_cols = ['open', 'high', 'low', 'close', 'volume']
@@ -171,7 +173,7 @@ class FeatureEngineer:
                 essential_cols.append('sma_5')
             if 'sma_20' in result_df.columns:
                 essential_cols.append('sma_20')
-                
+
             # Drop rows where essential columns are NaN
             result_df = result_df.dropna(subset=essential_cols)
             dropped_rows = initial_rows - len(result_df)
@@ -582,7 +584,7 @@ class FeatureEngineer:
 
         # Collect normalized columns to add them all at once (prevents DataFrame fragmentation)
         normalized_columns = {}
-        
+
         for col in feature_cols:
             if df[col].dtype in ["float64", "int64"]:
                 if method == "zscore":
@@ -614,7 +616,7 @@ class FeatureEngineer:
         return df
 
     def add_sentiment_features(
-        self, df: pd.DataFrame, sentiment_data: Dict[str, float]
+        self, df: pd.DataFrame, sentiment_data: dict[str, float]
     ) -> pd.DataFrame:
         """
         Add sentiment features from SocialSentimentAnalyzer.
@@ -657,35 +659,35 @@ class FeatureEngineer:
             # Basic price relationships
             df["price_range"] = (df["high"] - df["low"]) / df["close"]
             df["body_ratio"] = abs(df["close"] - df["open"]) / (df["high"] - df["low"])
-            
+
             # Simple volume features
             df["volume_ratio"] = df["volume"] / df["volume"].rolling(10, min_periods=1).mean()
-            
+
             # Basic momentum (fast RSI)
             if self.config.get("rsi_fast_period"):
                 rsi_fast = rsi(df["close"], self.config["rsi_fast_period"])
                 df[f"rsi_{self.config['rsi_fast_period']}"] = rsi_fast
-            
+
             # Essential moving average signals
             sma_5 = df["close"].rolling(5, min_periods=1).mean()
             sma_20 = df["close"].rolling(20, min_periods=1).mean()
             df["sma_cross_signal"] = np.where(sma_5 > sma_20, 1, -1)
-            
+
             # Price position relative to recent range
             high_20 = df["high"].rolling(20, min_periods=1).max()
             low_20 = df["low"].rolling(20, min_periods=1).min()
             df["price_position"] = (df["close"] - low_20) / (high_20 - low_20)
-            
+
             self.logger.debug("Essential features computed for realtime_light mode")
-            
+
         except Exception as e:
             self.logger.error(f"Error adding essential features: {e}")
-            
+
         return df
 
     def get_feature_importance_ranking(
         self, df: pd.DataFrame, target_column: str = "returns"
-    ) -> Dict[str, float]:
+    ) -> dict[str, float]:
         """
         Calculate feature importance using correlation with target.
 
@@ -716,7 +718,7 @@ class FeatureEngineer:
 
     def select_features(
         self, df: pd.DataFrame, target_column: str = "returns", top_k: int = 50
-    ) -> List[str]:
+    ) -> list[str]:
         """
         Select top K features based on importance.
 
@@ -753,3 +755,313 @@ class FeatureEngineer:
             DataFrame with all computed features
         """
         return self.compute_technical_indicators(price_data)
+
+
+# Schema Validation Helpers for MLOps Integration
+
+def validate_feature_schema(
+    features_df: pd.DataFrame,
+    expected_schema: dict[str, str],
+    strict: bool = True
+) -> tuple[bool, list[str]]:
+    """
+    Validate feature DataFrame against expected schema.
+    
+    Args:
+        features_df: DataFrame with features to validate
+        expected_schema: Dictionary mapping feature names to expected dtypes
+        strict: If True, extra columns cause validation failure
+        
+    Returns:
+        Tuple of (is_valid, error_messages)
+    """
+    errors = []
+
+    # Check for missing features
+    expected_features = set(expected_schema.keys())
+    actual_features = set(features_df.columns)
+
+    missing_features = expected_features - actual_features
+    if missing_features:
+        errors.append(f"Missing features: {sorted(missing_features)}")
+
+    # Check for extra features (if strict mode)
+    if strict:
+        extra_features = actual_features - expected_features
+        if extra_features:
+            errors.append(f"Extra features not in schema: {sorted(extra_features)}")
+
+    # Check dtype compatibility for common features
+    common_features = expected_features & actual_features
+    for feature in common_features:
+        expected_dtype = expected_schema[feature]
+        actual_dtype = str(features_df[feature].dtype)
+
+        if not _is_dtype_compatible(actual_dtype, expected_dtype):
+            errors.append(f"Feature '{feature}': expected {expected_dtype}, got {actual_dtype}")
+
+    return len(errors) == 0, errors
+
+
+def get_feature_schema(features_df: pd.DataFrame) -> dict[str, str]:
+    """
+    Extract feature schema from DataFrame.
+    
+    Args:
+        features_df: DataFrame with features
+        
+    Returns:
+        Dictionary mapping feature names to dtype strings
+    """
+    return {col: str(features_df[col].dtype) for col in features_df.columns}
+
+
+def ensure_feature_order(
+    features_df: pd.DataFrame,
+    expected_order: list[str]
+) -> pd.DataFrame:
+    """
+    Reorder feature columns to match expected order.
+    
+    Args:
+        features_df: DataFrame with features
+        expected_order: List of column names in expected order
+        
+    Returns:
+        DataFrame with columns in expected order
+        
+    Raises:
+        ValueError: If any expected features are missing
+    """
+    missing_features = set(expected_order) - set(features_df.columns)
+    if missing_features:
+        raise ValueError(f"Missing features for reordering: {sorted(missing_features)}")
+
+    # Select only the expected features in the correct order
+    return features_df[expected_order]
+
+
+def create_feature_signature(
+    features_df: pd.DataFrame,
+    include_stats: bool = False
+) -> dict[str, any]:
+    """
+    Create a feature signature for drift detection and validation.
+    
+    Args:
+        features_df: DataFrame with features
+        include_stats: Whether to include basic statistics
+        
+    Returns:
+        Dictionary with feature signature information
+    """
+    signature = {
+        'feature_names': list(features_df.columns),
+        'feature_dtypes': get_feature_schema(features_df),
+        'feature_count': len(features_df.columns),
+        'created_at': pd.Timestamp.now().isoformat()
+    }
+
+    if include_stats:
+        numeric_features = features_df.select_dtypes(include=[np.number]).columns
+        signature['numeric_features'] = list(numeric_features)
+        signature['categorical_features'] = list(set(features_df.columns) - set(numeric_features))
+
+        if len(numeric_features) > 0:
+            signature['feature_stats'] = {
+                'mean': features_df[numeric_features].mean().to_dict(),
+                'std': features_df[numeric_features].std().to_dict(),
+                'min': features_df[numeric_features].min().to_dict(),
+                'max': features_df[numeric_features].max().to_dict()
+            }
+
+    return signature
+
+
+def validate_feature_ranges(
+    features_df: pd.DataFrame,
+    expected_ranges: dict[str, tuple[float, float]],
+    tolerance: float = 0.1
+) -> tuple[bool, list[str]]:
+    """
+    Validate that feature values are within expected ranges.
+    
+    Args:
+        features_df: DataFrame with features
+        expected_ranges: Dictionary mapping feature names to (min, max) tuples
+        tolerance: Tolerance factor for range expansion (e.g., 0.1 = 10% tolerance)
+        
+    Returns:
+        Tuple of (is_valid, warning_messages)
+    """
+    warnings = []
+
+    for feature, (expected_min, expected_max) in expected_ranges.items():
+        if feature not in features_df.columns:
+            continue
+
+        # Expand range with tolerance
+        range_span = expected_max - expected_min
+        tolerance_margin = range_span * tolerance
+
+        expanded_min = expected_min - tolerance_margin
+        expanded_max = expected_max + tolerance_margin
+
+        actual_min = features_df[feature].min()
+        actual_max = features_df[feature].max()
+
+        if actual_min < expanded_min or actual_max > expanded_max:
+            warnings.append(
+                f"Feature '{feature}' range [{actual_min:.4f}, {actual_max:.4f}] "
+                f"outside expected range [{expected_min:.4f}, {expected_max:.4f}] "
+                f"with {tolerance*100}% tolerance"
+            )
+
+    return len(warnings) == 0, warnings
+
+
+def _is_dtype_compatible(actual_dtype: str, expected_dtype: str) -> bool:
+    """
+    Check if actual dtype is compatible with expected dtype.
+    
+    Args:
+        actual_dtype: Actual pandas dtype as string
+        expected_dtype: Expected pandas dtype as string
+        
+    Returns:
+        True if compatible, False otherwise
+    """
+    # Normalize dtype names
+    actual_norm = _normalize_dtype(actual_dtype)
+    expected_norm = _normalize_dtype(expected_dtype)
+
+    # Allow compatible numeric types
+    if actual_norm == expected_norm:
+        return True
+
+    # Float compatibility
+    if expected_norm in ['float', 'float32', 'float64'] and actual_norm in ['float', 'float32', 'float64', 'int', 'int32', 'int64']:
+        return True
+
+    # Integer compatibility
+    if expected_norm in ['int', 'int32', 'int64'] and actual_norm in ['int', 'int32', 'int64']:
+        return True
+
+    return False
+
+
+def _normalize_dtype(dtype_str: str) -> str:
+    """
+    Normalize pandas dtype string.
+    
+    Args:
+        dtype_str: Pandas dtype as string
+        
+    Returns:
+        Normalized dtype string
+    """
+    dtype_str = dtype_str.lower()
+
+    if 'float' in dtype_str:
+        if '32' in dtype_str:
+            return 'float32'
+        elif '64' in dtype_str:
+            return 'float64'
+        else:
+            return 'float'
+
+    if 'int' in dtype_str:
+        if '32' in dtype_str:
+            return 'int32'
+        elif '64' in dtype_str:
+            return 'int64'
+        else:
+            return 'int'
+
+    if 'object' in dtype_str or 'string' in dtype_str:
+        return 'object'
+
+    if 'bool' in dtype_str:
+        return 'bool'
+
+    if 'datetime' in dtype_str:
+        return 'datetime64'
+
+    return dtype_str
+
+
+def compute_all_features(df: pd.DataFrame, *, fast: bool = True) -> pd.DataFrame:
+    """
+    Vectorized feature computation with leak protection.
+    
+    Args:
+        df: OHLCV DataFrame
+        fast: Use optimized vectorized implementations
+        
+    Returns:
+        DataFrame with computed features (no lookahead)
+    """
+    # Validate input data
+    validate_ohlcv(df)
+
+    # Use settings-aware feature engineer
+    engineer = FeatureEngineer()
+
+    with performance_logger("compute_all_features"):
+        if fast:
+            # Vectorized implementations first
+            features = engineer.compute_technical_indicators(df)
+        else:
+            # Full feature suite (may include TA-Lib)
+            features = engineer.compute_all_features_comprehensive(df)
+
+    # Record timing metrics
+    metrics = get_metrics_registry()
+    # Metrics will be recorded by performance_logger context manager
+
+    return features
+
+
+def build_feature_frame(df_1m: pd.DataFrame, *, price_col: str = "close") -> FeatureFrame:
+    """
+    Build complete FeatureFrame with validation and alignment.
+    
+    Args:
+        df_1m: 1-minute OHLCV data
+        price_col: Price column for target creation
+        
+    Returns:
+        FeatureFrame with features, target, and validity mask
+    """
+    # Validate input
+    validate_ohlcv(df_1m)
+
+    # Compute features
+    with performance_logger("build_feature_frame"):
+        features = compute_all_features(df_1m, fast=True)
+
+        # Create target AFTER feature computation (critical!)
+        price_series = df_1m[price_col]
+
+        # Use alignment helper to ensure no lookahead
+        feature_frame = align_features_target(features, price_series, price_col)
+
+        # Run lookahead guard
+        settings = get_settings()
+        if getattr(settings.features, 'no_lookahead_enforced', True):
+            try:
+                guard_no_lookahead(
+                    feature_frame.X,
+                    price_series,
+                    feature_cols=list(feature_frame.X.columns)
+                )
+            except Exception as e:
+                # Log but don't fail in production
+                logger = get_structured_logger("feature_engineering")
+                logger.warning("Lookahead guard failed", extra={"error": str(e)})
+
+                # Increment metrics
+                metrics = get_metrics_registry()
+                metrics.counter("feature_no_lookahead_violations_total", {"bucket": "other"}).inc()
+
+    return feature_frame

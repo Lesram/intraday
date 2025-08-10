@@ -1,0 +1,189 @@
+# Docker Compose for Development/Staging Environment
+# BRANCH 2.12 - Deploy Readiness
+
+version: '3.8'
+
+services:
+  # Main API Service
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    ports:
+      - "8000:8000"
+    environment:
+      # Application Settings
+      - APP_ENVIRONMENT=development
+      - APP_LOG_LEVEL=INFO
+      - APP_DEBUG=false
+      
+      # Database Configuration
+      - DATABASE_URL=postgresql+asyncpg://trading:trading_password@db:5432/algotrading
+      - DATABASE_POOL_SIZE=20
+      - DATABASE_MAX_OVERFLOW=30
+      - DATABASE_ECHO=false
+      
+      # Alpaca Configuration (use test credentials)
+      - ALPACA_API_KEY=dummy_key_for_testing
+      - ALPACA_SECRET_KEY=dummy_secret_for_testing
+      - ALPACA_BASE_URL=https://paper-api.alpaca.markets
+      
+      # Security Settings
+      - JWT_SECRET_KEY=development-secret-key-change-in-production
+      - JWT_ALGORITHM=HS256
+      - JWT_EXPIRE_MINUTES=60
+      
+      # Observability Settings
+      - OTEL_SERVICE_NAME=algotrading-api
+      - OTEL_SERVICE_VERSION=1.0.0
+      - OTEL_ENABLED=true
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
+      - PROMETHEUS_ENABLED=true
+      - PROMETHEUS_PATH=/metrics
+      
+      # Feature Flags
+      - ENABLE_OUTBOX_PATTERN=true
+      - ENABLE_BACKGROUND_TASKS=true
+      - ENABLE_WEBSOCKET=true
+      
+      # Container-specific
+      - PYTHONPATH=/app
+      - PYTHONUNBUFFERED=1
+      - PYTHONDONTWRITEBYTECODE=1
+      
+    volumes:
+      - ./logs:/app/logs
+      - ./data:/app/data
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+    networks:
+      - trading-network
+
+  # PostgreSQL Database
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: algotrading
+      POSTGRES_USER: trading
+      POSTGRES_PASSWORD: trading_password
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --lc-collate=C --lc-ctype=C"
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/db:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U trading -d algotrading"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - trading-network
+
+  # Redis for Caching/Sessions
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+    networks:
+      - trading-network
+
+  # OpenTelemetry Collector (Optional)
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:latest
+    command: ["--config=/etc/otel-collector-config.yaml"]
+    volumes:
+      - ./config/otel-collector-config.yaml:/etc/otel-collector-config.yaml
+    ports:
+      - "4317:4317"   # OTLP gRPC receiver
+      - "4318:4318"   # OTLP HTTP receiver
+      - "8889:8889"   # Prometheus metrics exporter
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+    networks:
+      - trading-network
+    profiles:
+      - observability
+
+  # Prometheus for Metrics (Optional)
+  prometheus:
+    image: prom/prometheus:latest
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    restart: unless-stopped
+    networks:
+      - trading-network
+    profiles:
+      - observability
+
+  # Grafana for Visualization (Optional)
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./config/grafana/provisioning:/etc/grafana/provisioning
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+    networks:
+      - trading-network
+    profiles:
+      - observability
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+
+networks:
+  trading-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+# Health check verification script
+# Run: docker-compose exec api curl -f http://localhost:8000/readyz
+# Or: docker-compose ps (check healthy status)

@@ -1,0 +1,111 @@
+# Kubernetes Secrets and ConfigMap
+# BRANCH 2.12 - Deploy Readiness
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: algotrading
+  labels:
+    name: algotrading
+    environment: production
+
+---
+# ServiceAccount for the application
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: algotrading-api
+  namespace: algotrading
+automountServiceAccountToken: false
+
+---
+# PersistentVolumeClaim for application data
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: algotrading-data
+  namespace: algotrading
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+  storageClassName: fast-ssd
+
+---
+# ConfigMap for application configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: algotrading-config
+  namespace: algotrading
+data:
+  # Application Settings
+  APP_ENVIRONMENT: "production"
+  APP_LOG_LEVEL: "INFO"
+  APP_DEBUG: "false"
+  
+  # Database Settings
+  DATABASE_POOL_SIZE: "20"
+  DATABASE_MAX_OVERFLOW: "30"
+  DATABASE_ECHO: "false"
+  
+  # Alpaca Settings
+  ALPACA_BASE_URL: "https://paper-api.alpaca.markets"
+  ALPACA_TIMEOUT: "30"
+  ALPACA_RETRY_ATTEMPTS: "3"
+  
+  # Security Settings
+  JWT_ALGORITHM: "HS256"
+  JWT_EXPIRE_MINUTES: "60"
+  
+  # Observability Settings
+  OTEL_SERVICE_NAME: "algotrading-api"
+  OTEL_SERVICE_VERSION: "1.0.0"
+  OTEL_ENABLED: "true"
+  OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4317"
+  PROMETHEUS_ENABLED: "true"
+  PROMETHEUS_PATH: "/metrics"
+  
+  # Feature Flags
+  ENABLE_OUTBOX_PATTERN: "true"
+  ENABLE_BACKGROUND_TASKS: "true"
+  ENABLE_WEBSOCKET: "true"
+  
+  # Performance Settings
+  WORKER_COUNT: "1"
+  WORKER_TIMEOUT: "120"
+  SHUTDOWN_TIMEOUT: "30"
+  
+  # Container Settings
+  PYTHONPATH: "/app"
+  PYTHONUNBUFFERED: "1"
+  PYTHONDONTWRITEBYTECODE: "1"
+
+---
+# Secret template (create manually with real values)
+apiVersion: v1
+kind: Secret
+metadata:
+  name: algotrading-secrets-template
+  namespace: algotrading
+type: Opaque
+stringData:
+  # Database connection (replace with real values)
+  database-url: "postgresql+asyncpg://trading:CHANGEME@postgres-service:5432/algotrading"
+  
+  # JWT secret (generate strong secret)
+  jwt-secret: "CHANGEME-generate-strong-jwt-secret-for-production"
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: alpaca-secrets-template
+  namespace: algotrading
+type: Opaque
+stringData:
+  # Alpaca API credentials (replace with real values)
+  api-key: "CHANGEME-your-alpaca-api-key"
+  secret-key: "CHANGEME-your-alpaca-secret-key"

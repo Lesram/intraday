@@ -2,12 +2,12 @@
 Audits repository - tracks system audit logs and compliance.
 Implements async CRUD operations with proper error handling.
 """
-import logging
-import uuid
 from datetime import datetime
-from typing import Any, Dict, Optional
+import logging
+from typing import Any
+import uuid
 
-from sqlalchemy import select, and_, or_, desc, func
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -23,7 +23,7 @@ class AuditNotFoundError(Exception):
 
 class AuditsRepo:
     """Repository for audit log operations."""
-    
+
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
 
@@ -36,7 +36,7 @@ class AuditsRepo:
         user_id: str | None = None,
         ip_address: str | None = None,
         user_agent: str | None = None,
-        details: Dict[str, Any] | None = None
+        details: dict[str, Any] | None = None
     ) -> AuditLog:
         """
         Create a new audit log entry.
@@ -62,11 +62,11 @@ class AuditsRepo:
             user_agent=user_agent,
             details=details or {}
         )
-        
+
         try:
             self.session.add(new_audit_log)
             await self.session.flush()  # Get the ID without committing
-            
+
             logger.info(
                 "Audit log created",
                 extra={
@@ -77,9 +77,9 @@ class AuditsRepo:
                     "user_id": user_id
                 }
             )
-            
+
             return new_audit_log
-            
+
         except IntegrityError as e:
             await self.session.rollback()
             logger.error(
@@ -99,7 +99,7 @@ class AuditsRepo:
         action: str,
         order_id: uuid.UUID,
         user_id: str | None = None,
-        details: Dict[str, Any] | None = None,
+        details: dict[str, Any] | None = None,
         ip_address: str | None = None
     ) -> AuditLog:
         """
@@ -130,7 +130,7 @@ class AuditsRepo:
         action: str,
         position_id: uuid.UUID,
         user_id: str | None = None,
-        details: Dict[str, Any] | None = None,
+        details: dict[str, Any] | None = None,
         ip_address: str | None = None
     ) -> AuditLog:
         """
@@ -161,7 +161,7 @@ class AuditsRepo:
         action: str,
         target_user_id: str,
         acting_user_id: str | None = None,
-        details: Dict[str, Any] | None = None,
+        details: dict[str, Any] | None = None,
         ip_address: str | None = None,
         user_agent: str | None = None
     ) -> AuditLog:
@@ -194,7 +194,7 @@ class AuditsRepo:
         *,
         action: str,
         component: str,
-        details: Dict[str, Any] | None = None
+        details: dict[str, Any] | None = None
     ) -> AuditLog:
         """
         Log a system-level action.
@@ -256,7 +256,7 @@ class AuditsRepo:
             .order_by(AuditLog.timestamp.desc())
             .limit(limit)
         )
-        
+
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
 
@@ -280,20 +280,20 @@ class AuditsRepo:
             List of audit logs
         """
         conditions = [AuditLog.user_id == user_id]
-        
+
         if start_time:
             conditions.append(AuditLog.timestamp >= start_time)
-            
+
         if end_time:
             conditions.append(AuditLog.timestamp <= end_time)
-        
+
         stmt = (
             select(AuditLog)
             .where(and_(*conditions))
             .order_by(AuditLog.timestamp.desc())
             .limit(limit)
         )
-        
+
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
 
@@ -317,20 +317,20 @@ class AuditsRepo:
             List of audit logs
         """
         conditions = [AuditLog.action == action]
-        
+
         if start_time:
             conditions.append(AuditLog.timestamp >= start_time)
-            
+
         if end_time:
             conditions.append(AuditLog.timestamp <= end_time)
-        
+
         stmt = (
             select(AuditLog)
             .where(and_(*conditions))
             .order_by(AuditLog.timestamp.desc())
             .limit(limit)
         )
-        
+
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
 
@@ -350,15 +350,15 @@ class AuditsRepo:
             List of recent audit logs
         """
         stmt = select(AuditLog)
-        
+
         if entity_type:
             stmt = stmt.where(AuditLog.entity_type == entity_type)
-        
+
         stmt = (
             stmt.order_by(AuditLog.timestamp.desc())
             .limit(limit)
         )
-        
+
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
 
@@ -379,24 +379,24 @@ class AuditsRepo:
         Returns:
             List of security-related audit logs
         """
-        security_actions = ['LOGIN', 'LOGOUT', 'LOGIN_FAILED', 'PASSWORD_CHANGE', 
+        security_actions = ['LOGIN', 'LOGOUT', 'LOGIN_FAILED', 'PASSWORD_CHANGE',
                            'PERMISSION_DENIED', 'API_KEY_CREATED', 'API_KEY_REVOKED']
-        
+
         conditions = [AuditLog.action.in_(security_actions)]
-        
+
         if start_time:
             conditions.append(AuditLog.timestamp >= start_time)
-            
+
         if end_time:
             conditions.append(AuditLog.timestamp <= end_time)
-        
+
         stmt = (
             select(AuditLog)
             .where(and_(*conditions))
             .order_by(AuditLog.timestamp.desc())
             .limit(limit)
         )
-        
+
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
 
@@ -404,7 +404,7 @@ class AuditsRepo:
         self,
         start_time: datetime | None = None,
         end_time: datetime | None = None
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Get audit log summary statistics.
         
@@ -416,21 +416,21 @@ class AuditsRepo:
             Dictionary with audit summary
         """
         conditions = []
-        
+
         if start_time:
             conditions.append(AuditLog.timestamp >= start_time)
-            
+
         if end_time:
             conditions.append(AuditLog.timestamp <= end_time)
-        
+
         if conditions:
             stmt = select(AuditLog).where(and_(*conditions))
         else:
             stmt = select(AuditLog)
-        
+
         result = await self.session.execute(stmt)
         logs = list(result.scalars().all())
-        
+
         if not logs:
             return {
                 "total_logs": 0,
@@ -443,31 +443,31 @@ class AuditsRepo:
                 "user_counts": {},
                 "unique_ips": 0
             }
-        
+
         # Count by action
         action_counts = {}
         for log in logs:
             action_counts[log.action] = action_counts.get(log.action, 0) + 1
-        
+
         # Count by entity type
         entity_type_counts = {}
         for log in logs:
             entity_type_counts[log.entity_type] = entity_type_counts.get(log.entity_type, 0) + 1
-        
+
         # Count by user
         user_counts = {}
         for log in logs:
             if log.user_id:
                 user_counts[log.user_id] = user_counts.get(log.user_id, 0) + 1
-        
+
         # Count unique IPs
         unique_ips = len(set(log.ip_address for log in logs if log.ip_address))
-        
+
         # Get time range from actual data
         timestamps = [log.timestamp for log in logs]
         actual_start = min(timestamps) if timestamps else None
         actual_end = max(timestamps) if timestamps else None
-        
+
         return {
             "total_logs": len(logs),
             "date_range": {
@@ -507,22 +507,22 @@ class AuditsRepo:
             List of matching audit logs
         """
         conditions = []
-        
+
         # Time filters
         if start_time:
             conditions.append(AuditLog.timestamp >= start_time)
-            
+
         if end_time:
             conditions.append(AuditLog.timestamp <= end_time)
-        
+
         # Default fields to search if not specified
         if not search_fields:
             search_fields = ['action', 'entity_type', 'entity_id', 'user_id']
-        
+
         # Build search conditions (case-insensitive)
         search_conditions = []
         search_lower = search_term.lower()
-        
+
         for field in search_fields:
             if field == 'action':
                 search_conditions.append(func.lower(AuditLog.action).contains(search_lower))
@@ -534,10 +534,10 @@ class AuditsRepo:
                 search_conditions.append(func.lower(AuditLog.user_id).contains(search_lower))
             elif field == 'ip_address':
                 search_conditions.append(func.lower(AuditLog.ip_address).contains(search_lower))
-        
+
         if search_conditions:
             conditions.append(or_(*search_conditions))
-        
+
         if conditions:
             stmt = (
                 select(AuditLog)
@@ -552,7 +552,7 @@ class AuditsRepo:
                 .order_by(AuditLog.timestamp.desc())
                 .limit(limit)
             )
-        
+
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
 
@@ -571,17 +571,17 @@ class AuditsRepo:
         """
         from datetime import timedelta
         cutoff_date = datetime.utcnow() - timedelta(days=older_than_days)
-        
+
         # For safety, we'll just count for now rather than actually delete
         # In production, you might want to move to archive table first
         stmt = (
             select(func.count(AuditLog.id))
             .where(AuditLog.timestamp < cutoff_date)
         )
-        
+
         result = await self.session.execute(stmt)
         old_log_count = result.scalar_one() or 0
-        
+
         logger.info(
             "Old audit logs cleanup check",
             extra={
@@ -590,5 +590,5 @@ class AuditsRepo:
                 "older_than_days": older_than_days
             }
         )
-        
+
         return old_log_count

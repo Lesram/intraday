@@ -4,74 +4,84 @@ Provides REST and WebSocket endpoints for the algorithmic trading platform
 """
 
 import asyncio
+from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
+from datetime import datetime, timedelta
 import json
 import logging
 import time
-import weakref
-from contextlib import asynccontextmanager
-from dataclasses import asdict
-from datetime import datetime, timedelta
-from typing import Any, AsyncGenerator, Dict, List, Optional, Set
+from typing import Any
 
 from fastapi import (
-    BackgroundTasks,
     Depends,
     FastAPI,
+    Form,
     HTTPException,
     Request,
     Response,
     WebSocket,
     WebSocketDisconnect,
     status,
-    Form,
 )
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel, ValidationError
 
 # Prometheus imports
 try:
-    from prometheus_client import Counter, Histogram, Gauge, generate_latest, CONTENT_TYPE_LATEST
+    from prometheus_client import (
+        CONTENT_TYPE_LATEST, Counter, Gauge, Histogram, 
+        generate_latest, CollectorRegistry
+    )
     PROMETHEUS_AVAILABLE = True
-    
-    # Prometheus metrics
+
+    # Create a custom registry to avoid conflicts
+    metrics_registry = CollectorRegistry()
+
+    # Prometheus metrics with custom registry
     REQUEST_COUNT = Counter(
-        'http_requests_total', 
-        'Total HTTP requests', 
-        ['method', 'endpoint', 'status']
+        'http_requests_total',
+        'Total HTTP requests',
+        ['method', 'endpoint', 'status'],
+        registry=metrics_registry
     )
     REQUEST_DURATION = Histogram(
         'http_request_duration_seconds',
         'HTTP request duration',
-        ['method', 'endpoint']
+        ['method', 'endpoint'],
+        registry=metrics_registry
     )
     WS_CONNECTIONS = Counter(
         'websocket_connections_total',
         'Total WebSocket connections',
-        ['client_type']
+        ['client_type'],
+        registry=metrics_registry
     )
     WS_MESSAGES = Counter(
         'websocket_messages_total',
         'WebSocket messages sent/received',
-        ['direction', 'message_type']
+        ['direction', 'message_type'],
+        registry=metrics_registry
     )
     WS_QUEUE_SIZE = Gauge(
         'websocket_queue_size',
         'Current WebSocket queue size',
-        ['client_id']
+        ['client_id'],
+        registry=metrics_registry
     )
     WS_MESSAGES_DROPPED = Counter(
         'websocket_messages_dropped_total',
         'WebSocket messages dropped due to backpressure',
-        ['client_id', 'reason']
+        ['client_id', 'reason'],
+        registry=metrics_registry
     )
     WS_SUBSCRIBER_TIMEOUTS = Counter(
         'websocket_subscriber_timeouts_total',
         'WebSocket subscriber timeouts',
-        ['client_id']
+        ['client_id'],
+        registry=metrics_registry
     )
-    
+
 except ImportError:
     PROMETHEUS_AVAILABLE = False
     logging.warning("Prometheus client not available")
@@ -86,20 +96,45 @@ except ImportError:
     PYDANTIC_AVAILABLE = False
 
 # Internal imports
+from backend.utils.logger import audit_logger, get_logger
+
 from ..config import get_settings
 from ..data.alpaca_client import AlpacaClient
 from ..data.social_sentiment import SocialSentimentAnalyzer
 from ..features.feature_engineering import FeatureEngineer
 from ..mlops.model_manager import ModelManager
-from ..models.ensemble_model import EnsembleModel, ModelPrediction
+from ..models.ensemble_model import EnsembleModel
 from ..risk.risk_manager import RiskManager
-from ..strategies.trading_strategies import SignalType, StrategyManager, TradingSignal
-from backend.utils.logger import get_logger, audit_logger
+from ..strategies.trading_strategies import StrategyManager
+
+# Branch 2.9: Feature validation imports
+try:
+    from ..features.types import LookaheadLeakError, SchemaValidationError
+    FEATURE_VALIDATION_AVAILABLE = True
+except ImportError:
+    FEATURE_VALIDATION_AVAILABLE = False
+    # Create dummy classes for consistent exception handling
+    class SchemaValidationError(Exception):
+        def __init__(self, message, missing_columns=None, extra_columns=None):
+            super().__init__(message)
+            self.missing_columns = missing_columns or []
+            self.extra_columns = extra_columns or []
+
+    class LookaheadLeakError(Exception):
+        def __init__(self, message, columns=None):
+            super().__init__(message)
+            self.columns = columns or []
 
 # B2.5 - Observability imports
-from backend.infra.observability import initialize_observability, ObservabilityConfig
-from backend.infra.logging import configure_structured_logging, get_logger as get_structured_logger
-from backend.infra.metrics import initialize_metrics_registry, get_metrics_registry
+from sqlalchemy.ext.asyncio import AsyncSession
+
+# B2.4 - Outbox pattern imports
+from backend.infra.db import get_sessionmaker, init_db
+from backend.infra.logging import configure_structured_logging
+from backend.infra.logging import get_logger as get_structured_logger
+from backend.infra.metrics import get_metrics_registry, initialize_metrics_registry
+from backend.infra.observability import ObservabilityConfig, initialize_observability
+from backend.infra.outbox import OutboxDispatcher
 
 # Authentication imports
 from backend.infra.security import (
@@ -108,36 +143,36 @@ from backend.infra.security import (
     get_authenticated_user,
     get_current_user,
     require_admin,
+    require_roles,
     require_trader,
-    require_roles
 )
 from backend.infra.users import get_user_repository
-
-# B2.4 - Outbox pattern imports
-from backend.infra.db import get_db_sessionmaker
-from backend.infra.outbox import OutboxDispatcher
 from backend.services.order_service import OrderService
-from sqlalchemy.ext.asyncio import AsyncSession
+
+# B2.7 - Strategy engine imports
+from backend.strategies.engine import StrategyEngine
+from backend.strategies.types import TradingSignal as StrategySignal
+
 
 # Structured error models for API responses
 class ErrorDetail(BaseModel):
     """Detailed error information"""
     code: str
     message: str
-    context: Optional[Dict[str, Any]] = None
+    context: dict[str, Any] | None = None
 
 class ErrorResponse(BaseModel):
     """Standardized error response structure"""
     error: ErrorDetail
     timestamp: str
-    request_id: Optional[str] = None
-    
+    request_id: str | None = None
+
 class ValidationErrorResponse(BaseModel):
     """Validation error response with field details"""
     error: ErrorDetail
-    validation_errors: List[Dict[str, Any]]
+    validation_errors: list[dict[str, Any]]
     timestamp: str
-    request_id: Optional[str] = None
+    request_id: str | None = None
 
 # Initialize logging and utilities
 logger = get_logger(__name__)
@@ -145,6 +180,7 @@ logger = get_logger(__name__)
 
 # Request ID generation for error tracking
 import uuid
+
 
 def generate_request_id() -> str:
     """Generate unique request ID for error tracking"""
@@ -157,9 +193,9 @@ class SignalResponse(BaseModel):
     signal_type: str
     strength: float
     confidence: float
-    price: Optional[float] = None
+    price: float | None = None
     timestamp: str
-    features: Optional[Dict[str, Any]] = None
+    features: dict[str, Any] | None = None
 
 class SystemStatusResponse(BaseModel):
     """System status API response"""
@@ -168,16 +204,16 @@ class SystemStatusResponse(BaseModel):
     uptime_seconds: int
     version: str
     environment: str
-    components: Dict[str, Any]
-    background_tasks: Dict[str, Any]
-    warnings: List[str]
-    metrics: Dict[str, Any]
+    components: dict[str, Any]
+    background_tasks: dict[str, Any]
+    warnings: list[str]
+    metrics: dict[str, Any]
 
 class HealthCheckResponse(BaseModel):
     """Health check API response"""
     status: str
     timestamp: str
-    components: Dict[str, bool]
+    components: dict[str, bool]
 
 
 # Authentication models
@@ -192,30 +228,30 @@ class LoginResponse(BaseModel):
     access_token: str
     token_type: str
     expires_in: int
-    user: Dict[str, Any]
+    user: dict[str, Any]
 
 
 class TokenValidationResponse(BaseModel):
     """Token validation response"""
     valid: bool
-    user: Optional[Dict[str, Any]] = None
-    expires_at: Optional[str] = None
+    user: dict[str, Any] | None = None
+    expires_at: str | None = None
 
 
 # WebSocket client manager
 class WebSocketClientManager:
     """Manages WebSocket clients with backpressure and heartbeat"""
-    
+
     def __init__(self, max_queue_size: int = 100):
         self.max_queue_size = max_queue_size
-        self.clients: Dict[str, Dict[str, Any]] = {}
-        self._heartbeat_task: Optional[asyncio.Task] = None
-        self._cleanup_task: Optional[asyncio.Task] = None
-        
+        self.clients: dict[str, dict[str, Any]] = {}
+        self._heartbeat_task: asyncio.Task | None = None
+        self._cleanup_task: asyncio.Task | None = None
+
     async def add_client(self, client_id: str, websocket: WebSocket) -> None:
         """Add a new WebSocket client with bounded queue"""
         message_queue = asyncio.Queue(maxsize=self.max_queue_size)
-        
+
         self.clients[client_id] = {
             'websocket': websocket,
             'queue': message_queue,
@@ -223,23 +259,23 @@ class WebSocketClientManager:
             'subscriptions': set(),
             'send_task': None
         }
-        
+
         # Start message sender task for this client
         send_task = asyncio.create_task(
             self._message_sender(client_id)
         )
         self.clients[client_id]['send_task'] = send_task
-        
+
         if PROMETHEUS_AVAILABLE:
             WS_CONNECTIONS.labels(client_type='trading').inc()
-        
+
         audit_logger.info("websocket_client_added", client_id=client_id)
-        
+
     async def remove_client(self, client_id: str) -> None:
         """Remove WebSocket client and cleanup resources"""
         if client_id in self.clients:
             client_info = self.clients[client_id]
-            
+
             # Cancel send task
             if client_info['send_task']:
                 client_info['send_task'].cancel()
@@ -247,27 +283,27 @@ class WebSocketClientManager:
                     await client_info['send_task']
                 except asyncio.CancelledError:
                     pass
-            
+
             # Close websocket
             try:
                 await client_info['websocket'].close()
             except Exception:
                 pass
-                
+
             del self.clients[client_id]
             audit_logger.info("websocket_client_removed", client_id=client_id)
-    
-    async def broadcast_message(self, message: Dict[str, Any], subscription_filter: Optional[str] = None) -> None:
+
+    async def broadcast_message(self, message: dict[str, Any], subscription_filter: str | None = None) -> None:
         """Broadcast message to subscribed clients with backpressure handling"""
         for client_id, client_info in self.clients.items():
             if subscription_filter and subscription_filter not in client_info['subscriptions']:
                 continue
-                
+
             try:
                 # Update queue size metric
                 if PROMETHEUS_AVAILABLE:
                     WS_QUEUE_SIZE.labels(client_id=client_id).set(client_info['queue'].qsize())
-                
+
                 # Non-blocking put with backpressure policy
                 client_info['queue'].put_nowait(message)
             except asyncio.QueueFull:
@@ -276,45 +312,45 @@ class WebSocketClientManager:
                     client_info['queue'].get_nowait()
                     client_info['queue'].put_nowait(message)
                     logging.warning(f"Queue full for client {client_id}, dropped old message")
-                    
+
                     # Update metrics
                     if PROMETHEUS_AVAILABLE:
                         WS_MESSAGES_DROPPED.labels(client_id=client_id, reason='queue_full').inc()
-                        
+
                 except asyncio.QueueEmpty:
                     # Queue became empty between checks, just put the message
                     client_info['queue'].put_nowait(message)
                     pass
-                    
+
     async def _message_sender(self, client_id: str) -> None:
         """Send messages from queue to WebSocket client"""
         client_info = self.clients.get(client_id)
         if not client_info:
             return
-            
+
         websocket = client_info['websocket']
         queue = client_info['queue']
-        
+
         try:
             while True:
                 message = await queue.get()
                 await websocket.send_text(json.dumps(message))
-                
+
                 if PROMETHEUS_AVAILABLE:
                     WS_MESSAGES.labels(direction='sent', message_type=message.get('type', 'unknown')).inc()
-                    
+
                 queue.task_done()
-                
+
         except (WebSocketDisconnect, asyncio.CancelledError):
             pass
         except Exception as e:
             logging.error(f"Error sending message to client {client_id}: {e}")
             await self.remove_client(client_id)
-    
+
     async def start_heartbeat(self) -> None:
         """Start heartbeat task"""
         self._heartbeat_task = asyncio.create_task(self._heartbeat_loop())
-        
+
     async def stop_heartbeat(self) -> None:
         """Stop heartbeat task"""
         if self._heartbeat_task:
@@ -323,42 +359,42 @@ class WebSocketClientManager:
                 await self._heartbeat_task
             except asyncio.CancelledError:
                 pass
-                
+
     async def _heartbeat_loop(self) -> None:
         """Send periodic heartbeat to all clients"""
         while True:
             try:
                 current_time = time.time()
                 ping_message = {"type": "ping", "timestamp": current_time}
-                
+
                 # Send heartbeat and check for stale connections
                 stale_clients = []
                 for client_id, client_info in self.clients.items():
                     # Check if client is stale (no pong for 60 seconds)
                     if current_time - client_info['last_ping'] > 60:
                         stale_clients.append(client_id)
-                        
+
                         # Track timeout in metrics
                         if PROMETHEUS_AVAILABLE:
                             WS_SUBSCRIBER_TIMEOUTS.labels(client_id=client_id).inc()
                         continue
-                        
+
                     try:
                         client_info['queue'].put_nowait(ping_message)
                     except asyncio.QueueFull:
                         # Client can't keep up, mark as stale
                         stale_clients.append(client_id)
-                        
+
                         # Track queue full timeout
                         if PROMETHEUS_AVAILABLE:
                             WS_SUBSCRIBER_TIMEOUTS.labels(client_id=client_id).inc()
-                
+
                 # Remove stale clients
                 for client_id in stale_clients:
                     await self.remove_client(client_id)
-                    
+
                 await asyncio.sleep(30)  # Heartbeat every 30 seconds
-                
+
             except asyncio.CancelledError:
                 break
             except Exception as e:
@@ -377,20 +413,20 @@ if PYDANTIC_AVAILABLE:
         target_price: float
         position_size: float
         timestamp: str
-        metadata: Dict[str, Any] = {}
+        metadata: dict[str, Any] = {}
 
     class TechnicalFeatures(BaseModel):
-        rsi: Optional[float] = None
-        macd: Optional[float] = None
-        bb_position: Optional[float] = None
-        volume_ratio: Optional[float] = None
+        rsi: float | None = None
+        macd: float | None = None
+        bb_position: float | None = None
+        volume_ratio: float | None = None
 
     class RiskAssessment(BaseModel):
         risk_score: float
         var_1d: float
         position_risk: str
         max_position_size: float
-        
+
     class AdvancedSignalResponse(BaseModel):
         symbol: str
         signal_type: str
@@ -398,11 +434,11 @@ if PYDANTIC_AVAILABLE:
         target_price: float
         position_size: float
         timestamp: str
-        metadata: Dict[str, Any] = {}
+        metadata: dict[str, Any] = {}
         authenticated: bool
-        technical_features: Optional[TechnicalFeatures] = None
-        risk_assessment: Optional[RiskAssessment] = None
-        
+        technical_features: TechnicalFeatures | None = None
+        risk_assessment: RiskAssessment | None = None
+
     class AdvancedSignalsMetadata(BaseModel):
         timestamp: str
         authenticated: bool
@@ -410,28 +446,28 @@ if PYDANTIC_AVAILABLE:
         symbols_processed: int
         features_included: bool
         risk_metrics_included: bool
-        
+
     class AdvancedSignalsResponse(BaseModel):
-        signals: Dict[str, AdvancedSignalResponse]
+        signals: dict[str, AdvancedSignalResponse]
         metadata: AdvancedSignalsMetadata
 
     class ModelPredictionResponse(BaseModel):
         symbol: str
         ensemble_prediction: float
         ensemble_confidence: float
-        individual_predictions: Dict[str, float]
+        individual_predictions: dict[str, float]
         timestamp: str
 
     class PortfolioStatus(BaseModel):
         total_value: float
         cash: float
-        positions: Dict[str, Any]
+        positions: dict[str, Any]
         daily_pnl: float
         total_pnl: float
-        risk_metrics: Dict[str, float]
+        risk_metrics: dict[str, float]
 
     class MarketDataRequest(BaseModel):
-        symbols: List[str]
+        symbols: list[str]
         timeframe: str = "1Min"
         limit: int = 100
 
@@ -444,7 +480,7 @@ if PYDANTIC_AVAILABLE:
 
     class ModelTrainingRequest(BaseModel):
         model_id: str
-        symbols: List[str]
+        symbols: list[str]
         training_period_days: int = 30
         retrain_existing: bool = False
 
@@ -455,10 +491,10 @@ if PYDANTIC_AVAILABLE:
         qty: float
         order_type: str = "market"  # 'market', 'limit', 'stop', 'stop_limit'
         time_in_force: str = "gtc"  # 'gtc', 'day', 'ioc', 'fok'
-        limit_price: Optional[float] = None
-        stop_price: Optional[float] = None
-        client_order_id: Optional[str] = None
-        idempotency_key: Optional[str] = None
+        limit_price: float | None = None
+        stop_price: float | None = None
+        client_order_id: str | None = None
+        idempotency_key: str | None = None
 
     class OrderSubmissionResponse(BaseModel):
         order_id: str
@@ -470,29 +506,29 @@ if PYDANTIC_AVAILABLE:
         qty: float
         order_type: str
         time_in_force: str
-        limit_price: Optional[float]
-        stop_price: Optional[float]
+        limit_price: float | None
+        stop_price: float | None
         created_at: str
-        outbox_event_id: Optional[str] = None
+        outbox_event_id: str | None = None
         submission_mode: str
 
     class OrderStatusResponse(BaseModel):
         order_id: str
         client_order_id: str
-        broker_order_id: Optional[str]
+        broker_order_id: str | None
         status: str
         symbol: str
         side: str
         qty: float
-        filled_qty: Optional[float]
+        filled_qty: float | None
         order_type: str
         time_in_force: str
-        limit_price: Optional[float]
-        stop_price: Optional[float]
-        created_at: Optional[str]
-        updated_at: Optional[str]
-        submitted_at: Optional[str]
-        filled_at: Optional[str]
+        limit_price: float | None
+        stop_price: float | None
+        created_at: str | None
+        updated_at: str | None
+        submitted_at: str | None
+        filled_at: str | None
 
 else:
     # Fallback classes if Pydantic not available
@@ -510,13 +546,13 @@ async def lifespan(app: FastAPI):
     logging.info("Starting algorithmic trading platform...")
     background_tasks = {}  # Track all background tasks
     startup_success = False
-    
+
     try:
         settings = get_settings()
-        
+
         # B2.5 - Initialize observability first
         logging.info("Initializing observability infrastructure...")
-        
+
         # Configure structured logging
         configure_structured_logging(
             level=settings.app.log_level,
@@ -526,7 +562,7 @@ async def lifespan(app: FastAPI):
             json_format=True,
             extra_fields={"environment": settings.app.environment}
         )
-        
+
         # Initialize OpenTelemetry observability
         observability_config = ObservabilityConfig(
             service_name=settings.observability.otel_service_name,
@@ -541,14 +577,14 @@ async def lifespan(app: FastAPI):
             metric_namespace=settings.observability.metric_namespace,
             latency_buckets_ms=settings.observability.latency_buckets_ms
         )
-        
+
         initialize_observability(observability_config)
-        
+
         # Initialize metrics registry
         app.state.metrics_registry = initialize_metrics_registry(
             namespace=settings.observability.metric_namespace
         )
-        
+
         # Get structured logger for this module
         structured_logger = get_structured_logger(__name__)
         structured_logger.info("Observability initialized successfully", {
@@ -556,77 +592,86 @@ async def lifespan(app: FastAPI):
             "prometheus_enabled": settings.observability.prometheus_enabled,
             "trace_correlation": settings.observability.log_trace_correlation
         })
-        
+
         # Initialize core components and store in app.state
         logging.info("Initializing AlpacaClient...")
         # Initialize AlpacaClient with test mode for dummy credentials
-        api_key = settings.alpaca_api_key or "dummy_key_for_testing"
-        secret_key = settings.alpaca_secret_key or "dummy_secret_for_testing"
+        api_key = settings.alpaca.api_key or "dummy_key_for_testing"
+        secret_key = settings.alpaca.secret_key or "dummy_secret_for_testing"
         test_mode = api_key == "dummy_key_for_testing" or secret_key == "dummy_secret_for_testing"
-        
+
         app.state.alpaca_client = AlpacaClient(
             api_key=api_key,
             secret_key=secret_key,
             paper=True,
             test_mode=test_mode
         )
-        
+
         logging.info("Initializing SocialSentimentAnalyzer...")
         app.state.sentiment_analyzer = SocialSentimentAnalyzer()
-        
+
         logging.info("Initializing FeatureEngineer...")
         app.state.feature_engineer = FeatureEngineer()
-        
+
         logging.info("Initializing ModelManager...")
         app.state.model_manager = ModelManager()
-        
+
         logging.info("Initializing EnsembleModel...")
         app.state.ensemble_model = EnsembleModel()
-        
+
         logging.info("Initializing RiskManager...")
         app.state.risk_manager = RiskManager()
-        
+
         logging.info("Initializing StrategyManager...")
         app.state.strategy_manager = StrategyManager(
-            app.state.risk_manager, 
+            app.state.risk_manager,
             app.state.ensemble_model
         )
-        
+
+        # B2.7 - Initialize StrategyEngine with required dependencies
+        logging.info("Initializing StrategyEngine...")
+        from backend.services.positions_service import PositionsService
+        app.state.strategy_engine = StrategyEngine(
+            risk_manager=app.state.risk_manager,
+            positions_service=PositionsService()
+        )
+
         # Initialize WebSocket manager
         app.state.ws_manager = ws_manager
-        
+
         # B2.4 - Initialize database and outbox infrastructure
         if settings.outbox.enabled:
             logging.info("Initializing database sessionmaker...")
-            app.state.db_sessionmaker = get_db_sessionmaker()
-            
+            engine, sessionmaker = init_db()
+            app.state.db_engine = engine
+            app.state.db_sessionmaker = sessionmaker
             logging.info("Initializing outbox dispatcher...")
             app.state.outbox_dispatcher = OutboxDispatcher(
                 app.state.db_sessionmaker,
                 app.state.alpaca_client,
                 settings
             )
-            
+
             # Create shutdown event for outbox dispatcher
             app.state.outbox_stop_event = asyncio.Event()
-        
+
         # Start and track background tasks
         logging.info("Starting market data stream...")
         background_tasks['market_data'] = asyncio.create_task(
             start_market_data_stream(app), name="market_data_stream"
         )
-        
+
         logging.info("Starting WebSocket heartbeat...")
         background_tasks['websocket_heartbeat'] = asyncio.create_task(
             app.state.ws_manager.start_heartbeat(), name="websocket_heartbeat"
         )
-        
+
         # Start model auto-retraining task
         logging.info("Starting model auto-retraining...")
         background_tasks['model_retraining'] = asyncio.create_task(
             start_model_retraining_loop(app), name="model_retraining"
         )
-        
+
         # B2.4 - Start outbox dispatcher if enabled
         if settings.outbox.enabled and hasattr(app.state, 'outbox_dispatcher'):
             logging.info("Starting outbox dispatcher...")
@@ -634,15 +679,15 @@ async def lifespan(app: FastAPI):
                 app.state.outbox_dispatcher.run_forever(app.state.outbox_stop_event),
                 name="outbox_dispatcher"
             )
-        
+
         # Store background tasks in app state for shutdown access
         app.state.background_tasks = background_tasks
-        
+
         # Wait for critical services to be ready
         await asyncio.sleep(1)  # Give services time to initialize
         startup_success = True
-        
-        audit_logger.info("trading_platform_started", 
+
+        audit_logger.info("trading_platform_started",
                          timestamp=datetime.now(),
                          components={
                              'alpaca_client': True,
@@ -654,9 +699,9 @@ async def lifespan(app: FastAPI):
                              'strategy_manager': True
                          },
                          background_tasks=list(background_tasks.keys()))
-        
+
         logging.info("Trading platform startup completed successfully")
-        
+
         yield
 
     except Exception as e:
@@ -673,61 +718,144 @@ async def lifespan(app: FastAPI):
                         pass
         raise
 
-    # Shutdown
-    logging.info("Shutting down algorithmic trading platform...")
-    
+    # Shutdown - Enhanced for Production Deployment (BRANCH 2.12)
+    logging.info("Initiating graceful shutdown of algorithmic trading platform...")
+
     shutdown_tasks = []
-    
+    shutdown_timeout = 30.0  # Total shutdown timeout
+
     try:
-        # B2.4 - Signal outbox dispatcher to stop first
-        if hasattr(app.state, 'outbox_stop_event'):
-            logging.info("Signaling outbox dispatcher to stop...")
-            app.state.outbox_stop_event.set()
+        # Step 1: Signal all background tasks to stop gracefully
+        logging.info("Step 1: Signaling background tasks to stop...")
         
-        # Cancel all tracked background tasks first
+        # B2.4 - Signal outbox dispatcher to stop first (highest priority)
+        if hasattr(app.state, 'outbox_stop_event'):
+            logging.info("Signaling outbox dispatcher to stop gracefully...")
+            app.state.outbox_stop_event.set()
+            
+            # Wait briefly for outbox to flush pending messages
+            outbox_task = app.state.background_tasks.get('outbox_dispatcher')
+            if outbox_task and not outbox_task.done():
+                try:
+                    await asyncio.wait_for(outbox_task, timeout=10.0)
+                    logging.info("Outbox dispatcher completed gracefully")
+                except TimeoutError:
+                    logging.warning("Outbox dispatcher did not complete within timeout, forcing cancellation")
+                    outbox_task.cancel()
+                except Exception as e:
+                    logging.error(f"Error waiting for outbox dispatcher: {e}")
+
+        # Step 2: Stop WebSocket manager and disconnect all clients
+        logging.info("Step 2: Stopping WebSocket manager...")
+        if hasattr(app.state, 'ws_manager') and app.state.ws_manager:
+            try:
+                # Stop heartbeat first
+                shutdown_tasks.append(
+                    asyncio.create_task(
+                        app.state.ws_manager.stop_heartbeat(),
+                        name="stop_ws_heartbeat"
+                    )
+                )
+
+                # Disconnect all WebSocket clients gracefully
+                client_disconnect_tasks = []
+                for client_id in list(app.state.ws_manager.clients.keys()):
+                    client_disconnect_tasks.append(
+                        asyncio.create_task(
+                            app.state.ws_manager.remove_client(client_id),
+                            name=f"disconnect_client_{client_id}"
+                        )
+                    )
+                
+                # Wait for all WebSocket clients to disconnect
+                if client_disconnect_tasks:
+                    try:
+                        await asyncio.wait_for(
+                            asyncio.gather(*client_disconnect_tasks, return_exceptions=True),
+                            timeout=5.0
+                        )
+                        logging.info(f"Disconnected {len(client_disconnect_tasks)} WebSocket clients")
+                    except TimeoutError:
+                        logging.warning("WebSocket client disconnection timed out")
+                        
+            except Exception as e:
+                logging.error(f"Error stopping WebSocket manager: {e}")
+
+        # Step 3: Cancel remaining background tasks
+        logging.info("Step 3: Cancelling remaining background tasks...")
         if hasattr(app.state, 'background_tasks'):
             for task_name, task in app.state.background_tasks.items():
-                if not task.done():
+                if not task.done() and task_name != 'outbox_dispatcher':  # Already handled
                     logging.info(f"Cancelling background task: {task_name}")
                     task.cancel()
                     try:
                         await asyncio.wait_for(task, timeout=5.0)
-                    except (asyncio.CancelledError, asyncio.TimeoutError):
-                        logging.warning(f"Task {task_name} cancellation completed")
+                        logging.info(f"Task {task_name} cancelled successfully")
+                    except (TimeoutError, asyncio.CancelledError):
+                        logging.warning(f"Task {task_name} cancellation completed with timeout/cancellation")
                     except Exception as e:
                         logging.error(f"Error cancelling task {task_name}: {e}")
-        
-        # Stop WebSocket manager
-        if hasattr(app.state, 'ws_manager'):
-            shutdown_tasks.append(asyncio.create_task(app.state.ws_manager.stop_heartbeat()))
-            
-            # Disconnect all WebSocket clients
-            for client_id in list(app.state.ws_manager.clients.keys()):
-                shutdown_tasks.append(asyncio.create_task(app.state.ws_manager.remove_client(client_id)))
-        
-        # Stop market data stream
+
+        # Step 4: Stop market data stream and disconnect broker
+        logging.info("Step 4: Disconnecting market data stream...")
         if hasattr(app.state, 'alpaca_client') and app.state.alpaca_client:
-            shutdown_tasks.append(asyncio.create_task(cleanup_alpaca_client(app.state.alpaca_client)))
-        
-        # Flush audit logs
-        shutdown_tasks.append(asyncio.create_task(flush_audit_logs()))
-        
-        # Wait for shutdown tasks with timeout
-        if shutdown_tasks:
-            await asyncio.wait_for(
-                asyncio.gather(*shutdown_tasks, return_exceptions=True),
-                timeout=10.0
+            shutdown_tasks.append(
+                asyncio.create_task(
+                    cleanup_alpaca_client(app.state.alpaca_client),
+                    name="cleanup_alpaca_client"
+                )
             )
-        
-        audit_logger.info("trading_platform_shutdown", 
+
+        # Step 5: Dispose database engine
+        logging.info("Step 5: Disposing database engine...")
+        if hasattr(app.state, 'db_sessionmaker'):
+            try:
+                # Get the underlying engine from sessionmaker
+                sessionmaker = app.state.db_sessionmaker
+                if hasattr(sessionmaker, 'bind') and sessionmaker.bind:
+                    await sessionmaker.bind.dispose()
+                    logging.info("Database engine disposed successfully")
+            except Exception as e:
+                logging.error(f"Error disposing database engine: {e}")
+
+        # Step 6: Flush all audit logs
+        logging.info("Step 6: Flushing audit logs...")
+        shutdown_tasks.append(
+            asyncio.create_task(
+                flush_audit_logs(),
+                name="flush_audit_logs"
+            )
+        )
+
+        # Step 7: Wait for all shutdown tasks with timeout
+        if shutdown_tasks:
+            try:
+                await asyncio.wait_for(
+                    asyncio.gather(*shutdown_tasks, return_exceptions=True),
+                    timeout=shutdown_timeout - 5.0  # Reserve 5s for final cleanup
+                )
+                logging.info("All shutdown tasks completed")
+            except TimeoutError:
+                logging.warning(f"Shutdown tasks did not complete within {shutdown_timeout-5}s timeout")
+
+        # Final audit log
+        audit_logger.info("trading_platform_shutdown_complete",
                          timestamp=datetime.now(),
-                         background_tasks_cancelled=len(background_tasks))
-        logging.info("Trading platform shutdown completed")
+                         background_tasks_cancelled=len(background_tasks),
+                         shutdown_reason="graceful")
         
-    except asyncio.TimeoutError:
-        logging.warning("Shutdown tasks did not complete within timeout")
+        logging.info("Graceful shutdown completed successfully")
+
+    except TimeoutError:
+        logging.warning(f"Graceful shutdown exceeded {shutdown_timeout}s timeout")
+        audit_logger.warning("trading_platform_shutdown_timeout",
+                            timestamp=datetime.now(),
+                            timeout_seconds=shutdown_timeout)
     except Exception as e:
-        logging.error(f"Error during shutdown: {e}", exc_info=True)
+        logging.error(f"Error during graceful shutdown: {e}", exc_info=True)
+        audit_logger.error("trading_platform_shutdown_error",
+                          timestamp=datetime.now(),
+                          error=str(e))
 
 
 async def start_market_data_stream(app: FastAPI):
@@ -750,15 +878,15 @@ async def start_model_retraining_loop(app: FastAPI):
                 try:
                     # Check for models that need retraining every hour
                     await asyncio.sleep(3600)  # 1 hour
-                    
+
                     if hasattr(app.state.model_manager, 'auto_retrain_models'):
                         retrained_models = await app.state.model_manager.auto_retrain_models()
                         if retrained_models:
                             logging.info(f"Auto-retrained models: {list(retrained_models.keys())}")
-                            audit_logger.info("models_auto_retrained", 
+                            audit_logger.info("models_auto_retrained",
                                             models=list(retrained_models.keys()),
                                             timestamp=datetime.now())
-                    
+
                 except asyncio.CancelledError:
                     logging.info("Model retraining loop cancelled")
                     raise
@@ -766,7 +894,7 @@ async def start_model_retraining_loop(app: FastAPI):
                     logging.error(f"Error in model retraining loop: {e}")
                     # Continue loop despite errors
                     await asyncio.sleep(300)  # Wait 5 minutes before retry
-                    
+
         except asyncio.CancelledError:
             logging.info("Model retraining loop stopped")
             raise
@@ -820,14 +948,14 @@ async def timing_middleware(request: Request, call_next):
     """Add request timing, tracing, and logging for comprehensive observability"""
     start_time = time.time()
     request_id = generate_request_id()
-    
+
     # Add request ID to headers for tracing
     request.state.request_id = request_id
-    
+
     # Get structured logger and metrics registry
     structured_logger = get_structured_logger(__name__)
     metrics_registry = get_metrics_registry()
-    
+
     # Log request start with structured context
     structured_logger.log_http_request(
         method=request.method,
@@ -836,12 +964,12 @@ async def timing_middleware(request: Request, call_next):
         duration_ms=0,  # Will be updated on completion
         request_id=request_id
     )
-    
+
     # Start tracing span
-    from backend.infra.observability import trace_span, normalize_route
-    
+    from backend.infra.observability import normalize_route, trace_span
+
     with trace_span(
-        f"http_request", 
+        "http_request",
         {
             "http.method": request.method,
             "http.route": normalize_route(request.url.path),
@@ -854,19 +982,19 @@ async def timing_middleware(request: Request, call_next):
         try:
             # Process request
             response = await call_next(request)
-            
+
             # Calculate timing
             process_time = time.time() - start_time
             duration_ms = process_time * 1000
-            
-            # Add timing headers  
+
+            # Add timing headers
             response.headers["X-Process-Time"] = f"{process_time:.3f}"
             response.headers["X-Request-ID"] = request_id
-            
+
             # Update span with response info
             span.set_attribute("http.status_code", response.status_code)
             span.set_attribute("http.response_size", len(response.body) if hasattr(response, 'body') else 0)
-            
+
             # Log structured response
             structured_logger.log_http_request(
                 method=request.method,
@@ -875,10 +1003,10 @@ async def timing_middleware(request: Request, call_next):
                 duration_ms=duration_ms,
                 request_id=request_id
             )
-            
+
             # Record standardized metrics
             normalized_route = normalize_route(request.url.path)
-            
+
             # HTTP request counter
             status = "success" if 200 <= response.status_code < 400 else "error"
             metrics_registry.inc_counter(
@@ -889,7 +1017,7 @@ async def timing_middleware(request: Request, call_next):
                     "status": status
                 }
             )
-            
+
             # HTTP latency histogram
             metrics_registry.observe_histogram(
                 "http_request_duration_seconds",
@@ -899,7 +1027,7 @@ async def timing_middleware(request: Request, call_next):
                     "method": request.method
                 }
             )
-            
+
             # Update legacy Prometheus metrics if available
             if PROMETHEUS_AVAILABLE:
                 REQUEST_COUNT.labels(
@@ -911,20 +1039,20 @@ async def timing_middleware(request: Request, call_next):
                     method=request.method,
                     endpoint=normalized_route
                 ).observe(process_time)
-            
+
             return response
-            
+
         except Exception as e:
             # Calculate timing for error case
             process_time = time.time() - start_time
             duration_ms = process_time * 1000
-            
+
             # Update span with error info
             span.set_attribute("http.status_code", 500)
             span.set_attribute("error", True)
             span.set_attribute("error.type", type(e).__name__)
             span.set_attribute("error.message", str(e))
-            
+
             # Log structured error
             structured_logger.log_http_request(
                 method=request.method,
@@ -933,7 +1061,7 @@ async def timing_middleware(request: Request, call_next):
                 duration_ms=duration_ms,
                 request_id=request_id
             )
-            
+
             # Record error metrics
             normalized_route = normalize_route(request.url.path)
             metrics_registry.inc_counter(
@@ -944,7 +1072,7 @@ async def timing_middleware(request: Request, call_next):
                     "status": "error"
                 }
             )
-            
+
             # Record error latency
             metrics_registry.observe_histogram(
                 "http_request_duration_seconds",
@@ -954,7 +1082,7 @@ async def timing_middleware(request: Request, call_next):
                     "method": request.method
                 }
             )
-            
+
             # Re-raise to let error handlers process
             raise
 
@@ -963,7 +1091,7 @@ async def timing_middleware(request: Request, call_next):
 async def http_exception_handler(request: Request, exc: HTTPException):
     """Handle HTTP exceptions with structured error response"""
     request_id = generate_request_id()
-    
+
     error_detail = ErrorDetail(
         code=f"HTTP_{exc.status_code}",
         message=exc.detail,
@@ -973,17 +1101,17 @@ async def http_exception_handler(request: Request, exc: HTTPException):
             "method": request.method
         }
     )
-    
+
     error_response = ErrorResponse(
         error=error_detail,
         timestamp=datetime.now().isoformat(),
         request_id=request_id
     )
-    
+
     # Log error for monitoring
-    logger.error(f"HTTP Exception: {exc.status_code} - {exc.detail}", 
+    logger.error(f"HTTP Exception: {exc.status_code} - {exc.detail}",
                 extra={"request_id": request_id, "path": str(request.url)})
-    
+
     return JSONResponse(
         status_code=exc.status_code,
         content=error_response.model_dump()
@@ -993,7 +1121,7 @@ async def http_exception_handler(request: Request, exc: HTTPException):
 async def validation_exception_handler(request: Request, exc: ValidationError):
     """Handle Pydantic validation errors with field details"""
     request_id = generate_request_id()
-    
+
     error_detail = ErrorDetail(
         code="VALIDATION_ERROR",
         message="Request validation failed",
@@ -1002,7 +1130,7 @@ async def validation_exception_handler(request: Request, exc: ValidationError):
             "method": request.method
         }
     )
-    
+
     validation_response = ValidationErrorResponse(
         error=error_detail,
         validation_errors=[
@@ -1017,10 +1145,10 @@ async def validation_exception_handler(request: Request, exc: ValidationError):
         timestamp=datetime.now().isoformat(),
         request_id=request_id
     )
-    
+
     logger.warning(f"Validation error: {len(exc.errors())} fields failed validation",
                   extra={"request_id": request_id, "path": str(request.url)})
-    
+
     return JSONResponse(
         status_code=422,
         content=validation_response.model_dump()
@@ -1030,7 +1158,7 @@ async def validation_exception_handler(request: Request, exc: ValidationError):
 async def general_exception_handler(request: Request, exc: Exception):
     """Handle unexpected errors with structured response and logging"""
     request_id = generate_request_id()
-    
+
     error_detail = ErrorDetail(
         code="INTERNAL_SERVER_ERROR",
         message="An unexpected error occurred",
@@ -1040,19 +1168,80 @@ async def general_exception_handler(request: Request, exc: Exception):
             "error_type": exc.__class__.__name__
         }
     )
-    
+
     error_response = ErrorResponse(
         error=error_detail,
         timestamp=datetime.now().isoformat(),
         request_id=request_id
     )
-    
+
     # Log full exception for debugging
-    logger.exception(f"Unhandled exception: {exc.__class__.__name__}: {str(exc)}", 
+    logger.exception(f"Unhandled exception: {exc.__class__.__name__}: {str(exc)}",
                     extra={"request_id": request_id, "path": str(request.url)})
-    
+
     return JSONResponse(
         status_code=500,
+        content=error_response.model_dump()
+    )
+
+# Branch 2.9: Feature validation exception handlers
+@app.exception_handler(SchemaValidationError)
+async def schema_validation_exception_handler(request: Request, exc: SchemaValidationError):
+    """Handle feature schema validation errors with helpful messages"""
+    request_id = generate_request_id()
+
+    error_detail = ErrorDetail(
+        code="SCHEMA_VALIDATION_ERROR",
+        message="Feature schema validation failed",
+        context={
+            "path": str(request.url),
+            "method": request.method,
+            "missing_columns": exc.missing_columns,
+            "extra_columns": exc.extra_columns
+        }
+    )
+
+    error_response = ErrorResponse(
+        error=error_detail,
+        timestamp=datetime.now().isoformat(),
+        request_id=request_id
+    )
+
+    logger.warning("Feature schema validation failed",
+                  extra={"request_id": request_id, "missing": exc.missing_columns,
+                        "extra": exc.extra_columns})
+
+    return JSONResponse(
+        status_code=400,
+        content=error_response.model_dump()
+    )
+
+@app.exception_handler(LookaheadLeakError)
+async def lookahead_leak_exception_handler(request: Request, exc: LookaheadLeakError):
+    """Handle lookahead bias detection with helpful messages"""
+    request_id = generate_request_id()
+
+    error_detail = ErrorDetail(
+        code="LOOKAHEAD_BIAS_DETECTED",
+        message="Lookahead bias detected in features",
+        context={
+            "path": str(request.url),
+            "method": request.method,
+            "suspicious_columns": getattr(exc, 'columns', [])
+        }
+    )
+
+    error_response = ErrorResponse(
+        error=error_detail,
+        timestamp=datetime.now().isoformat(),
+        request_id=request_id
+    )
+
+    logger.error("Lookahead bias detected in feature pipeline",
+                extra={"request_id": request_id, "columns": getattr(exc, 'columns', [])})
+
+    return JSONResponse(
+        status_code=400,
         content=error_response.model_dump()
     )
 
@@ -1098,6 +1287,11 @@ def get_ws_manager(request: Request) -> WebSocketClientManager:
     return request.app.state.ws_manager
 
 
+def get_strategy_engine(request: Request) -> StrategyEngine:
+    """Get StrategyEngine instance from app state"""
+    return request.app.state.strategy_engine
+
+
 # B2.4 - Database and outbox dependencies
 async def get_db_session(request: Request) -> AsyncGenerator[AsyncSession, None]:
     """Get database session from app state sessionmaker"""
@@ -1122,20 +1316,20 @@ async def metrics_middleware(request: Request, call_next):
     """Middleware to collect Prometheus metrics"""
     if not PROMETHEUS_AVAILABLE:
         return await call_next(request)
-    
+
     start_time = time.time()
     method = request.method
     endpoint = request.url.path
-    
+
     response = await call_next(request)
-    
+
     # Record metrics
     duration = time.time() - start_time
     status = str(response.status_code)
-    
+
     REQUEST_COUNT.labels(method=method, endpoint=endpoint, status=status).inc()
     REQUEST_DURATION.labels(method=method, endpoint=endpoint).observe(duration)
-    
+
     return response
 
 
@@ -1143,16 +1337,16 @@ async def metrics_middleware(request: Request, call_next):
 @app.get("/metrics")
 async def get_metrics():
     """Prometheus metrics endpoint with comprehensive observability metrics"""
+    if not PROMETHEUS_AVAILABLE:
+        raise HTTPException(status_code=501, detail="Metrics not available")
+    
     try:
-        # Use our metrics registry for standardized metrics
-        metrics_registry = get_metrics_registry()
-        
-        # Get Prometheus exposition format data
-        metrics_data = metrics_registry.get_metrics_data()
-        content_type = metrics_registry.get_content_type()
-        
-        return Response(metrics_data, media_type=content_type)
-        
+        # Generate metrics from our custom registry
+        return Response(
+            generate_latest(metrics_registry), 
+            media_type=CONTENT_TYPE_LATEST
+        )
+
     except Exception as e:
         # Fallback to basic prometheus metrics if available
         if PROMETHEUS_AVAILABLE:
@@ -1170,7 +1364,7 @@ async def login(
     """Authenticate user and return JWT access token"""
     user_repo = get_user_repository()
     user = user_repo.authenticate_user(username, password)
-    
+
     if not user:
         # Audit failed login attempt
         audit_logger.warning(
@@ -1185,17 +1379,17 @@ async def login(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid username or password"
         )
-    
+
     # Create access token
     try:
         access_token = create_access_token(
             subject=user.username,
             roles=user.roles
         )
-        
+
         settings = get_settings()
         expires_in = settings.security.jwt_expire_minutes * 60  # Convert to seconds
-        
+
         # Audit successful login
         audit_logger.info(
             "Successful login",
@@ -1205,7 +1399,7 @@ async def login(
                 "timestamp": datetime.now().isoformat()
             }
         )
-        
+
         return LoginResponse(
             access_token=access_token,
             token_type="bearer",
@@ -1216,7 +1410,7 @@ async def login(
                 "is_active": user.is_active
             }
         )
-        
+
     except Exception as e:
         logger.error(f"Token creation failed for user {username}: {str(e)}")
         raise HTTPException(
@@ -1227,18 +1421,18 @@ async def login(
 
 @app.post("/auth/token/validate", response_model=TokenValidationResponse, tags=["Authentication"])
 async def validate_token(
-    current_user: Optional[AuthenticatedUser] = Depends(get_current_user)
+    current_user: AuthenticatedUser | None = Depends(get_current_user)
 ):
     """Validate the provided JWT token"""
     if not current_user:
         return TokenValidationResponse(valid=False)
-    
+
     # Calculate token expiration (approximate, since we don't store it)
     settings = get_settings()
     expires_at = (
         datetime.now() + timedelta(minutes=settings.security.jwt_expire_minutes)
     ).isoformat()
-    
+
     return TokenValidationResponse(
         valid=True,
         user={
@@ -1250,7 +1444,7 @@ async def validate_token(
     )
 
 
-@app.get("/auth/me", response_model=Dict[str, Any], tags=["Authentication"])
+@app.get("/auth/me", response_model=dict[str, Any], tags=["Authentication"])
 async def get_current_user_info(
     current_user: AuthenticatedUser = Depends(get_authenticated_user)
 ):
@@ -1290,6 +1484,183 @@ async def health_check(
     }
 
 
+# Production Health Probes - BRANCH 2.12
+@app.get("/healthz", tags=["System Health"])
+async def liveness_probe():
+    """
+    Kubernetes liveness probe - checks if process is alive and responsive.
+    
+    This endpoint does NOT check dependencies (DB, broker) - only process health.
+    Returns 200 if the process is alive and the event loop is responsive.
+    Used by Kubernetes to determine if pod should be restarted.
+    """
+    try:
+        # Quick async operation to verify event loop is responsive
+        await asyncio.sleep(0.001)
+        
+        return {
+            "status": "alive",
+            "timestamp": datetime.now().isoformat(),
+            "process_id": "unknown",  # Could add os.getpid() if needed
+            "check": "liveness"
+        }
+    except Exception as e:
+        # If we can't even complete a simple async operation, we're in trouble
+        raise HTTPException(
+            status_code=503,
+            detail=f"Process not responsive: {str(e)}"
+        )
+
+
+@app.get("/readyz", tags=["System Health"])
+async def readiness_probe(
+    request: Request,
+    db_session: AsyncSession = Depends(get_db_session),
+):
+    """
+    Kubernetes readiness probe - checks if service is ready to handle traffic.
+    
+    Verifies:
+    - Database connectivity and health
+    - Broker/Alpaca client connectivity
+    - Critical components are operational
+    - Outbox dispatcher is running (if enabled)
+    
+    Returns 200 only when service is fully ready to serve requests.
+    Used by Kubernetes to determine if pod should receive traffic.
+    """
+    health_checks = {}
+    overall_ready = True
+    
+    try:
+        # 1. Database Health Check
+        try:
+            from backend.infra.db import db_health_check
+            db_status = await db_health_check()
+            health_checks["database"] = {
+                "status": "healthy" if db_status else "unhealthy",
+                "ready": bool(db_status)
+            }
+            if not db_status:
+                overall_ready = False
+        except Exception as e:
+            health_checks["database"] = {
+                "status": "error",
+                "ready": False,
+                "error": str(e)
+            }
+            overall_ready = False
+            
+        # 2. Broker/Alpaca Client Health Check
+        try:
+            alpaca_client = getattr(request.app.state, 'alpaca_client', None)
+            if alpaca_client and not getattr(alpaca_client, 'test_mode', True):
+                # Only check real broker connections, not test mode
+                broker_ready = getattr(alpaca_client, 'connected', False)
+                health_checks["broker"] = {
+                    "status": "connected" if broker_ready else "disconnected",
+                    "ready": broker_ready,
+                    "test_mode": False
+                }
+                if not broker_ready:
+                    overall_ready = False
+            else:
+                # Test mode - consider ready
+                health_checks["broker"] = {
+                    "status": "test_mode",
+                    "ready": True,
+                    "test_mode": True
+                }
+        except Exception as e:
+            health_checks["broker"] = {
+                "status": "error", 
+                "ready": False,
+                "error": str(e)
+            }
+            overall_ready = False
+            
+        # 3. Outbox Dispatcher Health (if enabled)
+        try:
+            if hasattr(request.app.state, 'background_tasks'):
+                outbox_task = request.app.state.background_tasks.get('outbox_dispatcher')
+                if outbox_task:
+                    outbox_ready = not outbox_task.done() and not outbox_task.cancelled()
+                    health_checks["outbox_dispatcher"] = {
+                        "status": "running" if outbox_ready else "stopped",
+                        "ready": outbox_ready
+                    }
+                    if not outbox_ready:
+                        overall_ready = False
+                else:
+                    health_checks["outbox_dispatcher"] = {
+                        "status": "not_configured",
+                        "ready": True  # If not configured, don't fail readiness
+                    }
+            else:
+                health_checks["outbox_dispatcher"] = {
+                    "status": "not_configured", 
+                    "ready": True
+                }
+        except Exception as e:
+            health_checks["outbox_dispatcher"] = {
+                "status": "error",
+                "ready": False, 
+                "error": str(e)
+            }
+            
+        # 4. WebSocket Manager Health
+        try:
+            ws_manager = getattr(request.app.state, 'ws_manager', None)
+            if ws_manager:
+                ws_ready = not getattr(ws_manager, '_stop_heartbeat', False)
+                health_checks["websocket_manager"] = {
+                    "status": "running" if ws_ready else "stopped",
+                    "ready": ws_ready
+                }
+                if not ws_ready:
+                    overall_ready = False
+            else:
+                health_checks["websocket_manager"] = {
+                    "status": "not_configured",
+                    "ready": True
+                }
+        except Exception as e:
+            health_checks["websocket_manager"] = {
+                "status": "error",
+                "ready": False,
+                "error": str(e)
+            }
+            
+        # Return readiness status
+        status_code = 200 if overall_ready else 503
+        response_data = {
+            "status": "ready" if overall_ready else "not_ready",
+            "timestamp": datetime.now().isoformat(),
+            "checks": health_checks,
+            "overall_ready": overall_ready,
+            "check": "readiness"
+        }
+        
+        if overall_ready:
+            return response_data
+        else:
+            raise HTTPException(status_code=503, detail=response_data)
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        # Catch-all for unexpected errors
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "status": "error",
+                "timestamp": datetime.now().isoformat(),
+                "error": str(e),
+                "check": "readiness"
+            }
+        )
+
+
 # Enhanced system status endpoint
 @app.get("/api/v1/system/status", response_model=SystemStatusResponse, tags=["System Health"])
 async def system_status(
@@ -1303,19 +1674,18 @@ async def system_status(
     ws_manager: WebSocketClientManager = Depends(get_ws_manager),
 ):
     """Comprehensive system status endpoint with normalized response structure"""
-    import time
-    
+
     current_time = datetime.now()
     app_state = getattr(app, 'state', None)
-    
+
     # Calculate uptime (approximate from last risk check if available)
     uptime_seconds = 0
     if risk_manager and hasattr(risk_manager, 'last_risk_check'):
         uptime_seconds = (current_time - risk_manager.last_risk_check.replace(tzinfo=None)).total_seconds()
-    
+
     # Component status with detailed info
     components = {}
-    
+
     # Risk Manager Status
     components["risk_manager"] = {
         "available": risk_manager is not None,
@@ -1324,18 +1694,18 @@ async def system_status(
         "circuit_breaker_active": getattr(risk_manager, 'circuit_breaker_active', False) if risk_manager else False,
         "daily_trades": getattr(risk_manager, 'daily_trades', 0) if risk_manager else 0
     }
-    
-    # Model Status  
+
+    # Model Status
     model_status = {}
     if ensemble_model:
         model_status = ensemble_model.get_model_status()
-    
+
     components["ensemble_model"] = {
         "available": ensemble_model is not None,
-        "status": "operational" if ensemble_model else "unavailable", 
+        "status": "operational" if ensemble_model else "unavailable",
         "models": model_status
     }
-    
+
     # WebSocket Manager Status
     active_connections = len(ws_manager.clients) if ws_manager else 0
     components["websocket_manager"] = {
@@ -1344,7 +1714,7 @@ async def system_status(
         "active_connections": active_connections,
         "heartbeat_active": hasattr(ws_manager, '_heartbeat_task') and ws_manager._heartbeat_task is not None if ws_manager else False
     }
-    
+
     # Alpaca Client Status
     components["alpaca_client"] = {
         "available": alpaca_client is not None,
@@ -1352,11 +1722,11 @@ async def system_status(
         "connected": getattr(alpaca_client, 'connected', False) if alpaca_client else False,
         "test_mode": getattr(alpaca_client, 'test_mode', True) if alpaca_client else True
     }
-    
+
     # Other Components
     for name, component in [
         ("strategy_manager", strategy_manager),
-        ("sentiment_analyzer", sentiment_analyzer), 
+        ("sentiment_analyzer", sentiment_analyzer),
         ("feature_engineer", feature_engineer),
         ("model_manager", model_manager)
     ]:
@@ -1364,7 +1734,7 @@ async def system_status(
             "available": component is not None,
             "status": "operational" if component else "unavailable"
         }
-    
+
     # Background Tasks Status
     background_tasks_info = {}
     if app_state and hasattr(app_state, 'background_tasks'):
@@ -1374,7 +1744,7 @@ async def system_status(
                 "cancelled": task.cancelled(),
                 "exception": str(task.exception()) if task.done() and task.exception() else None
             }
-    
+
     # Overall system health
     all_critical_components_up = all([
         components["risk_manager"]["available"],
@@ -1382,14 +1752,14 @@ async def system_status(
         components["alpaca_client"]["available"],
         components["websocket_manager"]["available"]
     ])
-    
+
     system_health = "healthy" if all_critical_components_up else "degraded"
-    
+
     # Mock fallbacks warning
     mock_warnings = []
     if components["risk_manager"]["mock_fallbacks_used"]:
         mock_warnings.append("Risk calculations using mock data fallbacks")
-    
+
     return {
         "status": system_health,
         "timestamp": current_time.isoformat(),
@@ -1418,7 +1788,7 @@ async def get_trading_signal(
 ):
     """Get trading signal for a specific symbol"""
     start_time = time.time() if PROMETHEUS_AVAILABLE else 0
-    
+
     try:
         if not strategy_manager:
             raise HTTPException(
@@ -1467,14 +1837,14 @@ async def get_trading_signal(
             }
 
     except HTTPException:
-        # Re-raise HTTP exceptions without modification  
+        # Re-raise HTTP exceptions without modification
         raise
     except Exception as e:
         logging.error(f"Error generating signal for {symbol}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.get("/api/v1/signals", response_model=Dict[str, SignalResponse], tags=["Trading Signals"])
+@app.get("/api/v1/signals", response_model=dict[str, SignalResponse], tags=["Trading Signals"])
 async def get_all_signals(
     symbols: str = "AAPL,GOOGL,MSFT,TSLA,NVDA",
     strategy_manager: StrategyManager = Depends(get_strategy_manager),
@@ -1497,7 +1867,7 @@ async def get_all_signals(
                     signal = await strategy_manager.generate_combined_signal(
                         symbol, price_data, features
                     )
-                    
+
                     if PYDANTIC_AVAILABLE:
                         signals[symbol] = TradingSignalResponse(
                             symbol=signal.symbol,
@@ -1532,7 +1902,7 @@ async def get_all_signals(
 
 
 # Advanced Signals Endpoint with Optional Authentication
-@app.get("/api/v1/signals/advanced", response_model=AdvancedSignalsResponse if PYDANTIC_AVAILABLE else Dict[str, Any], tags=["Trading Signals", "Protected"])
+@app.get("/api/v1/signals/advanced", response_model=AdvancedSignalsResponse if PYDANTIC_AVAILABLE else dict[str, Any], tags=["Trading Signals", "Protected"])
 async def get_advanced_signals(
     symbols: str = "AAPL,GOOGL,MSFT,TSLA,NVDA",
     include_features: bool = False,
@@ -1550,26 +1920,26 @@ async def get_advanced_signals(
     try:
         symbol_list = [s.strip() for s in symbols.split(",")]
         enhanced_signals = {}
-        
+
         # Enhanced features available only to authenticated users
         is_authenticated = current_user is not None
-        
+
         for symbol in symbol_list:
             try:
                 # Get market data
                 price_data = await alpaca_client.get_historical_data(
                     symbol, timeframe="1Day", limit=100
                 )
-                
+
                 if not price_data.empty:
                     # Compute features
                     features = feature_engineer.compute_all_features(price_data)
-                    
+
                     # Generate enhanced signal
                     signal = await strategy_manager.generate_combined_signal(
                         symbol, price_data, features
                     )
-                    
+
                     # Base signal data
                     signal_data = {
                         "symbol": signal.symbol,
@@ -1581,7 +1951,7 @@ async def get_advanced_signals(
                         "metadata": signal.metadata or {},
                         "authenticated": is_authenticated
                     }
-                    
+
                     # Add enhanced data for authenticated users
                     if is_authenticated and include_features and features is not None:
                         # Include latest technical indicators
@@ -1591,7 +1961,7 @@ async def get_advanced_signals(
                             "bb_position": float(features.get("bb_position", 0)) if "bb_position" in features else None,
                             "volume_ratio": float(features.get("volume_ratio", 1)) if "volume_ratio" in features else None
                         }
-                    
+
                     # Add risk metrics for authenticated users
                     if is_authenticated and include_risk_metrics and risk_manager:
                         try:
@@ -1606,16 +1976,16 @@ async def get_advanced_signals(
                             }
                         except Exception as risk_error:
                             signal_data["risk_assessment"] = {"error": str(risk_error)}
-                    
+
                     enhanced_signals[symbol] = signal_data
-                    
+
                 else:
                     enhanced_signals[symbol] = {"error": "No market data available"}
-                    
+
             except Exception as symbol_error:
                 logger.warning(f"Error processing symbol {symbol}: {symbol_error}")
                 enhanced_signals[symbol] = {"error": str(symbol_error)}
-        
+
         # Response metadata
         response = {
             "signals": enhanced_signals,
@@ -1628,17 +1998,17 @@ async def get_advanced_signals(
                 "risk_metrics_included": include_risk_metrics and is_authenticated
             }
         }
-        
+
         # Add audit log for authenticated requests
         if is_authenticated:
-            audit_logger.info("advanced_signals_requested", 
-                            user=current_user, 
+            audit_logger.info("advanced_signals_requested",
+                            user=current_user,
                             symbols=symbol_list,
                             include_features=include_features,
                             include_risk_metrics=include_risk_metrics)
-        
+
         return response
-        
+
     except Exception as e:
         logger.exception(f"Error in get_advanced_signals: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -1661,7 +2031,7 @@ async def websocket_endpoint(
     """WebSocket endpoint for real-time trading data with backpressure handling and rate limiting"""
     await websocket.accept()
     await ws_manager.add_client(client_id, websocket)
-    
+
     # Track background tasks and rate limiting for this client
     background_tasks = {}
     message_count = 0
@@ -1673,13 +2043,13 @@ async def websocket_endpoint(
             # Wait for client message
             data = await websocket.receive_text()
             message = json.loads(data)
-            
+
             # Rate limiting check
             current_time = time.time()
             if current_time - last_reset_time >= 60:  # Reset counter every minute
                 message_count = 0
                 last_reset_time = current_time
-            
+
             message_count += 1
             if message_count > MAX_MESSAGES_PER_MINUTE:
                 await websocket.send_text(json.dumps({
@@ -1693,18 +2063,18 @@ async def websocket_endpoint(
 
             message_type = message.get("type")
             client_info = ws_manager.clients.get(client_id)
-            
+
             if not client_info:
                 break
 
             if message_type == "subscribe_signals":
                 symbols = message.get("symbols", [])
                 client_info['subscriptions'].add('signals')
-                
+
                 # Cancel previous signals task if exists
                 if "signals" in background_tasks:
                     background_tasks["signals"].cancel()
-                
+
                 # Start new background task for signals
                 background_tasks["signals"] = asyncio.create_task(
                     send_realtime_signals(ws_manager, client_id, symbols)
@@ -1712,11 +2082,11 @@ async def websocket_endpoint(
 
             elif message_type == "subscribe_portfolio":
                 client_info['subscriptions'].add('portfolio')
-                
-                # Cancel previous portfolio task if exists  
+
+                # Cancel previous portfolio task if exists
                 if "portfolio" in background_tasks:
                     background_tasks["portfolio"].cancel()
-                    
+
                 # Start new background task for portfolio
                 background_tasks["portfolio"] = asyncio.create_task(
                     send_portfolio_updates(ws_manager, client_id)
@@ -1758,12 +2128,12 @@ async def websocket_endpoint(
                     pass
                 except Exception as e:
                     logging.warning(f"Error cancelling {task_name} task for client {client_id}: {e}")
-        
+
         # Remove client from manager
         await ws_manager.remove_client(client_id)
 
 
-async def send_realtime_signals(ws_manager: WebSocketClientManager, client_id: str, symbols: List[str]):
+async def send_realtime_signals(ws_manager: WebSocketClientManager, client_id: str, symbols: list[str]):
     """Send real-time trading signals to specific client - runs as background task"""
     try:
         while client_id in ws_manager.clients:
@@ -1771,7 +2141,7 @@ async def send_realtime_signals(ws_manager: WebSocketClientManager, client_id: s
                 client_info = ws_manager.clients.get(client_id)
                 if not client_info or 'signals' not in client_info.get('subscriptions', set()):
                     break
-                    
+
                 for symbol in symbols:
                     # Mock signal generation - in production this would be event-driven
                     signal_data = {
@@ -1783,11 +2153,11 @@ async def send_realtime_signals(ws_manager: WebSocketClientManager, client_id: s
                             "timestamp": datetime.now().isoformat()
                         }
                     }
-                    
+
                     await ws_manager.broadcast_message(signal_data, subscription_filter='signals')
-                
+
                 await asyncio.sleep(60)  # Send updates every minute
-                
+
             except Exception as e:
                 logging.error(f"Error in periodic signal updates: {e}")
                 break
@@ -1806,18 +2176,18 @@ async def send_portfolio_updates(ws_manager: WebSocketClientManager, client_id: 
                 client_info = ws_manager.clients.get(client_id)
                 if not client_info or 'portfolio' not in client_info.get('subscriptions', set()):
                     break
-                    
+
                 portfolio_data = {
-                    "type": "portfolio_update", 
+                    "type": "portfolio_update",
                     "data": {
                         "total_value": 100000.0,  # Mock data
                         "timestamp": datetime.now().isoformat()
                     }
                 }
-                
+
                 await ws_manager.broadcast_message(portfolio_data, subscription_filter='portfolio')
                 await asyncio.sleep(30)  # Send updates every 30 seconds
-                
+
             except Exception as e:
                 logging.error(f"Error in periodic portfolio updates: {e}")
                 break
@@ -1829,8 +2199,8 @@ async def send_portfolio_updates(ws_manager: WebSocketClientManager, client_id: 
 
 
 # Protected Trading Endpoints with Outbox Pattern
-@app.post("/api/v1/orders/submit", 
-         response_model=OrderSubmissionResponse if PYDANTIC_AVAILABLE else Dict[str, Any],
+@app.post("/api/v1/orders/submit",
+         response_model=OrderSubmissionResponse if PYDANTIC_AVAILABLE else dict[str, Any],
          tags=["Trading", "Protected", "Outbox"])
 async def submit_order(
     request: OrderSubmissionRequest,
@@ -1855,17 +2225,17 @@ async def submit_order(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Side must be 'buy' or 'sell'"
             )
-        
+
         if request.qty <= 0:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Quantity must be positive"
             )
-        
+
         # Risk management check
         risk_check = risk_manager.check_trade_risk(
-            request.symbol, 
-            request.side.upper(), 
+            request.symbol,
+            request.side.upper(),
             request.qty
         )
         if not risk_check.get("allowed", True):
@@ -1873,7 +2243,7 @@ async def submit_order(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=f"Order rejected by risk management: {risk_check.get('reason')}"
             )
-        
+
         # Audit order request
         audit_logger.info(
             "Order submission requested via outbox",
@@ -1891,7 +2261,7 @@ async def submit_order(
                 "timestamp": datetime.now().isoformat()
             }
         )
-        
+
         # Submit order transactionally via service layer
         result = await order_service.submit_order_transactionally(
             symbol=request.symbol,
@@ -1904,7 +2274,7 @@ async def submit_order(
             client_order_id=request.client_order_id,
             idempotency_key=request.idempotency_key
         )
-        
+
         # Audit successful submission
         audit_logger.info(
             "Order submitted successfully via outbox",
@@ -1917,9 +2287,9 @@ async def submit_order(
                 "timestamp": datetime.now().isoformat()
             }
         )
-        
+
         return result
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -1931,7 +2301,7 @@ async def submit_order(
 
 
 @app.get("/api/v1/orders/{order_id}",
-         response_model=OrderStatusResponse if PYDANTIC_AVAILABLE else Dict[str, Any],
+         response_model=OrderStatusResponse if PYDANTIC_AVAILABLE else dict[str, Any],
          tags=["Trading", "Protected", "Outbox"])
 async def get_order_status(
     order_id: str,
@@ -1941,15 +2311,15 @@ async def get_order_status(
     """Get current order status and details."""
     try:
         order_status = await order_service.get_order_status(order_id)
-        
+
         if not order_status:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Order not found: {order_id}"
             )
-        
+
         return order_status
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -1964,7 +2334,7 @@ async def get_order_status(
           tags=["Trading", "Protected", "Outbox"])
 async def cancel_order(
     order_id: str,
-    idempotency_key: Optional[str] = None,
+    idempotency_key: str | None = None,
     current_user: AuthenticatedUser = Depends(require_trader),
     order_service: OrderService = Depends(get_order_service)
 ):
@@ -1980,12 +2350,12 @@ async def cancel_order(
                 "timestamp": datetime.now().isoformat()
             }
         )
-        
+
         result = await order_service.cancel_order(
             order_id,
             idempotency_key=idempotency_key
         )
-        
+
         # Audit cancellation result
         audit_logger.info(
             "Order cancellation processed",
@@ -1997,9 +2367,9 @@ async def cancel_order(
                 "timestamp": datetime.now().isoformat()
             }
         )
-        
+
         return result
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -2017,7 +2387,7 @@ async def execute_trade_legacy(
     action: str,  # "BUY" or "SELL"
     quantity: int,
     order_type: str = "market",  # "market", "limit"
-    limit_price: Optional[float] = None,
+    limit_price: float | None = None,
     current_user: AuthenticatedUser = Depends(require_trader),
     risk_manager: RiskManager = Depends(get_risk_manager),
 ):
@@ -2029,13 +2399,13 @@ async def execute_trade_legacy(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Action must be 'BUY' or 'SELL'"
             )
-        
+
         if quantity <= 0:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Quantity must be positive"
             )
-        
+
         # Risk management check
         risk_check = risk_manager.check_trade_risk(symbol, action, quantity)
         if not risk_check.get("allowed", True):
@@ -2043,7 +2413,7 @@ async def execute_trade_legacy(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=f"Trade rejected by risk management: {risk_check.get('reason')}"
             )
-        
+
         # Audit trade request
         audit_logger.info(
             "Legacy trade execution requested",
@@ -2057,7 +2427,7 @@ async def execute_trade_legacy(
                 "timestamp": datetime.now().isoformat()
             }
         )
-        
+
         # Mock trade execution (replace with real Alpaca integration)
         trade_result = {
             "trade_id": f"trade_{int(time.time())}",
@@ -2070,9 +2440,9 @@ async def execute_trade_legacy(
             "executed_by": current_user.username,
             "note": "DEPRECATED: Please use /api/v1/orders/submit for new integrations"
         }
-        
+
         return trade_result
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -2103,7 +2473,7 @@ async def get_trade_history(
         }
         for i in range(limit)
     ]
-    
+
     return {
         "trades": trades[offset:offset + limit],
         "total": len(trades),
@@ -2132,7 +2502,7 @@ async def trigger_model_training(
                 "timestamp": datetime.now().isoformat()
             }
         )
-        
+
         # Trigger training (mock implementation)
         training_job = {
             "job_id": f"training_{int(time.time())}",
@@ -2141,9 +2511,9 @@ async def trigger_model_training(
             "started_by": current_user.username,
             "timestamp": datetime.now().isoformat()
         }
-        
+
         return training_job
-        
+
     except Exception as e:
         logger.error(f"Model training trigger failed: {str(e)}")
         raise HTTPException(
@@ -2184,9 +2554,9 @@ async def get_model_status(
 # Protected Risk Management Endpoints
 @app.put("/api/v1/risk/limits", tags=["Risk Management", "Protected"])
 async def update_risk_limits(
-    max_position_size: Optional[float] = None,
-    max_daily_loss: Optional[float] = None,
-    max_portfolio_risk: Optional[float] = None,
+    max_position_size: float | None = None,
+    max_daily_loss: float | None = None,
+    max_portfolio_risk: float | None = None,
     current_user: AuthenticatedUser = Depends(require_admin),
     risk_manager: RiskManager = Depends(get_risk_manager),
 ):
@@ -2199,13 +2569,13 @@ async def update_risk_limits(
             updates["max_daily_loss"] = max_daily_loss
         if max_portfolio_risk is not None:
             updates["max_portfolio_risk"] = max_portfolio_risk
-        
+
         if not updates:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="No updates provided"
             )
-        
+
         # Audit risk limits update
         audit_logger.warning(
             "Risk limits updated",
@@ -2215,7 +2585,7 @@ async def update_risk_limits(
                 "timestamp": datetime.now().isoformat()
             }
         )
-        
+
         # Apply updates (mock implementation)
         result = {
             "updated_limits": updates,
@@ -2223,9 +2593,9 @@ async def update_risk_limits(
             "timestamp": datetime.now().isoformat(),
             "status": "applied"
         }
-        
+
         return result
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -2262,6 +2632,194 @@ async def get_risk_metrics(
         },
         "timestamp": datetime.now().isoformat()
     }
+
+
+# B2.7 - Strategy Engine API Endpoints
+
+# Request/Response models for strategy endpoints
+class StrategySignalRequest(BaseModel):
+    """Request model for submitting strategy signals"""
+    symbol: str = Field(..., description="Trading symbol", example="AAPL")
+    source: str = Field(..., description="Strategy source", example="momentum")
+    target_exposure: float = Field(..., ge=-1.0, le=1.0, description="Target exposure [-1,1]", example=0.5)
+    confidence: float = Field(..., ge=0.0, le=1.0, description="Signal confidence [0,1]", example=0.8)
+
+
+class StrategySignalResponse(BaseModel):
+    """Response model for strategy signal submission"""
+    signal_id: str = Field(..., description="Unique signal identifier")
+    accepted: bool = Field(..., description="Whether signal was accepted")
+    execution_plan: dict[str, Any] | None = Field(None, description="Generated execution plan if accepted")
+    reason: str | None = Field(None, description="Reason if rejected")
+
+
+class ExecutionPlanResponse(BaseModel):
+    """Response model for execution plan requests"""
+    plans: list[dict[str, Any]] = Field(..., description="List of execution plans")
+    netted_signals: dict[str, Any] = Field(..., description="Netted signal data")
+    timestamp: str = Field(..., description="Generation timestamp")
+
+
+@app.post("/api/v1/strategy/signals/submit",
+          response_model=StrategySignalResponse,
+          tags=["Strategy Engine", "Protected"])
+async def submit_strategy_signal(
+    request: StrategySignalRequest,
+    strategy_engine: StrategyEngine = Depends(get_strategy_engine),
+    current_user: dict[str, Any] = Depends(require_roles(["trader", "admin"]))
+) -> StrategySignalResponse:
+    """
+    Submit a trading signal to the strategy engine.
+    Requires trader or admin role.
+    """
+    try:
+        # Create strategy signal
+        signal = StrategySignal(
+            symbol=request.symbol,
+            source=request.source,
+            ts=datetime.now(),
+            target_exposure=request.target_exposure,
+            confidence=request.confidence
+        )
+
+        # Submit to strategy engine
+        execution_plans = await strategy_engine.generate_and_gate([signal])
+
+        if execution_plans:
+            plan = execution_plans[0]
+            return StrategySignalResponse(
+                signal_id=f"{request.symbol}_{request.source}_{int(signal.ts.timestamp())}",
+                accepted=True,
+                execution_plan={
+                    "symbol": plan.symbol,
+                    "side": plan.side.value,
+                    "qty": plan.qty,
+                    "notional": plan.notional,
+                    "reason": plan.reason,
+                    "risk_allowed": plan.risk_allowed
+                }
+            )
+        else:
+            return StrategySignalResponse(
+                signal_id=f"{request.symbol}_{request.source}_{int(signal.ts.timestamp())}",
+                accepted=False,
+                reason="Signal rejected by strategy engine (throttled or risk blocked)"
+            )
+
+    except Exception as e:
+        logger.error(f"Error submitting strategy signal: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to submit strategy signal: {str(e)}"
+        )
+
+
+@app.post("/api/v1/strategy/signals/batch",
+          response_model=ExecutionPlanResponse,
+          tags=["Strategy Engine", "Protected"])
+async def submit_strategy_signals_batch(
+    signals: list[StrategySignalRequest],
+    strategy_engine: StrategyEngine = Depends(get_strategy_engine),
+    current_user: dict[str, Any] = Depends(require_roles(["trader", "admin"]))
+) -> ExecutionPlanResponse:
+    """
+    Submit multiple trading signals for netting and execution planning.
+    Requires trader or admin role.
+    """
+    try:
+        # Convert requests to strategy signals
+        strategy_signals = []
+        for req in signals:
+            signal = StrategySignal(
+                symbol=req.symbol,
+                source=req.source,
+                ts=datetime.now(),
+                target_exposure=req.target_exposure,
+                confidence=req.confidence
+            )
+            strategy_signals.append(signal)
+
+        # Generate execution plans
+        execution_plans = await strategy_engine.generate_and_gate(strategy_signals)
+
+        # Convert execution plans to response format
+        plan_dicts = []
+        for plan in execution_plans:
+            plan_dicts.append({
+                "symbol": plan.symbol,
+                "side": plan.side.value,
+                "qty": plan.qty,
+                "notional": plan.notional,
+                "from_exposure": plan.from_exposure,
+                "to_exposure": plan.to_exposure,
+                "reason": plan.reason,
+                "risk_allowed": plan.risk_allowed,
+                "risk_reason": plan.risk_reason
+            })
+
+        # Get netted signals for debugging
+        netted_signals = {}
+        symbols_processed = list(set(s.symbol for s in strategy_signals))
+        for symbol in symbols_processed:
+            symbol_signals = [s for s in strategy_signals if s.symbol == symbol]
+            if symbol_signals:
+                # Calculate weighted average for display
+                total_weight = sum(s.confidence for s in symbol_signals)
+                if total_weight > 0:
+                    weighted_exposure = sum(s.target_exposure * s.confidence for s in symbol_signals) / total_weight
+                    netted_signals[symbol] = {
+                        "target_exposure": max(-1.0, min(1.0, weighted_exposure)),
+                        "signal_count": len(symbol_signals),
+                        "total_confidence": total_weight
+                    }
+
+        return ExecutionPlanResponse(
+            plans=plan_dicts,
+            netted_signals=netted_signals,
+            timestamp=datetime.now().isoformat()
+        )
+
+    except Exception as e:
+        logger.error(f"Error processing strategy signals batch: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to process strategy signals: {str(e)}"
+        )
+
+
+@app.get("/api/v1/strategy/status",
+         response_model=dict[str, Any],
+         tags=["Strategy Engine", "Protected"])
+async def get_strategy_engine_status(
+    strategy_engine: StrategyEngine = Depends(get_strategy_engine),
+    current_user: dict[str, Any] = Depends(require_admin)
+) -> dict[str, Any]:
+    """
+    Get strategy engine status and configuration.
+    Requires admin role.
+    """
+    try:
+        return {
+            "status": "active",
+            "config": {
+                "strategy_weights": strategy_engine.strategy_weights,
+                "min_flip_interval_s": strategy_engine.min_flip_interval_s,
+                "max_new_risk_per_bar": strategy_engine.max_new_risk_per_bar,
+                "min_notional": strategy_engine.min_notional
+            },
+            "throttle_state": {
+                "tracked_positions": len(strategy_engine._position_flip_times),
+                "note": "Detailed throttle state available in metrics"
+            },
+            "timestamp": datetime.now().isoformat()
+        }
+
+    except Exception as e:
+        logger.error(f"Error getting strategy engine status: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get strategy engine status: {str(e)}"
+        )
 
 
 # Error handlers

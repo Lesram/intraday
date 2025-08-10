@@ -3,22 +3,21 @@ Trading Strategies Framework
 Implements various algorithmic trading strategies with unified interface
 """
 
-import asyncio
-import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple
+import logging
+from typing import Any
 
 import numpy as np
 import pandas as pd
 
 from ..config import get_settings
-from ..models.ensemble_model import EnsembleModel, ModelPrediction
+from ..models.ensemble_model import EnsembleModel
 from ..risk.risk_manager import RiskManager
-from ..utils.helpers import calculate_returns, calculate_sharpe_ratio
-from ..utils.logger import audit_logger, performance_logger
+from ..utils.helpers import calculate_sharpe_ratio
+from ..utils.logger import audit_logger
 
 
 class SignalType(Enum):
@@ -48,12 +47,12 @@ class TradingSignal:
     signal_type: SignalType
     confidence: float
     target_price: float
-    stop_loss: Optional[float] = None
-    take_profit: Optional[float] = None
+    stop_loss: float | None = None
+    take_profit: float | None = None
     position_size: float = 0.0
     order_type: OrderType = OrderType.MARKET
     timestamp: datetime = field(default_factory=datetime.now)
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -90,7 +89,7 @@ class BaseStrategy(ABC):
         pass
 
     @abstractmethod
-    def get_required_features(self) -> List[str]:
+    def get_required_features(self) -> list[str]:
         """Get list of required feature names"""
         pass
 
@@ -128,7 +127,7 @@ class BaseStrategy(ABC):
 
         return base_position
 
-    def update_performance(self, trade_results: List[Dict[str, Any]]):
+    def update_performance(self, trade_results: list[dict[str, Any]]):
         """Update strategy performance metrics"""
         if not trade_results:
             return
@@ -147,7 +146,7 @@ class BaseStrategy(ABC):
             last_updated=datetime.now(),
         )
 
-    def _calculate_max_drawdown(self, returns: List[float]) -> float:
+    def _calculate_max_drawdown(self, returns: list[float]) -> float:
         """Calculate maximum drawdown from returns"""
         cumulative = np.cumprod(1 + np.array(returns))
         peak = np.maximum.accumulate(cumulative)
@@ -237,7 +236,7 @@ class EnsembleStrategy(BaseStrategy):
 
         return signal
 
-    def get_required_features(self) -> List[str]:
+    def get_required_features(self) -> list[str]:
         """Features required by ensemble model"""
         return [
             "sma_20",
@@ -325,7 +324,7 @@ class MeanReversionStrategy(BaseStrategy):
             },
         )
 
-    def get_required_features(self) -> List[str]:
+    def get_required_features(self) -> list[str]:
         return ["rsi", "bb_upper", "bb_lower"]
 
 
@@ -351,12 +350,12 @@ class MomentumStrategy(BaseStrategy):
         confidence = 0.5
 
         # Bullish momentum: MACD above signal + price above moving averages
-        if macd > macd_signal and current_price > sma_20 and sma_20 > sma_50:
+        if macd > macd_signal and current_price > sma_20 > sma_50:
             signal_type = SignalType.BUY
             confidence = min(0.85, abs(macd - macd_signal) * 10)
 
         # Bearish momentum: MACD below signal + price below moving averages
-        elif macd < macd_signal and current_price < sma_20 and sma_20 < sma_50:
+        elif macd < macd_signal and current_price < sma_20 < sma_50:
             signal_type = SignalType.SELL
             confidence = min(0.85, abs(macd - macd_signal) * 10)
 
@@ -392,14 +391,14 @@ class MomentumStrategy(BaseStrategy):
             },
         )
 
-    def get_required_features(self) -> List[str]:
+    def get_required_features(self) -> list[str]:
         return ["macd", "macd_signal", "sma_20", "sma_50"]
 
 
 class RebalancingStrategy(BaseStrategy):
     """Portfolio rebalancing strategy"""
 
-    def __init__(self, risk_manager: RiskManager, target_weights: Dict[str, float]):
+    def __init__(self, risk_manager: RiskManager, target_weights: dict[str, float]):
         super().__init__("RebalancingStrategy", risk_manager)
         self.target_weights = target_weights
         self.rebalance_threshold = 0.05  # 5% deviation triggers rebalance
@@ -455,7 +454,7 @@ class RebalancingStrategy(BaseStrategy):
             },
         )
 
-    def get_required_features(self) -> List[str]:
+    def get_required_features(self) -> list[str]:
         return []  # Rebalancing doesn't need technical features
 
 
@@ -530,7 +529,7 @@ class StatisticalArbitrageStrategy(BaseStrategy):
             },
         )
 
-    def get_required_features(self) -> List[str]:
+    def get_required_features(self) -> list[str]:
         return []
 
 
@@ -540,7 +539,7 @@ class StrategyManager:
     def __init__(self, risk_manager: RiskManager, ensemble_model: EnsembleModel):
         self.risk_manager = risk_manager
         self.ensemble_model = ensemble_model
-        self.strategies: Dict[str, BaseStrategy] = {}
+        self.strategies: dict[str, BaseStrategy] = {}
         self.strategy_weights = {}
         self.settings = get_settings()
 
@@ -649,7 +648,7 @@ class StrategyManager:
         symbol: str,
         price: float,
         confidence: float,
-        strategy_signals: Dict[str, TradingSignal],
+        strategy_signals: dict[str, TradingSignal],
     ) -> float:
         """Calculate position size considering all strategy recommendations"""
 
@@ -677,7 +676,7 @@ class StrategyManager:
         )  # Conservative for combined signals
         return min(final_size, max_position)
 
-    def update_strategy_weights(self, performance_data: Dict[str, StrategyPerformance]):
+    def update_strategy_weights(self, performance_data: dict[str, StrategyPerformance]):
         """Update strategy weights based on performance"""
         total_score = 0.0
         strategy_scores = {}
@@ -711,7 +710,7 @@ class StrategyManager:
             performance_scores=strategy_scores,
         )
 
-    def get_strategy_status(self) -> Dict[str, Dict[str, Any]]:
+    def get_strategy_status(self) -> dict[str, dict[str, Any]]:
         """Get status of all strategies"""
         status = {}
 

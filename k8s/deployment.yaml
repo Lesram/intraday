@@ -1,0 +1,255 @@
+# Kubernetes Deployment for Algorithmic Trading Platform
+# BRANCH 2.12 - Deploy Readiness
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: algotrading-api
+  namespace: algotrading
+  labels:
+    app: algotrading-api
+    version: v1.0.0
+    component: api-server
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: algotrading-api
+  template:
+    metadata:
+      labels:
+        app: algotrading-api
+        version: v1.0.0
+        component: api-server
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/path: "/metrics"
+        prometheus.io/port: "8000"
+    spec:
+      serviceAccountName: algotrading-api
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 0
+        fsGroup: 0
+      containers:
+      - name: api
+        image: algotrading-api:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: http
+          containerPort: 8000
+          protocol: TCP
+        - name: metrics
+          containerPort: 8000
+          protocol: TCP
+        env:
+        # Application Configuration
+        - name: APP_ENVIRONMENT
+          value: "production"
+        - name: APP_LOG_LEVEL
+          value: "INFO"
+        - name: APP_DEBUG
+          value: "false"
+          
+        # Database Configuration
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: algotrading-secrets
+              key: database-url
+        - name: DATABASE_POOL_SIZE
+          value: "20"
+        - name: DATABASE_MAX_OVERFLOW
+          value: "30"
+          
+        # Alpaca API Configuration
+        - name: ALPACA_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: alpaca-secrets
+              key: api-key
+        - name: ALPACA_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: alpaca-secrets
+              key: secret-key
+        - name: ALPACA_BASE_URL
+          value: "https://paper-api.alpaca.markets"
+          
+        # Security Configuration
+        - name: JWT_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: algotrading-secrets
+              key: jwt-secret
+        - name: JWT_ALGORITHM
+          value: "HS256"
+        - name: JWT_EXPIRE_MINUTES
+          value: "60"
+          
+        # Observability Configuration
+        - name: OTEL_SERVICE_NAME
+          value: "algotrading-api"
+        - name: OTEL_SERVICE_VERSION
+          value: "1.0.0"
+        - name: OTEL_ENABLED
+          value: "true"
+        - name: OTEL_EXPORTER_OTLP_ENDPOINT
+          value: "http://otel-collector:4317"
+        - name: PROMETHEUS_ENABLED
+          value: "true"
+        - name: PROMETHEUS_PATH
+          value: "/metrics"
+          
+        # Feature Flags
+        - name: ENABLE_OUTBOX_PATTERN
+          value: "true"
+        - name: ENABLE_BACKGROUND_TASKS
+          value: "true"
+        - name: ENABLE_WEBSOCKET
+          value: "true"
+          
+        # Container Configuration
+        - name: PYTHONPATH
+          value: "/app"
+        - name: PYTHONUNBUFFERED
+          value: "1"
+        - name: PYTHONDONTWRITEBYTECODE
+          value: "1"
+
+        # Resource Requirements
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "2Gi"
+            cpu: "1000m"
+            
+        # Liveness Probe - Check if process is alive
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8000
+            scheme: HTTP
+          initialDelaySeconds: 60
+          periodSeconds: 30
+          timeoutSeconds: 10
+          successThreshold: 1
+          failureThreshold: 3
+          
+        # Readiness Probe - Check if ready to serve traffic
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: 8000
+            scheme: HTTP
+          initialDelaySeconds: 30
+          periodSeconds: 5
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 3
+          
+        # Startup Probe - Initial startup check
+        startupProbe:
+          httpGet:
+            path: /healthz
+            port: 8000
+            scheme: HTTP
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 30
+          
+        # Volume Mounts
+        volumeMounts:
+        - name: app-logs
+          mountPath: /app/logs
+        - name: app-data
+          mountPath: /app/data
+        - name: tmp
+          mountPath: /app/tmp
+          
+        # Security Context
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+            - ALL
+            
+      # Volumes
+      volumes:
+      - name: app-logs
+        emptyDir: {}
+      - name: app-data
+        persistentVolumeClaim:
+          claimName: algotrading-data
+      - name: tmp
+        emptyDir: {}
+        
+      # Pod Scheduling
+      nodeSelector:
+        kubernetes.io/os: linux
+      tolerations:
+      - key: "node.kubernetes.io/not-ready"
+        operator: "Exists"
+        effect: "NoExecute"
+        tolerationSeconds: 300
+      - key: "node.kubernetes.io/unreachable"
+        operator: "Exists"
+        effect: "NoExecute"
+        tolerationSeconds: 300
+        
+      # DNS Configuration
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 45  # Allow time for graceful shutdown
+
+---
+# Horizontal Pod Autoscaler
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: algotrading-api-hpa
+  namespace: algotrading
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: algotrading-api
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 300
+      policies:
+      - type: Percent
+        value: 100
+        periodSeconds: 60
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+      - type: Percent
+        value: 50
+        periodSeconds: 60

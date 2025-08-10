@@ -2,7 +2,6 @@
 Main Application Entry Point
 Algorithmic Trading Platform
 """
-import asyncio
 import logging
 from pathlib import Path
 
@@ -22,17 +21,18 @@ Path('logs').mkdir(exist_ok=True)
 def main():
     """Main application entry point"""
     import uvicorn
+
     from backend.config import get_settings
-    
+
     settings = get_settings()
-    
+
     print("🚀 Starting Algorithmic Trading Platform")
     print("=" * 50)
     print(f"Environment: {settings.environment}")
-    print(f"API Server: http://localhost:8000")
-    print(f"Documentation: http://localhost:8000/docs")
+    print("API Server: http://localhost:8000")
+    print("Documentation: http://localhost:8000/docs")
     print("=" * 50)
-    
+
     # Start the FastAPI server
     uvicorn.run(
         "backend.api.main:app",

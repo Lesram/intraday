@@ -1,0 +1,56 @@
+# Kustomization for complete deployment
+# BRANCH 2.12 - Deploy Readiness
+# Apply with: kubectl apply -k k8s/
+
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: algotrading
+
+resources:
+- namespace.yaml
+- deployment.yaml
+- service.yaml
+- postgres.yaml
+- redis.yaml
+- otel-collector.yaml
+- prometheus.yaml
+
+# Common labels for all resources
+commonLabels:
+  app.kubernetes.io/name: algotrading
+  app.kubernetes.io/version: "1.0.0"
+  app.kubernetes.io/component: api
+  app.kubernetes.io/part-of: algotrading-platform
+  app.kubernetes.io/managed-by: kustomize
+
+# Generate ConfigMap from config files
+configMapGenerator:
+- name: app-config
+  files:
+  - ../logging_config.yaml
+  
+# Secret generator for sensitive config (customize as needed)
+secretGenerator:
+- name: api-secrets
+  literals:
+  - jwt-secret=CHANGEME-generate-strong-jwt-secret
+  - database-url=postgresql+asyncpg://trading:CHANGEME@postgres-service:5432/algotrading
+
+# Image tags and repository
+images:
+- name: algotrading-api
+  newName: algotrading/api
+  newTag: latest
+
+# Apply patches for environment-specific config
+patchesStrategicMerge:
+- patches/production-resources.yaml
+
+# JSON patches for specific modifications
+patchesJson6902:
+- target:
+    version: v1
+    kind: Service
+    name: algotrading-api-service
+  path: patches/service-annotations.yaml

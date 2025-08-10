@@ -3,7 +3,6 @@ In-memory user repository for authentication.
 This will be replaced with database persistence in B2.3.
 """
 
-from typing import Dict, List, Optional
 
 from pydantic import BaseModel
 
@@ -12,21 +11,21 @@ from backend.infra.security import hash_password, verify_password
 
 class User(BaseModel):
     """User model for authentication."""
-    
+
     username: str
     hashed_password: str
-    roles: List[str]
+    roles: list[str]
     is_active: bool = True
 
 
 class UserRepository:
     """In-memory user repository."""
-    
+
     def __init__(self):
         """Initialize with empty user store."""
-        self._users: Dict[str, User] = {}
-    
-    def create_user(self, username: str, password: str, roles: List[str]) -> User:
+        self._users: dict[str, User] = {}
+
+    def create_user(self, username: str, password: str, roles: list[str]) -> User:
         """
         Create a new user.
         
@@ -43,17 +42,17 @@ class UserRepository:
         """
         if username in self._users:
             raise ValueError(f"User '{username}' already exists")
-        
+
         user = User(
             username=username,
             hashed_password=hash_password(password),
             roles=roles
         )
-        
+
         self._users[username] = user
         return user
-    
-    def get_user(self, username: str) -> Optional[User]:
+
+    def get_user(self, username: str) -> User | None:
         """
         Get a user by username.
         
@@ -64,8 +63,8 @@ class UserRepository:
             User if found, None otherwise
         """
         return self._users.get(username)
-    
-    def authenticate_user(self, username: str, password: str) -> Optional[User]:
+
+    def authenticate_user(self, username: str, password: str) -> User | None:
         """
         Authenticate a user with username and password.
         
@@ -79,13 +78,13 @@ class UserRepository:
         user = self.get_user(username)
         if not user or not user.is_active:
             return None
-        
+
         if verify_password(password, user.hashed_password):
             return user
-        
+
         return None
-    
-    def update_user_roles(self, username: str, roles: List[str]) -> bool:
+
+    def update_user_roles(self, username: str, roles: list[str]) -> bool:
         """
         Update user roles.
         
@@ -99,10 +98,10 @@ class UserRepository:
         user = self.get_user(username)
         if not user:
             return False
-        
+
         user.roles = roles
         return True
-    
+
     def deactivate_user(self, username: str) -> bool:
         """
         Deactivate a user account.
@@ -116,11 +115,11 @@ class UserRepository:
         user = self.get_user(username)
         if not user:
             return False
-        
+
         user.is_active = False
         return True
-    
-    def list_users(self) -> List[User]:
+
+    def list_users(self) -> list[User]:
         """
         List all users.
         
@@ -131,7 +130,7 @@ class UserRepository:
 
 
 # Global user repository instance
-_user_repo: Optional[UserRepository] = None
+_user_repo: UserRepository | None = None
 
 
 def get_user_repository() -> UserRepository:
@@ -151,15 +150,15 @@ def get_user_repository() -> UserRepository:
 def _seed_dev_users():
     """Seed development users if in development mode."""
     from backend.config import get_settings
-    
+
     settings = get_settings()
     if not settings.app.dev_mode:
         return
-    
+
     repo = _user_repo
     if not repo:
         return
-    
+
     # Create default admin user for development
     try:
         admin_user = repo.create_user(
@@ -171,7 +170,7 @@ def _seed_dev_users():
     except ValueError:
         # User already exists
         pass
-    
+
     # Create trader user for development
     try:
         trader_user = repo.create_user(
@@ -183,7 +182,7 @@ def _seed_dev_users():
     except ValueError:
         # User already exists
         pass
-    
+
     # Create read-only user for development
     try:
         readonly_user = repo.create_user(
