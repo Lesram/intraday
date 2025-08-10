@@ -93,7 +93,7 @@ from ..mlops.model_manager import ModelManager
 from ..models.ensemble_model import EnsembleModel, ModelPrediction
 from ..risk.risk_manager import RiskManager
 from ..strategies.trading_strategies import SignalType, StrategyManager, TradingSignal
-from backend.utils.logger import get_logger, get_audit_logger
+from backend.utils.logger import get_logger, audit_logger
 
 # Structured error models for API responses
 class ErrorDetail(BaseModel):
@@ -117,7 +117,7 @@ class ValidationErrorResponse(BaseModel):
 
 # Initialize logging and utilities
 logger = get_logger(__name__)
-audit_logger = get_audit_logger()
+# audit_logger is already initialized in the logger module
 
 # Request ID generation for error tracking
 import uuid
