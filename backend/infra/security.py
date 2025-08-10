@@ -100,7 +100,7 @@ def create_access_token(
     settings = get_settings()
     
     if expires_minutes is None:
-        expires_minutes = settings.jwt_access_token_expire_minutes
+        expires_minutes = settings.security.jwt_expire_minutes
     
     now = datetime.now(timezone.utc)
     expire = now + timedelta(minutes=expires_minutes)
@@ -108,8 +108,8 @@ def create_access_token(
     claims = UserClaims(
         sub=subject,
         roles=roles,
-        iss=settings.jwt_issuer,
-        aud=settings.jwt_audience,
+        iss=settings.security.jwt_issuer,
+        aud=settings.security.jwt_audience,
         exp=int(expire.timestamp()),
         iat=int(now.timestamp()),
         jti=secrets.token_urlsafe(16)  # Unique token ID
@@ -118,8 +118,8 @@ def create_access_token(
     try:
         encoded_jwt = jwt.encode(
             claims.model_dump(), 
-            settings.jwt_secret, 
-            algorithm=settings.jwt_algorithm
+            settings.security.jwt_secret_key, 
+            algorithm=settings.security.jwt_algorithm
         )
         return encoded_jwt
     except Exception as e:
@@ -144,10 +144,10 @@ def verify_token(token: str) -> UserClaims:
     try:
         payload = jwt.decode(
             token, 
-            settings.jwt_secret, 
-            algorithms=[settings.jwt_algorithm],
-            issuer=settings.jwt_issuer,
-            audience=settings.jwt_audience
+            settings.security.jwt_secret_key, 
+            algorithms=[settings.security.jwt_algorithm],
+            issuer=settings.security.jwt_issuer,
+            audience=settings.security.jwt_audience
         )
         
         # Validate required claims
@@ -226,7 +226,7 @@ async def get_current_user(
     settings = get_settings()
     
     # In dev mode, allow bypass
-    if settings.security_dev_mode:
+    if settings.app.dev_mode:
         # Check for dev bypass header
         if request.headers.get("X-Dev-Bypass") == "true":
             return AuthenticatedUser(

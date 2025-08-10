@@ -961,7 +961,7 @@ async def login(
         )
         
         settings = get_settings()
-        expires_in = settings.jwt_access_token_expire_minutes * 60  # Convert to seconds
+        expires_in = settings.security.jwt_expire_minutes * 60  # Convert to seconds
         
         # Audit successful login
         audit_logger.info(
@@ -1003,7 +1003,7 @@ async def validate_token(
     # Calculate token expiration (approximate, since we don't store it)
     settings = get_settings()
     expires_at = (
-        datetime.now() + timedelta(minutes=settings.jwt_access_token_expire_minutes)
+        datetime.now() + timedelta(minutes=settings.security.jwt_expire_minutes)
     ).isoformat()
     
     return TokenValidationResponse(

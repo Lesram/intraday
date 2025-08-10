@@ -1,7 +1,6 @@
 """
 Configuration settings for the algorithmic trading platform.
 Uses pydantic-settings BaseSettings pattern with nested configuration sections.
-Compatible with Pydantic V2.
 """
 
 import os
@@ -13,8 +12,6 @@ from pydantic_settings import BaseSettings
 
 class AppConfig(BaseSettings):
     """Application configuration section."""
-    
-    model_config = ConfigDict(env_prefix="APP_", case_sensitive=False)
     
     environment: str = Field(default="development", description="Application environment")
     debug: bool = Field(default=True, description="Enable debug mode")
@@ -44,11 +41,11 @@ class AppConfig(BaseSettings):
             raise ValueError('Port must be between 1 and 65535')
         return v
 
+    model_config = ConfigDict(env_prefix="APP_", case_sensitive=False)
+
 
 class SecurityConfig(BaseSettings):
     """Security configuration section."""
-    
-    model_config = ConfigDict(env_prefix="SECURITY_", case_sensitive=False)
     
     jwt_secret_key: str = Field(
         default="your-super-secret-jwt-key-change-this-in-production",
@@ -56,8 +53,6 @@ class SecurityConfig(BaseSettings):
     )
     jwt_algorithm: str = Field(default="HS256", description="JWT algorithm")
     jwt_expire_minutes: int = Field(default=30, description="JWT expiration minutes")
-    jwt_issuer: str = Field(default="algotrading-platform", description="JWT issuer")
-    jwt_audience: str = Field(default="algotrading-users", description="JWT audience")
     api_keys: List[str] = Field(default_factory=list, description="API keys for authentication")
     
     @field_validator('jwt_secret_key')
@@ -75,6 +70,12 @@ class SecurityConfig(BaseSettings):
             raise ValueError(f'JWT algorithm must be one of {allowed_algorithms}')
         return v
 
+    @model_validator(mode='after')
+    def validate_production_security(self):
+        """Validate production-specific security requirements."""
+        # This will be validated at the main Settings level
+        return self
+
     def __init__(self, **data):
         super().__init__(**data)
         # Load API keys from environment
@@ -82,11 +83,11 @@ class SecurityConfig(BaseSettings):
         if api_keys_env:
             self.api_keys = [key.strip() for key in api_keys_env.split(",") if key.strip()]
 
+    model_config = ConfigDict(env_prefix="SECURITY_", case_sensitive=False)
+
 
 class AlpacaConfig(BaseSettings):
     """Alpaca API configuration section."""
-    
-    model_config = ConfigDict(env_prefix="ALPACA_", case_sensitive=False)
     
     api_key: str = Field(default="", description="Alpaca API key")
     secret_key: str = Field(default="", description="Alpaca secret key")
@@ -100,25 +101,25 @@ class AlpacaConfig(BaseSettings):
     )
     paper_trading: bool = Field(default=True, description="Enable paper trading")
     
-    @field_validator('api_key', 'secret_key')
-    @classmethod
-    def validate_credentials(cls, v, info):
+    @validator('api_key', 'secret_key')
+    def validate_credentials(cls, v, field):
         if not v and os.getenv('APP_ENVIRONMENT') == 'production':
-            raise ValueError(f'Alpaca {info.field_name} is required in production')
+            raise ValueError(f'Alpaca {field.name} is required in production')
         return v
 
-    @field_validator('base_url', 'websocket_url')
-    @classmethod
+    @validator('base_url', 'websocket_url')
     def validate_urls(cls, v):
         if not v.startswith(('http://', 'https://', 'ws://', 'wss://')):
             raise ValueError('URL must start with http://, https://, ws://, or wss://')
         return v
 
+    class Config:
+        env_prefix = "ALPACA_"
+        case_sensitive = False
+
 
 class DataConfig(BaseSettings):
     """Data sources configuration section."""
-    
-    model_config = ConfigDict(env_prefix="DATA_", case_sensitive=False)
     
     # Database configuration
     database_url: str = Field(
@@ -152,25 +153,25 @@ class DataConfig(BaseSettings):
     )
     sentiment_update_interval: int = Field(default=300, description="Sentiment update interval in seconds")
     
-    @field_validator('database_url')
-    @classmethod
+    @validator('database_url')
     def validate_database_url(cls, v):
         if not v:
             raise ValueError('Database URL is required')
         return v
 
-    @field_validator('redis_port')
-    @classmethod
+    @validator('redis_port')
     def validate_redis_port(cls, v):
         if not 1 <= v <= 65535:
             raise ValueError('Redis port must be between 1 and 65535')
         return v
 
+    class Config:
+        env_prefix = "DATA_"
+        case_sensitive = False
+
 
 class WebsocketConfig(BaseSettings):
     """WebSocket configuration section."""
-    
-    model_config = ConfigDict(env_prefix="WEBSOCKET_", case_sensitive=False)
     
     rate_limit_per_minute: int = Field(default=60, description="WebSocket rate limit per minute")
     max_connections: int = Field(default=100, description="Maximum WebSocket connections")
@@ -178,62 +179,64 @@ class WebsocketConfig(BaseSettings):
     reconnect_attempts: int = Field(default=5, description="WebSocket reconnection attempts")
     reconnect_delay: int = Field(default=5, description="WebSocket reconnection delay in seconds")
     
-    @field_validator('rate_limit_per_minute', 'max_connections', 'heartbeat_interval', 'reconnect_attempts', 'reconnect_delay')
-    @classmethod
+    @validator('rate_limit_per_minute', 'max_connections', 'heartbeat_interval', 'reconnect_attempts', 'reconnect_delay')
     def validate_positive(cls, v):
         if v <= 0:
             raise ValueError('Value must be positive')
         return v
 
+    class Config:
+        env_prefix = "WEBSOCKET_"
+        case_sensitive = False
+
 
 class MetricsConfig(BaseSettings):
     """Metrics and monitoring configuration section."""
-    
-    model_config = ConfigDict(env_prefix="METRICS_", case_sensitive=False)
     
     prometheus_port: int = Field(default=9090, description="Prometheus metrics port")
     log_level: str = Field(default="INFO", description="Logging level")
     api_rate_limit_per_minute: int = Field(default=1000, description="API rate limit per minute")
     enable_metrics: bool = Field(default=True, description="Enable metrics collection")
     
-    @field_validator('log_level')
-    @classmethod
+    @validator('log_level')
     def validate_log_level(cls, v):
         allowed_levels = ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']
         if v.upper() not in allowed_levels:
             raise ValueError(f'Log level must be one of {allowed_levels}')
         return v.upper()
         
-    @field_validator('prometheus_port')
-    @classmethod
+    @validator('prometheus_port')
     def validate_prometheus_port(cls, v):
         if not 1024 <= v <= 65535:
             raise ValueError('Prometheus port must be between 1024 and 65535')
         return v
 
+    class Config:
+        env_prefix = "METRICS_"
+        case_sensitive = False
+
 
 class DatabaseConfig(BaseSettings):
     """Database-specific configuration section."""
-    
-    model_config = ConfigDict(env_prefix="DB_", case_sensitive=False)
     
     pool_size: int = Field(default=10, description="Database connection pool size")
     max_overflow: int = Field(default=20, description="Database connection max overflow")
     pool_timeout: int = Field(default=30, description="Database connection pool timeout")
     echo: bool = Field(default=False, description="Enable SQL query logging")
     
-    @field_validator('pool_size', 'max_overflow', 'pool_timeout')
-    @classmethod
+    @validator('pool_size', 'max_overflow', 'pool_timeout')
     def validate_positive(cls, v):
         if v <= 0:
             raise ValueError('Value must be positive')
         return v
 
+    class Config:
+        env_prefix = "DB_"
+        case_sensitive = False
+
 
 class TradingConfig(BaseSettings):
     """Trading strategy and risk management configuration."""
-    
-    model_config = ConfigDict(env_prefix="TRADING_", case_sensitive=False)
     
     # Risk Management Configuration
     max_daily_loss_pct: float = Field(default=0.03, description="Maximum daily loss percentage")
@@ -286,37 +289,32 @@ class TradingConfig(BaseSettings):
     volatility_scale_factor: float = Field(default=10.0, description="Volatility scale factor")
     momentum_scale_factor: float = Field(default=100.0, description="Momentum scale factor")
     
-    @field_validator('max_daily_loss_pct', 'max_drawdown_pct', 'max_position_pct')
-    @classmethod
+    @validator('max_daily_loss_pct', 'max_drawdown_pct', 'max_position_pct')
     def validate_percentages(cls, v):
         if not 0 < v <= 1:
             raise ValueError('Percentage values must be between 0 and 1')
         return v
         
-    @field_validator('max_leverage')
-    @classmethod
+    @validator('max_leverage')
     def validate_leverage(cls, v):
         if v < 1:
             raise ValueError('Leverage must be at least 1')
         return v
 
-    @field_validator('feature_mode')
-    @classmethod
+    @validator('feature_mode')
     def validate_feature_mode(cls, v):
         allowed_modes = ['full', 'realtime_light']
         if v not in allowed_modes:
             raise ValueError(f'Feature mode must be one of {allowed_modes}')
         return v
 
+    class Config:
+        env_prefix = "TRADING_"
+        case_sensitive = False
+
 
 class Settings(BaseSettings):
     """Main settings class with nested configuration sections."""
-    
-    model_config = ConfigDict(
-        env_file=".env", 
-        case_sensitive=False,
-        extra='ignore'  # Ignore extra fields from environment
-    )
     
     app: AppConfig = Field(default_factory=AppConfig)
     security: SecurityConfig = Field(default_factory=SecurityConfig)
@@ -327,104 +325,30 @@ class Settings(BaseSettings):
     database: DatabaseConfig = Field(default_factory=DatabaseConfig)
     trading: TradingConfig = Field(default_factory=TradingConfig)
     
-    def __init__(self, **data):
-        """Initialize with legacy environment variable mapping."""
-        super().__init__(**data)
-        
-        # Map legacy environment variables to nested structure
-        self._map_legacy_env_vars()
-    
-    def _map_legacy_env_vars(self):
-        """Map legacy flat environment variables to nested structure."""
-        # Map legacy variables that might not have proper prefixes
-        legacy_mappings = {
-            # App mappings
-            'ENVIRONMENT': 'app.environment',
-            'DEBUG': 'app.debug',
-            'HOST': 'app.host',
-            'PORT': 'app.port',
-            'WORKERS': 'app.workers',
-            'MAX_CONNECTIONS': 'app.max_connections',
-            'REQUEST_TIMEOUT': 'app.request_timeout',
-            'DEV_MODE': 'app.dev_mode',
-            
-            # Security mappings
-            'JWT_SECRET_KEY': 'security.jwt_secret_key',
-            'API_SECRET_KEY': 'security.jwt_secret_key',  # Legacy alias
-            'JWT_ALGORITHM': 'security.jwt_algorithm',
-            'ALGORITHM': 'security.jwt_algorithm',  # Legacy alias
-            'JWT_EXPIRE_MINUTES': 'security.jwt_expire_minutes',
-            
-            # Alpaca mappings
-            'ALPACA_API_KEY': 'alpaca.api_key',
-            'ALPACA_SECRET_KEY': 'alpaca.secret_key',
-            'ALPACA_BASE_URL': 'alpaca.base_url',
-            'ALPACA_PAPER_TRADING': 'alpaca.paper_trading',
-            
-            # Data mappings
-            'DATABASE_URL': 'data.database_url',
-            'REDIS_URL': 'data.redis_url',
-            'REDIS_HOST': 'data.redis_host',
-            'REDIS_PORT': 'data.redis_port',
-            'REDIS_DB': 'data.redis_db',
-            'REDDIT_CLIENT_ID': 'data.reddit_client_id',
-            'REDDIT_CLIENT_SECRET': 'data.reddit_client_secret',
-            'REDDIT_USER_AGENT': 'data.reddit_user_agent',
-            'TWITTER_API_KEY': 'data.twitter_api_key',
-            'TWITTER_API_SECRET': 'data.twitter_api_secret',
-            'TWITTER_BEARER_TOKEN': 'data.twitter_bearer_token',
-            
-            # Metrics mappings
-            'LOG_LEVEL': 'metrics.log_level',
-            'PROMETHEUS_PORT': 'metrics.prometheus_port',
-            
-            # Trading mappings
-            'MAX_DAILY_LOSS_PCT': 'trading.max_daily_loss_pct',
-            'MAX_DRAWDOWN_PCT': 'trading.max_drawdown_pct',
-            'MAX_POSITION_PCT': 'trading.max_position_pct',
-            'MAX_LEVERAGE': 'trading.max_leverage',
-            'MODEL_REGISTRY_PATH': 'trading.model_registry_path',
-            'DRIFT_DETECTION_THRESHOLD': 'trading.drift_detection_threshold',
-        }
-        
-        for env_var, nested_path in legacy_mappings.items():
-            env_value = os.getenv(env_var)
-            if env_value is not None:
-                self._set_nested_value(nested_path, env_value)
-    
-    def _set_nested_value(self, path: str, value: str):
-        """Set a nested value using dot notation path."""
-        parts = path.split('.')
-        if len(parts) == 2:
-            section_name, field_name = parts
-            section = getattr(self, section_name)
-            
-            # Convert string values to appropriate types based on field annotation
-            field_info = section.__class__.model_fields.get(field_name)
-            if field_info:
-                # Handle type conversion
-                if field_info.annotation == bool:
-                    value = value.lower() in ('true', '1', 'yes', 'on')
-                elif field_info.annotation == int:
-                    value = int(value)
-                elif field_info.annotation == float:
-                    value = float(value)
-                
-                setattr(section, field_name, value)
-    
-    @model_validator(mode='after')
-    def validate_cross_section_dependencies(self):
+    @root_validator
+    def validate_cross_section_dependencies(cls, values):
         """Validate dependencies between different configuration sections."""
-        # Validate that production environment has required credentials
-        if self.app.environment == 'production':
-            if not self.alpaca.api_key or not self.alpaca.secret_key:
-                raise ValueError('Alpaca credentials are required in production')
-            if not self.security.api_keys:
-                raise ValueError('API keys are required in production')
-            if self.security.jwt_secret_key == "your-super-secret-jwt-key-change-this-in-production":
-                raise ValueError('JWT secret key must be changed in production')
+        app = values.get('app')
+        security = values.get('security')
+        alpaca = values.get('alpaca')
         
-        return self
+        if app and security:
+            # Pass environment to security config for production validation
+            if hasattr(security, 'environment'):
+                security.environment = app.environment
+        
+        # Validate that production environment has required credentials
+        if app and app.environment == 'production':
+            if alpaca and (not alpaca.api_key or not alpaca.secret_key):
+                raise ValueError('Alpaca credentials are required in production')
+            if security and not security.api_keys:
+                raise ValueError('API keys are required in production')
+        
+        return values
+
+    class Config:
+        env_file = ".env"
+        case_sensitive = False
 
 
 @lru_cache(maxsize=1)
@@ -470,7 +394,6 @@ def get_legacy_settings() -> dict:
         'host': settings.app.host,
         'port': settings.app.port,
         'dev_mode': settings.app.dev_mode,
-        'security_dev_mode': settings.app.dev_mode,  # Legacy alias
         'cors_origins': settings.app.cors_origins,
         'workers': settings.app.workers,
         'max_connections': settings.app.max_connections,
@@ -480,7 +403,6 @@ def get_legacy_settings() -> dict:
         'jwt_secret_key': settings.security.jwt_secret_key,
         'jwt_algorithm': settings.security.jwt_algorithm,
         'jwt_expire_minutes': settings.security.jwt_expire_minutes,
-        'jwt_access_token_expire_minutes': settings.security.jwt_expire_minutes,  # Legacy alias
         'api_keys': settings.security.api_keys,
         
         # Alpaca settings
@@ -527,36 +449,6 @@ def get_legacy_settings() -> dict:
         'ensemble_weights': settings.trading.ensemble_weights,
     }
 
-
-class LegacySettings:
-    """Legacy settings wrapper for backward compatibility."""
-    
-    def __init__(self):
-        self._settings = get_settings()
-        self._legacy_map = get_legacy_settings()
-    
-    def __getattr__(self, name: str):
-        """Get attribute using legacy naming."""
-        if name in self._legacy_map:
-            return self._legacy_map[name]
-        
-        # Check if it exists in nested structure
-        if name == 'security_dev_mode':
-            return self._settings.app.dev_mode
-        elif name == 'jwt_access_token_expire_minutes':
-            return self._settings.security.jwt_expire_minutes
-        
-        # Try to find in nested settings
-        for section_name in ['app', 'security', 'alpaca', 'data', 'websocket', 'metrics', 'database', 'trading']:
-            section = getattr(self._settings, section_name)
-            if hasattr(section, name):
-                return getattr(section, name)
-        
-        raise AttributeError(f"'{self.__class__.__name__}' object has no attribute '{name}'")
-
-
-# Legacy support - provide instance for backward compatibility
-settings = LegacySettings()
 
 # Validate settings on import (unless explicitly skipped)
 if os.getenv("SKIP_VALIDATION") != "true":
