@@ -49,6 +49,41 @@ class Settings(BaseSettings):
     )
     algorithm: str = config("ALGORITHM", default="HS256")
 
+    # JWT Security Configuration
+    jwt_secret: str = config(
+        "JWT_SECRET", default="your-jwt-secret-key-change-in-production-256-bits-long"
+    )
+    jwt_algorithm: str = config("JWT_ALGORITHM", default="HS256")
+    jwt_issuer: str = config("JWT_ISSUER", default="algotrading-platform")
+    jwt_audience: str = config("JWT_AUDIENCE", default="algotrading-api")
+    jwt_access_token_expire_minutes: int = config(
+        "JWT_ACCESS_TOKEN_EXPIRE_MINUTES", default=30, cast=int
+    )
+    jwt_refresh_token_expire_days: int = config(
+        "JWT_REFRESH_TOKEN_EXPIRE_DAYS", default=7, cast=int
+    )
+
+    # Security Mode
+    security_dev_mode: bool = config("SECURITY_DEV_MODE", default=True, cast=bool)
+
+    # API Keys for Machine-to-Machine Authentication
+    api_keys: List[str] = Field(default_factory=list)
+
+    @field_validator("api_keys", mode="before")
+    @classmethod
+    def parse_api_keys(cls, v):
+        """Parse API keys from environment variable."""
+        if isinstance(v, str):
+            return [key.strip() for key in v.split(",") if key.strip()]
+        return v or []
+
+    def __init__(self, **data):
+        super().__init__(**data)
+        # Load API keys from environment
+        api_keys_env = config("API_KEYS", default="")
+        if api_keys_env:
+            self.api_keys = [key.strip() for key in api_keys_env.split(",") if key.strip()]
+
     # Risk Management Configuration
     max_daily_loss_pct: float = config("MAX_DAILY_LOSS_PCT", default=0.03, cast=float)
     max_drawdown_pct: float = config("MAX_DRAWDOWN_PCT", default=0.06, cast=float)

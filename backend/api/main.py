@@ -23,6 +23,7 @@ from fastapi import (
     WebSocket,
     WebSocketDisconnect,
     status,
+    Form,
 )
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -95,6 +96,18 @@ from ..risk.risk_manager import RiskManager
 from ..strategies.trading_strategies import SignalType, StrategyManager, TradingSignal
 from backend.utils.logger import get_logger, audit_logger
 
+# Authentication imports
+from backend.infra.security import (
+    AuthenticatedUser,
+    create_access_token,
+    get_authenticated_user,
+    get_current_user,
+    require_admin,
+    require_trader,
+    require_roles
+)
+from backend.infra.users import get_user_repository
+
 # Structured error models for API responses
 class ErrorDetail(BaseModel):
     """Detailed error information"""
@@ -155,32 +168,28 @@ class HealthCheckResponse(BaseModel):
     timestamp: str
     components: Dict[str, bool]
 
-# Security and Authentication
-security = HTTPBearer()
 
-def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)) -> str:
-    """
-    Basic JWT token verification (placeholder implementation)
-    In production, replace with proper JWT validation
-    """
-    token = credentials.credentials
-    
-    # Simple development token validation - REPLACE IN PRODUCTION
-    if token == "dev-token-12345":
-        return "development-user"
-    elif token.startswith("prod-"):
-        # In production, validate JWT with proper secret key
-        # jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
-        return "authenticated-user"
-    else:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid authentication credentials",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+# Authentication models
+class LoginRequest(BaseModel):
+    """Login request payload"""
+    username: str
+    password: str
 
-# Optional security dependency for protected endpoints
-OptionalAuth = Depends(verify_token)
+
+class LoginResponse(BaseModel):
+    """Login response with JWT token"""
+    access_token: str
+    token_type: str
+    expires_in: int
+    user: Dict[str, Any]
+
+
+class TokenValidationResponse(BaseModel):
+    """Token validation response"""
+    valid: bool
+    user: Optional[Dict[str, Any]] = None
+    expires_at: Optional[str] = None
+
 
 # WebSocket client manager
 class WebSocketClientManager:
@@ -919,6 +928,108 @@ async def get_metrics():
     return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
 
+# Authentication endpoints
+@app.post("/auth/login", response_model=LoginResponse, tags=["Authentication"])
+async def login(
+    username: str = Form(...),
+    password: str = Form(...),
+):
+    """Authenticate user and return JWT access token"""
+    user_repo = get_user_repository()
+    user = user_repo.authenticate_user(username, password)
+    
+    if not user:
+        # Audit failed login attempt
+        audit_logger.warning(
+            "Failed login attempt",
+            extra={
+                "username": username,
+                "ip": "unknown",  # Would need request object for real IP
+                "timestamp": datetime.now().isoformat()
+            }
+        )
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid username or password"
+        )
+    
+    # Create access token
+    try:
+        access_token = create_access_token(
+            subject=user.username,
+            roles=user.roles
+        )
+        
+        settings = get_settings()
+        expires_in = settings.jwt_access_token_expire_minutes * 60  # Convert to seconds
+        
+        # Audit successful login
+        audit_logger.info(
+            "Successful login",
+            extra={
+                "username": username,
+                "roles": user.roles,
+                "timestamp": datetime.now().isoformat()
+            }
+        )
+        
+        return LoginResponse(
+            access_token=access_token,
+            token_type="bearer",
+            expires_in=expires_in,
+            user={
+                "username": user.username,
+                "roles": user.roles,
+                "is_active": user.is_active
+            }
+        )
+        
+    except Exception as e:
+        logger.error(f"Token creation failed for user {username}: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to create access token"
+        )
+
+
+@app.post("/auth/token/validate", response_model=TokenValidationResponse, tags=["Authentication"])
+async def validate_token(
+    current_user: Optional[AuthenticatedUser] = Depends(get_current_user)
+):
+    """Validate the provided JWT token"""
+    if not current_user:
+        return TokenValidationResponse(valid=False)
+    
+    # Calculate token expiration (approximate, since we don't store it)
+    settings = get_settings()
+    expires_at = (
+        datetime.now() + timedelta(minutes=settings.jwt_access_token_expire_minutes)
+    ).isoformat()
+    
+    return TokenValidationResponse(
+        valid=True,
+        user={
+            "username": current_user.username,
+            "roles": current_user.roles,
+            "token_id": current_user.token_id
+        },
+        expires_at=expires_at
+    )
+
+
+@app.get("/auth/me", response_model=Dict[str, Any], tags=["Authentication"])
+async def get_current_user_info(
+    current_user: AuthenticatedUser = Depends(get_authenticated_user)
+):
+    """Get current authenticated user information"""
+    return {
+        "username": current_user.username,
+        "roles": current_user.roles,
+        "authenticated": True,
+        "token_id": current_user.token_id
+    }
+
+
 # Health check endpoint
 @app.get("/health", response_model=HealthCheckResponse, tags=["System Health"])
 async def health_check(
@@ -1193,7 +1304,7 @@ async def get_advanced_signals(
     symbols: str = "AAPL,GOOGL,MSFT,TSLA,NVDA",
     include_features: bool = False,
     include_risk_metrics: bool = False,
-    current_user: str = Depends(verify_token),  # Always required for protected endpoint
+    current_user: AuthenticatedUser = Depends(get_authenticated_user),  # Authentication required
     strategy_manager: StrategyManager = Depends(get_strategy_manager),
     alpaca_client: AlpacaClient = Depends(get_alpaca_client),
     feature_engineer: FeatureEngineer = Depends(get_feature_engineer),
@@ -1482,6 +1593,260 @@ async def send_portfolio_updates(ws_manager: WebSocketClientManager, client_id: 
         raise
     except Exception as e:
         logging.error(f"Error setting up portfolio updates: {e}")
+
+
+# Protected Trading Endpoints
+@app.post("/api/v1/trades/execute", tags=["Trading", "Protected"])
+async def execute_trade(
+    symbol: str,
+    action: str,  # "BUY" or "SELL"
+    quantity: int,
+    order_type: str = "market",  # "market", "limit"
+    limit_price: Optional[float] = None,
+    current_user: AuthenticatedUser = Depends(require_trader),
+    alpaca_client: AlpacaClient = Depends(get_alpaca_client),
+    risk_manager: RiskManager = Depends(get_risk_manager),
+):
+    """Execute a trade order (requires trader or admin role)"""
+    try:
+        # Validate trade parameters
+        if action not in ["BUY", "SELL"]:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Action must be 'BUY' or 'SELL'"
+            )
+        
+        if quantity <= 0:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Quantity must be positive"
+            )
+        
+        # Risk management check
+        risk_check = risk_manager.check_trade_risk(symbol, action, quantity)
+        if not risk_check.get("allowed", True):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Trade rejected by risk management: {risk_check.get('reason')}"
+            )
+        
+        # Audit trade request
+        audit_logger.info(
+            "Trade execution requested",
+            extra={
+                "user": current_user.username,
+                "symbol": symbol,
+                "action": action,
+                "quantity": quantity,
+                "order_type": order_type,
+                "limit_price": limit_price,
+                "timestamp": datetime.now().isoformat()
+            }
+        )
+        
+        # Mock trade execution (replace with real Alpaca integration)
+        trade_result = {
+            "trade_id": f"trade_{int(time.time())}",
+            "symbol": symbol,
+            "action": action,
+            "quantity": quantity,
+            "order_type": order_type,
+            "status": "submitted",
+            "timestamp": datetime.now().isoformat(),
+            "executed_by": current_user.username
+        }
+        
+        return trade_result
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Trade execution failed: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Trade execution failed"
+        )
+
+
+@app.get("/api/v1/trades/history", tags=["Trading", "Protected"])
+async def get_trade_history(
+    limit: int = 50,
+    offset: int = 0,
+    current_user: AuthenticatedUser = Depends(require_trader),
+):
+    """Get trade history (requires trader or admin role)"""
+    # Mock trade history - replace with real data access
+    trades = [
+        {
+            "trade_id": f"trade_{i}",
+            "symbol": ["AAPL", "GOOGL", "MSFT", "TSLA", "NVDA"][i % 5],
+            "action": ["BUY", "SELL"][i % 2],
+            "quantity": (i + 1) * 10,
+            "price": 100.0 + i,
+            "timestamp": (datetime.now() - timedelta(days=i)).isoformat(),
+            "status": "executed"
+        }
+        for i in range(limit)
+    ]
+    
+    return {
+        "trades": trades[offset:offset + limit],
+        "total": len(trades),
+        "limit": limit,
+        "offset": offset
+    }
+
+
+# Protected Model Management Endpoints
+@app.post("/api/v1/models/train", tags=["ML Models", "Protected"])
+async def trigger_model_training(
+    model_type: str = "ensemble",
+    retrain_all: bool = False,
+    current_user: AuthenticatedUser = Depends(require_admin),
+    model_manager: ModelManager = Depends(get_model_manager),
+):
+    """Trigger model training (requires admin role)"""
+    try:
+        # Audit model training request
+        audit_logger.info(
+            "Model training triggered",
+            extra={
+                "user": current_user.username,
+                "model_type": model_type,
+                "retrain_all": retrain_all,
+                "timestamp": datetime.now().isoformat()
+            }
+        )
+        
+        # Trigger training (mock implementation)
+        training_job = {
+            "job_id": f"training_{int(time.time())}",
+            "model_type": model_type,
+            "status": "started",
+            "started_by": current_user.username,
+            "timestamp": datetime.now().isoformat()
+        }
+        
+        return training_job
+        
+    except Exception as e:
+        logger.error(f"Model training trigger failed: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to trigger model training"
+        )
+
+
+@app.get("/api/v1/models/status", tags=["ML Models", "Protected"])
+async def get_model_status(
+    current_user: AuthenticatedUser = Depends(require_trader),
+    model_manager: ModelManager = Depends(get_model_manager),
+):
+    """Get model training and deployment status (requires trader or admin role)"""
+    # Mock model status - replace with real model manager integration
+    return {
+        "models": [
+            {
+                "name": "ensemble_model",
+                "version": "1.0.0",
+                "status": "deployed",
+                "accuracy": 0.85,
+                "last_trained": datetime.now().isoformat(),
+                "predictions_today": 1250
+            },
+            {
+                "name": "sentiment_model",
+                "version": "1.2.0",
+                "status": "training",
+                "progress": 0.65,
+                "eta_minutes": 15
+            }
+        ],
+        "timestamp": datetime.now().isoformat()
+    }
+
+
+# Protected Risk Management Endpoints
+@app.put("/api/v1/risk/limits", tags=["Risk Management", "Protected"])
+async def update_risk_limits(
+    max_position_size: Optional[float] = None,
+    max_daily_loss: Optional[float] = None,
+    max_portfolio_risk: Optional[float] = None,
+    current_user: AuthenticatedUser = Depends(require_admin),
+    risk_manager: RiskManager = Depends(get_risk_manager),
+):
+    """Update risk management limits (requires admin role)"""
+    try:
+        updates = {}
+        if max_position_size is not None:
+            updates["max_position_size"] = max_position_size
+        if max_daily_loss is not None:
+            updates["max_daily_loss"] = max_daily_loss
+        if max_portfolio_risk is not None:
+            updates["max_portfolio_risk"] = max_portfolio_risk
+        
+        if not updates:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="No updates provided"
+            )
+        
+        # Audit risk limits update
+        audit_logger.warning(
+            "Risk limits updated",
+            extra={
+                "user": current_user.username,
+                "updates": updates,
+                "timestamp": datetime.now().isoformat()
+            }
+        )
+        
+        # Apply updates (mock implementation)
+        result = {
+            "updated_limits": updates,
+            "updated_by": current_user.username,
+            "timestamp": datetime.now().isoformat(),
+            "status": "applied"
+        }
+        
+        return result
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Risk limits update failed: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to update risk limits"
+        )
+
+
+@app.get("/api/v1/risk/metrics", tags=["Risk Management", "Protected"])
+async def get_risk_metrics(
+    current_user: AuthenticatedUser = Depends(require_trader),
+    risk_manager: RiskManager = Depends(get_risk_manager),
+):
+    """Get current risk metrics (requires trader or admin role)"""
+    # Mock risk metrics - replace with real risk manager integration
+    return {
+        "portfolio_risk": {
+            "current_exposure": 0.65,
+            "max_allowed_exposure": 0.8,
+            "var_1d": -2500.0,
+            "var_5d": -8500.0
+        },
+        "position_limits": {
+            "max_position_size": 10000.0,
+            "current_max_position": 7500.0,
+            "utilization": 0.75
+        },
+        "daily_pnl": {
+            "current": 1250.0,
+            "max_allowed_loss": -5000.0,
+            "remaining_risk_budget": 6250.0
+        },
+        "timestamp": datetime.now().isoformat()
+    }
 
 
 # Error handlers

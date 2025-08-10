@@ -100,6 +100,13 @@ algotrading_platform/
 
 ## 🚀 Enhanced API Endpoints
 
+### Authentication & Authorization
+```http
+POST /auth/login                     # JWT token authentication
+POST /auth/token/validate           # Token validation
+GET  /auth/me                       # Current user info
+```
+
 ### System Health & Status
 ```http
 GET /health                          # Basic health check with component status
@@ -112,6 +119,24 @@ GET /metrics                        # Prometheus metrics endpoint
 GET /api/v1/signals/{symbol}        # Get trading signal for specific symbol
 GET /api/v1/signals                 # Get signals for multiple symbols  
 GET /api/v1/signals/advanced        # Advanced signals with authentication
+```
+
+### Protected Trading Operations (🔐 Authentication Required)
+```http
+POST /api/v1/trades/execute         # Execute trade (Trader+ role)
+GET  /api/v1/trades/history         # Trade history (Trader+ role)
+```
+
+### Protected Model Management (🔐 Admin Only)
+```http
+POST /api/v1/models/train           # Trigger model training
+GET  /api/v1/models/status          # Model status (Trader+ role)
+```
+
+### Protected Risk Management
+```http
+PUT  /api/v1/risk/limits            # Update risk limits (Admin only)
+GET  /api/v1/risk/metrics           # Current risk metrics (Trader+ role)
 ```
 
 ### WebSocket Real-time Data
