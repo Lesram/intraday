@@ -1,16 +1,28 @@
 """
 Alpaca API Client Module for Market Data & Trading.
 Handles all interactions with Alpaca's trading and market data APIs.
+Enhanced with comprehensive observability including tracing and metrics.
 """
 
 import asyncio
 import logging
+import time
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Any, Callable, Dict, List, Optional
 
 import numpy as np
 import pandas as pd
+
+# B2.5 - Observability imports
+from backend.infra.observability import (
+    trace_span, 
+    record_latency, 
+    record_alpaca_request,
+    get_tracer
+)
+from backend.infra.logging import get_logger as get_structured_logger
+from backend.infra.metrics import get_metrics_registry
 
 try:
     from alpaca.common.exceptions import APIError
@@ -92,7 +104,7 @@ class AlpacaClient:
     Supports both paper and live trading modes.
     """
 
-    def __init__(self, api_key: str, secret_key: str, paper: bool = True):
+    def __init__(self, api_key: str, secret_key: str, paper: bool = True, test_mode: bool = False):
         """
         Initialize Alpaca trading and data client.
 
@@ -100,6 +112,7 @@ class AlpacaClient:
             api_key: Alpaca API key
             secret_key: Alpaca secret key
             paper: Whether to use paper trading (True) or live trading (False)
+            test_mode: Whether to skip real API calls for testing (True) or not (False)
         """
         if not ALPACA_AVAILABLE:
             raise ImportError(
@@ -110,6 +123,7 @@ class AlpacaClient:
         self.api_key = api_key
         self.secret_key = secret_key
         self.paper = paper
+        self.test_mode = test_mode
         self.connected = False
 
         # Initialize clients
@@ -152,18 +166,28 @@ class AlpacaClient:
                 api_key=self.api_key, secret_key=self.secret_key
             )
 
-            # Test connection
-            account = self.trading_client.get_account()
-            self.connected = True
-            self.logger.info(
-                "Connected to Alpaca",
-                account_number=account.account_number,
-                buying_power=float(account.buying_power),
-            )
+            # Test connection only if not in test mode
+            if not self.test_mode:
+                account = self.trading_client.get_account()
+                self.connected = True
+                self.logger.info(
+                    "Connected to Alpaca",
+                    account_number=account.account_number,
+                    buying_power=float(account.buying_power),
+                )
+            else:
+                # In test mode, assume connection is successful
+                self.connected = True
+                self.logger.info("AlpacaClient initialized in test mode")
 
         except Exception as e:
             self.logger.error("Failed to initialize Alpaca clients", error=str(e))
-            raise
+            if not self.test_mode:
+                raise
+            else:
+                # In test mode, log error but continue
+                self.connected = False
+                self.logger.warning("Test mode: continuing despite initialization error")
 
     async def connect_data_stream(
         self,
@@ -332,6 +356,7 @@ class AlpacaClient:
             )
             raise
 
+    @record_latency("alpaca_http_latency_seconds", method="POST", extra_labels={"endpoint": "/v2/orders"})
     def submit_order(
         self,
         symbol: str,
@@ -343,6 +368,7 @@ class AlpacaClient:
     ) -> OrderResult:
         """
         Place an order and return the submitted order object.
+        Enhanced with comprehensive tracing and metrics.
 
         Args:
             symbol: Symbol to trade
@@ -355,84 +381,153 @@ class AlpacaClient:
         Returns:
             OrderResult object with order details
         """
-        try:
-            if not validate_symbol(symbol):
-                raise ValueError(f"Invalid symbol format: {symbol}")
+        start_time = time.time()
+        structured_logger = get_structured_logger(__name__)
+        
+        with trace_span(
+            "alpaca_submit_order",
+            {
+                "alpaca.operation": "submit_order",
+                "alpaca.symbol": symbol,
+                "alpaca.side": side,
+                "alpaca.order_type": order_type,
+                "alpaca.quantity": qty,
+                "alpaca.limit_price": limit_price
+            }
+        ) as span:
+            try:
+                if not validate_symbol(symbol):
+                    raise ValueError(f"Invalid symbol format: {symbol}")
 
-            # Rate limiting
-            self._rate_limit()
+                # Rate limiting
+                self._rate_limit()
 
-            # Convert string enums
-            side_enum = OrderSide.BUY if side.lower() == "buy" else OrderSide.SELL
-            tif_enum = getattr(TimeInForce, time_in_force.upper())
+                # Convert string enums
+                side_enum = OrderSide.BUY if side.lower() == "buy" else OrderSide.SELL
+                tif_enum = getattr(TimeInForce, time_in_force.upper())
 
-            # Create order request
-            if order_type.lower() == "market":
-                order_request = MarketOrderRequest(
-                    symbol=symbol, qty=qty, side=side_enum, time_in_force=tif_enum
+                # Create order request
+                if order_type.lower() == "market":
+                    order_request = MarketOrderRequest(
+                        symbol=symbol, qty=qty, side=side_enum, time_in_force=tif_enum
+                    )
+                elif order_type.lower() == "limit":
+                    if limit_price is None:
+                        raise ValueError("Limit price required for limit orders")
+                    order_request = LimitOrderRequest(
+                        symbol=symbol,
+                        qty=qty,
+                        side=side_enum,
+                        time_in_force=tif_enum,
+                        limit_price=limit_price,
+                    )
+                else:
+                    raise ValueError(f"Unsupported order type: {order_type}")
+
+                # Submit order with API call timing
+                api_start_time = time.time()
+                order = self.trading_client.submit_order(order_request)
+                api_duration = time.time() - api_start_time
+
+                # Record Alpaca API metrics
+                record_alpaca_request(
+                    endpoint="/v2/orders",
+                    method="POST",
+                    status_code=201,  # Assume success if no exception
+                    duration_seconds=api_duration
                 )
-            elif order_type.lower() == "limit":
-                if limit_price is None:
-                    raise ValueError("Limit price required for limit orders")
-                order_request = LimitOrderRequest(
+
+                # Create result object
+                result = OrderResult(
+                    order_id=str(order.id),
+                    symbol=order.symbol,
+                    side=order.side.value,
+                    quantity=float(order.qty),
+                    filled_quantity=float(order.filled_qty or 0),
+                    price=float(order.filled_avg_price) if order.filled_avg_price else None,
+                    status=order.status.value,
+                    timestamp=order.created_at,
+                )
+
+                # Update span with success info
+                span.set_attribute("alpaca.order_id", str(order.id))
+                span.set_attribute("alpaca.status", order.status.value)
+                span.set_attribute("alpaca.api_duration_seconds", api_duration)
+
+                # Log structured order event
+                structured_logger.log_order_event(
+                    event="order_submitted",
+                    order_id=str(order.id),
                     symbol=symbol,
-                    qty=qty,
-                    side=side_enum,
-                    time_in_force=tif_enum,
-                    limit_price=limit_price,
+                    side=side,
+                    quantity=qty,
+                    price=limit_price,
+                    status=order.status.value
                 )
-            else:
-                raise ValueError(f"Unsupported order type: {order_type}")
 
-            # Submit order
-            order = self.trading_client.submit_order(order_request)
+                # Log to audit trail
+                audit_logger.log_trade_execution(
+                    strategy="manual",
+                    symbol=symbol,
+                    side=side,
+                    quantity=qty,
+                    price=limit_price or 0,  # Will be updated when filled
+                    order_id=str(order.id),
+                )
 
-            # Create result object
-            result = OrderResult(
-                order_id=str(order.id),
-                symbol=order.symbol,
-                side=order.side.value,
-                quantity=float(order.qty),
-                filled_quantity=float(order.filled_qty or 0),
-                price=float(order.filled_avg_price) if order.filled_avg_price else None,
-                status=order.status.value,
-                timestamp=order.created_at,
-            )
+                self.logger.info(
+                    "Order submitted",
+                    order_id=str(order.id),
+                    symbol=symbol,
+                    side=side,
+                    quantity=qty,
+                    order_type=order_type,
+                )
 
-            # Log to audit trail
-            audit_logger.log_trade_execution(
-                strategy="manual",
-                symbol=symbol,
-                side=side,
-                quantity=qty,
-                price=limit_price or 0,  # Will be updated when filled
-                order_id=str(order.id),
-            )
+                return result
 
-            self.logger.info(
-                "Order submitted",
-                order_id=str(order.id),
-                symbol=symbol,
-                side=side,
-                quantity=qty,
-                order_type=order_type,
-            )
+            except Exception as e:
+                # Calculate error timing
+                error_duration = time.time() - start_time
+                
+                # Record error in Alpaca metrics
+                record_alpaca_request(
+                    endpoint="/v2/orders",
+                    method="POST",
+                    status_code=500,  # Assume server error for exceptions
+                    duration_seconds=error_duration
+                )
+                
+                # Update span with error info
+                span.set_attribute("error", True)
+                span.set_attribute("error.type", type(e).__name__)
+                span.set_attribute("error.message", str(e))
+                
+                # Log structured error event
+                structured_logger.log_order_event(
+                    event="order_submit_failed",
+                    order_id="unknown",
+                    symbol=symbol,
+                    side=side,
+                    quantity=qty,
+                    price=limit_price,
+                    error=str(e)
+                )
 
-            return result
+                self.logger.error(
+                    "Failed to submit order",
+                    symbol=symbol,
+                    side=side,
+                    quantity=qty,
+                    error=str(e),
+                )
+                raise
 
-        except Exception as e:
-            self.logger.error(
-                "Failed to submit order",
-                symbol=symbol,
-                side=side,
-                quantity=qty,
-                error=str(e),
-            )
-            raise
-
+    @record_latency("alpaca_http_latency_seconds", method="DELETE", extra_labels={"endpoint": "/v2/orders/{id}"})
     def cancel_order(self, order_id: str) -> bool:
         """
         Cancel an existing order by ID.
+        Enhanced with comprehensive tracing and metrics.
 
         Args:
             order_id: Order ID to cancel
@@ -440,23 +535,79 @@ class AlpacaClient:
         Returns:
             True if successfully cancelled
         """
-        try:
-            self._rate_limit()
+        start_time = time.time()
+        structured_logger = get_structured_logger(__name__)
+        
+        with trace_span(
+            "alpaca_cancel_order",
+            {
+                "alpaca.operation": "cancel_order",
+                "alpaca.order_id": order_id
+            }
+        ) as span:
+            try:
+                self._rate_limit()
 
-            self.trading_client.cancel_order_by_id(order_id)
+                # Cancel order with API call timing
+                api_start_time = time.time()
+                self.trading_client.cancel_order_by_id(order_id)
+                api_duration = time.time() - api_start_time
 
-            self.logger.info("Order cancelled", order_id=order_id)
-            audit_logger.log_system_event(
-                "order_cancelled",
-                f"Order {order_id} cancelled",
-                data={"order_id": order_id},
-            )
+                # Record Alpaca API metrics
+                record_alpaca_request(
+                    endpoint="/v2/orders/{id}",
+                    method="DELETE",
+                    status_code=200,  # Assume success if no exception
+                    duration_seconds=api_duration
+                )
 
-            return True
+                # Update span with success info
+                span.set_attribute("alpaca.api_duration_seconds", api_duration)
+                span.set_attribute("alpaca.cancelled", True)
 
-        except Exception as e:
-            self.logger.error("Failed to cancel order", order_id=order_id, error=str(e))
-            return False
+                # Log structured order event
+                structured_logger.log_order_event(
+                    event="order_cancelled",
+                    order_id=order_id,
+                    status="cancelled"
+                )
+
+                self.logger.info("Order cancelled", order_id=order_id)
+                audit_logger.log_system_event(
+                    "order_cancelled",
+                    f"Order {order_id} cancelled",
+                    data={"order_id": order_id},
+                )
+
+                return True
+
+            except Exception as e:
+                # Calculate error timing
+                error_duration = time.time() - start_time
+                
+                # Record error in Alpaca metrics
+                record_alpaca_request(
+                    endpoint="/v2/orders/{id}",
+                    method="DELETE",
+                    status_code=500,  # Assume server error for exceptions
+                    duration_seconds=error_duration
+                )
+                
+                # Update span with error info
+                span.set_attribute("error", True)
+                span.set_attribute("error.type", type(e).__name__)
+                span.set_attribute("error.message", str(e))
+                span.set_attribute("alpaca.cancelled", False)
+                
+                # Log structured error event
+                structured_logger.log_order_event(
+                    event="order_cancel_failed",
+                    order_id=order_id,
+                    error=str(e)
+                )
+
+                self.logger.error("Failed to cancel order", order_id=order_id, error=str(e))
+                return False
 
     def get_account_status(self) -> Dict[str, Any]:
         """

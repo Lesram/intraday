@@ -103,3 +103,74 @@ async def async_setup():
     # Any async setup code here
     yield
     # Any async cleanup code here
+
+# FastAPI Testing Fixtures
+@pytest.fixture
+def client():
+    """Create test client with mocked dependencies."""
+    from fastapi.testclient import TestClient
+    from unittest.mock import Mock
+    from backend.api.main import app
+    from backend.infra.users import UserRepository
+    
+    # Mock all the app state dependencies that endpoints need
+    mock_risk_manager = Mock()
+    mock_risk_manager.get_risk_metrics.return_value = {"status": "healthy", "risk_level": "low"}
+    mock_risk_manager.get_portfolio_risk.return_value = {"var": 0.05, "sharpe": 1.2}
+    
+    mock_model_manager = Mock()
+    mock_model_manager.get_model_status.return_value = {"status": "ready", "accuracy": 0.85}
+    mock_model_manager.get_predictions.return_value = {"symbol": "AAPL", "prediction": "buy"}
+    
+    mock_strategy_manager = Mock()
+    mock_strategy_manager.get_signals.return_value = {"signal": "buy", "confidence": 0.8}
+    mock_strategy_manager.get_strategy_status.return_value = {"active": True, "pnl": 1250.0}
+    
+    mock_data_client = Mock()
+    mock_data_client.get_market_data.return_value = {"price": 150.0, "volume": 1000000}
+    
+    # Set up app state with all required dependencies
+    app.state.risk_manager = mock_risk_manager
+    app.state.model_manager = mock_model_manager
+    app.state.strategy_manager = mock_strategy_manager
+    app.state.data_client = mock_data_client
+    app.state.user_repository = UserRepository()
+    app.state.is_initialized = True
+    
+    return TestClient(app)
+
+@pytest.fixture
+def mock_app_state():
+    """Mock application state for testing."""
+    from unittest.mock import Mock
+    from backend.infra.users import UserRepository
+    
+    # Mock the app state to avoid dependencies
+    mock_state = Mock()
+    mock_state.is_initialized = True
+    mock_state.user_repository = UserRepository()
+    return mock_state
+
+@pytest.fixture
+def admin_token():
+    """Create admin token for testing."""
+    from backend.infra.security import create_access_token
+    return create_access_token(
+        data={"sub": "admin@algotrading.com", "roles": ["admin"]}
+    )
+
+@pytest.fixture
+def trader_token():
+    """Create trader token for testing."""
+    from backend.infra.security import create_access_token
+    return create_access_token(
+        data={"sub": "trader@algotrading.com", "roles": ["trader"]}
+    )
+
+@pytest.fixture
+def readonly_token():
+    """Create read-only token for testing."""
+    from backend.infra.security import create_access_token
+    return create_access_token(
+        data={"sub": "viewer@algotrading.com", "roles": ["read-only"]}
+    )

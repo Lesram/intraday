@@ -28,11 +28,14 @@ try:
     from sklearn.metrics import mean_absolute_error, mean_squared_error
     from sklearn.model_selection import TimeSeriesSplit
     from sklearn.preprocessing import StandardScaler
+    import joblib
 
     SKLEARN_AVAILABLE = True
+    JOBLIB_AVAILABLE = True
 except ImportError as e:
-    logging.warning(f"scikit-learn not available: {e}")
+    logging.warning(f"scikit-learn or joblib not available: {e}")
     SKLEARN_AVAILABLE = False
+    JOBLIB_AVAILABLE = False
 
 try:
     import xgboost as xgb
@@ -73,14 +76,30 @@ class ModelPerformance:
 
 
 class LSTMModel:
-    """LSTM Neural Network for time series prediction"""
+    """LSTM Neural Network for time series prediction with enhanced training controls"""
 
-    def __init__(self, sequence_length: int = 60, features: int = 1):
+    def __init__(self, sequence_length: int = 60, features: int = 1, 
+                 max_epochs: int = 50, early_stopping_patience: int = 10,
+                 random_seed: Optional[int] = 42):
         self.sequence_length = sequence_length
         self.features = features
+        self.max_epochs = max_epochs
+        self.early_stopping_patience = early_stopping_patience
+        self.random_seed = random_seed
         self.model = None
         self.scaler = None
         self.is_trained = False
+        self.training_history = None
+        
+        # Set random seeds for reproducibility
+        if self.random_seed is not None:
+            np.random.seed(self.random_seed)
+            if TENSORFLOW_AVAILABLE:
+                try:
+                    import tensorflow as tf
+                    tf.random.set_seed(self.random_seed)
+                except ImportError:
+                    logging.warning("TensorFlow not available for seed setting")
 
     def build_model(self) -> Optional[Any]:
         """Build LSTM architecture"""
@@ -143,23 +162,36 @@ class LSTMModel:
             if self.model is None:
                 return False
 
-            # Training with validation split
+            # Training with validation split and enhanced callbacks
             split_idx = int(len(X) * 0.8)
             X_train, X_val = X[:split_idx], X[split_idx:]
             y_train, y_val = y[:split_idx], y[split_idx:]
 
-            self.model.fit(
+            # Enhanced callbacks for better training
+            callbacks = [
+                keras.callbacks.EarlyStopping(
+                    patience=self.early_stopping_patience, 
+                    restore_best_weights=True,
+                    monitor='val_loss',
+                    min_delta=0.001
+                ),
+                keras.callbacks.ReduceLROnPlateau(
+                    monitor='val_loss',
+                    factor=0.5,
+                    patience=5,
+                    min_lr=0.0001,
+                    verbose=0
+                )
+            ]
+
+            self.training_history = self.model.fit(
                 X_train,
                 y_train,
                 validation_data=(X_val, y_val),
-                epochs=50,
+                epochs=self.max_epochs,
                 batch_size=32,
                 verbose=0,
-                callbacks=[
-                    keras.callbacks.EarlyStopping(
-                        patience=10, restore_best_weights=True
-                    )
-                ],
+                callbacks=callbacks,
             )
 
             self.is_trained = True
@@ -184,8 +216,11 @@ class LSTMModel:
             # Prepare input sequence
             X_pred = scaled_recent.reshape(1, self.sequence_length, 1)
 
-            # Make prediction
+            # Make prediction (predicting next period's scaled close price)
             prediction_scaled = self.model.predict(X_pred, verbose=0)[0][0]
+            
+            # Convert scaled prediction back to actual price
+            # Note: We predict next price directly, then convert to return for strategy use
             prediction = self.scaler.inverse_transform([[prediction_scaled]])[0][0]
 
             # Calculate confidence (simple approach using model certainty)
@@ -377,15 +412,19 @@ class EnsembleModel:
         # Train LSTM on price sequences
         results["lstm"] = await self.models["lstm"].train(price_data, target_column)
 
-        # Train tree-based models on features
+        # Train tree-based models on features with explicit index alignment
         target = price_data[target_column].shift(-1).dropna()  # Next period target
-        features_aligned = features.iloc[:-1]  # Align with target
+        
+        # Ensure explicit alignment using shared index to prevent silent misalignment
+        aligned_data = pd.concat([features, target.to_frame('target')], join='inner', axis=1).dropna()
+        features_aligned = aligned_data.drop(columns=['target'])
+        target_aligned = aligned_data['target']
 
         results["xgboost"] = await self.models["xgboost"].train(
-            features_aligned, target
+            features_aligned, target_aligned
         )
         results["random_forest"] = await self.models["random_forest"].train(
-            features_aligned, target
+            features_aligned, target_aligned
         )
 
         audit_logger.info(
@@ -495,3 +534,159 @@ class EnsembleModel:
                 status[model_name]["feature_importance"] = model.feature_importance
 
         return status
+
+    def save_models(self, model_dir: str = "backend/models/saved_models") -> Dict[str, bool]:
+        """Save all trained models to disk with model card"""
+        import os
+        import json
+        from pathlib import Path
+        
+        results = {}
+        model_path = Path(model_dir)
+        model_path.mkdir(parents=True, exist_ok=True)
+        
+        # Create model card with metadata
+        model_card = {
+            "created_at": datetime.now().isoformat(),
+            "ensemble_weights": self.weights,
+            "model_status": self.get_model_status(),
+            "training_metadata": {}
+        }
+        
+        for model_name, model in self.models.items():
+            try:
+                if not getattr(model, 'is_trained', False):
+                    results[model_name] = False
+                    continue
+                    
+                if model_name == "lstm" and TENSORFLOW_AVAILABLE:
+                    # Save TensorFlow model
+                    model_file = model_path / f"{model_name}_model.h5"
+                    if model.model is not None:
+                        model.model.save(str(model_file))
+                        results[model_name] = True
+                        
+                        # Add training history to model card
+                        if hasattr(model, 'training_history') and model.training_history:
+                            model_card["training_metadata"][model_name] = {
+                                "final_loss": float(model.training_history.history['loss'][-1]),
+                                "final_val_loss": float(model.training_history.history['val_loss'][-1]),
+                                "epochs_trained": len(model.training_history.history['loss']),
+                                "sequence_length": model.sequence_length,
+                                "random_seed": model.random_seed
+                            }
+                    else:
+                        results[model_name] = False
+                        
+                elif model_name in ["xgboost", "random_forest"] and JOBLIB_AVAILABLE:
+                    # Save sklearn/xgboost models using joblib
+                    model_file = model_path / f"{model_name}_model.joblib"
+                    if model.model is not None:
+                        joblib.dump({
+                            'model': model.model,
+                            'scaler': getattr(model, 'scaler', None),
+                            'feature_importance': getattr(model, 'feature_importance', None)
+                        }, str(model_file))
+                        results[model_name] = True
+                        
+                        # Add model info to model card
+                        model_card["training_metadata"][model_name] = {
+                            "feature_importance": getattr(model, 'feature_importance', {}),
+                            "is_trained": model.is_trained
+                        }
+                    else:
+                        results[model_name] = False
+                else:
+                    results[model_name] = False
+                    
+            except Exception as e:
+                logging.error(f"Error saving {model_name} model: {e}")
+                results[model_name] = False
+        
+        # Save model card
+        try:
+            with open(model_path / "model_card.json", 'w') as f:
+                json.dump(model_card, f, indent=2)
+            logging.info(f"Model card saved to {model_path / 'model_card.json'}")
+        except Exception as e:
+            logging.error(f"Error saving model card: {e}")
+        
+        audit_logger.info("ensemble_models_saved", 
+                         results=results, 
+                         model_dir=str(model_path),
+                         timestamp=datetime.now())
+        
+        return results
+
+    def load_models(self, model_dir: str = "backend/models/saved_models") -> Dict[str, bool]:
+        """Load all models from disk"""
+        import os
+        import json
+        from pathlib import Path
+        
+        results = {}
+        model_path = Path(model_dir)
+        
+        if not model_path.exists():
+            logging.warning(f"Model directory {model_path} does not exist")
+            return {name: False for name in self.models.keys()}
+        
+        # Load model card if available
+        model_card_file = model_path / "model_card.json"
+        model_card = {}
+        if model_card_file.exists():
+            try:
+                with open(model_card_file, 'r') as f:
+                    model_card = json.load(f)
+                logging.info(f"Loaded model card from {model_card_file}")
+                
+                # Restore ensemble weights
+                if "ensemble_weights" in model_card:
+                    self.weights = model_card["ensemble_weights"]
+                    
+            except Exception as e:
+                logging.error(f"Error loading model card: {e}")
+        
+        for model_name, model in self.models.items():
+            try:
+                if model_name == "lstm" and TENSORFLOW_AVAILABLE:
+                    # Load TensorFlow model
+                    model_file = model_path / f"{model_name}_model.h5"
+                    if model_file.exists():
+                        model.model = keras.models.load_model(str(model_file))
+                        model.is_trained = True
+                        results[model_name] = True
+                        
+                        # Restore metadata from model card
+                        if model_name in model_card.get("training_metadata", {}):
+                            metadata = model_card["training_metadata"][model_name]
+                            model.sequence_length = metadata.get("sequence_length", model.sequence_length)
+                            model.random_seed = metadata.get("random_seed", model.random_seed)
+                    else:
+                        results[model_name] = False
+                        
+                elif model_name in ["xgboost", "random_forest"] and JOBLIB_AVAILABLE:
+                    # Load sklearn/xgboost models using joblib
+                    model_file = model_path / f"{model_name}_model.joblib"
+                    if model_file.exists():
+                        model_data = joblib.load(str(model_file))
+                        model.model = model_data.get('model')
+                        model.scaler = model_data.get('scaler')
+                        model.feature_importance = model_data.get('feature_importance', {})
+                        model.is_trained = True
+                        results[model_name] = True
+                    else:
+                        results[model_name] = False
+                else:
+                    results[model_name] = False
+                    
+            except Exception as e:
+                logging.error(f"Error loading {model_name} model: {e}")
+                results[model_name] = False
+        
+        audit_logger.info("ensemble_models_loaded", 
+                         results=results, 
+                         model_dir=str(model_path),
+                         timestamp=datetime.now())
+        
+        return results
