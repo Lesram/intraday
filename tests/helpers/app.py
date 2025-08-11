@@ -1,6 +1,6 @@
 """
 Enhanced app helper for comprehensive testing.
-Provides ASGI client with lifespan, dependency overrides, and startup/shutdown helpers.
+Provides ASGI client with lifespan, dependency overrides, startup/shutdown helpers, and database setup.
 """
 
 import asyncio
@@ -14,6 +14,8 @@ from httpx import ASGITransport, AsyncClient
 from fastapi import FastAPI
 
 from backend.api.main import app as main_app
+from backend.infra.db import get_engine, get_sessionmaker, init_db
+from tests.helpers.db_setup import create_all_tables
 
 
 class TestAppContext:
@@ -58,7 +60,18 @@ class TestAppContext:
             self.app.dependency_overrides.clear()
     
     async def _setup_test_patches(self):
-        """Set up patches to mock expensive operations during testing."""
+        """Set up patches to mock expensive operations during testing and create database tables."""
+        
+        # First ensure database tables are created
+        try:
+            # Initialize database if not already done
+            engine, sessionmaker = init_db()
+            # Create all tables for testing
+            await create_all_tables(engine)
+        except Exception as e:
+            # Log but don't fail the test setup for database issues
+            print(f"Warning: Could not setup database tables: {e}")
+        
         # Create a simplified test lifespan function that doesn't initialize real components
         @asynccontextmanager
         async def test_lifespan(app: FastAPI):

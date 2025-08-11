@@ -9,11 +9,9 @@ import pandas as pd
 import pytest
 
 from backend.risk.risk_manager import (
-    PortfolioRisk,
-    RiskLevel,
-    RiskLimits,
     RiskManager,
 )
+from backend.risk.types import PortfolioRisk, RiskLevel, RiskLimits
 
 
 class TestRiskManager:
@@ -44,6 +42,7 @@ class TestRiskManager:
             for i in range(50)
         ]
 
+    @pytest.mark.unit
     def test_initialization(self):
         """Test RiskManager initialization"""
         assert self.risk_manager is not None
@@ -52,6 +51,7 @@ class TestRiskManager:
         assert hasattr(self.risk_manager, 'circuit_breaker_active')
         assert isinstance(self.risk_manager.limits, RiskLimits)
 
+    @pytest.mark.unit
     def test_var_calculation(self):
         """Test Value at Risk calculation"""
         # Test default method (monte_carlo)
@@ -65,6 +65,7 @@ class TestRiskManager:
         var_hist = self.risk_manager.calculate_var(confidence=0.95, method="historical")
         assert isinstance(var_hist, (int, float))
 
+    @pytest.mark.unit
     def test_cvar_calculation(self):
         """Test Conditional Value at Risk calculation"""
         # Test with default confidence level
@@ -74,6 +75,7 @@ class TestRiskManager:
         assert isinstance(cvar_95, (int, float))
         assert isinstance(cvar_99, (int, float))
 
+    @pytest.mark.unit
     def test_kelly_position_sizing(self):
         """Test Kelly criterion position sizing"""
         # Test with valid win rate and ratio
@@ -82,6 +84,7 @@ class TestRiskManager:
         assert isinstance(kelly_fraction, float)
         assert 0 <= kelly_fraction <= 1  # Should be between 0 and 1
 
+    @pytest.mark.unit
     def test_kelly_position_sizing_edge_cases(self):
         """Test Kelly criterion with edge cases"""
         # No edge case (50% win rate)
@@ -92,6 +95,7 @@ class TestRiskManager:
         kelly_negative = self.risk_manager.kelly_position_size(prob_win=0.3, win_loss_ratio=0.8)
         assert kelly_negative >= 0.0
 
+    @pytest.mark.unit
     def test_before_order_validation(self):
         """Test before_order method for trade validation"""
         # Test valid order
@@ -105,6 +109,7 @@ class TestRiskManager:
         assert isinstance(reason, str)
         assert isinstance(adjusted_qty, (int, float))
 
+    @pytest.mark.unit
     def test_position_size_limits(self):
         """Test position size limits through before_order"""
         # Test large position that should be limited
@@ -120,6 +125,7 @@ class TestRiskManager:
         else:
             assert adjusted_qty <= 1000
 
+    @pytest.mark.unit
     def test_risk_metrics_calculation(self):
         """Test comprehensive risk metrics calculation"""
         metrics = self.risk_manager.get_risk_metrics()
@@ -132,6 +138,7 @@ class TestRiskManager:
         assert hasattr(metrics, 'risk_level')
         assert isinstance(metrics.risk_level, RiskLevel)
 
+    @pytest.mark.unit
     def test_enforce_global_limits(self):
         """Test global risk limit enforcement"""
         result = self.risk_manager.enforce_global_limits()
@@ -141,6 +148,7 @@ class TestRiskManager:
         assert 'actions_taken' in result
         assert result['status'] in ['OK', 'MEDIUM', 'HIGH', 'CRITICAL', 'ERROR']
 
+    @pytest.mark.unit
     def test_circuit_breaker_functionality(self):
         """Test circuit breaker activation and reset"""
         # Test circuit breaker is initially inactive
@@ -150,6 +158,7 @@ class TestRiskManager:
         self.risk_manager.reset_circuit_breaker("manual_reset")
         assert not self.risk_manager.circuit_breaker_active
 
+    @pytest.mark.unit
     def test_portfolio_history_update(self):
         """Test portfolio history tracking"""
         initial_count = len(self.risk_manager.portfolio_history)
@@ -159,6 +168,7 @@ class TestRiskManager:
 
         assert len(self.risk_manager.portfolio_history) >= initial_count
 
+    @pytest.mark.unit
     def test_price_history_update(self):
         """Test price history tracking"""
         symbol = 'AAPL'
@@ -170,6 +180,7 @@ class TestRiskManager:
         assert symbol in self.risk_manager.price_history
         assert len(self.risk_manager.price_history[symbol]) > 0
 
+    @pytest.mark.unit
     def test_position_sizing_recommendation(self):
         """Test position sizing recommendations"""
         recommendation = self.risk_manager.get_position_sizing_recommendation(
@@ -184,6 +195,7 @@ class TestRiskManager:
         assert 'recommended_position_pct' in recommendation
         assert 'recommended_dollar_amount' in recommendation
 
+    @pytest.mark.unit
     def test_risk_event_logging(self):
         """Test risk event logging through calculations"""
         # This will trigger logging internally
@@ -202,6 +214,7 @@ class TestRiskManagerEdgeCases:
         """Setup for each test method"""
         self.risk_manager = RiskManager()  # No portfolio
 
+    @pytest.mark.unit
     def test_empty_data_handling(self):
         """Test handling of empty data"""
         # Test with empty portfolio
@@ -211,6 +224,7 @@ class TestRiskManagerEdgeCases:
         assert isinstance(var_result, (int, float))
         assert isinstance(cvar_result, (int, float))
 
+    @pytest.mark.unit
     def test_single_value_data(self):
         """Test handling of single value data"""
         # Add minimal data
@@ -221,6 +235,7 @@ class TestRiskManagerEdgeCases:
         var_result = self.risk_manager.calculate_var()
         assert isinstance(var_result, (int, float))
 
+    @pytest.mark.unit
     def test_extreme_values(self):
         """Test handling of extreme market values"""
         # Add extreme portfolio history
@@ -232,6 +247,7 @@ class TestRiskManagerEdgeCases:
         var_result = self.risk_manager.calculate_var()
         assert isinstance(var_result, (int, float))
 
+    @pytest.mark.unit
     def test_invalid_parameters(self):
         """Test handling of invalid parameters"""
         # Test invalid confidence level
@@ -279,6 +295,7 @@ class TestRiskManagerEdgeCases:
         }
         self.risk_manager = RiskManager(config)
 
+    @pytest.mark.unit
     def test_empty_data_handling(self):
         """Test VaR calculation with empty or invalid data"""
         empty_returns = pd.Series(dtype=float)
@@ -287,6 +304,7 @@ class TestRiskManagerEdgeCases:
         var = self.risk_manager.calculate_var(confidence=0.95, method='parametric')
         assert var is not None
 
+    @pytest.mark.unit
     def test_extreme_confidence_levels(self):
         """Test VaR with extreme confidence levels"""
         # Test with very high confidence
@@ -297,6 +315,7 @@ class TestRiskManagerEdgeCases:
         var_50 = self.risk_manager.calculate_var(confidence=0.5, method='parametric')
         assert var_50 is not None
 
+    @pytest.mark.unit
     def test_kelly_criterion_edge_cases(self):
         """Test Kelly criterion with edge cases"""
         # Test with zero probability
@@ -311,6 +330,7 @@ class TestRiskManagerEdgeCases:
         kelly_low = self.risk_manager.kelly_position_size(prob_win=0.6, win_loss_ratio=0.1)
         assert kelly_low == 0  # Should not bet with poor odds
 
+    @pytest.mark.unit
     def test_invalid_method_handling(self):
         """Test handling of invalid VaR methods"""
         try:
@@ -321,6 +341,7 @@ class TestRiskManagerEdgeCases:
             # Expected behavior for invalid method
             pass
 
+    @pytest.mark.unit
     def test_risk_metrics_with_minimal_data(self):
         """Test risk metrics calculation with minimal portfolio data"""
         # Set minimal portfolio

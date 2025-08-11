@@ -46,6 +46,7 @@ def mock_app_state():
 class TestHealthEndpoints:
     """Test health check endpoints"""
 
+    @pytest.mark.unit
     def test_health_check(self, client):
         """Test health check endpoint"""
         response = client.get("/health")
@@ -65,6 +66,7 @@ class TestTradingSignalEndpoints:
         'alpaca_client': AsyncMock(),
         'feature_engineer': MagicMock()
     })
+    @pytest.mark.unit
     def test_get_trading_signal_success(self, client, sample_price_data, sample_features):
         """Test successful signal generation"""
         from backend.api.main import app_state
@@ -91,6 +93,7 @@ class TestTradingSignalEndpoints:
         assert response.status_code == 200 or response.status_code == 503  # May be unavailable in test
 
     @patch('backend.api.main.app_state')
+    @pytest.mark.unit
     def test_get_trading_signal_missing_data(self, mock_state, client):
         """Test signal generation with missing market data"""
         import pandas as pd
@@ -109,6 +112,7 @@ class TestTradingSignalEndpoints:
         # Should handle missing data gracefully
         assert response.status_code in [404, 500, 503]
 
+    @pytest.mark.unit
     def test_get_multiple_signals(self, client):
         """Test getting signals for multiple symbols"""
         response = client.get("/api/v1/signals?symbols=AAPL,GOOGL,MSFT")
@@ -129,6 +133,7 @@ class TestModelPredictionEndpoints:
         'alpaca_client': AsyncMock(),
         'feature_engineer': MagicMock()
     })
+    @pytest.mark.unit
     def test_get_prediction_success(self, client, sample_price_data, sample_features):
         """Test successful prediction retrieval"""
         from backend.api.main import app_state
@@ -153,6 +158,7 @@ class TestModelPredictionEndpoints:
         assert response.status_code in [200, 503]  # Success or service unavailable
 
     @patch('backend.api.main.app_state', {'ensemble_model': None})
+    @pytest.mark.unit
     def test_get_prediction_model_unavailable(self, client):
         """Test prediction with unavailable model"""
         response = client.get("/api/v1/predictions/AAPL")
@@ -164,6 +170,7 @@ class TestPortfolioEndpoints:
     @patch('backend.api.main.app_state', {
         'risk_manager': MagicMock()
     })
+    @pytest.mark.unit
     def test_get_portfolio_status(self, client):
         """Test portfolio status retrieval"""
         from backend.api.main import app_state
@@ -195,6 +202,7 @@ class TestTradingEndpoints:
         'alpaca_client': AsyncMock(),
         'risk_manager': MagicMock()
     })
+    @pytest.mark.unit
     def test_submit_trade_success(self, client):
         """Test successful trade submission"""
         from backend.api.main import app_state
@@ -231,6 +239,7 @@ class TestTradingEndpoints:
         'alpaca_client': AsyncMock(),
         'risk_manager': MagicMock()
     })
+    @pytest.mark.unit
     def test_submit_trade_risk_rejection(self, client):
         """Test trade rejection due to risk"""
         from backend.api.main import app_state
@@ -252,6 +261,7 @@ class TestTradingEndpoints:
 
         assert response.status_code in [403, 503]  # Forbidden or service unavailable
 
+    @pytest.mark.unit
     def test_submit_trade_invalid_data(self, client):
         """Test trade submission with invalid data"""
         invalid_trade_data = {
@@ -269,6 +279,7 @@ class TestMarketDataEndpoints:
     @patch('backend.api.main.app_state', {
         'alpaca_client': AsyncMock()
     })
+    @pytest.mark.unit
     def test_get_market_data(self, client, sample_price_data):
         """Test market data retrieval"""
         from backend.api.main import app_state
@@ -286,6 +297,7 @@ class TestMarketDataEndpoints:
             assert data["symbol"] == "AAPL"
 
     @patch('backend.api.main.app_state', {'alpaca_client': None})
+    @pytest.mark.unit
     def test_get_market_data_no_client(self, client):
         """Test market data with unavailable client"""
 
@@ -298,6 +310,7 @@ class TestSentimentEndpoints:
     @patch('backend.api.main.app_state', {
         'sentiment_analyzer': AsyncMock()
     })
+    @pytest.mark.unit
     def test_get_sentiment(self, client):
         """Test sentiment data retrieval"""
         from backend.api.main import app_state
@@ -323,6 +336,7 @@ class TestSentimentEndpoints:
 class TestModelManagementEndpoints:
     """Test MLOps model management endpoints"""
 
+    @pytest.mark.unit
     def test_train_model(self, client):
         """Test model training endpoint"""
         training_request = {
@@ -342,6 +356,7 @@ class TestModelManagementEndpoints:
             assert data["status"] == "training_started"
 
     @patch('backend.api.main.app_state')
+    @pytest.mark.unit
     def test_get_models_status(self, mock_state, client):
         """Test models status retrieval"""
         mock_state.return_value = {
@@ -366,6 +381,7 @@ class TestRiskEndpoints:
     """Test risk management endpoints"""
 
     @patch('backend.api.main.app_state')
+    @pytest.mark.unit
     def test_get_risk_metrics(self, mock_state, client):
         """Test risk metrics retrieval"""
         mock_state.return_value = {
@@ -391,6 +407,7 @@ class TestRiskEndpoints:
             assert "risk_metrics" in data
             assert "timestamp" in data
 
+    @pytest.mark.unit
     def test_update_risk_limits(self, client):
         """Test risk limits update"""
         new_limits = {
@@ -406,6 +423,7 @@ class TestRiskEndpoints:
 class TestSystemEndpoints:
     """Test system status endpoints"""
 
+    @pytest.mark.unit
     def test_get_system_status(self, client):
         """Test system status retrieval"""
         response = client.get("/api/v1/system/status")
@@ -420,6 +438,7 @@ class TestSystemEndpoints:
 class TestWebSocketEndpoints:
     """Test WebSocket endpoints"""
 
+    @pytest.mark.unit
     def test_websocket_connection(self, client):
         """Test WebSocket connection"""
         # Note: Testing WebSocket requires special setup
@@ -440,11 +459,13 @@ class TestWebSocketEndpoints:
 class TestErrorHandling:
     """Test error handling and edge cases"""
 
+    @pytest.mark.unit
     def test_invalid_endpoints(self, client):
         """Test invalid endpoint handling"""
         response = client.get("/api/v1/nonexistent")
         assert response.status_code == 404
 
+    @pytest.mark.unit
     def test_malformed_json(self, client):
         """Test malformed JSON handling"""
         response = client.post(
@@ -463,6 +484,7 @@ class TestErrorHandling:
         'feature_engineer': None,
         'model_manager': None
     })
+    @pytest.mark.unit
     def test_service_unavailable(self, client):
         """Test service unavailable scenarios"""
 

@@ -80,6 +80,7 @@ def viewer_token(user_repo):
 class TestAuthentication:
     """Test authentication endpoints."""
 
+    @pytest.mark.unit
     def test_login_with_valid_credentials(self, client, user_repo):
         """Test successful login with valid credentials."""
         response = client.post(
@@ -97,6 +98,7 @@ class TestAuthentication:
         assert "admin" in data["user"]["roles"]
         assert "trader" in data["user"]["roles"]
 
+    @pytest.mark.unit
     def test_login_with_invalid_credentials(self, client, user_repo):
         """Test login failure with invalid credentials."""
         response = client.post(
@@ -110,6 +112,7 @@ class TestAuthentication:
         error_message = data.get("detail") or data.get("error", {}).get("message", "")
         assert "Invalid username or password" in error_message
 
+    @pytest.mark.unit
     def test_login_with_nonexistent_user(self, client, user_repo):
         """Test login failure with non-existent user."""
         response = client.post(
@@ -122,6 +125,7 @@ class TestAuthentication:
         error_message = data.get("detail") or data.get("error", {}).get("message", "")
         assert "Invalid username or password" in error_message
 
+    @pytest.mark.unit
     def test_token_validation_with_valid_token(self, client, admin_token):
         """Test token validation with valid JWT."""
         response = client.post(
@@ -136,6 +140,7 @@ class TestAuthentication:
         assert data["user"]["username"] == "admin"
         assert "expires_at" in data
 
+    @pytest.mark.unit
     def test_token_validation_without_token(self, client):
         """Test token validation without token."""
         response = client.post("/auth/token/validate")
@@ -146,6 +151,7 @@ class TestAuthentication:
         assert data["valid"] is False
         assert data["user"] is None
 
+    @pytest.mark.unit
     def test_get_current_user_info(self, client, admin_token):
         """Test getting current user information."""
         response = client.get(
@@ -161,6 +167,7 @@ class TestAuthentication:
         assert "admin" in data["roles"]
         assert "trader" in data["roles"]
 
+    @pytest.mark.unit
     def test_get_current_user_info_without_auth(self, client):
         """Test getting user info without authentication."""
         response = client.get("/auth/me")
@@ -174,6 +181,7 @@ class TestAuthentication:
 class TestAPIKeyAuthentication:
     """Test API key authentication."""
 
+    @pytest.mark.unit
     def test_api_key_authentication(self, client):
         """Test API key authentication for machine-to-machine access."""
         # Use patch to mock the settings for the duration of this test
@@ -195,6 +203,7 @@ class TestAPIKeyAuthentication:
             assert "trader" in data["roles"]
             assert "api" in data["roles"]
 
+    @pytest.mark.unit
     def test_invalid_api_key(self, client):
         """Test rejection of invalid API key."""
         with patch('backend.infra.security.get_settings') as mock_get_settings:
@@ -214,6 +223,7 @@ class TestAPIKeyAuthentication:
 class TestDevMode:
     """Test development mode bypass."""
 
+    @pytest.mark.unit
     def test_dev_mode_bypass(self, client):
         """Test development mode authentication bypass."""
         with patch('backend.infra.security.get_settings') as mock_get_settings:
@@ -237,6 +247,7 @@ class TestDevMode:
 class TestRoleBasedAccessControl:
     """Test role-based access control on protected endpoints."""
 
+    @pytest.mark.unit
     def test_trader_can_access_trading_endpoints(self, client, trader_token):
         """Test that trader role can access trading endpoints."""
         response = client.get(
@@ -247,6 +258,7 @@ class TestRoleBasedAccessControl:
         assert response.status_code == 200
         assert "trades" in response.json()
 
+    @pytest.mark.unit
     def test_trader_can_access_model_status(self, client, trader_token):
         """Test that trader role can access model status."""
         response = client.get(
@@ -257,6 +269,7 @@ class TestRoleBasedAccessControl:
         assert response.status_code == 200
         assert "models" in response.json()
 
+    @pytest.mark.unit
     def test_trader_can_access_risk_metrics(self, client, trader_token):
         """Test that trader role can access risk metrics."""
         response = client.get(
@@ -267,6 +280,7 @@ class TestRoleBasedAccessControl:
         assert response.status_code == 200
         assert "portfolio_risk" in response.json()
 
+    @pytest.mark.unit
     def test_trader_cannot_access_admin_endpoints(self, client, trader_token):
         """Test that trader role cannot access admin-only endpoints."""
         # Try to trigger model training (admin only)
@@ -280,6 +294,7 @@ class TestRoleBasedAccessControl:
         error_message = data.get("detail") or data.get("error", {}).get("message", "")
         assert "Insufficient permissions" in error_message
 
+    @pytest.mark.unit
     def test_trader_cannot_update_risk_limits(self, client, trader_token):
         """Test that trader role cannot update risk limits."""
         response = client.put(
@@ -293,6 +308,7 @@ class TestRoleBasedAccessControl:
         error_message = data.get("detail") or data.get("error", {}).get("message", "")
         assert "Insufficient permissions" in error_message
 
+    @pytest.mark.unit
     def test_admin_can_access_all_endpoints(self, client, admin_token):
         """Test that admin role can access all endpoints."""
         # Test trading endpoints
@@ -317,6 +333,7 @@ class TestRoleBasedAccessControl:
         )
         assert response.status_code == 200
 
+    @pytest.mark.unit
     def test_viewer_cannot_access_protected_endpoints(self, client, viewer_token):
         """Test that read-only role cannot access any protected endpoints."""
         # Try trading endpoints
@@ -344,6 +361,7 @@ class TestRoleBasedAccessControl:
 class TestUnauthorizedAccess:
     """Test unauthorized access to protected endpoints."""
 
+    @pytest.mark.unit
     def test_trading_endpoints_require_authentication(self, client):
         """Test that trading endpoints reject unauthenticated requests."""
         endpoints = [
@@ -358,6 +376,7 @@ class TestUnauthorizedAccess:
             error_message = data.get("detail") or data.get("error", {}).get("message", "")
             assert "Authentication required" in error_message
 
+    @pytest.mark.unit
     def test_model_endpoints_require_authentication(self, client):
         """Test that model endpoints reject unauthenticated requests."""
         endpoints = [
@@ -369,6 +388,7 @@ class TestUnauthorizedAccess:
             response = getattr(client, method.lower())(endpoint)
             assert response.status_code == 401
 
+    @pytest.mark.unit
     def test_risk_endpoints_require_authentication(self, client):
         """Test that risk endpoints reject unauthenticated requests."""
         endpoints = [
@@ -384,21 +404,25 @@ class TestUnauthorizedAccess:
 class TestPublicEndpoints:
     """Test that public endpoints remain accessible."""
 
+    @pytest.mark.unit
     def test_health_check_public(self, client):
         """Test that health check is publicly accessible."""
         response = client.get("/health")
         assert response.status_code == 200
 
+    @pytest.mark.unit
     def test_system_status_public(self, client):
         """Test that system status is publicly accessible."""
         response = client.get("/api/v1/system/status")
         assert response.status_code == 200
 
+    @pytest.mark.unit
     def test_basic_signals_public(self, client):
         """Test that basic signals are publicly accessible."""
         response = client.get("/api/v1/signals/AAPL")
         assert response.status_code == 200
 
+    @pytest.mark.unit
     def test_metrics_public(self, client):
         """Test that metrics endpoint is publicly accessible."""
         # This might fail if Prometheus is not available, but that's expected
@@ -410,6 +434,7 @@ class TestPublicEndpoints:
 class TestTokenSecurity:
     """Test JWT token security features."""
 
+    @pytest.mark.unit
     def test_expired_token_rejection(self, client, user_repo):
         """Test that expired tokens are rejected."""
         # Create a token that expires very quickly
@@ -425,6 +450,7 @@ class TestTokenSecurity:
         error_message = data.get("detail") or data.get("error", {}).get("message", "")
         assert "expired" in error_message.lower()
 
+    @pytest.mark.unit
     def test_malformed_token_rejection(self, client):
         """Test that malformed tokens are rejected."""
         response = client.get(
@@ -434,6 +460,7 @@ class TestTokenSecurity:
 
         assert response.status_code == 401
 
+    @pytest.mark.unit
     def test_missing_bearer_prefix(self, client, admin_token):
         """Test that tokens without Bearer prefix are rejected."""
         response = client.get(

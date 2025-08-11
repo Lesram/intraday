@@ -28,6 +28,8 @@ from backend.config import (
 class TestAppConfig:
     """Test application configuration section."""
 
+    @pytest.mark.unit
+    @pytest.mark.unit
     def test_app_config_defaults(self):
         """Test default values for app config."""
         config = AppConfig()
@@ -39,6 +41,8 @@ class TestAppConfig:
         assert config.dev_mode is True
         assert config.workers == 4
 
+    @pytest.mark.unit
+    @pytest.mark.unit
     def test_app_config_validation(self):
         """Test app config validation."""
         # Valid environment
@@ -56,7 +60,9 @@ class TestAppConfig:
         with pytest.raises(ValidationError):
             AppConfig(port=70000)
 
+    @pytest.mark.unit
     @patch.dict(os.environ, {"APP_ENVIRONMENT": "staging", "APP_PORT": "9000"})
+    @pytest.mark.unit
     def test_app_config_env_vars(self):
         """Test loading app config from environment variables."""
         config = AppConfig()
@@ -68,6 +74,7 @@ class TestAppConfig:
 class TestSecurityConfig:
     """Test security configuration section."""
 
+    @pytest.mark.unit
     def test_security_config_defaults(self):
         """Test default values for security config."""
         config = SecurityConfig()
@@ -77,6 +84,7 @@ class TestSecurityConfig:
         assert len(config.jwt_secret_key) >= 32
         assert isinstance(config.api_keys, list)
 
+    @pytest.mark.unit
     def test_security_config_validation(self):
         """Test security config validation."""
         # Valid JWT algorithm
@@ -92,6 +100,7 @@ class TestSecurityConfig:
             SecurityConfig(jwt_secret_key="short")
 
     @patch.dict(os.environ, {"API_KEYS": "key1,key2,key3"})
+    @pytest.mark.unit
     def test_security_api_keys_loading(self):
         """Test loading API keys from environment."""
         config = SecurityConfig()
@@ -102,6 +111,7 @@ class TestSecurityConfig:
         assert "key3" in config.api_keys
 
     @patch.dict(os.environ, {"SECURITY_JWT_SECRET_KEY": "very-secure-32-character-secret-key"})
+    @pytest.mark.unit
     def test_security_env_vars(self):
         """Test loading security config from environment variables."""
         config = SecurityConfig()
@@ -112,6 +122,7 @@ class TestSecurityConfig:
 class TestAlpacaConfig:
     """Test Alpaca API configuration section."""
 
+    @pytest.mark.unit
     def test_alpaca_config_defaults(self):
         """Test default values for Alpaca config."""
         config = AlpacaConfig()
@@ -120,6 +131,7 @@ class TestAlpacaConfig:
         assert config.base_url == "https://paper-api.alpaca.markets"
         assert config.websocket_url.startswith("wss://")
 
+    @pytest.mark.unit
     def test_alpaca_config_validation(self):
         """Test Alpaca config validation."""
         # Valid URLs
@@ -134,6 +146,7 @@ class TestAlpacaConfig:
             AlpacaConfig(base_url="invalid-url")
 
     @patch.dict(os.environ, {"ALPACA_API_KEY": "test_key", "ALPACA_SECRET_KEY": "test_secret"})
+    @pytest.mark.unit
     def test_alpaca_env_vars(self):
         """Test loading Alpaca config from environment variables."""
         config = AlpacaConfig()
@@ -145,6 +158,7 @@ class TestAlpacaConfig:
 class TestDataConfig:
     """Test data configuration section."""
 
+    @pytest.mark.unit
     def test_data_config_defaults(self):
         """Test default values for data config."""
         config = DataConfig()
@@ -155,6 +169,7 @@ class TestDataConfig:
         assert len(config.default_symbols) > 0
         assert "AAPL" in config.default_symbols
 
+    @pytest.mark.unit
     def test_data_config_validation(self):
         """Test data config validation."""
         # Valid database URL
@@ -176,6 +191,7 @@ class TestDataConfig:
 class TestWebsocketConfig:
     """Test WebSocket configuration section."""
 
+    @pytest.mark.unit
     def test_websocket_config_defaults(self):
         """Test default values for WebSocket config."""
         config = WebsocketConfig()
@@ -184,6 +200,7 @@ class TestWebsocketConfig:
         assert config.max_connections == 100
         assert config.heartbeat_interval == 30
 
+    @pytest.mark.unit
     def test_websocket_config_validation(self):
         """Test WebSocket config validation."""
         # Valid values
@@ -201,6 +218,7 @@ class TestWebsocketConfig:
 class TestMetricsConfig:
     """Test metrics configuration section."""
 
+    @pytest.mark.unit
     def test_metrics_config_defaults(self):
         """Test default values for metrics config."""
         config = MetricsConfig()
@@ -209,6 +227,7 @@ class TestMetricsConfig:
         assert config.log_level == "INFO"
         assert config.api_rate_limit_per_minute == 1000
 
+    @pytest.mark.unit
     def test_metrics_config_validation(self):
         """Test metrics config validation."""
         # Valid log level
@@ -231,6 +250,7 @@ class TestMetricsConfig:
 class TestTradingConfig:
     """Test trading configuration section."""
 
+    @pytest.mark.unit
     def test_trading_config_defaults(self):
         """Test default values for trading config."""
         config = TradingConfig()
@@ -240,6 +260,7 @@ class TestTradingConfig:
         assert config.feature_mode == "full"
         assert isinstance(config.ensemble_weights, dict)
 
+    @pytest.mark.unit
     def test_trading_config_validation(self):
         """Test trading config validation."""
         # Valid percentage values
@@ -266,6 +287,7 @@ class TestTradingConfig:
 class TestNestedSettings:
     """Test the main nested settings class."""
 
+    @pytest.mark.unit
     def test_settings_initialization(self):
         """Test that settings initialize all nested sections."""
         settings = Settings()
@@ -279,6 +301,7 @@ class TestNestedSettings:
         assert isinstance(settings.database, DatabaseConfig)
         assert isinstance(settings.trading, TradingConfig)
 
+    @pytest.mark.unit
     def test_settings_nested_access(self):
         """Test accessing nested configuration values."""
         settings = Settings()
@@ -299,6 +322,7 @@ class TestNestedSettings:
         "ALPACA_SECRET_KEY": "prod_secret",
         "API_KEYS": "key1,key2"
     })
+    @pytest.mark.unit
     def test_production_validation(self):
         """Test production environment validation."""
         # Should pass with proper credentials
@@ -312,6 +336,7 @@ class TestNestedSettings:
             pytest.fail("Production validation should pass with proper credentials")
 
     @patch.dict(os.environ, {"APP_ENVIRONMENT": "production"})
+    @pytest.mark.unit
     def test_production_validation_failure(self):
         """Test production validation fails without credentials."""
         with pytest.raises(ValidationError, match="Alpaca.*required in production"):
@@ -321,6 +346,7 @@ class TestNestedSettings:
 class TestSettingsCache:
     """Test settings caching functionality."""
 
+    @pytest.mark.unit
     def test_get_settings_cached(self):
         """Test that get_settings returns cached instance."""
         settings1 = get_settings()
@@ -329,6 +355,7 @@ class TestSettingsCache:
         # Should be the same instance due to lru_cache
         assert settings1 is settings2
 
+    @pytest.mark.unit
     def test_get_settings_structure(self):
         """Test that cached settings have proper structure."""
         settings = get_settings()
@@ -346,6 +373,7 @@ class TestSettingsCache:
 class TestBackwardCompatibility:
     """Test backward compatibility features."""
 
+    @pytest.mark.unit
     def test_get_legacy_settings(self):
         """Test legacy settings mapping."""
         legacy = get_legacy_settings()
@@ -367,6 +395,7 @@ class TestBackwardCompatibility:
         assert legacy['alpaca_base_url'] == settings.alpaca.base_url
         assert legacy['redis_port'] == settings.data.redis_port
 
+    @pytest.mark.unit
     def test_legacy_settings_types(self):
         """Test that legacy settings maintain correct types."""
         legacy = get_legacy_settings()
@@ -382,6 +411,7 @@ class TestValidationRequirements:
     """Test validation and requirements checking."""
 
     @patch.dict(os.environ, {"SKIP_VALIDATION": "true"})
+    @pytest.mark.unit
     def test_skip_validation(self):
         """Test that validation can be skipped."""
         # This should not raise any errors even with missing config
@@ -390,6 +420,7 @@ class TestValidationRequirements:
         except ValueError:
             pytest.fail("Validation should be skipped")
 
+    @pytest.mark.unit
     def test_validate_required_settings_development(self):
         """Test validation in development mode."""
         # Should pass in development even without full config
@@ -402,6 +433,7 @@ class TestValidationRequirements:
         "APP_ENVIRONMENT": "production",
         "SECURITY_JWT_SECRET_KEY": "production-32-character-secret-key",
     })
+    @pytest.mark.unit
     def test_validate_required_settings_production_missing(self):
         """Test validation fails in production with missing config."""
         # Clear the cache to ensure new environment is used
@@ -423,6 +455,7 @@ class TestEnvironmentVariableLoading:
         "METRICS_LOG_LEVEL": "DEBUG",
         "TRADING_MAX_LEVERAGE": "3.0",
     })
+    @pytest.mark.unit
     def test_env_var_loading_all_sections(self):
         """Test that all sections properly load from environment variables."""
         settings = Settings()
