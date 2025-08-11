@@ -102,12 +102,12 @@ data:
             endpoint: 0.0.0.0:4317
           http:
             endpoint: 0.0.0.0:4318
-      
+
     processors:
       batch:
         timeout: 1s
         send_batch_size: 1024
-      
+
       resource:
         attributes:
         - key: deployment.environment
@@ -116,26 +116,26 @@ data:
         - key: k8s.namespace.name
           from_attribute: k8s.namespace
           action: insert
-    
+
     exporters:
       logging:
         loglevel: info
-      
+
       prometheus:
         endpoint: "0.0.0.0:8888"
         namespace: algotrading
         const_labels:
           environment: production
-      
+
       jaeger:
         endpoint: jaeger-collector:14250
         tls:
           insecure: true
-    
+
     extensions:
       health_check:
         endpoint: 0.0.0.0:8889
-    
+
     service:
       extensions: [health_check]
       pipelines:
@@ -143,8 +143,8 @@ data:
           receivers: [otlp]
           processors: [batch, resource]
           exporters: [logging, jaeger]
-        
+
         metrics:
           receivers: [otlp]
-          processors: [batch, resource]  
+          processors: [batch, resource]
           exporters: [logging, prometheus]

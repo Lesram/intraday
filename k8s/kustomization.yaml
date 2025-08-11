@@ -29,7 +29,7 @@ configMapGenerator:
 - name: app-config
   files:
   - ../logging_config.yaml
-  
+
 # Secret generator for sensitive config (customize as needed)
 secretGenerator:
 - name: api-secrets

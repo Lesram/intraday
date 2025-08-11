@@ -12,7 +12,7 @@ import pytest
 from backend.api.main import WebSocketClientManager, app, lifespan
 from backend.data.alpaca_client import AlpacaClient
 from backend.models.ensemble_model import EnsembleModel
-from backend.risk.risk_manager import RiskManager
+from backend.risk.risk_manager import AsyncRiskManager
 from backend.strategies.trading_strategies import StrategyManager
 
 
@@ -166,7 +166,7 @@ class TestDependencyInjection:
 
         # Mock request with app state
         mock_request = MagicMock()
-        mock_request.app.state.risk_manager = MagicMock(spec=RiskManager)
+        mock_request.app.state.risk_manager = MagicMock(spec=AsyncRiskManager)
         mock_request.app.state.ensemble_model = MagicMock(spec=EnsembleModel)
         mock_request.app.state.strategy_manager = MagicMock(spec=StrategyManager)
         mock_request.app.state.alpaca_client = MagicMock(spec=AlpacaClient)

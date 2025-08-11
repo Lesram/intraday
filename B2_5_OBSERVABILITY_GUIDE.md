@@ -5,7 +5,7 @@
 Branch 2.5 implements comprehensive observability for the algorithmic trading platform with:
 
 - **OpenTelemetry Distributed Tracing** - Full request tracing across HTTP, database, Alpaca API, and outbox operations
-- **Prometheus Metrics** - Standardized metrics with bounded cardinality and comprehensive dashboards  
+- **Prometheus Metrics** - Standardized metrics with bounded cardinality and comprehensive dashboards
 - **Structured JSON Logs** - Consistent logging with trace correlation and domain-specific context
 - **Observability Integration** - Seamless integration across all platform components
 
@@ -14,7 +14,7 @@ Branch 2.5 implements comprehensive observability for the algorithmic trading pl
 ### Components
 
 1. **ObservabilityConfig** (`backend/config.py`) - Centralized configuration management
-2. **MetricsRegistry** (`backend/infra/metrics.py`) - Type-safe metrics with cardinality controls  
+2. **MetricsRegistry** (`backend/infra/metrics.py`) - Type-safe metrics with cardinality controls
 3. **ObservabilityCore** (`backend/infra/observability.py`) - OpenTelemetry SDK initialization and decorators
 4. **StructuredLogging** (`backend/infra/logging.py`) - JSON logging with trace correlation
 5. **Integration Layer** - Enhanced FastAPI middleware, Alpaca client, database operations, outbox pattern
@@ -23,7 +23,7 @@ Branch 2.5 implements comprehensive observability for the algorithmic trading pl
 
 - **Bounded Label Sets** - Prevents high cardinality issues with allowlists
 - **Route Normalization** - Converts dynamic paths to templates (e.g., `/orders/{id}`)
-- **Trace Correlation** - Links logs to distributed traces automatically  
+- **Trace Correlation** - Links logs to distributed traces automatically
 - **Error Tracking** - Comprehensive error capture with context
 - **Performance Monitoring** - Latency histograms with custom buckets
 
@@ -93,7 +93,7 @@ async def lifespan(app: FastAPI):
 All HTTP requests are automatically traced with the enhanced middleware:
 
 - **Span Creation** - Each request gets a unique trace span
-- **Route Normalization** - Dynamic paths converted to templates  
+- **Route Normalization** - Dynamic paths converted to templates
 - **Latency Recording** - Request duration in Prometheus histograms
 - **Error Tracking** - Exceptions captured with full context
 
@@ -122,7 +122,7 @@ def submit_order(self, symbol: str, qty: float, side: str):
         record_alpaca_request(endpoint, method, status_code, duration)
 ```
 
-### 5. Outbox Pattern Tracing  
+### 5. Outbox Pattern Tracing
 
 Outbox dispatcher includes comprehensive observability:
 
@@ -149,7 +149,7 @@ logger = get_logger(__name__)
 # HTTP request logging
 logger.log_http_request(
     method="POST",
-    path="/api/v1/orders/submit", 
+    path="/api/v1/orders/submit",
     status_code=201,
     duration_ms=150.5,
     user_id="user123"
@@ -280,7 +280,7 @@ Configure log shipping to ELK stack or similar:
 Configure appropriate trace sampling rates:
 
 - **Development** - `OTEL_SAMPLER=always_on` (100% sampling)
-- **Staging** - `OTEL_SAMPLER_ARG=0.5` (50% sampling)  
+- **Staging** - `OTEL_SAMPLER_ARG=0.5` (50% sampling)
 - **Production** - `OTEL_SAMPLER_ARG=0.1` (10% sampling)
 
 ### 2. Cardinality Control

@@ -30,51 +30,51 @@ error() {
 
 check_prerequisites() {
     log "Checking prerequisites..."
-    
+
     # Check if kubectl is installed
     if ! command -v kubectl &> /dev/null; then
         error "kubectl is not installed or not in PATH"
     fi
-    
+
     # Check if docker is installed (for build)
     if ! command -v docker &> /dev/null; then
         error "docker is not installed or not in PATH"
     fi
-    
+
     # Check if kustomize is available
     if ! kubectl kustomize --help &> /dev/null; then
         error "kubectl kustomize is not available"
     fi
-    
+
     # Check cluster connectivity
     if ! kubectl cluster-info &> /dev/null; then
         error "Cannot connect to Kubernetes cluster"
     fi
-    
+
     log "Prerequisites check passed"
 }
 
 build_image() {
     log "Building Docker image..."
-    
+
     local image_name="algotrading/api"
     if [[ -n "$REGISTRY" ]]; then
         image_name="$REGISTRY/algotrading/api"
     fi
-    
+
     docker build -t "$image_name:$IMAGE_TAG" .
-    
+
     if [[ -n "$REGISTRY" ]]; then
         log "Pushing image to registry..."
         docker push "$image_name:$IMAGE_TAG"
     fi
-    
+
     log "Image build completed: $image_name:$IMAGE_TAG"
 }
 
 create_secrets() {
     log "Creating secrets (if not exist)..."
-    
+
     # Check if secrets exist
     if kubectl get secret algotrading-secrets -n "$NAMESPACE" &> /dev/null; then
         warn "Secret 'algotrading-secrets' already exists, skipping creation"
@@ -83,7 +83,7 @@ create_secrets() {
         kubectl apply -f k8s/namespace.yaml
         warn "Please manually create secrets based on templates in k8s/namespace.yaml"
         warn "Secrets needed: algotrading-secrets, alpaca-secrets, postgres-secrets"
-        
+
         # Wait for user to create secrets
         read -p "Press Enter after creating all required secrets..."
     fi
@@ -91,91 +91,91 @@ create_secrets() {
 
 deploy_infrastructure() {
     log "Deploying infrastructure components..."
-    
+
     # Apply namespace and base resources
     kubectl apply -f k8s/namespace.yaml
-    
+
     # Deploy PostgreSQL
     log "Deploying PostgreSQL..."
     kubectl apply -f k8s/postgres.yaml
-    
+
     # Deploy Redis
     log "Deploying Redis..."
     kubectl apply -f k8s/redis.yaml
-    
+
     # Deploy OpenTelemetry Collector
     log "Deploying OpenTelemetry Collector..."
     kubectl apply -f k8s/otel-collector.yaml
-    
+
     # Deploy Prometheus
     log "Deploying Prometheus..."
     kubectl apply -f k8s/prometheus.yaml
-    
+
     # Wait for infrastructure to be ready
     log "Waiting for infrastructure to be ready..."
     kubectl wait --for=condition=available --timeout=300s deployment/postgres -n "$NAMESPACE" || true
     kubectl wait --for=condition=available --timeout=300s deployment/redis -n "$NAMESPACE" || true
     kubectl wait --for=condition=available --timeout=300s deployment/otel-collector -n "$NAMESPACE" || true
     kubectl wait --for=condition=available --timeout=300s deployment/prometheus -n "$NAMESPACE" || true
-    
+
     log "Infrastructure deployment completed"
 }
 
 deploy_application() {
     log "Deploying application..."
-    
+
     # Update image tag in kustomization
     cd k8s
     kustomize edit set image algotrading/api="algotrading/api:$IMAGE_TAG"
     cd ..
-    
+
     # Apply with kustomize
     kubectl apply -k k8s/
-    
+
     # Wait for deployment to be ready
     log "Waiting for application to be ready..."
     kubectl wait --for=condition=available --timeout=300s deployment/algotrading-api -n "$NAMESPACE"
-    
+
     log "Application deployment completed"
 }
 
 health_check() {
     log "Performing health checks..."
-    
+
     # Get service endpoint
     local service_ip
     service_ip=$(kubectl get svc algotrading-api-service -n "$NAMESPACE" -o jsonpath='{.spec.clusterIP}')
-    
+
     # Check health endpoints
     kubectl run health-check --rm -i --restart=Never --image=curlimages/curl -- \
         curl -f "http://$service_ip:8000/healthz" || warn "Health check failed"
-    
+
     kubectl run readiness-check --rm -i --restart=Never --image=curlimages/curl -- \
         curl -f "http://$service_ip:8000/readyz" || warn "Readiness check failed"
-    
+
     log "Health checks completed"
 }
 
 show_status() {
     log "Deployment Status:"
     echo
-    
+
     # Show all resources
     kubectl get all -n "$NAMESPACE"
     echo
-    
+
     # Show service endpoints
     log "Service endpoints:"
     kubectl get svc -n "$NAMESPACE"
     echo
-    
+
     # Show ingress (if exists)
     if kubectl get ingress -n "$NAMESPACE" &> /dev/null; then
         log "Ingress configuration:"
         kubectl get ingress -n "$NAMESPACE"
         echo
     fi
-    
+
     # Show logs from API pods
     log "Recent API logs:"
     kubectl logs -l app=algotrading-api -n "$NAMESPACE" --tail=20
@@ -196,7 +196,7 @@ cleanup() {
 
 main() {
     local command="${1:-deploy}"
-    
+
     case "$command" in
         "check")
             check_prerequisites

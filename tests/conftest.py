@@ -1,12 +1,23 @@
 """
 Test Configuration and Fixtures
+Provides fixtures for testing with isolated metrics registries and loggers.
 """
 import asyncio
-from unittest.mock import AsyncMock
+import io
+import logging
+from contextlib import contextmanager
+from unittest.mock import AsyncMock, Mock, patch
+from typing import Generator
 
 import numpy as np
 import pandas as pd
 import pytest
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
+from prometheus_client import CollectorRegistry
+
+from backend.api.factory import create_app
+from backend.infra.logging import get_logger
 
 
 # Test data fixtures
@@ -178,3 +189,321 @@ def readonly_token():
     return create_access_token(
         data={"sub": "viewer@algotrading.com", "roles": ["read-only"]}
     )
+
+
+# =============================================================================
+# METRICS AND APP FACTORY FIXTURES
+# =============================================================================
+
+@pytest.fixture
+def isolated_metrics_registry():
+    """Create an isolated Prometheus CollectorRegistry for test isolation"""
+    from prometheus_client import CollectorRegistry
+    return CollectorRegistry()
+
+
+@pytest.fixture
+def test_app(isolated_metrics_registry):
+    """Create a test FastAPI app with isolated metrics registry"""
+    from backend.api.factory import create_app
+    return create_app(registry=isolated_metrics_registry)
+
+
+@pytest.fixture
+def client(test_app):
+    """Create a test client for synchronous endpoint testing"""
+    from fastapi.testclient import TestClient
+    with TestClient(test_app) as test_client:
+        yield test_client
+
+
+@pytest.fixture
+async def async_client(test_app):
+    """Create an async test client for asynchronous endpoint testing"""
+    from httpx import AsyncClient
+    async with AsyncClient(app=test_app, base_url="http://testserver") as ac:
+        yield ac
+
+
+@pytest.fixture
+def mock_dependencies(test_app):
+    """Mock all external dependencies for isolated testing"""
+    from unittest.mock import Mock, AsyncMock
+    from backend.infra.metrics import MetricsRegistry
+    from prometheus_client import CollectorRegistry
+
+    # Mock database components
+    mock_db_session = AsyncMock()
+    mock_outbox_service = AsyncMock()
+
+    # Mock trading components
+    mock_alpaca_client = Mock()
+    mock_risk_manager = AsyncMock()
+    mock_strategy_engine = Mock()
+    mock_model_manager = Mock()
+
+    # Mock WebSocket manager with isolated metrics
+    mock_ws_manager = Mock()
+    mock_ws_manager.metrics_registry = MetricsRegistry(
+        namespace="test",
+        registry=CollectorRegistry()
+    )
+
+    # Apply mocks to app state
+    test_app.state.db_session = mock_db_session
+    test_app.state.outbox_service = mock_outbox_service
+    test_app.state.alpaca_client = mock_alpaca_client
+    test_app.state.risk_manager = mock_risk_manager
+    test_app.state.strategy_engine = mock_strategy_engine
+    test_app.state.model_manager = mock_model_manager
+    test_app.state.ws_manager = mock_ws_manager
+
+    return {
+        'db_session': mock_db_session,
+        'outbox_service': mock_outbox_service,
+        'alpaca_client': mock_alpaca_client,
+        'risk_manager': mock_risk_manager,
+        'strategy_engine': mock_strategy_engine,
+        'model_manager': mock_model_manager,
+        'ws_manager': mock_ws_manager,
+    }
+
+
+@pytest.fixture
+def app_with_metrics(isolated_metrics_registry):
+    """Create app specifically for metrics testing with isolated registry"""
+    from backend.api.factory import create_app
+    app = create_app(registry=isolated_metrics_registry)
+
+    # Verify metrics isolation
+    assert hasattr(app.state, 'metrics')
+    assert app.state.metrics.registry is isolated_metrics_registry
+
+    return app
+
+
+@pytest.fixture
+def metrics_test_client(app_with_metrics):
+    """Create test client specifically for metrics testing"""
+    from fastapi.testclient import TestClient
+    with TestClient(app_with_metrics) as client:
+        yield client
+
+
+class MetricsTestHelper:
+    """Helper class for metrics testing"""
+
+    @staticmethod
+    def get_metric_value(registry, metric_name: str, labels: dict = None):
+        """Extract metric value from registry for testing"""
+        for collector in registry._collector_to_names.keys():
+            if hasattr(collector, '_name') and collector._name == metric_name:
+                if labels:
+                    return collector.labels(**labels)._value._value
+                else:
+                    return collector._value._value
+        return None
+
+    @staticmethod
+    def get_counter_value(registry, metric_name: str, labels: dict = None):
+        """Get counter metric value"""
+        return MetricsTestHelper.get_metric_value(registry, metric_name, labels)
+
+
+@pytest.fixture
+def metrics_helper():
+    """Provide metrics testing helper"""
+    return MetricsTestHelper
+
+
+# ============================================================================
+# Middleware Isolation Fixtures
+# ============================================================================
+
+@pytest.fixture
+def isolated_registry():
+    """Create an isolated Prometheus registry for testing."""
+    return CollectorRegistry()
+
+
+@pytest.fixture
+def test_logger_handler():
+    """Create a test logger handler that writes to StringIO."""
+    log_stream = io.StringIO()
+    handler = logging.StreamHandler(log_stream)
+    handler.setLevel(logging.DEBUG)
+    formatter = logging.Formatter(
+        '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
+    handler.setFormatter(formatter)
+
+    # Return both handler and stream for test access
+    return handler, log_stream
+
+
+@pytest.fixture
+def app_with_metrics(isolated_registry, test_logger_handler):
+    """
+    Create a FastAPI app with isolated metrics registry and logger.
+
+    This fixture ensures complete test isolation by:
+    - Using a separate Prometheus registry per test
+    - Providing a test-specific logger handler
+    - Patching global logger to use test handler
+    """
+    handler, log_stream = test_logger_handler
+
+    # Create app with isolated registry
+    app = create_app(registry=isolated_registry)
+
+    # Patch the global logger getter to use our test handler
+    original_get_logger = get_logger
+
+    def mock_get_logger(name=None):
+        """Mock logger that uses our test handler."""
+        logger = original_get_logger(name)
+
+        # Create a test logger that captures output
+        test_logger = logging.getLogger(f"test_{name or 'root'}")
+        test_logger.handlers.clear()
+        test_logger.addHandler(handler)
+        test_logger.setLevel(logging.DEBUG)
+        test_logger.propagate = False
+
+        # Add the log_http_request method for middleware compatibility
+        def log_http_request(method, path, status_code, duration_ms, request_id):
+            test_logger.info(
+                f"HTTP {method} {path} - Status: {status_code}, "
+                f"Duration: {duration_ms:.2f}ms, Request ID: {request_id}"
+            )
+
+        test_logger.log_http_request = log_http_request
+        return test_logger
+
+    with patch('backend.infra.logging.get_logger', mock_get_logger):
+        yield app, log_stream
+
+    # Cleanup
+    handler.close()
+
+
+@pytest.fixture
+def client_with_metrics(app_with_metrics):
+    """Create a TestClient with isolated metrics and logging."""
+    app, log_stream = app_with_metrics
+    client = TestClient(app)
+
+    # Attach the log stream to the client for test assertions
+    client.log_stream = log_stream
+
+    return client
+
+
+@pytest.fixture
+def mock_structured_logger():
+    """Create a mock structured logger for testing."""
+    logger = Mock()
+    logger.log_http_request = Mock()
+    logger.info = Mock()
+    logger.error = Mock()
+    logger.warning = Mock()
+    logger.debug = Mock()
+    return logger
+
+
+@contextmanager
+def patch_middleware_globals(test_logger=None, test_metrics=None):
+    """
+    Context manager to patch global dependencies in middleware.
+    Useful for granular testing of middleware components.
+    """
+    patches = []
+
+    if test_logger:
+        patches.append(patch('backend.infra.logging.get_logger', return_value=test_logger))
+
+    if test_metrics:
+        patches.append(patch('backend.infra.metrics.get_metrics_registry', return_value=test_metrics))
+
+    # Start all patches
+    for p in patches:
+        p.start()
+
+    try:
+        yield
+    finally:
+        # Stop all patches
+        for p in patches:
+            p.stop()
+
+
+class TestMetricsRegistry:
+    """Mock metrics registry for testing."""
+
+    def __init__(self):
+        self.counters = {}
+        self.histograms = {}
+        self.gauges = {}
+
+    def counter(self, name, labels=None):
+        """Create or get a mock counter."""
+        key = (name, str(labels or {}))
+        if key not in self.counters:
+            counter_mock = Mock()
+            counter_mock.inc = Mock()
+            self.counters[key] = counter_mock
+        return self.counters[key]
+
+    def histogram(self, name, labels=None):
+        """Create or get a mock histogram."""
+        key = (name, str(labels or {}))
+        if key not in self.histograms:
+            histogram_mock = Mock()
+            histogram_mock.observe = Mock()
+            self.histograms[key] = histogram_mock
+        return self.histograms[key]
+
+    def gauge(self, name, labels=None):
+        """Create or get a mock gauge."""
+        key = (name, str(labels or {}))
+        if key not in self.gauges:
+            gauge_mock = Mock()
+            gauge_mock.set = Mock()
+            self.gauges[key] = gauge_mock
+        return self.gauges[key]
+
+    def inc_counter(self, name, labels=None):
+        """Increment a counter."""
+        return self.counter(name, labels).inc()
+
+    def observe_histogram(self, name, value, labels=None):
+        """Record histogram observation."""
+        return self.histogram(name, labels).observe(value)
+
+
+@pytest.fixture
+def test_metrics_registry():
+    """Create a test metrics registry for assertions."""
+    return TestMetricsRegistry()
+
+
+# Sample fixtures for middleware testing
+@pytest.fixture
+def sample_http_request():
+    """Sample HTTP request data for testing."""
+    return {
+        'method': 'GET',
+        'path': '/api/v1/test',
+        'headers': {'User-Agent': 'test-client'},
+        'query_params': {}
+    }
+
+
+@pytest.fixture
+def sample_http_response():
+    """Sample HTTP response data for testing."""
+    return {
+        'status_code': 200,
+        'headers': {'Content-Type': 'application/json'},
+        'body': '{"status": "success"}'
+    }

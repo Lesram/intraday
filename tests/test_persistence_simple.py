@@ -92,7 +92,7 @@ async def test_basic_order_operations():
                 id TEXT PRIMARY KEY,
                 client_idempotency_key TEXT UNIQUE NOT NULL,
                 symbol TEXT NOT NULL,
-                side TEXT NOT NULL, 
+                side TEXT NOT NULL,
                 qty DECIMAL(18,8) NOT NULL,
                 order_type TEXT NOT NULL,
                 tif TEXT NOT NULL,

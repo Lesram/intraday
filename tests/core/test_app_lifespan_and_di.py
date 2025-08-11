@@ -14,7 +14,7 @@ import pytest
 from backend.api.main import WebSocketClientManager, app, lifespan
 from backend.data.alpaca_client import AlpacaClient
 from backend.models.ensemble_model import EnsembleModel
-from backend.risk.risk_manager import RiskManager
+from backend.risk.risk_manager import AsyncRiskManager
 from backend.strategies.trading_strategies import StrategyManager
 from tests.helpers.simple_app import SimpleTestAppContext
 
@@ -38,7 +38,7 @@ class TestAppLifespanAndDI:
             assert hasattr(test_app.state, 'risk_manager')
             assert hasattr(test_app.state, 'strategy_manager')
             assert hasattr(test_app.state, 'strategy_engine')
-            
+
             # Verify resources are not None
             assert test_app.state.alpaca_client is not None
             assert test_app.state.feature_engineer is not None
@@ -67,7 +67,7 @@ class TestAppLifespanAndDI:
         async with lifespan(test_app):
             # Resources should be created
             assert hasattr(test_app.state, 'alpaca_client')
-            
+
             # Store references to verify cleanup
             resources = {
                 'alpaca_client': test_app.state.alpaca_client,
@@ -86,7 +86,7 @@ class TestAppLifespanAndDI:
             # Get instances from app.state
             alpaca_client = test_app.state.alpaca_client
             risk_manager = test_app.state.risk_manager
-            
+
             # Verify they are the same instances referenced throughout the app
             assert alpaca_client is test_app.state.alpaca_client
             assert risk_manager is test_app.state.risk_manager
@@ -129,7 +129,7 @@ class TestAppLifespanAndDI:
         async with lifespan(test_app2):
             second_alpaca_client = test_app2.state.alpaca_client
             second_risk_manager = test_app2.state.risk_manager
-            
+
             # Should be different instances
             assert first_alpaca_client is not second_alpaca_client
             assert first_risk_manager is not second_risk_manager
@@ -158,7 +158,7 @@ class TestComponentInitialization:
 
         async with lifespan(test_app):
             risk_manager = test_app.state.risk_manager
-            assert isinstance(risk_manager, RiskManager)
+            assert isinstance(risk_manager, AsyncRiskManager)
 
     @pytest.mark.asyncio
     async def test_ensemble_model_initialization(self):
@@ -177,7 +177,7 @@ class TestComponentInitialization:
         async with lifespan(test_app):
             strategy_manager = test_app.state.strategy_manager
             assert isinstance(strategy_manager, StrategyManager)
-            
+
             # Should have risk manager and ensemble model as dependencies
             assert strategy_manager.risk_manager is test_app.state.risk_manager
             assert strategy_manager.ensemble_model is test_app.state.ensemble_model
@@ -201,11 +201,11 @@ class TestLifespanPerformance:
     async def test_startup_time_reasonable(self):
         """Test that startup completes within reasonable time"""
         test_app = FastAPI()
-        
+
         start_time = time.time()
         async with lifespan(test_app):
             end_time = time.time()
-            
+
         startup_duration = end_time - start_time
         # Should complete within 30 seconds (allowing for ML model loading)
         assert startup_duration < 30.0
@@ -214,22 +214,22 @@ class TestLifespanPerformance:
     async def test_shutdown_time_reasonable(self):
         """Test that shutdown completes within reasonable time"""
         test_app = FastAPI()
-        
+
         async with lifespan(test_app):
             pass  # Setup phase
-            
+
         # Measure shutdown time
         start_shutdown = time.time()
         # Shutdown happens automatically when exiting context
         end_shutdown = time.time()
-        
+
         shutdown_duration = end_shutdown - start_shutdown
         # Shutdown should be much faster than startup
         assert shutdown_duration < 5.0
 
 
 # Error handling and resilience tests
-@pytest.mark.core 
+@pytest.mark.core
 class TestLifespanResilience:
     """Test lifespan error handling and resilience"""
 
@@ -286,7 +286,7 @@ class TestLifespanIntegration:
             # All major components should be initialized
             components = [
                 'alpaca_client',
-                'sentiment_analyzer', 
+                'sentiment_analyzer',
                 'feature_engineer',
                 'model_manager',
                 'ensemble_model',
@@ -295,7 +295,7 @@ class TestLifespanIntegration:
                 'strategy_engine',
                 'ws_manager'
             ]
-            
+
             for component in components:
                 assert hasattr(test_app.state, component)
                 assert getattr(test_app.state, component) is not None

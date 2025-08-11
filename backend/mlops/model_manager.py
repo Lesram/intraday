@@ -402,11 +402,11 @@ class ModelRegistry:
     def load_artifacts(self, model_id: str, version: str) -> tuple[Any, dict[str, Any], dict[str, Any]]:
         """
         Load model artifacts from disk.
-        
+
         Args:
             model_id: Name of the model
             version: Version to load
-            
+
         Returns:
             Tuple of (model_obj, artifacts, metadata)
         """
@@ -449,14 +449,14 @@ class ModelRegistry:
     def assert_feature_schema(self, live_df: pd.DataFrame, metadata: dict[str, Any]) -> pd.DataFrame:
         """
         Validate feature schema against expected schema.
-        
+
         Args:
             live_df: Live features DataFrame
             metadata: Model metadata with expected schema
-            
+
         Returns:
             DataFrame with corrected column order if needed
-            
+
         Raises:
             SchemaMismatchError: If schema doesn't match
         """
@@ -501,7 +501,7 @@ class ModelRegistry:
     ) -> None:
         """
         Record inference telemetry to parquet log.
-        
+
         Args:
             model_id: Name of the model
             version: Model version

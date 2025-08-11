@@ -1,0 +1,277 @@
+name: Staging Deployment
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+    types: [labeled]
+  workflow_dispatch:
+    inputs:
+      force_deploy:
+        description: 'Force deployment even if tests fail'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+  STAGING_NAMESPACE: algotrading-staging
+
+jobs:
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    outputs:
+      coverage: ${{ steps.coverage.outputs.coverage-percentage }}
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+        cache: 'pip'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -r requirements-dev.txt
+    
+    - name: Run linting and type checks
+      run: |
+        ruff check backend/ tests/
+        ruff format --check backend/ tests/
+        mypy backend/ --ignore-missing-imports
+    
+    - name: Run security scan
+      run: |
+        bandit -r backend/ -f json -o bandit-report.json
+        bandit -r backend/ --severity-level medium
+    
+    - name: Run unit tests with coverage
+      run: |
+        pytest tests/unit/ \
+          --cov=backend \
+          --cov-report=xml:coverage.xml \
+          --cov-report=term-missing \
+          --cov-fail-under=40 \
+          --tb=short \
+          -v
+    
+    - name: Run integration tests
+      run: |
+        pytest tests/integration/ \
+          --tb=short \
+          -v
+    
+    - name: Extract coverage percentage
+      id: coverage
+      run: |
+        COVERAGE=$(python -c "import xml.etree.ElementTree as ET; tree = ET.parse('coverage.xml'); root = tree.getroot(); print(f\"{float(root.attrib['line-rate']) * 100:.1f}\")")
+        echo "coverage-percentage=$COVERAGE" >> $GITHUB_OUTPUT
+        echo "Test coverage: $COVERAGE%"
+    
+    - name: Upload coverage reports
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage.xml
+        flags: unittests
+        name: codecov-umbrella
+
+  build:
+    name: Build and Push Docker Image
+    runs-on: ubuntu-latest
+    needs: test
+    outputs:
+      image-digest: ${{ steps.build.outputs.digest }}
+      image-tag: ${{ steps.meta.outputs.tags }}
+    
+    permissions:
+      contents: read
+      packages: write
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+    
+    - name: Login to Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Extract metadata
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+        tags: |
+          type=ref,event=branch
+          type=ref,event=pr
+          type=sha,prefix={{branch}}-
+          type=raw,value=staging-latest,enable={{is_default_branch}}
+    
+    - name: Build and push Docker image
+      id: build
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+        build-args: |
+          BUILD_DATE=${{ github.event.head_commit.timestamp }}
+          VCS_REF=${{ github.sha }}
+          VERSION=${{ github.ref_name }}
+
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: [test, build]
+    if: github.ref == 'refs/heads/main' || contains(github.event.pull_request.labels.*.name, 'deploy-staging')
+    
+    environment:
+      name: staging
+      url: https://staging-api.algotrading.example.com
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up kubectl
+      uses: azure/setup-kubectl@v3
+      with:
+        version: 'v1.28.0'
+    
+    - name: Configure kubectl
+      run: |
+        echo "${{ secrets.KUBE_CONFIG_STAGING }}" | base64 -d > kubeconfig
+        export KUBECONFIG=kubeconfig
+        kubectl config current-context
+    
+    - name: Deploy to staging
+      run: |
+        export KUBECONFIG=kubeconfig
+        
+        # Update deployment with new image
+        kubectl set image deployment/algotrading-api \
+          algotrading-api=${{ needs.build.outputs.image-tag }} \
+          -n ${{ env.STAGING_NAMESPACE }}
+        
+        # Wait for rollout to complete
+        kubectl rollout status deployment/algotrading-api \
+          -n ${{ env.STAGING_NAMESPACE }} \
+          --timeout=300s
+        
+        # Verify pods are ready
+        kubectl get pods -n ${{ env.STAGING_NAMESPACE }} \
+          -l app=algotrading-api
+    
+    - name: Wait for deployment readiness
+      run: |
+        export KUBECONFIG=kubeconfig
+        
+        # Wait for all pods to be ready
+        kubectl wait --for=condition=ready pod \
+          -l app=algotrading-api \
+          -n ${{ env.STAGING_NAMESPACE }} \
+          --timeout=180s
+
+  smoke-tests:
+    name: Run Smoke Tests
+    runs-on: ubuntu-latest
+    needs: [deploy-staging]
+    if: github.ref == 'refs/heads/main' || contains(github.event.pull_request.labels.*.name, 'deploy-staging')
+    
+    env:
+      STAGING_BASE_URL: https://staging-api.algotrading.example.com
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+        cache: 'pip'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install requests pytest
+    
+    - name: Wait for staging to be fully ready
+      run: |
+        echo "Waiting for staging deployment to be fully ready..."
+        for i in {1..30}; do
+          if curl -f --max-time 10 "${STAGING_BASE_URL}/health" > /dev/null 2>&1; then
+            echo "Staging is ready!"
+            break
+          fi
+          echo "Attempt $i/30: Staging not ready yet, waiting 10s..."
+          sleep 10
+        done
+    
+    - name: Run smoke tests
+      run: |
+        pytest tests/smoke/ \
+          --base-url="${STAGING_BASE_URL}" \
+          --tb=short \
+          -v \
+          --maxfail=5
+      timeout-minutes: 10
+    
+    - name: Test staging endpoints
+      run: |
+        # Health checks
+        curl -f "${STAGING_BASE_URL}/health"
+        curl -f "${STAGING_BASE_URL}/healthz"
+        curl -f "${STAGING_BASE_URL}/readyz"
+        
+        # Metrics endpoint
+        curl -f "${STAGING_BASE_URL}/metrics" | head -20
+        
+        # API version endpoint
+        curl -f "${STAGING_BASE_URL}/api/v1/system/status"
+    
+    - name: Smoke test results
+      run: |
+        echo "✅ Staging deployment successful!"
+        echo "🔗 Staging URL: ${STAGING_BASE_URL}"
+        echo "📊 Test Coverage: ${{ needs.test.outputs.coverage }}%"
+        echo "🐳 Image: ${{ needs.build.outputs.image-tag }}"
+
+  notify:
+    name: Notify Deployment Status
+    runs-on: ubuntu-latest
+    needs: [test, build, deploy-staging, smoke-tests]
+    if: always()
+    
+    steps:
+    - name: Deployment Success
+      if: needs.smoke-tests.result == 'success'
+      run: |
+        echo "🚀 Staging deployment successful!"
+        echo "Coverage: ${{ needs.test.outputs.coverage }}%"
+        echo "Image: ${{ needs.build.outputs.image-tag }}"
+        echo "Environment: https://staging-api.algotrading.example.com"
+    
+    - name: Deployment Failure
+      if: needs.smoke-tests.result == 'failure' || needs.deploy-staging.result == 'failure'
+      run: |
+        echo "❌ Staging deployment failed!"
+        echo "Check the logs above for details."
+        exit 1

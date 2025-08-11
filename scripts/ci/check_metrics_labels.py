@@ -5,7 +5,7 @@ Validates Prometheus metrics configuration for proper labeling practices.
 
 This script scans the metrics registry and ensures:
 1. All metric names follow naming conventions
-2. Label keys are from an allowed list  
+2. Label keys are from an allowed list
 3. No label values contain IDs or free-form text
 4. Cardinality is within reasonable bounds
 """

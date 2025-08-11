@@ -47,7 +47,7 @@ class ExecutionsRepo:
     ) -> Execution:
         """
         Create a new execution record.
-        
+
         Args:
             order_id: Associated order ID
             symbol: Trading symbol
@@ -57,10 +57,10 @@ class ExecutionsRepo:
             execution_id: Broker's execution/trade ID
             timestamp: Execution timestamp (defaults to now)
             attributes: Optional additional attributes
-            
+
         Returns:
             Execution: Newly created execution
-            
+
         Raises:
             DuplicateExecutionError: If execution_id already exists
         """
@@ -130,10 +130,10 @@ class ExecutionsRepo:
     ) -> Execution:
         """
         Create execution with idempotency protection.
-        
+
         If execution_id already exists, returns the existing execution.
         Otherwise creates a new execution.
-        
+
         Args:
             order_id: Associated order ID
             symbol: Trading symbol
@@ -143,7 +143,7 @@ class ExecutionsRepo:
             execution_id: Broker's execution/trade ID
             timestamp: Execution timestamp (defaults to now)
             attributes: Optional additional attributes
-            
+
         Returns:
             Execution: Either existing or newly created execution
         """
@@ -180,10 +180,10 @@ class ExecutionsRepo:
     async def get_by_execution_id(self, execution_id: str) -> Execution | None:
         """
         Get execution by broker execution ID.
-        
+
         Args:
             execution_id: Broker execution ID
-            
+
         Returns:
             Execution if found, None otherwise
         """
@@ -194,10 +194,10 @@ class ExecutionsRepo:
     async def get_by_id(self, execution_uuid: uuid.UUID) -> Execution | None:
         """
         Get execution by internal UUID.
-        
+
         Args:
             execution_uuid: Internal execution UUID
-            
+
         Returns:
             Execution if found, None otherwise
         """
@@ -208,10 +208,10 @@ class ExecutionsRepo:
     async def get_by_order_id(self, order_id: uuid.UUID) -> list[Execution]:
         """
         Get all executions for an order.
-        
+
         Args:
             order_id: Order ID
-            
+
         Returns:
             List of executions for the order
         """
@@ -232,13 +232,13 @@ class ExecutionsRepo:
     ) -> list[Execution]:
         """
         Get executions by symbol within time range.
-        
+
         Args:
             symbol: Trading symbol
             start_time: Start time filter (optional)
             end_time: End time filter (optional)
             limit: Maximum number of executions to return
-            
+
         Returns:
             List of executions
         """
@@ -262,10 +262,10 @@ class ExecutionsRepo:
     async def get_total_filled_qty(self, order_id: uuid.UUID) -> Decimal:
         """
         Calculate total filled quantity for an order.
-        
+
         Args:
             order_id: Order ID
-            
+
         Returns:
             Total filled quantity
         """
@@ -275,10 +275,10 @@ class ExecutionsRepo:
     async def get_volume_weighted_avg_price(self, order_id: uuid.UUID) -> Decimal | None:
         """
         Calculate volume-weighted average price for an order.
-        
+
         Args:
             order_id: Order ID
-            
+
         Returns:
             VWAP if executions exist, None otherwise
         """
@@ -302,11 +302,11 @@ class ExecutionsRepo:
     ) -> list[Execution]:
         """
         Get recent executions.
-        
+
         Args:
             limit: Maximum number of executions to return
             symbol: Optional symbol filter
-            
+
         Returns:
             List of recent executions
         """
@@ -332,13 +332,13 @@ class ExecutionsRepo:
     ) -> dict[str, Any]:
         """
         Calculate PnL impact of a potential execution.
-        
+
         Args:
             symbol: Trading symbol
             side: 'buy' or 'sell'
             qty: Execution quantity
             price: Execution price
-            
+
         Returns:
             Dictionary with PnL impact analysis
         """

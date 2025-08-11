@@ -85,7 +85,7 @@ class ObservabilityConfig:
 def initialize_observability(config: ObservabilityConfig) -> None:
     """
     Initialize OpenTelemetry tracing, metrics, and instrumentation.
-    
+
     Args:
         config: Observability configuration object
     """
@@ -246,14 +246,14 @@ def trace_span(
 ):
     """
     Context manager for creating traced spans with automatic error handling.
-    
+
     Args:
         name: Span name
         attributes: Optional span attributes
-        
+
     Yields:
         OpenTelemetry Span object
-        
+
     Example:
         with trace_span("alpaca_order_submit", {"symbol": "AAPL"}) as span:
             # Perform operation
@@ -285,13 +285,13 @@ def record_latency(
 ):
     """
     Decorator to record operation latency in both OpenTelemetry and Prometheus metrics.
-    
+
     Args:
         metric_name: Name of the metric to record latency
         route: HTTP route (normalized automatically)
         method: HTTP method
         extra_labels: Additional metric labels
-        
+
     Example:
         @record_latency("alpaca_http_latency_seconds", method="POST")
         async def submit_order(...):
@@ -408,12 +408,12 @@ def record_operation(
 ) -> None:
     """
     Record a business operation with standardized metrics and tracing.
-    
+
     Args:
-        operation: Operation name (e.g., "order_submit", "signal_generate")  
+        operation: Operation name (e.g., "order_submit", "signal_generate")
         success: Whether operation succeeded
         extra_labels: Additional metric labels
-        
+
     Example:
         record_operation("order_submit", True, {"symbol": "AAPL", "side": "buy"})
     """
@@ -447,7 +447,7 @@ def record_alpaca_request(
 ) -> None:
     """
     Record Alpaca API request metrics with normalized endpoints.
-    
+
     Args:
         endpoint: Alpaca API endpoint path
         method: HTTP method
@@ -489,10 +489,10 @@ def record_database_operation(
 ) -> None:
     """
     Record database operation metrics.
-    
+
     Args:
         operation: Database operation type (select, insert, update, delete, health_check)
-        duration_seconds: Operation duration in seconds 
+        duration_seconds: Operation duration in seconds
         success: Whether operation succeeded
     """
     metrics = get_metrics_registry()
@@ -519,7 +519,7 @@ def record_outbox_metrics(
 ) -> None:
     """
     Record outbox pattern metrics.
-    
+
     Args:
         polled_count: Number of messages polled from outbox
         dispatched_count: Number of messages successfully dispatched
@@ -564,7 +564,7 @@ def record_outbox_metrics(
 def record_auth_metrics(operation: str, success: bool) -> None:
     """
     Record authentication metrics.
-    
+
     Args:
         operation: Auth operation (attempt, token_validation)
         success: Whether operation succeeded
@@ -586,7 +586,7 @@ def record_websocket_metrics(
 ) -> None:
     """
     Record WebSocket metrics.
-    
+
     Args:
         event: Event type (connection, message)
         client_type: Type of WebSocket client

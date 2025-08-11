@@ -13,7 +13,8 @@ import pytest
 from backend.data.alpaca_client import AlpacaClient
 from backend.features.feature_engineering import FeatureEngineer
 from backend.models.ensemble_model import EnsembleModel
-from backend.risk.risk_manager import RiskManager
+from backend.risk.risk_manager import AsyncRiskManager
+from backend.risk.types import OrderSpec, PortfolioState
 from backend.strategies.trading_strategies import SignalType, StrategyManager
 
 
@@ -26,7 +27,7 @@ class TestTradingWorkflow:
         """Test complete workflow from signal generation to trade execution"""
 
         # Initialize components
-        risk_manager = RiskManager()
+        risk_manager = AsyncRiskManager()
         ensemble_model = EnsembleModel()
         strategy_manager = StrategyManager(risk_manager, ensemble_model)
         feature_engineer = FeatureEngineer()
@@ -66,18 +67,32 @@ class TestTradingWorkflow:
             assert isinstance(signal.confidence, float)
             assert 0 <= signal.confidence <= 1
 
-            # Step 4: Risk assessment
+            # Step 4: Risk assessment using new AsyncRiskManager interface
             if signal.signal_type != SignalType.HOLD and signal.position_size > 0:
-                risk_check = await risk_manager.assess_position_risk(
-                    symbol, signal.position_size,
-                    'buy' if signal.signal_type in [SignalType.BUY, SignalType.STRONG_BUY] else 'sell'
+                # Create OrderSpec for the new async risk manager
+                from decimal import Decimal
+
+                side = 'buy' if signal.signal_type in [SignalType.BUY, SignalType.STRONG_BUY] else 'sell'
+                price = price_data['close'].iloc[-1] if hasattr(price_data, 'columns') else 150.0  # Use last price or default
+
+                order_spec = OrderSpec(
+                    symbol=symbol,
+                    side=side,
+                    qty=Decimal(str(signal.position_size)),
+                    notional=Decimal(str(signal.position_size * price)),
+                    price=Decimal(str(price))
                 )
 
-                assert 'approved' in risk_check
-                assert isinstance(risk_check['approved'], bool)
+                risk_decision = await risk_manager.before_order(order_spec)
+
+                assert risk_decision is not None
+                assert hasattr(risk_decision, 'allowed')
+                assert isinstance(risk_decision.allowed, bool)
+                assert hasattr(risk_decision, 'reason')
+                assert isinstance(risk_decision.reason, str)
 
                 # Step 5: Execute trade if approved
-                if risk_check['approved']:
+                if risk_decision.allowed:
                     order = await alpaca_client.submit_order(
                         symbol=symbol,
                         qty=signal.position_size,
@@ -201,7 +216,7 @@ class TestRealTimeDataFlow:
             alpaca_client.connected = True  # Manually set connection status
             alpaca_client.stream_market_data = AsyncMock(side_effect=mock_stream_handler)
             feature_engineer = FeatureEngineer()
-            risk_manager = RiskManager()
+            risk_manager = AsyncRiskManager()
 
             processed_data = []
             risk_alerts = []
@@ -241,7 +256,7 @@ class TestPortfolioRebalancing:
         """Test complete portfolio rebalancing workflow"""
 
         # Initialize components
-        risk_manager = RiskManager()
+        risk_manager = AsyncRiskManager()
 
         # Mock current portfolio
         current_positions = {
@@ -376,7 +391,7 @@ class TestPerformanceUnderLoad:
     async def test_concurrent_signal_generation(self, sample_price_data, sample_features):
         """Test concurrent signal generation for multiple symbols"""
 
-        risk_manager = RiskManager()
+        risk_manager = AsyncRiskManager()
         ensemble_model = EnsembleModel()
         strategy_manager = StrategyManager(risk_manager, ensemble_model)
 
@@ -419,7 +434,7 @@ class TestPerformanceUnderLoad:
         process = psutil.Process(os.getpid())
         initial_memory = process.memory_info().rss
 
-        risk_manager = RiskManager()
+        risk_manager = AsyncRiskManager()
         ensemble_model = EnsembleModel()
 
         # Simulate extended operation

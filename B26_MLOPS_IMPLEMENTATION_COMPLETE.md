@@ -125,7 +125,7 @@ MLOPS_RETRAIN_DRIFT_THRESHOLD=0.7
 class MLOpsConfig(BaseSettings):
     """MLOps configuration with validation"""
     model_config = ConfigDict(env_prefix="MLOPS_", case_sensitive=False)
-    
+
     registry_root: str = Field(default="artifacts")
     drift_psi_warn: float = Field(default=0.1, ge=0.0, le=1.0)
     drift_psi_alert: float = Field(default=0.25, ge=0.0, le=1.0)
@@ -244,7 +244,7 @@ from backend.features.feature_engineering import validate_feature_schema
 # Validate features against expected schema
 expected_schema = {
     "sma_10": "float64",
-    "rsi": "float64", 
+    "rsi": "float64",
     "macd": "float64"
 }
 

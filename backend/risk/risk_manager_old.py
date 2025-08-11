@@ -1008,12 +1008,12 @@ class RiskManager:
     async def assess_position_risk(self, symbol: str, quantity: int, side: str) -> dict:
         """
         Async wrapper for position risk assessment.
-        
+
         Args:
             symbol: Trading symbol
             quantity: Order quantity
             side: 'buy' or 'sell'
-            
+
         Returns:
             Dict with 'approved' bool and 'reason' string
         """
@@ -1036,11 +1036,11 @@ class RiskManager:
     async def update_position_risk(self, symbol: str, current_price: float) -> dict:
         """
         Update risk monitoring for a position based on current market price.
-        
+
         Args:
             symbol: Symbol to update
             current_price: Current market price
-            
+
         Returns:
             Dict with risk update information
         """

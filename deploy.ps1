@@ -5,7 +5,7 @@ param(
     [Parameter(Position=0)]
     [ValidateSet("check", "build", "secrets", "infra", "app", "deploy", "status", "rollback", "cleanup")]
     [string]$Command = "deploy",
-    
+
     [string]$Namespace = "algotrading",
     [string]$ImageTag = "latest",
     [string]$Registry = ""
@@ -40,44 +40,44 @@ function Write-Error {
 
 function Test-Prerequisites {
     Write-Log "Checking prerequisites..."
-    
+
     # Check if kubectl is installed
     try {
         $null = kubectl version --client 2>$null
     } catch {
         Write-Error "kubectl is not installed or not in PATH"
     }
-    
+
     # Check if docker is installed
     try {
         $null = docker --version 2>$null
     } catch {
         Write-Error "docker is not installed or not in PATH"
     }
-    
+
     # Check cluster connectivity
     try {
         $null = kubectl cluster-info 2>$null
     } catch {
         Write-Error "Cannot connect to Kubernetes cluster"
     }
-    
+
     Write-Log "Prerequisites check passed"
 }
 
 function Build-Image {
     Write-Log "Building Docker image..."
-    
+
     $imageName = "algotrading/api"
     if ($Registry) {
         $imageName = "$Registry/algotrading/api"
     }
-    
+
     docker build -t "${imageName}:${ImageTag}" .
     if ($LASTEXITCODE -ne 0) {
         Write-Error "Docker build failed"
     }
-    
+
     if ($Registry) {
         Write-Log "Pushing image to registry..."
         docker push "${imageName}:${ImageTag}"
@@ -85,29 +85,29 @@ function Build-Image {
             Write-Error "Docker push failed"
         }
     }
-    
+
     Write-Log "Image build completed: ${imageName}:${ImageTag}"
 }
 
 function New-Secrets {
     Write-Log "Creating secrets (if not exist)..."
-    
+
     # Check if secrets exist
     $secretExists = $false
     try {
         kubectl get secret algotrading-secrets -n $Namespace 2>$null
         $secretExists = $true
     } catch {}
-    
+
     if ($secretExists) {
         Write-Warning "Secret 'algotrading-secrets' already exists, skipping creation"
     } else {
         # Create namespace first
         kubectl apply -f k8s/namespace.yaml
-        
+
         Write-Warning "Please manually create secrets based on templates in k8s/namespace.yaml"
         Write-Warning "Secrets needed: algotrading-secrets, alpaca-secrets, postgres-secrets"
-        
+
         # Wait for user to create secrets
         Read-Host "Press Enter after creating all required secrets..."
     }
@@ -115,89 +115,89 @@ function New-Secrets {
 
 function Deploy-Infrastructure {
     Write-Log "Deploying infrastructure components..."
-    
+
     # Apply namespace and base resources
     kubectl apply -f k8s/namespace.yaml
-    
+
     # Deploy PostgreSQL
     Write-Log "Deploying PostgreSQL..."
     kubectl apply -f k8s/postgres.yaml
-    
+
     # Deploy Redis
     Write-Log "Deploying Redis..."
     kubectl apply -f k8s/redis.yaml
-    
+
     # Deploy OpenTelemetry Collector
     Write-Log "Deploying OpenTelemetry Collector..."
     kubectl apply -f k8s/otel-collector.yaml
-    
+
     # Deploy Prometheus
     Write-Log "Deploying Prometheus..."
     kubectl apply -f k8s/prometheus.yaml
-    
+
     # Wait for infrastructure to be ready
     Write-Log "Waiting for infrastructure to be ready..."
     kubectl wait --for=condition=available --timeout=300s statefulset/postgres -n $Namespace
     kubectl wait --for=condition=available --timeout=300s deployment/redis -n $Namespace
     kubectl wait --for=condition=available --timeout=300s deployment/otel-collector -n $Namespace
     kubectl wait --for=condition=available --timeout=300s deployment/prometheus -n $Namespace
-    
+
     Write-Log "Infrastructure deployment completed"
 }
 
 function Deploy-Application {
     Write-Log "Deploying application..."
-    
+
     # Update image tag in kustomization
     Set-Location k8s
     kustomize edit set image "algotrading/api=algotrading/api:$ImageTag"
     Set-Location ..
-    
+
     # Apply with kustomize
     kubectl apply -k k8s/
-    
+
     # Wait for deployment to be ready
     Write-Log "Waiting for application to be ready..."
     kubectl wait --for=condition=available --timeout=300s deployment/algotrading-api -n $Namespace
-    
+
     Write-Log "Application deployment completed"
 }
 
 function Test-Health {
     Write-Log "Performing health checks..."
-    
+
     # Get service endpoint
     $serviceIP = kubectl get svc algotrading-api-service -n $Namespace -o jsonpath='{.spec.clusterIP}'
-    
+
     # Check health endpoints
     try {
         kubectl run health-check --rm -i --restart=Never --image=curlimages/curl -- curl -f "http://${serviceIP}:8000/healthz"
     } catch {
         Write-Warning "Health check failed"
     }
-    
+
     try {
         kubectl run readiness-check --rm -i --restart=Never --image=curlimages/curl -- curl -f "http://${serviceIP}:8000/readyz"
     } catch {
         Write-Warning "Readiness check failed"
     }
-    
+
     Write-Log "Health checks completed"
 }
 
 function Show-Status {
     Write-Log "Deployment Status:"
     Write-Host ""
-    
+
     # Show all resources
     kubectl get all -n $Namespace
     Write-Host ""
-    
+
     # Show service endpoints
     Write-Log "Service endpoints:"
     kubectl get svc -n $Namespace
     Write-Host ""
-    
+
     # Show ingress (if exists)
     try {
         kubectl get ingress -n $Namespace 2>$null
@@ -205,7 +205,7 @@ function Show-Status {
         kubectl get ingress -n $Namespace
         Write-Host ""
     } catch {}
-    
+
     # Show logs from API pods
     Write-Log "Recent API logs:"
     kubectl logs -l app=algotrading-api -n $Namespace --tail=20

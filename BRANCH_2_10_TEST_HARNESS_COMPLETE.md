@@ -49,7 +49,7 @@ make test
 # Performance tests only (gated behind @pytest.mark.perf)
 make test-perf
 
-# Chaos tests only (gated behind @pytest.mark.chaos)  
+# Chaos tests only (gated behind @pytest.mark.chaos)
 make test-chaos
 
 # Quality checks (lint, format, type-check, security)

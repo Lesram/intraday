@@ -28,7 +28,7 @@ G. **Replace placeholder data calls** - Wire to real Alpaca data
 
 ### ✅ Completed Fixes
 1. **~~Wrong Alpaca startup call~~** - ❌ **REVERTED** - Original `connect_data_stream()` is correct method name
-4. **Endpoints define Pydantic DTOs but accept dict** - ✅ Made TradingSignalResponse consistent with `.dict()` calls 
+4. **Endpoints define Pydantic DTOs but accept dict** - ✅ Made TradingSignalResponse consistent with `.dict()` calls
 8. **WebSocket auth success shape** - ✅ Made advanced endpoint require authentication always
 6. **WebSocket rate limiter** - ✅ Added 60 messages/minute rate limiting with proper error responses
 A. **Use DTOs for all body payloads** - ✅ Created proper AdvancedSignalsResponse DTO with nested models
@@ -43,10 +43,10 @@ A. **Use DTOs for all body payloads** - ✅ Created proper AdvancedSignalsRespon
 2. **Missing await for async risk metrics** - Need to locate specific instances in portfolio/status
 3. **Pandas .append deprecation** - Need to verify if present in current code
 5. **asyncio.run(...) inside async context** - Need to check RiskManager for sync helpers
-7. **Alpaca HTTP success codes** - Review status code mappings 
+7. **Alpaca HTTP success codes** - Review status code mappings
 9. **Background training data assembly** - Check sequence preparation logic in EnsembleModel
 
-#### Strong Recommendations  
+#### Strong Recommendations
 B. **Add return types to all functions** - Comprehensive type annotations needed
 C. **Inject config via dependency injection** - Replace global config access patterns
 D. **LSTM defaults** - Review and configure model parameters

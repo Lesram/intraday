@@ -1,0 +1,38 @@
+# Coverage configuration for pytest-cov
+# Simple format for coverage tool compatibility
+
+[run]
+source = backend
+omit = 
+    backend/migrations/*
+    backend/tests/* 
+    backend/scripts/*
+    backend/alembic/*
+    */tests/*
+    */test_*
+
+[report]
+# Regexes for lines to exclude from consideration
+exclude_lines =
+    pragma: no cover
+    def __repr__
+    if self.debug:
+    if settings.DEBUG
+    raise AssertionError
+    raise NotImplementedError
+    if 0:
+    if __name__ == .__main__.:
+
+ignore_errors = True
+precision = 2
+
+[html]
+directory = htmlcov
+
+[xml]
+output = coverage.xml
+
+# Coverage staging notes:
+# Stage 1: 30% minimum (current)
+# Stage 2: 40% target (after unit tests)
+# Stage 3: 50% target (after integration tests)

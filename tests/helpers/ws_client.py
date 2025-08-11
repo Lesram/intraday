@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 class WSTestClient:
     """
     Async WebSocket test client with configurable behavior for testing.
-    
+
     Features:
     - Automatic ping/pong handling
     - Configurable read delays for backpressure testing
@@ -128,14 +128,14 @@ class WSTestClient:
     async def wait_for_message(self, timeout: float | None = None, filter_fn: Callable | None = None) -> dict[str, Any]:
         """
         Wait for a specific message matching the filter function.
-        
+
         Args:
             timeout: Maximum time to wait in seconds
             filter_fn: Function to filter messages, return True to match
-            
+
         Returns:
             The first message matching the filter
-            
+
         Raises:
             asyncio.TimeoutError: If timeout is reached
             ConnectionClosed: If connection is lost
@@ -160,11 +160,11 @@ class WSTestClient:
     async def wait_for_messages(self, count: int, timeout: float | None = None) -> list[dict[str, Any]]:
         """
         Wait for a specific number of messages.
-        
+
         Args:
             count: Number of messages to wait for
             timeout: Maximum time to wait in seconds
-            
+
         Returns:
             List of received messages
         """
@@ -349,7 +349,7 @@ class WSTestClientPool:
     async def broadcast_message(self, message: Union[str, dict[str, Any]]) -> int:
         """
         Send a message to all connected clients.
-        
+
         Returns:
             Number of clients that successfully sent the message
         """
@@ -405,12 +405,12 @@ async def simulate_slow_consumer(
 ) -> dict[str, Any]:
     """
     Simulate a slow WebSocket consumer for backpressure testing.
-    
+
     Args:
         client: WebSocket client to slow down
         delay_ms: Delay between message reads
         duration_seconds: How long to be slow
-        
+
     Returns:
         Statistics about the simulation
     """
@@ -452,12 +452,12 @@ async def wait_for_client_health(
 ) -> bool:
     """
     Wait for a client to reach a healthy state.
-    
+
     Args:
         client: Client to monitor
         expected_messages: Minimum number of messages expected
         timeout: Maximum time to wait
-        
+
     Returns:
         True if client becomes healthy, False on timeout
     """

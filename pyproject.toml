@@ -103,7 +103,7 @@ indent-width = 4
 # Enable specific rule categories
 select = [
     "E",      # pycodestyle errors
-    "W",      # pycodestyle warnings  
+    "W",      # pycodestyle warnings
     "F",      # Pyflakes
     "I",      # isort
     "B",      # flake8-bugbear
@@ -200,6 +200,11 @@ show_error_codes = true
 show_column_numbers = true
 pretty = true
 
+# Configure paths for relative imports
+mypy_path = "."
+namespace_packages = true
+explicit_package_bases = true
+
 # Per-module configuration
 [[tool.mypy.overrides]]
 module = "tests.*"
@@ -221,6 +226,25 @@ module = [
     "opentelemetry.*",
 ]
 ignore_missing_imports = true
+
+# Stricter type checking for core backend packages
+[[tool.mypy.overrides]]
+module = [
+    "backend.services.*",
+    "backend.risk.*",
+    "backend.infra.*"
+]
+# Extra strict for critical business logic
+warn_unused_ignores = true
+disallow_any_generics = true
+disallow_any_unimported = false  # Relax for now due to import issues
+disallow_any_expr = false  # Still allow Any in some contexts
+disallow_any_decorated = false  # Allow decorated functions with Any
+strict_optional = true
+warn_no_return = true
+warn_return_any = true
+# Temporarily ignore missing imports while we fix them
+ignore_missing_imports = false
 
 # Bandit Security Configuration
 [tool.bandit]
@@ -288,7 +312,7 @@ addopts = [
 ]
 markers = [
     "integration: marks tests as integration tests (may require external dependencies)",
-    "slow: marks tests as slow running",  
+    "slow: marks tests as slow running",
     "unit: marks tests as unit tests",
     "perf: marks tests as performance/load tests (require specific infrastructure)",
     "chaos: marks tests as chaos engineering tests (intentional fault injection)",

@@ -110,7 +110,7 @@ if %ERRORLEVEL% NEQ 0 (
     echo ⚠️ PostgreSQL not running locally - integration tests may fail
 )
 
-netstat -an | findstr :6379 >nul  
+netstat -an | findstr :6379 >nul
 if %ERRORLEVEL% NEQ 0 (
     echo ⚠️ Redis not running locally - caching tests may fail
 )

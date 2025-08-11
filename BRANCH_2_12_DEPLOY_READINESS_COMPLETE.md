@@ -49,7 +49,7 @@
 - Essential service availability
 - Response: {"status": "healthy", "timestamp": "..."}
 
-# Readiness Probe - /readyz  
+# Readiness Probe - /readyz
 - Database connectivity check
 - Redis/broker connectivity check
 - Background task status
@@ -61,7 +61,7 @@
 ```python
 # 30-second timeout with ordered cleanup:
 1. Stop accepting new requests
-2. Finish processing current requests  
+2. Finish processing current requests
 3. Shutdown WebSocket connections gracefully
 4. Flush outbox pattern messages
 5. Stop background tasks cleanly
@@ -128,7 +128,7 @@
 # Build and deploy everything
 ./deploy.sh deploy
 
-# Individual components  
+# Individual components
 ./deploy.sh build     # Build Docker image
 ./deploy.sh infra     # Deploy infrastructure
 ./deploy.sh app       # Deploy application
@@ -148,7 +148,7 @@
 ## 🏆 DEPLOYMENT READINESS ACHIEVED
 **Status**: Production-ready with enterprise-grade operational capabilities
 **Container**: Multi-stage slim build with security hardening
-**Health**: Comprehensive liveness and readiness probes  
+**Health**: Comprehensive liveness and readiness probes
 **Shutdown**: Graceful 30s timeout with complete resource cleanup
 **Orchestration**: Full Kubernetes and Docker Compose support
 **Observability**: Complete monitoring and logging stack

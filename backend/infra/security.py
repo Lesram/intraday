@@ -46,10 +46,10 @@ security_scheme = HTTPBearer(auto_error=False)
 def hash_password(password: str) -> str:
     """
     Hash a password using bcrypt.
-    
+
     Args:
         password: Plain text password to hash
-        
+
     Returns:
         Hashed password string
     """
@@ -61,11 +61,11 @@ def hash_password(password: str) -> str:
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """
     Verify a password against its hash.
-    
+
     Args:
         plain_password: Plain text password to verify
         hashed_password: Previously hashed password
-        
+
     Returns:
         True if password matches, False otherwise
     """
@@ -84,15 +84,15 @@ def create_access_token(
 ) -> str:
     """
     Create a JWT access token with user claims.
-    
+
     Args:
         subject: Username or user identifier
         roles: List of user roles for RBAC
         expires_minutes: Token expiration in minutes (default from config)
-        
+
     Returns:
         Encoded JWT token string
-        
+
     Raises:
         ValueError: If token creation fails
     """
@@ -128,13 +128,13 @@ def create_access_token(
 def verify_token(token: str) -> UserClaims:
     """
     Verify and decode a JWT token.
-    
+
     Args:
         token: JWT token string to verify
-        
+
     Returns:
         Decoded user claims
-        
+
     Raises:
         HTTPException: If token is invalid, expired, or malformed
     """
@@ -189,10 +189,10 @@ def verify_token(token: str) -> UserClaims:
 def verify_api_key(api_key: str) -> bool:
     """
     Verify an API key using constant-time comparison.
-    
+
     Args:
         api_key: API key to verify
-        
+
     Returns:
         True if API key is valid, False otherwise
     """
@@ -211,14 +211,14 @@ async def get_current_user(
 ) -> AuthenticatedUser | None:
     """
     FastAPI dependency to extract current user from JWT token or API key.
-    
+
     Args:
         request: FastAPI request object
         credentials: HTTP Bearer credentials
-        
+
     Returns:
         Authenticated user or None if not authenticated
-        
+
     Raises:
         HTTPException: If token is invalid
     """
@@ -260,13 +260,13 @@ async def get_authenticated_user(
 ) -> AuthenticatedUser:
     """
     FastAPI dependency that requires authentication.
-    
+
     Args:
         current_user: Current authenticated user (if any)
-        
+
     Returns:
         Authenticated user
-        
+
     Raises:
         HTTPException: If user is not authenticated
     """
@@ -283,13 +283,13 @@ async def get_authenticated_user(
 def require_roles(*required_roles: str):
     """
     Create a FastAPI dependency that requires specific roles.
-    
+
     Args:
         *required_roles: One or more roles required for access
-        
+
     Returns:
         FastAPI dependency function
-        
+
     Usage:
         @app.get("/admin-only")
         async def admin_endpoint(user: AuthenticatedUser = Depends(require_roles("admin"))):

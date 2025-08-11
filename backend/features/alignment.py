@@ -17,12 +17,12 @@ def align_features_target(
 ) -> FeatureFrame:
     """
     Align features with target, ensuring no lookahead bias.
-    
+
     Args:
         features: Feature DataFrame
         price: Price series for target creation
         price_col: Price column name for logging
-        
+
     Returns:
         FeatureFrame with aligned features and target
     """
@@ -64,13 +64,13 @@ def align_multitimeframe(
 ) -> pd.DataFrame:
     """
     Align multi-timeframe features correctly without lookahead.
-    
+
     Args:
         features_1m: 1-minute timeframe features
-        features_5m: 5-minute timeframe features  
+        features_5m: 5-minute timeframe features
         how: Alignment method ("right" aligns to finer timeframe)
         max_ffill: Maximum forward-fill periods for coarser features
-        
+
     Returns:
         Combined DataFrame with proper suffixes and no lookahead
     """
@@ -121,10 +121,10 @@ def align_multitimeframe(
 def validate_temporal_order(df: pd.DataFrame) -> None:
     """
     Validate that DataFrame has proper temporal ordering.
-    
+
     Args:
         df: DataFrame with DatetimeIndex
-        
+
     Raises:
         ValueError: If temporal ordering is invalid
     """
@@ -149,12 +149,12 @@ def detect_misalignment(
 ) -> dict:
     """
     Detect potential misalignment between features and price data.
-    
+
     Args:
         features: Feature DataFrame
         price: Price series
         tolerance_seconds: Acceptable time difference
-        
+
     Returns:
         Dictionary with misalignment statistics
     """
@@ -198,12 +198,12 @@ def create_training_splits(
 ) -> tuple[FeatureFrame, FeatureFrame]:
     """
     Create temporal train/test splits maintaining time order.
-    
+
     Args:
         feature_frame: Input FeatureFrame
         train_ratio: Fraction of data for training
         min_train_samples: Minimum samples required for training
-        
+
     Returns:
         Tuple of (train_frame, test_frame)
     """

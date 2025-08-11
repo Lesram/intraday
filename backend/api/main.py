@@ -27,61 +27,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ValidationError
 
-# Prometheus imports
+# Prometheus imports - using centralized metrics registry
 try:
-    from prometheus_client import (
-        CONTENT_TYPE_LATEST, Counter, Gauge, Histogram, 
-        generate_latest, CollectorRegistry
-    )
+    from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
     PROMETHEUS_AVAILABLE = True
-
-    # Create a custom registry to avoid conflicts
-    metrics_registry = CollectorRegistry()
-
-    # Prometheus metrics with custom registry
-    REQUEST_COUNT = Counter(
-        'http_requests_total',
-        'Total HTTP requests',
-        ['method', 'endpoint', 'status'],
-        registry=metrics_registry
-    )
-    REQUEST_DURATION = Histogram(
-        'http_request_duration_seconds',
-        'HTTP request duration',
-        ['method', 'endpoint'],
-        registry=metrics_registry
-    )
-    WS_CONNECTIONS = Counter(
-        'websocket_connections_total',
-        'Total WebSocket connections',
-        ['client_type'],
-        registry=metrics_registry
-    )
-    WS_MESSAGES = Counter(
-        'websocket_messages_total',
-        'WebSocket messages sent/received',
-        ['direction', 'message_type'],
-        registry=metrics_registry
-    )
-    WS_QUEUE_SIZE = Gauge(
-        'websocket_queue_size',
-        'Current WebSocket queue size',
-        ['client_id'],
-        registry=metrics_registry
-    )
-    WS_MESSAGES_DROPPED = Counter(
-        'websocket_messages_dropped_total',
-        'WebSocket messages dropped due to backpressure',
-        ['client_id', 'reason'],
-        registry=metrics_registry
-    )
-    WS_SUBSCRIBER_TIMEOUTS = Counter(
-        'websocket_subscriber_timeouts_total',
-        'WebSocket subscriber timeouts',
-        ['client_id'],
-        registry=metrics_registry
-    )
-
 except ImportError:
     PROMETHEUS_AVAILABLE = False
     logging.warning("Prometheus client not available")
@@ -97,6 +46,7 @@ except ImportError:
 
 # Internal imports
 from backend.utils.logger import audit_logger, get_logger
+from backend.api.websocket_manager import WebSocketClientManager
 
 from ..config import get_settings
 from ..data.alpaca_client import AlpacaClient
@@ -238,171 +188,7 @@ class TokenValidationResponse(BaseModel):
     expires_at: str | None = None
 
 
-# WebSocket client manager
-class WebSocketClientManager:
-    """Manages WebSocket clients with backpressure and heartbeat"""
-
-    def __init__(self, max_queue_size: int = 100):
-        self.max_queue_size = max_queue_size
-        self.clients: dict[str, dict[str, Any]] = {}
-        self._heartbeat_task: asyncio.Task | None = None
-        self._cleanup_task: asyncio.Task | None = None
-
-    async def add_client(self, client_id: str, websocket: WebSocket) -> None:
-        """Add a new WebSocket client with bounded queue"""
-        message_queue = asyncio.Queue(maxsize=self.max_queue_size)
-
-        self.clients[client_id] = {
-            'websocket': websocket,
-            'queue': message_queue,
-            'last_ping': time.time(),
-            'subscriptions': set(),
-            'send_task': None
-        }
-
-        # Start message sender task for this client
-        send_task = asyncio.create_task(
-            self._message_sender(client_id)
-        )
-        self.clients[client_id]['send_task'] = send_task
-
-        if PROMETHEUS_AVAILABLE:
-            WS_CONNECTIONS.labels(client_type='trading').inc()
-
-        audit_logger.info("websocket_client_added", client_id=client_id)
-
-    async def remove_client(self, client_id: str) -> None:
-        """Remove WebSocket client and cleanup resources"""
-        if client_id in self.clients:
-            client_info = self.clients[client_id]
-
-            # Cancel send task
-            if client_info['send_task']:
-                client_info['send_task'].cancel()
-                try:
-                    await client_info['send_task']
-                except asyncio.CancelledError:
-                    pass
-
-            # Close websocket
-            try:
-                await client_info['websocket'].close()
-            except Exception:
-                pass
-
-            del self.clients[client_id]
-            audit_logger.info("websocket_client_removed", client_id=client_id)
-
-    async def broadcast_message(self, message: dict[str, Any], subscription_filter: str | None = None) -> None:
-        """Broadcast message to subscribed clients with backpressure handling"""
-        for client_id, client_info in self.clients.items():
-            if subscription_filter and subscription_filter not in client_info['subscriptions']:
-                continue
-
-            try:
-                # Update queue size metric
-                if PROMETHEUS_AVAILABLE:
-                    WS_QUEUE_SIZE.labels(client_id=client_id).set(client_info['queue'].qsize())
-
-                # Non-blocking put with backpressure policy
-                client_info['queue'].put_nowait(message)
-            except asyncio.QueueFull:
-                # Drop oldest message to make room (backpressure policy)
-                try:
-                    client_info['queue'].get_nowait()
-                    client_info['queue'].put_nowait(message)
-                    logging.warning(f"Queue full for client {client_id}, dropped old message")
-
-                    # Update metrics
-                    if PROMETHEUS_AVAILABLE:
-                        WS_MESSAGES_DROPPED.labels(client_id=client_id, reason='queue_full').inc()
-
-                except asyncio.QueueEmpty:
-                    # Queue became empty between checks, just put the message
-                    client_info['queue'].put_nowait(message)
-                    pass
-
-    async def _message_sender(self, client_id: str) -> None:
-        """Send messages from queue to WebSocket client"""
-        client_info = self.clients.get(client_id)
-        if not client_info:
-            return
-
-        websocket = client_info['websocket']
-        queue = client_info['queue']
-
-        try:
-            while True:
-                message = await queue.get()
-                await websocket.send_text(json.dumps(message))
-
-                if PROMETHEUS_AVAILABLE:
-                    WS_MESSAGES.labels(direction='sent', message_type=message.get('type', 'unknown')).inc()
-
-                queue.task_done()
-
-        except (WebSocketDisconnect, asyncio.CancelledError):
-            pass
-        except Exception as e:
-            logging.error(f"Error sending message to client {client_id}: {e}")
-            await self.remove_client(client_id)
-
-    async def start_heartbeat(self) -> None:
-        """Start heartbeat task"""
-        self._heartbeat_task = asyncio.create_task(self._heartbeat_loop())
-
-    async def stop_heartbeat(self) -> None:
-        """Stop heartbeat task"""
-        if self._heartbeat_task:
-            self._heartbeat_task.cancel()
-            try:
-                await self._heartbeat_task
-            except asyncio.CancelledError:
-                pass
-
-    async def _heartbeat_loop(self) -> None:
-        """Send periodic heartbeat to all clients"""
-        while True:
-            try:
-                current_time = time.time()
-                ping_message = {"type": "ping", "timestamp": current_time}
-
-                # Send heartbeat and check for stale connections
-                stale_clients = []
-                for client_id, client_info in self.clients.items():
-                    # Check if client is stale (no pong for 60 seconds)
-                    if current_time - client_info['last_ping'] > 60:
-                        stale_clients.append(client_id)
-
-                        # Track timeout in metrics
-                        if PROMETHEUS_AVAILABLE:
-                            WS_SUBSCRIBER_TIMEOUTS.labels(client_id=client_id).inc()
-                        continue
-
-                    try:
-                        client_info['queue'].put_nowait(ping_message)
-                    except asyncio.QueueFull:
-                        # Client can't keep up, mark as stale
-                        stale_clients.append(client_id)
-
-                        # Track queue full timeout
-                        if PROMETHEUS_AVAILABLE:
-                            WS_SUBSCRIBER_TIMEOUTS.labels(client_id=client_id).inc()
-
-                # Remove stale clients
-                for client_id in stale_clients:
-                    await self.remove_client(client_id)
-
-                await asyncio.sleep(30)  # Heartbeat every 30 seconds
-
-            except asyncio.CancelledError:
-                break
-            except Exception as e:
-                logging.error(f"Error in heartbeat loop: {e}")
-                await asyncio.sleep(30)
-
-# Global WebSocket manager
-ws_manager = WebSocketClientManager()
+# WebSocket manager is now initialized in factory.py
 
 if PYDANTIC_AVAILABLE:
     # Pydantic models for API
@@ -636,8 +422,7 @@ async def lifespan(app: FastAPI):
             positions_service=PositionsService()
         )
 
-        # Initialize WebSocket manager
-        app.state.ws_manager = ws_manager
+        # WebSocket manager is now initialized in factory.py
 
         # B2.4 - Initialize database and outbox infrastructure
         if settings.outbox.enabled:
@@ -727,12 +512,12 @@ async def lifespan(app: FastAPI):
     try:
         # Step 1: Signal all background tasks to stop gracefully
         logging.info("Step 1: Signaling background tasks to stop...")
-        
+
         # B2.4 - Signal outbox dispatcher to stop first (highest priority)
         if hasattr(app.state, 'outbox_stop_event'):
             logging.info("Signaling outbox dispatcher to stop gracefully...")
             app.state.outbox_stop_event.set()
-            
+
             # Wait briefly for outbox to flush pending messages
             outbox_task = app.state.background_tasks.get('outbox_dispatcher')
             if outbox_task and not outbox_task.done():
@@ -766,7 +551,7 @@ async def lifespan(app: FastAPI):
                             name=f"disconnect_client_{client_id}"
                         )
                     )
-                
+
                 # Wait for all WebSocket clients to disconnect
                 if client_disconnect_tasks:
                     try:
@@ -777,7 +562,7 @@ async def lifespan(app: FastAPI):
                         logging.info(f"Disconnected {len(client_disconnect_tasks)} WebSocket clients")
                     except TimeoutError:
                         logging.warning("WebSocket client disconnection timed out")
-                        
+
             except Exception as e:
                 logging.error(f"Error stopping WebSocket manager: {e}")
 
@@ -843,7 +628,7 @@ async def lifespan(app: FastAPI):
                          timestamp=datetime.now(),
                          background_tasks_cancelled=len(background_tasks),
                          shutdown_reason="graceful")
-        
+
         logging.info("Graceful shutdown completed successfully")
 
     except TimeoutError:
@@ -925,166 +710,11 @@ async def flush_audit_logs():
         logging.error(f"Error flushing audit logs: {e}")
 
 
-# Create FastAPI app
-app = FastAPI(
-    title="Algorithmic Trading Platform API",
-    description="Institutional-grade algorithmic trading platform with AI/ML capabilities",
-    version="1.0.0",
-    lifespan=lifespan,
-)
+# Create FastAPI app using factory pattern
+from .factory import create_app
+app = create_app()
 
-# Add CORS middleware
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # Configure appropriately for production
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-# Request timing and logging middleware
-@app.middleware("http")
-async def timing_middleware(request: Request, call_next):
-    """Add request timing, tracing, and logging for comprehensive observability"""
-    start_time = time.time()
-    request_id = generate_request_id()
-
-    # Add request ID to headers for tracing
-    request.state.request_id = request_id
-
-    # Get structured logger and metrics registry
-    structured_logger = get_structured_logger(__name__)
-    metrics_registry = get_metrics_registry()
-
-    # Log request start with structured context
-    structured_logger.log_http_request(
-        method=request.method,
-        path=request.url.path,
-        status_code=0,  # Will be updated on completion
-        duration_ms=0,  # Will be updated on completion
-        request_id=request_id
-    )
-
-    # Start tracing span
-    from backend.infra.observability import normalize_route, trace_span
-
-    with trace_span(
-        "http_request",
-        {
-            "http.method": request.method,
-            "http.route": normalize_route(request.url.path),
-            "http.scheme": request.url.scheme,
-            "http.host": request.headers.get("host", "unknown"),
-            "http.user_agent": request.headers.get("user-agent", "unknown"),
-            "http.request_id": request_id
-        }
-    ) as span:
-        try:
-            # Process request
-            response = await call_next(request)
-
-            # Calculate timing
-            process_time = time.time() - start_time
-            duration_ms = process_time * 1000
-
-            # Add timing headers
-            response.headers["X-Process-Time"] = f"{process_time:.3f}"
-            response.headers["X-Request-ID"] = request_id
-
-            # Update span with response info
-            span.set_attribute("http.status_code", response.status_code)
-            span.set_attribute("http.response_size", len(response.body) if hasattr(response, 'body') else 0)
-
-            # Log structured response
-            structured_logger.log_http_request(
-                method=request.method,
-                path=request.url.path,
-                status_code=response.status_code,
-                duration_ms=duration_ms,
-                request_id=request_id
-            )
-
-            # Record standardized metrics
-            normalized_route = normalize_route(request.url.path)
-
-            # HTTP request counter
-            status = "success" if 200 <= response.status_code < 400 else "error"
-            metrics_registry.inc_counter(
-                "http_requests_total",
-                {
-                    "route": normalized_route,
-                    "method": request.method,
-                    "status": status
-                }
-            )
-
-            # HTTP latency histogram
-            metrics_registry.observe_histogram(
-                "http_request_duration_seconds",
-                process_time,
-                {
-                    "route": normalized_route,
-                    "method": request.method
-                }
-            )
-
-            # Update legacy Prometheus metrics if available
-            if PROMETHEUS_AVAILABLE:
-                REQUEST_COUNT.labels(
-                    method=request.method,
-                    endpoint=normalized_route,
-                    status=response.status_code
-                ).inc()
-                REQUEST_DURATION.labels(
-                    method=request.method,
-                    endpoint=normalized_route
-                ).observe(process_time)
-
-            return response
-
-        except Exception as e:
-            # Calculate timing for error case
-            process_time = time.time() - start_time
-            duration_ms = process_time * 1000
-
-            # Update span with error info
-            span.set_attribute("http.status_code", 500)
-            span.set_attribute("error", True)
-            span.set_attribute("error.type", type(e).__name__)
-            span.set_attribute("error.message", str(e))
-
-            # Log structured error
-            structured_logger.log_http_request(
-                method=request.method,
-                path=request.url.path,
-                status_code=500,
-                duration_ms=duration_ms,
-                request_id=request_id
-            )
-
-            # Record error metrics
-            normalized_route = normalize_route(request.url.path)
-            metrics_registry.inc_counter(
-                "http_requests_total",
-                {
-                    "route": normalized_route,
-                    "method": request.method,
-                    "status": "error"
-                }
-            )
-
-            # Record error latency
-            metrics_registry.observe_histogram(
-                "http_request_duration_seconds",
-                process_time,
-                {
-                    "route": normalized_route,
-                    "method": request.method
-                }
-            )
-
-            # Re-raise to let error handlers process
-            raise
+# Middleware is now registered in factory.py
 
 # Structured error handlers for consistent API responses
 @app.exception_handler(HTTPException)
@@ -1310,42 +940,24 @@ async def get_order_service(
     return OrderService(db_session)
 
 
-# Middleware for Prometheus metrics
-@app.middleware("http")
-async def metrics_middleware(request: Request, call_next):
-    """Middleware to collect Prometheus metrics"""
-    if not PROMETHEUS_AVAILABLE:
-        return await call_next(request)
-
-    start_time = time.time()
-    method = request.method
-    endpoint = request.url.path
-
-    response = await call_next(request)
-
-    # Record metrics
-    duration = time.time() - start_time
-    status = str(response.status_code)
-
-    REQUEST_COUNT.labels(method=method, endpoint=endpoint, status=status).inc()
-    REQUEST_DURATION.labels(method=method, endpoint=endpoint).observe(duration)
-
-    return response
-
+# Middleware is now registered in factory.py
 
 # Prometheus metrics endpoint
 @app.get("/metrics")
-async def get_metrics():
+async def get_metrics(request: Request):
     """Prometheus metrics endpoint with comprehensive observability metrics"""
     if not PROMETHEUS_AVAILABLE:
         raise HTTPException(status_code=501, detail="Metrics not available")
-    
+
     try:
-        # Generate metrics from our custom registry
-        return Response(
-            generate_latest(metrics_registry), 
-            media_type=CONTENT_TYPE_LATEST
-        )
+        # Generate metrics from the app's centralized registry
+        if hasattr(request.app.state, 'metrics'):
+            return Response(
+                generate_latest(request.app.state.metrics.registry),
+                media_type=CONTENT_TYPE_LATEST
+            )
+        else:
+            raise HTTPException(status_code=501, detail="Metrics registry not initialized")
 
     except Exception as e:
         # Fallback to basic prometheus metrics if available
@@ -1489,7 +1101,7 @@ async def health_check(
 async def liveness_probe():
     """
     Kubernetes liveness probe - checks if process is alive and responsive.
-    
+
     This endpoint does NOT check dependencies (DB, broker) - only process health.
     Returns 200 if the process is alive and the event loop is responsive.
     Used by Kubernetes to determine if pod should be restarted.
@@ -1497,7 +1109,7 @@ async def liveness_probe():
     try:
         # Quick async operation to verify event loop is responsive
         await asyncio.sleep(0.001)
-        
+
         return {
             "status": "alive",
             "timestamp": datetime.now().isoformat(),
@@ -1519,19 +1131,19 @@ async def readiness_probe(
 ):
     """
     Kubernetes readiness probe - checks if service is ready to handle traffic.
-    
+
     Verifies:
     - Database connectivity and health
     - Broker/Alpaca client connectivity
     - Critical components are operational
     - Outbox dispatcher is running (if enabled)
-    
+
     Returns 200 only when service is fully ready to serve requests.
     Used by Kubernetes to determine if pod should receive traffic.
     """
     health_checks = {}
     overall_ready = True
-    
+
     try:
         # 1. Database Health Check
         try:
@@ -1550,7 +1162,7 @@ async def readiness_probe(
                 "error": str(e)
             }
             overall_ready = False
-            
+
         # 2. Broker/Alpaca Client Health Check
         try:
             alpaca_client = getattr(request.app.state, 'alpaca_client', None)
@@ -1573,12 +1185,12 @@ async def readiness_probe(
                 }
         except Exception as e:
             health_checks["broker"] = {
-                "status": "error", 
+                "status": "error",
                 "ready": False,
                 "error": str(e)
             }
             overall_ready = False
-            
+
         # 3. Outbox Dispatcher Health (if enabled)
         try:
             if hasattr(request.app.state, 'background_tasks'):
@@ -1598,16 +1210,16 @@ async def readiness_probe(
                     }
             else:
                 health_checks["outbox_dispatcher"] = {
-                    "status": "not_configured", 
+                    "status": "not_configured",
                     "ready": True
                 }
         except Exception as e:
             health_checks["outbox_dispatcher"] = {
                 "status": "error",
-                "ready": False, 
+                "ready": False,
                 "error": str(e)
             }
-            
+
         # 4. WebSocket Manager Health
         try:
             ws_manager = getattr(request.app.state, 'ws_manager', None)
@@ -1630,7 +1242,7 @@ async def readiness_probe(
                 "ready": False,
                 "error": str(e)
             }
-            
+
         # Return readiness status
         status_code = 200 if overall_ready else 503
         response_data = {
@@ -1640,12 +1252,12 @@ async def readiness_probe(
             "overall_ready": overall_ready,
             "check": "readiness"
         }
-        
+
         if overall_ready:
             return response_data
         else:
             raise HTTPException(status_code=503, detail=response_data)
-            
+
     except HTTPException:
         raise
     except Exception as e:
@@ -2058,8 +1670,11 @@ async def websocket_endpoint(
                 }))
                 continue
 
-            if PROMETHEUS_AVAILABLE:
-                WS_MESSAGES.labels(direction='received', message_type=message.get('type', 'unknown')).inc()
+            if PROMETHEUS_AVAILABLE and ws_manager.metrics_registry:
+                ws_manager.metrics_registry.counter(
+                    'websocket_messages_total',
+                    {'direction': 'received', 'message_type': message.get('type', 'unknown')}
+                ).inc()
 
             message_type = message.get("type")
             client_info = ws_manager.clients.get(client_id)
@@ -2210,7 +1825,7 @@ async def submit_order(
 ):
     """
     Submit an order with exactly-once guarantees using transactional outbox pattern.
-    
+
     Features:
     - Atomic order creation and outbox enqueuing
     - Idempotency protection via client_order_id

@@ -32,16 +32,16 @@ class PositionsService:
     In production, this would integrate with the positions repository.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._mock_positions: dict[str, Position] = {}
 
     async def get_positions_by_symbols(self, symbols: list[str]) -> dict[str, Position]:
         """
         Get positions for the specified symbols.
-        
+
         Args:
             symbols: List of symbol strings
-            
+
         Returns:
             Dictionary mapping symbol to Position object
         """

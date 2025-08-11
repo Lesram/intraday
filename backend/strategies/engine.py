@@ -90,7 +90,7 @@ class StrategyEngine:
     ) -> list[ExecutionPlan]:
         """
         Build execution plans from signals using netting and throttling rules.
-        
+
         Returns one ExecutionPlan per symbol with netted exposure targets.
         """
         if not signals:
@@ -234,7 +234,7 @@ class StrategyEngine:
     ) -> tuple[float, bool]:
         """
         Apply throttling rules to prevent rapid position flips.
-        
+
         Returns (adjusted_exposure, throttle_applied)
         """
         # Check if this is a flip (crossing zero or changing direction significantly)
@@ -323,7 +323,7 @@ class StrategyEngine:
     ) -> ExecutionPlan:
         """
         Gate execution plan through risk manager.
-        
+
         Updates risk_allowed and risk_reason based on RiskManager.before_order().
         """
         if plan.qty == 0 or plan.side == "flat":

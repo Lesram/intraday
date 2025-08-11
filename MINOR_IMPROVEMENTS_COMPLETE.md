@@ -4,14 +4,14 @@
 
 ### ✅ **COMPLETED IMPROVEMENTS**
 
-#### 1. **Enhanced Index Alignment in Ensemble Model** 
+#### 1. **Enhanced Index Alignment in Ensemble Model**
 - **File**: `backend/models/ensemble_model.py`
 - **Change**: Replaced simple `iloc[:-1]` alignment with explicit `pd.concat(..., join='inner').dropna()`
 - **Benefit**: Prevents silent misalignment between features and target when indices differ
 - **Code**: Added proper index-based alignment for features vs target in model training
 
 #### 2. **Fixed Pydantic Deprecation Warning**
-- **Files**: `backend/api/main.py`, `tests/test_lifespan_deps.py`  
+- **Files**: `backend/api/main.py`, `tests/test_lifespan_deps.py`
 - **Change**: Updated all `.dict()` calls to `.model_dump()` for Pydantic V2 compatibility
 - **Benefit**: Eliminates deprecation warnings and future-proofs code for Pydantic V3
 - **Impact**: Test suite now runs without deprecation warnings
@@ -20,7 +20,7 @@
 - **File**: `backend/config.py`
 - **Changes Added**:
   - `volatility_scale_factor: float = 10.0` - Makes heuristic scaling traceable
-  - `momentum_scale_factor: float = 100.0` - Configurable momentum scaling  
+  - `momentum_scale_factor: float = 100.0` - Configurable momentum scaling
   - `websocket_rate_limit_per_minute: int = 60` - Configurable WebSocket rate limiting
   - `api_rate_limit_per_minute: int = 1000` - API rate limiting configuration
 - **Benefit**: Makes strategy scaling factors configurable and traceable in metadata
@@ -31,7 +31,7 @@
 - **Benefit**: Rate limits are now configurable via environment variables instead of hard-coded
 
 #### 5. **Enhanced Social Sentiment Timeout & Circuit Breaker Configuration**
-- **File**: `backend/data/social_sentiment.py`  
+- **File**: `backend/data/social_sentiment.py`
 - **Changes Added**:
   - `request_timeout = 10` seconds
   - `max_retries = 3` with exponential backoff
@@ -40,7 +40,7 @@
   - `failed_requests` tracking per source
 - **Benefit**: Robust error handling and rate limiting for external API calls
 
-#### 6. **Improved LSTM Prediction Comments** 
+#### 6. **Improved LSTM Prediction Comments**
 - **File**: `backend/models/ensemble_model.py`
 - **Change**: Added explicit comments clarifying that LSTM predicts next price then converts to return
 - **Benefit**: Makes prediction flow more explicit - "predict next price directly, then convert to return for strategy use"
@@ -59,13 +59,13 @@
 - **Investigation**: Searched for `DataFrame.append` usage - only exists in old/archived files
 - **Conclusion**: This issue was already resolved in previous refactoring
 
-#### ❌ **Dict Request Bodies to Pydantic DTOs**  
+#### ❌ **Dict Request Bodies to Pydantic DTOs**
 - **Status**: `/api/v1/trades` and `/api/v1/models/train` endpoints don't exist
 - **Investigation**: Searched for POST endpoints with dict bodies
 - **Conclusion**: Current API already uses proper DTOs throughout
 
 #### ❌ **Semaphore._value Access**
-- **Status**: Not found in current codebase  
+- **Status**: Not found in current codebase
 - **Investigation**: Searched for private `_value` attribute access
 - **Conclusion**: This issue was already resolved or exists only in archived documentation
 
@@ -81,7 +81,7 @@
 ### **✅ Test Suite: 32/32 PASSING (100% Success Rate)**
 ```
 ✅ All Lifespan Management Tests: PASSED
-✅ All Dependency Injection Tests: PASSED  
+✅ All Dependency Injection Tests: PASSED
 ✅ All WebSocket Backpressure Tests: PASSED
 ✅ All WebSocket Integration Tests: PASSED
 ✅ All Prometheus Metrics Tests: PASSED
@@ -92,7 +92,7 @@
 
 ### **🚀 Quality Improvements Achieved**
 - ✅ **Zero Deprecation Warnings** - Pydantic V2 compliance complete
-- ✅ **Enhanced Error Handling** - Structured error responses validated  
+- ✅ **Enhanced Error Handling** - Structured error responses validated
 - ✅ **Improved Configuration** - Strategy scaling factors now configurable
 - ✅ **Robust External API Handling** - Circuit breakers and timeouts added
 - ✅ **Better Data Alignment** - Explicit index alignment prevents silent bugs
@@ -102,7 +102,7 @@
 ```bash
 # New environment variables available:
 VOLATILITY_SCALE_FACTOR=10.0          # Strategy volatility scaling
-MOMENTUM_SCALE_FACTOR=100.0           # Strategy momentum scaling  
+MOMENTUM_SCALE_FACTOR=100.0           # Strategy momentum scaling
 WS_RATE_LIMIT_PER_MINUTE=60          # WebSocket message rate limit
 API_RATE_LIMIT_PER_MINUTE=1000       # API request rate limit
 ```
@@ -116,13 +116,13 @@ API_RATE_LIMIT_PER_MINUTE=1000       # API request rate limit
 - **Circuit Breakers**: Protects against external API failures cascading
 - **Rate Limiting**: Configurable protection against client abuse
 
-### **Maintainability Improvements**  
+### **Maintainability Improvements**
 - **Configuration-Driven**: Strategy scaling factors now traceable and tunable
 - **Future-Proof**: Pydantic V2 compliance eliminates deprecation warnings
 - **Clear Documentation**: Prediction flow explicitly documented
 
 ### **Testing Improvements**
-- **100% Test Success**: All 32 tests passing without warnings  
+- **100% Test Success**: All 32 tests passing without warnings
 - **Structured Validation**: Tests properly validate enhanced error responses
 - **Clean Output**: No more deprecation warnings cluttering test runs
 
@@ -132,9 +132,9 @@ API_RATE_LIMIT_PER_MINUTE=1000       # API request rate limit
 
 **All minor improvements have been successfully implemented with:**
 - ✅ **100% Test Success Rate** (32/32 passing)
-- ✅ **Zero Warnings or Deprecations** 
+- ✅ **Zero Warnings or Deprecations**
 - ✅ **Enhanced Configuration System**
-- ✅ **Improved Error Handling** 
+- ✅ **Improved Error Handling**
 - ✅ **Better External API Resilience**
 - ✅ **Cleaner Code Documentation**
 

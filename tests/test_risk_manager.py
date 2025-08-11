@@ -1,24 +1,34 @@
 """
-Test Risk Management System - Aligned with Current Implementation
+Test Risk Management System - LEGACY COMPATIBILITY TESTS
+
+WARNING: This file tests the DEPRECATED synchronous RiskManager wrapper.
+For new tests, use AsyncRiskManager in test_risk_manager_current.py instead.
+
+These tests are kept only for backward compatibility validation.
+Do not use these patterns in new code.
 """
 from datetime import datetime, timedelta
 from unittest.mock import Mock
+import warnings
 
 import numpy as np
 import pandas as pd
 import pytest
 
 from backend.risk.risk_manager import (
-    RiskManager,
+    RiskManager,  # DEPRECATED - Legacy wrapper for compatibility only
 )
 from backend.risk.types import PortfolioRisk, RiskLevel, RiskLimits
 
 
-class TestRiskManager:
-    """Test cases for RiskManager"""
+class TestLegacyRiskManager:
+    """LEGACY compatibility tests for deprecated RiskManager wrapper"""
 
     def setup_method(self):
-        """Setup for each test method"""
+        """Setup for each test method - LEGACY COMPATIBILITY ONLY"""
+        # Suppress deprecation warnings for legacy tests
+        warnings.filterwarnings("ignore", category=DeprecationWarning)
+
         # Create mock portfolio
         mock_portfolio = Mock()
         mock_portfolio.total_value = 100000

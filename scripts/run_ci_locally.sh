@@ -32,7 +32,7 @@ else
 fi
 
 if ruff format --check .; then
-    echo "${GREEN}✅ Ruff formatting passed${NC}"  
+    echo "${GREEN}✅ Ruff formatting passed${NC}"
 else
     echo "${RED}❌ Ruff formatting failed${NC}"
     LINT_RESULT=1
@@ -79,7 +79,7 @@ if command -v safety &> /dev/null; then
         echo "${GREEN}✅ Safety vulnerability check passed${NC}"
     else
         echo "${YELLOW}⚠️ Safety found potential issues (review manually)${NC}"
-        # Don't fail on safety issues as they can be false positives  
+        # Don't fail on safety issues as they can be false positives
     fi
 else
     echo "${YELLOW}⚠️ safety not installed, skipping vulnerability scan${NC}"
@@ -189,7 +189,7 @@ else
     echo "Please fix the issues above before committing."
     echo "Run individual commands to debug:"
     echo "  ruff check . --fix     # Fix linting"
-    echo "  mypy backend tests     # Check types"  
+    echo "  mypy backend tests     # Check types"
     echo "  bandit -r backend      # Review security"
     echo "  pytest tests/          # Run tests"
     exit 1

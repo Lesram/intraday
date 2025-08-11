@@ -45,7 +45,7 @@ class OrderService:
     ) -> dict[str, Any]:
         """
         Submit a single order through the idempotent order+outbox flow.
-        
+
         This is the core order submission path used by both direct API calls
         and strategy engine executions.
         """
@@ -116,12 +116,12 @@ class OrderService:
         """
         Strategy engine integration: convert signals to execution plans
         and submit approved plans through the existing order flow.
-        
+
         Args:
             signals: List of trading signals from strategies
             idempotency_key: Optional base key for order idempotency
             portfolio_state: Current portfolio state for risk calculations
-            
+
         Returns:
             List of results, one per symbol with execution status
         """

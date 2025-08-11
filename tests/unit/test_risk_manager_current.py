@@ -25,11 +25,11 @@ class TestRiskMathUtils:
         kelly = self.math_utils.kelly_fraction(mean_return=0.1, variance=0.04)
         assert isinstance(kelly, float)
         assert 0 <= kelly <= 1
-        
+
         # Test edge case - zero return
         kelly_zero = self.math_utils.kelly_fraction(mean_return=0.0, variance=0.04)
         assert kelly_zero == 0.0
-        
+
         # Test edge case - zero variance
         kelly_no_var = self.math_utils.kelly_fraction(mean_return=0.1, variance=0.0)
         assert kelly_no_var == 0.0
@@ -38,31 +38,31 @@ class TestRiskMathUtils:
     def test_ewma_volatility_calculation(self):
         """Test EWMA volatility calculation."""
         import numpy as np
-        
+
         # Test with normal returns
         returns = np.array([0.01, -0.02, 0.015, -0.005, 0.008, 0.012, -0.018])
         volatility = self.math_utils.ewma_volatility(returns)
         assert isinstance(volatility, float)
         assert volatility > 0
-        
+
         # Test with insufficient data
         short_returns = np.array([0.01])
         vol_short = self.math_utils.ewma_volatility(short_returns)
         assert vol_short == 0.1  # Fallback value
 
-    @pytest.mark.unit  
+    @pytest.mark.unit
     def test_parametric_var_calculation(self):
         """Test parametric VaR calculation."""
         # Test with normal returns
         returns = [0.01, -0.02, 0.015, -0.005, 0.008, 0.012, -0.018, 0.003, -0.009, 0.014]
-        
+
         var_5 = self.math_utils.parametric_var(returns, confidence=0.05)
         var_1 = self.math_utils.parametric_var(returns, confidence=0.01)
-        
+
         assert isinstance(var_5, float)
         assert isinstance(var_1, float)
         assert var_1 >= var_5  # 1% VaR should be greater than 5% VaR
-        
+
         # Test with insufficient data
         short_returns = [0.01]
         var_short = self.math_utils.parametric_var(short_returns)
@@ -72,13 +72,13 @@ class TestRiskMathUtils:
     def test_historical_cvar_calculation(self):
         """Test historical CVaR (Expected Shortfall) calculation."""
         # Test with sufficient data
-        returns = [0.01, -0.02, 0.015, -0.005, 0.008, 0.012, -0.018, 0.003, -0.009, 0.014, 
+        returns = [0.01, -0.02, 0.015, -0.005, 0.008, 0.012, -0.018, 0.003, -0.009, 0.014,
                   -0.025, 0.007, -0.012, 0.020, -0.008]
-        
+
         cvar = self.math_utils.historical_cvar(returns, confidence=0.05)
         assert isinstance(cvar, float)
         assert cvar >= 0  # CVaR should be positive (represents loss)
-        
+
         # Test with insufficient data
         short_returns = [0.01, -0.02]
         cvar_short = self.math_utils.historical_cvar(short_returns)
@@ -119,9 +119,9 @@ class TestAsyncRiskManager:
             notional=Decimal("1500"),  # Small notional
             price=Decimal("150.00")
         )
-        
+
         decision = await self.risk_manager.before_order(order)
-        
+
         assert isinstance(decision, RiskDecision)
         # The decision should be structured regardless of outcome
         assert hasattr(decision, 'allowed')
@@ -135,18 +135,18 @@ class TestAsyncRiskManager:
         # Order exceeds max single position value
         order = OrderSpec(
             symbol="AAPL",
-            side="buy", 
+            side="buy",
             qty=Decimal("1000000"),  # Very large quantity
             notional=Decimal("150000000"),  # 150M notional
             price=Decimal("150.00")
         )
-        
+
         decision = await self.risk_manager.before_order(order)
-        
+
         assert isinstance(decision, RiskDecision)
         assert decision.allowed is False
         # Should be blocked for size-related reasons
-        assert any(keyword in decision.reason.lower() for keyword in 
+        assert any(keyword in decision.reason.lower() for keyword in
                   ["kelly", "size", "limit", "exceeded"])
 
     @pytest.mark.unit
@@ -154,11 +154,11 @@ class TestAsyncRiskManager:
         """Test that circuit breaker state can be managed."""
         # Test default state
         assert self.risk_manager.circuit_breaker_active is False
-        
+
         # Test state change
         self.risk_manager.circuit_breaker_active = True
         assert self.risk_manager.circuit_breaker_active is True
-        
+
         # Note: Current implementation doesn't check circuit breaker in _evaluate_order_comprehensive
         # This test validates the state management exists for future implementation
 
@@ -167,14 +167,14 @@ class TestAsyncRiskManager:
         """Test that halted symbols state can be managed."""
         # Test default state
         assert len(self.risk_manager.halted_symbols) == 0
-        
+
         # Test adding/removing halted symbols
         self.risk_manager.halted_symbols.add("HALT")
         assert "HALT" in self.risk_manager.halted_symbols
-        
+
         self.risk_manager.halted_symbols.remove("HALT")
         assert "HALT" not in self.risk_manager.halted_symbols
-        
+
         # Note: Current implementation doesn't check halted symbols in _evaluate_order_comprehensive
         # This test validates the state management exists for future implementation
 
@@ -187,16 +187,16 @@ class TestAsyncRiskManager:
             positions={"AAPL": Decimal("500")},
             sector_map={"AAPL": "Technology"}
         )
-        
+
         order = OrderSpec(
             symbol="AAPL",
             side="buy",
             qty=Decimal("10"),
             notional=Decimal("1500")
         )
-        
+
         decision = await self.risk_manager.before_order(order, portfolio_state)
-        
+
         assert isinstance(decision, RiskDecision)
         # Should have portfolio context for decision
         assert decision.timestamp is not None
@@ -211,16 +211,16 @@ class TestAsyncRiskManager:
             notional=Decimal("750"),
             price=Decimal("150.00")
         )
-        
+
         decision = await self.risk_manager.before_order(order)
-        
+
         # Verify decision structure
         assert hasattr(decision, 'allowed')
         assert hasattr(decision, 'reason')
         assert hasattr(decision, 'adjustments')
         assert hasattr(decision, 'limits')
         assert hasattr(decision, 'timestamp')
-        
+
         # Verify decision content
         assert isinstance(decision.allowed, bool)
         assert isinstance(decision.reason, str)
@@ -239,7 +239,7 @@ class TestRiskDecisionTypes:
             adjustments={"qty_cap": 1000},
             limits={"max_position": 50000}
         )
-        
+
         assert decision.allowed is True
         assert decision.reason == "Low risk order"
         assert decision.adjustments["qty_cap"] == 1000
@@ -248,13 +248,13 @@ class TestRiskDecisionTypes:
 
     @pytest.mark.unit
     def test_block_decision_creation(self):
-        """Test creating block decisions.""" 
+        """Test creating block decisions."""
         decision = RiskDecision.block(
             reason="Exceeds position limit",
             limits={"max_position": 10000},
             original_qty=Decimal("15000")
         )
-        
+
         assert decision.allowed is False
         assert decision.reason == "Exceeds position limit"
         assert decision.limits["max_position"] == 10000
@@ -275,14 +275,14 @@ class TestOrderSpec:
             notional=Decimal("15000"),
             price=Decimal("150.00")
         )
-        
+
         assert order.symbol == "AAPL"
         assert order.side == "buy"
         assert order.qty == Decimal("100")
         assert order.notional == Decimal("15000")
         assert order.price == Decimal("150.00")
 
-    @pytest.mark.unit 
+    @pytest.mark.unit
     def test_order_validation_negative_qty(self):
         """Test that negative quantities are rejected."""
         with pytest.raises(ValueError, match="qty must be non-negative"):
@@ -298,7 +298,7 @@ class TestOrderSpec:
         """Test that negative notional values are rejected."""
         with pytest.raises(ValueError, match="notional must be non-negative"):
             OrderSpec(
-                symbol="AAPL", 
+                symbol="AAPL",
                 side="buy",
                 qty=Decimal("100"),
                 notional=Decimal("-15000")  # Invalid
@@ -310,7 +310,7 @@ class TestOrderSpec:
         with pytest.raises(ValueError, match="price must be positive"):
             OrderSpec(
                 symbol="AAPL",
-                side="buy", 
+                side="buy",
                 qty=Decimal("100"),
                 notional=Decimal("15000"),
                 price=Decimal("-150.00")  # Invalid
@@ -329,7 +329,7 @@ class TestPortfolioState:
             positions={"AAPL": Decimal("500"), "GOOGL": Decimal("-100")},
             sector_map={"AAPL": "Technology", "GOOGL": "Technology"}
         )
-        
+
         assert state.equity == Decimal("100000")
         assert state.cash == Decimal("25000")
         assert state.positions["AAPL"] == Decimal("500")
@@ -344,7 +344,7 @@ class TestPortfolioState:
             positions={},
             sector_map={}
         )
-        
+
         gross_notional = state.gross_notional
         assert isinstance(gross_notional, Decimal)
         assert gross_notional == Decimal("75000")  # equity - cash
@@ -354,11 +354,11 @@ class TestPortfolioState:
         """Test net notional exposure calculation."""
         state = PortfolioState(
             equity=Decimal("100000"),
-            cash=Decimal("25000"), 
+            cash=Decimal("25000"),
             positions={},
             sector_map={}
         )
-        
+
         net_notional = state.net_notional
         assert isinstance(net_notional, Decimal)
         assert net_notional == Decimal("75000")  # equity - cash

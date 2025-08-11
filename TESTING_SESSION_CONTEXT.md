@@ -8,7 +8,7 @@
 ### What We Just Accomplished (Last 30 minutes)
 1. **Fixed Critical Configuration Issues**:
    - AppConfig missing `log_level: str` and `version: str` fields
-   - Fixed Alpaca API key access pattern in main.py  
+   - Fixed Alpaca API key access pattern in main.py
    - Fixed StrategyEngine initialization parameters
    - Added aiosqlite dependency and proper db initialization
 
@@ -31,13 +31,13 @@ pytest tests/core/test_app_lifespan_and_di.py::TestAppLifespanAndDI::test_startu
 tests/
 ├── helpers/
 │   ├── test_context.py      # TestAppContext (async lifespan)
-│   ├── simple_app.py        # SimpleTestAppContext (sync)  
+│   ├── simple_app.py        # SimpleTestAppContext (sync)
 │   ├── metrics.py           # MetricsParser for Prometheus
 │   └── logging_capture.py   # JSONLogCapture for logs
 ├── core/
 │   └── test_app_lifespan_and_di.py  # 1/20 tests passing ✅
 ├── unit/           # Empty - needs implementation
-├── integration/    # Empty - needs implementation  
+├── integration/    # Empty - needs implementation
 ├── perf/           # Empty - needs implementation
 └── chaos/          # Empty - needs implementation
 ```
@@ -53,17 +53,17 @@ python -m pytest tests/core/test_app_lifespan_and_di.py::TestAppLifespanAndDI::t
 
 ### 2. Continue Core Test Implementation
 **Target**: Complete the remaining core tests in the same file:
-- `test_lifespan_startup_failure_handling` 
+- `test_lifespan_startup_failure_handling`
 - `test_resource_cleanup_on_shutdown`
 - `test_dependency_injection_consistency`
-- `test_websocket_dependency_injection`  
+- `test_websocket_dependency_injection`
 - `test_multiple_contexts_isolated`
 - `test_app_state_isolation`
 
 ### 3. Expand to Full Test Suite
 **Target**: Implement comprehensive test coverage across all categories:
 - Unit tests (config, repositories, clients)
-- Integration tests (API, auth, workflows)  
+- Integration tests (API, auth, workflows)
 - Performance tests (startup time, throughput)
 - Chaos tests (resilience, failure handling)
 
@@ -73,9 +73,9 @@ python -m pytest tests/core/test_app_lifespan_and_di.py::TestAppLifespanAndDI::t
 ```python
 @pytest.mark.asyncio
 async def test_something(self):
-    """Test description.""" 
+    """Test description."""
     test_app = FastAPI()
-    
+
     async with lifespan(test_app):
         # All components available in test_app.state
         assert hasattr(test_app.state, 'component_name')
@@ -83,12 +83,12 @@ async def test_something(self):
         # Test logic here
 ```
 
-### Component Validation Pattern  
+### Component Validation Pattern
 ```python
 # Check all expected components exist
 components = [
     'alpaca_client', 'sentiment_analyzer', 'feature_engineer',
-    'model_manager', 'ensemble_model', 'risk_manager', 
+    'model_manager', 'ensemble_model', 'risk_manager',
     'strategy_manager', 'strategy_engine', 'ws_manager'
 ]
 
@@ -108,14 +108,14 @@ for component in components:
 - `aiosqlite==0.21.0` (for async SQLite support)
 
 ### Test Execution Notes
-- All core tests use `@pytest.mark.asyncio` 
+- All core tests use `@pytest.mark.asyncio`
 - Tests run with observability enabled (expect OTEL connection warnings - normal)
 - Database tables may not exist initially (handled gracefully)
 - Test execution takes 10-15 seconds due to full component initialization
 
 ## 📊 Success Metrics Target
 - **Current Coverage**: 25.89%
-- **Target Coverage**: 85%  
+- **Target Coverage**: 85%
 - **Core Tests**: 1/20+ passing → Need all core tests passing
 - **Full Suite**: Need unit + integration + perf tests implemented
 
@@ -124,7 +124,7 @@ for component in components:
 ### Phase 1: Complete Core Tests (immediate)
 Focus on the existing `test_app_lifespan_and_di.py` - get all tests passing
 
-### Phase 2: Unit Test Implementation  
+### Phase 2: Unit Test Implementation
 Create comprehensive unit tests for individual components
 
 ### Phase 3: Integration Test Implementation

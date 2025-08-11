@@ -39,7 +39,7 @@ Branch 2.4 implements the **transactional outbox pattern** for exactly-once orde
   - ✅ Graceful shutdown support
   - ✅ Topic-based routing (order_submitted, order_cancelled)
 
-### 4. Service Layer (backend/services/order_service.py) 
+### 4. Service Layer (backend/services/order_service.py)
 - ⚠️ **OrderService** - PARTIALLY IMPLEMENTED (file corrupted, needs recreation)
   - ✅ Designed for transactional order submission
   - ✅ Idempotency protection via client_order_id

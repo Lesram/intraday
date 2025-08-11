@@ -74,7 +74,7 @@ Historical CVaR (5%): 0.0150
 Normal order: True - approved
 Large position: False - position_limit_exceeded
   Adjustments: {'max_allowed': '5000'}
-Expensive order: False - single_position_value_limit  
+Expensive order: False - single_position_value_limit
   Adjustments: {'max_notional': '50000'}
 ```
 
@@ -99,7 +99,7 @@ Expensive order: False - single_position_value_limit
 
 1. **Order Management**: Drop-in replacement for existing sync risk checks
 2. **Position Service**: Async portfolio state queries (placeholder implemented)
-3. **Price Service**: Market data integration for VaR calculations  
+3. **Price Service**: Market data integration for VaR calculations
 4. **Metrics Pipeline**: Grafana dashboards for risk monitoring
 5. **Audit System**: Compliance reporting integration
 
@@ -112,7 +112,7 @@ from backend.risk.types import OrderSpec
 
 manager = AsyncRiskManager(
     max_position_per_symbol=10000,
-    max_single_position_value=100000, 
+    max_single_position_value=100000,
     max_portfolio_var=0.05
 )
 
@@ -142,14 +142,14 @@ allowed, reason, adjusted_qty = manager.before_order(symbol, qty, price)
 ## Next Steps
 
 1. **Integration Testing**: Connect to real position/pricing services
-2. **Performance Testing**: Load testing with production order volumes  
+2. **Performance Testing**: Load testing with production order volumes
 3. **Monitoring Setup**: Deploy Grafana dashboards for risk metrics
 4. **Documentation**: Update trading desk procedures for new interface
 
 ---
 
-**Implementation Status**: ✅ **COMPLETE**  
-**Quality Gate**: ✅ **PASSED**  
-**Production Ready**: ✅ **YES**  
+**Implementation Status**: ✅ **COMPLETE**
+**Quality Gate**: ✅ **PASSED**
+**Production Ready**: ✅ **YES**
 
 *BRANCH 2.8 successfully delivers institutional-grade risk management with async-first architecture, hardened mathematics, and comprehensive observability.*

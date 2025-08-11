@@ -29,10 +29,10 @@ class TraceIdFilter(logging.Filter):
     def filter(self, record: logging.LogRecord) -> bool:
         """
         Add trace_id and span_id to log record if available.
-        
+
         Args:
             record: Log record to enhance
-            
+
         Returns:
             True to allow record processing
         """
@@ -84,10 +84,10 @@ class JSONFormatter(logging.Formatter):
     def format(self, record: logging.LogRecord) -> str:
         """
         Format log record as JSON with structured fields.
-        
+
         Args:
             record: Log record to format
-            
+
         Returns:
             JSON formatted log string
         """
@@ -433,7 +433,7 @@ def configure_structured_logging(
 ) -> None:
     """
     Configure structured JSON logging with trace correlation.
-    
+
     Args:
         level: Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
         service_name: Service name for log entries
@@ -494,10 +494,10 @@ def configure_structured_logging(
 def get_logger(name: str) -> StructuredLogger:
     """
     Get a structured logger instance.
-    
+
     Args:
         name: Logger name (typically __name__)
-        
+
     Returns:
         StructuredLogger instance with domain-specific methods
     """

@@ -48,7 +48,7 @@ def get_sessionmaker() -> async_sessionmaker[AsyncSession]:
 def init_db() -> tuple[AsyncEngine, async_sessionmaker[AsyncSession]]:
     """
     Initialize database engine and sessionmaker from settings.
-    
+
     Returns:
         Tuple of (engine, sessionmaker)
     """
@@ -100,10 +100,10 @@ def init_db() -> tuple[AsyncEngine, async_sessionmaker[AsyncSession]]:
 async def db_health_check() -> bool:
     """
     Perform database health check with comprehensive observability.
-    
+
     Returns:
         True if database is healthy
-        
+
     Raises:
         Exception if database is not accessible
     """
@@ -193,10 +193,10 @@ async def close_db() -> None:
 async def get_session(request: Request) -> AsyncGenerator[AsyncSession, None]:
     """
     FastAPI dependency to provide database session.
-    
+
     Args:
         request: FastAPI request object containing app state
-        
+
     Yields:
         AsyncSession: Database session
     """
@@ -215,7 +215,7 @@ async def get_session(request: Request) -> AsyncGenerator[AsyncSession, None]:
 async def get_session_context() -> AsyncGenerator[AsyncSession, None]:
     """
     Context manager for getting database session outside FastAPI.
-    
+
     Yields:
         AsyncSession: Database session
     """

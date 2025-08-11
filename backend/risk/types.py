@@ -75,7 +75,7 @@ class PortfolioState:
 @dataclass(frozen=True)
 class PortfolioRisk:
     """Portfolio risk metrics and calculations."""
-    
+
     var_95: Decimal = Decimal("0.0")  # Value at Risk at 95% confidence
     var_99: Decimal = Decimal("0.0")  # Value at Risk at 99% confidence
     volatility: float = 0.0            # Portfolio volatility

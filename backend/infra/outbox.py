@@ -78,12 +78,12 @@ class OutboxRepo:
     ) -> uuid.UUID:
         """
         Enqueue an outbox event for processing.
-        
+
         Args:
             topic: Event topic for routing
             payload: Event payload data
             session: Optional session (uses self.session if not provided)
-            
+
         Returns:
             UUID of the created outbox event
         """
@@ -120,11 +120,11 @@ class OutboxRepo:
         """
         Claim a batch of pending events for processing.
         Uses FOR UPDATE SKIP LOCKED for concurrency safety.
-        
+
         Args:
             limit: Maximum number of events to claim
             session: Optional session
-            
+
         Returns:
             List of claimed outbox events
         """
@@ -287,10 +287,10 @@ class BackoffCalculator:
     def calculate_delay(self, attempts: int) -> int:
         """
         Calculate delay in milliseconds for given attempt number.
-        
+
         Args:
             attempts: Number of attempts (1-based)
-            
+
         Returns:
             Delay in milliseconds
         """
@@ -339,7 +339,7 @@ class OutboxDispatcher:
     async def run_forever(self, stop_event: asyncio.Event) -> None:
         """
         Main dispatcher loop with comprehensive observability.
-        
+
         Args:
             stop_event: Event to signal shutdown
         """
@@ -466,7 +466,7 @@ class OutboxDispatcher:
     async def _process_batch(self) -> int:
         """
         Process a batch of outbox events with comprehensive observability.
-        
+
         Returns:
             Number of events processed
         """
@@ -546,7 +546,7 @@ class OutboxDispatcher:
     async def _dispatch_event(self, event: OutboxEvent, session: AsyncSession) -> None:
         """
         Dispatch a single outbox event with comprehensive observability.
-        
+
         Args:
             event: Outbox event to dispatch
             session: Database session

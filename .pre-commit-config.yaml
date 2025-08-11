@@ -1,0 +1,116 @@
+# Pre-commit configuration for algorithmic trading platform
+# See https://pre-commit.com for more information
+# See https://pre-commit.com/hooks.html for more hooks
+
+repos:
+  # Ruff linting and formatting
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.1.6
+    hooks:
+      # Run the linter
+      - id: ruff
+        types_or: [python, pyi]
+        args: [--fix]
+        stages: [pre-commit, pre-push, manual]
+      
+      # Run the formatter
+      - id: ruff-format
+        types_or: [python, pyi] 
+        stages: [pre-commit, pre-push, manual]
+
+  # MyPy type checking
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.7.1
+    hooks:
+      - id: mypy
+        name: mypy-backend-services
+        files: ^backend/(services|risk|infra)/
+        additional_dependencies: 
+          - types-python-dateutil
+          - types-requests
+          - types-redis
+          - pydantic
+        args: [--strict, --show-error-codes]
+        stages: [pre-commit, pre-push, manual]
+      
+      - id: mypy
+        name: mypy-backend-other
+        files: ^backend/(?!(services|risk|infra)/)
+        additional_dependencies:
+          - types-python-dateutil
+          - types-requests  
+          - types-redis
+          - pydantic
+        args: [--show-error-codes]
+        stages: [pre-commit, pre-push, manual]
+
+  # Quick pytest run on changed test files
+  - repo: local
+    hooks:
+      - id: pytest-quick
+        name: pytest-quick
+        entry: python -m pytest -x -q --tb=short --disable-warnings
+        language: system
+        files: ^tests/.*\.py$
+        stages: [pre-commit]
+        pass_filenames: true
+        
+      # Full pytest on push (with coverage)
+      - id: pytest-full
+        name: pytest-full-coverage
+        entry: python -m pytest -x --cov=backend --cov-report=term-missing --cov-fail-under=30 --disable-warnings
+        language: system
+        files: ^(backend|tests)/.*\.py$
+        stages: [pre-push]
+        pass_filenames: false
+
+  # Security scanning
+  - repo: https://github.com/PyCQA/bandit
+    rev: 1.7.5
+    hooks:
+      - id: bandit
+        args: [-r, backend/, -lll, -x, backend/tests/]
+        stages: [pre-push, manual]
+
+  # General code quality
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+        stages: [pre-commit]
+      - id: end-of-file-fixer
+        stages: [pre-commit]
+      - id: check-yaml
+        args: [--unsafe]  # Allow custom YAML tags
+        stages: [pre-commit]
+      - id: check-toml
+        stages: [pre-commit]
+      - id: check-json
+        stages: [pre-commit]
+      - id: check-added-large-files
+        args: [--maxkb=1024]
+        stages: [pre-commit]
+      - id: check-merge-conflict
+        stages: [pre-commit]
+      - id: debug-statements
+        stages: [pre-commit]
+
+  # Dockerfile linting (if we have Dockerfiles)
+  - repo: https://github.com/hadolint/hadolint
+    rev: v2.12.0
+    hooks:
+      - id: hadolint-docker
+        stages: [pre-commit, manual]
+
+# Configuration for specific scenarios
+ci:
+  autofix_commit_msg: |
+    [pre-commit.ci] auto fixes from pre-commit hooks
+    
+    for more information, see https://pre-commit.ci
+  autofix_prs: true
+  autoupdate_branch: main
+  autoupdate_commit_msg: '[pre-commit.ci] pre-commit autoupdate'
+  autoupdate_schedule: weekly
+  skip: []
+  submodules: false

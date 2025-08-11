@@ -1,6 +1,6 @@
 """
 WebSocket Stall Test
-Integration test for WebSocket backpressure policy that confirms 
+Integration test for WebSocket backpressure policy that confirms
 slow consumers don't stall the server
 """
 import asyncio

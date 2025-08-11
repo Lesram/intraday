@@ -19,7 +19,7 @@ def main():
     except Exception as e:
         print(f'❌ Test factories failed: {e}')
 
-    # Test 2: Configuration Validation  
+    # Test 2: Configuration Validation
     print('\n⚙️  Test 2: Configuration System')
     try:
         from backend.config import get_settings
@@ -34,7 +34,7 @@ def main():
     print('\n🔧 Test 3: Core Module Import Validation')
     modules_to_test = [
         'backend.api.main',
-        'backend.data.alpaca_client', 
+        'backend.data.alpaca_client',
         'backend.strategies.trading_strategies',
         'backend.models.ensemble_model',
         'backend.infra.risk_manager',
@@ -82,22 +82,22 @@ def main():
         result = subprocess.run([
             sys.executable, '-m', 'pytest', '--collect-only', '-q'
         ], capture_output=True, text=True, timeout=30)
-        
+
         lines = result.stdout.split('\n')
         test_lines = [line for line in lines if 'test_' in line and '::' in line]
-        
+
         print(f'✅ Test discovery successful')
         print(f'   - Total tests found: {len(test_lines)}')
-        
+
         # Count by category
         unit_tests = len([t for t in test_lines if '/unit/' in t])
         integration_tests = len([t for t in test_lines if '/integration/' in t])
         perf_tests = len([t for t in test_lines if '/perf/' in t])
-        
+
         print(f'   - Unit tests: {unit_tests}')
-        print(f'   - Integration tests: {integration_tests}')  
+        print(f'   - Integration tests: {integration_tests}')
         print(f'   - Performance tests: {perf_tests}')
-        
+
     except Exception as e:
         print(f'❌ Test discovery failed: {e}')
 

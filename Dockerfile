@@ -1,5 +1,17 @@
-# Multi-stage Dockerfile for production deployment
-# BRANCH 2.12 - Deploy Readiness
+# Multi-stage Dockerfile for production deployment with security hardening
+# BRANCH 2.12 - Deploy Readiness + Security Enhancements
+
+# Build arguments
+ARG BUILD_DATE
+ARG VCS_REF
+ARG VERSION=1.0.0
+
+# Metadata
+LABEL maintainer="Trading Platform Team <dev@trading-platform.com>"
+LABEL org.opencontainers.image.title="Algorithmic Trading Platform"
+LABEL org.opencontainers.image.version=${VERSION}
+LABEL org.opencontainers.image.created=${BUILD_DATE}
+LABEL org.opencontainers.image.revision=${VCS_REF}
 
 #################################################################
 # Builder Stage - Install dependencies and build wheels

@@ -45,10 +45,10 @@ class PositionsRepo:
     ) -> Position:
         """
         Create or update position record.
-        
+
         If symbol already exists, updates the position.
         Otherwise creates a new position.
-        
+
         Args:
             symbol: Trading symbol
             qty: Position quantity (positive for long, negative for short)
@@ -56,7 +56,7 @@ class PositionsRepo:
             market_value: Current market value (optional)
             unrealized_pnl: Unrealized P&L (optional)
             attributes: Optional additional attributes
-            
+
         Returns:
             Position: Either existing (updated) or newly created position
         """
@@ -169,12 +169,12 @@ class PositionsRepo:
     ) -> None:
         """
         Update position market data.
-        
+
         Args:
             symbol: Trading symbol
             market_value: Current market value
             unrealized_pnl: Unrealized P&L
-            
+
         Raises:
             PositionNotFoundError: If position not found
         """
@@ -207,10 +207,10 @@ class PositionsRepo:
     async def close_position(self, symbol: str) -> None:
         """
         Close/remove a position (set qty to 0 or delete).
-        
+
         Args:
             symbol: Trading symbol
-            
+
         Raises:
             PositionNotFoundError: If position not found
         """
@@ -240,10 +240,10 @@ class PositionsRepo:
     async def get_by_symbol(self, symbol: str) -> Position | None:
         """
         Get position by symbol.
-        
+
         Args:
             symbol: Trading symbol
-            
+
         Returns:
             Position if found, None otherwise
         """
@@ -254,10 +254,10 @@ class PositionsRepo:
     async def get_by_id(self, position_id: uuid.UUID) -> Position | None:
         """
         Get position by ID.
-        
+
         Args:
             position_id: Position ID
-            
+
         Returns:
             Position if found, None otherwise
         """
@@ -268,10 +268,10 @@ class PositionsRepo:
     async def get_all_positions(self, include_zero_qty: bool = False) -> list[Position]:
         """
         Get all positions.
-        
+
         Args:
             include_zero_qty: Whether to include positions with zero quantity
-            
+
         Returns:
             List of positions
         """
@@ -288,7 +288,7 @@ class PositionsRepo:
     async def get_long_positions(self) -> list[Position]:
         """
         Get all long positions (qty > 0).
-        
+
         Returns:
             List of long positions
         """
@@ -303,7 +303,7 @@ class PositionsRepo:
     async def get_short_positions(self) -> list[Position]:
         """
         Get all short positions (qty < 0).
-        
+
         Returns:
             List of short positions
         """
@@ -318,7 +318,7 @@ class PositionsRepo:
     async def get_portfolio_summary(self) -> dict[str, Any]:
         """
         Calculate portfolio-level summary metrics.
-        
+
         Returns:
             Dictionary with portfolio summary
         """
@@ -364,10 +364,10 @@ class PositionsRepo:
     async def get_position_risk_metrics(self, symbol: str) -> dict[str, Any] | None:
         """
         Calculate risk metrics for a specific position.
-        
+
         Args:
             symbol: Trading symbol
-            
+
         Returns:
             Dictionary with risk metrics if position exists, None otherwise
         """
@@ -413,10 +413,10 @@ class PositionsRepo:
     ) -> int:
         """
         Batch update market data for multiple positions.
-        
+
         Args:
             updates: List of dicts with keys: symbol, market_value, unrealized_pnl
-            
+
         Returns:
             Number of positions updated
         """

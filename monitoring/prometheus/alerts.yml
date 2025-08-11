@@ -1,0 +1,311 @@
+# Prometheus Alerting Rules for Algorithmic Trading Platform
+# Critical alerts for production monitoring
+
+groups:
+  - name: trading_platform.alerts
+    rules:
+      # High Error Rate Alert
+      - alert: HighErrorRate
+        expr: |
+          (
+            rate(intraday_http_requests_total{status=~"5.."}[5m]) /
+            rate(intraday_http_requests_total[5m])
+          ) * 100 > 5
+        for: 2m
+        labels:
+          severity: critical
+          component: api
+          runbook: https://github.com/your-org/algotrading-platform/tree/main/docs/runbooks/high-error-rate.md
+        annotations:
+          summary: "High error rate detected in trading platform API"
+          description: |
+            Error rate is {{ $value | humanizePercentage }} for route {{ $labels.route }}.
+            This exceeds our 5% threshold and may indicate a serious issue.
+            
+            Immediate actions:
+            1. Check application logs for error patterns
+            2. Verify database connectivity
+            3. Check external service status (Alpaca API)
+            4. Consider rolling back recent deployments
+            
+            Dashboard: http://grafana.example.com/d/trading-api-overview
+            Runbook: {{ $labels.runbook }}
+
+      # Slow P95 Response Times
+      - alert: SlowP95ResponseTime
+        expr: |
+          histogram_quantile(0.95, 
+            rate(intraday_http_request_duration_seconds_bucket{route!~"/metrics|/health.*"}[5m])
+          ) > 2.0
+        for: 3m
+        labels:
+          severity: warning
+          component: api
+          runbook: https://github.com/your-org/algotrading-platform/tree/main/docs/runbooks/slow-response-times.md
+        annotations:
+          summary: "Slow P95 response times detected"
+          description: |
+            P95 response time is {{ $value | humanizeDuration }} for route {{ $labels.route }}.
+            This exceeds our 2s threshold and may impact user experience.
+            
+            Immediate actions:
+            1. Check CPU and memory usage
+            2. Verify database query performance
+            3. Check for high load or resource contention
+            4. Review recent code changes
+            
+            Dashboard: http://grafana.example.com/d/trading-api-performance
+            Runbook: {{ $labels.runbook }}
+
+      # Critical P95 Response Times
+      - alert: CriticalP95ResponseTime
+        expr: |
+          histogram_quantile(0.95, 
+            rate(intraday_http_request_duration_seconds_bucket{route!~"/metrics|/health.*"}[5m])
+          ) > 5.0
+        for: 1m
+        labels:
+          severity: critical
+          component: api
+          runbook: https://github.com/your-org/algotrading-platform/tree/main/docs/runbooks/critical-performance.md
+        annotations:
+          summary: "CRITICAL: Very slow P95 response times"
+          description: |
+            P95 response time is {{ $value | humanizeDuration }} for route {{ $labels.route }}.
+            This is critically slow and requires immediate attention.
+            
+            IMMEDIATE ACTIONS:
+            1. Consider emergency rollback
+            2. Check for resource exhaustion
+            3. Verify external service availability
+            4. Scale up resources if needed
+            
+            Dashboard: http://grafana.example.com/d/trading-api-performance
+            Runbook: {{ $labels.runbook }}
+
+      # No Metrics Being Scraped
+      - alert: NoMetrics
+        expr: |
+          up{job="trading-platform"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          component: monitoring
+          runbook: https://github.com/your-org/algotrading-platform/tree/main/docs/runbooks/no-metrics.md
+        annotations:
+          summary: "Trading platform metrics not available"
+          description: |
+            Prometheus cannot scrape metrics from {{ $labels.instance }}.
+            This indicates the service is down or metrics endpoint is unreachable.
+            
+            IMMEDIATE ACTIONS:
+            1. Check if pods/containers are running
+            2. Verify health endpoints (/health, /readyz)
+            3. Check service/ingress configuration
+            4. Verify network connectivity
+            
+            Dashboard: http://grafana.example.com/d/trading-platform-overview
+            Runbook: {{ $labels.runbook }}
+
+      # Low Request Volume (Could indicate issues)
+      - alert: LowRequestVolume
+        expr: |
+          rate(intraday_http_requests_total[5m]) < 0.1
+        for: 10m
+        labels:
+          severity: warning
+          component: api
+          runbook: https://github.com/your-org/algotrading-platform/tree/main/docs/runbooks/low-traffic.md
+        annotations:
+          summary: "Unusually low request volume"
+          description: |
+            Request rate is {{ $value | humanize }} req/s, which is unusually low.
+            This might indicate:
+            - Service discovery issues
+            - Load balancer problems
+            - Client-side issues
+            - Market closure (if expected)
+            
+            Actions:
+            1. Check load balancer logs
+            2. Verify service registration
+            3. Check client applications
+            4. Confirm if low traffic is expected
+            
+            Dashboard: http://grafana.example.com/d/trading-api-traffic
+            Runbook: {{ $labels.runbook }}
+
+  - name: trading_platform.business
+    rules:
+      # High Risk Decision Latency
+      - alert: HighRiskDecisionLatency
+        expr: |
+          histogram_quantile(0.95, 
+            rate(intraday_risk_decision_latency_seconds_bucket[5m])
+          ) > 0.5
+        for: 2m
+        labels:
+          severity: warning
+          component: risk_engine
+          runbook: https://github.com/your-org/algotrading-platform/tree/main/docs/runbooks/slow-risk-engine.md
+        annotations:
+          summary: "Risk engine processing slowly"
+          description: |
+            P95 risk decision latency is {{ $value | humanizeDuration }}.
+            Slow risk decisions can delay trading execution.
+            
+            Actions:
+            1. Check risk engine CPU/memory usage
+            2. Verify database performance
+            3. Review correlation matrix complexity
+            4. Check for lock contention
+            
+            Dashboard: http://grafana.example.com/d/trading-risk-engine
+            Runbook: {{ $labels.runbook }}
+
+      # Too Many Risk Blocks
+      - alert: HighRiskBlockRate
+        expr: |
+          (
+            rate(intraday_risk_blocks_total[5m]) /
+            (rate(intraday_risk_allows_total[5m]) + rate(intraday_risk_blocks_total[5m]))
+          ) * 100 > 50
+        for: 5m
+        labels:
+          severity: warning
+          component: risk_engine
+          runbook: https://github.com/your-org/algotrading-platform/tree/main/docs/runbooks/high-risk-blocks.md
+        annotations:
+          summary: "High risk block rate detected"
+          description: |
+            {{ $value | humanizePercentage }} of trades are being blocked by risk engine.
+            This might indicate overly conservative risk settings or market stress.
+            
+            Actions:
+            1. Review recent risk limit changes
+            2. Check for market volatility spikes
+            3. Verify risk calculation logic
+            4. Consider temporary risk limit adjustments
+            
+            Dashboard: http://grafana.example.com/d/trading-risk-metrics
+            Runbook: {{ $labels.runbook }}
+
+      # Outbox Queue Buildup
+      - alert: OutboxQueueBuildup
+        expr: |
+          intraday_outbox_queue_gauge{status="pending"} > 1000
+        for: 5m
+        labels:
+          severity: warning
+          component: outbox
+          runbook: https://github.com/your-org/algotrading-platform/tree/main/docs/runbooks/outbox-queue-buildup.md
+        annotations:
+          summary: "Outbox queue building up"
+          description: |
+            {{ $value }} pending messages in outbox queue.
+            This suggests message processing is falling behind.
+            
+            Actions:
+            1. Check outbox dispatcher health
+            2. Verify message broker connectivity
+            3. Look for stuck/poison messages
+            4. Consider increasing processing capacity
+            
+            Dashboard: http://grafana.example.com/d/trading-outbox-metrics
+            Runbook: {{ $labels.runbook }}
+
+      # WebSocket Connection Issues
+      - alert: WebSocketConnectionDrop
+        expr: |
+          rate(intraday_websocket_connections_total[5m]) < -10
+        for: 2m
+        labels:
+          severity: warning
+          component: websocket
+          runbook: https://github.com/your-org/algotrading-platform/tree/main/docs/runbooks/websocket-issues.md
+        annotations:
+          summary: "High WebSocket disconnection rate"
+          description: |
+            WebSocket connections are dropping at {{ $value }} connections/sec.
+            This may impact real-time data delivery.
+            
+            Actions:
+            1. Check WebSocket server health
+            2. Verify network stability
+            3. Review connection timeout settings
+            4. Check for memory leaks or resource exhaustion
+            
+            Dashboard: http://grafana.example.com/d/trading-websocket-metrics
+            Runbook: {{ $labels.runbook }}
+
+  - name: trading_platform.infrastructure
+    rules:
+      # High Memory Usage
+      - alert: HighMemoryUsage
+        expr: |
+          (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 85
+        for: 5m
+        labels:
+          severity: warning
+          component: infrastructure
+          runbook: https://github.com/your-org/algotrading-platform/tree/main/docs/runbooks/high-memory-usage.md
+        annotations:
+          summary: "High memory usage on {{ $labels.instance }}"
+          description: |
+            Memory usage is {{ $value | humanizePercentage }} on {{ $labels.instance }}.
+            
+            Actions:
+            1. Identify memory-intensive processes
+            2. Check for memory leaks
+            3. Consider vertical scaling
+            4. Review memory limits and requests
+            
+            Dashboard: http://grafana.example.com/d/infrastructure-overview
+            Runbook: {{ $labels.runbook }}
+
+      # High CPU Usage
+      - alert: HighCPUUsage
+        expr: |
+          100 - (avg by(instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+        for: 10m
+        labels:
+          severity: warning
+          component: infrastructure
+          runbook: https://github.com/your-org/algotrading-platform/tree/main/docs/runbooks/high-cpu-usage.md
+        annotations:
+          summary: "High CPU usage on {{ $labels.instance }}"
+          description: |
+            CPU usage is {{ $value | humanizePercentage }} on {{ $labels.instance }}.
+            
+            Actions:
+            1. Identify CPU-intensive processes
+            2. Check for runaway processes
+            3. Consider horizontal/vertical scaling
+            4. Review CPU limits and requests
+            
+            Dashboard: http://grafana.example.com/d/infrastructure-overview
+            Runbook: {{ $labels.runbook }}
+
+      # Disk Space Low
+      - alert: DiskSpaceLow
+        expr: |
+          (1 - (node_filesystem_avail_bytes / node_filesystem_size_bytes)) * 100 > 85
+        for: 5m
+        labels:
+          severity: critical
+          component: infrastructure
+          runbook: https://github.com/your-org/algotrading-platform/tree/main/docs/runbooks/disk-space-low.md
+        annotations:
+          summary: "Low disk space on {{ $labels.instance }}"
+          description: |
+            Disk usage is {{ $value | humanizePercentage }} on {{ $labels.instance }}.
+            Filesystem: {{ $labels.mountpoint }}
+            
+            IMMEDIATE ACTIONS:
+            1. Clean up log files and temp data
+            2. Archive old data
+            3. Expand disk if possible
+            4. Consider data retention policies
+            
+            Dashboard: http://grafana.example.com/d/infrastructure-overview
+            Runbook: {{ $labels.runbook }}

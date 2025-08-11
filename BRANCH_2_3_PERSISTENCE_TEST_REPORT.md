@@ -133,10 +133,10 @@
 class OrdersRepo:
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
-    
+
     async def upsert_by_idempotency(...) -> Order:
         # Idempotency protection with race condition handling
-    
+
     async def set_status(...) -> None:
         # Status updates with proper error handling
 ```

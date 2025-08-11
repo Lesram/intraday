@@ -40,7 +40,7 @@ class AuditsRepo:
     ) -> AuditLog:
         """
         Create a new audit log entry.
-        
+
         Args:
             action: Action performed ('CREATE', 'UPDATE', 'DELETE', 'LOGIN', etc.)
             entity_type: Type of entity ('order', 'position', 'user', 'config', etc.)
@@ -49,7 +49,7 @@ class AuditsRepo:
             ip_address: Optional IP address of the request
             user_agent: Optional user agent string
             details: Optional additional details
-            
+
         Returns:
             AuditLog: Newly created audit log
         """
@@ -104,14 +104,14 @@ class AuditsRepo:
     ) -> AuditLog:
         """
         Log an order-related action.
-        
+
         Args:
             action: Action performed
             order_id: Order ID
             user_id: Optional user ID
             details: Optional additional details
             ip_address: Optional IP address
-            
+
         Returns:
             AuditLog: Created audit log
         """
@@ -135,14 +135,14 @@ class AuditsRepo:
     ) -> AuditLog:
         """
         Log a position-related action.
-        
+
         Args:
             action: Action performed
             position_id: Position ID
             user_id: Optional user ID
             details: Optional additional details
             ip_address: Optional IP address
-            
+
         Returns:
             AuditLog: Created audit log
         """
@@ -167,7 +167,7 @@ class AuditsRepo:
     ) -> AuditLog:
         """
         Log a user-related action.
-        
+
         Args:
             action: Action performed
             target_user_id: User ID being acted upon
@@ -175,7 +175,7 @@ class AuditsRepo:
             details: Optional additional details
             ip_address: Optional IP address
             user_agent: Optional user agent
-            
+
         Returns:
             AuditLog: Created audit log
         """
@@ -198,12 +198,12 @@ class AuditsRepo:
     ) -> AuditLog:
         """
         Log a system-level action.
-        
+
         Args:
             action: Action performed
             component: System component name
             details: Optional additional details
-            
+
         Returns:
             AuditLog: Created audit log
         """
@@ -217,10 +217,10 @@ class AuditsRepo:
     async def get_by_id(self, audit_id: uuid.UUID) -> AuditLog | None:
         """
         Get audit log by ID.
-        
+
         Args:
             audit_id: Audit log ID
-            
+
         Returns:
             AuditLog if found, None otherwise
         """
@@ -236,12 +236,12 @@ class AuditsRepo:
     ) -> list[AuditLog]:
         """
         Get audit logs for a specific entity.
-        
+
         Args:
             entity_type: Type of entity
             entity_id: Entity ID
             limit: Maximum number of logs to return
-            
+
         Returns:
             List of audit logs
         """
@@ -269,13 +269,13 @@ class AuditsRepo:
     ) -> list[AuditLog]:
         """
         Get audit logs for a specific user.
-        
+
         Args:
             user_id: User ID
             limit: Maximum number of logs to return
             start_time: Optional start time filter
             end_time: Optional end time filter
-            
+
         Returns:
             List of audit logs
         """
@@ -306,13 +306,13 @@ class AuditsRepo:
     ) -> list[AuditLog]:
         """
         Get audit logs by action type.
-        
+
         Args:
             action: Action type
             limit: Maximum number of logs to return
             start_time: Optional start time filter
             end_time: Optional end time filter
-            
+
         Returns:
             List of audit logs
         """
@@ -341,11 +341,11 @@ class AuditsRepo:
     ) -> list[AuditLog]:
         """
         Get recent audit logs.
-        
+
         Args:
             limit: Maximum number of logs to return
             entity_type: Optional entity type filter
-            
+
         Returns:
             List of recent audit logs
         """
@@ -370,12 +370,12 @@ class AuditsRepo:
     ) -> list[AuditLog]:
         """
         Get security-related audit events.
-        
+
         Args:
             start_time: Optional start time filter
             end_time: Optional end time filter
             limit: Maximum number of logs to return
-            
+
         Returns:
             List of security-related audit logs
         """
@@ -407,11 +407,11 @@ class AuditsRepo:
     ) -> dict[str, Any]:
         """
         Get audit log summary statistics.
-        
+
         Args:
             start_time: Optional start time filter
             end_time: Optional end time filter
-            
+
         Returns:
             Dictionary with audit summary
         """
@@ -495,14 +495,14 @@ class AuditsRepo:
     ) -> list[AuditLog]:
         """
         Search audit logs by text.
-        
+
         Args:
             search_term: Text to search for
             search_fields: Optional list of fields to search in
             limit: Maximum number of results
             start_time: Optional start time filter
             end_time: Optional end time filter
-            
+
         Returns:
             List of matching audit logs
         """
@@ -562,10 +562,10 @@ class AuditsRepo:
     ) -> int:
         """
         Count old audit logs that could be archived/cleaned up.
-        
+
         Args:
             older_than_days: Consider logs older than this many days
-            
+
         Returns:
             Number of old logs found
         """

@@ -46,10 +46,10 @@ class OrdersRepo:
     ) -> Order:
         """
         Create order with idempotency protection.
-        
+
         If client_idempotency_key already exists, returns the existing order.
         Otherwise creates a new order with status='accepted'.
-        
+
         Args:
             client_key: Client-provided idempotency key
             symbol: Trading symbol
@@ -58,7 +58,7 @@ class OrdersRepo:
             order_type: Order type ('market', 'limit', etc.)
             tif: Time in force ('gtc', 'ioc', 'fok')
             attributes: Optional additional attributes
-            
+
         Returns:
             Order: Either existing or newly created order
         """
@@ -142,11 +142,11 @@ class OrdersRepo:
     async def set_status(self, order_id: uuid.UUID, status: str) -> None:
         """
         Update order status.
-        
+
         Args:
             order_id: Order ID
             status: New status
-            
+
         Raises:
             OrderNotFoundError: If order not found
         """
@@ -181,13 +181,13 @@ class OrdersRepo:
     ) -> None:
         """
         Update order with broker response.
-        
+
         Args:
             order_id: Order ID
             broker_order_id: Broker's order ID
             status: New order status
             attributes: Additional attributes to merge
-            
+
         Raises:
             OrderNotFoundError: If order not found
         """
@@ -240,10 +240,10 @@ class OrdersRepo:
     async def get_by_client_key(self, client_key: str) -> Order | None:
         """
         Get order by client idempotency key.
-        
+
         Args:
             client_key: Client idempotency key
-            
+
         Returns:
             Order if found, None otherwise
         """
@@ -254,10 +254,10 @@ class OrdersRepo:
     async def get_by_id(self, order_id: uuid.UUID) -> Order | None:
         """
         Get order by ID.
-        
+
         Args:
             order_id: Order ID
-            
+
         Returns:
             Order if found, None otherwise
         """
@@ -268,11 +268,11 @@ class OrdersRepo:
     async def get_by_symbol(self, symbol: str, limit: int = 100) -> list[Order]:
         """
         Get orders by symbol.
-        
+
         Args:
             symbol: Trading symbol
             limit: Maximum number of orders to return
-            
+
         Returns:
             List of orders
         """
@@ -288,10 +288,10 @@ class OrdersRepo:
     async def get_active_orders(self, limit: int = 100) -> list[Order]:
         """
         Get active orders (not filled, cancelled, or rejected).
-        
+
         Args:
             limit: Maximum number of orders to return
-            
+
         Returns:
             List of active orders
         """

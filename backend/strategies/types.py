@@ -21,7 +21,7 @@ class Side(Enum):
 class TradingSignal:
     """
     Input signal from a strategy source.
-    
+
     Args:
         symbol: Trading symbol (e.g., "BTCUSD")
         source: Strategy identifier (e.g., "momentum", "mean_reversion", "ensemble")
@@ -49,7 +49,7 @@ class TradingSignal:
 class ExecutionPlan:
     """
     Netted execution plan after signal aggregation, throttling, and risk gating.
-    
+
     Args:
         symbol: Trading symbol
         ts: Plan timestamp

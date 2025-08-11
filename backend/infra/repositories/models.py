@@ -45,7 +45,7 @@ class ModelsRepo:
     ) -> ModelRegistry:
         """
         Register a new model version.
-        
+
         Args:
             name: Model name
             version: Model version
@@ -54,10 +54,10 @@ class ModelsRepo:
             metadata: Optional metadata
             config: Optional model configuration
             performance_metrics: Optional performance metrics
-            
+
         Returns:
             ModelRegistry: Newly created model registry entry
-            
+
         Raises:
             DuplicateModelError: If model name+version already exists
         """
@@ -118,12 +118,12 @@ class ModelsRepo:
     ) -> None:
         """
         Update model status.
-        
+
         Args:
             name: Model name
             version: Model version
             status: New status
-            
+
         Raises:
             ModelNotFoundError: If model not found
         """
@@ -165,12 +165,12 @@ class ModelsRepo:
     ) -> None:
         """
         Update model performance metrics.
-        
+
         Args:
             name: Model name
             version: Model version
             performance_metrics: Performance metrics to update
-            
+
         Raises:
             ModelNotFoundError: If model not found
         """
@@ -232,11 +232,11 @@ class ModelsRepo:
     ) -> ModelRegistry | None:
         """
         Get model by name and version.
-        
+
         Args:
             name: Model name
             version: Model version
-            
+
         Returns:
             ModelRegistry if found, None otherwise
         """
@@ -255,10 +255,10 @@ class ModelsRepo:
     async def get_model_by_id(self, model_id: uuid.UUID) -> ModelRegistry | None:
         """
         Get model by ID.
-        
+
         Args:
             model_id: Model ID
-            
+
         Returns:
             ModelRegistry if found, None otherwise
         """
@@ -273,11 +273,11 @@ class ModelsRepo:
     ) -> list[ModelRegistry]:
         """
         Get all versions of a model by name.
-        
+
         Args:
             name: Model name
             status: Optional status filter
-            
+
         Returns:
             List of model versions ordered by version descending
         """
@@ -298,7 +298,7 @@ class ModelsRepo:
     async def get_production_models(self) -> list[ModelRegistry]:
         """
         Get all models in production status.
-        
+
         Returns:
             List of production models
         """
@@ -318,11 +318,11 @@ class ModelsRepo:
     ) -> ModelRegistry | None:
         """
         Get the latest version of a model.
-        
+
         Args:
             name: Model name
             status: Optional status filter
-            
+
         Returns:
             Latest model version if found, None otherwise
         """
@@ -348,11 +348,11 @@ class ModelsRepo:
     ) -> None:
         """
         Promote a model version to production and demote others.
-        
+
         Args:
             name: Model name
             version: Model version to promote
-            
+
         Raises:
             ModelNotFoundError: If model not found
         """
@@ -408,11 +408,11 @@ class ModelsRepo:
     ) -> None:
         """
         Deprecate a model version.
-        
+
         Args:
             name: Model name
             version: Model version
-            
+
         Raises:
             ModelNotFoundError: If model not found
         """
@@ -452,11 +452,11 @@ class ModelsRepo:
     ) -> list[dict[str, Any]]:
         """
         Compare performance metrics across versions of a model.
-        
+
         Args:
             name: Model name
             metric_key: Performance metric key to compare
-            
+
         Returns:
             List of performance comparisons
         """
@@ -486,7 +486,7 @@ class ModelsRepo:
     async def get_model_registry_summary(self) -> dict[str, Any]:
         """
         Get summary statistics of the model registry.
-        
+
         Returns:
             Dictionary with registry summary
         """
@@ -537,10 +537,10 @@ class ModelsRepo:
     ) -> int:
         """
         Clean up deprecated models older than specified days.
-        
+
         Args:
             older_than_days: Delete deprecated models older than this many days
-            
+
         Returns:
             Number of models deleted
         """

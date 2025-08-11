@@ -56,7 +56,7 @@ spec:
           value: "INFO"
         - name: APP_DEBUG
           value: "false"
-          
+
         # Database Configuration
         - name: DATABASE_URL
           valueFrom:
@@ -67,7 +67,7 @@ spec:
           value: "20"
         - name: DATABASE_MAX_OVERFLOW
           value: "30"
-          
+
         # Alpaca API Configuration
         - name: ALPACA_API_KEY
           valueFrom:
@@ -81,7 +81,7 @@ spec:
               key: secret-key
         - name: ALPACA_BASE_URL
           value: "https://paper-api.alpaca.markets"
-          
+
         # Security Configuration
         - name: JWT_SECRET_KEY
           valueFrom:
@@ -92,7 +92,7 @@ spec:
           value: "HS256"
         - name: JWT_EXPIRE_MINUTES
           value: "60"
-          
+
         # Observability Configuration
         - name: OTEL_SERVICE_NAME
           value: "algotrading-api"
@@ -106,7 +106,7 @@ spec:
           value: "true"
         - name: PROMETHEUS_PATH
           value: "/metrics"
-          
+
         # Feature Flags
         - name: ENABLE_OUTBOX_PATTERN
           value: "true"
@@ -114,7 +114,7 @@ spec:
           value: "true"
         - name: ENABLE_WEBSOCKET
           value: "true"
-          
+
         # Container Configuration
         - name: PYTHONPATH
           value: "/app"
@@ -131,7 +131,7 @@ spec:
           limits:
             memory: "2Gi"
             cpu: "1000m"
-            
+
         # Liveness Probe - Check if process is alive
         livenessProbe:
           httpGet:
@@ -143,7 +143,7 @@ spec:
           timeoutSeconds: 10
           successThreshold: 1
           failureThreshold: 3
-          
+
         # Readiness Probe - Check if ready to serve traffic
         readinessProbe:
           httpGet:
@@ -155,7 +155,7 @@ spec:
           timeoutSeconds: 5
           successThreshold: 1
           failureThreshold: 3
-          
+
         # Startup Probe - Initial startup check
         startupProbe:
           httpGet:
@@ -167,7 +167,7 @@ spec:
           timeoutSeconds: 5
           successThreshold: 1
           failureThreshold: 30
-          
+
         # Volume Mounts
         volumeMounts:
         - name: app-logs
@@ -176,7 +176,7 @@ spec:
           mountPath: /app/data
         - name: tmp
           mountPath: /app/tmp
-          
+
         # Security Context
         securityContext:
           allowPrivilegeEscalation: false
@@ -184,7 +184,7 @@ spec:
           capabilities:
             drop:
             - ALL
-            
+
       # Volumes
       volumes:
       - name: app-logs
@@ -194,7 +194,7 @@ spec:
           claimName: algotrading-data
       - name: tmp
         emptyDir: {}
-        
+
       # Pod Scheduling
       nodeSelector:
         kubernetes.io/os: linux
@@ -207,7 +207,7 @@ spec:
         operator: "Exists"
         effect: "NoExecute"
         tolerationSeconds: 300
-        
+
       # DNS Configuration
       dnsPolicy: ClusterFirst
       restartPolicy: Always

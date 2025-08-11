@@ -3,7 +3,7 @@ Branch 2.6 MLOps Registry and Drift Detection - Comprehensive Test Suite
 
 Tests the complete MLOps implementation including:
 - On-disk model registry with artifacts/{model_name}/{version}/ structure
-- Population Stability Index (PSI) drift detection  
+- Population Stability Index (PSI) drift detection
 - Feature schema validation and enforcement
 - Inference telemetry logging
 - Champion/challenger model management

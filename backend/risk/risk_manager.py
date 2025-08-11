@@ -2,7 +2,7 @@
 BRANCH 2.8: Async-first Risk Manager with robust math and structured decisions.
 
 Implements institutional-grade risk controls with:
-- Async hygiene (no event loop blocking)  
+- Async hygiene (no event loop blocking)
 - Strong types and structured decision flow
 - Numerically stable Kelly/VaR/CVaR calculations
 - Comprehensive metrics and audit logging
@@ -278,14 +278,41 @@ class AsyncRiskManager:
         return [0.01, 0.02, -0.01, 0.005, -0.015] * (days // 5)
 
 
-# Legacy compatibility wrapper
+# ============================================================================
+# LEGACY COMPATIBILITY WRAPPER - DEPRECATED
+# ============================================================================
+# This wrapper provides backward compatibility only.
+# DO NOT USE in new code - use AsyncRiskManager directly instead.
+# ============================================================================
+
 class RiskManager(AsyncRiskManager):
-    """Backward compatibility wrapper."""
+    """
+    DEPRECATED: Backward compatibility wrapper for synchronous code.
+
+    This class exists only to maintain compatibility with legacy code that
+    expects a synchronous before_order() method returning a tuple.
+
+    For new code, use AsyncRiskManager directly with proper OrderSpec/PortfolioState.
+    """
 
     def before_order(self, symbol: str, intended_qty: float, price: float | None = None) -> tuple[bool, str, float]:
-        """Legacy synchronous interface - DO NOT USE in new code."""
+        """
+        DEPRECATED: Legacy synchronous interface - DO NOT USE in new code.
+
+        This method converts the legacy tuple-based interface to the new
+        structured RiskDecision format and back. It uses thread pool execution
+        to handle the async risk manager from synchronous contexts.
+
+        Args:
+            symbol: Stock symbol
+            intended_qty: Intended quantity (positive for buy, negative for sell)
+            price: Order price (optional)
+
+        Returns:
+            tuple: (allowed: bool, reason: str, adjusted_qty: float)
+        """
         warnings.warn(
-            "Synchronous before_order is deprecated. Use async interface.",
+            "Synchronous before_order is deprecated. Use async interface with OrderSpec.",
             DeprecationWarning,
             stacklevel=2
         )

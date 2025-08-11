@@ -32,7 +32,7 @@ scrape_configs:
       - targets: ['postgres-exporter:9187']
     scrape_interval: 30s
 
-  # Redis (if redis_exporter is used)  
+  # Redis (if redis_exporter is used)
   - job_name: 'redis'
     static_configs:
       - targets: ['redis-exporter:9121']

@@ -28,15 +28,15 @@ class UserRepository:
     def create_user(self, username: str, password: str, roles: list[str]) -> User:
         """
         Create a new user.
-        
+
         Args:
             username: Unique username
             password: Plain text password (will be hashed)
             roles: List of user roles
-            
+
         Returns:
             Created user
-            
+
         Raises:
             ValueError: If username already exists
         """
@@ -55,10 +55,10 @@ class UserRepository:
     def get_user(self, username: str) -> User | None:
         """
         Get a user by username.
-        
+
         Args:
             username: Username to lookup
-            
+
         Returns:
             User if found, None otherwise
         """
@@ -67,11 +67,11 @@ class UserRepository:
     def authenticate_user(self, username: str, password: str) -> User | None:
         """
         Authenticate a user with username and password.
-        
+
         Args:
             username: Username
             password: Plain text password
-            
+
         Returns:
             User if authentication successful, None otherwise
         """
@@ -87,11 +87,11 @@ class UserRepository:
     def update_user_roles(self, username: str, roles: list[str]) -> bool:
         """
         Update user roles.
-        
+
         Args:
             username: Username
             roles: New list of roles
-            
+
         Returns:
             True if updated successfully, False if user not found
         """
@@ -105,10 +105,10 @@ class UserRepository:
     def deactivate_user(self, username: str) -> bool:
         """
         Deactivate a user account.
-        
+
         Args:
             username: Username to deactivate
-            
+
         Returns:
             True if deactivated successfully, False if user not found
         """
@@ -122,7 +122,7 @@ class UserRepository:
     def list_users(self) -> list[User]:
         """
         List all users.
-        
+
         Returns:
             List of all users
         """
@@ -136,7 +136,7 @@ _user_repo: UserRepository | None = None
 def get_user_repository() -> UserRepository:
     """
     Get the global user repository instance.
-    
+
     Returns:
         UserRepository instance
     """

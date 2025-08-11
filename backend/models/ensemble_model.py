@@ -857,7 +857,7 @@ class EnsembleModel:
     ) -> Any | None:  # Returns ModelVersion if successful
         """
         Register ensemble model with MLOps registry
-        
+
         Args:
             model_name: Name to register the model under
             training_data: Training data used
@@ -865,7 +865,7 @@ class EnsembleModel:
             metrics: Performance metrics
             version: Version string (auto-generated if None)
             train_window: Training time window info
-            
+
         Returns:
             ModelVersion if registration successful, None otherwise
         """
@@ -927,11 +927,11 @@ class EnsembleModel:
     def promote_to_champion(self, model_name: str, version: str) -> bool:
         """
         Promote a model version to champion status
-        
+
         Args:
             model_name: Name of the model
             version: Version to promote
-            
+
         Returns:
             True if promotion successful, False otherwise
         """
@@ -954,10 +954,10 @@ class EnsembleModel:
     def get_champion_version(self, model_name: str) -> Any | None:  # Returns ModelVersion if found
         """
         Get the champion model version from registry
-        
+
         Args:
             model_name: Name of the model
-            
+
         Returns:
             ModelVersion if champion exists, None otherwise
         """
@@ -976,11 +976,11 @@ class EnsembleModel:
     def load_from_registry(self, model_name: str, version: str | None = None) -> bool:
         """
         Load ensemble model from MLOps registry
-        
+
         Args:
             model_name: Name of the model to load
             version: Specific version to load (uses champion if None)
-            
+
         Returns:
             True if loading successful, False otherwise
         """

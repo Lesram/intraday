@@ -12,7 +12,7 @@ Successfully implemented the deterministic Strategy Engine that nets signals to 
 - **Side** enum: BUY, SELL
 - Proper frozen dataclasses with type hints and constraints
 
-### 2. backend/strategies/engine.py ✅  
+### 2. backend/strategies/engine.py ✅
 - **StrategyEngine** class (300+ lines) with complete implementation
 - **Signal netting**: Weighted average by confidence and strategy weights, clamped to [-1,1]
 - **Throttling**: min_flip_interval_s, max_new_risk_per_bar enforcement
@@ -56,20 +56,20 @@ Successfully implemented the deterministic Strategy Engine that nets signals to 
 - Full mock setup for dependencies
 
 ### 8. test_strategy_to_order_flow.py ✅
-- **Integration tests** for strategy-to-order flow (10 test methods)  
+- **Integration tests** for strategy-to-order flow (10 test methods)
 - Tests end-to-end signal processing through order submission
 - Validates risk blocking, throttling, metrics recording
 - Mock database and repository interactions
 
 ## Key Features Implemented
 
-✅ **Deterministic netting** with weighted averages and strategy weights  
-✅ **Throttling rules** enforced per symbol with configurable intervals  
-✅ **Risk gating** through existing RiskManager.before_order() integration  
-✅ **Metrics integration** with bounded labels for observability  
-✅ **API endpoints** with role-based authentication  
-✅ **Idempotent order flow** reuse with existing outbox pattern  
-✅ **Comprehensive testing** with unit and integration test coverage  
+✅ **Deterministic netting** with weighted averages and strategy weights
+✅ **Throttling rules** enforced per symbol with configurable intervals
+✅ **Risk gating** through existing RiskManager.before_order() integration
+✅ **Metrics integration** with bounded labels for observability
+✅ **API endpoints** with role-based authentication
+✅ **Idempotent order flow** reuse with existing outbox pattern
+✅ **Comprehensive testing** with unit and integration test coverage
 
 ## Architecture Notes
 
@@ -87,7 +87,7 @@ The existing public API remains unchanged. Strategy engine integration is access
 ## Testing Status
 
 - All syntax validated ✅
-- Import structure verified ✅  
+- Import structure verified ✅
 - Circular dependencies resolved ✅
 - Ready for unit test execution ✅
 

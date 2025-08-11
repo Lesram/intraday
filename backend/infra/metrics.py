@@ -16,6 +16,17 @@ from prometheus_client import (
     generate_latest,
 )
 
+# Import observability contracts for consistent buckets
+try:
+    from .observability_contracts import get_histogram_buckets, ObservabilityContract
+    OBSERVABILITY_CONTRACTS_AVAILABLE = True
+except ImportError:
+    OBSERVABILITY_CONTRACTS_AVAILABLE = False
+    # Fallback function for when contracts aren't available
+    def get_histogram_buckets(metric_name: str) -> tuple[float, ...]:
+        # Return default Prometheus buckets
+        return (0.005, 0.01, 0.025, 0.05, 0.075, 0.1, 0.25, 0.5, 0.75, 1.0, 2.5, 5.0, 7.5, 10.0, float('inf'))
+
 logger = logging.getLogger(__name__)
 
 # Bounded label allow-list to prevent high cardinality issues
@@ -147,6 +158,12 @@ class MetricsRegistry:
         self.namespace = namespace
         self.registry = registry or REGISTRY
         self._metrics: dict[str, Union[Counter, Histogram, Gauge]] = {}
+        
+        # Initialize observability contract if available
+        if OBSERVABILITY_CONTRACTS_AVAILABLE:
+            self.observability_contract = ObservabilityContract(self.registry)
+        else:
+            self.observability_contract = None
 
         logger.info(
             f"Initialized metrics registry with namespace '{namespace}'"
@@ -206,15 +223,15 @@ class MetricsRegistry:
     ) -> Counter:
         """
         Get or create a Counter metric with label validation.
-        
+
         Args:
             name: Metric name (must be in LABEL_ALLOWLIST)
             labels: Label dictionary (validated against allow-list)
             documentation: Metric documentation
-            
+
         Returns:
             Prometheus Counter instance
-            
+
         Raises:
             ValueError: If metric name or labels are invalid
         """
@@ -259,17 +276,17 @@ class MetricsRegistry:
         documentation: str = ""
     ) -> Histogram:
         """
-        Get or create a Histogram metric with label validation.
-        
+        Get or create a Histogram metric with label validation and fixed buckets.
+
         Args:
             name: Metric name (must be in LABEL_ALLOWLIST)
             labels: Label dictionary (validated against allow-list)
-            buckets: Histogram buckets (optional, uses default if not provided)
+            buckets: Histogram buckets (optional, uses standardized buckets if available)
             documentation: Metric documentation
-            
+
         Returns:
             Prometheus Histogram instance
-            
+
         Raises:
             ValueError: If metric name or labels are invalid
         """
@@ -285,13 +302,27 @@ class MetricsRegistry:
             # Create metric with all possible label names
             label_names = LABEL_ALLOWLIST[name]
 
-            # Use provided buckets or default Prometheus buckets
+            # Determine buckets to use
             if buckets is not None:
+                # Use explicitly provided buckets
+                final_buckets = buckets
+            else:
+                # Try to get standardized buckets from observability contracts
+                try:
+                    final_buckets = get_histogram_buckets(name)
+                    logger.debug(f"Using standardized buckets for {name}: {final_buckets}")
+                except (ValueError, NameError):
+                    # Fall back to default Prometheus buckets
+                    final_buckets = None
+                    logger.debug(f"Using default Prometheus buckets for {name}")
+
+            # Create histogram with appropriate buckets
+            if final_buckets is not None:
                 histogram = Histogram(
                     full_name,
                     documentation or f"Histogram metric: {name}",
                     labelnames=label_names,
-                    buckets=buckets,
+                    buckets=final_buckets,
                     registry=self.registry
                 )
             else:
@@ -325,15 +356,15 @@ class MetricsRegistry:
     ) -> Gauge:
         """
         Get or create a Gauge metric with label validation.
-        
+
         Args:
-            name: Metric name (must be in LABEL_ALLOWLIST)  
+            name: Metric name (must be in LABEL_ALLOWLIST)
             labels: Label dictionary (validated against allow-list)
             documentation: Metric documentation
-            
+
         Returns:
             Prometheus Gauge instance
-            
+
         Raises:
             ValueError: If metric name or labels are invalid
         """
@@ -449,14 +480,72 @@ class MetricsRegistry:
         """Get Prometheus content type."""
         return CONTENT_TYPE_LATEST
 
+    def validate_route_template(self, route_path: str) -> str:
+        """
+        Validate and normalize route path using observability contracts.
+        
+        Args:
+            route_path: The actual request path
+            
+        Returns:
+            Normalized route template
+        """
+        if self.observability_contract:
+            return self.observability_contract.validate_route_labeling(route_path, ROUTE_TEMPLATES)
+        else:
+            # Fallback to legacy normalization
+            return normalize_route(route_path)
+    
+    def check_duplicate_metrics(self) -> list[str]:
+        """
+        Check for duplicate metric names in the registry.
+        
+        Returns:
+            List of duplicate metric names
+        """
+        if self.observability_contract:
+            return self.observability_contract.check_for_duplicate_metrics()
+        else:
+            # Basic duplicate check without observability contracts
+            metric_names = []
+            for collector in self.registry._collector_to_names:
+                for metric_family in collector.collect():
+                    metric_names.append(metric_family.name)
+            
+            seen = set()
+            duplicates = []
+            for name in metric_names:
+                if name in seen:
+                    duplicates.append(name)
+                else:
+                    seen.add(name)
+            return duplicates
+    
+    def get_observability_summary(self) -> dict[str, any]:
+        """
+        Get observability validation summary.
+        
+        Returns:
+            Dictionary with validation statistics
+        """
+        if self.observability_contract:
+            return self.observability_contract.get_validation_summary()
+        else:
+            duplicates = self.check_duplicate_metrics()
+            return {
+                "duplicate_metrics": duplicates,
+                "duplicate_count": len(duplicates),
+                "observability_contracts_enabled": False,
+            }
+
 
 def normalize_route(path: str) -> str:
     """
     Normalize route path to prevent high cardinality from path parameters.
-    
+
     Args:
         path: Original request path
-        
+
     Returns:
         Normalized route template
     """
@@ -486,10 +575,10 @@ def normalize_route(path: str) -> str:
 def normalize_alpaca_endpoint(endpoint: str) -> str:
     """
     Normalize Alpaca endpoint to prevent high cardinality.
-    
+
     Args:
         endpoint: Original Alpaca endpoint path
-        
+
     Returns:
         Normalized endpoint template
     """

@@ -49,7 +49,7 @@ class SignalsRepo:
     ) -> Signal:
         """
         Create a new trading signal.
-        
+
         Args:
             symbol: Trading symbol
             model_name: Name of the model generating the signal
@@ -61,10 +61,10 @@ class SignalsRepo:
             stop_loss: Optional stop loss price
             expiry: Optional expiry timestamp
             attributes: Optional additional attributes
-            
+
         Returns:
             Signal: Newly created signal
-            
+
         Raises:
             DuplicateSignalError: If there's a constraint violation
         """
@@ -116,10 +116,10 @@ class SignalsRepo:
     async def get_by_id(self, signal_id: uuid.UUID) -> Signal | None:
         """
         Get signal by ID.
-        
+
         Args:
             signal_id: Signal ID
-            
+
         Returns:
             Signal if found, None otherwise
         """
@@ -135,12 +135,12 @@ class SignalsRepo:
     ) -> list[Signal]:
         """
         Get active (non-expired) signals.
-        
+
         Args:
             symbol: Optional symbol filter
             model_name: Optional model name filter
             signal_type: Optional signal type filter
-            
+
         Returns:
             List of active signals
         """
@@ -180,11 +180,11 @@ class SignalsRepo:
     ) -> Signal | None:
         """
         Get the latest signal for a symbol from a specific model.
-        
+
         Args:
             symbol: Trading symbol
             model_name: Model name
-            
+
         Returns:
             Latest signal if found, None otherwise
         """
@@ -212,13 +212,13 @@ class SignalsRepo:
     ) -> list[Signal]:
         """
         Get signals within a time range.
-        
+
         Args:
             start_time: Start time
             end_time: End time
             symbol: Optional symbol filter
             model_name: Optional model name filter
-            
+
         Returns:
             List of signals in time range
         """
@@ -250,12 +250,12 @@ class SignalsRepo:
     ) -> list[Signal]:
         """
         Get high-confidence signals above specified thresholds.
-        
+
         Args:
             min_confidence: Minimum confidence threshold
             min_strength: Minimum strength threshold
             limit: Maximum number of signals to return
-            
+
         Returns:
             List of high-confidence signals
         """
@@ -286,10 +286,10 @@ class SignalsRepo:
     async def expire_signal(self, signal_id: uuid.UUID) -> None:
         """
         Mark a signal as expired.
-        
+
         Args:
             signal_id: Signal ID
-            
+
         Raises:
             SignalNotFoundError: If signal not found
         """
@@ -317,10 +317,10 @@ class SignalsRepo:
     async def expire_signals_by_model(self, model_name: str) -> int:
         """
         Expire all active signals from a specific model.
-        
+
         Args:
             model_name: Model name
-            
+
         Returns:
             Number of signals expired
         """
@@ -364,12 +364,12 @@ class SignalsRepo:
     ) -> dict[str, Any]:
         """
         Calculate performance metrics for signals from a specific model.
-        
+
         Args:
             model_name: Model name
             start_time: Optional start time filter
             end_time: Optional end time filter
-            
+
         Returns:
             Dictionary with performance metrics
         """
@@ -448,12 +448,12 @@ class SignalsRepo:
     ) -> dict[str, Any]:
         """
         Get consensus signals for a symbol from multiple models.
-        
+
         Args:
             symbol: Trading symbol
             min_models: Minimum number of models required for consensus
             max_age_hours: Maximum age of signals in hours
-            
+
         Returns:
             Dictionary with consensus analysis
         """

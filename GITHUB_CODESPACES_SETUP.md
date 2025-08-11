@@ -1,8 +1,8 @@
 # 🚀 GitHub Codespaces Continuation Instructions
 
 ## ✅ Successfully Committed & Pushed
-**Commit Hash**: `9c880cb`  
-**Branch**: `main`  
+**Commit Hash**: `9c880cb`
+**Branch**: `main`
 **Repository**: `Lesram/intraday`
 
 ## 🎯 Immediate Codespaces Setup
@@ -49,10 +49,10 @@ code tests/core/test_app_lifespan_and_di.py
 ### 🔄 What's Next (Your Original Request)
 **"combine these two test suites and run them accordingly for a full complete test report and implement fixes as issues arise"**
 
-**Phase 1** (Immediate): Complete remaining core tests  
-**Phase 2**: Implement unit test categories  
-**Phase 3**: Build integration tests  
-**Phase 4**: Add performance & chaos tests  
+**Phase 1** (Immediate): Complete remaining core tests
+**Phase 2**: Implement unit test categories
+**Phase 3**: Build integration tests
+**Phase 4**: Add performance & chaos tests
 
 ### 📊 Progress Metrics
 - **Test Coverage**: 25.89% → **Target**: 85%
@@ -64,7 +64,7 @@ code tests/core/test_app_lifespan_and_di.py
 When you're in Codespaces, you can use this prompt to continue exactly where we left off:
 
 ```
-I'm continuing work on implementing a comprehensive test suite for an algorithmic trading platform. 
+I'm continuing work on implementing a comprehensive test suite for an algorithmic trading platform.
 
 CURRENT STATUS:
 - Core lifespan test is WORKING ✅ (test_startup_runs_exactly_once passes)
@@ -72,13 +72,13 @@ CURRENT STATUS:
 - Critical configuration fixes applied (AppConfig, main.py, StrategyEngine)
 - One test passing out of comprehensive suite needed
 
-ORIGINAL REQUEST: 
+ORIGINAL REQUEST:
 "combine these two test suites and run them accordingly for a full complete test report and implement fixes as issues arise"
 
 IMMEDIATE TASK:
 Complete the remaining core tests in tests/core/test_app_lifespan_and_di.py:
 - test_lifespan_startup_failure_handling
-- test_resource_cleanup_on_shutdown  
+- test_resource_cleanup_on_shutdown
 - test_dependency_injection_consistency
 - test_websocket_dependency_injection
 - test_multiple_contexts_isolated

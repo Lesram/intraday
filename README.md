@@ -1,4 +1,4 @@
-# 🚀 Algorithmic Trading Platform - AI Review Branch Complete
+# 🚀 Algorithmic Trading Platform - Production Operations Complete
 
 [![CI Quality Gates](https://github.com/Lesram/intraday/workflows/CI%20Quality%20Gates/badge.svg)](https://github.com/Lesram/intraday/actions)
 [![codecov](https://codecov.io/gh/Lesram/intraday/branch/main/graph/badge.svg)](https://codecov.io/gh/Lesram/intraday)
@@ -6,27 +6,23 @@
 [![Code Quality](https://img.shields.io/badge/Code%20Quality-A-brightgreen)](https://github.com/Lesram/intraday)
 [![Python](https://img.shields.io/badge/Python-3.11-blue)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-Latest-green)](https://fastapi.tiangolo.com/)
-[![Coverage](https://img.shields.io/badge/Coverage-≥85%25-green)](https://codecov.io/gh/Lesram/intraday)
+[![Coverage](https://img.shields.io/badge/Coverage-40%25+-green)](https://codecov.io/gh/Lesram/intraday)
 [![Type Safety](https://img.shields.io/badge/MyPy-Strict-blue)](http://mypy-lang.org/)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-## 🎯 Institutional-Grade Algorithmic Trading Platform
+## 🎯 Production-Ready Algorithmic Trading Platform
 
-This platform delivers **production-ready algorithmic trading** with comprehensive AI/ML capabilities, strict quality gates, and institutional-grade reliability. Built with FastAPI, featuring complete test harness, chaos engineering, performance monitoring, and automated CI/CD quality enforcement.
+**Enterprise-grade trading infrastructure** with comprehensive operational hardening, resilience patterns, chaos engineering, and advanced monitoring. Built for high-frequency trading with strict SLO compliance and automated safety controls.
 
-### 🔒 Quality Gates & CI Pipeline
+### 🏗️ Production Operations Hardening Complete
 
-Our CI pipeline enforces strict quality standards with automated gates:
+✅ **Canary Deployment** - SLO-based promotion/rollback with Prometheus monitoring  
+✅ **Chaos Engineering** - Comprehensive fault injection testing with weekly drills  
+✅ **Order Integrity** - Finite State Machine with append-only audit logging  
+✅ **Safety Modes** - SHADOW/DRY_RUN/LIVE with feature flags and kill switches  
+✅ **Operational Excellence** - Complete runbooks and SLO management cadence
 
-| Gate | Tool | Threshold | Status |
-|------|------|-----------|--------|
-| **Code Style** | Ruff | Zero violations | [![Lint](https://img.shields.io/badge/Lint-Passing-brightgreen)](https://github.com/Lesram/intraday/actions) |
-| **Type Safety** | MyPy Strict | Zero type errors | [![Types](https://img.shields.io/badge/Types-Strict-blue)](https://github.com/Lesram/intraday/actions) |
-| **Security** | Bandit + pip-audit | High severity only | [![Security](https://img.shields.io/badge/Security-Verified-brightgreen)](https://github.com/Lesram/intraday/actions) |
-| **Test Coverage** | pytest-cov | ≥85% coverage | [![Coverage](https://img.shields.io/badge/Coverage-≥85%25-green)](https://codecov.io/gh/Lesram/intraday) |
-| **Performance** | Pytest markers | Latency budgets | [![Perf](https://img.shields.io/badge/Performance-Monitored-orange)](https://github.com/Lesram/intraday/actions) |
-
-### 🏆 Branch 2.11 - CI Guards Complete
+### 🛡️ Enterprise Security & Reliability
 
 #### ✅ Quality Infrastructure
 - **Ruff Linting**: E, F, I, B, UP, PERF rule enforcement
@@ -47,32 +43,32 @@ graph TB
     subgraph "FastAPI Application"
         A[Enhanced Lifespan Manager] --> B[Background Task Tracking]
         A --> C[Graceful Shutdown]
-        
+
         D[Structured Error Handlers] --> E[HTTP Exception Handler]
-        D --> F[Validation Error Handler] 
+        D --> F[Validation Error Handler]
         D --> G[General Exception Handler]
-        
+
         H[JWT Security] --> I[HTTPBearer Scheme]
         H --> J[Token Verification]
-        
+
         K[Request Middleware] --> L[Timing & Correlation IDs]
         K --> M[Prometheus Metrics]
     end
-    
+
     subgraph "Enhanced Models"
         N[EnsembleModel] --> O[Early Stopping]
         N --> P[Learning Rate Scheduler]
         N --> Q[Model Persistence]
     end
-    
+
     subgraph "Configuration-Aware Features"
         R[FeatureEngineer] --> S[realtime_light Mode]
         R --> T[Full Feature Mode]
-        
+
         U[RiskManager] --> V[Mock Fallback Controls]
         U --> W[Transparency Tracking]
     end
-    
+
     subgraph "System Health"
         X[Health Endpoints] --> Y[/health - Basic]
         X --> Z[/api/v1/system/status - Comprehensive]
@@ -84,7 +80,7 @@ graph TB
 ```
 algotrading_platform/
 ├── 📊 IMPLEMENTATION_COMPLETE.md       # ✅ Final completion status
-├── 📈 ENHANCEMENT_SUMMARY.md          # ✅ Detailed enhancement documentation  
+├── 📈 ENHANCEMENT_SUMMARY.md          # ✅ Detailed enhancement documentation
 ├── 🔧 backend/
 │   ├── 🌐 api/
 │   │   └── main.py                    # ✅ Enhanced FastAPI with all features
@@ -139,7 +135,7 @@ ruff check .                    # Check for issues
 ruff check --fix .              # Auto-fix issues
 ruff format .                   # Format code
 
-# 🧮 Type Checking  
+# 🧮 Type Checking
 mypy --strict backend tests     # Full type safety check
 
 # 🛡️ Security Scanning
@@ -182,7 +178,7 @@ git commit -m "Your changes"  # Triggers: ruff, mypy, bandit
 
 # Or step by step:
 ruff check --no-fix . --output-format=github
-mypy --strict backend tests --ignore-missing-imports  
+mypy --strict backend tests --ignore-missing-imports
 bandit -r backend -lll -f json
 pytest --cov=backend --cov-fail-under=85 --maxfail=1
 ```
@@ -215,7 +211,7 @@ GET /metrics                        # Prometheus metrics endpoint
 ### Trading Signals (Enhanced with Security)
 ```http
 GET /api/v1/signals/{symbol}        # Get trading signal for specific symbol
-GET /api/v1/signals                 # Get signals for multiple symbols  
+GET /api/v1/signals                 # Get signals for multiple symbols
 GET /api/v1/signals/advanced        # Advanced signals with authentication
 ```
 
@@ -252,13 +248,13 @@ WS /ws/{client_id}                  # Real-time market data and signals
 async def lifespan(app: FastAPI):
     # Enhanced startup with task tracking
     app.state.background_tasks = {}
-    
+
     # Start tracked background tasks
     app.state.background_tasks["model_retraining"] = asyncio.create_task(...)
     app.state.background_tasks["market_data"] = asyncio.create_task(...)
-    
+
     yield
-    
+
     # Enhanced shutdown with proper task cancellation
     for task_name, task in app.state.background_tasks.items():
         if not task.done():
@@ -307,7 +303,7 @@ async def get_advanced_signals(current_user: str = Depends(verify_token)):
 
 **Security Benefits:**
 - ✅ HTTPBearer authentication scheme
-- ✅ Development and production token support  
+- ✅ Development and production token support
 - ✅ Optional authentication for enhanced features
 - ✅ Audit logging of authenticated requests
 
@@ -317,11 +313,11 @@ async def get_advanced_signals(current_user: str = Depends(verify_token)):
 async def timing_middleware(request: Request, call_next):
     start_time = time.time()
     request_id = generate_request_id()
-    
+
     # Enhanced request logging with correlation ID
     response = await call_next(request)
     process_time = time.time() - start_time
-    
+
     # Add timing headers and update metrics
     response.headers["X-Process-Time"] = str(process_time)
     response.headers["X-Request-ID"] = request_id
@@ -341,22 +337,22 @@ class EnsembleModel:
             EarlyStopping(patience=patience, restore_best_weights=True),
             ReduceLROnPlateau(patience=5, factor=0.5, min_lr=1e-7)
         ]
-        
+
         # Random seed management for reproducibility
         np.random.seed(self.random_seed)
         tf.random.set_seed(self.random_seed)
-        
+
         # Training with enhanced monitoring
-        history = model.fit(train_data, validation_data=validation_data, 
+        history = model.fit(train_data, validation_data=validation_data,
                            epochs=epochs, callbacks=callbacks)
-                           
+
         # Enhanced model persistence with joblib
         self.save_models(path, include_metadata=True)
 ```
 
 **Enhanced Benefits:**
 - ✅ EarlyStopping prevents overfitting with configurable patience
-- ✅ ReduceLROnPlateau optimizes learning rate automatically  
+- ✅ ReduceLROnPlateau optimizes learning rate automatically
 - ✅ Random seed management ensures reproducible results
 - ✅ Joblib persistence for sklearn components with model cards
 
@@ -366,7 +362,7 @@ class FeatureEngineer:
     def __init__(self, config: dict):
         self.feature_mode = config.get("feature_mode", "full")
         self.enable_heavy_features = config.get("enable_heavy_features", True)
-    
+
     def compute_all_features(self, data):
         if self.feature_mode == "realtime_light":
             return self._add_essential_features(data)  # Fast computation
@@ -386,7 +382,7 @@ class RiskManager:
     def __init__(self, config: dict):
         self.allow_mock_fallbacks = config.get("allow_mock_fallbacks", False)
         self.mock_data_used = set()  # Track mock fallback usage
-    
+
     async def evaluate_trade_risk(self, symbol, position_size, price):
         try:
             # Real risk calculation
@@ -415,8 +411,8 @@ class RiskManager:
 # Test enhanced background task tracking
 async def test_background_task_lifecycle():
     # Verify task tracking and cancellation
-    
-# Test system status normalization  
+
+# Test system status normalization
 async def test_system_status_endpoint():
     # Verify comprehensive status reporting
 ```
@@ -426,7 +422,7 @@ async def test_system_status_endpoint():
 # Test error response structure
 async def test_structured_error_responses():
     # Verify ErrorDetail/ErrorResponse models
-    
+
 # Test request correlation IDs
 async def test_request_correlation_ids():
     # Verify request tracking across system
@@ -437,7 +433,7 @@ async def test_request_correlation_ids():
 # Test authentication flow
 async def test_jwt_authentication():
     # Verify token validation and user extraction
-    
+
 # Test optional authentication
 async def test_optional_auth_endpoints():
     # Verify enhanced features for authenticated users
@@ -448,7 +444,7 @@ async def test_optional_auth_endpoints():
 # Test feature engineering modes
 async def test_feature_modes():
     # Verify realtime_light vs full feature computation
-    
+
 # Test risk manager mock fallbacks
 async def test_risk_mock_fallbacks():
     # Verify mock data usage tracking and controls
@@ -606,7 +602,7 @@ curl http://localhost:8000/readyz
 
 #### **Liveness Probe** (`/healthz`)
 - **Purpose**: Process health check
-- **Checks**: Event loop responsiveness  
+- **Checks**: Event loop responsiveness
 - **K8s Usage**: Restart unhealthy pods
 - **Response**: 200 if process alive
 
@@ -1222,20 +1218,20 @@ pytest tests/ -v
 
 # Results: 52 passed, 1 warning in 6.04s
 ✅ API Tests: 22/22 passing (Health, Trading, AI/ML, Risk, System)
-✅ Integration Tests: 11/11 passing (End-to-end workflows) 
+✅ Integration Tests: 11/11 passing (End-to-end workflows)
 ✅ Risk Management: 19/19 passing (VaR, circuit breakers, position sizing)
 ```
 
 ### Recent Quality Improvements
 - ✅ **Fixed all integration test failures** - Enhanced mock configuration and error handling
-- ✅ **Performance optimization** - Eliminated 395 DataFrame fragmentation warnings  
+- ✅ **Performance optimization** - Eliminated 395 DataFrame fragmentation warnings
 - ✅ **Pydantic modernization** - Updated to v2.0 ConfigDict (eliminated deprecation warnings)
 - ✅ **Enhanced error recovery** - Graceful ensemble model failure handling
 
 ### Test Categories
 - **Unit Tests**: Core module functionality and edge cases
 - **Integration Tests**: End-to-end workflow validation
-- **API Tests**: All REST endpoints and WebSocket connections  
+- **API Tests**: All REST endpoints and WebSocket connections
 - **Performance Tests**: Memory usage and concurrent operations
 - **Error Recovery**: Network failures, data quality, model failures
 
@@ -1253,7 +1249,7 @@ MAX_LEVERAGE = 2.0             # 2:1 leverage limit
 ```python
 ENSEMBLE_WEIGHTS = {
     "lstm": 0.4,
-    "xgboost": 0.4, 
+    "xgboost": 0.4,
     "random_forest": 0.2
 }
 DRIFT_DETECTION_THRESHOLD = 0.05
@@ -1361,7 +1357,7 @@ We've successfully achieved **production-ready status** with the following miles
 #### ✅ Complete Test Suite Success
 - **Fixed 3 critical integration test failures**:
   - Model training pipeline with proper mock configuration
-  - Ensemble model error handling and graceful degradation  
+  - Ensemble model error handling and graceful degradation
   - Feature data alignment with realistic expectations
 - **Achieved 100% test pass rate** (52/52 tests)
 - **Comprehensive error recovery** across all components
@@ -1396,7 +1392,7 @@ The platform is now **ready for Phase 2 enhancements**:
 - **Additional Data Sources** - Multi-broker support, cryptocurrency exchanges
 - **Enhanced Strategies** - Options trading, futures, derivatives strategies
 
-### MLOps Enhancements  
+### MLOps Enhancements
 - **Advanced Model Registry** - Git-like versioning, metadata tracking
 - **Hyperparameter Optimization** - Automated model tuning pipelines
 - **Feature Store** - Centralized feature engineering and management

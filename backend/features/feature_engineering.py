@@ -766,12 +766,12 @@ def validate_feature_schema(
 ) -> tuple[bool, list[str]]:
     """
     Validate feature DataFrame against expected schema.
-    
+
     Args:
         features_df: DataFrame with features to validate
         expected_schema: Dictionary mapping feature names to expected dtypes
         strict: If True, extra columns cause validation failure
-        
+
     Returns:
         Tuple of (is_valid, error_messages)
     """
@@ -806,10 +806,10 @@ def validate_feature_schema(
 def get_feature_schema(features_df: pd.DataFrame) -> dict[str, str]:
     """
     Extract feature schema from DataFrame.
-    
+
     Args:
         features_df: DataFrame with features
-        
+
     Returns:
         Dictionary mapping feature names to dtype strings
     """
@@ -822,14 +822,14 @@ def ensure_feature_order(
 ) -> pd.DataFrame:
     """
     Reorder feature columns to match expected order.
-    
+
     Args:
         features_df: DataFrame with features
         expected_order: List of column names in expected order
-        
+
     Returns:
         DataFrame with columns in expected order
-        
+
     Raises:
         ValueError: If any expected features are missing
     """
@@ -847,11 +847,11 @@ def create_feature_signature(
 ) -> dict[str, any]:
     """
     Create a feature signature for drift detection and validation.
-    
+
     Args:
         features_df: DataFrame with features
         include_stats: Whether to include basic statistics
-        
+
     Returns:
         Dictionary with feature signature information
     """
@@ -885,12 +885,12 @@ def validate_feature_ranges(
 ) -> tuple[bool, list[str]]:
     """
     Validate that feature values are within expected ranges.
-    
+
     Args:
         features_df: DataFrame with features
         expected_ranges: Dictionary mapping feature names to (min, max) tuples
         tolerance: Tolerance factor for range expansion (e.g., 0.1 = 10% tolerance)
-        
+
     Returns:
         Tuple of (is_valid, warning_messages)
     """
@@ -923,11 +923,11 @@ def validate_feature_ranges(
 def _is_dtype_compatible(actual_dtype: str, expected_dtype: str) -> bool:
     """
     Check if actual dtype is compatible with expected dtype.
-    
+
     Args:
         actual_dtype: Actual pandas dtype as string
         expected_dtype: Expected pandas dtype as string
-        
+
     Returns:
         True if compatible, False otherwise
     """
@@ -953,10 +953,10 @@ def _is_dtype_compatible(actual_dtype: str, expected_dtype: str) -> bool:
 def _normalize_dtype(dtype_str: str) -> str:
     """
     Normalize pandas dtype string.
-    
+
     Args:
         dtype_str: Pandas dtype as string
-        
+
     Returns:
         Normalized dtype string
     """
@@ -993,11 +993,11 @@ def _normalize_dtype(dtype_str: str) -> str:
 def compute_all_features(df: pd.DataFrame, *, fast: bool = True) -> pd.DataFrame:
     """
     Vectorized feature computation with leak protection.
-    
+
     Args:
         df: OHLCV DataFrame
         fast: Use optimized vectorized implementations
-        
+
     Returns:
         DataFrame with computed features (no lookahead)
     """
@@ -1025,11 +1025,11 @@ def compute_all_features(df: pd.DataFrame, *, fast: bool = True) -> pd.DataFrame
 def build_feature_frame(df_1m: pd.DataFrame, *, price_col: str = "close") -> FeatureFrame:
     """
     Build complete FeatureFrame with validation and alignment.
-    
+
     Args:
         df_1m: 1-minute OHLCV data
         price_col: Price column for target creation
-        
+
     Returns:
         FeatureFrame with features, target, and validity mask
     """

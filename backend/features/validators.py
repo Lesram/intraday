@@ -13,10 +13,10 @@ from .types import LookaheadLeakError
 def validate_ohlcv(df: pd.DataFrame) -> None:
     """
     Validate OHLCV DataFrame structure and data quality.
-    
+
     Args:
         df: DataFrame to validate
-        
+
     Raises:
         ValueError: If validation fails with specific reason
     """
@@ -65,17 +65,17 @@ def guard_no_lookahead(
 ) -> None:
     """
     Guard against lookahead bias in features.
-    
+
     Detects if features have suspiciously high correlation with future returns,
     indicating potential lookahead bias.
-    
+
     Args:
         features: Feature DataFrame
         price: Price series (same index as features)
         feature_cols: Specific columns to check, defaults to all
         threshold: Correlation threshold for flagging (0.7 = very suspicious)
         window_size: Rolling window size for correlation analysis
-        
+
     Raises:
         LookaheadLeakError: If lookahead bias is detected
     """
@@ -136,15 +136,15 @@ def guard_no_lookahead_synthetic(
 ) -> None:
     """
     Alternative lookahead detection using synthetic monotone series.
-    
+
     Creates a strictly increasing synthetic price series and tests if features
     can predict it unreasonably well, indicating lookahead bias.
-    
+
     Args:
         features: Feature DataFrame
         feature_cols: Specific columns to check
         accuracy_threshold: Accuracy threshold for flagging
-        
+
     Raises:
         LookaheadLeakError: If lookahead bias is detected
     """
@@ -188,11 +188,11 @@ def guard_no_lookahead_synthetic(
 def validate_feature_alignment(features: pd.DataFrame, target: pd.Series) -> None:
     """
     Validate that features and target are properly aligned.
-    
+
     Args:
-        features: Feature DataFrame  
+        features: Feature DataFrame
         target: Target series
-        
+
     Raises:
         ValueError: If alignment is incorrect
     """
@@ -211,11 +211,11 @@ def validate_feature_alignment(features: pd.DataFrame, target: pd.Series) -> Non
 def detect_forward_fill_leakage(df: pd.DataFrame, max_consecutive_fill: int = 5) -> list[str]:
     """
     Detect columns that might have problematic forward-filling.
-    
+
     Args:
         df: DataFrame to analyze
         max_consecutive_fill: Maximum allowed consecutive identical values
-        
+
     Returns:
         List of suspicious column names
     """
