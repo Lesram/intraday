@@ -193,9 +193,10 @@ class TradingModeConfig(BaseModel):
     blocked_symbols: Optional[set[str]] = None
 
     @validator("live_mode_confirmations")
-    def validate_confirmations(cls, v):
-        """Live mode should require at least one confirmation."""
-        if v < 1:
+    def validate_confirmations(cls, v, values):
+        """Live mode should require at least one confirmation, but shadow/dry modes can have 0."""
+        mode = values.get('mode')
+        if mode == TradingMode.LIVE and v < 1:
             raise ValueError("Live mode must require at least 1 confirmation")
         return v
 

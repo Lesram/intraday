@@ -11,14 +11,22 @@ from unittest.mock import AsyncMock
 from fastapi.testclient import TestClient
 import pytest
 
-from backend.api.main import PROMETHEUS_AVAILABLE, app, ws_manager
+from backend.api.main import PROMETHEUS_AVAILABLE, app
+from backend.api.websocket_manager import WebSocketClientManager
+
+
+@pytest.fixture
+async def ws_manager():
+    """Create WebSocketClientManager instance for testing."""
+    manager = WebSocketClientManager()
+    return manager
 
 
 class TestCriticalFixes:
     """Test critical fixes for WebSocket deadlocks and metrics"""
 
     @pytest.mark.asyncio
-    async def test_websocket_receive_loop_non_blocking(self):
+    async def test_websocket_receive_loop_non_blocking(self, ws_manager):
         """Test that WebSocket receive loop remains responsive during subscriptions"""
         client_id = "test_client_123"
 
@@ -117,7 +125,7 @@ class TestCriticalFixes:
             raise
 
     @pytest.mark.asyncio
-    async def test_background_task_cancellation(self):
+    async def test_background_task_cancellation(self, ws_manager):
         """Test that background tasks are properly cancelled on disconnect"""
         client_id = "test_client_cancel"
         mock_websocket = AsyncMock()
@@ -163,7 +171,7 @@ class TestCriticalFixes:
 
     @pytest.mark.asyncio
     @pytest.mark.skipif(not PROMETHEUS_AVAILABLE, reason="Prometheus not available")
-    async def test_websocket_metrics_tracking(self):
+    async def test_websocket_metrics_tracking(self, ws_manager):
         """Test that WebSocket metrics are properly tracked"""
         client_id = "test_client_metrics"
         mock_websocket = AsyncMock()
@@ -194,7 +202,7 @@ class TestCriticalFixes:
         await ws_manager.remove_client(client_id)
 
     @pytest.mark.asyncio
-    async def test_heartbeat_timeout_tracking(self):
+    async def test_heartbeat_timeout_tracking(self, ws_manager):
         """Test that heartbeat timeouts are properly tracked"""
         client_id = "test_client_timeout"
         mock_websocket = AsyncMock()
@@ -221,7 +229,7 @@ class TestCriticalFixes:
             await ws_manager.remove_client(stale_client_id)
 
     @pytest.mark.asyncio
-    async def test_subscription_management(self):
+    async def test_subscription_management(self, ws_manager):
         """Test that subscriptions are properly managed"""
         client_id = "test_client_subscriptions"
         mock_websocket = AsyncMock()

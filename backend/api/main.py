@@ -466,6 +466,10 @@ async def lifespan(app: FastAPI):
             app.state.ws_manager.start_heartbeat(), name="websocket_heartbeat"
         )
 
+        # Export ws_manager for testing
+        global ws_manager
+        ws_manager = app.state.ws_manager
+
         # Start model auto-retraining task
         logging.info("Starting model auto-retraining...")
         background_tasks["model_retraining"] = asyncio.create_task(
@@ -738,6 +742,9 @@ async def flush_audit_logs():
 from .factory import create_app
 
 app = create_app()
+
+# Export commonly used components for testing
+ws_manager = None  # Will be set to app.state.ws_manager during lifespan
 
 # Middleware is now registered in factory.py
 

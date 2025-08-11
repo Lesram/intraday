@@ -180,3 +180,23 @@ class MetricsClient:
                 buckets[le] = sample.value
 
         return buckets
+
+
+def collect_metrics(registry) -> list[MetricSample]:
+    """Collect metrics from a registry."""
+    try:
+        from prometheus_client import generate_latest
+        metrics_data = generate_latest(registry)
+        parser = MetricsParser()
+        return parser.parse_metrics_text(metrics_data.decode('utf-8'))
+    except ImportError:
+        return []
+
+
+def get_metric_value(metrics: list[MetricSample], name: str, labels: dict = None) -> float:
+    """Get metric value by name and optional labels."""
+    for metric in metrics:
+        if metric.name == name:
+            if labels is None or all(metric.labels.get(k) == v for k, v in labels.items()):
+                return metric.value
+    return 0.0
