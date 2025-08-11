@@ -18,11 +18,13 @@ logger = logging.getLogger(__name__)
 
 class ModelNotFoundError(Exception):
     """Raised when a model is not found."""
+
     pass
 
 
 class DuplicateModelError(Exception):
     """Raised when attempting to create a duplicate model."""
+
     pass
 
 
@@ -38,10 +40,10 @@ class ModelsRepo:
         name: str,
         version: str,
         model_type: str,
-        status: str = 'training',
+        status: str = "training",
         metadata: dict[str, Any] | None = None,
         config: dict[str, Any] | None = None,
-        performance_metrics: dict[str, Any] | None = None
+        performance_metrics: dict[str, Any] | None = None,
     ) -> ModelRegistry:
         """
         Register a new model version.
@@ -68,7 +70,7 @@ class ModelsRepo:
             status=status,
             metadata=metadata or {},
             config=config or {},
-            performance_metrics=performance_metrics or {}
+            performance_metrics=performance_metrics or {},
         )
 
         try:
@@ -82,8 +84,8 @@ class ModelsRepo:
                     "name": name,
                     "version": version,
                     "model_type": model_type,
-                    "status": status
-                }
+                    "status": status,
+                },
             )
 
             return new_model
@@ -93,29 +95,17 @@ class ModelsRepo:
             if "name" in str(e) and "version" in str(e):
                 logger.warning(
                     "Duplicate model registration attempted",
-                    extra={
-                        "name": name,
-                        "version": version
-                    }
+                    extra={"name": name, "version": version},
                 )
                 raise DuplicateModelError(f"Model {name} version {version} already exists") from e
 
             logger.error(
                 "Failed to register model",
-                extra={
-                    "name": name,
-                    "version": version,
-                    "error": str(e)
-                }
+                extra={"name": name, "version": version, "error": str(e)},
             )
             raise
 
-    async def update_model_status(
-        self,
-        name: str,
-        version: str,
-        status: str
-    ) -> None:
+    async def update_model_status(self, name: str, version: str, status: str) -> None:
         """
         Update model status.
 
@@ -129,16 +119,8 @@ class ModelsRepo:
         """
         stmt = (
             update(ModelRegistry)
-            .where(
-                and_(
-                    ModelRegistry.name == name,
-                    ModelRegistry.version == version
-                )
-            )
-            .values(
-                status=status,
-                updated_at=datetime.utcnow()
-            )
+            .where(and_(ModelRegistry.name == name, ModelRegistry.version == version))
+            .values(status=status, updated_at=datetime.utcnow())
             .returning(ModelRegistry.id)
         )
 
@@ -149,19 +131,11 @@ class ModelsRepo:
             raise ModelNotFoundError(f"Model {name} version {version} not found")
 
         logger.info(
-            "Model status updated",
-            extra={
-                "name": name,
-                "version": version,
-                "status": status
-            }
+            "Model status updated", extra={"name": name, "version": version, "status": status}
         )
 
     async def update_performance_metrics(
-        self,
-        name: str,
-        version: str,
-        performance_metrics: dict[str, Any]
+        self, name: str, version: str, performance_metrics: dict[str, Any]
     ) -> None:
         """
         Update model performance metrics.
@@ -175,14 +149,8 @@ class ModelsRepo:
             ModelNotFoundError: If model not found
         """
         # First get current metrics to merge
-        stmt = (
-            select(ModelRegistry.performance_metrics)
-            .where(
-                and_(
-                    ModelRegistry.name == name,
-                    ModelRegistry.version == version
-                )
-            )
+        stmt = select(ModelRegistry.performance_metrics).where(
+            and_(ModelRegistry.name == name, ModelRegistry.version == version)
         )
 
         result = await self.session.execute(stmt)
@@ -197,16 +165,8 @@ class ModelsRepo:
         # Update with merged metrics
         stmt = (
             update(ModelRegistry)
-            .where(
-                and_(
-                    ModelRegistry.name == name,
-                    ModelRegistry.version == version
-                )
-            )
-            .values(
-                performance_metrics=merged_metrics,
-                updated_at=datetime.utcnow()
-            )
+            .where(and_(ModelRegistry.name == name, ModelRegistry.version == version))
+            .values(performance_metrics=merged_metrics, updated_at=datetime.utcnow())
             .returning(ModelRegistry.id)
         )
 
@@ -221,15 +181,11 @@ class ModelsRepo:
             extra={
                 "name": name,
                 "version": version,
-                "metrics_keys": list(performance_metrics.keys())
-            }
+                "metrics_keys": list(performance_metrics.keys()),
+            },
         )
 
-    async def get_model_by_name_version(
-        self,
-        name: str,
-        version: str
-    ) -> ModelRegistry | None:
+    async def get_model_by_name_version(self, name: str, version: str) -> ModelRegistry | None:
         """
         Get model by name and version.
 
@@ -240,14 +196,8 @@ class ModelsRepo:
         Returns:
             ModelRegistry if found, None otherwise
         """
-        stmt = (
-            select(ModelRegistry)
-            .where(
-                and_(
-                    ModelRegistry.name == name,
-                    ModelRegistry.version == version
-                )
-            )
+        stmt = select(ModelRegistry).where(
+            and_(ModelRegistry.name == name, ModelRegistry.version == version)
         )
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
@@ -266,11 +216,7 @@ class ModelsRepo:
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
 
-    async def get_models_by_name(
-        self,
-        name: str,
-        status: str | None = None
-    ) -> list[ModelRegistry]:
+    async def get_models_by_name(self, name: str, status: str | None = None) -> list[ModelRegistry]:
         """
         Get all versions of a model by name.
 
@@ -286,11 +232,7 @@ class ModelsRepo:
         if status:
             conditions.append(ModelRegistry.status == status)
 
-        stmt = (
-            select(ModelRegistry)
-            .where(and_(*conditions))
-            .order_by(ModelRegistry.version.desc())
-        )
+        stmt = select(ModelRegistry).where(and_(*conditions)).order_by(ModelRegistry.version.desc())
 
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
@@ -304,7 +246,7 @@ class ModelsRepo:
         """
         stmt = (
             select(ModelRegistry)
-            .where(ModelRegistry.status == 'production')
+            .where(ModelRegistry.status == "production")
             .order_by(ModelRegistry.name.asc(), ModelRegistry.version.desc())
         )
 
@@ -312,9 +254,7 @@ class ModelsRepo:
         return list(result.scalars().all())
 
     async def get_latest_model_version(
-        self,
-        name: str,
-        status: str | None = None
+        self, name: str, status: str | None = None
     ) -> ModelRegistry | None:
         """
         Get the latest version of a model.
@@ -341,11 +281,7 @@ class ModelsRepo:
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
 
-    async def promote_model_to_production(
-        self,
-        name: str,
-        version: str
-    ) -> None:
+    async def promote_model_to_production(self, name: str, version: str) -> None:
         """
         Promote a model version to production and demote others.
 
@@ -359,31 +295,15 @@ class ModelsRepo:
         # First, demote all current production models for this name
         await self.session.execute(
             update(ModelRegistry)
-            .where(
-                and_(
-                    ModelRegistry.name == name,
-                    ModelRegistry.status == 'production'
-                )
-            )
-            .values(
-                status='archived',
-                updated_at=datetime.utcnow()
-            )
+            .where(and_(ModelRegistry.name == name, ModelRegistry.status == "production"))
+            .values(status="archived", updated_at=datetime.utcnow())
         )
 
         # Promote the specified version
         stmt = (
             update(ModelRegistry)
-            .where(
-                and_(
-                    ModelRegistry.name == name,
-                    ModelRegistry.version == version
-                )
-            )
-            .values(
-                status='production',
-                updated_at=datetime.utcnow()
-            )
+            .where(and_(ModelRegistry.name == name, ModelRegistry.version == version))
+            .values(status="production", updated_at=datetime.utcnow())
             .returning(ModelRegistry.id)
         )
 
@@ -393,19 +313,9 @@ class ModelsRepo:
         if not promoted_id:
             raise ModelNotFoundError(f"Model {name} version {version} not found")
 
-        logger.info(
-            "Model promoted to production",
-            extra={
-                "name": name,
-                "version": version
-            }
-        )
+        logger.info("Model promoted to production", extra={"name": name, "version": version})
 
-    async def deprecate_model(
-        self,
-        name: str,
-        version: str
-    ) -> None:
+    async def deprecate_model(self, name: str, version: str) -> None:
         """
         Deprecate a model version.
 
@@ -418,16 +328,8 @@ class ModelsRepo:
         """
         stmt = (
             update(ModelRegistry)
-            .where(
-                and_(
-                    ModelRegistry.name == name,
-                    ModelRegistry.version == version
-                )
-            )
-            .values(
-                status='deprecated',
-                updated_at=datetime.utcnow()
-            )
+            .where(and_(ModelRegistry.name == name, ModelRegistry.version == version))
+            .values(status="deprecated", updated_at=datetime.utcnow())
             .returning(ModelRegistry.id)
         )
 
@@ -437,18 +339,10 @@ class ModelsRepo:
         if not deprecated_id:
             raise ModelNotFoundError(f"Model {name} version {version} not found")
 
-        logger.info(
-            "Model deprecated",
-            extra={
-                "name": name,
-                "version": version
-            }
-        )
+        logger.info("Model deprecated", extra={"name": name, "version": version})
 
     async def get_model_performance_comparison(
-        self,
-        name: str,
-        metric_key: str
+        self, name: str, metric_key: str
     ) -> list[dict[str, Any]]:
         """
         Compare performance metrics across versions of a model.
@@ -471,15 +365,19 @@ class ModelsRepo:
 
         comparisons = []
         for model in models:
-            metric_value = model.performance_metrics.get(metric_key) if model.performance_metrics else None
+            metric_value = (
+                model.performance_metrics.get(metric_key) if model.performance_metrics else None
+            )
 
-            comparisons.append({
-                "version": model.version,
-                "status": model.status,
-                "metric_value": metric_value,
-                "created_at": model.created_at,
-                "updated_at": model.updated_at
-            })
+            comparisons.append(
+                {
+                    "version": model.version,
+                    "status": model.status,
+                    "metric_value": metric_value,
+                    "created_at": model.created_at,
+                    "updated_at": model.updated_at,
+                }
+            )
 
         return comparisons
 
@@ -500,7 +398,7 @@ class ModelsRepo:
                 "unique_model_names": 0,
                 "status_counts": {},
                 "type_counts": {},
-                "latest_registration": None
+                "latest_registration": None,
             }
 
         # Count by status
@@ -527,14 +425,11 @@ class ModelsRepo:
             "latest_registration": {
                 "name": latest_model.name,
                 "version": latest_model.version,
-                "created_at": latest_model.created_at
-            }
+                "created_at": latest_model.created_at,
+            },
         }
 
-    async def cleanup_deprecated_models(
-        self,
-        older_than_days: int = 30
-    ) -> int:
+    async def cleanup_deprecated_models(self, older_than_days: int = 30) -> int:
         """
         Clean up deprecated models older than specified days.
 
@@ -545,18 +440,13 @@ class ModelsRepo:
             Number of models deleted
         """
         from datetime import timedelta
+
         cutoff_date = datetime.utcnow() - timedelta(days=older_than_days)
 
         # For safety, we'll just count for now rather than actually delete
         # In production, you might want to move to archive table first
-        stmt = (
-            select(ModelRegistry)
-            .where(
-                and_(
-                    ModelRegistry.status == 'deprecated',
-                    ModelRegistry.updated_at < cutoff_date
-                )
-            )
+        stmt = select(ModelRegistry).where(
+            and_(ModelRegistry.status == "deprecated", ModelRegistry.updated_at < cutoff_date)
         )
 
         result = await self.session.execute(stmt)
@@ -567,8 +457,8 @@ class ModelsRepo:
             extra={
                 "cutoff_date": cutoff_date,
                 "deprecated_models_found": len(deprecated_models),
-                "older_than_days": older_than_days
-            }
+                "older_than_days": older_than_days,
+            },
         )
 
         # Return count of models that would be cleaned up

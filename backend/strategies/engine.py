@@ -31,7 +31,7 @@ class StrategyEngine:
         self,
         risk_manager: RiskManager,
         positions_service: PositionsService,
-        config: dict[str, Any] | None = None
+        config: dict[str, Any] | None = None,
     ):
         self.risk_manager = risk_manager
         self.positions_service = positions_service
@@ -41,18 +41,22 @@ class StrategyEngine:
         # Configuration with defaults
         self.config = config or {}
         self.strategy_weights = {
-            "momentum": self.config.get("momentum_weight", getattr(self.settings, "strategy_momentum_weight", 0.6)),
-            "mean_reversion": self.config.get("mean_rev_weight", getattr(self.settings, "strategy_mean_rev_weight", 0.4)),
-            "ensemble": self.config.get("ensemble_weight", getattr(self.settings, "strategy_ensemble_weight", 1.0)),
+            "momentum": self.config.get(
+                "momentum_weight", getattr(self.settings, "strategy_momentum_weight", 0.6)
+            ),
+            "mean_reversion": self.config.get(
+                "mean_rev_weight", getattr(self.settings, "strategy_mean_rev_weight", 0.4)
+            ),
+            "ensemble": self.config.get(
+                "ensemble_weight", getattr(self.settings, "strategy_ensemble_weight", 1.0)
+            ),
         }
 
         self.min_flip_interval_s = self.config.get(
-            "min_flip_interval_s",
-            getattr(self.settings, "strategy_min_flip_interval_s", 60)
+            "min_flip_interval_s", getattr(self.settings, "strategy_min_flip_interval_s", 60)
         )
         self.max_new_risk_per_bar = self.config.get(
-            "max_new_risk_per_bar",
-            getattr(self.settings, "strategy_max_new_risk_per_bar", 0.15)
+            "max_new_risk_per_bar", getattr(self.settings, "strategy_max_new_risk_per_bar", 0.15)
         )
 
         # Precision settings
@@ -63,11 +67,14 @@ class StrategyEngine:
         self.last_flip_times: dict[str, datetime] = {}
         self.last_exposures: dict[str, float] = {}
 
-        logger.info("StrategyEngine initialized", extra={
-            "strategy_weights": self.strategy_weights,
-            "min_flip_interval_s": self.min_flip_interval_s,
-            "max_new_risk_per_bar": self.max_new_risk_per_bar
-        })
+        logger.info(
+            "StrategyEngine initialized",
+            extra={
+                "strategy_weights": self.strategy_weights,
+                "min_flip_interval_s": self.min_flip_interval_s,
+                "max_new_risk_per_bar": self.max_new_risk_per_bar,
+            },
+        )
 
     def _get_symbol_bucket(self, symbol: str) -> str:
         """
@@ -75,19 +82,16 @@ class StrategyEngine:
         Groups symbols alphabetically: A-F, G-M, N-S, T-Z
         """
         first_char = symbol[0].upper()
-        if first_char <= 'F':
-            return 'A-F'
-        elif first_char <= 'M':
-            return 'G-M'
-        elif first_char <= 'S':
-            return 'N-S'
+        if first_char <= "F":
+            return "A-F"
+        elif first_char <= "M":
+            return "G-M"
+        elif first_char <= "S":
+            return "N-S"
         else:
-            return 'T-Z'
+            return "T-Z"
 
-    async def build_execution_plan(
-        self,
-        signals: list[TradingSignal]
-    ) -> list[ExecutionPlan]:
+    async def build_execution_plan(self, signals: list[TradingSignal]) -> list[ExecutionPlan]:
         """
         Build execution plans from signals using netting and throttling rules.
 
@@ -116,15 +120,16 @@ class StrategyEngine:
 
         for symbol, symbol_signals in signals_by_symbol.items():
             try:
-                plan = await self._build_symbol_plan(symbol, symbol_signals, current_time, position_map)
+                plan = await self._build_symbol_plan(
+                    symbol, symbol_signals, current_time, position_map
+                )
                 if plan:
                     plans.append(plan)
             except Exception as e:
-                logger.error(f"Failed to build plan for {symbol}", extra={
-                    "symbol": symbol,
-                    "error": str(e),
-                    "signals_count": len(symbol_signals)
-                })
+                logger.error(
+                    f"Failed to build plan for {symbol}",
+                    extra={"symbol": symbol, "error": str(e), "signals_count": len(symbol_signals)},
+                )
                 continue
 
         return plans
@@ -134,7 +139,7 @@ class StrategyEngine:
         symbol: str,
         signals: list[TradingSignal],
         current_time: datetime,
-        position_map: dict[str, Any]
+        position_map: dict[str, Any],
     ) -> ExecutionPlan | None:
         """Build execution plan for a single symbol."""
 
@@ -144,7 +149,9 @@ class StrategyEngine:
 
         if current_position and account_value > 0:
             # Assume position has qty, price attributes
-            position_value = float(current_position.qty) * float(getattr(current_position, 'price', 100))
+            position_value = float(current_position.qty) * float(
+                getattr(current_position, "price", 100)
+            )
             from_exposure = position_value / account_value
             # Clamp to [-1, 1] range
             from_exposure = max(-1.0, min(1.0, from_exposure))
@@ -190,12 +197,15 @@ class StrategyEngine:
             direction = 1 if to_exposure > from_exposure else -1
             to_exposure = from_exposure + (direction * self.max_new_risk_per_bar)
             throttle_applied = True
-            logger.info(f"Risk per bar limit applied for {symbol}", extra={
-                "original_delta": risk_delta,
-                "max_allowed": self.max_new_risk_per_bar,
-                "from_exposure": from_exposure,
-                "to_exposure": to_exposure
-            })
+            logger.info(
+                f"Risk per bar limit applied for {symbol}",
+                extra={
+                    "original_delta": risk_delta,
+                    "max_allowed": self.max_new_risk_per_bar,
+                    "from_exposure": from_exposure,
+                    "to_exposure": to_exposure,
+                },
+            )
 
         # Convert exposure to quantity
         qty, notional, side = await self._exposure_to_qty(symbol, to_exposure, account_value)
@@ -208,7 +218,9 @@ class StrategyEngine:
         # Record metrics
         if self.metrics:
             symbol_bucket = self._get_symbol_bucket(symbol)
-            self.metrics.inc_counter("strategy_netting_decisions_total", {"symbol_bucket": symbol_bucket})
+            self.metrics.inc_counter(
+                "strategy_netting_decisions_total", {"symbol_bucket": symbol_bucket}
+            )
             if throttle_applied:
                 self.metrics.inc_counter("strategy_throttled_total")
 
@@ -222,15 +234,11 @@ class StrategyEngine:
             qty=qty,
             reason=reason,
             risk_allowed=True,  # Will be updated in gate_with_risk
-            risk_reason=None
+            risk_reason=None,
         )
 
     def _apply_throttling(
-        self,
-        symbol: str,
-        from_exposure: float,
-        target_exposure: float,
-        current_time: datetime
+        self, symbol: str, from_exposure: float, target_exposure: float, current_time: datetime
     ) -> tuple[float, bool]:
         """
         Apply throttling rules to prevent rapid position flips.
@@ -239,8 +247,8 @@ class StrategyEngine:
         """
         # Check if this is a flip (crossing zero or changing direction significantly)
         is_flip = (
-            (from_exposure > 0.1 and target_exposure < -0.1) or  # long to short
-            (from_exposure < -0.1 and target_exposure > 0.1)     # short to long
+            (from_exposure > 0.1 and target_exposure < -0.1)  # long to short
+            or (from_exposure < -0.1 and target_exposure > 0.1)  # short to long
         )
 
         if not is_flip:
@@ -256,13 +264,16 @@ class StrategyEngine:
                 direction = 1 if target_exposure > from_exposure else -1
                 throttled_exposure = from_exposure + (direction * max_change)
 
-                logger.info(f"Flip throttled for {symbol}", extra={
-                    "from_exposure": from_exposure,
-                    "target_exposure": target_exposure,
-                    "throttled_exposure": throttled_exposure,
-                    "time_since_flip": time_since_flip,
-                    "min_interval": self.min_flip_interval_s
-                })
+                logger.info(
+                    f"Flip throttled for {symbol}",
+                    extra={
+                        "from_exposure": from_exposure,
+                        "target_exposure": target_exposure,
+                        "throttled_exposure": throttled_exposure,
+                        "time_since_flip": time_since_flip,
+                        "min_interval": self.min_flip_interval_s,
+                    },
+                )
 
                 return throttled_exposure, True
 
@@ -271,16 +282,13 @@ class StrategyEngine:
         return target_exposure, False
 
     async def _exposure_to_qty(
-        self,
-        symbol: str,
-        exposure: float,
-        account_value: float
+        self, symbol: str, exposure: float, account_value: float
     ) -> tuple[Decimal, Decimal, Side]:
         """
         Convert exposure percentage to broker-ready quantity.
         """
         if abs(exposure) < 0.001:  # Essentially flat
-            return Decimal('0'), Decimal('0'), "flat"
+            return Decimal("0"), Decimal("0"), "flat"
 
         # Get current price (mock for now - in real implementation, fetch from market data)
         # For testing, assume reasonable prices
@@ -293,9 +301,7 @@ class StrategyEngine:
 
         # Calculate notional value
         notional_value = abs(exposure) * account_value
-        notional = Decimal(str(notional_value)).quantize(
-            Decimal('0.01'), rounding=ROUND_DOWN
-        )
+        notional = Decimal(str(notional_value)).quantize(Decimal("0.01"), rounding=ROUND_DOWN)
 
         # Calculate quantity
         qty_float = notional_value / price
@@ -303,7 +309,7 @@ class StrategyEngine:
             qty_float = -qty_float
 
         # Round to exchange precision
-        precision = Decimal('0.' + '0' * (self.qty_precision - 1) + '1')
+        precision = Decimal("0." + "0" * (self.qty_precision - 1) + "1")
         qty = Decimal(str(qty_float)).quantize(precision, rounding=ROUND_DOWN)
 
         # Determine side
@@ -317,9 +323,7 @@ class StrategyEngine:
         return qty, notional, side
 
     async def gate_with_risk(
-        self,
-        plan: ExecutionPlan,
-        portfolio_state: dict[str, Any] | None = None
+        self, plan: ExecutionPlan, portfolio_state: dict[str, Any] | None = None
     ) -> ExecutionPlan:
         """
         Gate execution plan through risk manager.
@@ -338,7 +342,7 @@ class StrategyEngine:
                 "qty": float(plan.qty),
                 "notional": float(plan.notional),
                 "order_type": "market",  # Assume market orders for strategy engine
-                "metadata": {"source": "strategy_engine", "reason": plan.reason}
+                "metadata": {"source": "strategy_engine", "reason": plan.reason},
             }
 
             # Call risk manager
@@ -368,7 +372,7 @@ class StrategyEngine:
                     qty=plan.qty,
                     reason=updated_reason,
                     risk_allowed=True,
-                    risk_reason=None
+                    risk_reason=None,
                 )
             else:
                 # Risk blocked - force flat position
@@ -378,12 +382,15 @@ class StrategyEngine:
                 if self.metrics:
                     self.metrics.inc_counter("strategy_blocked_total", {"reason": "risk_manager"})
 
-                logger.warning(f"Risk manager blocked order for {plan.symbol}", extra={
-                    "symbol": plan.symbol,
-                    "side": plan.side,
-                    "qty": float(plan.qty),
-                    "risk_reason": reason
-                })
+                logger.warning(
+                    f"Risk manager blocked order for {plan.symbol}",
+                    extra={
+                        "symbol": plan.symbol,
+                        "side": plan.side,
+                        "qty": float(plan.qty),
+                        "risk_reason": reason,
+                    },
+                )
 
                 return ExecutionPlan(
                     symbol=plan.symbol,
@@ -391,18 +398,18 @@ class StrategyEngine:
                     from_exposure=plan.from_exposure,
                     to_exposure=plan.from_exposure,  # Stay at current position
                     side="flat",
-                    notional=Decimal('0'),
-                    qty=Decimal('0'),
+                    notional=Decimal("0"),
+                    qty=Decimal("0"),
                     reason=blocked_reason,
                     risk_allowed=False,
-                    risk_reason=reason
+                    risk_reason=reason,
                 )
 
         except Exception as e:
-            logger.error(f"Risk gating failed for {plan.symbol}", extra={
-                "symbol": plan.symbol,
-                "error": str(e)
-            })
+            logger.error(
+                f"Risk gating failed for {plan.symbol}",
+                extra={"symbol": plan.symbol, "error": str(e)},
+            )
 
             # Default to blocked on error
             if self.metrics:
@@ -414,17 +421,15 @@ class StrategyEngine:
                 from_exposure=plan.from_exposure,
                 to_exposure=plan.from_exposure,
                 side="flat",
-                notional=Decimal('0'),
-                qty=Decimal('0'),
+                notional=Decimal("0"),
+                qty=Decimal("0"),
                 reason=f"{plan.reason}; risk=error",
                 risk_allowed=False,
-                risk_reason=f"Risk check failed: {str(e)}"
+                risk_reason=f"Risk check failed: {str(e)}",
             )
 
     async def generate_and_gate(
-        self,
-        signals: list[TradingSignal],
-        portfolio_state: dict[str, Any] | None = None
+        self, signals: list[TradingSignal], portfolio_state: dict[str, Any] | None = None
     ) -> list[ExecutionPlan]:
         """
         Complete pipeline: build plans → apply risk gate → return final plans.
@@ -445,11 +450,14 @@ class StrategyEngine:
                 # Use gauge to track planned notional by bucket
                 self.metrics.set_gauge(f"strategy_planned_notional_{bucket}", notional_value)
 
-        logger.info("Strategy engine completed", extra={
-            "signals_count": len(signals),
-            "plans_generated": len(plans),
-            "plans_risk_allowed": len([p for p in gated_plans if p.risk_allowed]),
-            "symbols": [p.symbol for p in gated_plans]
-        })
+        logger.info(
+            "Strategy engine completed",
+            extra={
+                "signals_count": len(signals),
+                "plans_generated": len(plans),
+                "plans_risk_allowed": len([p for p in gated_plans if p.risk_allowed]),
+                "symbols": [p.symbol for p in gated_plans],
+            },
+        )
 
         return gated_plans

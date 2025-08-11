@@ -24,12 +24,14 @@ from ..models.ensemble_model import EnsembleModel
 try:
     from ..infra.logging import get_structured_logger
     from ..infra.metrics import get_metrics_registry
+
     OBSERVABILITY_AVAILABLE = True
     logger = get_structured_logger("mlops.model_manager")
     metrics = get_metrics_registry()
 except ImportError:
     OBSERVABILITY_AVAILABLE = False
     import logging
+
     logger = logging.getLogger("mlops.model_manager")
     metrics = None
 
@@ -82,7 +84,10 @@ class ModelVersion:
 
 class SchemaMismatchError(ValueError):
     """Raised when feature schema doesn't match expected schema"""
-    def __init__(self, message: str, expected_schema: dict[str, str], received_schema: dict[str, str]):
+
+    def __init__(
+        self, message: str, expected_schema: dict[str, str], received_schema: dict[str, str]
+    ):
         super().__init__(message)
         self.expected_schema = expected_schema
         self.received_schema = received_schema
@@ -130,9 +135,9 @@ class ModelRegistry:
 
         # Get MLOps settings from config
         settings = get_settings()
-        self.drift_psi_warn = getattr(settings, 'mlops_drift_psi_warn', 0.1)
-        self.drift_psi_alert = getattr(settings, 'mlops_drift_psi_alert', 0.25)
-        self.inference_log_max_rows = getattr(settings, 'mlops_inference_log_max_rows', 200000)
+        self.drift_psi_warn = getattr(settings, "mlops_drift_psi_warn", 0.1)
+        self.drift_psi_alert = getattr(settings, "mlops_drift_psi_alert", 0.25)
+        self.inference_log_max_rows = getattr(settings, "mlops_inference_log_max_rows", 200000)
 
     def load_registry(self):
         """Load model registry from disk"""
@@ -211,9 +216,7 @@ class ModelRegistry:
         version = f"v{len(self.models[model_id]) + 1}"
 
         # Calculate training data hash
-        data_hash = hashlib.md5(
-            pd.util.hash_pandas_object(training_data).values
-        ).hexdigest()
+        data_hash = hashlib.md5(pd.util.hash_pandas_object(training_data).values).hexdigest()
 
         # Create model directory with new structure: artifacts/{model_name}/{version}/
         model_path = self.base_path / model_id / version
@@ -244,22 +247,22 @@ class ModelRegistry:
 
         # Branch 2.9: Create standardized feature schema
         from ..features.types import FeatureSchema
+
         try:
             feature_schema = FeatureSchema(
                 columns=list(training_data.columns),
-                dtypes={col: self._normalize_dtype_string(str(training_data[col].dtype))
-                       for col in training_data.columns}
+                dtypes={
+                    col: self._normalize_dtype_string(str(training_data[col].dtype))
+                    for col in training_data.columns
+                },
             )
             feature_schema_dict = {
                 "columns": feature_schema.columns,
-                "dtypes": feature_schema.dtypes
+                "dtypes": feature_schema.dtypes,
             }
         except Exception as e:
             logger.warning(f"Could not create FeatureSchema: {e}")
-            feature_schema_dict = {
-                "columns": list(training_data.columns),
-                "dtypes": feature_dtypes
-            }
+            feature_schema_dict = {"columns": list(training_data.columns), "dtypes": feature_dtypes}
 
         # Create metadata.json
         metadata = {
@@ -268,17 +271,17 @@ class ModelRegistry:
             "created_at": datetime.now(UTC).isoformat(),
             "train_window": train_window or {},
             "feature_names": list(training_data.columns),  # Legacy compatibility
-            "feature_dtypes": feature_dtypes,              # Legacy compatibility
-            "feature_schema": feature_schema_dict,         # Branch 2.9: Standardized schema
+            "feature_dtypes": feature_dtypes,  # Legacy compatibility
+            "feature_schema": feature_schema_dict,  # Branch 2.9: Standardized schema
             "metrics": metrics,
             "artifact_hash": artifact_hash,
             "training_samples": len(training_data),
-            "features_count": len(training_data.columns)
+            "features_count": len(training_data.columns),
         }
 
         # Store metadata.json
         metadata_path = model_path / "metadata.json"
-        with open(metadata_path, 'w') as f:
+        with open(metadata_path, "w") as f:
             json.dump(metadata, f, indent=2)
 
         # Store reference distributions for drift detection
@@ -312,14 +315,12 @@ class ModelRegistry:
             version=version,
             metrics=metrics,
             training_samples=len(training_data),
-            artifact_hash=artifact_hash
+            artifact_hash=artifact_hash,
         )
 
         # Increment registration metric (using module-level metrics registry)
-        if globals().get('metrics') and hasattr(globals()['metrics'], 'inc_counter'):
-            globals()['metrics'].inc_counter("mlops_models_registered_total", {
-                "model": model_id
-            })
+        if globals().get("metrics") and hasattr(globals()["metrics"], "inc_counter"):
+            globals()["metrics"].inc_counter("mlops_models_registered_total", {"model": model_id})
 
         return model_version
 
@@ -383,15 +384,11 @@ class ModelRegistry:
         champion_file.parent.mkdir(parents=True, exist_ok=True)
         champion_file.write_text(version)
 
-        audit_logger.info(
-            "model_promoted_to_champion", model_id=model_id, version=version
-        )
+        audit_logger.info("model_promoted_to_champion", model_id=model_id, version=version)
 
         # Increment promotion metric (using module-level metrics registry)
-        if globals().get('metrics') and hasattr(globals()['metrics'], 'inc_counter'):
-            globals()['metrics'].inc_counter("mlops_models_promoted_total", {
-                "model": model_id
-            })
+        if globals().get("metrics") and hasattr(globals()["metrics"], "inc_counter"):
+            globals()["metrics"].inc_counter("mlops_models_promoted_total", {"model": model_id})
 
         return True
 
@@ -399,7 +396,9 @@ class ModelRegistry:
         """Get all versions of a model"""
         return self.models.get(model_id, [])
 
-    def load_artifacts(self, model_id: str, version: str) -> tuple[Any, dict[str, Any], dict[str, Any]]:
+    def load_artifacts(
+        self, model_id: str, version: str
+    ) -> tuple[Any, dict[str, Any], dict[str, Any]]:
         """
         Load model artifacts from disk.
 
@@ -415,14 +414,14 @@ class ModelRegistry:
 
             # Load model object
             model_path = version_path / "model.bin"
-            with open(model_path, 'rb') as f:
+            with open(model_path, "rb") as f:
                 model_obj = pickle.load(f)
 
             # Load artifacts (optional)
             artifacts = {}
             artifacts_path = version_path / "artifacts.pkl"
             if artifacts_path.exists():
-                with open(artifacts_path, 'rb') as f:
+                with open(artifacts_path, "rb") as f:
                     artifacts = pickle.load(f)
 
             # Load metadata
@@ -430,23 +429,27 @@ class ModelRegistry:
             with open(metadata_path) as f:
                 metadata = json.load(f)
 
-            logger.debug(f"Loaded artifacts for {model_id}/{version}", {
-                "model_id": model_id,
-                "version": version,
-                "artifact_hash": metadata.get("artifact_hash")
-            })
+            logger.debug(
+                f"Loaded artifacts for {model_id}/{version}",
+                {
+                    "model_id": model_id,
+                    "version": version,
+                    "artifact_hash": metadata.get("artifact_hash"),
+                },
+            )
 
             return model_obj, artifacts, metadata
 
         except Exception as e:
-            logger.error(f"Failed to load artifacts for {model_id}/{version}", {
-                "error": str(e),
-                "model_id": model_id,
-                "version": version
-            })
+            logger.error(
+                f"Failed to load artifacts for {model_id}/{version}",
+                {"error": str(e), "model_id": model_id, "version": version},
+            )
             raise
 
-    def assert_feature_schema(self, live_df: pd.DataFrame, metadata: dict[str, Any]) -> pd.DataFrame:
+    def assert_feature_schema(
+        self, live_df: pd.DataFrame, metadata: dict[str, Any]
+    ) -> pd.DataFrame:
         """
         Validate feature schema against expected schema.
 
@@ -460,8 +463,8 @@ class ModelRegistry:
         Raises:
             SchemaMismatchError: If schema doesn't match
         """
-        expected_features = set(metadata['feature_names'])
-        expected_dtypes = metadata.get('feature_dtypes', {})
+        expected_features = set(metadata["feature_names"])
+        expected_dtypes = metadata.get("feature_dtypes", {})
         received_features = set(live_df.columns)
         received_dtypes = {col: str(live_df[col].dtype) for col in live_df.columns}
 
@@ -477,13 +480,11 @@ class ModelRegistry:
                 error_msg += f". Extra features: {sorted(extra_features)}"
 
             raise SchemaMismatchError(
-                error_msg,
-                expected_schema=expected_dtypes,
-                received_schema=received_dtypes
+                error_msg, expected_schema=expected_dtypes, received_schema=received_dtypes
             )
 
         # Reorder columns to match expected order if needed
-        expected_order = metadata['feature_names']
+        expected_order = metadata["feature_names"]
         if list(live_df.columns) != expected_order:
             logger.debug("Reordering columns to match expected schema")
             live_df = live_df[expected_order]
@@ -497,7 +498,7 @@ class ModelRegistry:
         features: pd.DataFrame,
         prediction: float,
         truth: float | None,
-        latency_ms: float
+        latency_ms: float,
     ) -> None:
         """
         Record inference telemetry to parquet log.
@@ -512,17 +513,15 @@ class ModelRegistry:
         """
         try:
             # Create features hash (never log raw features)
-            features_hash = hashlib.sha256(
-                str(features.values.tobytes()).encode()
-            ).hexdigest()[:16]
+            features_hash = hashlib.sha256(str(features.values.tobytes()).encode()).hexdigest()[:16]
 
             # Create inference record
             inference_record = {
-                'ts': datetime.now(UTC).isoformat(),
-                'features_hash': features_hash,
-                'prediction': prediction,
-                'truth': truth,
-                'latency_ms': latency_ms
+                "ts": datetime.now(UTC).isoformat(),
+                "features_hash": features_hash,
+                "prediction": prediction,
+                "truth": truth,
+                "latency_ms": latency_ms,
             }
 
             # Append to inference log
@@ -550,23 +549,22 @@ class ModelRegistry:
                 new_df.to_parquet(log_path, index=False)
 
             # Record metrics (using module-level metrics registry)
-            if globals().get('metrics') and hasattr(globals()['metrics'], 'inc_counter'):
-                globals()['metrics'].inc_counter("model_inferences_total", {
-                    "model": model_id,
-                    "version": version
-                })
+            if globals().get("metrics") and hasattr(globals()["metrics"], "inc_counter"):
+                globals()["metrics"].inc_counter(
+                    "model_inferences_total", {"model": model_id, "version": version}
+                )
 
-                globals()['metrics'].observe_histogram("model_latency_seconds", latency_ms / 1000.0, {
-                    "model": model_id,
-                    "version": version
-                })
+                globals()["metrics"].observe_histogram(
+                    "model_latency_seconds",
+                    latency_ms / 1000.0,
+                    {"model": model_id, "version": version},
+                )
 
         except Exception as e:
-            logger.error(f"Failed to record inference for {model_id}/{version}", {
-                "error": str(e),
-                "model_id": model_id,
-                "version": version
-            })
+            logger.error(
+                f"Failed to record inference for {model_id}/{version}",
+                {"error": str(e), "model_id": model_id, "version": version},
+            )
 
     def _compute_file_hash(self, file_path: Path) -> str:
         """Compute SHA256 hash of a file."""
@@ -581,25 +579,21 @@ class ModelRegistry:
         dtype_str = dtype_str.lower()
 
         # Map to standard dtype strings
-        if 'float64' in dtype_str or 'double' in dtype_str:
-            return 'float64'
-        elif 'float32' in dtype_str or 'single' in dtype_str:
-            return 'float32'
-        elif 'int64' in dtype_str:
-            return 'int64'
-        elif 'int32' in dtype_str:
-            return 'int32'
-        elif 'bool' in dtype_str:
-            return 'bool'
+        if "float64" in dtype_str or "double" in dtype_str:
+            return "float64"
+        elif "float32" in dtype_str or "single" in dtype_str:
+            return "float32"
+        elif "int64" in dtype_str:
+            return "int64"
+        elif "int32" in dtype_str:
+            return "int32"
+        elif "bool" in dtype_str:
+            return "bool"
         else:
             # Default to float64 for numeric, keep original for others
-            return 'float64' if pd.api.types.is_numeric_dtype(dtype_str) else dtype_str
+            return "float64" if pd.api.types.is_numeric_dtype(dtype_str) else dtype_str
 
-    def _store_reference_distributions(
-        self,
-        model_path: Path,
-        training_data: pd.DataFrame
-    ) -> None:
+    def _store_reference_distributions(self, model_path: Path, training_data: pd.DataFrame) -> None:
         """Store reference distributions for PSI drift detection."""
         reference_distributions = {}
 
@@ -611,29 +605,29 @@ class ModelRegistry:
                     try:
                         counts, bin_edges = np.histogram(values, bins=10)
                         reference_distributions[column] = {
-                            'bin_edges': bin_edges.tolist(),
-                            'bin_counts': counts.tolist(),
-                            'mean': float(values.mean()),
-                            'std': float(values.std())
+                            "bin_edges": bin_edges.tolist(),
+                            "bin_counts": counts.tolist(),
+                            "mean": float(values.mean()),
+                            "std": float(values.std()),
                         }
                     except Exception:
                         reference_distributions[column] = {
-                            'bin_edges': [],
-                            'bin_counts': [],
-                            'mean': 0.0,
-                            'std': 1.0
+                            "bin_edges": [],
+                            "bin_counts": [],
+                            "mean": 0.0,
+                            "std": 1.0,
                         }
             else:
                 # For categorical features, store value counts
                 value_counts = training_data[column].value_counts()
                 reference_distributions[column] = {
-                    'categories': value_counts.index.tolist(),
-                    'counts': value_counts.values.tolist(),
-                    'total': len(training_data[column])
+                    "categories": value_counts.index.tolist(),
+                    "counts": value_counts.values.tolist(),
+                    "total": len(training_data[column]),
                 }
 
         ref_path = model_path / "reference_distributions.json"
-        with open(ref_path, 'w') as f:
+        with open(ref_path, "w") as f:
             json.dump(reference_distributions, f, indent=2)
 
 
@@ -648,9 +642,9 @@ class DriftDetector:
 
         # Get drift thresholds from settings
         settings = get_settings()
-        self.drift_psi_warn = getattr(settings, 'mlops_drift_psi_warn', 0.1)
-        self.drift_psi_alert = getattr(settings, 'mlops_drift_psi_alert', 0.25)
-        self.perf_alert_drop = getattr(settings, 'mlops_perf_alert_drop', 0.05)
+        self.drift_psi_warn = getattr(settings, "mlops_drift_psi_warn", 0.1)
+        self.drift_psi_alert = getattr(settings, "mlops_drift_psi_alert", 0.25)
+        self.perf_alert_drop = getattr(settings, "mlops_perf_alert_drop", 0.05)
 
     def set_reference_data(self, model_id: str, data: pd.DataFrame):
         """Set reference data for drift detection"""
@@ -661,9 +655,7 @@ class DriftDetector:
             "feature_names": list(data.columns),
         }
 
-    def detect_data_drift(
-        self, model_id: str, current_data: pd.DataFrame
-    ) -> DriftDetection | None:
+    def detect_data_drift(self, model_id: str, current_data: pd.DataFrame) -> DriftDetection | None:
         """Detect data drift using PSI and statistical tests"""
 
         # Try to get reference distributions from registry
@@ -716,23 +708,27 @@ class DriftDetector:
                     "feature_drift_scores": drift_scores,
                     "avg_drift_score": avg_drift,
                 },
-                model_name=model_id
+                model_name=model_id,
             )
 
         return None
 
     def _detect_drift_with_psi(
-        self,
-        model_id: str,
-        champion: ModelVersion,
-        current_data: pd.DataFrame
+        self, model_id: str, champion: ModelVersion, current_data: pd.DataFrame
     ) -> DriftDetection | None:
         """Detect drift using Population Stability Index (PSI)"""
         try:
             # Load reference distributions
-            ref_dists_path = self.registry.base_path / model_id / champion.version / "reference_distributions.json"
+            ref_dists_path = (
+                self.registry.base_path
+                / model_id
+                / champion.version
+                / "reference_distributions.json"
+            )
             if not ref_dists_path.exists():
-                logger.warning(f"No reference distributions found for {model_id}/{champion.version}")
+                logger.warning(
+                    f"No reference distributions found for {model_id}/{champion.version}"
+                )
                 return None
 
             with open(ref_dists_path) as f:
@@ -745,13 +741,11 @@ class DriftDetector:
                     continue
 
                 ref_dist = reference_distributions.get(feature, {})
-                if not ref_dist.get('bin_edges'):
+                if not ref_dist.get("bin_edges"):
                     continue
 
                 psi_score = self._compute_psi(
-                    current_data[feature].values,
-                    ref_dist['bin_edges'],
-                    ref_dist['bin_counts']
+                    current_data[feature].values, ref_dist["bin_edges"], ref_dist["bin_counts"]
                 )
                 psi_scores[feature] = psi_score
 
@@ -777,50 +771,51 @@ class DriftDetector:
                     drift_type=DriftType.DATA_DRIFT,
                     severity=max_psi / self.drift_psi_alert,  # Normalize severity
                     detected_at=datetime.now(),
-                    affected_features=[f for f, s in psi_scores.items() if s >= self.drift_psi_warn],
+                    affected_features=[
+                        f for f, s in psi_scores.items() if s >= self.drift_psi_warn
+                    ],
                     recommendation=f"Data drift detected with PSI {max_psi:.3f}. Consider retraining model.",
                     details={
                         "psi_scores": psi_scores,
                         "max_psi": max_psi,
                         "avg_psi": avg_psi,
-                        "threshold": threshold
+                        "threshold": threshold,
                     },
                     model_name=model_id,
                     psi_score=max_psi,
-                    threshold=threshold
+                    threshold=threshold,
                 )
 
                 # Increment drift alert metric
-                if globals().get('metrics') and hasattr(globals()['metrics'], 'inc_counter'):
-                    globals()['metrics'].inc_counter("model_drift_alerts_total", {
-                        "model": model_id,
-                        "type": "input_psi"
-                    })
+                if globals().get("metrics") and hasattr(globals()["metrics"], "inc_counter"):
+                    globals()["metrics"].inc_counter(
+                        "model_drift_alerts_total", {"model": model_id, "type": "input_psi"}
+                    )
 
-                logger.warning(f"Data drift detected for {model_id}", {
-                    "model_id": model_id,
-                    "drift_type": "input_psi",
-                    "severity": severity,
-                    "max_psi": max_psi,
-                    "threshold": threshold
-                })
+                logger.warning(
+                    f"Data drift detected for {model_id}",
+                    {
+                        "model_id": model_id,
+                        "drift_type": "input_psi",
+                        "severity": severity,
+                        "max_psi": max_psi,
+                        "threshold": threshold,
+                    },
+                )
 
                 return drift_detection
 
             return None
 
         except Exception as e:
-            logger.error(f"Failed to detect PSI drift for {model_id}", {
-                "error": str(e),
-                "model_id": model_id
-            })
+            logger.error(
+                f"Failed to detect PSI drift for {model_id}",
+                {"error": str(e), "model_id": model_id},
+            )
             return None
 
     def _compute_psi(
-        self,
-        live_values: np.ndarray,
-        ref_bin_edges: list[float],
-        ref_bin_counts: list[int]
+        self, live_values: np.ndarray, ref_bin_edges: list[float], ref_bin_counts: list[int]
     ) -> float:
         """Compute Population Stability Index between live and reference data."""
         if not ref_bin_edges or not ref_bin_counts:
@@ -900,7 +895,9 @@ class ModelManager:
 
     def __init__(self, registry_root: str | None = None):
         self.settings = get_settings()
-        self.registry = ModelRegistry(registry_root or getattr(self.settings, 'mlops_registry_root', './artifacts'))
+        self.registry = ModelRegistry(
+            registry_root or getattr(self.settings, "mlops_registry_root", "./artifacts")
+        )
         self.drift_detector = DriftDetector(registry=self.registry)
         self.monitoring_data = {}
         self.retraining_queue = []
@@ -917,9 +914,7 @@ class ModelManager:
         # Create and train ensemble model
         ensemble_model = EnsembleModel()
 
-        training_results = await ensemble_model.train_models(
-            training_data, features, target_column
-        )
+        training_results = await ensemble_model.train_models(training_data, features, target_column)
 
         # Calculate training metrics
         # Make some predictions on validation set for metrics
@@ -1071,9 +1066,9 @@ class ModelManager:
 
         # Keep only recent data
         if len(self.monitoring_data[model_id]["predictions"]) > 10000:
-            self.monitoring_data[model_id]["predictions"] = self.monitoring_data[
-                model_id
-            ]["predictions"][-5000:]
+            self.monitoring_data[model_id]["predictions"] = self.monitoring_data[model_id][
+                "predictions"
+            ][-5000:]
 
         # Calculate monitoring metrics
         recent_preds = self.monitoring_data[model_id]["predictions"][-1000:]
@@ -1087,7 +1082,9 @@ class ModelManager:
                 prediction_count=len(recent_preds),
                 avg_confidence=np.mean(confidences),
                 accuracy=1
-                - np.mean([abs(p - a) / a for p, a in zip(pred_values, actual_values, strict=False)]),
+                - np.mean(
+                    [abs(p - a) / a for p, a in zip(pred_values, actual_values, strict=False)]
+                ),
                 latency_ms=50,  # Placeholder
                 error_rate=0.01,  # Placeholder
                 drift_score=0.1,  # Placeholder
@@ -1139,9 +1136,7 @@ class ModelManager:
         for model_id in self.retraining_queue.copy():
             try:
                 # Retrain model
-                new_version = await self.train_and_register_model(
-                    model_id, training_data, features
-                )
+                new_version = await self.train_and_register_model(model_id, training_data, features)
 
                 # Set as challenger
                 new_version.status = ModelStatus.CHALLENGER
@@ -1179,9 +1174,7 @@ class ModelManager:
                 "champion_version": champion.version if champion else None,
                 "latest_version": latest.version if latest else None,
                 "champion_metrics": champion.metrics if champion else {},
-                "latest_monitoring": (
-                    latest_monitoring.__dict__ if latest_monitoring else None
-                ),
+                "latest_monitoring": (latest_monitoring.__dict__ if latest_monitoring else None),
                 "in_retraining_queue": model_id in self.retraining_queue,
                 "versions": [
                     {
@@ -1217,7 +1210,7 @@ def register_model(
     metrics: dict[str, float],
     feature_list: list[str],
     feature_dtypes: dict[str, str],
-    train_window: dict[str, str]
+    train_window: dict[str, str],
 ) -> ModelVersion:
     """Convenience function to register a model with the global manager"""
     manager = get_model_manager()

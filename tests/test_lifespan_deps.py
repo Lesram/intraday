@@ -26,14 +26,14 @@ class TestLifespanManagement:
 
         async with lifespan(test_app):
             # Check that all components are initialized in app.state
-            assert hasattr(test_app.state, 'alpaca_client')
-            assert hasattr(test_app.state, 'sentiment_analyzer')
-            assert hasattr(test_app.state, 'feature_engineer')
-            assert hasattr(test_app.state, 'model_manager')
-            assert hasattr(test_app.state, 'ensemble_model')
-            assert hasattr(test_app.state, 'risk_manager')
-            assert hasattr(test_app.state, 'strategy_manager')
-            assert hasattr(test_app.state, 'ws_manager')
+            assert hasattr(test_app.state, "alpaca_client")
+            assert hasattr(test_app.state, "sentiment_analyzer")
+            assert hasattr(test_app.state, "feature_engineer")
+            assert hasattr(test_app.state, "model_manager")
+            assert hasattr(test_app.state, "ensemble_model")
+            assert hasattr(test_app.state, "risk_manager")
+            assert hasattr(test_app.state, "strategy_manager")
+            assert hasattr(test_app.state, "ws_manager")
 
             # Check that components are not None
             assert test_app.state.alpaca_client is not None
@@ -49,7 +49,7 @@ class TestLifespanManagement:
         # Test that the lifespan completes even with component initialization errors
         # The actual implementation uses defensive programming and continues startup
         # with error logging rather than crashing the entire application
-        with patch('logging.error') as mock_error:
+        with patch("logging.error") as mock_error:
             async with lifespan(test_app):
                 pass
             # Verify that error logging occurred during startup
@@ -60,8 +60,8 @@ class TestLifespanManagement:
         """Test that lifespan properly cleans up resources"""
         test_app = FastAPI()
 
-        with patch('backend.api.main.cleanup_alpaca_client') as mock_cleanup:
-            with patch('backend.api.main.flush_audit_logs') as mock_flush:
+        with patch("backend.api.main.cleanup_alpaca_client") as mock_cleanup:
+            with patch("backend.api.main.flush_audit_logs") as mock_flush:
                 async with lifespan(test_app):
                     # Add mock ws_manager for testing
                     test_app.state.ws_manager = AsyncMock()
@@ -113,9 +113,13 @@ class TestDependencyInjection:
             # All components should be available
             components = data["components"]
             expected_components = [
-                "risk_manager", "ensemble_model", "strategy_manager",
-                "alpaca_client", "sentiment_analyzer", "feature_engineer",
-                "model_manager"
+                "risk_manager",
+                "ensemble_model",
+                "strategy_manager",
+                "alpaca_client",
+                "sentiment_analyzer",
+                "feature_engineer",
+                "model_manager",
             ]
 
             for component in expected_components:
@@ -125,10 +129,9 @@ class TestDependencyInjection:
     def test_trading_signal_endpoint_with_dependencies(self):
         """Test trading signal endpoint uses dependency injection"""
         with TestClient(app) as client:
-            with patch.object(app.state, 'alpaca_client') as mock_alpaca:
-                with patch.object(app.state, 'feature_engineer') as mock_features:
-                    with patch.object(app.state, 'strategy_manager') as mock_strategy:
-
+            with patch.object(app.state, "alpaca_client") as mock_alpaca:
+                with patch.object(app.state, "feature_engineer") as mock_features:
+                    with patch.object(app.state, "strategy_manager") as mock_strategy:
                         # Mock return values
                         mock_alpaca.get_historical_data.return_value = MagicMock()
                         mock_alpaca.get_historical_data.return_value.empty = False
@@ -149,7 +152,9 @@ class TestDependencyInjection:
                         response = client.get("/api/v1/signals/AAPL")
 
                         # Should succeed with mocked dependencies
-                        assert response.status_code == 200 or response.status_code == 500  # 500 is ok for mock
+                        assert (
+                            response.status_code == 200 or response.status_code == 500
+                        )  # 500 is ok for mock
 
     def test_dependency_providers_return_correct_types(self):
         """Test that dependency providers return correct component types"""
@@ -209,9 +214,9 @@ class TestWebSocketBackpressureHandling:
         await ws_manager.add_client(client_id, mock_websocket)
 
         assert client_id in ws_manager.clients
-        assert ws_manager.clients[client_id]['websocket'] == mock_websocket
-        assert ws_manager.clients[client_id]['queue'] is not None
-        assert ws_manager.clients[client_id]['send_task'] is not None
+        assert ws_manager.clients[client_id]["websocket"] == mock_websocket
+        assert ws_manager.clients[client_id]["queue"] is not None
+        assert ws_manager.clients[client_id]["send_task"] is not None
 
         # Remove client
         await ws_manager.remove_client(client_id)
@@ -268,7 +273,7 @@ class TestWebSocketBackpressureHandling:
         await ws_manager.add_client(client_id, mock_websocket)
 
         # Simulate stale client (old last_ping)
-        ws_manager.clients[client_id]['last_ping'] = time.time() - 120  # 2 minutes ago
+        ws_manager.clients[client_id]["last_ping"] = time.time() - 120  # 2 minutes ago
 
         # Heartbeat should detect and remove stale client
         current_time = time.time()
@@ -277,7 +282,7 @@ class TestWebSocketBackpressureHandling:
         # Simulate heartbeat loop logic
         stale_clients = []
         for cid, client_info in ws_manager.clients.items():
-            if current_time - client_info['last_ping'] > 60:
+            if current_time - client_info["last_ping"] > 60:
                 stale_clients.append(cid)
 
         assert client_id in stale_clients
@@ -312,10 +317,10 @@ class TestWebSocketIntegration:
 
         # Simulate pong response
         if client_id in ws_manager.clients:
-            ws_manager.clients[client_id]['last_ping'] = time.time()
+            ws_manager.clients[client_id]["last_ping"] = time.time()
 
         # Check that last_ping was updated
-        assert ws_manager.clients[client_id]['last_ping'] > time.time() - 1
+        assert ws_manager.clients[client_id]["last_ping"] > time.time() - 1
 
         await ws_manager.remove_client(client_id)
 
@@ -341,7 +346,7 @@ class TestPrometheusMetrics:
         # Check that the metrics middleware is applied
         # This is verified by checking the middleware stack
         middlewares = [middleware.cls.__name__ for middleware in app.user_middleware]
-        assert 'metrics_middleware' in str(app.router.routes) or len(app.user_middleware) > 0
+        assert "metrics_middleware" in str(app.router.routes) or len(app.user_middleware) > 0
 
     def test_metrics_endpoint_availability(self):
         """Test that metrics endpoint is available"""
@@ -389,7 +394,7 @@ class TestRouteContinuity:
         """Test that trading signals endpoint maintains expected structure"""
         with TestClient(app) as client:
             # Mock the dependencies to avoid actual service calls
-            with patch.object(app.state, 'strategy_manager', None):
+            with patch.object(app.state, "strategy_manager", None):
                 response = client.get("/api/v1/signals/AAPL")
                 # Should return 503 when strategy manager is not available
                 assert response.status_code == 503

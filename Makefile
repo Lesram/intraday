@@ -54,11 +54,11 @@ help:
 	@echo "Development:"
 	@echo "  dev-setup      - Install development dependencies"
 	@echo "  clean          - Clean build artifacts and cache"
-	@echo ""  
+	@echo ""
 	@echo "CI/CD targets:"
 	@echo "  ci-test        - Run CI test suite with coverage"
 	@echo "  ci-quality     - Run all quality checks (lint, format, type, security)"
-	@echo "  ci-e2e         - Run end-to-end golden path tests" 
+	@echo "  ci-e2e         - Run end-to-end golden path tests"
 	@echo "  ci-full        - Complete CI pipeline (quality + tests + coverage)"
 	@echo ""
 	@echo "Docker targets:"
@@ -173,7 +173,7 @@ ci-quality:
 	ruff check . --no-fix --output-format=github
 	@echo "→ Format checking..."
 	ruff format --check .
-	@echo "→ Type checking with mypy..." 
+	@echo "→ Type checking with mypy..."
 	mypy backend/ tests/ --strict --show-error-codes
 	@echo "→ Security scanning with bandit..."
 	bandit -r backend/ -lll -f json -o bandit-report.json
@@ -212,7 +212,7 @@ docker-test:
 	@sleep 5
 	@echo "Testing health endpoints..."
 	curl -f http://localhost:8001/healthz || (docker logs test-container && false)
-	curl -f http://localhost:8001/readyz || (docker logs test-container && false) 
+	curl -f http://localhost:8001/readyz || (docker logs test-container && false)
 	curl -f http://localhost:8001/metrics || (docker logs test-container && false)
 	@echo "✅ Docker container healthy"
 	docker stop test-container
@@ -523,7 +523,7 @@ production-readiness-check:
 	@echo ""
 	@echo "🎉 Production Operations Hardening Status:"
 	@echo "   ✅ Resilience infrastructure (circuit breakers, retry, DLQ)"
-	@echo "   ✅ Canary deployment with SLO-based promotion/rollback"  
+	@echo "   ✅ Canary deployment with SLO-based promotion/rollback"
 	@echo "   ✅ Chaos engineering test suite with fault injection"
 	@echo "   ✅ Order integrity system with FSM and audit logging"
 	@echo "   ✅ Live trading safety modes (SHADOW/DRY_RUN/LIVE)"

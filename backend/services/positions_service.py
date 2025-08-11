@@ -58,7 +58,7 @@ class PositionsService:
                     qty=0.0,
                     price=100.0,  # Mock price
                     avg_cost=100.0,
-                    market_value=0.0
+                    market_value=0.0,
                 )
 
         logger.debug(f"Retrieved positions for {len(symbols)} symbols")
@@ -67,9 +67,5 @@ class PositionsService:
     def set_mock_position(self, symbol: str, qty: float, price: float = 100.0) -> None:
         """Set a mock position for testing purposes."""
         self._mock_positions[symbol] = Position(
-            symbol=symbol,
-            qty=qty,
-            price=price,
-            avg_cost=price,
-            market_value=qty * price
+            symbol=symbol, qty=qty, price=price, avg_cost=price, market_value=qty * price
         )

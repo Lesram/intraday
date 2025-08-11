@@ -183,8 +183,8 @@ class RiskManager(AsyncRiskManager):
 """
 
 # Write to file with proper UTF-8 encoding
-target_file = r'C:\Users\Marsel\intra\algotrading_platform\backend\risk\risk_manager.py'
-with open(target_file, 'w', encoding='utf-8', newline='\n') as f:
+target_file = r"C:\Users\Marsel\intra\algotrading_platform\backend\risk\risk_manager.py"
+with open(target_file, "w", encoding="utf-8", newline="\n") as f:
     f.write(content)
 
 print(f"Successfully created {target_file}")

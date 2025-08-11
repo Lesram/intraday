@@ -3,12 +3,12 @@ Core test: Routes and DTOs contract tests.
 Tests that public API contracts (paths + DTOs) are stable and backwards compatible.
 """
 
-import json
-from typing import Dict, Any, List, Optional
 from dataclasses import dataclass
+import json
+from typing import Any, Optional
 
-import pytest
 from pydantic import BaseModel
+import pytest
 
 from tests.helpers.app import TestAppContext
 
@@ -22,7 +22,7 @@ class HealthResponseSchema(BaseModel):
 
 class ReadinessResponseSchema(BaseModel):
     status: str
-    checks: Dict[str, bool]
+    checks: dict[str, bool]
     timestamp: str
 
 
@@ -30,7 +30,7 @@ class ErrorResponseSchema(BaseModel):
     error: str
     message: str
     request_id: Optional[str] = None
-    details: Optional[Dict[str, Any]] = None
+    details: Optional[dict[str, Any]] = None
 
 
 class MetricsResponseSchema(BaseModel):
@@ -52,12 +52,13 @@ class LoginResponseSchema(BaseModel):
 @dataclass
 class RouteContractTest:
     """Defines a contract test for a specific route."""
+
     path: str
     method: str
     expected_status: int
     response_schema: Optional[type] = None
-    request_payload: Optional[Dict[str, Any]] = None
-    headers: Optional[Dict[str, str]] = None
+    request_payload: Optional[dict[str, Any]] = None
+    headers: Optional[dict[str, str]] = None
     description: str = ""
 
 
@@ -72,27 +73,27 @@ class TestRoutesAndDTOsContract:
             method="GET",
             expected_status=200,
             response_schema=HealthResponseSchema,
-            description="Liveness probe endpoint"
+            description="Liveness probe endpoint",
         ),
         RouteContractTest(
             path="/readyz",
             method="GET",
             expected_status=200,  # May be 503 if dependencies unhealthy
             response_schema=ReadinessResponseSchema,
-            description="Readiness probe endpoint"
+            description="Readiness probe endpoint",
         ),
         RouteContractTest(
             path="/health",
             method="GET",
             expected_status=200,
             response_schema=HealthResponseSchema,
-            description="Legacy health check endpoint"
+            description="Legacy health check endpoint",
         ),
         RouteContractTest(
             path="/metrics",
             method="GET",
             expected_status=200,
-            description="Prometheus metrics endpoint (text format)"
+            description="Prometheus metrics endpoint (text format)",
         ),
         RouteContractTest(
             path="/auth/login",
@@ -100,7 +101,7 @@ class TestRoutesAndDTOsContract:
             expected_status=200,
             response_schema=LoginResponseSchema,
             request_payload={"email": "test@example.com", "password": "testpass123"},
-            description="Authentication login endpoint"
+            description="Authentication login endpoint",
         ),
     ]
 
@@ -164,7 +165,7 @@ class TestRoutesAndDTOsContract:
 
             # Should contain Prometheus format markers
             text = response.text
-            assert "# HELP" in text or "# TYPE" in text or len(text.split('\n')) > 1
+            assert "# HELP" in text or "# TYPE" in text or len(text.split("\n")) > 1
 
             # Should not be JSON
             try:
@@ -189,7 +190,7 @@ class TestRoutesAndDTOsContract:
                     response = await client.post(
                         route_test.path,
                         json=route_test.request_payload,
-                        headers=route_test.headers or {}
+                        headers=route_test.headers or {},
                     )
                 else:
                     continue
@@ -204,8 +205,10 @@ class TestRoutesAndDTOsContract:
                     continue
 
                 # Should not return 4xx errors for basic requests
-                assert response.status_code < 400 or response.status_code in [401, 403], \
-                    f"Route {route_test.path} returned {response.status_code}: {response.text}"
+                assert response.status_code < 400 or response.status_code in [
+                    401,
+                    403,
+                ], f"Route {route_test.path} returned {response.status_code}: {response.text}"
 
     async def test_error_response_format_consistency(self):
         """Test that error responses have consistent format."""
@@ -245,15 +248,14 @@ class TestRoutesAndDTOsContract:
         """Test that CORS headers are present for browser compatibility."""
         async with TestAppContext() as context:
             response = await context.client.get(
-                "/health",
-                headers={"Origin": "http://localhost:3000"}
+                "/health", headers={"Origin": "http://localhost:3000"}
             )
 
             # Check for CORS headers (may not be implemented yet)
             cors_headers = {
                 "access-control-allow-origin",
                 "access-control-allow-methods",
-                "access-control-allow-headers"
+                "access-control-allow-headers",
             }
 
             response_headers = {k.lower() for k in response.headers.keys()}
@@ -275,8 +277,9 @@ class TestRoutesAndDTOsContract:
                     response = await client.get(endpoint)
                     if response.status_code == 200:
                         content_type = response.headers.get("content-type", "")
-                        assert "application/json" in content_type, \
-                            f"Endpoint {endpoint} should return JSON content type"
+                        assert (
+                            "application/json" in content_type
+                        ), f"Endpoint {endpoint} should return JSON content type"
                 except Exception:
                     print(f"Endpoint {endpoint} not accessible for content-type test")
 
@@ -286,8 +289,9 @@ class TestRoutesAndDTOsContract:
                 if response.status_code == 200:
                     content_type = response.headers.get("content-type", "")
                     # Prometheus metrics should be text/plain
-                    assert "text" in content_type or content_type == "", \
-                        f"/metrics should return text content type, got: {content_type}"
+                    assert (
+                        "text" in content_type or content_type == ""
+                    ), f"/metrics should return text content type, got: {content_type}"
             except Exception:
                 print("/metrics endpoint not accessible for content-type test")
 
@@ -310,8 +314,9 @@ class TestRoutesAndDTOsContract:
 
                         # Check required fields are present
                         missing_fields = required_fields - set(data.keys())
-                        assert not missing_fields, \
-                            f"Endpoint {endpoint} missing required fields: {missing_fields}"
+                        assert (
+                            not missing_fields
+                        ), f"Endpoint {endpoint} missing required fields: {missing_fields}"
 
                         # Log any new fields for review
                         extra_fields = set(data.keys()) - required_fields
@@ -333,8 +338,8 @@ class TestRoutesAndDTOsContract:
                 "properties": {
                     "status": {"type": "string"},
                     "timestamp": {"type": "string"},
-                    "uptime_seconds": {"type": "number"}
-                }
+                    "uptime_seconds": {"type": "number"},
+                },
             },
             "/readyz": {
                 "type": "object",
@@ -342,9 +347,9 @@ class TestRoutesAndDTOsContract:
                 "properties": {
                     "status": {"type": "string"},
                     "checks": {"type": "object"},
-                    "timestamp": {"type": "string"}
-                }
-            }
+                    "timestamp": {"type": "string"},
+                },
+            },
         }
 
         async with TestAppContext() as context:
@@ -356,8 +361,9 @@ class TestRoutesAndDTOsContract:
 
                         # Validate basic structure matches expectations
                         for required_field in expected_schema["required"]:
-                            assert required_field in data, \
-                                f"Required field '{required_field}' missing from {endpoint}"
+                            assert (
+                                required_field in data
+                            ), f"Required field '{required_field}' missing from {endpoint}"
 
                 except Exception as e:
                     print(f"Could not validate schema for {endpoint}: {e}")

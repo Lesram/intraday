@@ -38,11 +38,11 @@ def validate_ohlcv(df: pd.DataFrame) -> None:
 
     # Check OHLC relationships
     invalid_ohlc = (
-        (df["high"] < df["low"]) |
-        (df["high"] < df["open"]) |
-        (df["high"] < df["close"]) |
-        (df["low"] > df["open"]) |
-        (df["low"] > df["close"])
+        (df["high"] < df["low"])
+        | (df["high"] < df["open"])
+        | (df["high"] < df["close"])
+        | (df["low"] > df["open"])
+        | (df["low"] > df["close"])
     )
     if invalid_ohlc.any():
         raise ValueError("Invalid OHLC relationships detected (high < low, etc.)")
@@ -61,7 +61,7 @@ def guard_no_lookahead(
     price: pd.Series,
     feature_cols: list[str] | None = None,
     threshold: float = 0.7,
-    window_size: int = 100
+    window_size: int = 100,
 ) -> None:
     """
     Guard against lookahead bias in features.
@@ -85,7 +85,9 @@ def guard_no_lookahead(
     # Align data
     common_index = features.index.intersection(price.index)
     if len(common_index) < window_size:
-        raise ValueError(f"Insufficient data for lookahead detection (need {window_size}, got {len(common_index)})")
+        raise ValueError(
+            f"Insufficient data for lookahead detection (need {window_size}, got {len(common_index)})"
+        )
 
     features_aligned = features.loc[common_index]
     price_aligned = price.loc[common_index]
@@ -93,7 +95,7 @@ def guard_no_lookahead(
     # Calculate returns
     returns = price_aligned.pct_change().fillna(0)
     future_returns = returns.shift(-1).fillna(0)  # Next period return
-    past_returns = returns.shift(1).fillna(0)     # Previous period return
+    past_returns = returns.shift(1).fillna(0)  # Previous period return
 
     suspicious_features = []
 
@@ -106,8 +108,12 @@ def guard_no_lookahead(
             continue
 
         # Rolling correlation analysis
-        future_corr_rolling = feature_series.rolling(window_size).corr(future_returns.rolling(window_size))
-        past_corr_rolling = feature_series.rolling(window_size).corr(past_returns.rolling(window_size))
+        future_corr_rolling = feature_series.rolling(window_size).corr(
+            future_returns.rolling(window_size)
+        )
+        past_corr_rolling = feature_series.rolling(window_size).corr(
+            past_returns.rolling(window_size)
+        )
 
         # Remove NaN values
         future_corr = future_corr_rolling.dropna()
@@ -130,9 +136,7 @@ def guard_no_lookahead(
 
 
 def guard_no_lookahead_synthetic(
-    features: pd.DataFrame,
-    feature_cols: list[str] | None = None,
-    accuracy_threshold: float = 0.8
+    features: pd.DataFrame, feature_cols: list[str] | None = None, accuracy_threshold: float = 0.8
 ) -> None:
     """
     Alternative lookahead detection using synthetic monotone series.
@@ -156,8 +160,7 @@ def guard_no_lookahead_synthetic(
 
     # Create synthetic monotone price series
     synthetic_price = pd.Series(
-        np.arange(len(features)) + np.random.normal(0, 0.01, len(features)),
-        index=features.index
+        np.arange(len(features)) + np.random.normal(0, 0.01, len(features)), index=features.index
     )
     synthetic_returns = synthetic_price.pct_change().fillna(0)
     synthetic_future_returns = synthetic_returns.shift(-1).fillna(0)
@@ -229,7 +232,9 @@ def detect_forward_fill_leakage(df: pd.DataFrame, max_consecutive_fill: int = 5)
 
         # Find consecutive identical values
         consecutive_same = (series == series.shift(1)).astype(int)
-        consecutive_counts = consecutive_same.groupby((consecutive_same != consecutive_same.shift()).cumsum()).sum()
+        consecutive_counts = consecutive_same.groupby(
+            (consecutive_same != consecutive_same.shift()).cumsum()
+        ).sum()
 
         if (consecutive_counts > max_consecutive_fill).any():
             suspicious_cols.append(col)

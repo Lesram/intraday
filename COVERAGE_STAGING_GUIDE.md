@@ -7,7 +7,7 @@ This project uses a **staged coverage ratcheting system** to gradually improve t
 ## Staging Plan
 
 ### 🟢 Stage 1: Foundation (30% minimum)
-**Status**: ✅ **ACTIVE** 
+**Status**: ✅ **ACTIVE**
 **Target**: ≥30% line coverage
 **Timeline**: Immediate (current baseline)
 
@@ -18,12 +18,12 @@ This project uses a **staged coverage ratcheting system** to gradually improve t
 
 **Purpose**: Establish realistic baseline that doesn't break existing CI while preventing coverage regressions.
 
-### 🟡 Stage 2: Core Logic (40% target)  
+### 🟡 Stage 2: Core Logic (40% target)
 **Status**: 🔄 **PENDING** (after unit test batch lands)
 **Target**: ≥40% line coverage
 **Timeline**: After landing comprehensive unit tests for:
 - Risk mathematics edge cases
-- Feature validator error branches  
+- Feature validator error branches
 - Security JWT failure modes
 - Order service idempotency/retry logic
 - WebSocket manager backpressure
@@ -38,7 +38,7 @@ sed -i 's/--cov-fail-under=30/--cov-fail-under=40/' .github/workflows/ci.yml
 ```
 
 ### 🎯 Stage 3: Comprehensive (50% target)
-**Status**: ⏳ **FUTURE** (after integration test expansion)  
+**Status**: ⏳ **FUTURE** (after integration test expansion)
 **Target**: ≥50% line coverage
 **Timeline**: After adding integration tests for:
 - Database layer edge cases
@@ -49,7 +49,7 @@ sed -i 's/--cov-fail-under=30/--cov-fail-under=40/' .github/workflows/ci.yml
 
 ### 🏆 Long-term: Production Ready (85% target)
 **Status**: 📋 **ROADMAP**
-**Target**: ≥85% line coverage  
+**Target**: ≥85% line coverage
 **Timeline**: Future milestone after core platform stabilization
 
 ## Ratchet Mechanism
@@ -100,7 +100,7 @@ make coverage-update
 sed -i 's/--cov-fail-under=30/--cov-fail-under=40/' pytest.ini
 sed -i 's/--cov-fail-under=30/--cov-fail-under=40/' .github/workflows/ci.yml
 
-# Stage 2 → Stage 3  
+# Stage 2 → Stage 3
 sed -i 's/--cov-fail-under=40/--cov-fail-under=50/' pytest.ini
 sed -i 's/--cov-fail-under=40/--cov-fail-under=50/' .github/workflows/ci.yml
 ```
@@ -119,7 +119,7 @@ Based on our analysis, the high-ROI modules for coverage improvement:
 | Module | Coverage Impact | Difficulty | Priority |
 |--------|-----------------|------------|----------|
 | Risk Mathematics | +8-12% | Low | 🟢 High |
-| Feature Validators | +6-10% | Low | 🟢 High |  
+| Feature Validators | +6-10% | Low | 🟢 High |
 | Security (JWT/Auth) | +4-6% | Medium | 🟡 High |
 | Order Services | +5-8% | Medium | 🟡 High |
 | WebSocket Manager | +4-6% | Medium | 🟡 Medium |
@@ -129,25 +129,25 @@ Based on our analysis, the high-ROI modules for coverage improvement:
 ```
 Current State: ~28% coverage (Stage 1: 30% gate active)
     ↓
-After Unit Tests: ~38-45% coverage  
+After Unit Tests: ~38-45% coverage
     ↓ (promote to Stage 2: 40% gate)
 After Integration: ~45-55% coverage
-    ↓ (promote to Stage 3: 50% gate)  
+    ↓ (promote to Stage 3: 50% gate)
 Future Expansion: 50%+ coverage
 ```
 
 ## Benefits
 
-✅ **CI Stability**: No sudden jumps that break builds  
-✅ **Progressive Improvement**: Continuous coverage growth  
-✅ **Regression Prevention**: Ratchet mechanism prevents backsliding  
-✅ **Developer Confidence**: Realistic gates that developers can meet  
+✅ **CI Stability**: No sudden jumps that break builds
+✅ **Progressive Improvement**: Continuous coverage growth
+✅ **Regression Prevention**: Ratchet mechanism prevents backsliding
+✅ **Developer Confidence**: Realistic gates that developers can meet
 ✅ **Quality Visibility**: Clear progress tracking and goals
 
 ## Configuration Files
 
 - **pytest.ini**: Current coverage gate setting
-- **.coveragerc**: Staging configuration and paths  
+- **.coveragerc**: Staging configuration and paths
 - **.github/workflows/ci.yml**: CI enforcement logic
 - **scripts/ci/check_coverage_ratchet.py**: Ratchet comparison tool
 - **Makefile**: Convenience targets for each stage
@@ -156,7 +156,7 @@ Future Expansion: 50%+ coverage
 
 The CI system automatically:
 1. Runs coverage analysis on every PR
-2. Compares against main branch baseline  
+2. Compares against main branch baseline
 3. Enforces current stage minimum
 4. Reports coverage status with stage indicators
 5. Blocks PRs that decrease coverage (within tolerance)

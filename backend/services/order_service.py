@@ -26,7 +26,7 @@ class OrderService:
         self,
         orders_repo: OrdersRepo,
         outbox_repo: OutboxRepo,
-        strategy_engine: Optional["StrategyEngine"] = None
+        strategy_engine: Optional["StrategyEngine"] = None,
     ):
         self.orders_repo = orders_repo
         self.outbox_repo = outbox_repo
@@ -41,7 +41,7 @@ class OrderService:
         idempotency_key: str,
         order_type: str = "market",
         tif: str = "ioc",
-        attributes: dict[str, Any] | None = None
+        attributes: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """
         Submit a single order through the idempotent order+outbox flow.
@@ -60,7 +60,7 @@ class OrderService:
                 qty=Decimal(str(qty)),
                 order_type=order_type,
                 tif=tif,
-                attributes=attributes or {}
+                attributes=attributes or {},
             )
 
             # Add to outbox for broker submission
@@ -75,17 +75,20 @@ class OrderService:
                     "order_type": order_type,
                     "tif": tif,
                     "client_key": idempotency_key,
-                    "attributes": attributes or {}
-                }
+                    "attributes": attributes or {},
+                },
             )
 
-            logger.info("Order submitted successfully", extra={
-                "order_id": str(order.id),
-                "symbol": symbol,
-                "side": side,
-                "qty": str(qty),
-                "idempotency_key": idempotency_key
-            })
+            logger.info(
+                "Order submitted successfully",
+                extra={
+                    "order_id": str(order.id),
+                    "symbol": symbol,
+                    "side": side,
+                    "qty": str(qty),
+                    "idempotency_key": idempotency_key,
+                },
+            )
 
             return {
                 "order_id": str(order.id),
@@ -94,24 +97,27 @@ class OrderService:
                 "qty": str(qty),
                 "status": order.status,
                 "submitted_at": order.submitted_at.isoformat() if order.submitted_at else None,
-                "idempotency_key": idempotency_key
+                "idempotency_key": idempotency_key,
             }
 
         except Exception as e:
-            logger.error("Order submission failed", extra={
-                "symbol": symbol,
-                "side": side,
-                "qty": str(qty),
-                "error": str(e),
-                "idempotency_key": idempotency_key
-            })
+            logger.error(
+                "Order submission failed",
+                extra={
+                    "symbol": symbol,
+                    "side": side,
+                    "qty": str(qty),
+                    "error": str(e),
+                    "idempotency_key": idempotency_key,
+                },
+            )
             raise
 
     async def plan_and_submit(
         self,
         signals: list[TradingSignal],
         idempotency_key: str | None = None,
-        portfolio_state: dict[str, Any] | None = None
+        portfolio_state: dict[str, Any] | None = None,
     ) -> list[dict[str, Any]]:
         """
         Strategy engine integration: convert signals to execution plans
@@ -143,15 +149,17 @@ class OrderService:
 
                 if not plan.risk_allowed or plan.qty == 0:
                     # Risk blocked or no-op plan
-                    results.append({
-                        "symbol": plan.symbol,
-                        "status": "risk_blocked" if not plan.risk_allowed else "no_change",
-                        "reason": plan.risk_reason or plan.reason,
-                        "from_exposure": plan.from_exposure,
-                        "to_exposure": plan.to_exposure,
-                        "qty": str(plan.qty),
-                        "risk_allowed": plan.risk_allowed
-                    })
+                    results.append(
+                        {
+                            "symbol": plan.symbol,
+                            "status": "risk_blocked" if not plan.risk_allowed else "no_change",
+                            "reason": plan.risk_reason or plan.reason,
+                            "from_exposure": plan.from_exposure,
+                            "to_exposure": plan.to_exposure,
+                            "qty": str(plan.qty),
+                            "risk_allowed": plan.risk_allowed,
+                        }
+                    )
                     continue
 
                 # Submit approved plan through existing order flow
@@ -166,53 +174,66 @@ class OrderService:
                             "reason": plan.reason,
                             "from_exposure": plan.from_exposure,
                             "to_exposure": plan.to_exposure,
-                            "notional": str(plan.notional)
-                        }
+                            "notional": str(plan.notional),
+                        },
                     )
 
                     # Enhance result with plan details
-                    order_result.update({
-                        "from_exposure": plan.from_exposure,
-                        "to_exposure": plan.to_exposure,
-                        "reason": plan.reason,
-                        "risk_allowed": plan.risk_allowed,
-                        "notional": str(plan.notional)
-                    })
+                    order_result.update(
+                        {
+                            "from_exposure": plan.from_exposure,
+                            "to_exposure": plan.to_exposure,
+                            "reason": plan.reason,
+                            "risk_allowed": plan.risk_allowed,
+                            "notional": str(plan.notional),
+                        }
+                    )
 
                     results.append(order_result)
 
                 except Exception as e:
-                    logger.error("Failed to submit order for plan", extra={
-                        "symbol": plan.symbol,
-                        "side": plan.side,
-                        "qty": float(plan.qty),
-                        "error": str(e)
-                    })
+                    logger.error(
+                        "Failed to submit order for plan",
+                        extra={
+                            "symbol": plan.symbol,
+                            "side": plan.side,
+                            "qty": float(plan.qty),
+                            "error": str(e),
+                        },
+                    )
 
-                    results.append({
-                        "symbol": plan.symbol,
-                        "status": "submit_error",
-                        "reason": f"Order submission failed: {str(e)}",
-                        "from_exposure": plan.from_exposure,
-                        "to_exposure": plan.to_exposure,
-                        "qty": str(plan.qty),
-                        "risk_allowed": plan.risk_allowed
-                    })
+                    results.append(
+                        {
+                            "symbol": plan.symbol,
+                            "status": "submit_error",
+                            "reason": f"Order submission failed: {str(e)}",
+                            "from_exposure": plan.from_exposure,
+                            "to_exposure": plan.to_exposure,
+                            "qty": str(plan.qty),
+                            "risk_allowed": plan.risk_allowed,
+                        }
+                    )
 
-            logger.info("Strategy plan-and-submit completed", extra={
-                "signals_count": len(signals),
-                "plans_count": len(plans),
-                "submitted_count": len([r for r in results if r.get("order_id")]),
-                "blocked_count": len([r for r in results if not r.get("risk_allowed", True)]),
-                "base_idempotency_key": base_key
-            })
+            logger.info(
+                "Strategy plan-and-submit completed",
+                extra={
+                    "signals_count": len(signals),
+                    "plans_count": len(plans),
+                    "submitted_count": len([r for r in results if r.get("order_id")]),
+                    "blocked_count": len([r for r in results if not r.get("risk_allowed", True)]),
+                    "base_idempotency_key": base_key,
+                },
+            )
 
             return results
 
         except Exception as e:
-            logger.error("Strategy plan-and-submit failed", extra={
-                "signals_count": len(signals),
-                "error": str(e),
-                "base_idempotency_key": base_key
-            })
+            logger.error(
+                "Strategy plan-and-submit failed",
+                extra={
+                    "signals_count": len(signals),
+                    "error": str(e),
+                    "base_idempotency_key": base_key,
+                },
+            )
             raise

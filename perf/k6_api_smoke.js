@@ -28,7 +28,7 @@ export const options = {
       ],
       exec: 'apiLoadTest',
     },
-    
+
     // WebSocket stress test - tests real-time data handling
     websocket_stress: {
       executor: 'constant-vus',
@@ -36,7 +36,7 @@ export const options = {
       duration: '5m',
       exec: 'websocketStressTest',
     },
-    
+
     // Risk engine specific test - high-frequency risk decisions
     risk_engine_spike: {
       executor: 'ramping-arrival-rate',
@@ -52,7 +52,7 @@ export const options = {
       exec: 'riskEngineTest',
     },
   },
-  
+
   // SLA thresholds - fail the test if not met
   thresholds: {
     http_req_duration: ['p(95)<2000', 'p(99)<5000'],  // 95% < 2s, 99% < 5s
@@ -93,7 +93,7 @@ let authToken = null;
 
 export function setup() {
   console.log('Setting up performance test...');
-  
+
   // Mock authentication for testing
   const loginResponse = http.post(`${BASE_URL}/api/v1/auth/login`, JSON.stringify({
     username: 'test-trader',
@@ -101,12 +101,12 @@ export function setup() {
   }), {
     headers: { 'Content-Type': 'application/json' },
   });
-  
+
   if (loginResponse.status === 200) {
     authToken = JSON.parse(loginResponse.body).access_token;
     console.log('Authentication successful');
   }
-  
+
   return { authToken };
 }
 
@@ -142,7 +142,7 @@ export function apiLoadTest(data) {
   // Submit a test order
   const order = generateTestOrder();
   response = http.post(`${BASE_URL}/api/v1/orders`, JSON.stringify(order), { headers });
-  
+
   const orderSuccess = check(response, {
     'order submission status is 200 or 201': (r) => r.status === 200 || r.status === 201,
     'order response time < 2s': (r) => r.timings.duration < 2000,
@@ -184,7 +184,7 @@ export function websocketStressTest(data) {
   const response = ws.connect(url, params, function(socket) {
     socket.on('open', function() {
       console.log('WebSocket connected');
-      
+
       // Subscribe to market data for multiple symbols
       TEST_SYMBOLS.forEach(symbol => {
         socket.send(JSON.stringify({
@@ -197,7 +197,7 @@ export function websocketStressTest(data) {
 
     socket.on('message', function(data) {
       messageCount++;
-      
+
       const message = JSON.parse(data);
       check(message, {
         'websocket message has required fields': (m) => m.symbol && m.price,
@@ -249,11 +249,11 @@ export function riskEngineTest(data) {
   };
 
   const startTime = Date.now();
-  
+
   const response = http.post(`${BASE_URL}/api/v1/orders/validate`, JSON.stringify(riskOrder), { headers });
-  
+
   const riskDecisionTime = Date.now() - startTime;
-  
+
   const riskCheck = check(response, {
     'risk validation responds': (r) => r.status === 200 || r.status === 400,
     'risk validation time < 500ms': (r) => r.timings.duration < 500,
@@ -268,11 +268,11 @@ export function riskEngineTest(data) {
   });
 
   tradingRiskDecisions.add(1);
-  
+
   // If risk validation passed, try to submit the order
   if (response.status === 200) {
     const orderResponse = http.post(`${BASE_URL}/api/v1/orders`, JSON.stringify(riskOrder), { headers });
-    
+
     check(orderResponse, {
       'high-risk order processed': (r) => r.status === 200 || r.status === 201 || r.status === 400,
       'order processing time < 1s': (r) => r.timings.duration < 1000,

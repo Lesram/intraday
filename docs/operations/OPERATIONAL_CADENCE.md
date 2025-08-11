@@ -24,8 +24,8 @@ This document outlines our operational rhythms, including regular SLO reviews, c
 
 ### Weekly SLO Review (Mondays, 10:00 AM)
 
-**Duration**: 45 minutes  
-**Attendees**: DevOps Lead, SRE Team, Trading Desk Representative, Product Owner  
+**Duration**: 45 minutes
+**Attendees**: DevOps Lead, SRE Team, Trading Desk Representative, Product Owner
 **Facilitator**: Rotating weekly among SREs
 
 #### Agenda Template
@@ -82,8 +82,8 @@ curl -G "https://prometheus.trading-platform.com/api/v1/query" \
 
 ### Monthly Chaos Engineering Drill (First Friday, 2:00 PM)
 
-**Duration**: 2 hours  
-**Attendees**: Full Engineering Team, DevOps, Trading Desk (observer)  
+**Duration**: 2 hours
+**Attendees**: Full Engineering Team, DevOps, Trading Desk (observer)
 **Facilitator**: Senior SRE or DevOps Lead
 
 #### Drill Types (Rotate Monthly)
@@ -98,7 +98,7 @@ kubectl scale deployment pgbouncer --replicas=0
 
 # Slow query injection
 kubectl exec -it postgres-primary-0 -- psql -c "
-  INSERT INTO chaos_slow_queries (duration) 
+  INSERT INTO chaos_slow_queries (duration)
   SELECT random() * 30 FROM generate_series(1,10);"
 ```
 
@@ -217,8 +217,8 @@ kubectl apply -f manifests/chaos/broker-api-failure.yaml
 
 ### Bi-Weekly Architecture Review (Alternate Fridays, 11:00 AM)
 
-**Duration**: 1 hour  
-**Attendees**: Senior Engineers, Architects, Product Lead  
+**Duration**: 1 hour
+**Attendees**: Senior Engineers, Architects, Product Lead
 **Facilitator**: Principal Engineer
 
 #### Focus Areas (Alternating)
@@ -240,8 +240,8 @@ python3 scripts/architecture_review_prep.py --focus=performance
 # Database performance analysis
 kubectl exec -it postgres-primary-0 -- psql -c "
   SELECT query, calls, total_time, mean_time, rows
-  FROM pg_stat_statements 
-  ORDER BY total_time DESC 
+  FROM pg_stat_statements
+  ORDER BY total_time DESC
   LIMIT 20;"
 
 # Service dependency mapping
@@ -252,8 +252,8 @@ python3 scripts/generate_service_map.py --output=service_dependencies.json
 
 ### Daily Stand-ups (9:00 AM, Monday-Friday)
 
-**Duration**: 15 minutes  
-**Attendees**: DevOps Team, On-call Engineer  
+**Duration**: 15 minutes
+**Attendees**: DevOps Team, On-call Engineer
 **Format**: Async-first with optional sync for complex issues
 
 #### Daily Checklist Review
@@ -336,7 +336,7 @@ avg_over_time(up{job="trading-platform"}[5m]) > 0.999
 
 ### Monthly Reliability Review (Last Thursday, 3:00 PM)
 
-**Duration**: 90 minutes  
+**Duration**: 90 minutes
 **Attendees**: Engineering Leadership, SRE Team, Product Management
 
 #### Agenda
@@ -357,7 +357,7 @@ avg_over_time(up{job="trading-platform"}[5m]) > 0.999
 
 ### Quarterly Architecture Evolution (First Monday of Quarter)
 
-**Duration**: Half day workshop  
+**Duration**: Half day workshop
 **Attendees**: All Engineering, Architecture Council
 
 #### Objectives
@@ -430,24 +430,24 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
-      
+
       - name: Set Trading Mode to DRY_RUN
         run: |
           curl -X POST -H "Authorization: Bearer ${{ secrets.ADMIN_TOKEN }}" \
                -d '{"mode": "dry_run", "authorized_by": "chaos_drill"}' \
                ${{ secrets.API_ENDPOINT }}/admin/trading-mode
-      
+
       - name: Execute Chaos Scenario
         run: |
           kubectl apply -f manifests/chaos/${{ github.event.inputs.drill_type || 'database_failure' }}.yaml
-      
+
       - name: Monitor and Report
         run: |
           python3 scripts/chaos_drill_monitor.py \
             --drill-type "${{ github.event.inputs.drill_type || 'database_failure' }}" \
             --duration 120 \
             --report-channel "#chaos-drills"
-      
+
       - name: Cleanup and Restore
         if: always()
         run: |
@@ -600,6 +600,6 @@ Create Grafana dashboards for each cadence:
 
 This operational cadence ensures we maintain high reliability while continuously improving our systems and processes.
 
-**Document Owner**: SRE Team  
-**Last Updated**: [Current Date]  
+**Document Owner**: SRE Team
+**Last Updated**: [Current Date]
 **Next Review**: [Quarterly]

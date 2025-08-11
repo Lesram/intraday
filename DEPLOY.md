@@ -140,12 +140,12 @@ data:
    ```bash
    # Create release branch
    git checkout -b release/v1.2.3
-   
+
    # Update version in pyproject.toml
    # Update CHANGELOG.md
    # Run full test suite
    make test-all
-   
+
    # Create and push tag
    git tag -a v1.2.3 -m "Release v1.2.3"
    git push origin v1.2.3
@@ -193,7 +193,7 @@ For critical hotfixes:
 
 The system automatically rolls back when:
 - Error rate exceeds 1% for 3 consecutive checks
-- P95 latency exceeds 2 seconds for 3 consecutive checks  
+- P95 latency exceeds 2 seconds for 3 consecutive checks
 - P99 latency exceeds 5 seconds for 3 consecutive checks
 - Health checks fail consistently
 - Critical alerts fire
@@ -270,7 +270,7 @@ kubectl apply -f k8s/failover-config.yaml
    - SLO metric trends
    - Deployment timeline and status
 
-2. **SLO Monitoring Dashboard** 
+2. **SLO Monitoring Dashboard**
    - Real-time error rates
    - Latency percentiles (P50, P95, P99)
    - SLO burn rate and error budget
@@ -283,7 +283,7 @@ kubectl apply -f k8s/failover-config.yaml
 ### Alert Channels
 
 - **Critical**: PagerDuty + Slack #alerts
-- **Warning**: Slack #deployments  
+- **Warning**: Slack #deployments
 - **Info**: Slack #trading-platform
 
 ### Metrics Collection
@@ -292,16 +292,16 @@ Key metrics tracked during deployments:
 
 ```promql
 # Error rate by version
-sum(rate(intraday_http_requests_total{status=~"5..",deployment_version="v1.2.3"}[5m])) 
+sum(rate(intraday_http_requests_total{status=~"5..",deployment_version="v1.2.3"}[5m]))
 / sum(rate(intraday_http_requests_total{deployment_version="v1.2.3"}[5m])) * 100
 
 # P95 latency by version
-histogram_quantile(0.95, 
+histogram_quantile(0.95,
   rate(intraday_http_request_duration_seconds_bucket{deployment_version="v1.2.3"}[5m])
 )
 
 # Canary traffic percentage
-sum(rate(intraday_http_requests_total{version="canary"}[5m])) 
+sum(rate(intraday_http_requests_total{version="canary"}[5m]))
 / sum(rate(intraday_http_requests_total[5m])) * 100
 ```
 
@@ -430,6 +430,6 @@ kubectl scale deployment trading-platform --replicas=0 -n trading-platform-produ
 
 ---
 
-*Last Updated: 2025-08-10*  
-*Document Version: 2.0*  
+*Last Updated: 2025-08-10*
+*Document Version: 2.0*
 *Next Review: 2025-09-10*

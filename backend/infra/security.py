@@ -53,9 +53,9 @@ def hash_password(password: str) -> str:
     Returns:
         Hashed password string
     """
-    password_bytes = password.encode('utf-8')
+    password_bytes = password.encode("utf-8")
     salt = bcrypt.gensalt()
-    return bcrypt.hashpw(password_bytes, salt).decode('utf-8')
+    return bcrypt.hashpw(password_bytes, salt).decode("utf-8")
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
@@ -70,18 +70,14 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
         True if password matches, False otherwise
     """
     try:
-        password_bytes = plain_password.encode('utf-8')
-        hashed_bytes = hashed_password.encode('utf-8')
+        password_bytes = plain_password.encode("utf-8")
+        hashed_bytes = hashed_password.encode("utf-8")
         return bcrypt.checkpw(password_bytes, hashed_bytes)
     except Exception:
         return False
 
 
-def create_access_token(
-    subject: str,
-    roles: list[str],
-    expires_minutes: int | None = None
-) -> str:
+def create_access_token(subject: str, roles: list[str], expires_minutes: int | None = None) -> str:
     """
     Create a JWT access token with user claims.
 
@@ -111,14 +107,14 @@ def create_access_token(
         aud=settings.security.jwt_audience,
         exp=int(expire.timestamp()),
         iat=int(now.timestamp()),
-        jti=secrets.token_urlsafe(16)  # Unique token ID
+        jti=secrets.token_urlsafe(16),  # Unique token ID
     )
 
     try:
         encoded_jwt = jwt.encode(
             claims.model_dump(),
             settings.security.jwt_secret_key,
-            algorithm=settings.security.jwt_algorithm
+            algorithm=settings.security.jwt_algorithm,
         )
         return encoded_jwt
     except Exception as e:
@@ -146,14 +142,13 @@ def verify_token(token: str) -> UserClaims:
             settings.security.jwt_secret_key,
             algorithms=[settings.security.jwt_algorithm],
             issuer=settings.security.jwt_issuer,
-            audience=settings.security.jwt_audience
+            audience=settings.security.jwt_audience,
         )
 
         # Validate required claims
         if not payload.get("sub"):
             raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid token: missing subject"
+                status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token: missing subject"
             )
 
         return UserClaims(**payload)
@@ -161,28 +156,23 @@ def verify_token(token: str) -> UserClaims:
     except JWTError as e:
         if "expired" in str(e).lower():
             raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Token has expired"
+                status_code=status.HTTP_401_UNAUTHORIZED, detail="Token has expired"
             )
         elif "issuer" in str(e).lower():
             raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid token issuer"
+                status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token issuer"
             )
         elif "audience" in str(e).lower():
             raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid token audience"
+                status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token audience"
             )
         else:
             raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail=f"Invalid token: {str(e)}"
+                status_code=status.HTTP_401_UNAUTHORIZED, detail=f"Invalid token: {str(e)}"
             )
     except Exception:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Could not validate credentials"
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Could not validate credentials"
         )
 
 
@@ -206,8 +196,7 @@ def verify_api_key(api_key: str) -> bool:
 
 
 async def get_current_user(
-    request: Request,
-    credentials: HTTPAuthorizationCredentials | None = Depends(security_scheme)
+    request: Request, credentials: HTTPAuthorizationCredentials | None = Depends(security_scheme)
 ) -> AuthenticatedUser | None:
     """
     FastAPI dependency to extract current user from JWT token or API key.
@@ -229,9 +218,7 @@ async def get_current_user(
         # Check for dev bypass header
         if request.headers.get("X-Dev-Bypass") == "true":
             return AuthenticatedUser(
-                username="dev-user",
-                roles=["admin", "trader"],
-                token_id="dev-bypass"
+                username="dev-user", roles=["admin", "trader"], token_id="dev-bypass"
             )
 
     # Try API key authentication first (X-API-Key header)
@@ -240,17 +227,13 @@ async def get_current_user(
         return AuthenticatedUser(
             username="api-client",
             roles=["trader", "api"],  # API keys get trader permissions
-            token_id="api-key"
+            token_id="api-key",
         )
 
     # Try JWT authentication
     if credentials and credentials.credentials:
         claims = verify_token(credentials.credentials)
-        return AuthenticatedUser(
-            username=claims.sub,
-            roles=claims.roles,
-            token_id=claims.jti
-        )
+        return AuthenticatedUser(username=claims.sub, roles=claims.roles, token_id=claims.jti)
 
     return None
 
@@ -274,7 +257,7 @@ async def get_authenticated_user(
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Authentication required",
-            headers={"WWW-Authenticate": "Bearer"}
+            headers={"WWW-Authenticate": "Bearer"},
         )
 
     return current_user
@@ -295,6 +278,7 @@ def require_roles(*required_roles: str):
         async def admin_endpoint(user: AuthenticatedUser = Depends(require_roles("admin"))):
             pass
     """
+
     async def check_roles(
         current_user: AuthenticatedUser = Depends(get_authenticated_user)
     ) -> AuthenticatedUser:
@@ -304,7 +288,7 @@ def require_roles(*required_roles: str):
         if not required_roles_set.intersection(user_roles):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"Insufficient permissions. Required roles: {', '.join(required_roles)}"
+                detail=f"Insufficient permissions. Required roles: {', '.join(required_roles)}",
             )
 
         return current_user

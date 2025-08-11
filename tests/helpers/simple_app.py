@@ -4,10 +4,11 @@ Uses FastAPI's TestClient which properly handles lifespan.
 """
 
 from contextlib import asynccontextmanager
-from unittest.mock import MagicMock, patch
-import pytest
+from unittest.mock import MagicMock
+
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
+import pytest
 
 
 class SimpleTestAppContext:
@@ -24,6 +25,7 @@ class SimpleTestAppContext:
         """Context manager entry."""
         # Import the app
         from backend.api.main import app as main_app
+
         self.app = main_app
 
         # Create a test lifespan function that tracks calls and creates mocks
@@ -47,12 +49,12 @@ class SimpleTestAppContext:
 
             # Store in resources_created for validation
             self.resources_created = {
-                'alpaca_client': app.state.alpaca_client,
-                'feature_engineer': app.state.feature_engineer,
-                'model_manager': app.state.model_manager,
-                'risk_manager': app.state.risk_manager,
-                'strategy_manager': app.state.strategy_manager,
-                'strategy_engine': app.state.strategy_engine,
+                "alpaca_client": app.state.alpaca_client,
+                "feature_engineer": app.state.feature_engineer,
+                "model_manager": app.state.model_manager,
+                "risk_manager": app.state.risk_manager,
+                "strategy_manager": app.state.strategy_manager,
+                "strategy_engine": app.state.strategy_engine,
             }
 
             try:
@@ -78,7 +80,7 @@ class SimpleTestAppContext:
             self.client.close()
 
         # Restore original lifespan
-        if self.app and hasattr(self, '_original_lifespan'):
+        if self.app and hasattr(self, "_original_lifespan"):
             self.app.router.lifespan_context = self._original_lifespan
 
 

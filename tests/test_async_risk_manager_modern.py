@@ -4,13 +4,14 @@ Tests for AsyncRiskManager with proper typing using OrderSpec and PortfolioState
 This is the preferred test pattern for new risk management tests.
 """
 import asyncio
+from datetime import UTC, datetime
 from decimal import Decimal
-from datetime import datetime, timezone
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import Mock, patch
+
 import pytest
 
 from backend.risk.risk_manager import AsyncRiskManager, RiskMathUtils
-from backend.risk.types import OrderSpec, PortfolioState, RiskDecision, RiskLimits
+from backend.risk.types import OrderSpec, PortfolioState, RiskDecision
 
 
 class TestAsyncRiskManagerModern:
@@ -19,9 +20,7 @@ class TestAsyncRiskManagerModern:
     def setup_method(self):
         """Setup for each test method."""
         self.risk_manager = AsyncRiskManager(
-            max_position_per_symbol=10000,
-            max_single_position_value=100000,
-            max_portfolio_var=0.05
+            max_position_per_symbol=10000, max_single_position_value=100000, max_portfolio_var=0.05
         )
 
     @pytest.mark.asyncio
@@ -33,7 +32,7 @@ class TestAsyncRiskManagerModern:
             side="buy",
             qty=Decimal("100"),
             notional=Decimal("15000"),
-            price=Decimal("150.0")
+            price=Decimal("150.0"),
         )
 
         decision = await self.risk_manager.before_order(order)
@@ -52,7 +51,7 @@ class TestAsyncRiskManagerModern:
             side="buy",
             qty=Decimal("15000"),  # Exceeds max_position_per_symbol
             notional=Decimal("2250000"),
-            price=Decimal("150.0")
+            price=Decimal("150.0"),
         )
 
         decision = await self.risk_manager.before_order(order)
@@ -70,7 +69,7 @@ class TestAsyncRiskManagerModern:
             side="buy",
             qty=Decimal("1000"),
             notional=Decimal("200000"),  # Exceeds max_single_position_value
-            price=Decimal("200.0")
+            price=Decimal("200.0"),
         )
 
         decision = await self.risk_manager.before_order(order)
@@ -87,7 +86,7 @@ class TestAsyncRiskManagerModern:
             cash=Decimal("50000"),
             positions={"AAPL": Decimal("100")},
             sector_map={"AAPL": "Technology"},
-            last_updated=datetime.now(timezone.utc)
+            last_updated=datetime.now(UTC),
         )
 
         order = OrderSpec(
@@ -95,7 +94,7 @@ class TestAsyncRiskManagerModern:
             side="buy",
             qty=Decimal("50"),
             notional=Decimal("7500"),
-            price=Decimal("150.0")
+            price=Decimal("150.0"),
         )
 
         decision = await self.risk_manager.before_order(order, portfolio_state)
@@ -112,7 +111,7 @@ class TestAsyncRiskManagerModern:
             side="sell",
             qty=Decimal("100"),
             notional=Decimal("15000"),
-            price=Decimal("150.0")
+            price=Decimal("150.0"),
         )
 
         decision = await self.risk_manager.before_order(order)
@@ -128,7 +127,7 @@ class TestAsyncRiskManagerModern:
             side="buy",
             qty=Decimal("100"),
             notional=Decimal("15000"),
-            price=None  # Market order
+            price=None,  # Market order
         )
 
         decision = await self.risk_manager.before_order(order)
@@ -144,19 +143,19 @@ class TestAsyncRiskManagerModern:
             side="buy",
             qty=Decimal("50"),
             notional=Decimal("7500"),
-            price=Decimal("150.0")
+            price=Decimal("150.0"),
         )
 
         decision = await self.risk_manager.before_order(order)
 
         # Verify decision structure
-        assert hasattr(decision, 'allowed')
-        assert hasattr(decision, 'reason')
-        assert hasattr(decision, 'adjustments')
-        assert hasattr(decision, 'limits')
-        assert hasattr(decision, 'original_qty')
-        assert hasattr(decision, 'adjusted_qty')
-        assert hasattr(decision, 'timestamp')
+        assert hasattr(decision, "allowed")
+        assert hasattr(decision, "reason")
+        assert hasattr(decision, "adjustments")
+        assert hasattr(decision, "limits")
+        assert hasattr(decision, "original_qty")
+        assert hasattr(decision, "adjusted_qty")
+        assert hasattr(decision, "timestamp")
 
         # Verify types
         assert isinstance(decision.adjustments, dict)
@@ -172,7 +171,7 @@ class TestAsyncRiskManagerModern:
                 side="buy",
                 qty=Decimal("100"),
                 notional=Decimal("10000"),
-                price=Decimal("100.0")
+                price=Decimal("100.0"),
             )
             for i in range(5)
         ]
@@ -191,7 +190,7 @@ class TestAsyncRiskManagerModern:
         # Mock the metrics registry to capture calls
         mock_metrics = Mock()
         self.risk_manager.metrics = mock_metrics
-        
+
         # Configure mock methods
         mock_counter = Mock()
         mock_histogram = Mock()
@@ -203,7 +202,7 @@ class TestAsyncRiskManagerModern:
             side="buy",
             qty=Decimal("100"),
             notional=Decimal("15000"),
-            price=Decimal("150.0")
+            price=Decimal("150.0"),
         )
 
         decision = await self.risk_manager.before_order(order)
@@ -216,15 +215,15 @@ class TestAsyncRiskManagerModern:
     async def test_error_handling(self):
         """Test error handling in risk assessment."""
         # Mock an internal method to raise an exception
-        with patch.object(self.risk_manager, '_evaluate_order_comprehensive') as mock_eval:
+        with patch.object(self.risk_manager, "_evaluate_order_comprehensive") as mock_eval:
             mock_eval.side_effect = Exception("Test error")
-            
+
             order = OrderSpec(
                 symbol="AAPL",
                 side="buy",
                 qty=Decimal("100"),
                 notional=Decimal("15000"),
-                price=Decimal("150.0")
+                price=Decimal("150.0"),
             )
 
             decision = await self.risk_manager.before_order(order)
@@ -244,12 +243,9 @@ class TestRiskMathUtilsModern:
     def test_kelly_fraction_normal_case(self):
         """Test Kelly fraction calculation with normal parameters."""
         kelly = self.math_utils.kelly_fraction(
-            mean_return=0.1,
-            variance=0.04,
-            kelly_floor=0.0,
-            kelly_ceiling=0.2
+            mean_return=0.1, variance=0.04, kelly_floor=0.0, kelly_ceiling=0.2
         )
-        
+
         assert isinstance(kelly, float)
         assert 0.0 <= kelly <= 0.2
         # With mean_return=0.1 and variance=0.04, kelly = 0.1/0.04 = 2.5
@@ -272,10 +268,10 @@ class TestRiskMathUtilsModern:
     def test_ewma_volatility(self):
         """Test EWMA volatility calculation."""
         import numpy as np
-        
+
         returns = np.array([0.01, -0.02, 0.015, -0.005, 0.008, 0.012, -0.018, 0.003])
         volatility = self.math_utils.ewma_volatility(returns)
-        
+
         assert isinstance(volatility, float)
         assert volatility > 0
         assert volatility < 1.0  # Reasonable volatility range
@@ -283,10 +279,10 @@ class TestRiskMathUtilsModern:
     def test_parametric_var(self):
         """Test parametric VaR calculation."""
         returns = [0.01, -0.02, 0.015, -0.005, 0.008, 0.012, -0.018, 0.003, -0.01, 0.007]
-        
+
         var_95 = self.math_utils.parametric_var(returns, confidence=0.05)  # 95% confidence
         var_99 = self.math_utils.parametric_var(returns, confidence=0.01)  # 99% confidence
-        
+
         assert isinstance(var_95, float)
         assert isinstance(var_99, float)
         # VaR at 99% should be higher than 95%

@@ -19,11 +19,13 @@ logger = logging.getLogger(__name__)
 
 class OrderNotFoundError(Exception):
     """Raised when an order is not found."""
+
     pass
 
 
 class DuplicateOrderError(Exception):
     """Raised when attempting to create a duplicate order."""
+
     pass
 
 
@@ -42,7 +44,7 @@ class OrdersRepo:
         qty: Decimal,
         order_type: str,
         tif: str,
-        attributes: dict[str, Any] | None = None
+        attributes: dict[str, Any] | None = None,
     ) -> Order:
         """
         Create order with idempotency protection.
@@ -74,8 +76,8 @@ class OrdersRepo:
                     "client_key": client_key,
                     "order_id": str(existing_order.id),
                     "symbol": existing_order.symbol,
-                    "status": existing_order.status
-                }
+                    "status": existing_order.status,
+                },
             )
             return existing_order
 
@@ -87,9 +89,9 @@ class OrdersRepo:
             qty=qty,
             order_type=order_type,
             tif=tif,
-            status='accepted',
+            status="accepted",
             submitted_at=datetime.utcnow(),
-            attributes=attributes or {}
+            attributes=attributes or {},
         )
 
         try:
@@ -104,8 +106,8 @@ class OrdersRepo:
                     "symbol": symbol,
                     "side": side,
                     "qty": str(qty),
-                    "order_type": order_type
-                }
+                    "order_type": order_type,
+                },
             )
 
             return new_order
@@ -122,20 +124,13 @@ class OrdersRepo:
                 if existing_order:
                     logger.debug(
                         "Order created by another process",
-                        extra={
-                            "client_key": client_key,
-                            "order_id": str(existing_order.id)
-                        }
+                        extra={"client_key": client_key, "order_id": str(existing_order.id)},
                     )
                     return existing_order
 
             logger.error(
                 "Failed to create order",
-                extra={
-                    "client_key": client_key,
-                    "symbol": symbol,
-                    "error": str(e)
-                }
+                extra={"client_key": client_key, "symbol": symbol, "error": str(e)},
             )
             raise DuplicateOrderError(f"Failed to create order with key {client_key}") from e
 
@@ -163,13 +158,7 @@ class OrdersRepo:
         if not updated_id:
             raise OrderNotFoundError(f"Order {order_id} not found")
 
-        logger.info(
-            "Order status updated",
-            extra={
-                "order_id": str(order_id),
-                "status": status
-            }
-        )
+        logger.info("Order status updated", extra={"order_id": str(order_id), "status": status})
 
     async def attach_broker_result(
         self,
@@ -177,7 +166,7 @@ class OrdersRepo:
         *,
         broker_order_id: str | None = None,
         status: str | None = None,
-        attributes: dict[str, Any] | None = None
+        attributes: dict[str, Any] | None = None,
     ) -> None:
         """
         Update order with broker response.
@@ -214,12 +203,7 @@ class OrdersRepo:
             merged_attrs = {**(current_attrs or {}), **attributes}
             values["attributes"] = merged_attrs
 
-        stmt = (
-            update(Order)
-            .where(Order.id == order_id)
-            .values(**values)
-            .returning(Order.id)
-        )
+        stmt = update(Order).where(Order.id == order_id).values(**values).returning(Order.id)
 
         result = await self.session.execute(stmt)
         updated_id = result.scalar_one_or_none()
@@ -233,8 +217,8 @@ class OrdersRepo:
                 "order_id": str(order_id),
                 "broker_order_id": broker_order_id,
                 "status": status,
-                "attributes_updated": bool(attributes)
-            }
+                "attributes_updated": bool(attributes),
+            },
         )
 
     async def get_by_client_key(self, client_key: str) -> Order | None:
@@ -295,7 +279,7 @@ class OrdersRepo:
         Returns:
             List of active orders
         """
-        active_statuses = ['accepted', 'submitting', 'submitted', 'partially_filled']
+        active_statuses = ["accepted", "submitting", "submitted", "partially_filled"]
 
         stmt = (
             select(Order)

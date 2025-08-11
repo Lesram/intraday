@@ -114,13 +114,13 @@ class RiskManager:
         # Mock fallback tracking
         self.mock_data_used = set()  # Track which metrics used mock data
 
-        self.logger.info("Risk manager initialized",
-                        limits=self.limits.__dict__,
-                        allow_mock_fallbacks=self.settings.trading.allow_mock_fallbacks)
+        self.logger.info(
+            "Risk manager initialized",
+            limits=self.limits.__dict__,
+            allow_mock_fallbacks=self.settings.trading.allow_mock_fallbacks,
+        )
 
-    def calculate_var(
-        self, confidence: float = 0.95, method: str = "monte_carlo"
-    ) -> float:
+    def calculate_var(self, confidence: float = 0.95, method: str = "monte_carlo") -> float:
         """
         Compute portfolio Value-at-Risk (VaR).
 
@@ -152,9 +152,7 @@ class RiskManager:
                 var_value=var,
                 portfolio_value=self.portfolio.total_value,
                 var_pct=(
-                    abs(var) / self.portfolio.total_value
-                    if self.portfolio.total_value > 0
-                    else 0
+                    abs(var) / self.portfolio.total_value if self.portfolio.total_value > 0 else 0
                 ),
             )
 
@@ -179,18 +177,13 @@ class RiskManager:
                 portfolio_return = 0.0
 
                 for symbol, position in positions.items():
-                    if (
-                        symbol in self.return_history
-                        and len(self.return_history[symbol]) > 30
-                    ):
+                    if symbol in self.return_history and len(self.return_history[symbol]) > 30:
                         # Sample random return from historical distribution
                         returns = self.return_history[symbol][-252:]  # Last year
                         random_return = np.random.choice(returns)
 
                         # Position contribution to portfolio return
-                        position_weight = (
-                            abs(position["market_value"]) / self.portfolio.total_value
-                        )
+                        position_weight = abs(position["market_value"]) / self.portfolio.total_value
                         portfolio_return += random_return * position_weight
                     else:
                         # Check if mock fallbacks are allowed
@@ -208,9 +201,7 @@ class RiskManager:
                             )
 
                         random_return = np.random.normal(0, 0.02)  # 2% daily vol
-                        position_weight = (
-                            abs(position["market_value"]) / self.portfolio.total_value
-                        )
+                        position_weight = abs(position["market_value"]) / self.portfolio.total_value
                         portfolio_return += random_return * position_weight
 
                 simulated_returns.append(portfolio_return)
@@ -236,10 +227,7 @@ class RiskManager:
             values = [
                 record["total_value"] for record in self.portfolio_history[-252:]
             ]  # Last year
-            returns = [
-                (values[i] - values[i - 1]) / values[i - 1]
-                for i in range(1, len(values))
-            ]
+            returns = [(values[i] - values[i - 1]) / values[i - 1] for i in range(1, len(values))]
 
             if not returns:
                 return 0.0
@@ -266,13 +254,8 @@ class RiskManager:
             returns_matrix = []
 
             for symbol in symbols:
-                if (
-                    symbol in self.return_history
-                    and len(self.return_history[symbol]) > 30
-                ):
-                    returns_matrix.append(
-                        self.return_history[symbol][-252:]
-                    )  # Last year
+                if symbol in self.return_history and len(self.return_history[symbol]) > 30:
+                    returns_matrix.append(self.return_history[symbol][-252:])  # Last year
                 else:
                     # Check if mock fallbacks are allowed
                     if not self.settings.trading.allow_mock_fallbacks:
@@ -339,10 +322,7 @@ class RiskManager:
 
             # Calculate historical returns
             values = [record["total_value"] for record in self.portfolio_history[-252:]]
-            returns = [
-                (values[i] - values[i - 1]) / values[i - 1]
-                for i in range(1, len(values))
-            ]
+            returns = [(values[i] - values[i - 1]) / values[i - 1] for i in range(1, len(values))]
 
             if not returns:
                 return 0.0
@@ -425,9 +405,7 @@ class RiskManager:
 
             # 1. Daily Loss Check
             if self.start_of_day_value > 0:
-                daily_loss = (
-                    self.start_of_day_value - current_value
-                ) / self.start_of_day_value
+                daily_loss = (self.start_of_day_value - current_value) / self.start_of_day_value
                 if daily_loss > self.limits.max_daily_loss_pct:
                     actions_taken.append("CIRCUIT_BREAKER_DAILY_LOSS")
                     risk_status = "CRITICAL"
@@ -553,9 +531,7 @@ class RiskManager:
 
             # Position size check
             current_position = self.portfolio.get_position(symbol)
-            current_exposure = (
-                abs(current_position["market_value"]) if current_position else 0
-            )
+            current_exposure = abs(current_position["market_value"]) if current_position else 0
             new_exposure = current_exposure + trade_value
 
             position_pct = new_exposure / current_value
@@ -583,16 +559,13 @@ class RiskManager:
 
             # Leverage check
             total_exposure = sum(
-                abs(pos["market_value"])
-                for pos in self.portfolio.get_positions().values()
+                abs(pos["market_value"]) for pos in self.portfolio.get_positions().values()
             )
             new_total_exposure = total_exposure + trade_value
             new_leverage = new_total_exposure / current_value
 
             if new_leverage > self.limits.max_leverage:
-                max_allowed_trade = (
-                    self.limits.max_leverage * current_value
-                ) - total_exposure
+                max_allowed_trade = (self.limits.max_leverage * current_value) - total_exposure
                 if max_allowed_trade > 0:
                     adjusted_qty = max_allowed_trade / price
                     if np.sign(intended_qty) < 0:
@@ -673,10 +646,7 @@ class RiskManager:
             )
 
             # Trigger emergency liquidation if loss is severe
-            if (
-                reason == "daily_loss_limit"
-                and value > self.limits.max_daily_loss_pct * 1.5
-            ):
+            if reason == "daily_loss_limit" and value > self.limits.max_daily_loss_pct * 1.5:
                 self.emergency_liquidation = True
                 self._initiate_emergency_liquidation()
 
@@ -786,16 +756,8 @@ class RiskManager:
             leverage = total_exposure / total_value if total_value > 0 else 0
 
             # Daily P&L
-            daily_pnl = (
-                total_value - self.start_of_day_value
-                if self.start_of_day_value > 0
-                else 0
-            )
-            daily_return = (
-                daily_pnl / self.start_of_day_value
-                if self.start_of_day_value > 0
-                else 0
-            )
+            daily_pnl = total_value - self.start_of_day_value if self.start_of_day_value > 0 else 0
+            daily_return = daily_pnl / self.start_of_day_value if self.start_of_day_value > 0 else 0
 
             # Drawdown
             max_drawdown = 0
@@ -805,19 +767,14 @@ class RiskManager:
             # Sharpe ratio (simplified calculation)
             sharpe_ratio = 0
             if len(self.portfolio_history) > 30:
-                values = [
-                    record["total_value"] for record in self.portfolio_history[-30:]
-                ]
+                values = [record["total_value"] for record in self.portfolio_history[-30:]]
                 returns = [
-                    (values[i] - values[i - 1]) / values[i - 1]
-                    for i in range(1, len(values))
+                    (values[i] - values[i - 1]) / values[i - 1] for i in range(1, len(values))
                 ]
                 if returns and np.std(returns) > 0:
                     avg_return = np.mean(returns)
                     std_return = np.std(returns)
-                    sharpe_ratio = (avg_return * np.sqrt(252)) / (
-                        std_return * np.sqrt(252)
-                    )
+                    sharpe_ratio = (avg_return * np.sqrt(252)) / (std_return * np.sqrt(252))
 
             # Position risks
             position_risks = []
@@ -828,9 +785,7 @@ class RiskManager:
                     market_value=pos["market_value"],
                     unrealized_pnl=pos.get("unrealized_pl", 0),
                     var_contribution=0,  # Would need more complex calculation
-                    weight_pct=(
-                        abs(pos["market_value"]) / total_value if total_value > 0 else 0
-                    ),
+                    weight_pct=(abs(pos["market_value"]) / total_value if total_value > 0 else 0),
                     days_held=pos.get("days_held", 0),
                     entry_price=pos.get("avg_entry_price", 0),
                 )
@@ -841,9 +796,7 @@ class RiskManager:
             if max_drawdown > self.limits.max_drawdown_pct * 0.8:
                 risk_level = RiskLevel.HIGH
             elif abs(daily_return) > self.limits.max_daily_loss_pct * 0.8 or (
-                var_95 / total_value > self.limits.var_limit_pct * 0.8
-                if total_value > 0
-                else False
+                var_95 / total_value > self.limits.var_limit_pct * 0.8 if total_value > 0 else False
             ):
                 risk_level = RiskLevel.MEDIUM
 
@@ -937,9 +890,7 @@ class RiskManager:
 
             # Reduce size based on current drawdown
             if current_risk.max_drawdown > self.limits.max_drawdown_pct * 0.5:
-                drawdown_factor = 1 - (
-                    current_risk.max_drawdown / self.limits.max_drawdown_pct
-                )
+                drawdown_factor = 1 - (current_risk.max_drawdown / self.limits.max_drawdown_pct)
                 base_size *= max(0.1, drawdown_factor)
 
             # Reduce size based on VaR
@@ -965,9 +916,7 @@ class RiskManager:
                     "drawdown_factor": current_risk.max_drawdown,
                     "var_factor": var_pct,
                 },
-                "kelly_size": (
-                    kelly_size if win_probability and win_loss_ratio else None
-                ),
+                "kelly_size": (kelly_size if win_probability and win_loss_ratio else None),
                 "max_allowed_pct": self.limits.max_position_pct,
             }
 
@@ -982,14 +931,12 @@ class RiskManager:
             return recommendation
 
         except Exception as e:
-            self.logger.error(
-                "Position sizing recommendation failed", symbol=symbol, error=str(e)
-            )
+            self.logger.error("Position sizing recommendation failed", symbol=symbol, error=str(e))
             return {"symbol": symbol, "recommended_position_pct": 0, "error": str(e)}
 
     def get_positions(self) -> dict:
         """Get current portfolio positions."""
-        if hasattr(self.portfolio, 'get_positions'):
+        if hasattr(self.portfolio, "get_positions"):
             return self.portfolio.get_positions()
         elif isinstance(self.portfolio, dict):
             return self.portfolio
@@ -998,9 +945,9 @@ class RiskManager:
 
     def get_portfolio_value(self) -> float:
         """Get current portfolio total value."""
-        if hasattr(self.portfolio, 'total_value'):
+        if hasattr(self.portfolio, "total_value"):
             return float(self.portfolio.total_value)
-        elif hasattr(self.portfolio, 'get_total_value'):
+        elif hasattr(self.portfolio, "get_total_value"):
             return float(self.portfolio.get_total_value())
         else:
             return 0.0
@@ -1022,16 +969,13 @@ class RiskManager:
             validation_result = self.before_order(symbol, quantity, side)
 
             return {
-                'approved': validation_result.get('approved', True),
-                'reason': validation_result.get('reason', 'Risk check passed')
+                "approved": validation_result.get("approved", True),
+                "reason": validation_result.get("reason", "Risk check passed"),
             }
 
         except Exception as e:
             self.logger.error(f"Risk assessment failed for {symbol}: {e}")
-            return {
-                'approved': False,
-                'reason': f'Risk assessment error: {str(e)}'
-            }
+            return {"approved": False, "reason": f"Risk assessment error: {str(e)}"}
 
     async def update_position_risk(self, symbol: str, current_price: float) -> dict:
         """
@@ -1048,49 +992,48 @@ class RiskManager:
             # Check if we have this position
             positions = self.get_positions()
             if symbol not in positions:
-                return {
-                    'symbol': symbol,
-                    'status': 'no_position',
-                    'alerts': []
-                }
+                return {"symbol": symbol, "status": "no_position", "alerts": []}
 
             position = positions[symbol]
             alerts = []
 
             # Calculate current P&L
-            if 'avg_cost' in position:
-                pnl_pct = (current_price - position['avg_cost']) / position['avg_cost']
+            if "avg_cost" in position:
+                pnl_pct = (current_price - position["avg_cost"]) / position["avg_cost"]
 
                 # Check stop loss
-                if hasattr(self.limits, 'stop_loss_pct') and pnl_pct < -abs(self.limits.stop_loss_pct):
-                    alerts.append({
-                        'type': 'stop_loss',
-                        'message': f'Position down {pnl_pct:.1%}, consider stop loss',
-                        'severity': 'high'
-                    })
+                if hasattr(self.limits, "stop_loss_pct") and pnl_pct < -abs(
+                    self.limits.stop_loss_pct
+                ):
+                    alerts.append(
+                        {
+                            "type": "stop_loss",
+                            "message": f"Position down {pnl_pct:.1%}, consider stop loss",
+                            "severity": "high",
+                        }
+                    )
 
                 # Check daily loss limit
-                if hasattr(self.limits, 'daily_loss_limit'):
-                    position_loss = position.get('quantity', 0) * (position.get('avg_cost', current_price) - current_price)
+                if hasattr(self.limits, "daily_loss_limit"):
+                    position_loss = position.get("quantity", 0) * (
+                        position.get("avg_cost", current_price) - current_price
+                    )
                     if position_loss > self.limits.daily_loss_limit:
-                        alerts.append({
-                            'type': 'daily_loss',
-                            'message': f'Position loss ${position_loss:.2f} exceeds daily limit',
-                            'severity': 'critical'
-                        })
+                        alerts.append(
+                            {
+                                "type": "daily_loss",
+                                "message": f"Position loss ${position_loss:.2f} exceeds daily limit",
+                                "severity": "critical",
+                            }
+                        )
 
             return {
-                'symbol': symbol,
-                'status': 'monitored',
-                'current_price': current_price,
-                'alerts': alerts
+                "symbol": symbol,
+                "status": "monitored",
+                "current_price": current_price,
+                "alerts": alerts,
             }
 
         except Exception as e:
             self.logger.error(f"Failed to update position risk for {symbol}: {e}")
-            return {
-                'symbol': symbol,
-                'status': 'error',
-                'error': str(e),
-                'alerts': []
-            }
+            return {"symbol": symbol, "status": "error", "error": str(e), "alerts": []}

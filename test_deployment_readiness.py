@@ -4,14 +4,15 @@ Tests health probes, graceful shutdown, and deployment infrastructure.
 """
 
 import asyncio
-import json
-import sys
 from datetime import datetime
+import json
 from pathlib import Path
+import sys
 
 # Add project root to path
 project_root = Path(__file__).parent
 sys.path.insert(0, str(project_root))
+
 
 async def test_health_endpoints():
     """Test the new health endpoints /healthz and /readyz."""
@@ -20,16 +21,14 @@ async def test_health_endpoints():
 
     # Import inside function to avoid import issues
     import os
+
     os.environ["PROMETHEUS_AVAILABLE"] = "false"  # Disable metrics during testing
 
     from httpx import ASGITransport, AsyncClient
+
     from backend.api.main import app
 
-    async with AsyncClient(
-        transport=ASGITransport(app=app),
-        base_url="http://test"
-    ) as client:
-
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         # Test liveness probe
         print("Testing /healthz (liveness probe)...")
         try:
@@ -75,22 +74,19 @@ async def test_health_endpoints():
     print("\n🎉 All health endpoint tests passed!")
     return True
 
+
 async def test_metrics_endpoint():
     """Test Prometheus metrics endpoint."""
     print("\n📊 Testing Metrics Endpoint")
     print("=" * 50)
 
-    import os
     # Try with metrics enabled but handle failures gracefully
 
     from httpx import ASGITransport, AsyncClient
+
     from backend.api.main import app
 
-    async with AsyncClient(
-        transport=ASGITransport(app=app),
-        base_url="http://test"
-    ) as client:
-
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         try:
             response = await client.get("/metrics")
             print(f"✅ Status: {response.status_code}")
@@ -111,18 +107,17 @@ async def test_metrics_endpoint():
     print("🎉 Metrics endpoint test passed!")
     return True
 
+
 def test_container_build():
     """Test Docker container build process."""
     print("\n🐳 Testing Container Build")
     print("=" * 50)
 
     import subprocess
-    import os
 
     # Check if Docker is available
     try:
-        result = subprocess.run(["docker", "--version"],
-                              capture_output=True, text=True, check=True)
+        result = subprocess.run(["docker", "--version"], capture_output=True, text=True, check=True)
         print(f"✅ Docker available: {result.stdout.strip()}")
     except (subprocess.CalledProcessError, FileNotFoundError):
         print("❌ Docker not available - skipping container tests")
@@ -140,10 +135,14 @@ def test_container_build():
     dockerfile_content = dockerfile_path.read_text()
 
     checks = {
-        "Multi-stage build": "FROM python" in dockerfile_content and "AS builder" in dockerfile_content,
-        "Non-root user": "USER " in dockerfile_content and ("appuser" in dockerfile_content or "10001" in dockerfile_content),
+        "Multi-stage build": "FROM python" in dockerfile_content
+        and "AS builder" in dockerfile_content,
+        "Non-root user": "USER " in dockerfile_content
+        and ("appuser" in dockerfile_content or "10001" in dockerfile_content),
         "Health check": "HEALTHCHECK" in dockerfile_content,
-        "Security hardening": "chown" in dockerfile_content or "chmod" in dockerfile_content or "appuser" in dockerfile_content,
+        "Security hardening": "chown" in dockerfile_content
+        or "chmod" in dockerfile_content
+        or "appuser" in dockerfile_content,
         "Slim base image": "slim" in dockerfile_content.lower(),
     }
 
@@ -157,6 +156,7 @@ def test_container_build():
     else:
         print("⚠️ Some container checks failed")
         return False
+
 
 def test_kubernetes_manifests():
     """Test Kubernetes deployment manifests."""
@@ -174,7 +174,7 @@ def test_kubernetes_manifests():
         "namespace.yaml",
         "postgres.yaml",
         "redis.yaml",
-        "kustomization.yaml"
+        "kustomization.yaml",
     ]
 
     all_present = True
@@ -211,6 +211,7 @@ def test_kubernetes_manifests():
         print("⚠️ Some Kubernetes manifests missing")
         return False
 
+
 def test_deployment_scripts():
     """Test deployment automation scripts."""
     print("\n🚀 Testing Deployment Scripts")
@@ -245,6 +246,7 @@ def test_deployment_scripts():
     else:
         print("⚠️ Some deployment scripts missing")
         return False
+
 
 async def run_all_tests():
     """Run all BRANCH 2.12 deployment readiness tests."""
@@ -295,6 +297,7 @@ async def run_all_tests():
     else:
         print("⚠️ Some tests failed - review implementation")
         return False
+
 
 if __name__ == "__main__":
     success = asyncio.run(run_all_tests())

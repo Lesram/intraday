@@ -5,18 +5,16 @@ Tests that the app factory/lifespan builds/tears down long-lived resources exact
 and that DI works consistently across routes and WebSocket connections.
 """
 import time
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import patch
 
 from fastapi import FastAPI
-from fastapi.testclient import TestClient
 import pytest
 
-from backend.api.main import WebSocketClientManager, app, lifespan
+from backend.api.main import WebSocketClientManager, lifespan
 from backend.data.alpaca_client import AlpacaClient
 from backend.models.ensemble_model import EnsembleModel
 from backend.risk.risk_manager import AsyncRiskManager
 from backend.strategies.trading_strategies import StrategyManager
-from tests.helpers.simple_app import SimpleTestAppContext
 
 
 @pytest.mark.core
@@ -30,14 +28,14 @@ class TestAppLifespanAndDI:
 
         async with lifespan(test_app):
             # Check that all components are initialized in app.state
-            assert hasattr(test_app.state, 'alpaca_client')
-            assert hasattr(test_app.state, 'sentiment_analyzer')
-            assert hasattr(test_app.state, 'feature_engineer')
-            assert hasattr(test_app.state, 'model_manager')
-            assert hasattr(test_app.state, 'ensemble_model')
-            assert hasattr(test_app.state, 'risk_manager')
-            assert hasattr(test_app.state, 'strategy_manager')
-            assert hasattr(test_app.state, 'strategy_engine')
+            assert hasattr(test_app.state, "alpaca_client")
+            assert hasattr(test_app.state, "sentiment_analyzer")
+            assert hasattr(test_app.state, "feature_engineer")
+            assert hasattr(test_app.state, "model_manager")
+            assert hasattr(test_app.state, "ensemble_model")
+            assert hasattr(test_app.state, "risk_manager")
+            assert hasattr(test_app.state, "strategy_manager")
+            assert hasattr(test_app.state, "strategy_engine")
 
             # Verify resources are not None
             assert test_app.state.alpaca_client is not None
@@ -54,7 +52,7 @@ class TestAppLifespanAndDI:
         # Test that the lifespan completes even with component initialization errors
         # The actual implementation uses defensive programming and continues startup
         # with error logging rather than crashing the entire application
-        with patch('logging.error') as mock_error:
+        with patch("logging.error") as mock_error:
             async with lifespan(test_app):
                 # Lifespan should complete even if some components fail to initialize
                 pass
@@ -66,12 +64,12 @@ class TestAppLifespanAndDI:
 
         async with lifespan(test_app):
             # Resources should be created
-            assert hasattr(test_app.state, 'alpaca_client')
+            assert hasattr(test_app.state, "alpaca_client")
 
             # Store references to verify cleanup
             resources = {
-                'alpaca_client': test_app.state.alpaca_client,
-                'risk_manager': test_app.state.risk_manager
+                "alpaca_client": test_app.state.alpaca_client,
+                "risk_manager": test_app.state.risk_manager,
             }
 
         # After exiting lifespan context, resources should be cleaned up
@@ -98,7 +96,7 @@ class TestAppLifespanAndDI:
 
         async with lifespan(test_app):
             # Verify WebSocket manager is available
-            assert hasattr(test_app.state, 'ws_manager')
+            assert hasattr(test_app.state, "ws_manager")
             ws_manager = test_app.state.ws_manager
             assert isinstance(ws_manager, WebSocketClientManager)
 
@@ -239,7 +237,10 @@ class TestLifespanResilience:
         test_app = FastAPI()
 
         # Mock component failures
-        with patch('backend.data.social_sentiment.SocialSentimentAnalyzer.__init__', side_effect=Exception("Mock sentiment failure")):
+        with patch(
+            "backend.data.social_sentiment.SocialSentimentAnalyzer.__init__",
+            side_effect=Exception("Mock sentiment failure"),
+        ):
             with pytest.raises(Exception, match="Mock sentiment failure"):
                 async with lifespan(test_app):
                     pass  # Should not reach here
@@ -248,10 +249,11 @@ class TestLifespanResilience:
     async def test_database_connection_failure_handling(self):
         """Test graceful handling of database connection failures"""
         from backend.api.main import lifespan as real_lifespan
+
         test_app = FastAPI()
 
         # Mock the init_db function directly during the lifespan startup
-        with patch('backend.api.main.init_db', side_effect=Exception("Mock DB failure")):
+        with patch("backend.api.main.init_db", side_effect=Exception("Mock DB failure")):
             with pytest.raises(Exception, match="Mock DB failure"):
                 async with real_lifespan(test_app):
                     pass  # Should fail before reaching here
@@ -260,11 +262,18 @@ class TestLifespanResilience:
     async def test_external_service_failure_resilience(self):
         """Test resilience to external service failures during startup"""
         from backend.api.main import lifespan as real_lifespan
+
         test_app = FastAPI()
 
         # Mock external service failures (e.g., Twitter API, Reddit API)
-        with patch('backend.data.social_sentiment.SocialSentimentAnalyzer._init_twitter', side_effect=Exception("Twitter API failure")):
-            with patch('backend.data.social_sentiment.SocialSentimentAnalyzer._init_reddit', side_effect=Exception("Reddit API failure")):
+        with patch(
+            "backend.data.social_sentiment.SocialSentimentAnalyzer._init_twitter",
+            side_effect=Exception("Twitter API failure"),
+        ):
+            with patch(
+                "backend.data.social_sentiment.SocialSentimentAnalyzer._init_reddit",
+                side_effect=Exception("Reddit API failure"),
+            ):
                 with pytest.raises(Exception, match="Twitter API failure"):
                     async with real_lifespan(test_app):
                         pass  # Should fail
@@ -285,15 +294,15 @@ class TestLifespanIntegration:
         async with lifespan(test_app):
             # All major components should be initialized
             components = [
-                'alpaca_client',
-                'sentiment_analyzer',
-                'feature_engineer',
-                'model_manager',
-                'ensemble_model',
-                'risk_manager',
-                'strategy_manager',
-                'strategy_engine',
-                'ws_manager'
+                "alpaca_client",
+                "sentiment_analyzer",
+                "feature_engineer",
+                "model_manager",
+                "ensemble_model",
+                "risk_manager",
+                "strategy_manager",
+                "strategy_engine",
+                "ws_manager",
             ]
 
             for component in components:
@@ -308,8 +317,8 @@ class TestLifespanIntegration:
         async with lifespan(test_app):
             # Strategy manager should have its dependencies
             strategy_manager = test_app.state.strategy_manager
-            assert hasattr(strategy_manager, 'risk_manager')
-            assert hasattr(strategy_manager, 'ensemble_model')
+            assert hasattr(strategy_manager, "risk_manager")
+            assert hasattr(strategy_manager, "ensemble_model")
             assert strategy_manager.risk_manager is test_app.state.risk_manager
             assert strategy_manager.ensemble_model is test_app.state.ensemble_model
 
@@ -320,5 +329,5 @@ class TestLifespanIntegration:
 
         async with lifespan(test_app):
             # Should have metrics registry
-            assert hasattr(test_app.state, 'metrics_registry')
+            assert hasattr(test_app.state, "metrics_registry")
             assert test_app.state.metrics_registry is not None

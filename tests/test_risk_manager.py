@@ -34,12 +34,12 @@ class TestLegacyRiskManager:
         mock_portfolio.total_value = 100000
         mock_portfolio.cash = 20000
         mock_portfolio.get_positions.return_value = {
-            'AAPL': {
-                'quantity': 100,
-                'market_value': 15000,
-                'unrealized_pl': 500,
-                'days_held': 10,
-                'avg_entry_price': 150.0
+            "AAPL": {
+                "quantity": 100,
+                "market_value": 15000,
+                "unrealized_pl": 500,
+                "days_held": 10,
+                "avg_entry_price": 150.0,
             }
         }
         mock_portfolio.get_position.return_value = None
@@ -48,7 +48,12 @@ class TestLegacyRiskManager:
 
         # Add some historical data for calculations
         self.risk_manager.portfolio_history = [
-            {'timestamp': datetime.now() - timedelta(days=i), 'total_value': 100000 + i*100, 'cash': 20000, 'positions': 1}
+            {
+                "timestamp": datetime.now() - timedelta(days=i),
+                "total_value": 100000 + i * 100,
+                "cash": 20000,
+                "positions": 1,
+            }
             for i in range(50)
         ]
 
@@ -56,9 +61,9 @@ class TestLegacyRiskManager:
     def test_initialization(self):
         """Test RiskManager initialization"""
         assert self.risk_manager is not None
-        assert hasattr(self.risk_manager, 'limits')
-        assert hasattr(self.risk_manager, 'portfolio')
-        assert hasattr(self.risk_manager, 'circuit_breaker_active')
+        assert hasattr(self.risk_manager, "limits")
+        assert hasattr(self.risk_manager, "portfolio")
+        assert hasattr(self.risk_manager, "circuit_breaker_active")
         assert isinstance(self.risk_manager.limits, RiskLimits)
 
     @pytest.mark.unit
@@ -110,9 +115,7 @@ class TestLegacyRiskManager:
         """Test before_order method for trade validation"""
         # Test valid order
         allowed, reason, adjusted_qty = self.risk_manager.before_order(
-            symbol='MSFT',
-            intended_qty=50,
-            price=300.0
+            symbol="MSFT", intended_qty=50, price=300.0
         )
 
         assert isinstance(allowed, bool)
@@ -124,9 +127,9 @@ class TestLegacyRiskManager:
         """Test position size limits through before_order"""
         # Test large position that should be limited
         allowed, reason, adjusted_qty = self.risk_manager.before_order(
-            symbol='TSLA',
+            symbol="TSLA",
             intended_qty=1000,  # Large quantity
-            price=800.0
+            price=800.0,
         )
 
         # Should either be rejected or adjusted
@@ -141,11 +144,11 @@ class TestLegacyRiskManager:
         metrics = self.risk_manager.get_risk_metrics()
 
         assert isinstance(metrics, PortfolioRisk)
-        assert hasattr(metrics, 'total_value')
-        assert hasattr(metrics, 'var_95')
-        assert hasattr(metrics, 'cvar_95')
-        assert hasattr(metrics, 'leverage')
-        assert hasattr(metrics, 'risk_level')
+        assert hasattr(metrics, "total_value")
+        assert hasattr(metrics, "var_95")
+        assert hasattr(metrics, "cvar_95")
+        assert hasattr(metrics, "leverage")
+        assert hasattr(metrics, "risk_level")
         assert isinstance(metrics.risk_level, RiskLevel)
 
     @pytest.mark.unit
@@ -154,9 +157,9 @@ class TestLegacyRiskManager:
         result = self.risk_manager.enforce_global_limits()
 
         assert isinstance(result, dict)
-        assert 'status' in result
-        assert 'actions_taken' in result
-        assert result['status'] in ['OK', 'MEDIUM', 'HIGH', 'CRITICAL', 'ERROR']
+        assert "status" in result
+        assert "actions_taken" in result
+        assert result["status"] in ["OK", "MEDIUM", "HIGH", "CRITICAL", "ERROR"]
 
     @pytest.mark.unit
     def test_circuit_breaker_functionality(self):
@@ -181,7 +184,7 @@ class TestLegacyRiskManager:
     @pytest.mark.unit
     def test_price_history_update(self):
         """Test price history tracking"""
-        symbol = 'AAPL'
+        symbol = "AAPL"
         price = 150.0
 
         # Update price history
@@ -194,16 +197,13 @@ class TestLegacyRiskManager:
     def test_position_sizing_recommendation(self):
         """Test position sizing recommendations"""
         recommendation = self.risk_manager.get_position_sizing_recommendation(
-            symbol='AAPL',
-            signal_strength=0.8,
-            win_probability=0.6,
-            win_loss_ratio=1.5
+            symbol="AAPL", signal_strength=0.8, win_probability=0.6, win_loss_ratio=1.5
         )
 
         assert isinstance(recommendation, dict)
-        assert 'symbol' in recommendation
-        assert 'recommended_position_pct' in recommendation
-        assert 'recommended_dollar_amount' in recommendation
+        assert "symbol" in recommendation
+        assert "recommended_position_pct" in recommendation
+        assert "recommended_dollar_amount" in recommendation
 
     @pytest.mark.unit
     def test_risk_event_logging(self):
@@ -239,7 +239,7 @@ class TestRiskManagerEdgeCases:
         """Test handling of single value data"""
         # Add minimal data
         self.risk_manager.portfolio_history = [
-            {'timestamp': datetime.now(), 'total_value': 100000, 'cash': 20000, 'positions': 0}
+            {"timestamp": datetime.now(), "total_value": 100000, "cash": 20000, "positions": 0}
         ]
 
         var_result = self.risk_manager.calculate_var()
@@ -250,7 +250,12 @@ class TestRiskManagerEdgeCases:
         """Test handling of extreme market values"""
         # Add extreme portfolio history
         self.risk_manager.portfolio_history = [
-            {'timestamp': datetime.now() - timedelta(days=i), 'total_value': 100000 * (1 + i*0.1), 'cash': 20000, 'positions': 1}
+            {
+                "timestamp": datetime.now() - timedelta(days=i),
+                "total_value": 100000 * (1 + i * 0.1),
+                "cash": 20000,
+                "positions": 1,
+            }
             for i in range(10)
         ]
 
@@ -273,22 +278,24 @@ class TestRiskManagerEdgeCases:
 @pytest.fixture
 def sample_price_data():
     """Generate sample price data for testing"""
-    dates = pd.date_range('2024-01-01', '2024-12-31', freq='D')
+    dates = pd.date_range("2024-01-01", "2024-12-31", freq="D")
     np.random.seed(42)  # For reproducible results
 
     prices = []
     price = 100.0
     for _ in dates:
-        price *= (1 + np.random.normal(0, 0.02))  # 2% daily volatility
+        price *= 1 + np.random.normal(0, 0.02)  # 2% daily volatility
         prices.append(price)
 
-    return pd.DataFrame({
-        'date': dates,
-        'close': prices,
-        'high': [p * 1.02 for p in prices],
-        'low': [p * 0.98 for p in prices],
-        'volume': np.random.randint(100000, 1000000, len(dates))
-    })
+    return pd.DataFrame(
+        {
+            "date": dates,
+            "close": prices,
+            "high": [p * 1.02 for p in prices],
+            "low": [p * 0.98 for p in prices],
+            "volume": np.random.randint(100000, 1000000, len(dates)),
+        }
+    )
 
 
 class TestRiskManagerEdgeCases:
@@ -297,11 +304,11 @@ class TestRiskManagerEdgeCases:
     @pytest.fixture(autouse=True)
     def setup(self):
         config = {
-            'MAX_POSITION_SIZE': 1000,
-            'MAX_PORTFOLIO_VALUE': 100000,
-            'MAX_DAILY_LOSS': 0.05,
-            'MAX_DRAWDOWN': 0.1,
-            'RISK_FREE_RATE': 0.02
+            "MAX_POSITION_SIZE": 1000,
+            "MAX_PORTFOLIO_VALUE": 100000,
+            "MAX_DAILY_LOSS": 0.05,
+            "MAX_DRAWDOWN": 0.1,
+            "RISK_FREE_RATE": 0.02,
         }
         self.risk_manager = RiskManager(config)
 
@@ -311,18 +318,18 @@ class TestRiskManagerEdgeCases:
         empty_returns = pd.Series(dtype=float)
 
         # Should handle empty data gracefully
-        var = self.risk_manager.calculate_var(confidence=0.95, method='parametric')
+        var = self.risk_manager.calculate_var(confidence=0.95, method="parametric")
         assert var is not None
 
     @pytest.mark.unit
     def test_extreme_confidence_levels(self):
         """Test VaR with extreme confidence levels"""
         # Test with very high confidence
-        var_999 = self.risk_manager.calculate_var(confidence=0.999, method='parametric')
+        var_999 = self.risk_manager.calculate_var(confidence=0.999, method="parametric")
         assert var_999 is not None
 
         # Test with very low confidence
-        var_50 = self.risk_manager.calculate_var(confidence=0.5, method='parametric')
+        var_50 = self.risk_manager.calculate_var(confidence=0.5, method="parametric")
         assert var_50 is not None
 
     @pytest.mark.unit
@@ -344,7 +351,7 @@ class TestRiskManagerEdgeCases:
     def test_invalid_method_handling(self):
         """Test handling of invalid VaR methods"""
         try:
-            var = self.risk_manager.calculate_var(confidence=0.95, method='invalid_method')
+            var = self.risk_manager.calculate_var(confidence=0.95, method="invalid_method")
             # Should either return default or raise appropriate error
             assert var is not None or True  # Test passes if it handles gracefully
         except ValueError:
@@ -361,6 +368,6 @@ class TestRiskManagerEdgeCases:
         assert isinstance(metrics, object)  # Returns PortfolioRisk object
 
         # Should have all expected attributes even with minimal data
-        expected_attrs = ['var_95', 'cvar_95', 'max_drawdown', 'sharpe_ratio']
+        expected_attrs = ["var_95", "cvar_95", "max_drawdown", "sharpe_ratio"]
         for attr in expected_attrs:
             assert hasattr(metrics, attr)

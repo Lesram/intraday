@@ -37,8 +37,8 @@ from .metrics import (
 logger = logging.getLogger(__name__)
 
 # Type hints
-F = TypeVar('F', bound=Callable[..., Any])
-AsyncF = TypeVar('AsyncF', bound=Callable[..., Any])
+F = TypeVar("F", bound=Callable[..., Any])
+AsyncF = TypeVar("AsyncF", bound=Callable[..., Any])
 
 # Global observability instances
 _tracer: trace.Tracer | None = None
@@ -61,7 +61,7 @@ class ObservabilityConfig:
         prometheus_enabled: bool = True,
         prometheus_path: str = "/metrics",
         metric_namespace: str = "intraday",
-        latency_buckets_ms: str = "1,5,10,25,50,100,250,500,1000,2500,5000,10000"
+        latency_buckets_ms: str = "1,5,10,25,50,100,250,500,1000,2500,5000,10000",
     ):
         self.service_name = service_name
         self.service_version = service_version
@@ -94,11 +94,13 @@ def initialize_observability(config: ObservabilityConfig) -> None:
     logger.info(f"Initializing observability for service: {config.service_name}")
 
     # Create resource with service information
-    resource = Resource.create({
-        ResourceAttributes.SERVICE_NAME: config.service_name,
-        ResourceAttributes.SERVICE_VERSION: config.service_version,
-        ResourceAttributes.DEPLOYMENT_ENVIRONMENT: "production",
-    })
+    resource = Resource.create(
+        {
+            ResourceAttributes.SERVICE_NAME: config.service_name,
+            ResourceAttributes.SERVICE_VERSION: config.service_version,
+            ResourceAttributes.DEPLOYMENT_ENVIRONMENT: "production",
+        }
+    )
 
     # Initialize tracing if enabled
     if config.otel_enabled:
@@ -144,7 +146,7 @@ def _setup_tracing(config: ObservabilityConfig, resource: Resource) -> None:
     if config.otel_exporter_otlp_endpoint:
         otlp_exporter = OTLPSpanExporter(
             endpoint=config.otel_exporter_otlp_endpoint,
-            insecure=True  # Use TLS in production
+            insecure=True,  # Use TLS in production
         )
         span_processor = BatchSpanProcessor(otlp_exporter)
         tracer_provider.add_span_processor(span_processor)
@@ -165,10 +167,7 @@ def _setup_prometheus_metrics(config: ObservabilityConfig, resource: Resource) -
     prometheus_reader = PrometheusMetricReader()
 
     # Create meter provider with Prometheus reader
-    meter_provider = MeterProvider(
-        resource=resource,
-        metric_readers=[prometheus_reader]
-    )
+    meter_provider = MeterProvider(resource=resource, metric_readers=[prometheus_reader])
     otel_metrics.set_meter_provider(meter_provider)
 
     # Get meter instance
@@ -185,19 +184,19 @@ def _setup_otel_metrics(config: ObservabilityConfig, resource: Resource) -> None
     # Create OTLP metric exporter
     otlp_metric_exporter = OTLPMetricExporter(
         endpoint=config.otel_exporter_otlp_endpoint,
-        insecure=True  # Use TLS in production
+        insecure=True,  # Use TLS in production
     )
 
     # Create periodic exporting metric reader
     otlp_reader = PeriodicExportingMetricReader(
         exporter=otlp_metric_exporter,
-        export_interval_millis=30000  # Export every 30 seconds
+        export_interval_millis=30000,  # Export every 30 seconds
     )
 
     # Get existing meter provider or create new one
     try:
         meter_provider = otel_metrics.get_meter_provider()
-        if hasattr(meter_provider, '_metric_readers'):
+        if hasattr(meter_provider, "_metric_readers"):
             meter_provider._metric_readers.append(otlp_reader)
         logger.info(f"OTLP metrics exporter added: {config.otel_exporter_otlp_endpoint}")
     except Exception as e:
@@ -240,10 +239,7 @@ def get_meter() -> otel_metrics.Meter:
 
 
 @contextmanager
-def trace_span(
-    name: str,
-    attributes: dict[str, Union[str, int, float, bool]] | None = None
-):
+def trace_span(name: str, attributes: dict[str, Union[str, int, float, bool]] | None = None):
     """
     Context manager for creating traced spans with automatic error handling.
 
@@ -281,7 +277,7 @@ def record_latency(
     metric_name: str,
     route: str | None = None,
     method: str | None = None,
-    extra_labels: dict[str, str] | None = None
+    extra_labels: dict[str, str] | None = None,
 ):
     """
     Decorator to record operation latency in both OpenTelemetry and Prometheus metrics.
@@ -297,6 +293,7 @@ def record_latency(
         async def submit_order(...):
             ...
     """
+
     def decorator(func: F) -> F:
         @functools.wraps(func)
         async def async_wrapper(*args, **kwargs):
@@ -402,9 +399,7 @@ def record_latency(
 
 
 def record_operation(
-    operation: str,
-    success: bool = True,
-    extra_labels: dict[str, str] | None = None
+    operation: str, success: bool = True, extra_labels: dict[str, str] | None = None
 ) -> None:
     """
     Record a business operation with standardized metrics and tracing.
@@ -427,23 +422,18 @@ def record_operation(
 
     # Only record if metric is in allowlist
     from .metrics import LABEL_ALLOWLIST
+
     if counter_name in LABEL_ALLOWLIST:
         metrics.inc_counter(counter_name, labels)
 
     # Add span event
     current_span = trace.get_current_span()
     if current_span:
-        current_span.add_event(
-            f"operation_{operation}",
-            attributes={"success": success, **labels}
-        )
+        current_span.add_event(f"operation_{operation}", attributes={"success": success, **labels})
 
 
 def record_alpaca_request(
-    endpoint: str,
-    method: str,
-    status_code: int,
-    duration_seconds: float
+    endpoint: str, method: str, status_code: int, duration_seconds: float
 ) -> None:
     """
     Record Alpaca API request metrics with normalized endpoints.
@@ -471,21 +461,19 @@ def record_alpaca_request(
     # Counter for total requests
     metrics.inc_counter(
         "alpaca_http_requests_total",
-        {"endpoint": normalized_endpoint, "method": method, "status": status}
+        {"endpoint": normalized_endpoint, "method": method, "status": status},
     )
 
     # Histogram for latency
     metrics.observe_histogram(
         "alpaca_http_latency_seconds",
         duration_seconds,
-        {"endpoint": normalized_endpoint, "method": method}
+        {"endpoint": normalized_endpoint, "method": method},
     )
 
 
 def record_database_operation(
-    operation: str,
-    duration_seconds: float,
-    success: bool = True
+    operation: str, duration_seconds: float, success: bool = True
 ) -> None:
     """
     Record database operation metrics.
@@ -499,9 +487,7 @@ def record_database_operation(
 
     # Record latency
     metrics.observe_histogram(
-        "db_query_duration_seconds",
-        duration_seconds,
-        {"operation": operation}
+        "db_query_duration_seconds", duration_seconds, {"operation": operation}
     )
 
     # Record health check results if applicable
@@ -515,7 +501,7 @@ def record_outbox_metrics(
     dispatched_count: int,
     failed_count: int,
     queue_size: int,
-    dispatch_duration_seconds: float | None = None
+    dispatch_duration_seconds: float | None = None,
 ) -> None:
     """
     Record outbox pattern metrics.
@@ -538,15 +524,13 @@ def record_outbox_metrics(
         metrics.inc_counter(
             "outbox_dispatched_total",
             {"topic": "orders", "status": "success"},
-            amount=dispatched_count
+            amount=dispatched_count,
         )
 
     # Record failures
     if failed_count > 0:
         metrics.inc_counter(
-            "outbox_dispatched_total",
-            {"topic": "orders", "status": "failed"},
-            amount=failed_count
+            "outbox_dispatched_total", {"topic": "orders", "status": "failed"}, amount=failed_count
         )
 
     # Record queue size
@@ -555,9 +539,7 @@ def record_outbox_metrics(
     # Record dispatch latency
     if dispatch_duration_seconds is not None:
         metrics.observe_histogram(
-            "outbox_dispatch_latency_seconds",
-            dispatch_duration_seconds,
-            {"topic": "orders"}
+            "outbox_dispatch_latency_seconds", dispatch_duration_seconds, {"topic": "orders"}
         )
 
 
@@ -582,7 +564,7 @@ def record_websocket_metrics(
     event: str,
     client_type: str = "trading",
     message_type: str | None = None,
-    direction: str | None = None
+    direction: str | None = None,
 ) -> None:
     """
     Record WebSocket metrics.
@@ -599,6 +581,5 @@ def record_websocket_metrics(
         metrics.inc_counter("websocket_connections_total", {"client_type": client_type})
     elif event == "message" and message_type and direction:
         metrics.inc_counter(
-            "websocket_messages_total",
-            {"message_type": message_type, "direction": direction}
+            "websocket_messages_total", {"message_type": message_type, "direction": direction}
         )

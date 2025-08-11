@@ -3,18 +3,16 @@ Enhanced app helper for comprehensive testing.
 Provides ASGI client with lifespan, dependency overrides, startup/shutdown helpers, and database setup.
 """
 
-import asyncio
-from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from typing import Any, Optional
-from unittest.mock import AsyncMock, MagicMock, patch
+from typing import Optional
+from unittest.mock import MagicMock
 
-import pytest
-from httpx import ASGITransport, AsyncClient
 from fastapi import FastAPI
+from httpx import ASGITransport, AsyncClient
+import pytest
 
 from backend.api.main import app as main_app
-from backend.infra.db import get_engine, get_sessionmaker, init_db
+from backend.infra.db import init_db
 from tests.helpers.db_setup import create_all_tables
 
 
@@ -40,10 +38,7 @@ class TestAppContext:
         await self._setup_test_patches()
 
         # Create ASGI client - this will trigger lifespan events during first request
-        self.client = AsyncClient(
-            transport=ASGITransport(app=self.app),
-            base_url="http://test"
-        )
+        self.client = AsyncClient(transport=ASGITransport(app=self.app), base_url="http://test")
 
         return self
 
@@ -93,12 +88,12 @@ class TestAppContext:
 
             # Store mock resources for validation
             self.resources_created = {
-                'alpaca_client': app.state.alpaca_client,
-                'feature_engineer': app.state.feature_engineer,
-                'model_manager': app.state.model_manager,
-                'risk_manager': app.state.risk_manager,
-                'strategy_manager': app.state.strategy_manager,
-                'strategy_engine': app.state.strategy_engine,
+                "alpaca_client": app.state.alpaca_client,
+                "feature_engineer": app.state.feature_engineer,
+                "model_manager": app.state.model_manager,
+                "risk_manager": app.state.risk_manager,
+                "strategy_manager": app.state.strategy_manager,
+                "strategy_engine": app.state.strategy_engine,
             }
 
             try:

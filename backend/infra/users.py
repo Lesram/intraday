@@ -43,11 +43,7 @@ class UserRepository:
         if username in self._users:
             raise ValueError(f"User '{username}' already exists")
 
-        user = User(
-            username=username,
-            hashed_password=hash_password(password),
-            roles=roles
-        )
+        user = User(username=username, hashed_password=hash_password(password), roles=roles)
 
         self._users[username] = user
         return user
@@ -164,7 +160,7 @@ def _seed_dev_users():
         admin_user = repo.create_user(
             username="admin",
             password="admin",  # Simple password for development
-            roles=["admin", "trader"]
+            roles=["admin", "trader"],
         )
         print(f"Created dev admin user: {admin_user.username}")
     except ValueError:
@@ -173,11 +169,7 @@ def _seed_dev_users():
 
     # Create trader user for development
     try:
-        trader_user = repo.create_user(
-            username="trader",
-            password="trader123",
-            roles=["trader"]
-        )
+        trader_user = repo.create_user(username="trader", password="trader123", roles=["trader"])
         print(f"Created dev trader user: {trader_user.username}")
     except ValueError:
         # User already exists
@@ -186,9 +178,7 @@ def _seed_dev_users():
     # Create read-only user for development
     try:
         readonly_user = repo.create_user(
-            username="viewer",
-            password="viewer123",
-            roles=["read-only"]
+            username="viewer", password="viewer123", roles=["read-only"]
         )
         print(f"Created dev read-only user: {readonly_user.username}")
     except ValueError:

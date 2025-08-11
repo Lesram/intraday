@@ -168,11 +168,11 @@ class FeatureEngineer:
 
             # Instead of dropping all rows with any NaN, be more selective
             # Only require that the basic price columns and short-term indicators are not NaN
-            essential_cols = ['open', 'high', 'low', 'close', 'volume']
-            if 'sma_5' in result_df.columns:
-                essential_cols.append('sma_5')
-            if 'sma_20' in result_df.columns:
-                essential_cols.append('sma_20')
+            essential_cols = ["open", "high", "low", "close", "volume"]
+            if "sma_5" in result_df.columns:
+                essential_cols.append("sma_5")
+            if "sma_20" in result_df.columns:
+                essential_cols.append("sma_20")
 
             # Drop rows where essential columns are NaN
             result_df = result_df.dropna(subset=essential_cols)
@@ -261,9 +261,7 @@ class FeatureEngineer:
             ema_slow = exponential_moving_average(df["close"], self.config["macd_slow"])
             if isinstance(ema_fast, pd.Series) and isinstance(ema_slow, pd.Series):
                 df["macd"] = ema_fast - ema_slow
-                df["macd_signal"] = (
-                    df["macd"].ewm(span=self.config["macd_signal"]).mean()
-                )
+                df["macd_signal"] = df["macd"].ewm(span=self.config["macd_signal"]).mean()
                 df["macd_histogram"] = df["macd"] - df["macd_signal"]
 
         # Price momentum
@@ -276,12 +274,8 @@ class FeatureEngineer:
             df["roc_10"] = talib.ROC(df["close"].values, timeperiod=10)
             df["roc_20"] = talib.ROC(df["close"].values, timeperiod=20)
         else:
-            df["roc_10"] = (
-                (df["close"] - df["close"].shift(10)) / df["close"].shift(10)
-            ) * 100
-            df["roc_20"] = (
-                (df["close"] - df["close"].shift(20)) / df["close"].shift(20)
-            ) * 100
+            df["roc_10"] = ((df["close"] - df["close"].shift(10)) / df["close"].shift(10)) * 100
+            df["roc_20"] = ((df["close"] - df["close"].shift(20)) / df["close"].shift(20)) * 100
 
         return df
 
@@ -320,17 +314,13 @@ class FeatureEngineer:
                 matype=0,
             )
         else:
-            bb_upper, bb_middle, bb_lower = bollinger_bands(
-                df["close"], bb_period, bb_std
-            )
+            bb_upper, bb_middle, bb_lower = bollinger_bands(df["close"], bb_period, bb_std)
             df["bb_upper"] = bb_upper
             df["bb_middle"] = bb_middle
             df["bb_lower"] = bb_lower
 
         # Bollinger Band position
-        df["bb_position"] = (df["close"] - df["bb_lower"]) / (
-            df["bb_upper"] - df["bb_lower"]
-        )
+        df["bb_position"] = (df["close"] - df["bb_lower"]) / (df["bb_upper"] - df["bb_lower"])
         df["bb_width"] = (df["bb_upper"] - df["bb_lower"]) / df["bb_middle"]
 
         # Historical volatility
@@ -412,9 +402,7 @@ class FeatureEngineer:
             lowest_low = df["low"].rolling(window=k_period).min()
             highest_high = df["high"].rolling(window=k_period).max()
 
-            df["stoch_k"] = (
-                (df["close"] - lowest_low) / (highest_high - lowest_low)
-            ) * 100
+            df["stoch_k"] = ((df["close"] - lowest_low) / (highest_high - lowest_low)) * 100
             df["stoch_d"] = df["stoch_k"].rolling(window=d_period).mean()
 
         # Williams %R
@@ -430,9 +418,7 @@ class FeatureEngineer:
             period = self.config["williams_period"]
             highest_high = df["high"].rolling(window=period).max()
             lowest_low = df["low"].rolling(window=period).min()
-            df["williams_r"] = (
-                (highest_high - df["close"]) / (highest_high - lowest_low)
-            ) * -100
+            df["williams_r"] = ((highest_high - df["close"]) / (highest_high - lowest_low)) * -100
 
         # Commodity Channel Index (CCI)
         if TALIB_AVAILABLE:
@@ -518,21 +504,17 @@ class FeatureEngineer:
         df["high_low_ratio"] = df["high"] / df["low"]
         df["open_close_ratio"] = df["open"] / df["close"]
         df["body_size"] = abs(df["close"] - df["open"]) / df["open"]
-        df["shadow_upper"] = (df["high"] - np.maximum(df["open"], df["close"])) / df[
-            "open"
-        ]
-        df["shadow_lower"] = (np.minimum(df["open"], df["close"]) - df["low"]) / df[
-            "open"
-        ]
+        df["shadow_upper"] = (df["high"] - np.maximum(df["open"], df["close"])) / df["open"]
+        df["shadow_lower"] = (np.minimum(df["open"], df["close"]) - df["low"]) / df["open"]
 
         # Price position within range
         df["price_position"] = (df["close"] - df["low"]) / (df["high"] - df["low"])
 
         # VWAP approximation (using typical price)
         typical_price = (df["high"] + df["low"] + df["close"]) / 3
-        df["vwap_approx"] = (typical_price * df["volume"]).rolling(
-            window=20
-        ).sum() / df["volume"].rolling(window=20).sum()
+        df["vwap_approx"] = (typical_price * df["volume"]).rolling(window=20).sum() / df[
+            "volume"
+        ].rolling(window=20).sum()
         df["vwap_distance"] = (df["close"] - df["vwap_approx"]) / df["vwap_approx"]
 
         return df
@@ -555,12 +537,8 @@ class FeatureEngineer:
             df[f"volume_std_{period}"] = df["volume"].rolling(window=period).std()
 
             # Min/Max ratios
-            df[f"close_min_ratio_{period}"] = (
-                df["close"] / df["close"].rolling(window=period).min()
-            )
-            df[f"close_max_ratio_{period}"] = (
-                df["close"] / df["close"].rolling(window=period).max()
-            )
+            df[f"close_min_ratio_{period}"] = df["close"] / df["close"].rolling(window=period).min()
+            df[f"close_max_ratio_{period}"] = df["close"] / df["close"].rolling(window=period).max()
 
         return df
 
@@ -598,9 +576,7 @@ class FeatureEngineer:
                         rolling_max - rolling_min
                     )
                 elif method == "robust":
-                    rolling_median = (
-                        df[col].rolling(window=window, min_periods=20).median()
-                    )
+                    rolling_median = df[col].rolling(window=window, min_periods=20).median()
                     rolling_mad = (
                         df[col]
                         .rolling(window=window, min_periods=20)
@@ -759,10 +735,9 @@ class FeatureEngineer:
 
 # Schema Validation Helpers for MLOps Integration
 
+
 def validate_feature_schema(
-    features_df: pd.DataFrame,
-    expected_schema: dict[str, str],
-    strict: bool = True
+    features_df: pd.DataFrame, expected_schema: dict[str, str], strict: bool = True
 ) -> tuple[bool, list[str]]:
     """
     Validate feature DataFrame against expected schema.
@@ -816,10 +791,7 @@ def get_feature_schema(features_df: pd.DataFrame) -> dict[str, str]:
     return {col: str(features_df[col].dtype) for col in features_df.columns}
 
 
-def ensure_feature_order(
-    features_df: pd.DataFrame,
-    expected_order: list[str]
-) -> pd.DataFrame:
+def ensure_feature_order(features_df: pd.DataFrame, expected_order: list[str]) -> pd.DataFrame:
     """
     Reorder feature columns to match expected order.
 
@@ -842,8 +814,7 @@ def ensure_feature_order(
 
 
 def create_feature_signature(
-    features_df: pd.DataFrame,
-    include_stats: bool = False
+    features_df: pd.DataFrame, include_stats: bool = False
 ) -> dict[str, any]:
     """
     Create a feature signature for drift detection and validation.
@@ -856,23 +827,23 @@ def create_feature_signature(
         Dictionary with feature signature information
     """
     signature = {
-        'feature_names': list(features_df.columns),
-        'feature_dtypes': get_feature_schema(features_df),
-        'feature_count': len(features_df.columns),
-        'created_at': pd.Timestamp.now().isoformat()
+        "feature_names": list(features_df.columns),
+        "feature_dtypes": get_feature_schema(features_df),
+        "feature_count": len(features_df.columns),
+        "created_at": pd.Timestamp.now().isoformat(),
     }
 
     if include_stats:
         numeric_features = features_df.select_dtypes(include=[np.number]).columns
-        signature['numeric_features'] = list(numeric_features)
-        signature['categorical_features'] = list(set(features_df.columns) - set(numeric_features))
+        signature["numeric_features"] = list(numeric_features)
+        signature["categorical_features"] = list(set(features_df.columns) - set(numeric_features))
 
         if len(numeric_features) > 0:
-            signature['feature_stats'] = {
-                'mean': features_df[numeric_features].mean().to_dict(),
-                'std': features_df[numeric_features].std().to_dict(),
-                'min': features_df[numeric_features].min().to_dict(),
-                'max': features_df[numeric_features].max().to_dict()
+            signature["feature_stats"] = {
+                "mean": features_df[numeric_features].mean().to_dict(),
+                "std": features_df[numeric_features].std().to_dict(),
+                "min": features_df[numeric_features].min().to_dict(),
+                "max": features_df[numeric_features].max().to_dict(),
             }
 
     return signature
@@ -881,7 +852,7 @@ def create_feature_signature(
 def validate_feature_ranges(
     features_df: pd.DataFrame,
     expected_ranges: dict[str, tuple[float, float]],
-    tolerance: float = 0.1
+    tolerance: float = 0.1,
 ) -> tuple[bool, list[str]]:
     """
     Validate that feature values are within expected ranges.
@@ -940,11 +911,18 @@ def _is_dtype_compatible(actual_dtype: str, expected_dtype: str) -> bool:
         return True
 
     # Float compatibility
-    if expected_norm in ['float', 'float32', 'float64'] and actual_norm in ['float', 'float32', 'float64', 'int', 'int32', 'int64']:
+    if expected_norm in ["float", "float32", "float64"] and actual_norm in [
+        "float",
+        "float32",
+        "float64",
+        "int",
+        "int32",
+        "int64",
+    ]:
         return True
 
     # Integer compatibility
-    if expected_norm in ['int', 'int32', 'int64'] and actual_norm in ['int', 'int32', 'int64']:
+    if expected_norm in ["int", "int32", "int64"] and actual_norm in ["int", "int32", "int64"]:
         return True
 
     return False
@@ -962,30 +940,30 @@ def _normalize_dtype(dtype_str: str) -> str:
     """
     dtype_str = dtype_str.lower()
 
-    if 'float' in dtype_str:
-        if '32' in dtype_str:
-            return 'float32'
-        elif '64' in dtype_str:
-            return 'float64'
+    if "float" in dtype_str:
+        if "32" in dtype_str:
+            return "float32"
+        elif "64" in dtype_str:
+            return "float64"
         else:
-            return 'float'
+            return "float"
 
-    if 'int' in dtype_str:
-        if '32' in dtype_str:
-            return 'int32'
-        elif '64' in dtype_str:
-            return 'int64'
+    if "int" in dtype_str:
+        if "32" in dtype_str:
+            return "int32"
+        elif "64" in dtype_str:
+            return "int64"
         else:
-            return 'int'
+            return "int"
 
-    if 'object' in dtype_str or 'string' in dtype_str:
-        return 'object'
+    if "object" in dtype_str or "string" in dtype_str:
+        return "object"
 
-    if 'bool' in dtype_str:
-        return 'bool'
+    if "bool" in dtype_str:
+        return "bool"
 
-    if 'datetime' in dtype_str:
-        return 'datetime64'
+    if "datetime" in dtype_str:
+        return "datetime64"
 
     return dtype_str
 
@@ -1048,12 +1026,10 @@ def build_feature_frame(df_1m: pd.DataFrame, *, price_col: str = "close") -> Fea
 
         # Run lookahead guard
         settings = get_settings()
-        if getattr(settings.features, 'no_lookahead_enforced', True):
+        if getattr(settings.features, "no_lookahead_enforced", True):
             try:
                 guard_no_lookahead(
-                    feature_frame.X,
-                    price_series,
-                    feature_cols=list(feature_frame.X.columns)
+                    feature_frame.X, price_series, feature_cols=list(feature_frame.X.columns)
                 )
             except Exception as e:
                 # Log but don't fail in production

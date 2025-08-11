@@ -19,11 +19,13 @@ logger = logging.getLogger(__name__)
 
 class SignalNotFoundError(Exception):
     """Raised when a signal is not found."""
+
     pass
 
 
 class DuplicateSignalError(Exception):
     """Raised when attempting to create a duplicate signal."""
+
     pass
 
 
@@ -45,7 +47,7 @@ class SignalsRepo:
         target_price: Decimal | None = None,
         stop_loss: Decimal | None = None,
         expiry: datetime | None = None,
-        attributes: dict[str, Any] | None = None
+        attributes: dict[str, Any] | None = None,
     ) -> Signal:
         """
         Create a new trading signal.
@@ -78,7 +80,7 @@ class SignalsRepo:
             target_price=target_price,
             stop_loss=stop_loss,
             expiry=expiry,
-            attributes=attributes or {}
+            attributes=attributes or {},
         )
 
         try:
@@ -94,8 +96,8 @@ class SignalsRepo:
                     "signal_type": signal_type,
                     "direction": direction,
                     "strength": str(strength),
-                    "confidence": str(confidence)
-                }
+                    "confidence": str(confidence),
+                },
             )
 
             return new_signal
@@ -108,8 +110,8 @@ class SignalsRepo:
                     "symbol": symbol,
                     "model_name": model_name,
                     "signal_type": signal_type,
-                    "error": str(e)
-                }
+                    "error": str(e),
+                },
             )
             raise DuplicateSignalError(f"Failed to create signal for {symbol}") from e
 
@@ -131,7 +133,7 @@ class SignalsRepo:
         self,
         symbol: str | None = None,
         model_name: str | None = None,
-        signal_type: str | None = None
+        signal_type: str | None = None,
     ) -> list[Signal]:
         """
         Get active (non-expired) signals.
@@ -148,12 +150,7 @@ class SignalsRepo:
 
         # Only include active signals (not expired)
         current_time = datetime.utcnow()
-        conditions.append(
-            or_(
-                Signal.expiry.is_(None),
-                Signal.expiry > current_time
-            )
-        )
+        conditions.append(or_(Signal.expiry.is_(None), Signal.expiry > current_time))
 
         if symbol:
             conditions.append(Signal.symbol == symbol)
@@ -164,19 +161,13 @@ class SignalsRepo:
         if signal_type:
             conditions.append(Signal.signal_type == signal_type)
 
-        stmt = (
-            select(Signal)
-            .where(and_(*conditions))
-            .order_by(Signal.created_at.desc())
-        )
+        stmt = select(Signal).where(and_(*conditions)).order_by(Signal.created_at.desc())
 
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
 
     async def get_latest_signal_by_symbol_and_model(
-        self,
-        symbol: str,
-        model_name: str
+        self, symbol: str, model_name: str
     ) -> Signal | None:
         """
         Get the latest signal for a symbol from a specific model.
@@ -190,12 +181,7 @@ class SignalsRepo:
         """
         stmt = (
             select(Signal)
-            .where(
-                and_(
-                    Signal.symbol == symbol,
-                    Signal.model_name == model_name
-                )
-            )
+            .where(and_(Signal.symbol == symbol, Signal.model_name == model_name))
             .order_by(Signal.created_at.desc())
             .limit(1)
         )
@@ -208,7 +194,7 @@ class SignalsRepo:
         start_time: datetime,
         end_time: datetime,
         symbol: str | None = None,
-        model_name: str | None = None
+        model_name: str | None = None,
     ) -> list[Signal]:
         """
         Get signals within a time range.
@@ -222,10 +208,7 @@ class SignalsRepo:
         Returns:
             List of signals in time range
         """
-        conditions = [
-            Signal.created_at >= start_time,
-            Signal.created_at <= end_time
-        ]
+        conditions = [Signal.created_at >= start_time, Signal.created_at <= end_time]
 
         if symbol:
             conditions.append(Signal.symbol == symbol)
@@ -233,20 +216,16 @@ class SignalsRepo:
         if model_name:
             conditions.append(Signal.model_name == model_name)
 
-        stmt = (
-            select(Signal)
-            .where(and_(*conditions))
-            .order_by(Signal.created_at.asc())
-        )
+        stmt = select(Signal).where(and_(*conditions)).order_by(Signal.created_at.asc())
 
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
 
     async def get_high_confidence_signals(
         self,
-        min_confidence: Decimal = Decimal('0.8'),
-        min_strength: Decimal = Decimal('0.7'),
-        limit: int = 50
+        min_confidence: Decimal = Decimal("0.8"),
+        min_strength: Decimal = Decimal("0.7"),
+        limit: int = 50,
     ) -> list[Signal]:
         """
         Get high-confidence signals above specified thresholds.
@@ -267,16 +246,10 @@ class SignalsRepo:
                 and_(
                     Signal.confidence >= min_confidence,
                     Signal.strength >= min_strength,
-                    or_(
-                        Signal.expiry.is_(None),
-                        Signal.expiry > current_time
-                    )
+                    or_(Signal.expiry.is_(None), Signal.expiry > current_time),
                 )
             )
-            .order_by(
-                (Signal.confidence * Signal.strength).desc(),
-                Signal.created_at.desc()
-            )
+            .order_by((Signal.confidence * Signal.strength).desc(), Signal.created_at.desc())
             .limit(limit)
         )
 
@@ -296,10 +269,7 @@ class SignalsRepo:
         stmt = (
             update(Signal)
             .where(Signal.id == signal_id)
-            .values(
-                expiry=datetime.utcnow(),
-                updated_at=datetime.utcnow()
-            )
+            .values(expiry=datetime.utcnow(), updated_at=datetime.utcnow())
             .returning(Signal.id)
         )
 
@@ -309,10 +279,7 @@ class SignalsRepo:
         if not updated_id:
             raise SignalNotFoundError(f"Signal {signal_id} not found")
 
-        logger.info(
-            "Signal expired",
-            extra={"signal_id": str(signal_id)}
-        )
+        logger.info("Signal expired", extra={"signal_id": str(signal_id)})
 
     async def expire_signals_by_model(self, model_name: str) -> int:
         """
@@ -331,16 +298,10 @@ class SignalsRepo:
             .where(
                 and_(
                     Signal.model_name == model_name,
-                    or_(
-                        Signal.expiry.is_(None),
-                        Signal.expiry > current_time
-                    )
+                    or_(Signal.expiry.is_(None), Signal.expiry > current_time),
                 )
             )
-            .values(
-                expiry=current_time,
-                updated_at=current_time
-            )
+            .values(expiry=current_time, updated_at=current_time)
         )
 
         result = await self.session.execute(stmt)
@@ -348,19 +309,13 @@ class SignalsRepo:
 
         logger.info(
             "Signals expired by model",
-            extra={
-                "model_name": model_name,
-                "expired_count": expired_count
-            }
+            extra={"model_name": model_name, "expired_count": expired_count},
         )
 
         return expired_count
 
     async def get_signal_performance_metrics(
-        self,
-        model_name: str,
-        start_time: datetime | None = None,
-        end_time: datetime | None = None
+        self, model_name: str, start_time: datetime | None = None, end_time: datetime | None = None
     ) -> dict[str, Any]:
         """
         Calculate performance metrics for signals from a specific model.
@@ -382,11 +337,7 @@ class SignalsRepo:
             conditions.append(Signal.created_at <= end_time)
 
         # Get all signals for the model
-        stmt = (
-            select(Signal)
-            .where(and_(*conditions))
-            .order_by(Signal.created_at.asc())
-        )
+        stmt = select(Signal).where(and_(*conditions)).order_by(Signal.created_at.asc())
 
         result = await self.session.execute(stmt)
         signals = list(result.scalars().all())
@@ -399,7 +350,7 @@ class SignalsRepo:
                 "avg_strength": None,
                 "signal_types": {},
                 "directions": {},
-                "active_signals": 0
+                "active_signals": 0,
             }
 
         # Calculate metrics
@@ -419,10 +370,7 @@ class SignalsRepo:
 
         # Count active signals
         current_time = datetime.utcnow()
-        active_signals = sum(
-            1 for s in signals
-            if s.expiry is None or s.expiry > current_time
-        )
+        active_signals = sum(1 for s in signals if s.expiry is None or s.expiry > current_time)
 
         return {
             "model_name": model_name,
@@ -436,15 +384,12 @@ class SignalsRepo:
                 "start": start_time,
                 "end": end_time,
                 "first_signal": signals[0].created_at if signals else None,
-                "last_signal": signals[-1].created_at if signals else None
-            }
+                "last_signal": signals[-1].created_at if signals else None,
+            },
         }
 
     async def get_consensus_signals(
-        self,
-        symbol: str,
-        min_models: int = 2,
-        max_age_hours: int = 24
+        self, symbol: str, min_models: int = 2, max_age_hours: int = 24
     ) -> dict[str, Any]:
         """
         Get consensus signals for a symbol from multiple models.
@@ -458,23 +403,17 @@ class SignalsRepo:
             Dictionary with consensus analysis
         """
         from datetime import timedelta
+
         cutoff_time = datetime.utcnow() - timedelta(hours=max_age_hours)
 
         # Get recent active signals for the symbol
         conditions = [
             Signal.symbol == symbol,
             Signal.created_at >= cutoff_time,
-            or_(
-                Signal.expiry.is_(None),
-                Signal.expiry > datetime.utcnow()
-            )
+            or_(Signal.expiry.is_(None), Signal.expiry > datetime.utcnow()),
         ]
 
-        stmt = (
-            select(Signal)
-            .where(and_(*conditions))
-            .order_by(Signal.created_at.desc())
-        )
+        stmt = select(Signal).where(and_(*conditions)).order_by(Signal.created_at.desc())
 
         result = await self.session.execute(stmt)
         signals = list(result.scalars().all())
@@ -485,13 +424,16 @@ class SignalsRepo:
                 "consensus": "insufficient_data",
                 "model_count": len(signals),
                 "min_models_required": min_models,
-                "signals": []
+                "signals": [],
             }
 
         # Group by model name and get latest signal from each
         model_signals = {}
         for signal in signals:
-            if signal.model_name not in model_signals or signal.created_at > model_signals[signal.model_name].created_at:
+            if (
+                signal.model_name not in model_signals
+                or signal.created_at > model_signals[signal.model_name].created_at
+            ):
                 model_signals[signal.model_name] = signal
 
         latest_signals = list(model_signals.values())
@@ -502,7 +444,7 @@ class SignalsRepo:
                 "consensus": "insufficient_models",
                 "model_count": len(latest_signals),
                 "min_models_required": min_models,
-                "signals": []
+                "signals": [],
             }
 
         # Calculate consensus metrics
@@ -549,8 +491,8 @@ class SignalsRepo:
                     "direction": s.direction,
                     "strength": s.strength,
                     "confidence": s.confidence,
-                    "created_at": s.created_at
+                    "created_at": s.created_at,
                 }
                 for s in latest_signals
-            ]
+            ],
         }

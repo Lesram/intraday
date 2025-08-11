@@ -2,14 +2,12 @@
 Unit tests for the current RiskManager implementation.
 Tests async risk decisions, portfolio state validation, and math utilities.
 """
-import asyncio
 from decimal import Decimal
-from datetime import datetime
-from unittest.mock import Mock, AsyncMock
+
 import pytest
 
 from backend.risk.risk_manager import AsyncRiskManager, RiskMathUtils
-from backend.risk.types import OrderSpec, PortfolioState, RiskDecision, RiskLimits
+from backend.risk.types import OrderSpec, PortfolioState, RiskDecision
 
 
 class TestRiskMathUtils:
@@ -72,8 +70,23 @@ class TestRiskMathUtils:
     def test_historical_cvar_calculation(self):
         """Test historical CVaR (Expected Shortfall) calculation."""
         # Test with sufficient data
-        returns = [0.01, -0.02, 0.015, -0.005, 0.008, 0.012, -0.018, 0.003, -0.009, 0.014,
-                  -0.025, 0.007, -0.012, 0.020, -0.008]
+        returns = [
+            0.01,
+            -0.02,
+            0.015,
+            -0.005,
+            0.008,
+            0.012,
+            -0.018,
+            0.003,
+            -0.009,
+            0.014,
+            -0.025,
+            0.007,
+            -0.012,
+            0.020,
+            -0.008,
+        ]
 
         cvar = self.math_utils.historical_cvar(returns, confidence=0.05)
         assert isinstance(cvar, float)
@@ -95,11 +108,11 @@ class TestAsyncRiskManager:
     def test_initialization(self):
         """Test risk manager initialization."""
         assert self.risk_manager is not None
-        assert hasattr(self.risk_manager, 'max_position_per_symbol')
-        assert hasattr(self.risk_manager, 'max_single_position_value')
-        assert hasattr(self.risk_manager, 'max_portfolio_var')
-        assert hasattr(self.risk_manager, 'circuit_breaker_active')
-        assert hasattr(self.risk_manager, 'math_utils')
+        assert hasattr(self.risk_manager, "max_position_per_symbol")
+        assert hasattr(self.risk_manager, "max_single_position_value")
+        assert hasattr(self.risk_manager, "max_portfolio_var")
+        assert hasattr(self.risk_manager, "circuit_breaker_active")
+        assert hasattr(self.risk_manager, "math_utils")
 
     @pytest.mark.unit
     def test_default_limits(self):
@@ -117,15 +130,15 @@ class TestAsyncRiskManager:
             side="buy",
             qty=Decimal("10"),  # Small quantity to pass Kelly sizing
             notional=Decimal("1500"),  # Small notional
-            price=Decimal("150.00")
+            price=Decimal("150.00"),
         )
 
         decision = await self.risk_manager.before_order(order)
 
         assert isinstance(decision, RiskDecision)
         # The decision should be structured regardless of outcome
-        assert hasattr(decision, 'allowed')
-        assert hasattr(decision, 'reason')
+        assert hasattr(decision, "allowed")
+        assert hasattr(decision, "reason")
         assert isinstance(decision.reason, str)
         print(f"Decision: allowed={decision.allowed}, reason={decision.reason}")
 
@@ -138,7 +151,7 @@ class TestAsyncRiskManager:
             side="buy",
             qty=Decimal("1000000"),  # Very large quantity
             notional=Decimal("150000000"),  # 150M notional
-            price=Decimal("150.00")
+            price=Decimal("150.00"),
         )
 
         decision = await self.risk_manager.before_order(order)
@@ -146,8 +159,9 @@ class TestAsyncRiskManager:
         assert isinstance(decision, RiskDecision)
         assert decision.allowed is False
         # Should be blocked for size-related reasons
-        assert any(keyword in decision.reason.lower() for keyword in
-                  ["kelly", "size", "limit", "exceeded"])
+        assert any(
+            keyword in decision.reason.lower() for keyword in ["kelly", "size", "limit", "exceeded"]
+        )
 
     @pytest.mark.unit
     async def test_circuit_breaker_state(self):
@@ -185,15 +199,10 @@ class TestAsyncRiskManager:
             equity=Decimal("100000"),
             cash=Decimal("20000"),
             positions={"AAPL": Decimal("500")},
-            sector_map={"AAPL": "Technology"}
+            sector_map={"AAPL": "Technology"},
         )
 
-        order = OrderSpec(
-            symbol="AAPL",
-            side="buy",
-            qty=Decimal("10"),
-            notional=Decimal("1500")
-        )
+        order = OrderSpec(symbol="AAPL", side="buy", qty=Decimal("10"), notional=Decimal("1500"))
 
         decision = await self.risk_manager.before_order(order, portfolio_state)
 
@@ -209,17 +218,17 @@ class TestAsyncRiskManager:
             side="sell",
             qty=Decimal("5"),
             notional=Decimal("750"),
-            price=Decimal("150.00")
+            price=Decimal("150.00"),
         )
 
         decision = await self.risk_manager.before_order(order)
 
         # Verify decision structure
-        assert hasattr(decision, 'allowed')
-        assert hasattr(decision, 'reason')
-        assert hasattr(decision, 'adjustments')
-        assert hasattr(decision, 'limits')
-        assert hasattr(decision, 'timestamp')
+        assert hasattr(decision, "allowed")
+        assert hasattr(decision, "reason")
+        assert hasattr(decision, "adjustments")
+        assert hasattr(decision, "limits")
+        assert hasattr(decision, "timestamp")
 
         # Verify decision content
         assert isinstance(decision.allowed, bool)
@@ -235,9 +244,7 @@ class TestRiskDecisionTypes:
     def test_allow_decision_creation(self):
         """Test creating allow decisions."""
         decision = RiskDecision.allow(
-            reason="Low risk order",
-            adjustments={"qty_cap": 1000},
-            limits={"max_position": 50000}
+            reason="Low risk order", adjustments={"qty_cap": 1000}, limits={"max_position": 50000}
         )
 
         assert decision.allowed is True
@@ -252,7 +259,7 @@ class TestRiskDecisionTypes:
         decision = RiskDecision.block(
             reason="Exceeds position limit",
             limits={"max_position": 10000},
-            original_qty=Decimal("15000")
+            original_qty=Decimal("15000"),
         )
 
         assert decision.allowed is False
@@ -273,7 +280,7 @@ class TestOrderSpec:
             side="buy",
             qty=Decimal("100"),
             notional=Decimal("15000"),
-            price=Decimal("150.00")
+            price=Decimal("150.00"),
         )
 
         assert order.symbol == "AAPL"
@@ -290,7 +297,7 @@ class TestOrderSpec:
                 symbol="AAPL",
                 side="buy",
                 qty=Decimal("-100"),  # Invalid
-                notional=Decimal("15000")
+                notional=Decimal("15000"),
             )
 
     @pytest.mark.unit
@@ -301,7 +308,7 @@ class TestOrderSpec:
                 symbol="AAPL",
                 side="buy",
                 qty=Decimal("100"),
-                notional=Decimal("-15000")  # Invalid
+                notional=Decimal("-15000"),  # Invalid
             )
 
     @pytest.mark.unit
@@ -313,7 +320,7 @@ class TestOrderSpec:
                 side="buy",
                 qty=Decimal("100"),
                 notional=Decimal("15000"),
-                price=Decimal("-150.00")  # Invalid
+                price=Decimal("-150.00"),  # Invalid
             )
 
 
@@ -327,7 +334,7 @@ class TestPortfolioState:
             equity=Decimal("100000"),
             cash=Decimal("25000"),
             positions={"AAPL": Decimal("500"), "GOOGL": Decimal("-100")},
-            sector_map={"AAPL": "Technology", "GOOGL": "Technology"}
+            sector_map={"AAPL": "Technology", "GOOGL": "Technology"},
         )
 
         assert state.equity == Decimal("100000")
@@ -339,10 +346,7 @@ class TestPortfolioState:
     def test_gross_notional_calculation(self):
         """Test gross notional exposure calculation."""
         state = PortfolioState(
-            equity=Decimal("100000"),
-            cash=Decimal("25000"),
-            positions={},
-            sector_map={}
+            equity=Decimal("100000"), cash=Decimal("25000"), positions={}, sector_map={}
         )
 
         gross_notional = state.gross_notional
@@ -353,10 +357,7 @@ class TestPortfolioState:
     def test_net_notional_calculation(self):
         """Test net notional exposure calculation."""
         state = PortfolioState(
-            equity=Decimal("100000"),
-            cash=Decimal("25000"),
-            positions={},
-            sector_map={}
+            equity=Decimal("100000"), cash=Decimal("25000"), positions={}, sector_map={}
         )
 
         net_notional = state.net_notional

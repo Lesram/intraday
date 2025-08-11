@@ -13,6 +13,7 @@ from enum import Enum
 
 class Side(Enum):
     """Order side enumeration"""
+
     BUY = "buy"
     SELL = "sell"
 
@@ -30,6 +31,7 @@ class TradingSignal:
         confidence: Signal confidence [0, 1]
         metadata: Optional strategy-specific data
     """
+
     symbol: str
     source: str
     ts: datetime
@@ -62,14 +64,15 @@ class ExecutionPlan:
         risk_allowed: Whether risk manager approved this plan
         risk_reason: Risk manager rejection reason if blocked
     """
+
     symbol: str
     ts: datetime
     from_exposure: float  # current portfolio exposure
-    to_exposure: float    # planned target after netting/throttles
-    side: Side           # "long" | "short" | "flat"
+    to_exposure: float  # planned target after netting/throttles
+    side: Side  # "long" | "short" | "flat"
     notional: Decimal
-    qty: Decimal         # signed; broker-ready sizing after risk
-    reason: str          # brief summary: "netted: momentum+mr; throttle=ok; risk=allow"
+    qty: Decimal  # signed; broker-ready sizing after risk
+    reason: str  # brief summary: "netted: momentum+mr; throttle=ok; risk=allow"
     risk_allowed: bool
     risk_reason: str | None = None
 

@@ -19,11 +19,13 @@ logger = logging.getLogger(__name__)
 
 class ExecutionNotFoundError(Exception):
     """Raised when an execution is not found."""
+
     pass
 
 
 class DuplicateExecutionError(Exception):
     """Raised when attempting to create a duplicate execution."""
+
     pass
 
 
@@ -43,7 +45,7 @@ class ExecutionsRepo:
         price: Decimal,
         execution_id: str,  # Broker's execution ID
         timestamp: datetime | None = None,
-        attributes: dict[str, Any] | None = None
+        attributes: dict[str, Any] | None = None,
     ) -> Execution:
         """
         Create a new execution record.
@@ -72,7 +74,7 @@ class ExecutionsRepo:
             price=price,
             execution_id=execution_id,
             timestamp=timestamp or datetime.utcnow(),
-            attributes=attributes or {}
+            attributes=attributes or {},
         )
 
         try:
@@ -88,8 +90,8 @@ class ExecutionsRepo:
                     "side": side,
                     "qty": str(qty),
                     "price": str(price),
-                    "notional": str(qty * price)
-                }
+                    "notional": str(qty * price),
+                },
             )
 
             return new_execution
@@ -99,20 +101,13 @@ class ExecutionsRepo:
             if "execution_id" in str(e):
                 logger.warning(
                     "Duplicate execution ID",
-                    extra={
-                        "execution_id": execution_id,
-                        "order_id": str(order_id)
-                    }
+                    extra={"execution_id": execution_id, "order_id": str(order_id)},
                 )
                 raise DuplicateExecutionError(f"Execution {execution_id} already exists") from e
 
             logger.error(
                 "Failed to create execution",
-                extra={
-                    "execution_id": execution_id,
-                    "order_id": str(order_id),
-                    "error": str(e)
-                }
+                extra={"execution_id": execution_id, "order_id": str(order_id), "error": str(e)},
             )
             raise
 
@@ -126,7 +121,7 @@ class ExecutionsRepo:
         price: Decimal,
         execution_id: str,
         timestamp: datetime | None = None,
-        attributes: dict[str, Any] | None = None
+        attributes: dict[str, Any] | None = None,
     ) -> Execution:
         """
         Create execution with idempotency protection.
@@ -160,8 +155,8 @@ class ExecutionsRepo:
                     "order_id": str(existing_execution.order_id),
                     "symbol": existing_execution.symbol,
                     "qty": str(existing_execution.qty),
-                    "price": str(existing_execution.price)
-                }
+                    "price": str(existing_execution.price),
+                },
             )
             return existing_execution
 
@@ -174,7 +169,7 @@ class ExecutionsRepo:
             price=price,
             execution_id=execution_id,
             timestamp=timestamp,
-            attributes=attributes
+            attributes=attributes,
         )
 
     async def get_by_execution_id(self, execution_id: str) -> Execution | None:
@@ -228,7 +223,7 @@ class ExecutionsRepo:
         symbol: str,
         start_time: datetime | None = None,
         end_time: datetime | None = None,
-        limit: int = 100
+        limit: int = 100,
     ) -> list[Execution]:
         """
         Get executions by symbol within time range.
@@ -296,9 +291,7 @@ class ExecutionsRepo:
         return total_notional / total_qty
 
     async def get_recent_executions(
-        self,
-        limit: int = 100,
-        symbol: str | None = None
+        self, limit: int = 100, symbol: str | None = None
     ) -> list[Execution]:
         """
         Get recent executions.
@@ -315,20 +308,13 @@ class ExecutionsRepo:
         if symbol:
             stmt = stmt.where(Execution.symbol == symbol)
 
-        stmt = (
-            stmt.order_by(Execution.timestamp.desc())
-            .limit(limit)
-        )
+        stmt = stmt.order_by(Execution.timestamp.desc()).limit(limit)
 
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
 
     async def calculate_pnl_impact(
-        self,
-        symbol: str,
-        side: str,
-        qty: Decimal,
-        price: Decimal
+        self, symbol: str, side: str, qty: Decimal, price: Decimal
     ) -> dict[str, Any]:
         """
         Calculate PnL impact of a potential execution.
@@ -346,11 +332,11 @@ class ExecutionsRepo:
         recent_executions = await self.get_by_symbol(symbol, limit=1000)
 
         # Calculate current position
-        position_qty = Decimal('0')
-        total_cost = Decimal('0')
+        position_qty = Decimal("0")
+        total_cost = Decimal("0")
 
         for execution in recent_executions:
-            if execution.side == 'buy':
+            if execution.side == "buy":
                 position_qty += execution.qty
                 total_cost += execution.qty * execution.price
             else:  # sell
@@ -364,7 +350,7 @@ class ExecutionsRepo:
 
         # Calculate impact of new execution
         new_notional = qty * price
-        if side == 'buy':
+        if side == "buy":
             new_position_qty = position_qty + qty
             new_total_cost = total_cost + new_notional
         else:  # sell
@@ -393,5 +379,5 @@ class ExecutionsRepo:
             "new_position_qty": new_position_qty,
             "new_avg_cost": new_avg_cost,
             "execution_notional": new_notional,
-            "unrealized_pnl_change": unrealized_pnl_change
+            "unrealized_pnl_change": unrealized_pnl_change,
         }

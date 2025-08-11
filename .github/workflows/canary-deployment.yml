@@ -41,21 +41,21 @@ jobs:
             echo "❌ Invalid version format. Expected: v1.2.3 or v1.2.3-beta1"
             exit 1
           fi
-          
+
           # Validate canary percentage
           canary_pct=${{ github.event.inputs.canary_percentage }}
           if [[ $canary_pct -lt 1 || $canary_pct -gt 50 ]]; then
             echo "❌ Canary percentage must be between 1 and 50"
             exit 1
           fi
-          
+
           # Validate SLO check duration
           slo_duration=${{ github.event.inputs.slo_check_duration }}
           if [[ $slo_duration -lt 5 || $slo_duration -gt 60 ]]; then
             echo "❌ SLO check duration must be between 5 and 60 minutes"
             exit 1
           fi
-          
+
           echo "✅ All inputs validated"
           echo "version=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
           echo "canary_percentage=$canary_pct" >> $GITHUB_OUTPUT
@@ -84,9 +84,9 @@ jobs:
           export VERSION="${{ needs.validate-inputs.outputs.version }}"
           export CANARY_PCT="${{ needs.validate-inputs.outputs.canary_percentage }}"
           export IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${VERSION}"
-          
+
           echo "🚀 Deploying canary version ${VERSION} with ${CANARY_PCT}% traffic"
-          
+
           # Create canary deployment
           cat <<EOF | kubectl apply -f -
           apiVersion: apps/v1
@@ -146,7 +146,7 @@ jobs:
                       memory: "1Gi"
                       cpu: "500m"
           EOF
-          
+
           # Update service to split traffic
           kubectl patch service trading-platform -n ${PROD_NAMESPACE} -p '
           {
@@ -154,7 +154,7 @@ jobs:
               "selector": null
             }
           }'
-          
+
           # Create traffic splitting with Istio VirtualService
           cat <<EOF | kubectl apply -f -
           apiVersion: networking.istio.io/v1beta1
@@ -184,32 +184,32 @@ jobs:
                   subset: canary
                 weight: ${CANARY_PCT}
           EOF
-          
+
           # Wait for canary to be ready
           echo "⏳ Waiting for canary deployment to be ready..."
           kubectl rollout status deployment/trading-platform-canary -n ${PROD_NAMESPACE} --timeout=300s
-          
+
           # Generate deployment ID
           DEPLOYMENT_ID="canary-${VERSION}-$(date +%s)"
           echo "deployment_id=${DEPLOYMENT_ID}" >> $GITHUB_OUTPUT
-          
+
           # Get canary endpoint for testing
           CANARY_ENDPOINT=$(kubectl get service trading-platform -n ${PROD_NAMESPACE} -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
           echo "canary_endpoint=https://${CANARY_ENDPOINT}" >> $GITHUB_OUTPUT
-          
+
           echo "✅ Canary deployment ${DEPLOYMENT_ID} ready"
 
       - name: Run smoke tests on canary
         run: |
           echo "🧪 Running smoke tests on canary deployment..."
-          
+
           # Run canary-specific smoke tests
           python -m pytest tests/smoke/test_smoke.py \
             -v --tb=short \
             -k "canary" \
             --base-url="${{ steps.deploy.outputs.canary_endpoint }}" \
             --canary-headers="x-canary-user: true"
-          
+
           echo "✅ Canary smoke tests passed"
 
   slo-monitoring:
@@ -226,65 +226,65 @@ jobs:
         run: |
           export DURATION_MINUTES="${{ needs.validate-inputs.outputs.slo_check_duration }}"
           export VERSION="${{ needs.validate-inputs.outputs.version }}"
-          
+
           echo "📊 Monitoring SLO metrics for ${DURATION_MINUTES} minutes..."
           echo "🎯 SLO Thresholds: Error Rate < 1%, P95 < 2s, P99 < 5s"
-          
+
           # SLO thresholds
           MAX_ERROR_RATE=1.0
           MAX_P95_LATENCY=2.0
           MAX_P99_LATENCY=5.0
-          
+
           # Monitor for specified duration
           END_TIME=$(($(date +%s) + DURATION_MINUTES * 60))
           CHECK_INTERVAL=30  # Check every 30 seconds
-          
+
           SLO_VIOLATIONS=0
           MAX_VIOLATIONS=3  # Allow 3 violations before failing
-          
+
           while [ $(date +%s) -lt $END_TIME ]; do
             echo "🔍 Checking SLO metrics... ($(date))"
-            
+
             # Query Prometheus for canary metrics
             ERROR_RATE=$(curl -s "${PROMETHEUS_URL}/api/v1/query" \
               --data-urlencode "query=sum(rate(intraday_http_requests_total{deployment_version=\"${VERSION}\",status=~\"5..\"}[5m])) / sum(rate(intraday_http_requests_total{deployment_version=\"${VERSION}\"}[5m])) * 100" \
               | jq -r '.data.result[0].value[1] // "0"')
-            
+
             P95_LATENCY=$(curl -s "${PROMETHEUS_URL}/api/v1/query" \
               --data-urlencode "query=histogram_quantile(0.95, rate(intraday_http_request_duration_seconds_bucket{deployment_version=\"${VERSION}\"}[5m]))" \
               | jq -r '.data.result[0].value[1] // "0"')
-            
+
             P99_LATENCY=$(curl -s "${PROMETHEUS_URL}/api/v1/query" \
               --data-urlencode "query=histogram_quantile(0.99, rate(intraday_http_request_duration_seconds_bucket{deployment_version=\"${VERSION}\"}[5m]))" \
               | jq -r '.data.result[0].value[1] // "0"')
-            
+
             echo "📈 Current metrics:"
             echo "   Error Rate: ${ERROR_RATE}%"
             echo "   P95 Latency: ${P95_LATENCY}s"
             echo "   P99 Latency: ${P99_LATENCY}s"
-            
+
             # Check SLO violations
             CURRENT_VIOLATIONS=0
-            
+
             if (( $(echo "$ERROR_RATE > $MAX_ERROR_RATE" | bc -l) )); then
               echo "⚠️  SLO VIOLATION: Error rate ${ERROR_RATE}% exceeds ${MAX_ERROR_RATE}%"
               CURRENT_VIOLATIONS=$((CURRENT_VIOLATIONS + 1))
             fi
-            
+
             if (( $(echo "$P95_LATENCY > $MAX_P95_LATENCY" | bc -l) )); then
               echo "⚠️  SLO VIOLATION: P95 latency ${P95_LATENCY}s exceeds ${MAX_P95_LATENCY}s"
               CURRENT_VIOLATIONS=$((CURRENT_VIOLATIONS + 1))
             fi
-            
+
             if (( $(echo "$P99_LATENCY > $MAX_P99_LATENCY" | bc -l) )); then
               echo "⚠️  SLO VIOLATION: P99 latency ${P99_LATENCY}s exceeds ${MAX_P99_LATENCY}s"
               CURRENT_VIOLATIONS=$((CURRENT_VIOLATIONS + 1))
             fi
-            
+
             if [ $CURRENT_VIOLATIONS -gt 0 ]; then
               SLO_VIOLATIONS=$((SLO_VIOLATIONS + 1))
               echo "❌ SLO check failed ($SLO_VIOLATIONS/$MAX_VIOLATIONS violations)"
-              
+
               if [ $SLO_VIOLATIONS -ge $MAX_VIOLATIONS ]; then
                 echo "💥 Maximum SLO violations reached - triggering rollback"
                 echo "status=FAILED" >> $GITHUB_OUTPUT
@@ -297,10 +297,10 @@ jobs:
               echo "✅ SLO check passed"
               SLO_VIOLATIONS=0  # Reset violation counter on success
             fi
-            
+
             sleep $CHECK_INTERVAL
           done
-          
+
           echo "🎉 SLO monitoring completed successfully"
           echo "status=PASSED" >> $GITHUB_OUTPUT
           echo "error_rate=${ERROR_RATE}" >> $GITHUB_OUTPUT
@@ -322,29 +322,29 @@ jobs:
         if: needs.slo-monitoring.outputs.slo_status == 'PASSED'
         run: |
           export VERSION="${{ needs.validate-inputs.outputs.version }}"
-          
+
           echo "🚀 PROMOTING canary to full production"
           echo "📊 Final SLO metrics:"
           echo "   Error Rate: ${{ needs.slo-monitoring.outputs.error_rate }}%"
           echo "   P95 Latency: ${{ needs.slo-monitoring.outputs.p95_latency }}s"
           echo "   P99 Latency: ${{ needs.slo-monitoring.outputs.p99_latency }}s"
-          
+
           # Update stable deployment to canary version
           kubectl set image deployment/trading-platform \
             trading-platform="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${VERSION}" \
             -n ${PROD_NAMESPACE}
-          
+
           # Wait for rollout to complete
           kubectl rollout status deployment/trading-platform -n ${PROD_NAMESPACE} --timeout=300s
-          
+
           # Remove traffic splitting - route all traffic to stable
           kubectl delete virtualservice trading-platform-canary -n ${PROD_NAMESPACE} --ignore-not-found=true
-          
+
           # Remove canary deployment
           kubectl delete deployment trading-platform-canary -n ${PROD_NAMESPACE} --ignore-not-found=true
-          
+
           echo "✅ Promotion completed successfully"
-          
+
           # Create release tag
           git tag -a "${VERSION}-prod" -m "Production release ${VERSION} promoted from canary"
           git push origin "${VERSION}-prod"
@@ -353,19 +353,19 @@ jobs:
         if: needs.slo-monitoring.outputs.slo_status != 'PASSED'
         run: |
           export VERSION="${{ needs.validate-inputs.outputs.version }}"
-          
+
           echo "🚨 ROLLING BACK canary deployment due to SLO failures"
           echo "💥 Failed SLO metrics:"
           echo "   Error Rate: ${{ needs.slo-monitoring.outputs.error_rate }}%"
           echo "   P95 Latency: ${{ needs.slo-monitoring.outputs.p95_latency }}s"
           echo "   P99 Latency: ${{ needs.slo-monitoring.outputs.p99_latency }}s"
-          
+
           # Remove traffic splitting
           kubectl delete virtualservice trading-platform-canary -n ${PROD_NAMESPACE} --ignore-not-found=true
-          
+
           # Remove canary deployment
           kubectl delete deployment trading-platform-canary -n ${PROD_NAMESPACE} --ignore-not-found=true
-          
+
           # Restore original service selector
           kubectl patch service trading-platform -n ${PROD_NAMESPACE} -p '
           {
@@ -376,24 +376,24 @@ jobs:
               }
             }
           }'
-          
+
           echo "✅ Rollback completed successfully"
-          
+
           # Create incident issue
           gh issue create \
             --title "🚨 Canary Deployment Rollback: ${VERSION}" \
             --body "Canary deployment ${VERSION} was rolled back due to SLO failures.
-          
+
           **Failed Metrics:**
           - Error Rate: ${{ needs.slo-monitoring.outputs.error_rate }}% (threshold: 1.0%)
           - P95 Latency: ${{ needs.slo-monitoring.outputs.p95_latency }}s (threshold: 2.0s)
           - P99 Latency: ${{ needs.slo-monitoring.outputs.p99_latency }}s (threshold: 5.0s)
-          
+
           **Next Actions:**
           1. Investigate performance regression
           2. Fix issues in development
           3. Re-test before next canary deployment
-          
+
           **Deployment ID:** ${{ needs.deploy-canary.outputs.deployment_id }}" \
             --label "incident,rollback,canary"
         env:

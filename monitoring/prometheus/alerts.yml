@@ -21,20 +21,20 @@ groups:
           description: |
             Error rate is {{ $value | humanizePercentage }} for route {{ $labels.route }}.
             This exceeds our 5% threshold and may indicate a serious issue.
-            
+
             Immediate actions:
             1. Check application logs for error patterns
             2. Verify database connectivity
             3. Check external service status (Alpaca API)
             4. Consider rolling back recent deployments
-            
+
             Dashboard: http://grafana.example.com/d/trading-api-overview
             Runbook: {{ $labels.runbook }}
 
       # Slow P95 Response Times
       - alert: SlowP95ResponseTime
         expr: |
-          histogram_quantile(0.95, 
+          histogram_quantile(0.95,
             rate(intraday_http_request_duration_seconds_bucket{route!~"/metrics|/health.*"}[5m])
           ) > 2.0
         for: 3m
@@ -47,20 +47,20 @@ groups:
           description: |
             P95 response time is {{ $value | humanizeDuration }} for route {{ $labels.route }}.
             This exceeds our 2s threshold and may impact user experience.
-            
+
             Immediate actions:
             1. Check CPU and memory usage
             2. Verify database query performance
             3. Check for high load or resource contention
             4. Review recent code changes
-            
+
             Dashboard: http://grafana.example.com/d/trading-api-performance
             Runbook: {{ $labels.runbook }}
 
       # Critical P95 Response Times
       - alert: CriticalP95ResponseTime
         expr: |
-          histogram_quantile(0.95, 
+          histogram_quantile(0.95,
             rate(intraday_http_request_duration_seconds_bucket{route!~"/metrics|/health.*"}[5m])
           ) > 5.0
         for: 1m
@@ -73,13 +73,13 @@ groups:
           description: |
             P95 response time is {{ $value | humanizeDuration }} for route {{ $labels.route }}.
             This is critically slow and requires immediate attention.
-            
+
             IMMEDIATE ACTIONS:
             1. Consider emergency rollback
             2. Check for resource exhaustion
             3. Verify external service availability
             4. Scale up resources if needed
-            
+
             Dashboard: http://grafana.example.com/d/trading-api-performance
             Runbook: {{ $labels.runbook }}
 
@@ -97,13 +97,13 @@ groups:
           description: |
             Prometheus cannot scrape metrics from {{ $labels.instance }}.
             This indicates the service is down or metrics endpoint is unreachable.
-            
+
             IMMEDIATE ACTIONS:
             1. Check if pods/containers are running
             2. Verify health endpoints (/health, /readyz)
             3. Check service/ingress configuration
             4. Verify network connectivity
-            
+
             Dashboard: http://grafana.example.com/d/trading-platform-overview
             Runbook: {{ $labels.runbook }}
 
@@ -125,13 +125,13 @@ groups:
             - Load balancer problems
             - Client-side issues
             - Market closure (if expected)
-            
+
             Actions:
             1. Check load balancer logs
             2. Verify service registration
             3. Check client applications
             4. Confirm if low traffic is expected
-            
+
             Dashboard: http://grafana.example.com/d/trading-api-traffic
             Runbook: {{ $labels.runbook }}
 
@@ -140,7 +140,7 @@ groups:
       # High Risk Decision Latency
       - alert: HighRiskDecisionLatency
         expr: |
-          histogram_quantile(0.95, 
+          histogram_quantile(0.95,
             rate(intraday_risk_decision_latency_seconds_bucket[5m])
           ) > 0.5
         for: 2m
@@ -153,13 +153,13 @@ groups:
           description: |
             P95 risk decision latency is {{ $value | humanizeDuration }}.
             Slow risk decisions can delay trading execution.
-            
+
             Actions:
             1. Check risk engine CPU/memory usage
             2. Verify database performance
             3. Review correlation matrix complexity
             4. Check for lock contention
-            
+
             Dashboard: http://grafana.example.com/d/trading-risk-engine
             Runbook: {{ $labels.runbook }}
 
@@ -180,13 +180,13 @@ groups:
           description: |
             {{ $value | humanizePercentage }} of trades are being blocked by risk engine.
             This might indicate overly conservative risk settings or market stress.
-            
+
             Actions:
             1. Review recent risk limit changes
             2. Check for market volatility spikes
             3. Verify risk calculation logic
             4. Consider temporary risk limit adjustments
-            
+
             Dashboard: http://grafana.example.com/d/trading-risk-metrics
             Runbook: {{ $labels.runbook }}
 
@@ -204,13 +204,13 @@ groups:
           description: |
             {{ $value }} pending messages in outbox queue.
             This suggests message processing is falling behind.
-            
+
             Actions:
             1. Check outbox dispatcher health
             2. Verify message broker connectivity
             3. Look for stuck/poison messages
             4. Consider increasing processing capacity
-            
+
             Dashboard: http://grafana.example.com/d/trading-outbox-metrics
             Runbook: {{ $labels.runbook }}
 
@@ -228,13 +228,13 @@ groups:
           description: |
             WebSocket connections are dropping at {{ $value }} connections/sec.
             This may impact real-time data delivery.
-            
+
             Actions:
             1. Check WebSocket server health
             2. Verify network stability
             3. Review connection timeout settings
             4. Check for memory leaks or resource exhaustion
-            
+
             Dashboard: http://grafana.example.com/d/trading-websocket-metrics
             Runbook: {{ $labels.runbook }}
 
@@ -253,13 +253,13 @@ groups:
           summary: "High memory usage on {{ $labels.instance }}"
           description: |
             Memory usage is {{ $value | humanizePercentage }} on {{ $labels.instance }}.
-            
+
             Actions:
             1. Identify memory-intensive processes
             2. Check for memory leaks
             3. Consider vertical scaling
             4. Review memory limits and requests
-            
+
             Dashboard: http://grafana.example.com/d/infrastructure-overview
             Runbook: {{ $labels.runbook }}
 
@@ -276,13 +276,13 @@ groups:
           summary: "High CPU usage on {{ $labels.instance }}"
           description: |
             CPU usage is {{ $value | humanizePercentage }} on {{ $labels.instance }}.
-            
+
             Actions:
             1. Identify CPU-intensive processes
             2. Check for runaway processes
             3. Consider horizontal/vertical scaling
             4. Review CPU limits and requests
-            
+
             Dashboard: http://grafana.example.com/d/infrastructure-overview
             Runbook: {{ $labels.runbook }}
 
@@ -300,12 +300,12 @@ groups:
           description: |
             Disk usage is {{ $value | humanizePercentage }} on {{ $labels.instance }}.
             Filesystem: {{ $labels.mountpoint }}
-            
+
             IMMEDIATE ACTIONS:
             1. Clean up log files and temp data
             2. Archive old data
             3. Expand disk if possible
             4. Consider data retention policies
-            
+
             Dashboard: http://grafana.example.com/d/infrastructure-overview
             Runbook: {{ $labels.runbook }}

@@ -3,13 +3,12 @@ Simplified BRANCH 2.12 deployment readiness validation.
 Tests deployment infrastructure without complex app loading.
 """
 
-import json
-import subprocess
-import sys
 from datetime import datetime
 from pathlib import Path
+import sys
 
 project_root = Path(__file__).parent
+
 
 def test_health_endpoints_simple():
     """Test health endpoints by checking if they exist in the code."""
@@ -44,6 +43,7 @@ def test_health_endpoints_simple():
         print("⚠️ Some health endpoints missing")
         return False
 
+
 def test_graceful_shutdown_configuration():
     """Test graceful shutdown implementation."""
     print("\n🛡️ Testing Graceful Shutdown Configuration")
@@ -56,7 +56,8 @@ def test_graceful_shutdown_configuration():
         "Lifespan context manager": "@asynccontextmanager" in content and "lifespan" in content,
         "Shutdown timeout": "30" in content or "timeout" in content.lower(),
         "Background task cleanup": "cancel" in content.lower() and "task" in content.lower(),
-        "WebSocket cleanup": "websocket" in content.lower() and ("close" in content or "disconnect" in content),
+        "WebSocket cleanup": "websocket" in content.lower()
+        and ("close" in content or "disconnect" in content),
         "Database cleanup": "close" in content and ("engine" in content or "session" in content),
     }
 
@@ -74,6 +75,7 @@ def test_graceful_shutdown_configuration():
         print("⚠️ Some shutdown features missing")
         return False
 
+
 def test_container_configuration():
     """Test Docker container configuration."""
     print("\n🐳 Testing Container Configuration")
@@ -89,8 +91,10 @@ def test_container_configuration():
         dockerfile_content = dockerfile_path.read_text()
 
         dockerfile_checks = {
-            "Multi-stage build": "FROM python" in dockerfile_content and "AS builder" in dockerfile_content,
-            "Non-root user": "USER " in dockerfile_content and ("appuser" in dockerfile_content or "10001" in dockerfile_content),
+            "Multi-stage build": "FROM python" in dockerfile_content
+            and "AS builder" in dockerfile_content,
+            "Non-root user": "USER " in dockerfile_content
+            and ("appuser" in dockerfile_content or "10001" in dockerfile_content),
             "Health check": "HEALTHCHECK" in dockerfile_content,
             "Security hardening": "chown" in dockerfile_content or "chmod" in dockerfile_content,
             "Slim base image": "slim" in dockerfile_content.lower(),
@@ -142,6 +146,7 @@ def test_container_configuration():
         print("⚠️ Some container configuration issues found")
         return False
 
+
 def test_kubernetes_deployment():
     """Test Kubernetes deployment configuration."""
     print("\n☸️ Testing Kubernetes Deployment")
@@ -149,7 +154,7 @@ def test_kubernetes_deployment():
 
     k8s_dir = project_root / "k8s"
     if not k8s_dir.exists():
-        print(f"❌ Kubernetes directory not found")
+        print("❌ Kubernetes directory not found")
         return False
 
     required_files = {
@@ -160,7 +165,7 @@ def test_kubernetes_deployment():
         "redis.yaml": "Redis cache",
         "otel-collector.yaml": "OpenTelemetry collector",
         "prometheus.yaml": "Metrics collection",
-        "kustomization.yaml": "Deployment orchestration"
+        "kustomization.yaml": "Deployment orchestration",
     }
 
     all_present = True
@@ -197,6 +202,7 @@ def test_kubernetes_deployment():
         print("⚠️ Some Kubernetes manifests missing")
         return False
 
+
 def test_deployment_automation():
     """Test deployment automation scripts."""
     print("\n🚀 Testing Deployment Automation")
@@ -232,6 +238,7 @@ def test_deployment_automation():
     else:
         print("⚠️ Some deployment scripts missing")
         return False
+
 
 def test_observability_configuration():
     """Test observability and monitoring configuration."""
@@ -277,6 +284,7 @@ def test_observability_configuration():
     else:
         print("⚠️ Some observability configuration missing")
         return False
+
 
 def run_all_validation():
     """Run all BRANCH 2.12 deployment readiness validation."""
@@ -332,6 +340,7 @@ def run_all_validation():
     else:
         print("⚠️ Some validations failed - review implementation")
         return False
+
 
 if __name__ == "__main__":
     success = run_all_validation()

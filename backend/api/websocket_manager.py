@@ -6,12 +6,14 @@ import asyncio
 import json
 import logging
 import time
-from typing import Any, Dict, Set
+from typing import Any
+
 from fastapi import WebSocket, WebSocketDisconnect
 
 # Prometheus imports - using centralized metrics registry
 try:
     from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
+
     PROMETHEUS_AVAILABLE = True
 except ImportError:
     PROMETHEUS_AVAILABLE = False
@@ -35,23 +37,20 @@ class WebSocketClientManager:
         message_queue = asyncio.Queue(maxsize=self.max_queue_size)
 
         self.clients[client_id] = {
-            'websocket': websocket,
-            'queue': message_queue,
-            'last_ping': time.time(),
-            'subscriptions': set(),
-            'send_task': None
+            "websocket": websocket,
+            "queue": message_queue,
+            "last_ping": time.time(),
+            "subscriptions": set(),
+            "send_task": None,
         }
 
         # Start message sender task for this client
-        send_task = asyncio.create_task(
-            self._message_sender(client_id)
-        )
-        self.clients[client_id]['send_task'] = send_task
+        send_task = asyncio.create_task(self._message_sender(client_id))
+        self.clients[client_id]["send_task"] = send_task
 
         if PROMETHEUS_AVAILABLE and self.metrics_registry:
             self.metrics_registry.counter(
-                'websocket_connections_total',
-                {'client_type': 'trading'}
+                "websocket_connections_total", {"client_type": "trading"}
             ).inc()
 
         audit_logger.info("websocket_client_added", client_id=client_id)
@@ -62,55 +61,56 @@ class WebSocketClientManager:
             client_info = self.clients[client_id]
 
             # Cancel send task
-            if client_info['send_task']:
-                client_info['send_task'].cancel()
+            if client_info["send_task"]:
+                client_info["send_task"].cancel()
                 try:
-                    await client_info['send_task']
+                    await client_info["send_task"]
                 except asyncio.CancelledError:
                     pass
 
             # Close websocket
             try:
-                await client_info['websocket'].close()
+                await client_info["websocket"].close()
             except Exception:
                 pass
 
             del self.clients[client_id]
             audit_logger.info("websocket_client_removed", client_id=client_id)
 
-    async def broadcast_message(self, message: dict[str, Any], subscription_filter: str | None = None) -> None:
+    async def broadcast_message(
+        self, message: dict[str, Any], subscription_filter: str | None = None
+    ) -> None:
         """Broadcast message to subscribed clients with backpressure handling"""
         for client_id, client_info in self.clients.items():
-            if subscription_filter and subscription_filter not in client_info['subscriptions']:
+            if subscription_filter and subscription_filter not in client_info["subscriptions"]:
                 continue
 
             try:
                 # Update queue size metric
                 if PROMETHEUS_AVAILABLE and self.metrics_registry:
                     self.metrics_registry.gauge(
-                        'websocket_queue_size',
-                        {'client_id': client_id}
-                    ).set(client_info['queue'].qsize())
+                        "websocket_queue_size", {"client_id": client_id}
+                    ).set(client_info["queue"].qsize())
 
                 # Non-blocking put with backpressure policy
-                client_info['queue'].put_nowait(message)
+                client_info["queue"].put_nowait(message)
             except asyncio.QueueFull:
                 # Drop oldest message to make room (backpressure policy)
                 try:
-                    client_info['queue'].get_nowait()
-                    client_info['queue'].put_nowait(message)
+                    client_info["queue"].get_nowait()
+                    client_info["queue"].put_nowait(message)
                     logging.warning(f"Queue full for client {client_id}, dropped old message")
 
                     # Update metrics
                     if PROMETHEUS_AVAILABLE and self.metrics_registry:
                         self.metrics_registry.counter(
-                            'websocket_messages_dropped_total',
-                            {'client_id': client_id, 'reason': 'queue_full'}
+                            "websocket_messages_dropped_total",
+                            {"client_id": client_id, "reason": "queue_full"},
                         ).inc()
 
                 except asyncio.QueueEmpty:
                     # Queue became empty between checks, just put the message
-                    client_info['queue'].put_nowait(message)
+                    client_info["queue"].put_nowait(message)
                     pass
 
     async def _message_sender(self, client_id: str) -> None:
@@ -119,8 +119,8 @@ class WebSocketClientManager:
         if not client_info:
             return
 
-        websocket = client_info['websocket']
-        queue = client_info['queue']
+        websocket = client_info["websocket"]
+        queue = client_info["queue"]
 
         try:
             while True:
@@ -129,8 +129,8 @@ class WebSocketClientManager:
 
                 if PROMETHEUS_AVAILABLE and self.metrics_registry:
                     self.metrics_registry.counter(
-                        'websocket_messages_total',
-                        {'direction': 'sent', 'message_type': message.get('type', 'unknown')}
+                        "websocket_messages_total",
+                        {"direction": "sent", "message_type": message.get("type", "unknown")},
                     ).inc()
 
                 queue.task_done()
@@ -165,19 +165,18 @@ class WebSocketClientManager:
                 stale_clients = []
                 for client_id, client_info in self.clients.items():
                     # Check if client is stale (no pong for 60 seconds)
-                    if current_time - client_info['last_ping'] > 60:
+                    if current_time - client_info["last_ping"] > 60:
                         stale_clients.append(client_id)
 
                         # Track timeout in metrics
                         if PROMETHEUS_AVAILABLE and self.metrics_registry:
                             self.metrics_registry.counter(
-                                'websocket_subscriber_timeouts_total',
-                                {'client_id': client_id}
+                                "websocket_subscriber_timeouts_total", {"client_id": client_id}
                             ).inc()
                         continue
 
                     try:
-                        client_info['queue'].put_nowait(ping_message)
+                        client_info["queue"].put_nowait(ping_message)
                     except asyncio.QueueFull:
                         # Client can't keep up, mark as stale
                         stale_clients.append(client_id)
@@ -185,8 +184,7 @@ class WebSocketClientManager:
                         # Track queue full timeout
                         if PROMETHEUS_AVAILABLE and self.metrics_registry:
                             self.metrics_registry.counter(
-                                'websocket_subscriber_timeouts_total',
-                                {'client_id': client_id}
+                                "websocket_subscriber_timeouts_total", {"client_id": client_id}
                             ).inc()
 
                 # Remove stale clients

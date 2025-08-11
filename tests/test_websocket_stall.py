@@ -40,11 +40,9 @@ class TestWebSocketStallScenario:
         message_count = 20
 
         for i in range(message_count):
-            await ws_manager.broadcast_message({
-                "type": "test_message",
-                "id": i,
-                "timestamp": time.time()
-            })
+            await ws_manager.broadcast_message(
+                {"type": "test_message", "id": i, "timestamp": time.time()}
+            )
             await asyncio.sleep(0.01)  # Small delay between messages
 
         send_time = time.time() - start_time
@@ -57,8 +55,9 @@ class TestWebSocketStallScenario:
         await asyncio.sleep(0.5)
 
         # Fast consumer should have processed most/all messages
-        assert fast_consumer.processed_count >= message_count * 0.8, \
-            f"Fast consumer only processed {fast_consumer.processed_count}/{message_count} messages"
+        assert (
+            fast_consumer.processed_count >= message_count * 0.8
+        ), f"Fast consumer only processed {fast_consumer.processed_count}/{message_count} messages"
 
         # Slow consumer may have processed fewer due to backpressure
         # but server shouldn't be blocked
@@ -67,9 +66,10 @@ class TestWebSocketStallScenario:
         # Check that fast consumer queue is not full
         fast_client_info = ws_manager.clients.get("fast_consumer")
         if fast_client_info:
-            fast_queue_size = fast_client_info['queue'].qsize()
-            assert fast_queue_size < ws_manager.max_queue_size, \
-                "Fast consumer queue is full, indicating server stall"
+            fast_queue_size = fast_client_info["queue"].qsize()
+            assert (
+                fast_queue_size < ws_manager.max_queue_size
+            ), "Fast consumer queue is full, indicating server stall"
 
         # Cleanup
         fast_task.cancel()
@@ -90,7 +90,7 @@ class TestWebSocketStallScenario:
         ws_manager = WebSocketClientManager(max_queue_size=3)
 
         # Create a consumer that doesn't process messages (simulates stall)
-        stalled_consumer = MockWebSocketConsumer("stalled_consumer", process_delay=float('inf'))
+        stalled_consumer = MockWebSocketConsumer("stalled_consumer", process_delay=float("inf"))
         await ws_manager.add_client("stalled_consumer", stalled_consumer.websocket)
 
         # Send more messages than queue capacity
@@ -104,7 +104,7 @@ class TestWebSocketStallScenario:
         client_info = ws_manager.clients.get("stalled_consumer")
         assert client_info is not None
 
-        queue = client_info['queue']
+        queue = client_info["queue"]
         assert queue.qsize() <= ws_manager.max_queue_size
 
         # The queue should contain the most recent messages due to backpressure policy
@@ -151,11 +151,9 @@ class TestWebSocketStallScenario:
         message_count = 30
 
         for i in range(message_count):
-            await ws_manager.broadcast_message({
-                "type": "load_test",
-                "id": i,
-                "timestamp": time.time()
-            })
+            await ws_manager.broadcast_message(
+                {"type": "load_test", "id": i, "timestamp": time.time()}
+            )
             await asyncio.sleep(0.02)  # 50 messages per second
 
         broadcast_time = time.time() - start_time
@@ -171,8 +169,9 @@ class TestWebSocketStallScenario:
         slow_processed = consumers[3].processed_count + consumers[4].processed_count
 
         # Fast consumers should process significantly more
-        assert fast_processed > slow_processed, \
-            f"Fast consumers processed {fast_processed}, slow consumers processed {slow_processed}"
+        assert (
+            fast_processed > slow_processed
+        ), f"Fast consumers processed {fast_processed}, slow consumers processed {slow_processed}"
 
         # Cleanup
         for task in tasks:
@@ -218,7 +217,9 @@ class TestWebSocketStallScenario:
 
         # 3. The new consumer should receive messages promptly
         await asyncio.sleep(0.1)
-        assert new_consumer.processed_count > 0, "New consumer didn't receive messages during backlog"
+        assert (
+            new_consumer.processed_count > 0
+        ), "New consumer didn't receive messages during backlog"
 
         # Cleanup
         new_task.cancel()
@@ -239,7 +240,7 @@ class TestWebSocketStallScenario:
         await ws_manager.start_heartbeat()
 
         # Add stalled consumer
-        stalled_consumer = MockWebSocketConsumer("stalled", process_delay=float('inf'))
+        stalled_consumer = MockWebSocketConsumer("stalled", process_delay=float("inf"))
         await ws_manager.add_client("stalled", stalled_consumer.websocket)
 
         # Create backlog
@@ -279,7 +280,7 @@ class MockWebSocketConsumer:
         try:
             while self.running:
                 # Simulate processing delay
-                if self.process_delay != float('inf'):
+                if self.process_delay != float("inf"):
                     await asyncio.sleep(self.process_delay)
                     self.processed_count += 1
                 else:
@@ -303,22 +304,20 @@ class TestStallDetectionAndRecovery:
         ws_manager = WebSocketClientManager(max_queue_size=2)
 
         # Create a consumer that can't keep up
-        problematic_consumer = MockWebSocketConsumer("problematic", process_delay=float('inf'))
+        problematic_consumer = MockWebSocketConsumer("problematic", process_delay=float("inf"))
         await ws_manager.add_client("problematic", problematic_consumer.websocket)
 
         # Fill its queue repeatedly (simulating continuous backpressure)
         for attempt in range(5):  # Multiple attempts to trigger backpressure
             for i in range(5):  # Fill queue multiple times
-                await ws_manager.broadcast_message({
-                    "type": "stress_test",
-                    "attempt": attempt,
-                    "id": i
-                })
+                await ws_manager.broadcast_message(
+                    {"type": "stress_test", "attempt": attempt, "id": i}
+                )
 
         # The backpressure policy should have been triggered multiple times
         client_info = ws_manager.clients.get("problematic")
         if client_info:
-            queue_size = client_info['queue'].qsize()
+            queue_size = client_info["queue"].qsize()
             # Queue should be at capacity due to backpressure handling
             assert queue_size <= ws_manager.max_queue_size
 
@@ -332,18 +331,16 @@ class TestStallDetectionAndRecovery:
         # Create multiple stalled consumers
         stalled_consumers = []
         for i in range(5):
-            consumer = MockWebSocketConsumer(f"stalled_{i}", process_delay=float('inf'))
+            consumer = MockWebSocketConsumer(f"stalled_{i}", process_delay=float("inf"))
             stalled_consumers.append(consumer)
             await ws_manager.add_client(f"stalled_{i}", consumer.websocket)
 
         # Overload all consumers
         for round_num in range(3):
             for msg_id in range(10):
-                await ws_manager.broadcast_message({
-                    "type": "overload_test",
-                    "round": round_num,
-                    "id": msg_id
-                })
+                await ws_manager.broadcast_message(
+                    {"type": "overload_test", "round": round_num, "id": msg_id}
+                )
 
         # System should still be functional
         # Add a new, responsive consumer
@@ -362,7 +359,9 @@ class TestStallDetectionAndRecovery:
         await ws_manager.broadcast_message({"type": "recovery_test", "id": 1})
         await asyncio.sleep(0.1)
 
-        assert healthy_consumer.processed_count > 0, "Healthy consumer didn't receive messages after mass stall"
+        assert (
+            healthy_consumer.processed_count > 0
+        ), "Healthy consumer didn't receive messages after mass stall"
 
         # Cleanup
         healthy_task.cancel()

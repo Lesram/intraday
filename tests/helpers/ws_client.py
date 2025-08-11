@@ -38,7 +38,7 @@ class WSTestClient:
         ping_timeout: float = 10.0,
         auto_reconnect: bool = False,
         reconnect_delay: float = 5.0,
-        extra_headers: dict[str, str] | None = None
+        extra_headers: dict[str, str] | None = None,
     ):
         self.uri = uri
         self.read_delay_ms = read_delay_ms
@@ -81,7 +81,7 @@ class WSTestClient:
                 self.uri,
                 ping_interval=self.ping_interval,
                 ping_timeout=self.ping_timeout,
-                extra_headers=self.extra_headers
+                extra_headers=self.extra_headers,
             )
 
             self.connected = True
@@ -125,7 +125,9 @@ class WSTestClient:
         self.stats["messages_sent"] += 1
         logger.debug(f"Sent message: {message}")
 
-    async def wait_for_message(self, timeout: float | None = None, filter_fn: Callable | None = None) -> dict[str, Any]:
+    async def wait_for_message(
+        self, timeout: float | None = None, filter_fn: Callable | None = None
+    ) -> dict[str, Any]:
         """
         Wait for a specific message matching the filter function.
 
@@ -157,7 +159,9 @@ class WSTestClient:
             # Wait a bit before checking again
             await asyncio.sleep(0.01)
 
-    async def wait_for_messages(self, count: int, timeout: float | None = None) -> list[dict[str, Any]]:
+    async def wait_for_messages(
+        self, count: int, timeout: float | None = None
+    ) -> list[dict[str, Any]]:
         """
         Wait for a specific number of messages.
 
@@ -183,7 +187,9 @@ class WSTestClient:
             if timeout is not None:
                 elapsed = asyncio.get_event_loop().time() - start_time
                 if elapsed >= timeout:
-                    raise TimeoutError(f"Only received {len(messages)}/{count} messages within {timeout}s")
+                    raise TimeoutError(
+                        f"Only received {len(messages)}/{count} messages within {timeout}s"
+                    )
 
             await asyncio.sleep(0.01)
 
@@ -230,10 +236,7 @@ class WSTestClient:
                         await asyncio.sleep(self.read_delay_ms / 1000.0)
 
                     # Receive message with timeout
-                    message_raw = await asyncio.wait_for(
-                        self.websocket.recv(),
-                        timeout=1.0
-                    )
+                    message_raw = await asyncio.wait_for(self.websocket.recv(), timeout=1.0)
 
                     # Parse message
                     try:
@@ -398,10 +401,9 @@ class WSTestClientPool:
 
 # Utility functions for testing
 
+
 async def simulate_slow_consumer(
-    client: WSTestClient,
-    delay_ms: int = 100,
-    duration_seconds: int = 10
+    client: WSTestClient, delay_ms: int = 100, duration_seconds: int = 10
 ) -> dict[str, Any]:
     """
     Simulate a slow WebSocket consumer for backpressure testing.
@@ -446,9 +448,7 @@ async def simulate_slow_consumer(
 
 
 async def wait_for_client_health(
-    client: WSTestClient,
-    expected_messages: int,
-    timeout: float = 10.0
+    client: WSTestClient, expected_messages: int, timeout: float = 10.0
 ) -> bool:
     """
     Wait for a client to reach a healthy state.
@@ -464,9 +464,11 @@ async def wait_for_client_health(
     start_time = asyncio.get_event_loop().time()
 
     while (asyncio.get_event_loop().time() - start_time) < timeout:
-        if (client.connected and
-            client.stats["messages_received"] >= expected_messages and
-            len(client.message_buffer) > 0):
+        if (
+            client.connected
+            and client.stats["messages_received"] >= expected_messages
+            and len(client.message_buffer) > 0
+        ):
             return True
 
         await asyncio.sleep(0.1)

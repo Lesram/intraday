@@ -3,9 +3,9 @@
 
 [run]
 source = backend
-omit = 
+omit =
     backend/migrations/*
-    backend/tests/* 
+    backend/tests/*
     backend/scripts/*
     backend/alembic/*
     */tests/*

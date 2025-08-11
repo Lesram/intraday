@@ -28,9 +28,7 @@ class Settings(BaseSettings):
     # Reddit API Configuration
     reddit_client_id: str = config("REDDIT_CLIENT_ID", default="")
     reddit_client_secret: str = config("REDDIT_CLIENT_SECRET", default="")
-    reddit_user_agent: str = config(
-        "REDDIT_USER_AGENT", default="AlgoTradingPlatform/1.0"
-    )
+    reddit_user_agent: str = config("REDDIT_USER_AGENT", default="AlgoTradingPlatform/1.0")
 
     # Redis Configuration
     redis_host: str = config("REDIS_HOST", default="localhost")
@@ -38,14 +36,10 @@ class Settings(BaseSettings):
     redis_db: int = config("REDIS_DB", default=0, cast=int)
 
     # Database Configuration
-    database_url: str = config(
-        "DATABASE_URL", default="sqlite:///./trading_platform.db"
-    )
+    database_url: str = config("DATABASE_URL", default="sqlite:///./trading_platform.db")
 
     # API Security
-    api_secret_key: str = config(
-        "API_SECRET_KEY", default="your-secret-key-change-in-production"
-    )
+    api_secret_key: str = config("API_SECRET_KEY", default="your-secret-key-change-in-production")
     algorithm: str = config("ALGORITHM", default="HS256")
 
     # JWT Security Configuration
@@ -94,12 +88,8 @@ class Settings(BaseSettings):
     log_level: str = config("LOG_LEVEL", default="INFO")
 
     # Model Configuration
-    model_registry_path: str = config(
-        "MODEL_REGISTRY_PATH", default="backend/models/saved_models"
-    )
-    drift_detection_threshold: float = config(
-        "DRIFT_DETECTION_THRESHOLD", default=0.05, cast=float
-    )
+    model_registry_path: str = config("MODEL_REGISTRY_PATH", default="backend/models/saved_models")
+    drift_detection_threshold: float = config("DRIFT_DETECTION_THRESHOLD", default=0.05, cast=float)
 
     # Trading Configuration
     default_symbols: list[str] = Field(
@@ -117,7 +107,7 @@ class Settings(BaseSettings):
     trading_hours_end: str = "16:00"
     timezone: str = "America/New_York"
 
-    @field_validator('default_symbols', mode='before')
+    @field_validator("default_symbols", mode="before")
     @classmethod
     def parse_comma_separated_list(cls, v):
         """Parse comma-separated string into list"""

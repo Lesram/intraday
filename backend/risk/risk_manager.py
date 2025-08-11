@@ -29,8 +29,18 @@ MIN_SAMPLES = 30
 
 # Bounded reason categories for metrics
 RISK_REASONS = {
-    "window", "halt", "whitelist", "pos_cap", "notional_cap",
-    "var", "cvar", "kelly", "correlation", "sector", "heat", "leverage"
+    "window",
+    "halt",
+    "whitelist",
+    "pos_cap",
+    "notional_cap",
+    "var",
+    "cvar",
+    "kelly",
+    "correlation",
+    "sector",
+    "heat",
+    "leverage",
 }
 
 
@@ -39,10 +49,7 @@ class RiskMathUtils:
 
     @staticmethod
     def kelly_fraction(
-        mean_return: float,
-        variance: float,
-        kelly_floor: float = 0.0,
-        kelly_ceiling: float = 0.2
+        mean_return: float, variance: float, kelly_floor: float = 0.0, kelly_ceiling: float = 0.2
     ) -> float:
         """Calculate Kelly optimal fraction with stability guards."""
         if variance < EPS or mean_return <= 0:
@@ -93,7 +100,7 @@ class RiskMathUtils:
         elif confidence <= 0.1:
             z_score = -1.28  # 10% VaR
         else:
-            z_score = -1.0   # Conservative fallback
+            z_score = -1.0  # Conservative fallback
 
         return -(mean_return + z_score * std_return)
 
@@ -128,7 +135,7 @@ class AsyncRiskManager:
         max_single_position_value: int = 100000,
         max_portfolio_var: float = 0.05,
         logger: logging.Logger | None = None,
-        metrics: Any | None = None
+        metrics: Any | None = None,
     ):
         """Initialize async-first risk manager with institutional controls."""
         self.max_position_per_symbol = max_position_per_symbol
@@ -148,7 +155,7 @@ class AsyncRiskManager:
         self,
         order: OrderSpec,
         portfolio_state: PortfolioState | None = None,
-        request_id: str | None = None
+        request_id: str | None = None,
     ) -> RiskDecision:
         """Main risk check entry point - fully async with structured decisions."""
         start_time = time.time()
@@ -170,14 +177,12 @@ class AsyncRiskManager:
             # Record decision latency
             self.metrics.histogram("risk_decision_latency_seconds").observe(decision_time)
 
-
             return decision
 
         except Exception as e:
             self.logger.error("Risk check failed", extra={"error": str(e), "order": order})
             decision = RiskDecision.block(
-                reason="other",
-                adjustments={"error": f"Risk check failed: {str(e)}"}
+                reason="other", adjustments={"error": f"Risk check failed: {str(e)}"}
             )
 
             decision_time = time.time() - start_time
@@ -194,7 +199,7 @@ class AsyncRiskManager:
         historical_returns = self._get_historical_returns(order.symbol, 60)
 
         # 1. Position limits check
-        current_pos = current_state.positions.get(order.symbol, Decimal('0'))
+        current_pos = current_state.positions.get(order.symbol, Decimal("0"))
         order_qty = order.qty if order.side == "buy" else -order.qty
         new_position = current_pos + order_qty
 
@@ -203,7 +208,7 @@ class AsyncRiskManager:
                 reason="position_limit_exceeded",
                 adjustments={"max_allowed": str(self.max_position_per_symbol - abs(current_pos))},
                 limits={"max_position_per_symbol": str(self.max_position_per_symbol)},
-                original_qty=order.qty
+                original_qty=order.qty,
             )
 
         # 2. Notional value checks
@@ -212,7 +217,7 @@ class AsyncRiskManager:
                 reason="single_position_value_limit",
                 adjustments={"max_notional": str(self.max_single_position_value)},
                 limits={"max_single_position_value": str(self.max_single_position_value)},
-                original_qty=order.qty
+                original_qty=order.qty,
             )
 
         # 3. Kelly sizing check (if we have returns data)
@@ -231,7 +236,7 @@ class AsyncRiskManager:
                         reason="kelly_size_exceeded",
                         original_qty=order.qty,
                         adjusted_qty=suggested_qty,
-                        adjustments={"kelly_limit": str(max_kelly_notional)}
+                        adjustments={"kelly_limit": str(max_kelly_notional)},
                     )
 
         # 4. VaR check (if we have sufficient data)
@@ -241,7 +246,10 @@ class AsyncRiskManager:
                 return RiskDecision.block(
                     reason="var_limit_exceeded",
                     original_qty=order.qty,
-                    adjustments={"current_var": f"{var_95:.4f}", "limit": f"{self.max_portfolio_var:.4f}"}
+                    adjustments={
+                        "current_var": f"{var_95:.4f}",
+                        "limit": f"{self.max_portfolio_var:.4f}",
+                    },
                 )
 
         # 5. All checks passed - allow with potential sizing adjustment
@@ -251,10 +259,10 @@ class AsyncRiskManager:
             limits={
                 "max_position_per_symbol": str(self.max_position_per_symbol),
                 "max_single_position_value": str(self.max_single_position_value),
-                "max_portfolio_var": str(self.max_portfolio_var)
+                "max_portfolio_var": str(self.max_portfolio_var),
             },
             original_qty=order.qty,
-            adjusted_qty=order.qty
+            adjusted_qty=order.qty,
         )
 
     async def _get_portfolio_state(self, symbol: str) -> "PortfolioState":
@@ -265,11 +273,11 @@ class AsyncRiskManager:
         from backend.risk.types import PortfolioState
 
         return PortfolioState(
-            equity=Decimal('100000'),
-            cash=Decimal('50000'),
-            positions={symbol: Decimal('0')},  # Current position
-            sector_map={symbol: 'Technology'},  # Sector mapping
-            last_updated=datetime.now(UTC)
+            equity=Decimal("100000"),
+            cash=Decimal("50000"),
+            positions={symbol: Decimal("0")},  # Current position
+            sector_map={symbol: "Technology"},  # Sector mapping
+            last_updated=datetime.now(UTC),
         )
 
     def _get_historical_returns(self, symbol: str, days: int = 60) -> list:
@@ -285,6 +293,7 @@ class AsyncRiskManager:
 # DO NOT USE in new code - use AsyncRiskManager directly instead.
 # ============================================================================
 
+
 class RiskManager(AsyncRiskManager):
     """
     DEPRECATED: Backward compatibility wrapper for synchronous code.
@@ -295,7 +304,9 @@ class RiskManager(AsyncRiskManager):
     For new code, use AsyncRiskManager directly with proper OrderSpec/PortfolioState.
     """
 
-    def before_order(self, symbol: str, intended_qty: float, price: float | None = None) -> tuple[bool, str, float]:
+    def before_order(
+        self, symbol: str, intended_qty: float, price: float | None = None
+    ) -> tuple[bool, str, float]:
         """
         DEPRECATED: Legacy synchronous interface - DO NOT USE in new code.
 
@@ -314,7 +325,7 @@ class RiskManager(AsyncRiskManager):
         warnings.warn(
             "Synchronous before_order is deprecated. Use async interface with OrderSpec.",
             DeprecationWarning,
-            stacklevel=2
+            stacklevel=2,
         )
 
         # Convert to new types
@@ -323,7 +334,7 @@ class RiskManager(AsyncRiskManager):
             side="buy" if intended_qty > 0 else "sell",
             qty=Decimal(str(abs(intended_qty))),
             notional=Decimal(str(abs(intended_qty) * (price or 100))),
-            price=Decimal(str(price)) if price else None
+            price=Decimal(str(price)) if price else None,
         )
 
         # Run async method in event loop (not recommended)

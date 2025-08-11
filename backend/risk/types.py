@@ -11,22 +11,27 @@ from typing import Any, Literal
 # Type aliases for clarity
 Side = Literal["buy", "sell"]
 
+
 class RiskLevel(Enum):
     """Risk level enumeration."""
+
     LOW = "low"
     MEDIUM = "medium"
     HIGH = "high"
     EXTREME = "extreme"
 
+
 @dataclass
 class RiskLimits:
     """Risk limits configuration."""
+
     max_position_size: Decimal = Decimal("100000")
     max_daily_loss: Decimal = Decimal("10000")
     max_sector_concentration: float = 0.3
     max_single_position: Decimal = Decimal("50000")
     var_limit_95: Decimal = Decimal("25000")
     var_limit_99: Decimal = Decimal("50000")
+
 
 @dataclass(frozen=True)
 class OrderSpec:
@@ -49,14 +54,15 @@ class OrderSpec:
         if self.price is not None and self.price <= 0:
             raise ValueError("price must be positive when specified")
 
+
 @dataclass(frozen=True)
 class PortfolioState:
     """Current portfolio state for risk calculations."""
 
     equity: Decimal  # Total equity value
-    cash: Decimal   # Available cash
+    cash: Decimal  # Available cash
     positions: dict[str, Decimal]  # symbol -> signed quantity
-    sector_map: dict[str, str]     # symbol -> sector classification
+    sector_map: dict[str, str]  # symbol -> sector classification
     last_updated: datetime | None = None
 
     @property
@@ -72,17 +78,19 @@ class PortfolioState:
         # Simplified calculation - would need prices for accuracy
         return self.equity - self.cash
 
+
 @dataclass(frozen=True)
 class PortfolioRisk:
     """Portfolio risk metrics and calculations."""
 
     var_95: Decimal = Decimal("0.0")  # Value at Risk at 95% confidence
     var_99: Decimal = Decimal("0.0")  # Value at Risk at 99% confidence
-    volatility: float = 0.0            # Portfolio volatility
-    sharpe_ratio: float = 0.0          # Risk-adjusted return
+    volatility: float = 0.0  # Portfolio volatility
+    sharpe_ratio: float = 0.0  # Risk-adjusted return
     max_drawdown: Decimal = Decimal("0.0")  # Maximum drawdown
-    beta: float = 1.0                  # Market beta
-    concentration_risk: float = 0.0    # Concentration risk score
+    beta: float = 1.0  # Market beta
+    concentration_risk: float = 0.0  # Concentration risk score
+
 
 @dataclass(frozen=True)
 class RiskDecision:
@@ -91,7 +99,7 @@ class RiskDecision:
     allowed: bool
     reason: str  # Primary reason for allow/block
     adjustments: dict[str, Any]  # Applied adjustments (qty caps, etc.)
-    limits: dict[str, Any]       # Snapshot of active limits during decision
+    limits: dict[str, Any]  # Snapshot of active limits during decision
 
     # Additional decision context
     original_qty: Decimal | None = None
@@ -105,7 +113,7 @@ class RiskDecision:
         reason: str = "approved",
         adjustments: dict[str, Any] | None = None,
         limits: dict[str, Any] | None = None,
-        **kwargs
+        **kwargs,
     ) -> "RiskDecision":
         """Create an allowed decision."""
         return cls(
@@ -114,7 +122,7 @@ class RiskDecision:
             adjustments=adjustments or {},
             limits=limits or {},
             timestamp=datetime.utcnow(),
-            **kwargs
+            **kwargs,
         )
 
     @classmethod
@@ -123,7 +131,7 @@ class RiskDecision:
         reason: str,
         adjustments: dict[str, Any] | None = None,
         limits: dict[str, Any] | None = None,
-        **kwargs
+        **kwargs,
     ) -> "RiskDecision":
         """Create a blocked decision."""
         return cls(
@@ -132,5 +140,5 @@ class RiskDecision:
             adjustments=adjustments or {},
             limits=limits or {},
             timestamp=datetime.utcnow(),
-            **kwargs
+            **kwargs,
         )

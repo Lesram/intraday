@@ -12,10 +12,10 @@ repos:
         types_or: [python, pyi]
         args: [--fix]
         stages: [pre-commit, pre-push, manual]
-      
+
       # Run the formatter
       - id: ruff-format
-        types_or: [python, pyi] 
+        types_or: [python, pyi]
         stages: [pre-commit, pre-push, manual]
 
   # MyPy type checking
@@ -25,20 +25,20 @@ repos:
       - id: mypy
         name: mypy-backend-services
         files: ^backend/(services|risk|infra)/
-        additional_dependencies: 
+        additional_dependencies:
           - types-python-dateutil
           - types-requests
           - types-redis
           - pydantic
         args: [--strict, --show-error-codes]
         stages: [pre-commit, pre-push, manual]
-      
+
       - id: mypy
         name: mypy-backend-other
         files: ^backend/(?!(services|risk|infra)/)
         additional_dependencies:
           - types-python-dateutil
-          - types-requests  
+          - types-requests
           - types-redis
           - pydantic
         args: [--show-error-codes]
@@ -54,7 +54,7 @@ repos:
         files: ^tests/.*\.py$
         stages: [pre-commit]
         pass_filenames: true
-        
+
       # Full pytest on push (with coverage)
       - id: pytest-full
         name: pytest-full-coverage
@@ -106,7 +106,7 @@ repos:
 ci:
   autofix_commit_msg: |
     [pre-commit.ci] auto fixes from pre-commit hooks
-    
+
     for more information, see https://pre-commit.ci
   autofix_prs: true
   autoupdate_branch: main

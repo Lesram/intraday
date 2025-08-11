@@ -19,34 +19,53 @@ import sys
 # Configuration
 ALLOWED_LABEL_KEYS = {
     # Service identification
-    "service", "version", "environment", "instance",
-
+    "service",
+    "version",
+    "environment",
+    "instance",
     # Request/Response
-    "method", "endpoint", "status_code", "status",
-
+    "method",
+    "endpoint",
+    "status_code",
+    "status",
     # Trading specific
-    "symbol", "side", "order_type", "strategy",
-    "exchange", "asset_class", "timeframe",
-
+    "symbol",
+    "side",
+    "order_type",
+    "strategy",
+    "exchange",
+    "asset_class",
+    "timeframe",
     # Technical
-    "component", "operation", "result", "error_type",
-    "source", "destination", "queue_type",
-
+    "component",
+    "operation",
+    "result",
+    "error_type",
+    "source",
+    "destination",
+    "queue_type",
     # WebSocket
-    "client_type", "connection_id", "message_type", "direction",
-
+    "client_type",
+    "connection_id",
+    "message_type",
+    "direction",
     # Infrastructure
-    "node", "pod", "container", "namespace",
-    "database", "table", "cache_key",
+    "node",
+    "pod",
+    "container",
+    "namespace",
+    "database",
+    "table",
+    "cache_key",
 }
 
-METRIC_NAME_PATTERN = re.compile(r'^[a-zA-Z_][a-zA-Z0-9_]*$')
+METRIC_NAME_PATTERN = re.compile(r"^[a-zA-Z_][a-zA-Z0-9_]*$")
 FORBIDDEN_LABEL_VALUE_PATTERNS = [
-    re.compile(r'uuid-[0-9a-f-]{36}'),     # UUID patterns
-    re.compile(r'[0-9]{10,}'),              # Long numeric IDs
-    re.compile(r'user_\d+'),                # User IDs
-    re.compile(r'session_[a-zA-Z0-9]{20,}'), # Session IDs
-    re.compile(r'[a-zA-Z0-9+/]{20,}'),      # Base64-like strings
+    re.compile(r"uuid-[0-9a-f-]{36}"),  # UUID patterns
+    re.compile(r"[0-9]{10,}"),  # Long numeric IDs
+    re.compile(r"user_\d+"),  # User IDs
+    re.compile(r"session_[a-zA-Z0-9]{20,}"),  # Session IDs
+    re.compile(r"[a-zA-Z0-9+/]{20,}"),  # Base64-like strings
 ]
 
 HIGH_CARDINALITY_THRESHOLD = 1000
@@ -99,7 +118,7 @@ class MetricsLinter:
     def _lint_metrics_file(self, file_path: Path) -> None:
         """Lint a specific metrics file."""
         try:
-            with open(file_path, encoding='utf-8') as f:
+            with open(file_path, encoding="utf-8") as f:
                 content = f.read()
 
             tree = ast.parse(content, filename=str(file_path))
@@ -118,12 +137,11 @@ class MetricsLinter:
             return
 
         # Look for Prometheus metric constructors
-        metric_types = ['Counter', 'Histogram', 'Gauge', 'Summary']
-        func_name = getattr(node.func, 'attr', '')
+        metric_types = ["Counter", "Histogram", "Gauge", "Summary"]
+        func_name = getattr(node.func, "attr", "")
 
         if func_name not in metric_types and not any(
-            isinstance(arg, ast.Constant) and arg.value in metric_types
-            for arg in node.args
+            isinstance(arg, ast.Constant) and arg.value in metric_types for arg in node.args
         ):
             return
 
@@ -151,7 +169,7 @@ class MetricsLinter:
 
         # Look for labelnames argument
         for keyword in node.keywords:
-            if keyword.arg == 'labelnames':
+            if keyword.arg == "labelnames":
                 if isinstance(keyword.value, ast.List):
                     for elt in keyword.value.elts:
                         if isinstance(elt, ast.Constant):
@@ -168,8 +186,8 @@ class MetricsLinter:
             )
 
         # Check for common naming issues
-        if not name.endswith(('_total', '_seconds', '_ratio', '_count', '_size', '_bytes')):
-            if any(word in name for word in ['count', 'total', 'time', 'duration']):
+        if not name.endswith(("_total", "_seconds", "_ratio", "_count", "_size", "_bytes")):
+            if any(word in name for word in ["count", "total", "time", "duration"]):
                 self.warnings.append(
                     f"{file_path}: Metric '{name}' should have descriptive suffix "
                     f"like '_total', '_seconds', etc."
@@ -193,7 +211,7 @@ class MetricsLinter:
             )
 
         # Check for common problematic patterns
-        problematic = {'id', 'uuid', 'session', 'token', 'timestamp', 'user_id'}
+        problematic = {"id", "uuid", "session", "token", "timestamp", "user_id"}
         for label in labels:
             if any(prob in label.lower() for prob in problematic):
                 self.errors.append(
@@ -235,12 +253,12 @@ def check_label_value_usage(backend_path: Path) -> list[str]:
             continue
 
         try:
-            with open(py_file, encoding='utf-8') as f:
+            with open(py_file, encoding="utf-8") as f:
                 content = f.read()
 
             # Look for .labels() calls with suspicious values
-            for line_num, line in enumerate(content.split('\n'), 1):
-                if '.labels(' in line:
+            for line_num, line in enumerate(content.split("\n"), 1):
+                if ".labels(" in line:
                     for pattern in FORBIDDEN_LABEL_VALUE_PATTERNS:
                         if pattern.search(line):
                             issues.append(
@@ -258,16 +276,9 @@ def main():
     """Main entry point."""
     parser = argparse.ArgumentParser(description="Lint Prometheus metrics configuration")
     parser.add_argument(
-        "--backend-path",
-        type=Path,
-        default=Path("backend"),
-        help="Path to backend code directory"
+        "--backend-path", type=Path, default=Path("backend"), help="Path to backend code directory"
     )
-    parser.add_argument(
-        "--strict",
-        action="store_true",
-        help="Treat warnings as errors"
-    )
+    parser.add_argument("--strict", action="store_true", help="Treat warnings as errors")
 
     args = parser.parse_args()
 

@@ -3,18 +3,16 @@ Test Configuration and Fixtures
 Provides fixtures for testing with isolated metrics registries and loggers.
 """
 import asyncio
+from contextlib import contextmanager
 import io
 import logging
-from contextlib import contextmanager
 from unittest.mock import AsyncMock, Mock, patch
-from typing import Generator
 
+from fastapi.testclient import TestClient
 import numpy as np
 import pandas as pd
-import pytest
-from fastapi import FastAPI
-from fastapi.testclient import TestClient
 from prometheus_client import CollectorRegistry
+import pytest
 
 from backend.api.factory import create_app
 from backend.infra.logging import get_logger
@@ -24,7 +22,7 @@ from backend.infra.logging import get_logger
 @pytest.fixture
 def sample_price_data():
     """Sample price data for testing"""
-    dates = pd.date_range(start='2024-01-01', end='2024-01-31', freq='D')
+    dates = pd.date_range(start="2024-01-01", end="2024-01-31", freq="D")
     np.random.seed(42)
 
     # Generate realistic stock price data
@@ -35,51 +33,61 @@ def sample_price_data():
     for ret in returns[1:]:
         prices.append(prices[-1] * (1 + ret))
 
-    data = pd.DataFrame({
-        'timestamp': dates,
-        'open': [p * np.random.uniform(0.99, 1.01) for p in prices],
-        'high': [p * np.random.uniform(1.005, 1.02) for p in prices],
-        'low': [p * np.random.uniform(0.98, 0.995) for p in prices],
-        'close': prices,
-        'volume': np.random.randint(100000, 1000000, len(dates))
-    })
+    data = pd.DataFrame(
+        {
+            "timestamp": dates,
+            "open": [p * np.random.uniform(0.99, 1.01) for p in prices],
+            "high": [p * np.random.uniform(1.005, 1.02) for p in prices],
+            "low": [p * np.random.uniform(0.98, 0.995) for p in prices],
+            "close": prices,
+            "volume": np.random.randint(100000, 1000000, len(dates)),
+        }
+    )
 
-    return data.set_index('timestamp')
+    return data.set_index("timestamp")
+
 
 @pytest.fixture
 def sample_features():
     """Sample feature data for testing"""
     np.random.seed(42)
-    dates = pd.date_range(start='2024-01-01', end='2024-01-31', freq='D')
+    dates = pd.date_range(start="2024-01-01", end="2024-01-31", freq="D")
 
-    return pd.DataFrame({
-        'sma_20': np.random.uniform(95, 105, len(dates)),
-        'sma_50': np.random.uniform(95, 105, len(dates)),
-        'ema_12': np.random.uniform(95, 105, len(dates)),
-        'ema_26': np.random.uniform(95, 105, len(dates)),
-        'rsi': np.random.uniform(30, 70, len(dates)),
-        'macd': np.random.uniform(-2, 2, len(dates)),
-        'macd_signal': np.random.uniform(-2, 2, len(dates)),
-        'bb_upper': np.random.uniform(102, 108, len(dates)),
-        'bb_lower': np.random.uniform(92, 98, len(dates)),
-        'atr': np.random.uniform(1, 3, len(dates)),
-        'volume_sma': np.random.uniform(200000, 800000, len(dates))
-    }, index=dates)
+    return pd.DataFrame(
+        {
+            "sma_20": np.random.uniform(95, 105, len(dates)),
+            "sma_50": np.random.uniform(95, 105, len(dates)),
+            "ema_12": np.random.uniform(95, 105, len(dates)),
+            "ema_26": np.random.uniform(95, 105, len(dates)),
+            "rsi": np.random.uniform(30, 70, len(dates)),
+            "macd": np.random.uniform(-2, 2, len(dates)),
+            "macd_signal": np.random.uniform(-2, 2, len(dates)),
+            "bb_upper": np.random.uniform(102, 108, len(dates)),
+            "bb_lower": np.random.uniform(92, 98, len(dates)),
+            "atr": np.random.uniform(1, 3, len(dates)),
+            "volume_sma": np.random.uniform(200000, 800000, len(dates)),
+        },
+        index=dates,
+    )
+
 
 @pytest.fixture
 def mock_alpaca_client():
     """Mock Alpaca client for testing"""
     client = AsyncMock()
-    client.get_historical_data.return_value = pd.DataFrame({
-        'open': [100, 101, 102],
-        'high': [101, 102, 103],
-        'low': [99, 100, 101],
-        'close': [100.5, 101.5, 102.5],
-        'volume': [100000, 120000, 90000]
-    })
-    client.submit_order.return_value = {'id': 'test_order_123', 'status': 'accepted'}
+    client.get_historical_data.return_value = pd.DataFrame(
+        {
+            "open": [100, 101, 102],
+            "high": [101, 102, 103],
+            "low": [99, 100, 101],
+            "close": [100.5, 101.5, 102.5],
+            "volume": [100000, 120000, 90000],
+        }
+    )
+    client.submit_order.return_value = {"id": "test_order_123", "status": "accepted"}
     client.is_connected.return_value = True
     return client
+
 
 @pytest.fixture
 def mock_redis_client():
@@ -90,16 +98,18 @@ def mock_redis_client():
     client.ping.return_value = True
     return client
 
+
 @pytest.fixture
 def test_config():
     """Test configuration"""
     return {
-        'environment': 'test',
-        'max_position_size': 1000,
-        'max_portfolio_risk': 0.02,
-        'var_confidence_level': 0.95,
-        'lookback_period': 252
+        "environment": "test",
+        "max_position_size": 1000,
+        "max_portfolio_risk": 0.02,
+        "var_confidence_level": 0.95,
+        "lookback_period": 252,
     }
+
 
 # Event loop fixture for async tests
 @pytest.fixture(scope="session")
@@ -109,12 +119,14 @@ def event_loop():
     yield loop
     loop.close()
 
+
 @pytest.fixture
 async def async_setup():
     """Async setup for tests that need it"""
     # Any async setup code here
     yield
     # Any async cleanup code here
+
 
 # FastAPI Testing Fixtures
 @pytest.fixture
@@ -153,6 +165,7 @@ def client():
 
     return TestClient(app)
 
+
 @pytest.fixture
 def mock_app_state():
     """Mock application state for testing."""
@@ -166,39 +179,41 @@ def mock_app_state():
     mock_state.user_repository = UserRepository()
     return mock_state
 
+
 @pytest.fixture
 def admin_token():
     """Create admin token for testing."""
     from backend.infra.security import create_access_token
-    return create_access_token(
-        data={"sub": "admin@algotrading.com", "roles": ["admin"]}
-    )
+
+    return create_access_token(data={"sub": "admin@algotrading.com", "roles": ["admin"]})
+
 
 @pytest.fixture
 def trader_token():
     """Create trader token for testing."""
     from backend.infra.security import create_access_token
-    return create_access_token(
-        data={"sub": "trader@algotrading.com", "roles": ["trader"]}
-    )
+
+    return create_access_token(data={"sub": "trader@algotrading.com", "roles": ["trader"]})
+
 
 @pytest.fixture
 def readonly_token():
     """Create read-only token for testing."""
     from backend.infra.security import create_access_token
-    return create_access_token(
-        data={"sub": "viewer@algotrading.com", "roles": ["read-only"]}
-    )
+
+    return create_access_token(data={"sub": "viewer@algotrading.com", "roles": ["read-only"]})
 
 
 # =============================================================================
 # METRICS AND APP FACTORY FIXTURES
 # =============================================================================
 
+
 @pytest.fixture
 def isolated_metrics_registry():
     """Create an isolated Prometheus CollectorRegistry for test isolation"""
     from prometheus_client import CollectorRegistry
+
     return CollectorRegistry()
 
 
@@ -206,6 +221,7 @@ def isolated_metrics_registry():
 def test_app(isolated_metrics_registry):
     """Create a test FastAPI app with isolated metrics registry"""
     from backend.api.factory import create_app
+
     return create_app(registry=isolated_metrics_registry)
 
 
@@ -213,6 +229,7 @@ def test_app(isolated_metrics_registry):
 def client(test_app):
     """Create a test client for synchronous endpoint testing"""
     from fastapi.testclient import TestClient
+
     with TestClient(test_app) as test_client:
         yield test_client
 
@@ -221,6 +238,7 @@ def client(test_app):
 async def async_client(test_app):
     """Create an async test client for asynchronous endpoint testing"""
     from httpx import AsyncClient
+
     async with AsyncClient(app=test_app, base_url="http://testserver") as ac:
         yield ac
 
@@ -228,9 +246,11 @@ async def async_client(test_app):
 @pytest.fixture
 def mock_dependencies(test_app):
     """Mock all external dependencies for isolated testing"""
-    from unittest.mock import Mock, AsyncMock
-    from backend.infra.metrics import MetricsRegistry
+    from unittest.mock import AsyncMock, Mock
+
     from prometheus_client import CollectorRegistry
+
+    from backend.infra.metrics import MetricsRegistry
 
     # Mock database components
     mock_db_session = AsyncMock()
@@ -245,8 +265,7 @@ def mock_dependencies(test_app):
     # Mock WebSocket manager with isolated metrics
     mock_ws_manager = Mock()
     mock_ws_manager.metrics_registry = MetricsRegistry(
-        namespace="test",
-        registry=CollectorRegistry()
+        namespace="test", registry=CollectorRegistry()
     )
 
     # Apply mocks to app state
@@ -259,13 +278,13 @@ def mock_dependencies(test_app):
     test_app.state.ws_manager = mock_ws_manager
 
     return {
-        'db_session': mock_db_session,
-        'outbox_service': mock_outbox_service,
-        'alpaca_client': mock_alpaca_client,
-        'risk_manager': mock_risk_manager,
-        'strategy_engine': mock_strategy_engine,
-        'model_manager': mock_model_manager,
-        'ws_manager': mock_ws_manager,
+        "db_session": mock_db_session,
+        "outbox_service": mock_outbox_service,
+        "alpaca_client": mock_alpaca_client,
+        "risk_manager": mock_risk_manager,
+        "strategy_engine": mock_strategy_engine,
+        "model_manager": mock_model_manager,
+        "ws_manager": mock_ws_manager,
     }
 
 
@@ -273,10 +292,11 @@ def mock_dependencies(test_app):
 def app_with_metrics(isolated_metrics_registry):
     """Create app specifically for metrics testing with isolated registry"""
     from backend.api.factory import create_app
+
     app = create_app(registry=isolated_metrics_registry)
 
     # Verify metrics isolation
-    assert hasattr(app.state, 'metrics')
+    assert hasattr(app.state, "metrics")
     assert app.state.metrics.registry is isolated_metrics_registry
 
     return app
@@ -286,6 +306,7 @@ def app_with_metrics(isolated_metrics_registry):
 def metrics_test_client(app_with_metrics):
     """Create test client specifically for metrics testing"""
     from fastapi.testclient import TestClient
+
     with TestClient(app_with_metrics) as client:
         yield client
 
@@ -297,7 +318,7 @@ class MetricsTestHelper:
     def get_metric_value(registry, metric_name: str, labels: dict = None):
         """Extract metric value from registry for testing"""
         for collector in registry._collector_to_names.keys():
-            if hasattr(collector, '_name') and collector._name == metric_name:
+            if hasattr(collector, "_name") and collector._name == metric_name:
                 if labels:
                     return collector.labels(**labels)._value._value
                 else:
@@ -320,6 +341,7 @@ def metrics_helper():
 # Middleware Isolation Fixtures
 # ============================================================================
 
+
 @pytest.fixture
 def isolated_registry():
     """Create an isolated Prometheus registry for testing."""
@@ -332,9 +354,7 @@ def test_logger_handler():
     log_stream = io.StringIO()
     handler = logging.StreamHandler(log_stream)
     handler.setLevel(logging.DEBUG)
-    formatter = logging.Formatter(
-        '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-    )
+    formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
     handler.setFormatter(formatter)
 
     # Return both handler and stream for test access
@@ -380,7 +400,7 @@ def app_with_metrics(isolated_registry, test_logger_handler):
         test_logger.log_http_request = log_http_request
         return test_logger
 
-    with patch('backend.infra.logging.get_logger', mock_get_logger):
+    with patch("backend.infra.logging.get_logger", mock_get_logger):
         yield app, log_stream
 
     # Cleanup
@@ -420,10 +440,12 @@ def patch_middleware_globals(test_logger=None, test_metrics=None):
     patches = []
 
     if test_logger:
-        patches.append(patch('backend.infra.logging.get_logger', return_value=test_logger))
+        patches.append(patch("backend.infra.logging.get_logger", return_value=test_logger))
 
     if test_metrics:
-        patches.append(patch('backend.infra.metrics.get_metrics_registry', return_value=test_metrics))
+        patches.append(
+            patch("backend.infra.metrics.get_metrics_registry", return_value=test_metrics)
+        )
 
     # Start all patches
     for p in patches:
@@ -492,10 +514,10 @@ def test_metrics_registry():
 def sample_http_request():
     """Sample HTTP request data for testing."""
     return {
-        'method': 'GET',
-        'path': '/api/v1/test',
-        'headers': {'User-Agent': 'test-client'},
-        'query_params': {}
+        "method": "GET",
+        "path": "/api/v1/test",
+        "headers": {"User-Agent": "test-client"},
+        "query_params": {},
     }
 
 
@@ -503,7 +525,7 @@ def sample_http_request():
 def sample_http_response():
     """Sample HTTP response data for testing."""
     return {
-        'status_code': 200,
-        'headers': {'Content-Type': 'application/json'},
-        'body': '{"status": "success"}'
+        "status_code": 200,
+        "headers": {"Content-Type": "application/json"},
+        "body": '{"status": "success"}',
     }

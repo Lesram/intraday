@@ -14,7 +14,7 @@ from backend.data.alpaca_client import AlpacaClient
 from backend.features.feature_engineering import FeatureEngineer
 from backend.models.ensemble_model import EnsembleModel
 from backend.risk.risk_manager import AsyncRiskManager
-from backend.risk.types import OrderSpec, PortfolioState
+from backend.risk.types import OrderSpec
 from backend.strategies.trading_strategies import SignalType, StrategyManager
 
 
@@ -33,7 +33,7 @@ class TestTradingWorkflow:
         feature_engineer = FeatureEngineer()
 
         # Mock external dependencies
-        with patch('backend.data.alpaca_client.AlpacaClient._init_clients') as mock_init:
+        with patch("backend.data.alpaca_client.AlpacaClient._init_clients") as mock_init:
             mock_init.return_value = None  # Prevent real API connection
 
             alpaca_client = AlpacaClient(api_key="test_key", secret_key="test_secret")
@@ -41,13 +41,15 @@ class TestTradingWorkflow:
 
             # Configure mock methods
             alpaca_client.get_historical_data = AsyncMock(return_value=sample_price_data)
-            alpaca_client.submit_order = AsyncMock(return_value={
-                'id': 'test_order_123',
-                'status': 'accepted',
-                'symbol': 'AAPL',
-                'qty': 50,
-                'side': 'buy'
-            })
+            alpaca_client.submit_order = AsyncMock(
+                return_value={
+                    "id": "test_order_123",
+                    "status": "accepted",
+                    "symbol": "AAPL",
+                    "qty": 50,
+                    "side": "buy",
+                }
+            )
             alpaca_client.is_connected = MagicMock(return_value=True)
 
             # Step 1: Get market data
@@ -72,23 +74,29 @@ class TestTradingWorkflow:
                 # Create OrderSpec for the new async risk manager
                 from decimal import Decimal
 
-                side = 'buy' if signal.signal_type in [SignalType.BUY, SignalType.STRONG_BUY] else 'sell'
-                price = price_data['close'].iloc[-1] if hasattr(price_data, 'columns') else 150.0  # Use last price or default
+                side = (
+                    "buy"
+                    if signal.signal_type in [SignalType.BUY, SignalType.STRONG_BUY]
+                    else "sell"
+                )
+                price = (
+                    price_data["close"].iloc[-1] if hasattr(price_data, "columns") else 150.0
+                )  # Use last price or default
 
                 order_spec = OrderSpec(
                     symbol=symbol,
                     side=side,
                     qty=Decimal(str(signal.position_size)),
                     notional=Decimal(str(signal.position_size * price)),
-                    price=Decimal(str(price))
+                    price=Decimal(str(price)),
                 )
 
                 risk_decision = await risk_manager.before_order(order_spec)
 
                 assert risk_decision is not None
-                assert hasattr(risk_decision, 'allowed')
+                assert hasattr(risk_decision, "allowed")
                 assert isinstance(risk_decision.allowed, bool)
-                assert hasattr(risk_decision, 'reason')
+                assert hasattr(risk_decision, "reason")
                 assert isinstance(risk_decision.reason, str)
 
                 # Step 5: Execute trade if approved
@@ -96,13 +104,16 @@ class TestTradingWorkflow:
                     order = await alpaca_client.submit_order(
                         symbol=symbol,
                         qty=signal.position_size,
-                        side='buy' if signal.signal_type in [SignalType.BUY, SignalType.STRONG_BUY] else 'sell',
-                        type='market'
+                        side="buy"
+                        if signal.signal_type in [SignalType.BUY, SignalType.STRONG_BUY]
+                        else "sell",
+                        type="market",
                     )
 
-                    assert 'id' in order
-                    assert 'status' in order
-                    assert order['symbol'] == symbol
+                    assert "id" in order
+                    assert "status" in order
+                    assert order["symbol"] == symbol
+
 
 @pytest.mark.integration
 @pytest.mark.asyncio
@@ -120,7 +131,7 @@ class TestModelTrainingWorkflow:
         training_data = sample_price_data
         features = sample_features
 
-        with patch.object(model_manager, 'registry') as mock_registry:
+        with patch.object(model_manager, "registry") as mock_registry:
             # Configure mock registry to return realistic objects
             mock_version_obj = MagicMock()
             mock_version_obj.model_id = "test_integration_model"
@@ -130,12 +141,12 @@ class TestModelTrainingWorkflow:
             mock_registry.register_model.return_value = mock_version_obj
 
             # Mock deploy_model method
-            with patch.object(model_manager, 'deploy_model', return_value=True) as mock_deploy:
+            with patch.object(model_manager, "deploy_model", return_value=True) as mock_deploy:
                 # Step 1: Train new model
                 model_version = await model_manager.train_and_register_model(
                     model_id="test_integration_model",
                     training_data=training_data,
-                    features=features
+                    features=features,
                 )
 
                 # Verify model was registered
@@ -146,8 +157,7 @@ class TestModelTrainingWorkflow:
 
                 # Step 2: Deploy model
                 deployment_success = await model_manager.deploy_model(
-                    "test_integration_model",
-                    model_version.version
+                    "test_integration_model", model_version.version
                 )
 
                 assert deployment_success is True
@@ -165,14 +175,14 @@ class TestModelTrainingWorkflow:
                 challenger_version = await model_manager.train_and_register_model(
                     model_id="test_integration_model",
                     training_data=training_data,
-                    features=features
+                    features=features,
                 )
 
                 # Mock A/B test method
-                with patch.object(model_manager, 'run_champion_challenger_test') as mock_ab_test:
+                with patch.object(model_manager, "run_champion_challenger_test") as mock_ab_test:
                     mock_ab_test.return_value = {
-                        'recommendation': 'promote_challenger',
-                        'confidence': 0.85
+                        "recommendation": "promote_challenger",
+                        "confidence": 0.85,
                     }
 
                     # Run A/B test
@@ -180,13 +190,16 @@ class TestModelTrainingWorkflow:
                         "test_integration_model",
                         challenger_version.version,
                         training_data.tail(50),
-                        features.tail(50)
+                        features.tail(50),
                     )
 
-                    assert 'recommendation' in ab_test_results
-                    assert ab_test_results['recommendation'] in [
-                        'promote_challenger', 'maintain_champion', 'reject_challenger'
+                    assert "recommendation" in ab_test_results
+                    assert ab_test_results["recommendation"] in [
+                        "promote_challenger",
+                        "maintain_champion",
+                        "reject_challenger",
                     ]
+
 
 @pytest.mark.integration
 @pytest.mark.asyncio
@@ -196,7 +209,7 @@ class TestRealTimeDataFlow:
     async def test_market_data_streaming(self, sample_price_data):
         """Test real-time market data processing"""
 
-        with patch('backend.data.alpaca_client.AlpacaClient._init_clients') as mock_init:
+        with patch("backend.data.alpaca_client.AlpacaClient._init_clients") as mock_init:
             mock_init.return_value = None  # Prevent real API connection
 
             # Mock streaming data
@@ -229,8 +242,7 @@ class TestRealTimeDataFlow:
                 # Update risk monitoring
                 if len(processed_data) > 1:
                     risk_update = await risk_manager.update_position_risk(
-                        market_data['symbol'],
-                        market_data['price']
+                        market_data["symbol"], market_data["price"]
                     )
                     risk_alerts.append(risk_update)
 
@@ -239,13 +251,14 @@ class TestRealTimeDataFlow:
 
             # Verify data was processed
             assert len(processed_data) == len(mock_stream_data)
-            assert all(data['symbol'] == 'AAPL' for data in processed_data)
+            assert all(data["symbol"] == "AAPL" for data in processed_data)
 
             # Verify risk monitoring was updated
             assert len(risk_alerts) >= 1
             for alert in risk_alerts:
-                assert 'symbol' in alert
-                assert 'status' in alert
+                assert "symbol" in alert
+                assert "status" in alert
+
 
 @pytest.mark.integration
 @pytest.mark.asyncio
@@ -260,60 +273,62 @@ class TestPortfolioRebalancing:
 
         # Mock current portfolio
         current_positions = {
-            'AAPL': {'quantity': 100, 'market_value': 15000, 'target_weight': 0.25},
-            'GOOGL': {'quantity': 50, 'market_value': 12000, 'target_weight': 0.20},
-            'MSFT': {'quantity': 80, 'market_value': 20000, 'target_weight': 0.30},
-            'TSLA': {'quantity': 30, 'market_value': 8000, 'target_weight': 0.15},
-            'NVDA': {'quantity': 40, 'market_value': 16000, 'target_weight': 0.10}
+            "AAPL": {"quantity": 100, "market_value": 15000, "target_weight": 0.25},
+            "GOOGL": {"quantity": 50, "market_value": 12000, "target_weight": 0.20},
+            "MSFT": {"quantity": 80, "market_value": 20000, "target_weight": 0.30},
+            "TSLA": {"quantity": 30, "market_value": 8000, "target_weight": 0.15},
+            "NVDA": {"quantity": 40, "market_value": 16000, "target_weight": 0.10},
         }
 
-        portfolio_value = sum(pos['market_value'] for pos in current_positions.values())
+        portfolio_value = sum(pos["market_value"] for pos in current_positions.values())
 
-        with patch.object(risk_manager, 'get_positions', return_value=current_positions):
-            with patch.object(risk_manager, 'get_portfolio_value', return_value=portfolio_value):
-
+        with patch.object(risk_manager, "get_positions", return_value=current_positions):
+            with patch.object(risk_manager, "get_portfolio_value", return_value=portfolio_value):
                 # Step 1: Calculate rebalancing needs
                 rebalancing_orders = []
 
                 for symbol, position in current_positions.items():
-                    current_weight = position['market_value'] / portfolio_value
-                    target_weight = position['target_weight']
+                    current_weight = position["market_value"] / portfolio_value
+                    target_weight = position["target_weight"]
                     weight_diff = target_weight - current_weight
 
                     # Rebalance if difference > 5%
                     if abs(weight_diff) > 0.05:
                         target_value = portfolio_value * target_weight
-                        current_value = position['market_value']
+                        current_value = position["market_value"]
                         adjustment_value = target_value - current_value
 
                         # Assume $250 per share for simplicity
                         shares_to_trade = abs(adjustment_value) // 250
 
                         if shares_to_trade > 0:
-                            side = 'buy' if adjustment_value > 0 else 'sell'
+                            side = "buy" if adjustment_value > 0 else "sell"
 
                             # Step 2: Risk check for rebalancing trade
                             risk_check = await risk_manager.assess_position_risk(
                                 symbol, shares_to_trade, side
                             )
 
-                            if risk_check['approved']:
-                                rebalancing_orders.append({
-                                    'symbol': symbol,
-                                    'side': side,
-                                    'quantity': shares_to_trade,
-                                    'reason': 'rebalancing',
-                                    'weight_diff': weight_diff
-                                })
+                            if risk_check["approved"]:
+                                rebalancing_orders.append(
+                                    {
+                                        "symbol": symbol,
+                                        "side": side,
+                                        "quantity": shares_to_trade,
+                                        "reason": "rebalancing",
+                                        "weight_diff": weight_diff,
+                                    }
+                                )
 
                 # Verify rebalancing orders were generated
                 assert len(rebalancing_orders) >= 0  # May be 0 if portfolio is balanced
 
                 for order in rebalancing_orders:
-                    assert 'symbol' in order
-                    assert 'side' in order
-                    assert 'quantity' in order
-                    assert order['side'] in ['buy', 'sell']
+                    assert "symbol" in order
+                    assert "side" in order
+                    assert "quantity" in order
+                    assert order["side"] in ["buy", "sell"]
+
 
 @pytest.mark.integration
 @pytest.mark.asyncio
@@ -325,14 +340,16 @@ class TestErrorRecovery:
 
         from backend.data.alpaca_client import AlpacaClient
 
-        with patch('backend.data.alpaca_client.AlpacaClient._init_clients') as mock_init:
+        with patch("backend.data.alpaca_client.AlpacaClient._init_clients") as mock_init:
             mock_init.return_value = None  # Prevent real API connection
 
             alpaca_client = AlpacaClient(api_key="test_key", secret_key="test_secret")
             alpaca_client.connected = False  # Simulate connection failure
 
             # Mock the method to simulate network failure
-            alpaca_client.get_historical_data = AsyncMock(side_effect=ConnectionError("Network failure"))
+            alpaca_client.get_historical_data = AsyncMock(
+                side_effect=ConnectionError("Network failure")
+            )
 
             # Should handle gracefully
             try:
@@ -350,8 +367,8 @@ class TestErrorRecovery:
 
         # Create corrupted data
         corrupted_data = sample_price_data.copy()
-        corrupted_data.loc[corrupted_data.index[:5], 'close'] = np.nan  # Missing values
-        corrupted_data.loc[corrupted_data.index[10:15], 'volume'] = -1  # Invalid values
+        corrupted_data.loc[corrupted_data.index[:5], "close"] = np.nan  # Missing values
+        corrupted_data.loc[corrupted_data.index[10:15], "volume"] = -1  # Invalid values
 
         # Should handle gracefully
         try:
@@ -359,7 +376,9 @@ class TestErrorRecovery:
 
             # Should return some features even with corrupted data
             assert not features.empty
-            assert features.isnull().sum().sum() < len(features) * len(features.columns)  # Not all NaN
+            assert features.isnull().sum().sum() < len(features) * len(
+                features.columns
+            )  # Not all NaN
 
         except Exception as e:
             # Should raise appropriate exception, not crash
@@ -371,9 +390,12 @@ class TestErrorRecovery:
         ensemble_model = EnsembleModel()
 
         # Mock model failures
-        with patch.object(ensemble_model.models['lstm'], 'predict', side_effect=Exception("Model failed")):
-            with patch.object(ensemble_model.models['xgboost'], 'predict', side_effect=Exception("Model failed")):
-
+        with patch.object(
+            ensemble_model.models["lstm"], "predict", side_effect=Exception("Model failed")
+        ):
+            with patch.object(
+                ensemble_model.models["xgboost"], "predict", side_effect=Exception("Model failed")
+            ):
                 # Should still provide some prediction (even if degraded)
                 prediction = ensemble_model.predict(sample_price_data, sample_features, "AAPL")
 
@@ -381,6 +403,7 @@ class TestErrorRecovery:
                 assert prediction.ensemble_prediction is not None
                 # Confidence might be lower due to fewer working models
                 assert 0 <= prediction.ensemble_confidence <= 1
+
 
 @pytest.mark.integration
 @pytest.mark.slow
@@ -395,7 +418,7 @@ class TestPerformanceUnderLoad:
         ensemble_model = EnsembleModel()
         strategy_manager = StrategyManager(risk_manager, ensemble_model)
 
-        symbols = ['AAPL', 'GOOGL', 'MSFT', 'TSLA', 'NVDA', 'AMZN', 'META', 'NFLX']
+        symbols = ["AAPL", "GOOGL", "MSFT", "TSLA", "NVDA", "AMZN", "META", "NFLX"]
 
         # Generate signals concurrently
         async def generate_signal(symbol):
@@ -455,7 +478,10 @@ class TestPerformanceUnderLoad:
                 memory_growth = current_memory - initial_memory
 
                 # Memory growth should be reasonable (less than 100MB)
-                assert memory_growth < 100 * 1024 * 1024, f"Memory grew by {memory_growth / 1024 / 1024:.2f}MB"
+                assert (
+                    memory_growth < 100 * 1024 * 1024
+                ), f"Memory grew by {memory_growth / 1024 / 1024:.2f}MB"
+
 
 @pytest.mark.integration
 class TestDataConsistency:
@@ -476,13 +502,15 @@ class TestDataConsistency:
 
         # Critical short-term features should not be all NaN
         # (Long-term indicators like SMA-50, SMA-200 may be all NaN with small datasets)
-        critical_features = ['close', 'sma_5', 'sma_20', 'rsi', 'returns']
+        critical_features = ["close", "sma_5", "sma_20", "rsi", "returns"]
         for column in critical_features:
             if column in features.columns:
                 assert not features[column].isnull().all(), f"Critical feature {column} is all NaN"
 
         # At least some features should have valid data
-        valid_features_count = sum(1 for col in features.columns if not features[col].isnull().all())
+        valid_features_count = sum(
+            1 for col in features.columns if not features[col].isnull().all()
+        )
         assert valid_features_count > 10, f"Too few valid features: {valid_features_count}"
 
     def test_cross_component_data_flow(self, sample_price_data, sample_features):

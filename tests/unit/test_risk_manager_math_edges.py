@@ -3,11 +3,12 @@ Comprehensive unit tests for risk manager math edge cases and numerical stabilit
 Focuses on Kelly criterion, CVaR, VaR, and position sizing under extreme conditions.
 """
 
-import numpy as np
-import pytest
-import pandas as pd
 from decimal import Decimal
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
+
+import numpy as np
+import pandas as pd
+import pytest
 
 from backend.risk.risk_manager import AsyncRiskManager, RiskMathUtils
 from backend.risk.types import OrderSpec, PortfolioState, Side
@@ -66,7 +67,7 @@ class TestKellyFractionEdgeCases:
         kelly = RiskMathUtils.kelly_fraction(0.05, 1.0, kelly_floor=0.05, kelly_ceiling=0.2)
         assert kelly == 0.05
 
-        # Test at exact ceiling boundary  
+        # Test at exact ceiling boundary
         kelly = RiskMathUtils.kelly_fraction(0.21, 1.0, kelly_floor=0.0, kelly_ceiling=0.2)
         assert kelly == 0.2
 
@@ -108,10 +109,12 @@ class TestParametricVaREdgeCases:
     def test_var_with_extreme_outliers(self):
         """Test VaR with extreme outlier returns."""
         portfolio_value = 100000
-        returns = np.concatenate([
-            np.random.normal(0.001, 0.01, 45),  # Normal returns
-            np.array([-0.5, 0.8, -0.3, 0.6, -0.4])  # Extreme outliers
-        ])
+        returns = np.concatenate(
+            [
+                np.random.normal(0.001, 0.01, 45),  # Normal returns
+                np.array([-0.5, 0.8, -0.3, 0.6, -0.4]),  # Extreme outliers
+            ]
+        )
 
         var = RiskMathUtils.parametric_var(portfolio_value, returns)
         assert var > 0
@@ -179,10 +182,12 @@ class TestHistoricalCVaREdgeCases:
     def test_cvar_with_single_tail_observation(self):
         """Test CVaR with only one observation in the tail."""
         portfolio_value = 100000
-        returns = np.concatenate([
-            np.full(49, 0.001),  # 49 small positive returns
-            np.array([-0.1])     # 1 large negative return
-        ])
+        returns = np.concatenate(
+            [
+                np.full(49, 0.001),  # 49 small positive returns
+                np.array([-0.1]),  # 1 large negative return
+            ]
+        )
 
         cvar = RiskMathUtils.historical_cvar(portfolio_value, returns)
         assert cvar > 0
@@ -207,11 +212,25 @@ class TestHistoricalCVaREdgeCases:
     def test_cvar_with_extreme_tail(self):
         """Test CVaR with extremely negative tail returns."""
         portfolio_value = 100000
-        returns = np.concatenate([
-            np.random.normal(0.001, 0.01, 90),  # Normal returns
-            np.array([-0.5, -0.3, -0.4, -0.2, -0.6,  # Extreme tail
-                     -0.1, -0.15, -0.25, -0.35, -0.45])
-        ])
+        returns = np.concatenate(
+            [
+                np.random.normal(0.001, 0.01, 90),  # Normal returns
+                np.array(
+                    [
+                        -0.5,
+                        -0.3,
+                        -0.4,
+                        -0.2,
+                        -0.6,  # Extreme tail
+                        -0.1,
+                        -0.15,
+                        -0.25,
+                        -0.35,
+                        -0.45,
+                    ]
+                ),
+            ]
+        )
 
         cvar = RiskMathUtils.historical_cvar(portfolio_value, returns)
         assert cvar > 0
@@ -270,12 +289,14 @@ class TestEWMAVolatilityEdgeCases:
     def test_ewma_with_extreme_volatility_regime(self):
         """Test EWMA with extreme volatility regime changes."""
         # Simulate market crash followed by calm period
-        returns = np.concatenate([
-            np.random.normal(0.0, 0.001, 30),  # Calm period (0.1% daily vol)
-            np.random.normal(0.0, 0.05, 5),   # Crash period (5% daily vol)
-            np.random.normal(0.0, 0.002, 15)  # Recovery period (0.2% daily vol)
-        ])
-        
+        returns = np.concatenate(
+            [
+                np.random.normal(0.0, 0.001, 30),  # Calm period (0.1% daily vol)
+                np.random.normal(0.0, 0.05, 5),  # Crash period (5% daily vol)
+                np.random.normal(0.0, 0.002, 15),  # Recovery period (0.2% daily vol)
+            ]
+        )
+
         volatility = RiskMathUtils.ewma_volatility(returns)
         assert volatility > 0
         assert volatility < 0.1  # Should be reasonable despite extremes
@@ -284,11 +305,11 @@ class TestEWMAVolatilityEdgeCases:
     def test_ewma_with_different_lambda_values(self):
         """Test EWMA with different decay parameters."""
         returns = np.random.normal(0.0, 0.02, 100)
-        
+
         vol_fast = RiskMathUtils.ewma_volatility(returns, lambda_param=0.90)  # Fast decay
         vol_medium = RiskMathUtils.ewma_volatility(returns, lambda_param=0.94)  # Medium decay
-        vol_slow = RiskMathUtils.ewma_volatility(returns, lambda_param=0.97)   # Slow decay
-        
+        vol_slow = RiskMathUtils.ewma_volatility(returns, lambda_param=0.97)  # Slow decay
+
         # All should be positive
         assert all(vol > 0 for vol in [vol_fast, vol_medium, vol_slow])
         # Fast decay should be more responsive to recent volatility
@@ -318,23 +339,20 @@ class TestAsyncRiskManagerEdgeCases:
     async def test_position_sizing_with_zero_volatility(self):
         """Test position sizing when volatility is zero."""
         risk_manager = AsyncRiskManager()
-        
+
         # Mock portfolio with zero volatility asset
         portfolio = PortfolioState(
             equity=Decimal("100000.0"),
             cash=Decimal("50000.0"),
             positions={"AAPL": Decimal("100")},
-            sector_map={"AAPL": "Technology"}
+            sector_map={"AAPL": "Technology"},
         )
-        
+
         # Order for zero-volatility asset
         order = OrderSpec(
-            symbol="STABLE_ASSET",
-            side=Side.BUY,
-            qty=Decimal("100"),
-            notional=Decimal("10000")
+            symbol="STABLE_ASSET", side=Side.BUY, qty=Decimal("100"), notional=Decimal("10000")
         )
-        
+
         # Should handle gracefully without crashing
         result = await risk_manager.evaluate_order_async(order, portfolio)
         assert isinstance(result, dict)
@@ -345,7 +363,7 @@ class TestAsyncRiskManagerEdgeCases:
     async def test_position_sizing_with_extreme_correlation(self):
         """Test position sizing with perfect correlation between assets."""
         risk_manager = AsyncRiskManager()
-        
+
         # Portfolio with highly correlated positions
         portfolio = PortfolioState(
             total_value=100000.0,
@@ -353,20 +371,20 @@ class TestAsyncRiskManagerEdgeCases:
             positions={
                 "AAPL": {"qty": 100, "avg_price": 150.0, "market_value": 15000.0},
                 "MSFT": {"qty": 50, "avg_price": 300.0, "market_value": 15000.0},
-                "GOOGL": {"qty": 20, "avg_price": 2500.0, "market_value": 50000.0}
+                "GOOGL": {"qty": 20, "avg_price": 2500.0, "market_value": 50000.0},
             },
             daily_pnl=0.0,
-            unrealized_pnl=0.0
+            unrealized_pnl=0.0,
         )
-        
+
         # Order that would increase correlation risk
         order = OrderSpec(
             symbol="AMZN",  # Another tech stock
             action="buy",
             quantity=10,
-            order_type="market"
+            order_type="market",
         )
-        
+
         result = await risk_manager.evaluate_order_async(order, portfolio)
         assert isinstance(result, dict)
         # Should consider correlation in risk assessment
@@ -377,7 +395,7 @@ class TestAsyncRiskManagerEdgeCases:
     async def test_drawdown_calculation_with_volatile_history(self):
         """Test drawdown calculation with highly volatile portfolio history."""
         risk_manager = AsyncRiskManager()
-        
+
         # Create volatile portfolio value history
         base_value = 100000
         volatile_values = []
@@ -387,28 +405,28 @@ class TestAsyncRiskManagerEdgeCases:
                 change = -0.15  # -15% drawdown days
             else:
                 change = np.random.normal(0.001, 0.03)  # 3% daily volatility
-            
+
             if i == 0:
                 volatile_values.append(base_value)
             else:
                 new_value = volatile_values[-1] * (1 + change)
                 volatile_values.append(max(new_value, base_value * 0.1))  # Floor at 10%
-        
+
         # Test with mock portfolio history
-        with patch.object(risk_manager, '_get_portfolio_history') as mock_history:
+        with patch.object(risk_manager, "_get_portfolio_history") as mock_history:
             mock_history.return_value = [
-                {"timestamp": pd.Timestamp.now() - pd.Timedelta(days=99-i), "total_value": val}
+                {"timestamp": pd.Timestamp.now() - pd.Timedelta(days=99 - i), "total_value": val}
                 for i, val in enumerate(volatile_values)
             ]
-            
+
             portfolio = PortfolioState(
                 total_value=volatile_values[-1],
                 available_cash=10000.0,
                 positions={"SPY": {"qty": 100, "avg_price": 400.0, "market_value": 40000.0}},
                 daily_pnl=0.0,
-                unrealized_pnl=0.0
+                unrealized_pnl=0.0,
             )
-            
+
             metrics = await risk_manager.get_portfolio_risk_async(portfolio)
             assert isinstance(metrics, dict)
             assert "max_drawdown" in metrics
@@ -419,15 +437,15 @@ class TestAsyncRiskManagerEdgeCases:
     async def test_risk_limits_with_edge_case_orders(self):
         """Test risk limits with edge case order specifications."""
         risk_manager = AsyncRiskManager()
-        
+
         portfolio = PortfolioState(
             total_value=100000.0,
             available_cash=50000.0,
             positions={},
             daily_pnl=-5000.0,  # Already down 5% today
-            unrealized_pnl=0.0
+            unrealized_pnl=0.0,
         )
-        
+
         # Edge case orders
         edge_cases = [
             # Zero quantity order
@@ -439,7 +457,7 @@ class TestAsyncRiskManagerEdgeCases:
             # Very large quantity
             OrderSpec(symbol="SPY", action="buy", quantity=10000, order_type="market"),
         ]
-        
+
         for order in edge_cases:
             result = await risk_manager.evaluate_order_async(order, portfolio)
             assert isinstance(result, dict)
@@ -451,26 +469,23 @@ class TestAsyncRiskManagerEdgeCases:
     async def test_kelly_sizing_with_negative_expected_returns(self):
         """Test Kelly position sizing with negative expected returns."""
         risk_manager = AsyncRiskManager()
-        
+
         # Mock negative expected returns for an asset
-        with patch.object(risk_manager, '_calculate_expected_return') as mock_return:
+        with patch.object(risk_manager, "_calculate_expected_return") as mock_return:
             mock_return.return_value = -0.05  # -5% expected return
-            
+
             portfolio = PortfolioState(
                 total_value=100000.0,
                 available_cash=50000.0,
                 positions={},
                 daily_pnl=0.0,
-                unrealized_pnl=0.0
+                unrealized_pnl=0.0,
             )
-            
+
             order = OrderSpec(
-                symbol="DECLINING_STOCK",
-                action="buy",
-                quantity=100,
-                order_type="market"
+                symbol="DECLINING_STOCK", action="buy", quantity=100, order_type="market"
             )
-            
+
             result = await risk_manager.evaluate_order_async(order, portfolio)
             # Should reject or heavily limit orders with negative expected returns
             assert isinstance(result, dict)
@@ -483,23 +498,41 @@ class TestAsyncRiskManagerEdgeCases:
     async def test_portfolio_greek_calculations_edge_cases(self):
         """Test portfolio Greek calculations with extreme scenarios."""
         risk_manager = AsyncRiskManager()
-        
+
         # Portfolio with options-heavy exposure
         portfolio = PortfolioState(
             total_value=100000.0,
             available_cash=10000.0,
             positions={
-                "AAPL_CALL_150": {"qty": 10, "avg_price": 5.0, "market_value": 5000.0, "delta": 0.7, "gamma": 0.05},
-                "SPY_PUT_400": {"qty": -5, "avg_price": 3.0, "market_value": -1500.0, "delta": -0.3, "gamma": 0.02},
-                "QQQ": {"qty": 100, "avg_price": 350.0, "market_value": 35000.0, "delta": 1.0, "gamma": 0.0}
+                "AAPL_CALL_150": {
+                    "qty": 10,
+                    "avg_price": 5.0,
+                    "market_value": 5000.0,
+                    "delta": 0.7,
+                    "gamma": 0.05,
+                },
+                "SPY_PUT_400": {
+                    "qty": -5,
+                    "avg_price": 3.0,
+                    "market_value": -1500.0,
+                    "delta": -0.3,
+                    "gamma": 0.02,
+                },
+                "QQQ": {
+                    "qty": 100,
+                    "avg_price": 350.0,
+                    "market_value": 35000.0,
+                    "delta": 1.0,
+                    "gamma": 0.0,
+                },
             },
             daily_pnl=0.0,
-            unrealized_pnl=0.0
+            unrealized_pnl=0.0,
         )
-        
+
         metrics = await risk_manager.get_portfolio_risk_async(portfolio)
         assert isinstance(metrics, dict)
-        
+
         # Should handle options Greeks even if some positions don't have them
         if "portfolio_delta" in metrics:
             assert isinstance(metrics["portfolio_delta"], (int, float))
@@ -516,18 +549,18 @@ class TestCombinedMathStability:
         np.random.seed(789)
         portfolio_value = 100000
         returns = np.random.normal(0.01, 0.02, 252)  # One year of daily returns
-        
+
         # Calculate multiple metrics
         var_95 = RiskMathUtils.parametric_var(portfolio_value, returns, 0.95)
         cvar_95 = RiskMathUtils.historical_cvar(portfolio_value, returns, 0.95)
         volatility = RiskMathUtils.ewma_volatility(returns)
         kelly = RiskMathUtils.kelly_fraction(np.mean(returns), np.var(returns))
-        
+
         # Consistency checks
         assert all(metric > 0 for metric in [var_95, cvar_95, volatility])
         assert kelly >= 0
         assert kelly <= 1  # Kelly should never exceed 100%
-        
+
         # CVaR should generally be >= VaR (expected shortfall property)
         # Note: Due to different methodologies, this might not always hold exactly
         assert cvar_95 > 0
@@ -538,42 +571,54 @@ class TestCombinedMathStability:
         """Test risk metrics during simulated market stress scenarios."""
         scenarios = [
             # Black Monday (1987-style crash)
-            {"returns": np.concatenate([
-                np.random.normal(0.001, 0.01, 240),  # Normal period
-                np.array([-0.22]),                   # Crash day
-                np.random.normal(-0.01, 0.03, 11)   # Volatile recovery
-            ])},
+            {
+                "returns": np.concatenate(
+                    [
+                        np.random.normal(0.001, 0.01, 240),  # Normal period
+                        np.array([-0.22]),  # Crash day
+                        np.random.normal(-0.01, 0.03, 11),  # Volatile recovery
+                    ]
+                )
+            },
             # Dot-com bubble volatility
-            {"returns": np.concatenate([
-                np.random.normal(0.01, 0.015, 100),  # Bull market
-                np.random.normal(-0.005, 0.04, 100), # High volatility decline
-                np.random.normal(0.002, 0.02, 52)    # Stabilization
-            ])},
+            {
+                "returns": np.concatenate(
+                    [
+                        np.random.normal(0.01, 0.015, 100),  # Bull market
+                        np.random.normal(-0.005, 0.04, 100),  # High volatility decline
+                        np.random.normal(0.002, 0.02, 52),  # Stabilization
+                    ]
+                )
+            },
             # 2008 Financial Crisis-style
-            {"returns": np.concatenate([
-                np.random.normal(0.0, 0.01, 100),    # Pre-crisis calm
-                np.random.normal(-0.02, 0.06, 50),   # Crisis volatility
-                np.random.normal(-0.01, 0.04, 102)   # Recovery period
-            ])}
+            {
+                "returns": np.concatenate(
+                    [
+                        np.random.normal(0.0, 0.01, 100),  # Pre-crisis calm
+                        np.random.normal(-0.02, 0.06, 50),  # Crisis volatility
+                        np.random.normal(-0.01, 0.04, 102),  # Recovery period
+                    ]
+                )
+            },
         ]
-        
+
         portfolio_value = 100000
-        
+
         for scenario in scenarios:
             returns = scenario["returns"]
-            
+
             # All metrics should handle extreme scenarios gracefully
             var_95 = RiskMathUtils.parametric_var(portfolio_value, returns, 0.95)
             cvar_95 = RiskMathUtils.historical_cvar(portfolio_value, returns, 0.95)
             volatility = RiskMathUtils.ewma_volatility(returns)
             kelly = RiskMathUtils.kelly_fraction(np.mean(returns), np.var(returns))
-            
+
             # Sanity checks - no infinite or NaN values
             metrics = [var_95, cvar_95, volatility, kelly]
             assert all(not np.isnan(metric) for metric in metrics)
             assert all(not np.isinf(metric) for metric in metrics)
             assert all(metric >= 0 for metric in metrics)
-            
+
             # Volatility should be elevated during stress
             assert volatility > 0.01  # Should be above normal levels
 
@@ -581,26 +626,26 @@ class TestCombinedMathStability:
     def test_numerical_stability_with_extreme_portfolio_sizes(self):
         """Test numerical stability with very large and very small portfolio values."""
         returns = np.random.normal(0.01, 0.02, 100)
-        
+
         # Test with extreme portfolio sizes
         extreme_sizes = [
-            1.0,        # $1 portfolio
-            100.0,      # $100 portfolio  
-            1e6,        # $1M portfolio
-            1e9,        # $1B portfolio
-            1e12        # $1T portfolio
+            1.0,  # $1 portfolio
+            100.0,  # $100 portfolio
+            1e6,  # $1M portfolio
+            1e9,  # $1B portfolio
+            1e12,  # $1T portfolio
         ]
-        
+
         for portfolio_value in extreme_sizes:
             var_95 = RiskMathUtils.parametric_var(portfolio_value, returns, 0.95)
             cvar_95 = RiskMathUtils.historical_cvar(portfolio_value, returns, 0.95)
-            
+
             # Should scale proportionally with portfolio size
             assert var_95 > 0
             assert cvar_95 > 0
             assert var_95 < portfolio_value  # VaR should be less than total value
             assert cvar_95 < portfolio_value  # CVaR should be less than total value
-            
+
             # Should maintain reasonable proportions
             var_ratio = var_95 / portfolio_value
             cvar_ratio = cvar_95 / portfolio_value
@@ -612,30 +657,27 @@ class TestCombinedMathStability:
         """Fuzz test with small returns arrays to hit numerical stability branches."""
         np.random.seed(42)
         portfolio_value = 100000
-        
+
         # Generate various small arrays that might cause edge cases
         test_arrays = [
             # Empty and tiny arrays
             np.array([]),
             np.array([0.01]),
             np.array([0.01, 0.02]),
-            
             # Arrays with special values
             np.array([0.0] * 10),
             np.array([np.nan, 0.01, 0.02]),
             np.array([np.inf, 0.01, 0.02]),
             np.array([-np.inf, 0.01, 0.02]),
-            
             # Very small variance arrays
             np.array([0.01] * 50),  # Constant returns
             np.array([0.01, 0.010001] * 25),  # Minimal variance
-            
             # Extreme value arrays
             np.array([1.0, -1.0] * 5),  # 100% swings
-            np.array([1e-10] * 20),     # Tiny values
-            np.array([1e10, -1e10]),    # Huge values
+            np.array([1e-10] * 20),  # Tiny values
+            np.array([1e10, -1e10]),  # Huge values
         ]
-        
+
         for returns in test_arrays:
             # All functions should handle gracefully without crashing
             try:
@@ -643,16 +685,20 @@ class TestCombinedMathStability:
                     var = RiskMathUtils.parametric_var(portfolio_value, returns)
                     cvar = RiskMathUtils.historical_cvar(portfolio_value, returns)
                     vol = RiskMathUtils.ewma_volatility(returns)
-                    
+
                     # Results should be non-negative numbers (including zero)
                     assert var >= 0 or np.isnan(var)
                     assert cvar >= 0 or np.isnan(cvar)
                     assert vol >= 0 or np.isnan(vol)
-                    
+
                     if len(returns) > 1:
                         kelly = RiskMathUtils.kelly_fraction(np.mean(returns), np.var(returns))
                         assert kelly >= 0 or np.isnan(kelly)
-                        
+
             except (ValueError, ZeroDivisionError) as e:
                 # These exceptions are acceptable for invalid inputs
-                assert "insufficient" in str(e).lower() or "invalid" in str(e).lower() or "zero" in str(e).lower()
+                assert (
+                    "insufficient" in str(e).lower()
+                    or "invalid" in str(e).lower()
+                    or "zero" in str(e).lower()
+                )

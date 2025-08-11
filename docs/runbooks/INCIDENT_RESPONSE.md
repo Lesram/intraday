@@ -34,8 +34,8 @@ This document provides comprehensive runbooks for managing critical incidents an
 
 ### ALERT: High Order Latency (P95 > 2s)
 
-**Severity**: Critical  
-**Impact**: Customer orders experiencing delays, potential market opportunity loss  
+**Severity**: Critical
+**Impact**: Customer orders experiencing delays, potential market opportunity loss
 **SLO**: Order Latency P95 < 2 seconds
 
 #### Immediate Response (0-5 minutes)
@@ -57,7 +57,7 @@ This document provides comprehensive runbooks for managing critical incidents an
 #### Investigation (5-15 minutes)
 1. **Check Prometheus** for latency breakdown:
    ```promql
-   histogram_quantile(0.95, 
+   histogram_quantile(0.95,
      rate(order_processing_duration_seconds_bucket[5m])
    ) by (service)
    ```
@@ -78,9 +78,9 @@ This document provides comprehensive runbooks for managing critical incidents an
    ```bash
    # Scale database connections
    kubectl scale deployment postgres-primary --replicas=2
-   
+
    # Kill long-running queries if safe
-   psql -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity 
+   psql -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity
             WHERE state = 'active' AND query_start < now() - interval '30 seconds';"
    ```
 
@@ -88,7 +88,7 @@ This document provides comprehensive runbooks for managing critical incidents an
    ```bash
    # Scale order processors
    kubectl scale deployment order-processor --replicas=5
-   
+
    # Check queue health
    redis-cli info | grep "instantaneous_ops_per_sec"
    ```
@@ -97,7 +97,7 @@ This document provides comprehensive runbooks for managing critical incidents an
    ```bash
    # Check circuit breaker states
    curl https://api.trading-platform.com/health/circuit-breakers
-   
+
    # Reset circuit breakers if needed (use caution)
    curl -X POST https://api.trading-platform.com/admin/circuit-breakers/reset
    ```
@@ -110,7 +110,7 @@ This document provides comprehensive runbooks for managing critical incidents an
    curl -X POST -H "Authorization: Bearer $ADMIN_TOKEN" \
         -d '{"mode": "dry_run", "authorized_by": "oncall"}' \
         https://api.trading-platform.com/admin/trading-mode
-   
+
    # Then to live after validation
    curl -X POST -H "Authorization: Bearer $ADMIN_TOKEN" \
         -d '{"mode": "live", "authorized_by": "oncall"}' \
@@ -126,14 +126,14 @@ This document provides comprehensive runbooks for managing critical incidents an
 
 ### ALERT: High Error Rate (>1%)
 
-**Severity**: Critical  
-**Impact**: Failed orders, potential financial loss, customer impact  
+**Severity**: Critical
+**Impact**: Failed orders, potential financial loss, customer impact
 **SLO**: Error Rate < 1%
 
 #### Immediate Response (0-3 minutes)
 1. **Check error patterns**:
    ```promql
-   rate(http_requests_total{status=~"5.."}[5m]) / 
+   rate(http_requests_total{status=~"5.."}[5m]) /
    rate(http_requests_total[5m]) * 100
    ```
 
@@ -153,7 +153,7 @@ This document provides comprehensive runbooks for managing critical incidents an
    ```bash
    # Recent errors
    kubectl logs deployment/trading-service --since=10m | grep ERROR
-   
+
    # Error frequency
    kubectl logs deployment/trading-service --since=1h | grep ERROR | wc -l
    ```
@@ -162,7 +162,7 @@ This document provides comprehensive runbooks for managing critical incidents an
    ```bash
    # Broker API health
    curl https://broker-api.example.com/health
-   
+
    # Market data provider
    curl https://market-data.example.com/health
    ```
@@ -179,7 +179,7 @@ This document provides comprehensive runbooks for managing critical incidents an
    ```bash
    # Check circuit breaker status
    curl https://api.trading-platform.com/health/circuit-breakers
-   
+
    # Manually trigger circuit breaker if needed
    curl -X POST https://api.trading-platform.com/admin/circuit-breakers/BROKER_API/open
    ```
@@ -188,7 +188,7 @@ This document provides comprehensive runbooks for managing critical incidents an
    ```bash
    # Check database connections
    kubectl exec -it postgres-primary-0 -- psql -c "SELECT count(*) FROM pg_stat_activity;"
-   
+
    # Restart connection pool if needed
    kubectl restart deployment/pgbouncer
    ```
@@ -202,8 +202,8 @@ This document provides comprehensive runbooks for managing critical incidents an
 
 ### ALERT: System Down / Zero Availability
 
-**Severity**: Critical  
-**Impact**: Complete service outage, all trading halted  
+**Severity**: Critical
+**Impact**: Complete service outage, all trading halted
 **SLO**: Availability > 99.9%
 
 #### Immediate Response (0-2 minutes)
@@ -213,7 +213,7 @@ This document provides comprehensive runbooks for managing critical incidents an
    # Kubernetes cluster health
    kubectl get nodes
    kubectl get pods --all-namespaces | grep -v Running
-   
+
    # Load balancer status
    curl -I https://api.trading-platform.com/health
    ```
@@ -228,7 +228,7 @@ This document provides comprehensive runbooks for managing critical incidents an
    ```bash
    # Node resources
    kubectl top nodes
-   
+
    # Critical pod status
    kubectl get pods -n trading-system
    ```
@@ -243,7 +243,7 @@ This document provides comprehensive runbooks for managing critical incidents an
    ```bash
    # Restart failed pods
    kubectl delete pods -l app=trading-service
-   
+
    # Scale up if resource issues
    kubectl scale deployment trading-service --replicas=3
    ```
@@ -252,7 +252,7 @@ This document provides comprehensive runbooks for managing critical incidents an
    ```bash
    # Cordon failing nodes
    kubectl cordon <failing-node>
-   
+
    # Drain workloads
    kubectl drain <failing-node> --ignore-daemonsets
    ```
@@ -261,7 +261,7 @@ This document provides comprehensive runbooks for managing critical incidents an
    ```bash
    # Check database cluster
    kubectl exec -it postgres-primary-0 -- pg_isready
-   
+
    # Failover if needed
    kubectl patch postgresql postgres-cluster --type='merge' -p='{"spec":{"switchover":{}}}'
    ```
@@ -272,7 +272,7 @@ This document provides comprehensive runbooks for managing critical incidents an
 
 ### ALERT: Circuit Breaker Open
 
-**Severity**: Warning  
+**Severity**: Warning
 **Impact**: Degraded functionality for external integrations
 
 #### Response Steps
@@ -299,7 +299,7 @@ This document provides comprehensive runbooks for managing critical incidents an
 
 ### ALERT: High Queue Depth
 
-**Severity**: Warning  
+**Severity**: Warning
 **Impact**: Potential processing delays
 
 #### Response Steps
@@ -308,7 +308,7 @@ This document provides comprehensive runbooks for managing critical incidents an
    # Redis queues
    redis-cli llen order_processing_queue
    redis-cli llen risk_analysis_queue
-   
+
    # RabbitMQ queues
    rabbitmqctl list_queues name messages
    ```
@@ -376,8 +376,8 @@ kubectl logs deployment/order-processor --since=10m | grep "order_id:12345" | so
 SELECT count(*), state FROM pg_stat_activity GROUP BY state;
 
 -- Long-running queries
-SELECT pid, now() - pg_stat_activity.query_start AS duration, query 
-FROM pg_stat_activity 
+SELECT pid, now() - pg_stat_activity.query_start AS duration, query
+FROM pg_stat_activity
 WHERE (now() - pg_stat_activity.query_start) > interval '5 minutes';
 
 -- Lock contention
@@ -385,12 +385,12 @@ SELECT blocked_locks.pid AS blocked_pid,
        blocking_locks.pid AS blocking_pid,
        blocked_activity.query AS blocked_statement
 FROM pg_catalog.pg_locks blocked_locks
-JOIN pg_catalog.pg_stat_activity blocked_activity 
+JOIN pg_catalog.pg_stat_activity blocked_activity
   ON blocked_activity.pid = blocked_locks.pid;
 
 -- Order status distribution
-SELECT status, count(*) FROM orders 
-WHERE created_at > now() - interval '1 hour' 
+SELECT status, count(*) FROM orders
+WHERE created_at > now() - interval '1 hour'
 GROUP BY status;
 ```
 
@@ -451,7 +451,7 @@ Impact: [Brief description]
 Started: [timestamp]
 SLO Impact: [Yes/No - which SLOs]
 
-We are investigating reports of [issue]. 
+We are investigating reports of [issue].
 Updates every 15 minutes or as significant changes occur.
 
 Next update: [timestamp + 15min]
@@ -525,10 +525,10 @@ Follow-up:
 # Post-Mortem: [Incident Title]
 
 ## Summary
-- **Date**: 
-- **Duration**: 
-- **Impact**: 
-- **Root Cause**: 
+- **Date**:
+- **Duration**:
+- **Impact**:
+- **Root Cause**:
 
 ## Timeline
 - [timestamp] Initial alert
@@ -586,6 +586,6 @@ kubectl annotate certificate trading-platform-tls cert-manager.io/issue-temporar
 
 This runbook should be reviewed monthly and updated after each major incident.
 
-**Last Updated**: [Current Date]  
-**Next Review**: [Date + 1 month]  
+**Last Updated**: [Current Date]
+**Next Review**: [Date + 1 month]
 **Document Owner**: DevOps Team

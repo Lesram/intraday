@@ -87,11 +87,13 @@ def init_db() -> tuple[AsyncEngine, async_sessionmaker[AsyncSession]]:
     logger.info(
         "Database initialized",
         extra={
-            "database_url": database_url.split("@")[-1] if "@" in database_url else database_url,  # Hide credentials
+            "database_url": database_url.split("@")[-1]
+            if "@" in database_url
+            else database_url,  # Hide credentials
             "pool_size": settings.database.pool_size,
             "max_overflow": settings.database.max_overflow,
             "echo": settings.database.echo,
-        }
+        },
     )
 
     return _engine, _sessionmaker
@@ -114,11 +116,7 @@ async def db_health_check() -> bool:
     structured_logger = get_structured_logger(__name__)
 
     with trace_span(
-        "database_health_check",
-        {
-            "db.operation": "health_check",
-            "db.system": "postgresql"
-        }
+        "database_health_check", {"db.operation": "health_check", "db.system": "postgresql"}
     ) as span:
         try:
             async with _engine.begin() as conn:
@@ -130,9 +128,7 @@ async def db_health_check() -> bool:
                 if row and row[0] == 1:
                     # Record successful health check metrics
                     record_database_operation(
-                        operation="health_check",
-                        duration_seconds=duration_seconds,
-                        success=True
+                        operation="health_check", duration_seconds=duration_seconds, success=True
                     )
 
                     # Update span with success info
@@ -141,8 +137,7 @@ async def db_health_check() -> bool:
 
                     # Log structured event
                     structured_logger.log_database_operation(
-                        operation="health_check",
-                        duration_ms=duration_seconds * 1000
+                        operation="health_check", duration_ms=duration_seconds * 1000
                     )
 
                     logger.debug("Database health check passed")
@@ -154,9 +149,7 @@ async def db_health_check() -> bool:
 
             # Record failed health check metrics
             record_database_operation(
-                operation="health_check",
-                duration_seconds=duration_seconds,
-                success=False
+                operation="health_check", duration_seconds=duration_seconds, success=False
             )
 
             # Update span with error info
@@ -168,9 +161,7 @@ async def db_health_check() -> bool:
 
             # Log structured error event
             structured_logger.log_database_operation(
-                operation="health_check",
-                duration_ms=duration_seconds * 1000,
-                error=str(e)
+                operation="health_check", duration_ms=duration_seconds * 1000, error=str(e)
             )
 
             logger.error("Database health check failed", extra={"error": str(e)})

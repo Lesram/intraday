@@ -27,28 +27,23 @@ from fastapi.responses import JSONResponse
 # Prometheus imports
 try:
     from prometheus_client import CONTENT_TYPE_LATEST, Counter, Histogram, generate_latest
+
     PROMETHEUS_AVAILABLE = True
 
     # Prometheus metrics
     REQUEST_COUNT = Counter(
-        'http_requests_total',
-        'Total HTTP requests',
-        ['method', 'endpoint', 'status']
+        "http_requests_total", "Total HTTP requests", ["method", "endpoint", "status"]
     )
     REQUEST_DURATION = Histogram(
-        'http_request_duration_seconds',
-        'HTTP request duration',
-        ['method', 'endpoint']
+        "http_request_duration_seconds", "HTTP request duration", ["method", "endpoint"]
     )
     WS_CONNECTIONS = Counter(
-        'websocket_connections_total',
-        'Total WebSocket connections',
-        ['client_type']
+        "websocket_connections_total", "Total WebSocket connections", ["client_type"]
     )
     WS_MESSAGES = Counter(
-        'websocket_messages_total',
-        'WebSocket messages sent/received',
-        ['direction', 'message_type']
+        "websocket_messages_total",
+        "WebSocket messages sent/received",
+        ["direction", "message_type"],
     )
 
 except ImportError:
@@ -91,21 +86,19 @@ class WebSocketClientManager:
         message_queue = asyncio.Queue(maxsize=self.max_queue_size)
 
         self.clients[client_id] = {
-            'websocket': websocket,
-            'queue': message_queue,
-            'last_ping': time.time(),
-            'subscriptions': set(),
-            'send_task': None
+            "websocket": websocket,
+            "queue": message_queue,
+            "last_ping": time.time(),
+            "subscriptions": set(),
+            "send_task": None,
         }
 
         # Start message sender task for this client
-        send_task = asyncio.create_task(
-            self._message_sender(client_id)
-        )
-        self.clients[client_id]['send_task'] = send_task
+        send_task = asyncio.create_task(self._message_sender(client_id))
+        self.clients[client_id]["send_task"] = send_task
 
         if PROMETHEUS_AVAILABLE:
-            WS_CONNECTIONS.labels(client_type='trading').inc()
+            WS_CONNECTIONS.labels(client_type="trading").inc()
 
         audit_logger.info("websocket_client_added", client_id=client_id)
 
@@ -115,36 +108,38 @@ class WebSocketClientManager:
             client_info = self.clients[client_id]
 
             # Cancel send task
-            if client_info['send_task']:
-                client_info['send_task'].cancel()
+            if client_info["send_task"]:
+                client_info["send_task"].cancel()
                 try:
-                    await client_info['send_task']
+                    await client_info["send_task"]
                 except asyncio.CancelledError:
                     pass
 
             # Close websocket
             try:
-                await client_info['websocket'].close()
+                await client_info["websocket"].close()
             except Exception:
                 pass
 
             del self.clients[client_id]
             audit_logger.info("websocket_client_removed", client_id=client_id)
 
-    async def broadcast_message(self, message: dict[str, Any], subscription_filter: str | None = None) -> None:
+    async def broadcast_message(
+        self, message: dict[str, Any], subscription_filter: str | None = None
+    ) -> None:
         """Broadcast message to subscribed clients with backpressure handling"""
         for client_id, client_info in self.clients.items():
-            if subscription_filter and subscription_filter not in client_info['subscriptions']:
+            if subscription_filter and subscription_filter not in client_info["subscriptions"]:
                 continue
 
             try:
                 # Non-blocking put with backpressure policy
-                client_info['queue'].put_nowait(message)
+                client_info["queue"].put_nowait(message)
             except asyncio.QueueFull:
                 # Drop oldest message to make room (backpressure policy)
                 try:
-                    client_info['queue'].get_nowait()
-                    client_info['queue'].put_nowait(message)
+                    client_info["queue"].get_nowait()
+                    client_info["queue"].put_nowait(message)
                     logging.warning(f"Queue full for client {client_id}, dropped old message")
                 except asyncio.QueueEmpty:
                     pass
@@ -155,8 +150,8 @@ class WebSocketClientManager:
         if not client_info:
             return
 
-        websocket = client_info['websocket']
-        queue = client_info['queue']
+        websocket = client_info["websocket"]
+        queue = client_info["queue"]
 
         try:
             while True:
@@ -164,7 +159,9 @@ class WebSocketClientManager:
                 await websocket.send_text(json.dumps(message))
 
                 if PROMETHEUS_AVAILABLE:
-                    WS_MESSAGES.labels(direction='sent', message_type=message.get('type', 'unknown')).inc()
+                    WS_MESSAGES.labels(
+                        direction="sent", message_type=message.get("type", "unknown")
+                    ).inc()
 
                 queue.task_done()
 
@@ -198,12 +195,12 @@ class WebSocketClientManager:
                 stale_clients = []
                 for client_id, client_info in self.clients.items():
                     # Check if client is stale (no pong for 60 seconds)
-                    if current_time - client_info['last_ping'] > 60:
+                    if current_time - client_info["last_ping"] > 60:
                         stale_clients.append(client_id)
                         continue
 
                     try:
-                        client_info['queue'].put_nowait(ping_message)
+                        client_info["queue"].put_nowait(ping_message)
                     except asyncio.QueueFull:
                         # Client can't keep up, mark as stale
                         stale_clients.append(client_id)
@@ -219,6 +216,7 @@ class WebSocketClientManager:
             except Exception as e:
                 logging.error(f"Error in heartbeat loop: {e}")
                 await asyncio.sleep(30)
+
 
 # Global WebSocket manager
 ws_manager = WebSocketClientManager()
@@ -307,8 +305,7 @@ async def lifespan(app: FastAPI):
 
         logging.info("Initializing StrategyManager...")
         app.state.strategy_manager = StrategyManager(
-            app.state.risk_manager,
-            app.state.ensemble_model
+            app.state.risk_manager, app.state.ensemble_model
         )
 
         # Initialize WebSocket manager
@@ -324,17 +321,19 @@ async def lifespan(app: FastAPI):
         # Wait for critical services to be ready
         await asyncio.sleep(1)  # Give services time to initialize
 
-        audit_logger.info("trading_platform_started",
-                         timestamp=datetime.now(),
-                         components={
-                             'alpaca_client': True,
-                             'sentiment_analyzer': True,
-                             'feature_engineer': True,
-                             'model_manager': True,
-                             'ensemble_model': True,
-                             'risk_manager': True,
-                             'strategy_manager': True
-                         })
+        audit_logger.info(
+            "trading_platform_started",
+            timestamp=datetime.now(),
+            components={
+                "alpaca_client": True,
+                "sentiment_analyzer": True,
+                "feature_engineer": True,
+                "model_manager": True,
+                "ensemble_model": True,
+                "risk_manager": True,
+                "strategy_manager": True,
+            },
+        )
 
         logging.info("Trading platform startup completed successfully")
 
@@ -358,16 +357,20 @@ async def lifespan(app: FastAPI):
 
     try:
         # Stop WebSocket manager
-        if hasattr(app.state, 'ws_manager'):
+        if hasattr(app.state, "ws_manager"):
             shutdown_tasks.append(asyncio.create_task(app.state.ws_manager.stop_heartbeat()))
 
             # Disconnect all WebSocket clients
             for client_id in list(app.state.ws_manager.clients.keys()):
-                shutdown_tasks.append(asyncio.create_task(app.state.ws_manager.remove_client(client_id)))
+                shutdown_tasks.append(
+                    asyncio.create_task(app.state.ws_manager.remove_client(client_id))
+                )
 
         # Stop market data stream
-        if hasattr(app.state, 'alpaca_client') and app.state.alpaca_client:
-            shutdown_tasks.append(asyncio.create_task(cleanup_alpaca_client(app.state.alpaca_client)))
+        if hasattr(app.state, "alpaca_client") and app.state.alpaca_client:
+            shutdown_tasks.append(
+                asyncio.create_task(cleanup_alpaca_client(app.state.alpaca_client))
+            )
 
         # Flush audit logs
         shutdown_tasks.append(asyncio.create_task(flush_audit_logs()))
@@ -375,8 +378,7 @@ async def lifespan(app: FastAPI):
         # Wait for shutdown tasks with timeout
         if shutdown_tasks:
             await asyncio.wait_for(
-                asyncio.gather(*shutdown_tasks, return_exceptions=True),
-                timeout=10.0
+                asyncio.gather(*shutdown_tasks, return_exceptions=True), timeout=10.0
             )
 
         audit_logger.info("trading_platform_shutdown", timestamp=datetime.now())
@@ -390,7 +392,7 @@ async def lifespan(app: FastAPI):
 
 async def start_market_data_stream(app: FastAPI):
     """Start real-time market data streaming"""
-    if hasattr(app.state, 'alpaca_client') and app.state.alpaca_client:
+    if hasattr(app.state, "alpaca_client") and app.state.alpaca_client:
         try:
             await app.state.alpaca_client.connect_data_stream()
             logging.info("Market data stream started successfully")
@@ -412,7 +414,7 @@ async def flush_audit_logs():
     try:
         # Force flush audit logger
         for handler in audit_logger.handlers:
-            if hasattr(handler, 'flush'):
+            if hasattr(handler, "flush"):
                 handler.flush()
         logging.info("Audit logs flushed successfully")
     except Exception as e:
@@ -551,19 +553,13 @@ async def get_trading_signal(
 
     try:
         if not strategy_manager:
-            raise HTTPException(
-                status_code=503, detail="Strategy manager not available"
-            )
+            raise HTTPException(status_code=503, detail="Strategy manager not available")
 
         # Get market data
         if not alpaca_client:
-            raise HTTPException(
-                status_code=503, detail="Market data client not available"
-            )
+            raise HTTPException(status_code=503, detail="Market data client not available")
 
-        price_data = await alpaca_client.get_historical_data(
-            symbol, timeframe="1Day", limit=100
-        )
+        price_data = await alpaca_client.get_historical_data(symbol, timeframe="1Day", limit=100)
         if price_data.empty:
             raise HTTPException(status_code=404, detail="No market data found")
 
@@ -571,9 +567,7 @@ async def get_trading_signal(
         features = feature_engineer.compute_all_features(price_data)
 
         # Generate signal
-        signal = await strategy_manager.generate_combined_signal(
-            symbol, price_data, features
-        )
+        signal = await strategy_manager.generate_combined_signal(symbol, price_data, features)
 
         if PYDANTIC_AVAILABLE:
             return TradingSignalResponse(
@@ -647,9 +641,7 @@ async def get_prediction(
             raise HTTPException(status_code=503, detail="Ensemble model not available")
 
         # Get data
-        price_data = await alpaca_client.get_historical_data(
-            symbol, timeframe="1Day", limit=100
-        )
+        price_data = await alpaca_client.get_historical_data(symbol, timeframe="1Day", limit=100)
         features = feature_engineer.compute_all_features(price_data)
 
         # Get prediction
@@ -780,13 +772,9 @@ async def get_market_data(symbol: str, timeframe: str = "1Day", limit: int = 100
     """Get historical market data"""
     try:
         if not app_state["alpaca_client"]:
-            raise HTTPException(
-                status_code=503, detail="Market data client not available"
-            )
+            raise HTTPException(status_code=503, detail="Market data client not available")
 
-        data = await app_state["alpaca_client"].get_historical_data(
-            symbol, timeframe, limit
-        )
+        data = await app_state["alpaca_client"].get_historical_data(symbol, timeframe, limit)
 
         return {
             "symbol": symbol,
@@ -809,13 +797,9 @@ async def get_sentiment(symbol: str):
     """Get social sentiment for a symbol"""
     try:
         if not app_state["sentiment_analyzer"]:
-            raise HTTPException(
-                status_code=503, detail="Sentiment analyzer not available"
-            )
+            raise HTTPException(status_code=503, detail="Sentiment analyzer not available")
 
-        sentiment_data = await app_state["sentiment_analyzer"].get_aggregated_sentiment(
-            symbol
-        )
+        sentiment_data = await app_state["sentiment_analyzer"].get_aggregated_sentiment(symbol)
 
         return {
             "symbol": symbol,
@@ -841,9 +825,7 @@ async def train_model(training_request: dict, background_tasks: BackgroundTasks)
         training_days = training_request.get("training_period_days", 30)
 
         # Start training in background
-        background_tasks.add_task(
-            train_model_background, model_id, symbols, training_days
-        )
+        background_tasks.add_task(train_model_background, model_id, symbols, training_days)
 
         return {
             "status": "training_started",
@@ -877,9 +859,7 @@ async def train_model_background(model_id: str, symbols: list[str], training_day
         features = app_state["feature_engineer"].compute_all_features(training_data)
 
         # Train model
-        await app_state["model_manager"].train_and_register_model(
-            model_id, training_data, features
-        )
+        await app_state["model_manager"].train_and_register_model(model_id, training_data, features)
 
         audit_logger.info(
             "model_training_completed",

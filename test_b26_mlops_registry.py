@@ -45,7 +45,7 @@ class MockModel:
 
     def predict(self, X):
         # Simple mock prediction
-        if hasattr(X, 'shape'):
+        if hasattr(X, "shape"):
             return np.random.random(X.shape[0])
         return np.random.random()
 
@@ -83,20 +83,22 @@ class TestMLOpsRegistry:
         np.random.seed(42)
         n_samples = 1000
 
-        data = pd.DataFrame({
-            'feature_1': np.random.normal(0, 1, n_samples),
-            'feature_2': np.random.normal(5, 2, n_samples),
-            'feature_3': np.random.exponential(1, n_samples),
-            'feature_4': np.random.uniform(-1, 1, n_samples),
-            'target': np.random.normal(10, 3, n_samples)
-        })
+        data = pd.DataFrame(
+            {
+                "feature_1": np.random.normal(0, 1, n_samples),
+                "feature_2": np.random.normal(5, 2, n_samples),
+                "feature_3": np.random.exponential(1, n_samples),
+                "feature_4": np.random.uniform(-1, 1, n_samples),
+                "target": np.random.normal(10, 3, n_samples),
+            }
+        )
 
         return data
 
     @pytest.fixture
     def sample_features(self, sample_training_data):
         """Extract features from training data"""
-        return sample_training_data.drop(columns=['target'])
+        return sample_training_data.drop(columns=["target"])
 
     @pytest.fixture
     def sample_model(self):
@@ -106,7 +108,7 @@ class TestMLOpsRegistry:
     @pytest.fixture
     def registry(self, temp_registry_path, mock_settings):
         """Create registry instance for testing"""
-        with patch('backend.mlops.model_manager.get_settings', return_value=mock_settings):
+        with patch("backend.mlops.model_manager.get_settings", return_value=mock_settings):
             return ModelRegistry(temp_registry_path)
 
     def test_model_registry_initialization(self, temp_registry_path):
@@ -125,10 +127,7 @@ class TestMLOpsRegistry:
 
         # Register model
         model_version = registry.register_model(
-            model_name,
-            sample_model,
-            sample_training_data,
-            metrics
+            model_name, sample_model, sample_training_data, metrics
         )
 
         assert model_version is not None
@@ -151,15 +150,11 @@ class TestMLOpsRegistry:
         artifacts = {
             "scaler": {"mean": 0.0, "std": 1.0},
             "encoder": {"categories": ["A", "B", "C"]},
-            "preprocessor": "standard_scaler"
+            "preprocessor": "standard_scaler",
         }
 
         model_version = registry.register_model(
-            model_name,
-            sample_model,
-            sample_training_data,
-            metrics,
-            artifacts=artifacts
+            model_name, sample_model, sample_training_data, metrics, artifacts=artifacts
         )
 
         # Check artifacts are saved
@@ -176,15 +171,11 @@ class TestMLOpsRegistry:
         model_name = "versioned_model"
 
         # Register first version
-        v1 = registry.register_model(
-            model_name, sample_model, sample_training_data, {"acc": 0.8}
-        )
+        v1 = registry.register_model(model_name, sample_model, sample_training_data, {"acc": 0.8})
         assert v1.version == "v1"
 
         # Register second version
-        v2 = registry.register_model(
-            model_name, sample_model, sample_training_data, {"acc": 0.85}
-        )
+        v2 = registry.register_model(model_name, sample_model, sample_training_data, {"acc": 0.85})
         assert v2.version == "v2"
 
         # Check both versions exist
@@ -225,19 +216,21 @@ class TestMLOpsRegistry:
         assert len(errors) == 0
 
         # Missing feature should fail
-        invalid_features = sample_features.drop(columns=['feature_1'])
+        invalid_features = sample_features.drop(columns=["feature_1"])
         is_valid, errors = validate_feature_schema(invalid_features, expected_schema)
         assert not is_valid
         assert any("Missing features" in error for error in errors)
 
         # Extra feature should fail in strict mode
         extra_features = sample_features.copy()
-        extra_features['extra_feature'] = 1.0
+        extra_features["extra_feature"] = 1.0
         is_valid, errors = validate_feature_schema(extra_features, expected_schema, strict=True)
         assert not is_valid
         assert any("Extra features" in error for error in errors)
 
-    def test_schema_mismatch_error(self, registry, sample_model, sample_training_data, sample_features):
+    def test_schema_mismatch_error(
+        self, registry, sample_model, sample_training_data, sample_features
+    ):
         """Test schema mismatch error handling"""
         model_name = "schema_test"
 
@@ -248,14 +241,14 @@ class TestMLOpsRegistry:
         _, _, metadata = registry.load_artifacts(model_name, "v1")
 
         # Test with mismatched features
-        invalid_features = sample_features.drop(columns=['feature_1'])
+        invalid_features = sample_features.drop(columns=["feature_1"])
 
         with pytest.raises(SchemaMismatchError) as exc_info:
             registry.assert_feature_schema(invalid_features, metadata)
 
         assert "Missing features" in str(exc_info.value)
-        assert hasattr(exc_info.value, 'expected_schema')
-        assert hasattr(exc_info.value, 'received_schema')
+        assert hasattr(exc_info.value, "expected_schema")
+        assert hasattr(exc_info.value, "received_schema")
 
     def test_inference_logging(self, registry, sample_model, sample_training_data, sample_features):
         """Test inference telemetry logging"""
@@ -273,7 +266,7 @@ class TestMLOpsRegistry:
             sample_features.head(1),
             prediction=0.85,
             truth=0.82,
-            latency_ms=25.5
+            latency_ms=25.5,
         )
 
         # Check inference log exists
@@ -283,13 +276,13 @@ class TestMLOpsRegistry:
         # Verify log content
         log_df = pd.read_parquet(log_path)
         assert len(log_df) == 1
-        assert 'ts' in log_df.columns
-        assert 'prediction' in log_df.columns
-        assert 'truth' in log_df.columns
-        assert 'latency_ms' in log_df.columns
-        assert log_df.iloc[0]['prediction'] == 0.85
-        assert log_df.iloc[0]['truth'] == 0.82
-        assert log_df.iloc[0]['latency_ms'] == 25.5
+        assert "ts" in log_df.columns
+        assert "prediction" in log_df.columns
+        assert "truth" in log_df.columns
+        assert "latency_ms" in log_df.columns
+        assert log_df.iloc[0]["prediction"] == 0.85
+        assert log_df.iloc[0]["truth"] == 0.82
+        assert log_df.iloc[0]["latency_ms"] == 25.5
 
 
 class TestDriftDetection:
@@ -301,18 +294,20 @@ class TestDriftDetection:
         settings = MagicMock()
         settings.mlops_drift_psi_warn = 0.1
         settings.mlops_drift_psi_alert = 0.25
-        with patch('backend.mlops.model_manager.get_settings', return_value=settings):
+        with patch("backend.mlops.model_manager.get_settings", return_value=settings):
             return DriftDetector()
 
     @pytest.fixture
     def reference_data(self):
         """Generate reference data for drift detection"""
         np.random.seed(42)
-        return pd.DataFrame({
-            'feature_1': np.random.normal(0, 1, 1000),
-            'feature_2': np.random.normal(5, 2, 1000),
-            'feature_3': np.random.exponential(1, 1000)
-        })
+        return pd.DataFrame(
+            {
+                "feature_1": np.random.normal(0, 1, 1000),
+                "feature_2": np.random.normal(5, 2, 1000),
+                "feature_3": np.random.exponential(1, 1000),
+            }
+        )
 
     def test_psi_calculation(self, drift_detector):
         """Test Population Stability Index calculation"""
@@ -413,17 +408,19 @@ class TestEnsembleMLOpsIntegration:
     @pytest.fixture
     def sample_price_data(self):
         """Generate sample price data"""
-        dates = pd.date_range(start='2024-01-01', periods=100, freq='1h')
+        dates = pd.date_range(start="2024-01-01", periods=100, freq="1h")
         np.random.seed(42)
 
-        prices = pd.DataFrame({
-            'datetime': dates,
-            'open': np.random.uniform(100, 110, 100),
-            'high': np.random.uniform(105, 115, 100),
-            'low': np.random.uniform(95, 105, 100),
-            'close': np.random.uniform(100, 110, 100),
-            'volume': np.random.randint(1000, 10000, 100)
-        })
+        prices = pd.DataFrame(
+            {
+                "datetime": dates,
+                "open": np.random.uniform(100, 110, 100),
+                "high": np.random.uniform(105, 115, 100),
+                "low": np.random.uniform(95, 105, 100),
+                "close": np.random.uniform(100, 110, 100),
+                "volume": np.random.randint(1000, 10000, 100),
+            }
+        )
 
         return prices
 
@@ -433,39 +430,41 @@ class TestEnsembleMLOpsIntegration:
         np.random.seed(42)
         n_samples = 100
 
-        features = pd.DataFrame({
-            'sma_10': np.random.uniform(100, 110, n_samples),
-            'ema_20': np.random.uniform(98, 112, n_samples),
-            'rsi': np.random.uniform(30, 70, n_samples),
-            'macd': np.random.uniform(-2, 2, n_samples),
-            'bollinger_upper': np.random.uniform(110, 115, n_samples),
-            'bollinger_lower': np.random.uniform(95, 100, n_samples),
-            'volume_sma': np.random.uniform(5000, 8000, n_samples),
-            'volatility': np.random.uniform(0.01, 0.05, n_samples)
-        })
+        features = pd.DataFrame(
+            {
+                "sma_10": np.random.uniform(100, 110, n_samples),
+                "ema_20": np.random.uniform(98, 112, n_samples),
+                "rsi": np.random.uniform(30, 70, n_samples),
+                "macd": np.random.uniform(-2, 2, n_samples),
+                "bollinger_upper": np.random.uniform(110, 115, n_samples),
+                "bollinger_lower": np.random.uniform(95, 100, n_samples),
+                "volume_sma": np.random.uniform(5000, 8000, n_samples),
+                "volatility": np.random.uniform(0.01, 0.05, n_samples),
+            }
+        )
 
         return features
 
     @pytest.mark.asyncio
     async def test_ensemble_mlops_registration(
-        self,
-        mock_ensemble_settings,
-        sample_price_data,
-        sample_ensemble_features
+        self, mock_ensemble_settings, sample_price_data, sample_ensemble_features
     ):
         """Test ensemble model registration with MLOps"""
 
-        with patch('backend.models.ensemble_model.get_settings', return_value=mock_ensemble_settings), \
-             patch('backend.mlops.model_manager.get_settings', return_value=mock_ensemble_settings), \
-             patch('backend.models.ensemble_model.MLOPS_AVAILABLE', False):  # Disable MLOps for this test
-
+        with patch(
+            "backend.models.ensemble_model.get_settings", return_value=mock_ensemble_settings
+        ), patch(
+            "backend.mlops.model_manager.get_settings", return_value=mock_ensemble_settings
+        ), patch(
+            "backend.models.ensemble_model.MLOPS_AVAILABLE", False
+        ):  # Disable MLOps for this test
             # Create ensemble model (should work without MLOps)
             ensemble = EnsembleModel()
 
             # Test that MLOps methods exist even when disabled
-            assert hasattr(ensemble, 'register_with_mlops')
-            assert hasattr(ensemble, 'get_champion_version')
-            assert hasattr(ensemble, 'promote_to_champion')
+            assert hasattr(ensemble, "register_with_mlops")
+            assert hasattr(ensemble, "get_champion_version")
+            assert hasattr(ensemble, "promote_to_champion")
 
             # Test that mlops_enabled is properly set
             assert not ensemble.mlops_enabled  # Should be False when MLOPS_AVAILABLE is False
@@ -474,57 +473,55 @@ class TestEnsembleMLOpsIntegration:
             model_name = "test_ensemble"
             metrics = {"accuracy": 0.92}
             result = ensemble.register_with_mlops(
-                model_name,
-                sample_ensemble_features,
-                sample_ensemble_features,
-                metrics
+                model_name, sample_ensemble_features, sample_ensemble_features, metrics
             )
             assert result is None  # Should return None when MLOps disabled
 
     def test_ensemble_prediction_with_telemetry(
-        self,
-        mock_ensemble_settings,
-        sample_price_data,
-        sample_ensemble_features
+        self, mock_ensemble_settings, sample_price_data, sample_ensemble_features
     ):
         """Test ensemble prediction with MLOps telemetry"""
 
-        with patch('backend.models.ensemble_model.get_settings', return_value=mock_ensemble_settings), \
-             patch('backend.mlops.model_manager.get_settings', return_value=mock_ensemble_settings), \
-             patch('backend.models.ensemble_model.MLOPS_AVAILABLE', False):  # Disable MLOps for this test
-
+        with patch(
+            "backend.models.ensemble_model.get_settings", return_value=mock_ensemble_settings
+        ), patch(
+            "backend.mlops.model_manager.get_settings", return_value=mock_ensemble_settings
+        ), patch(
+            "backend.models.ensemble_model.MLOPS_AVAILABLE", False
+        ):  # Disable MLOps for this test
             # Create ensemble model
             ensemble = EnsembleModel()
 
             # Test that prediction method exists and can be called
-            assert hasattr(ensemble, 'predict')
+            assert hasattr(ensemble, "predict")
 
             # Mock the individual model predictions to avoid deep dependencies
-            with patch.object(ensemble.models['lstm'], 'predict', return_value=(105.0, 0.8)), \
-                 patch.object(ensemble.models['xgboost'], 'predict', return_value=(104.0, 0.9)), \
-                 patch.object(ensemble.models['random_forest'], 'predict', return_value=(106.0, 0.85)):
-
+            with patch.object(
+                ensemble.models["lstm"], "predict", return_value=(105.0, 0.8)
+            ), patch.object(
+                ensemble.models["xgboost"], "predict", return_value=(104.0, 0.9)
+            ), patch.object(
+                ensemble.models["random_forest"], "predict", return_value=(106.0, 0.85)
+            ):
                 result = ensemble.predict(
-                    sample_price_data.head(1),
-                    sample_ensemble_features.head(1),
-                    "BTCUSD"
+                    sample_price_data.head(1), sample_ensemble_features.head(1), "BTCUSD"
                 )
 
                 # Should return ModelPrediction object
-                assert hasattr(result, 'ensemble_prediction')  # Correct field name
-                assert hasattr(result, 'ensemble_confidence')  # Correct field name
+                assert hasattr(result, "ensemble_prediction")  # Correct field name
+                assert hasattr(result, "ensemble_confidence")  # Correct field name
                 # Just verify we get reasonable numeric values
                 assert isinstance(result.ensemble_prediction, (int, float))
                 assert isinstance(result.ensemble_confidence, (int, float))
-                assert result.ensemble_confidence >= 0 and result.ensemble_confidence <= 1            # Mock individual model predictions
+                assert (
+                    result.ensemble_confidence >= 0 and result.ensemble_confidence <= 1
+                )  # Mock individual model predictions
             for model_name, model in ensemble.models.items():
                 model.predict = MagicMock(return_value=(0.85, 0.9))  # prediction, confidence
 
             # Make prediction
             prediction = ensemble.predict(
-                sample_price_data,
-                sample_ensemble_features,
-                "TEST_SYMBOL"
+                sample_price_data, sample_ensemble_features, "TEST_SYMBOL"
             )
 
             # Verify prediction structure
@@ -533,17 +530,16 @@ class TestEnsembleMLOpsIntegration:
             assert prediction.ensemble_confidence > 0
             assert len(prediction.predictions) <= 3  # Max 3 models
 
-    def test_ensemble_champion_management(
-        self,
-        mock_ensemble_settings,
-        temp_artifacts_path
-    ):
+    def test_ensemble_champion_management(self, mock_ensemble_settings, temp_artifacts_path):
         """Test champion model management in ensemble"""
 
-        with patch('backend.models.ensemble_model.get_settings', return_value=mock_ensemble_settings), \
-             patch('backend.mlops.model_manager.get_settings', return_value=mock_ensemble_settings), \
-             patch('backend.models.ensemble_model.MLOPS_AVAILABLE', False):  # Disable MLOps for this test
-
+        with patch(
+            "backend.models.ensemble_model.get_settings", return_value=mock_ensemble_settings
+        ), patch(
+            "backend.mlops.model_manager.get_settings", return_value=mock_ensemble_settings
+        ), patch(
+            "backend.models.ensemble_model.MLOPS_AVAILABLE", False
+        ):  # Disable MLOps for this test
             # Create ensemble model
             ensemble = EnsembleModel()
 
@@ -572,7 +568,9 @@ class TestEnsembleMLOpsIntegration:
             )
             mock_version.model_id = model_name
 
-            with patch.object(ensemble.model_manager.registry, 'get_champion_model', return_value=mock_version):
+            with patch.object(
+                ensemble.model_manager.registry, "get_champion_model", return_value=mock_version
+            ):
                 champion = ensemble.get_champion_version(model_name)
                 assert champion is not None
                 assert champion.version == "v1"
@@ -602,45 +600,42 @@ class TestMLOpsEndToEnd:
         mlops_config.inference_telemetry_enabled = True
         settings.mlops = mlops_config
 
-        with patch('backend.mlops.model_manager.get_settings', return_value=settings), \
-             patch('backend.models.ensemble_model.get_settings', return_value=settings), \
-             patch('backend.models.ensemble_model.MLOPS_AVAILABLE', False):  # Disable MLOps for this test
-
+        with patch("backend.mlops.model_manager.get_settings", return_value=settings), patch(
+            "backend.models.ensemble_model.get_settings", return_value=settings
+        ), patch(
+            "backend.models.ensemble_model.MLOPS_AVAILABLE", False
+        ):  # Disable MLOps for this test
             # Step 1: Initialize components
             model_manager = ModelManager(temp_e2e_path)
             ensemble = EnsembleModel()
 
             # Manually setup MLOps integration for testing
             ensemble.mlops_enabled = True
-            ensemble.model_manager = model_manager            # Step 2: Generate sample data
+            ensemble.model_manager = model_manager  # Step 2: Generate sample data
             np.random.seed(42)
-            training_data = pd.DataFrame({
-                'feature_1': np.random.normal(0, 1, 500),
-                'feature_2': np.random.normal(5, 2, 500),
-                'feature_3': np.random.exponential(1, 500),
-                'target': np.random.normal(10, 3, 500)
-            })
+            training_data = pd.DataFrame(
+                {
+                    "feature_1": np.random.normal(0, 1, 500),
+                    "feature_2": np.random.normal(5, 2, 500),
+                    "feature_3": np.random.exponential(1, 500),
+                    "target": np.random.normal(10, 3, 500),
+                }
+            )
 
-            features = training_data.drop(columns=['target'])
+            features = training_data.drop(columns=["target"])
 
             # Step 3: Register model
             model_name = "e2e_test_model"
             metrics = {"accuracy": 0.88, "mse": 0.15, "mae": 0.10}
 
             model_version = model_manager.registry.register_model(
-                model_name,
-                ensemble,
-                training_data,
-                metrics
+                model_name, ensemble, training_data, metrics
             )
 
             assert model_version is not None
 
             # Step 4: Promote to champion
-            success = model_manager.registry.promote_to_champion(
-                model_name,
-                model_version.version
-            )
+            success = model_manager.registry.promote_to_champion(model_name, model_version.version)
             assert success
 
             # Step 5: Test inference with telemetry
@@ -652,18 +647,15 @@ class TestMLOpsEndToEnd:
                 inference_features,
                 prediction=0.75,
                 truth=None,
-                latency_ms=12.5
+                latency_ms=12.5,
             )
 
             # Step 6: Test drift detection
             # Create drifted data
             drift_data = features.copy()
-            drift_data['feature_1'] = drift_data['feature_1'] + 5  # Introduce drift
+            drift_data["feature_1"] = drift_data["feature_1"] + 5  # Introduce drift
 
-            drift_result = model_manager.drift_detector.detect_data_drift(
-                model_name,
-                drift_data
-            )
+            drift_result = model_manager.drift_detector.detect_data_drift(model_name, drift_data)
 
             # Should detect some level of drift
             assert drift_result is not None or len(drift_data) > 0  # Basic sanity check
@@ -694,7 +686,7 @@ class TestMLOpsEndToEnd:
             drift_psi_warn=0.1,
             drift_psi_alert=0.25,
             perf_alert_drop=0.05,
-            inference_log_max_rows=50000
+            inference_log_max_rows=50000,
         )
 
         assert config.drift_psi_warn == 0.1
@@ -704,7 +696,7 @@ class TestMLOpsEndToEnd:
         with pytest.raises(ValueError):
             MLOpsConfig(
                 drift_psi_warn=0.3,
-                drift_psi_alert=0.25  # Should be > warn
+                drift_psi_alert=0.25,  # Should be > warn
             )
 
         # Invalid performance drop threshold
@@ -721,16 +713,18 @@ if __name__ == "__main__":
 
     # Configure logging for tests
     import logging
+
     logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+        level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
     )
 
     # Run tests
-    pytest.main([
-        __file__,
-        "-v",
-        "--tb=short",
-        "--durations=10",
-        "-x"  # Stop on first failure for debugging
-    ])
+    pytest.main(
+        [
+            __file__,
+            "-v",
+            "--tb=short",
+            "--durations=10",
+            "-x",  # Stop on first failure for debugging
+        ]
+    )

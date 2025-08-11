@@ -14,6 +14,7 @@ from opentelemetry import trace
 # Try to import OpenTelemetry, fall back gracefully if not available
 try:
     from opentelemetry.sdk.trace import ReadableSpan
+
     OTEL_AVAILABLE = True
 except ImportError:
     OTEL_AVAILABLE = False
@@ -73,7 +74,7 @@ class JSONFormatter(logging.Formatter):
         service_name: str = "intraday-trading",
         service_version: str = "2.0.0",
         include_trace: bool = True,
-        extra_fields: dict[str, Any] | None = None
+        extra_fields: dict[str, Any] | None = None,
     ):
         super().__init__()
         self.service_name = service_name
@@ -93,50 +94,67 @@ class JSONFormatter(logging.Formatter):
         """
         # Base log structure
         log_entry = {
-            "timestamp": datetime.now(UTC).isoformat().replace('+00:00', 'Z'),
+            "timestamp": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
             "level": record.levelname,
             "logger": record.name,
             "message": record.getMessage(),
-            "service": {
-                "name": self.service_name,
-                "version": self.service_version
-            }
+            "service": {"name": self.service_name, "version": self.service_version},
         }
 
         # Add trace correlation if available and enabled
         if self.include_trace:
-            if hasattr(record, 'trace_id') and record.trace_id:
+            if hasattr(record, "trace_id") and record.trace_id:
                 log_entry["trace_id"] = record.trace_id
                 log_entry["span_id"] = record.span_id
-                if hasattr(record, 'trace_flags') and record.trace_flags:
+                if hasattr(record, "trace_flags") and record.trace_flags:
                     log_entry["trace_flags"] = record.trace_flags
 
         # Add standard fields
-        log_entry.update({
-            "module": record.module,
-            "function": record.funcName,
-            "line": record.lineno,
-            "thread": record.thread,
-            "process": record.process
-        })
+        log_entry.update(
+            {
+                "module": record.module,
+                "function": record.funcName,
+                "line": record.lineno,
+                "thread": record.thread,
+                "process": record.process,
+            }
+        )
 
         # Add exception information if present
         if record.exc_info:
             log_entry["exception"] = {
                 "type": record.exc_info[0].__name__,
                 "message": str(record.exc_info[1]),
-                "traceback": self.formatException(record.exc_info)
+                "traceback": self.formatException(record.exc_info),
             }
 
         # Add extra fields from record
         extra = {}
         for key, value in record.__dict__.items():
             if key not in {
-                'name', 'msg', 'args', 'levelname', 'levelno', 'pathname',
-                'filename', 'module', 'lineno', 'funcName', 'created',
-                'msecs', 'relativeCreated', 'thread', 'threadName',
-                'processName', 'process', 'exc_info', 'exc_text',
-                'stack_info', 'trace_id', 'span_id', 'trace_flags'
+                "name",
+                "msg",
+                "args",
+                "levelname",
+                "levelno",
+                "pathname",
+                "filename",
+                "module",
+                "lineno",
+                "funcName",
+                "created",
+                "msecs",
+                "relativeCreated",
+                "thread",
+                "threadName",
+                "processName",
+                "process",
+                "exc_info",
+                "exc_text",
+                "stack_info",
+                "trace_id",
+                "span_id",
+                "trace_flags",
             }:
                 # Only include JSON-serializable values
                 try:
@@ -165,11 +183,7 @@ class StructuredLogger:
         self.logger = logging.getLogger(name)
 
     def _log_with_context(
-        self,
-        level: int,
-        message: str,
-        context: dict[str, Any] | None = None,
-        **kwargs
+        self, level: int, message: str, context: dict[str, Any] | None = None, **kwargs
     ) -> None:
         """Log message with structured context."""
         if context:
@@ -200,7 +214,7 @@ class StructuredLogger:
 
     def exception(self, message: str, context: dict[str, Any] | None = None, **kwargs) -> None:
         """Log exception with context and traceback."""
-        kwargs.setdefault('exc_info', True)
+        kwargs.setdefault("exc_info", True)
         self._log_with_context(logging.ERROR, message, context, **kwargs)
 
     # Domain-specific logging methods
@@ -212,7 +226,7 @@ class StructuredLogger:
         status_code: int,
         duration_ms: float,
         user_id: str | None = None,
-        request_id: str | None = None
+        request_id: str | None = None,
     ) -> None:
         """Log HTTP request with structured context."""
         context = {
@@ -220,7 +234,7 @@ class StructuredLogger:
                 "method": method,
                 "path": path,
                 "status_code": status_code,
-                "duration_ms": duration_ms
+                "duration_ms": duration_ms,
             }
         }
 
@@ -244,14 +258,10 @@ class StructuredLogger:
         table: str | None = None,
         duration_ms: float | None = None,
         rows_affected: int | None = None,
-        error: str | None = None
+        error: str | None = None,
     ) -> None:
         """Log database operation with structured context."""
-        context = {
-            "database": {
-                "operation": operation
-            }
-        }
+        context = {"database": {"operation": operation}}
 
         if table:
             context["database"]["table"] = table
@@ -278,7 +288,7 @@ class StructuredLogger:
         status_code: int,
         duration_ms: float,
         request_id: str | None = None,
-        error: str | None = None
+        error: str | None = None,
     ) -> None:
         """Log Alpaca API request with structured context."""
         context = {
@@ -286,7 +296,7 @@ class StructuredLogger:
                 "endpoint": endpoint,
                 "method": method,
                 "status_code": status_code,
-                "duration_ms": duration_ms
+                "duration_ms": duration_ms,
             }
         }
 
@@ -316,15 +326,10 @@ class StructuredLogger:
         quantity: float | None = None,
         price: float | None = None,
         status: str | None = None,
-        error: str | None = None
+        error: str | None = None,
     ) -> None:
         """Log order lifecycle event with structured context."""
-        context = {
-            "order": {
-                "event": event,
-                "order_id": order_id
-            }
-        }
+        context = {"order": {"event": event, "order_id": order_id}}
 
         if symbol:
             context["order"]["symbol"] = symbol
@@ -356,15 +361,10 @@ class StructuredLogger:
         attempt: int | None = None,
         max_attempts: int | None = None,
         next_retry: datetime | None = None,
-        error: str | None = None
+        error: str | None = None,
     ) -> None:
         """Log outbox pattern event with structured context."""
-        context = {
-            "outbox": {
-                "event": event,
-                "message_id": message_id
-            }
-        }
+        context = {"outbox": {"event": event, "message_id": message_id}}
 
         if topic:
             context["outbox"]["topic"] = topic
@@ -392,14 +392,10 @@ class StructuredLogger:
         user_id: str | None = None,
         method: str | None = None,
         success: bool | None = None,
-        reason: str | None = None
+        reason: str | None = None,
     ) -> None:
         """Log authentication event with structured context."""
-        context = {
-            "auth": {
-                "event": event
-            }
-        }
+        context = {"auth": {"event": event}}
 
         if user_id:
             context["auth"]["user_id"] = user_id
@@ -429,7 +425,7 @@ def configure_structured_logging(
     service_version: str = "2.0.0",
     enable_trace_correlation: bool = True,
     json_format: bool = True,
-    extra_fields: dict[str, Any] | None = None
+    extra_fields: dict[str, Any] | None = None,
 ) -> None:
     """
     Configure structured JSON logging with trace correlation.
@@ -452,13 +448,11 @@ def configure_structured_logging(
             service_name=service_name,
             service_version=service_version,
             include_trace=enable_trace_correlation,
-            extra_fields=extra_fields
+            extra_fields=extra_fields,
         )
     else:
         # Simple format for development
-        formatter = logging.Formatter(
-            fmt='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-        )
+        formatter = logging.Formatter(fmt="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 
     # Create handler
     handler = logging.StreamHandler(sys.stdout)

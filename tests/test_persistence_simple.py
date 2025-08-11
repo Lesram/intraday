@@ -34,6 +34,7 @@ from backend.infra.repositories import (
 class Base(DeclarativeBase):
     pass
 
+
 class TestOrder(Base):
     __tablename__ = "test_orders"
 
@@ -50,6 +51,7 @@ class TestOrder(Base):
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
     attributes = Column(JSON, nullable=False, default=dict)
+
 
 # Test database URL
 TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
@@ -87,7 +89,9 @@ async def test_basic_order_operations():
 
     # Create simple test table
     async with engine.begin() as conn:
-        await conn.execute(text("""
+        await conn.execute(
+            text(
+                """
             CREATE TABLE IF NOT EXISTS test_orders (
                 id TEXT PRIMARY KEY,
                 client_idempotency_key TEXT UNIQUE NOT NULL,
@@ -103,37 +107,49 @@ async def test_basic_order_operations():
                 updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 attributes JSON NOT NULL DEFAULT '{}'
             )
-        """))
+        """
+            )
+        )
 
     async_session_maker = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
     async with async_session_maker() as session:
         # Test inserting order data directly
         order_id = str(uuid.uuid4())
-        await session.execute(text("""
+        await session.execute(
+            text(
+                """
             INSERT INTO test_orders (id, client_idempotency_key, symbol, side, qty, order_type, tif)
             VALUES (:id, :key, :symbol, :side, :qty, :type, :tif)
-        """), {
-            "id": order_id,
-            "key": "test-order-001",
-            "symbol": "AAPL",
-            "side": "buy",
-            "qty": "100.0",
-            "type": "market",
-            "tif": "gtc"
-        })
+        """
+            ),
+            {
+                "id": order_id,
+                "key": "test-order-001",
+                "symbol": "AAPL",
+                "side": "buy",
+                "qty": "100.0",
+                "type": "market",
+                "tif": "gtc",
+            },
+        )
 
         await session.commit()
 
         # Test querying
-        result = await session.execute(text("""
+        result = await session.execute(
+            text(
+                """
             SELECT * FROM test_orders WHERE client_idempotency_key = :key
-        """), {"key": "test-order-001"})
+        """
+            ),
+            {"key": "test-order-001"},
+        )
 
         row = result.fetchone()
         assert row is not None
         assert row[2] == "AAPL"  # symbol
-        assert row[3] == "buy"   # side
+        assert row[3] == "buy"  # side
 
         print("✅ Basic database operations work!")
 
@@ -148,7 +164,9 @@ async def test_repository_pattern_simulation():
     engine = create_async_engine(TEST_DATABASE_URL, echo=False)
 
     async with engine.begin() as conn:
-        await conn.execute(text("""
+        await conn.execute(
+            text(
+                """
             CREATE TABLE IF NOT EXISTS orders (
                 id TEXT PRIMARY KEY,
                 client_idempotency_key TEXT UNIQUE NOT NULL,
@@ -162,9 +180,13 @@ async def test_repository_pattern_simulation():
                 updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 attributes JSON NOT NULL DEFAULT '{}'
             )
-        """))
+        """
+            )
+        )
 
-        await conn.execute(text("""
+        await conn.execute(
+            text(
+                """
             CREATE TABLE IF NOT EXISTS executions (
                 id TEXT PRIMARY KEY,
                 order_id TEXT NOT NULL,
@@ -176,9 +198,13 @@ async def test_repository_pattern_simulation():
                 timestamp DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 attributes JSON NOT NULL DEFAULT '{}'
             )
-        """))
+        """
+            )
+        )
 
-        await conn.execute(text("""
+        await conn.execute(
+            text(
+                """
             CREATE TABLE IF NOT EXISTS positions (
                 id TEXT PRIMARY KEY,
                 symbol TEXT UNIQUE NOT NULL,
@@ -190,7 +216,9 @@ async def test_repository_pattern_simulation():
                 updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 attributes JSON NOT NULL DEFAULT '{}'
             )
-        """))
+        """
+            )
+        )
 
     async_session_maker = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
@@ -200,35 +228,45 @@ async def test_repository_pattern_simulation():
         client_key = "idempotency-test-001"
 
         # First insertion
-        await session.execute(text("""
+        await session.execute(
+            text(
+                """
             INSERT INTO orders (id, client_idempotency_key, symbol, side, qty, order_type, tif)
             VALUES (:id, :key, :symbol, :side, :qty, :type, :tif)
-        """), {
-            "id": order_id,
-            "key": client_key,
-            "symbol": "AAPL",
-            "side": "buy",
-            "qty": "100.0",
-            "type": "market",
-            "tif": "gtc"
-        })
+        """
+            ),
+            {
+                "id": order_id,
+                "key": client_key,
+                "symbol": "AAPL",
+                "side": "buy",
+                "qty": "100.0",
+                "type": "market",
+                "tif": "gtc",
+            },
+        )
 
         await session.commit()
 
         # Test idempotency - try to insert duplicate key
         try:
-            await session.execute(text("""
+            await session.execute(
+                text(
+                    """
                 INSERT INTO orders (id, client_idempotency_key, symbol, side, qty, order_type, tif)
                 VALUES (:id, :key, :symbol, :side, :qty, :type, :tif)
-            """), {
-                "id": str(uuid.uuid4()),  # Different ID
-                "key": client_key,        # Same key - should fail
-                "symbol": "MSFT",
-                "side": "sell",
-                "qty": "50.0",
-                "type": "limit",
-                "tif": "ioc"
-            })
+            """
+                ),
+                {
+                    "id": str(uuid.uuid4()),  # Different ID
+                    "key": client_key,  # Same key - should fail
+                    "symbol": "MSFT",
+                    "side": "sell",
+                    "qty": "50.0",
+                    "type": "limit",
+                    "tif": "ioc",
+                },
+            )
             await session.commit()
             assert False, "Should have failed due to unique constraint"
         except Exception:
@@ -239,49 +277,74 @@ async def test_repository_pattern_simulation():
         execution_id = str(uuid.uuid4())
         exec_id_broker = "EXEC-001"
 
-        await session.execute(text("""
+        await session.execute(
+            text(
+                """
             INSERT INTO executions (id, order_id, symbol, side, qty, price, execution_id)
             VALUES (:id, :order_id, :symbol, :side, :qty, :price, :exec_id)
-        """), {
-            "id": execution_id,
-            "order_id": order_id,
-            "symbol": "AAPL",
-            "side": "buy",
-            "qty": "100.0",
-            "price": "150.75",
-            "exec_id": exec_id_broker
-        })
+        """
+            ),
+            {
+                "id": execution_id,
+                "order_id": order_id,
+                "symbol": "AAPL",
+                "side": "buy",
+                "qty": "100.0",
+                "price": "150.75",
+                "exec_id": exec_id_broker,
+            },
+        )
 
         # Test position update
         position_id = str(uuid.uuid4())
-        await session.execute(text("""
+        await session.execute(
+            text(
+                """
             INSERT OR REPLACE INTO positions (id, symbol, qty, avg_cost, market_value, unrealized_pnl)
             VALUES (:id, :symbol, :qty, :avg_cost, :market_value, :pnl)
-        """), {
-            "id": position_id,
-            "symbol": "AAPL",
-            "qty": "100.0",
-            "avg_cost": "150.75",
-            "market_value": "15075.0",
-            "pnl": "0.0"
-        })
+        """
+            ),
+            {
+                "id": position_id,
+                "symbol": "AAPL",
+                "qty": "100.0",
+                "avg_cost": "150.75",
+                "market_value": "15075.0",
+                "pnl": "0.0",
+            },
+        )
 
         await session.commit()
 
         # Verify data integrity
-        order_result = await session.execute(text("""
+        order_result = await session.execute(
+            text(
+                """
             SELECT * FROM orders WHERE id = :id
-        """), {"id": order_id})
+        """
+            ),
+            {"id": order_id},
+        )
         order_row = order_result.fetchone()
 
-        exec_result = await session.execute(text("""
+        exec_result = await session.execute(
+            text(
+                """
             SELECT * FROM executions WHERE order_id = :order_id
-        """), {"order_id": order_id})
+        """
+            ),
+            {"order_id": order_id},
+        )
         exec_row = exec_result.fetchone()
 
-        pos_result = await session.execute(text("""
+        pos_result = await session.execute(
+            text(
+                """
             SELECT * FROM positions WHERE symbol = :symbol
-        """), {"symbol": "AAPL"})
+        """
+            ),
+            {"symbol": "AAPL"},
+        )
         pos_row = pos_result.fetchone()
 
         assert order_row is not None
@@ -306,10 +369,10 @@ async def test_configuration_integration():
     settings = get_settings()
 
     # Verify database configuration exists
-    assert hasattr(settings.data, 'database_url')
-    assert hasattr(settings, 'database')
-    assert hasattr(settings.database, 'pool_size')
-    assert hasattr(settings.database, 'max_overflow')
+    assert hasattr(settings.data, "database_url")
+    assert hasattr(settings, "database")
+    assert hasattr(settings.database, "pool_size")
+    assert hasattr(settings.database, "max_overflow")
 
     print(f"   🔧 Database URL: {settings.data.database_url}")
     print(f"   🏊 Pool size: {settings.database.pool_size}")

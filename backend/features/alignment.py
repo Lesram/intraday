@@ -11,9 +11,7 @@ from .types import FeatureFrame
 
 
 def align_features_target(
-    features: pd.DataFrame,
-    price: pd.Series,
-    price_col: str = "close"
+    features: pd.DataFrame, price: pd.Series, price_col: str = "close"
 ) -> FeatureFrame:
     """
     Align features with target, ensuring no lookahead bias.
@@ -46,13 +44,9 @@ def align_features_target(
     valid_mask = feature_valid & target_valid
 
     # Create index mask for full aligned data (before filtering)
-    index_mask = pd.Series(valid_mask, index=common_index, name='valid_mask')
+    index_mask = pd.Series(valid_mask, index=common_index, name="valid_mask")
 
-    return FeatureFrame(
-        X=features_aligned,
-        y=target,
-        index_mask=index_mask
-    )
+    return FeatureFrame(X=features_aligned, y=target, index_mask=index_mask)
 
 
 def align_multitimeframe(
@@ -60,7 +54,7 @@ def align_multitimeframe(
     features_5m: pd.DataFrame,
     *,
     how: Literal["right", "left"] = "right",
-    max_ffill: int = 5
+    max_ffill: int = 5,
 ) -> pd.DataFrame:
     """
     Align multi-timeframe features correctly without lookahead.
@@ -88,8 +82,8 @@ def align_multitimeframe(
         raise ValueError("5m features must have DatetimeIndex")
 
     # Add suffixes to avoid column name conflicts
-    features_1m_suffixed = features_1m.add_suffix('_1m')
-    features_5m_suffixed = features_5m.add_suffix('_5m')
+    features_1m_suffixed = features_1m.add_suffix("_1m")
+    features_5m_suffixed = features_5m.add_suffix("_5m")
 
     # Right-align: use 1m index as primary
     primary_index = features_1m.index
@@ -97,8 +91,8 @@ def align_multitimeframe(
     # Reindex 5m features to 1m timeline with forward fill
     features_5m_aligned = features_5m_suffixed.reindex(
         primary_index,
-        method='ffill',  # Forward fill to avoid lookahead
-        limit=max_ffill  # Limit forward fill to prevent stale data
+        method="ffill",  # Forward fill to avoid lookahead
+        limit=max_ffill,  # Limit forward fill to prevent stale data
     )
 
     # Combine features
@@ -111,9 +105,12 @@ def align_multitimeframe(
     if rows_dropped > 0:
         # Log this for metrics
         from ..utils.logger import get_structured_logger
+
         logger = get_structured_logger("feature_alignment")
-        logger.info("Rows dropped due to ffill limit",
-                   extra={"rows_dropped": rows_dropped, "max_ffill": max_ffill})
+        logger.info(
+            "Rows dropped due to ffill limit",
+            extra={"rows_dropped": rows_dropped, "max_ffill": max_ffill},
+        )
 
     return combined
 
@@ -143,9 +140,7 @@ def validate_temporal_order(df: pd.DataFrame) -> None:
 
 
 def detect_misalignment(
-    features: pd.DataFrame,
-    price: pd.Series,
-    tolerance_seconds: int = 60
+    features: pd.DataFrame, price: pd.Series, tolerance_seconds: int = 60
 ) -> dict:
     """
     Detect potential misalignment between features and price data.
@@ -179,7 +174,7 @@ def detect_misalignment(
             "common_rows": len(common_index),
             "total_features": len(features),
             "total_price": len(price),
-            "large_gaps": large_gaps.sum() if hasattr(large_gaps, 'sum') else 0,
+            "large_gaps": large_gaps.sum() if hasattr(large_gaps, "sum") else 0,
             "max_gap_seconds": time_diffs.max() if len(time_diffs) > 0 else 0,
         }
 
@@ -192,9 +187,7 @@ def detect_misalignment(
 
 
 def create_training_splits(
-    feature_frame: FeatureFrame,
-    train_ratio: float = 0.8,
-    min_train_samples: int = 1000
+    feature_frame: FeatureFrame, train_ratio: float = 0.8, min_train_samples: int = 1000
 ) -> tuple[FeatureFrame, FeatureFrame]:
     """
     Create temporal train/test splits maintaining time order.
@@ -210,7 +203,9 @@ def create_training_splits(
     valid_data = feature_frame.filter_valid()
 
     if len(valid_data.X) < min_train_samples:
-        raise ValueError(f"Insufficient data for training (need {min_train_samples}, got {len(valid_data.X)})")
+        raise ValueError(
+            f"Insufficient data for training (need {min_train_samples}, got {len(valid_data.X)})"
+        )
 
     # Temporal split (no random shuffle)
     split_idx = int(len(valid_data.X) * train_ratio)
@@ -225,5 +220,5 @@ def create_training_splits(
 
     return (
         FeatureFrame(X=train_X, y=train_y, index_mask=train_mask),
-        FeatureFrame(X=test_X, y=test_y, index_mask=test_mask)
+        FeatureFrame(X=test_X, y=test_y, index_mask=test_mask),
     )
