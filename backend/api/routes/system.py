@@ -137,14 +137,39 @@ async def readiness_check(request: Request):
         ready = getattr(request.app.state, 'ready', False)
         
         if not ready:
-            return Response(
-                content='{"status": "starting", "ready": false}',
-                status_code=503,
-                media_type="application/json"
-            )
+            raise HTTPException(status_code=503, detail={"detail": "Service is starting"})
         
-        # Basic readiness checks
-        status = {
+        # Check required app state components
+        db_sessionmaker = getattr(request.app.state, 'db_sessionmaker', None)
+        metrics_registry = getattr(request.app.state, 'metrics_registry', None)
+        
+        if not db_sessionmaker:
+            raise HTTPException(status_code=503, detail={"detail": "Database session factory not available"})
+            
+        if not metrics_registry:
+            raise HTTPException(status_code=503, detail={"detail": "Metrics registry not available"})
+        
+        # Quick non-DB check - just verify the components exist and are accessible
+        try:
+            # Test that we can access the session maker (no actual DB connection)
+            if hasattr(db_sessionmaker, '__call__'):
+                # Session maker is callable, which is expected
+                pass
+            else:
+                raise HTTPException(status_code=503, detail={"detail": "Invalid database session factory"})
+                
+            # Test that metrics registry is accessible
+            if hasattr(metrics_registry, 'collect'):
+                # Registry has collect method, which is expected
+                pass
+            else:
+                raise HTTPException(status_code=503, detail={"detail": "Invalid metrics registry"})
+                
+        except Exception as e:
+            raise HTTPException(status_code=503, detail={"detail": f"Component validation failed: {str(e)}"})
+        
+        # All checks passed
+        return {
             "status": "ready",
             "ready": True,
             "timestamp": datetime.now().isoformat(),
@@ -155,14 +180,11 @@ async def readiness_check(request: Request):
             }
         }
         
-        return status
-        
+    except HTTPException:
+        # Re-raise HTTP exceptions as-is
+        raise
     except Exception as e:
-        return Response(
-            content=f'{{"status": "error", "error": "{str(e)}"}}',
-            status_code=503,
-            media_type="application/json"
-        )
+        raise HTTPException(status_code=503, detail={"detail": f"Readiness check failed: {str(e)}"})
 
 
 @router.get("/test/runtime-error")

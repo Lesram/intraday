@@ -64,6 +64,9 @@ def create_app(
                 namespace="intraday", registry=app.state.metrics_registry
             )
             
+            # Expose metrics for dependency injection
+            app.state.metrics_instance = app.state.metrics
+            
             # Initialize database session factory
             try:
                 from backend.database import init_database
@@ -71,13 +74,17 @@ def create_app(
                 
                 settings = get_settings()
                 app.state.db_manager = await init_database(settings.data.database_url)
+                # Add session factory to app state for dependency injection
+                app.state.db_sessionmaker = app.state.db_manager.session_maker
             except ImportError as e:
                 # Graceful fallback if database initialization fails
                 app.state.db_manager = None
+                app.state.db_sessionmaker = None
                 print(f"Warning: Database initialization failed: {e}")
             except Exception as e:
                 # Any other error during DB setup
                 app.state.db_manager = None
+                app.state.db_sessionmaker = None
                 print(f"Warning: Database setup error: {e}")
             
             # Initialize WebSocket manager with DI parameters
@@ -105,17 +112,29 @@ def create_app(
             # Cleanup resources
             if hasattr(app.state, "alpaca_client"):
                 await app.state.alpaca_client.close()
-            if hasattr(app.state, "db_manager"):
+                
+            # Clean up database connections and sessions
+            if hasattr(app.state, "db_manager") and app.state.db_manager:
                 try:
-                    await app.state.db_manager.cleanup()
-                except:
-                    pass
+                    await app.state.db_manager.close()
+                except Exception as e:
+                    print(f"Warning during database cleanup: {e}")
+                    
+            # Clean up session maker reference
+            if hasattr(app.state, "db_sessionmaker"):
+                app.state.db_sessionmaker = None
+                
+            # Clean up WebSocket connections
             if hasattr(app.state, "active_websockets"):
                 for ws in app.state.active_websockets:
                     try:
                         await ws.close()
-                    except:
-                        pass
+                    except Exception as e:
+                        print(f"Warning during WebSocket cleanup: {e}")
+                        
+            # Clean up metrics registry
+            if hasattr(app.state, "metrics_registry"):
+                app.state.metrics_registry = None
 
     # Create FastAPI app with lifespan
     app = FastAPI(
@@ -146,7 +165,19 @@ def create_app(
         # Check app readiness state
         if not getattr(app.state, 'ready', False):
             from fastapi import HTTPException
-            raise HTTPException(status_code=503, detail={"status": "starting"})
+            raise HTTPException(status_code=503, detail={"detail": "Service is starting"})
+        
+        # Check required app state components
+        db_sessionmaker = getattr(app.state, 'db_sessionmaker', None)
+        metrics_registry = getattr(app.state, 'metrics_registry', None)
+        
+        if not db_sessionmaker:
+            from fastapi import HTTPException
+            raise HTTPException(status_code=503, detail={"detail": "Database session factory not available"})
+            
+        if not metrics_registry:
+            from fastapi import HTTPException
+            raise HTTPException(status_code=503, detail={"detail": "Metrics registry not available"})
         
         # Check mocked dependency states (for testing)
         db_healthy = getattr(app.state, 'db_healthy', True)
@@ -155,12 +186,12 @@ def create_app(
         # If database is mocked as down
         if not db_healthy:
             from fastapi import HTTPException
-            raise HTTPException(status_code=503, detail="Database connection failed")
+            raise HTTPException(status_code=503, detail={"detail": "Database connection failed"})
             
         # If broker is mocked as down  
         if not broker_healthy:
             from fastapi import HTTPException
-            raise HTTPException(status_code=503, detail="Message broker unavailable")
+            raise HTTPException(status_code=503, detail={"detail": "Message broker unavailable"})
         
         return {
             "status": "ready",
