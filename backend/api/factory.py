@@ -21,6 +21,22 @@ except ImportError:
         CORS_ORIGINS = ["*"]
         DB_URL = "sqlite:///./test.db"
         
+        def __init__(self):
+            # Create nested attribute objects that the app expects
+            self.data = type('obj', (), {
+                'database_url': self.DB_URL
+            })()
+            
+            self.app = type('obj', (), {
+                'debug': self.DEBUG,
+                'environment': self.APP_ENV
+            })()
+            
+            self.security = type('obj', (), {
+                'jwt_secret': 'test-jwt-secret',
+                'jwt_expire_minutes': 60
+            })()
+        
     def get_settings():
         return MockSettings()
 

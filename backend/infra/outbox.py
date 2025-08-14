@@ -25,7 +25,24 @@ from backend.infra.observability import (
     trace_span,
 )
 
-from ..config import get_settings
+# Import get_settings with fallback
+try:
+    from ..config import get_settings
+except ImportError:
+    try:
+        from ..config.base_settings import get_settings
+    except ImportError:
+        # Last resort fallback
+        def get_settings():
+            class _FallbackSettings:
+                def __getattr__(self, name):
+                    if name == 'data':
+                        class _Data:
+                            database_url = "sqlite:///./test.db"
+                        return _Data()
+                    return "fallback_value"
+            return _FallbackSettings()
+
 from .schemas import OutboxEvent
 
 logger = logging.getLogger(__name__)
