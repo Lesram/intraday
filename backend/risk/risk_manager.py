@@ -49,7 +49,10 @@ class RiskMathUtils:
 
     @staticmethod
     def kelly_fraction(
-        mean_return: float, variance: float, kelly_floor: float = 0.0, kelly_ceiling: float = 0.2
+        mean_return: float,
+        variance: float,
+        kelly_floor: float = 0.0,
+        kelly_ceiling: float = 0.2,
     ) -> float:
         """Calculate Kelly optimal fraction with stability guards."""
         if variance < EPS or mean_return <= 0:
@@ -171,22 +174,32 @@ class AsyncRiskManager:
             if decision.allowed:
                 self.metrics.counter("risk_allows_total").inc()
             else:
-                reason_label = decision.reason if decision.reason in RISK_REASONS else "other"
-                self.metrics.counter("risk_blocks_total", {"reason": reason_label}).inc()
+                reason_label = (
+                    decision.reason if decision.reason in RISK_REASONS else "other"
+                )
+                self.metrics.counter(
+                    "risk_blocks_total", {"reason": reason_label}
+                ).inc()
 
             # Record decision latency
-            self.metrics.histogram("risk_decision_latency_seconds").observe(decision_time)
+            self.metrics.histogram("risk_decision_latency_seconds").observe(
+                decision_time
+            )
 
             return decision
 
         except Exception as e:
-            self.logger.error("Risk check failed", extra={"error": str(e), "order": order})
+            self.logger.error(
+                "Risk check failed", extra={"error": str(e), "order": order}
+            )
             decision = RiskDecision.block(
                 reason="other", adjustments={"error": f"Risk check failed: {str(e)}"}
             )
 
             decision_time = time.time() - start_time
-            self.metrics.histogram("risk_decision_latency_seconds").observe(decision_time)
+            self.metrics.histogram("risk_decision_latency_seconds").observe(
+                decision_time
+            )
             self.metrics.counter("risk_blocks_total", {"reason": "other"}).inc()
 
             return decision
@@ -206,7 +219,9 @@ class AsyncRiskManager:
         if abs(new_position) > self.max_position_per_symbol:
             return RiskDecision.block(
                 reason="position_limit_exceeded",
-                adjustments={"max_allowed": str(self.max_position_per_symbol - abs(current_pos))},
+                adjustments={
+                    "max_allowed": str(self.max_position_per_symbol - abs(current_pos))
+                },
                 limits={"max_position_per_symbol": str(self.max_position_per_symbol)},
                 original_qty=order.qty,
             )
@@ -216,22 +231,30 @@ class AsyncRiskManager:
             return RiskDecision.block(
                 reason="single_position_value_limit",
                 adjustments={"max_notional": str(self.max_single_position_value)},
-                limits={"max_single_position_value": str(self.max_single_position_value)},
+                limits={
+                    "max_single_position_value": str(self.max_single_position_value)
+                },
                 original_qty=order.qty,
             )
 
         # 3. Kelly sizing check (if we have returns data)
         if len(historical_returns) >= 10:
             expected_return = float(np.mean(historical_returns[-30:]))
-            volatility = self.math_utils.ewma_volatility(np.array(historical_returns[-30:]))
+            volatility = self.math_utils.ewma_volatility(
+                np.array(historical_returns[-30:])
+            )
 
             if expected_return > 0:
-                kelly_fraction = self.math_utils.kelly_fraction(expected_return, volatility)
+                kelly_fraction = self.math_utils.kelly_fraction(
+                    expected_return, volatility
+                )
                 portfolio_value = float(current_state.equity)
                 max_kelly_notional = kelly_fraction * portfolio_value
 
                 if float(order.notional) > max_kelly_notional * 2:  # 2x Kelly max
-                    suggested_qty = Decimal(str(max_kelly_notional / float(order.price or 1)))
+                    suggested_qty = Decimal(
+                        str(max_kelly_notional / float(order.price or 1))
+                    )
                     return RiskDecision.block(
                         reason="kelly_size_exceeded",
                         original_qty=order.qty,
@@ -349,7 +372,9 @@ class RiskManager(AsyncRiskManager):
                 new_loop = asyncio.new_event_loop()
                 asyncio.set_event_loop(new_loop)
                 try:
-                    return new_loop.run_until_complete(super(RiskManager, self).before_order(order))
+                    return new_loop.run_until_complete(
+                        super(RiskManager, self).before_order(order)
+                    )
                 finally:
                     new_loop.close()
 

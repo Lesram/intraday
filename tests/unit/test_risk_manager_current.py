@@ -2,6 +2,7 @@
 Unit tests for the current RiskManager implementation.
 Tests async risk decisions, portfolio state validation, and math utilities.
 """
+
 from decimal import Decimal
 
 import pytest
@@ -52,7 +53,18 @@ class TestRiskMathUtils:
     def test_parametric_var_calculation(self):
         """Test parametric VaR calculation."""
         # Test with normal returns
-        returns = [0.01, -0.02, 0.015, -0.005, 0.008, 0.012, -0.018, 0.003, -0.009, 0.014]
+        returns = [
+            0.01,
+            -0.02,
+            0.015,
+            -0.005,
+            0.008,
+            0.012,
+            -0.018,
+            0.003,
+            -0.009,
+            0.014,
+        ]
 
         var_5 = self.math_utils.parametric_var(returns, confidence=0.05)
         var_1 = self.math_utils.parametric_var(returns, confidence=0.01)
@@ -160,7 +172,8 @@ class TestAsyncRiskManager:
         assert decision.allowed is False
         # Should be blocked for size-related reasons
         assert any(
-            keyword in decision.reason.lower() for keyword in ["kelly", "size", "limit", "exceeded"]
+            keyword in decision.reason.lower()
+            for keyword in ["kelly", "size", "limit", "exceeded"]
         )
 
     @pytest.mark.unit
@@ -202,7 +215,9 @@ class TestAsyncRiskManager:
             sector_map={"AAPL": "Technology"},
         )
 
-        order = OrderSpec(symbol="AAPL", side="buy", qty=Decimal("10"), notional=Decimal("1500"))
+        order = OrderSpec(
+            symbol="AAPL", side="buy", qty=Decimal("10"), notional=Decimal("1500")
+        )
 
         decision = await self.risk_manager.before_order(order, portfolio_state)
 
@@ -244,7 +259,9 @@ class TestRiskDecisionTypes:
     def test_allow_decision_creation(self):
         """Test creating allow decisions."""
         decision = RiskDecision.allow(
-            reason="Low risk order", adjustments={"qty_cap": 1000}, limits={"max_position": 50000}
+            reason="Low risk order",
+            adjustments={"qty_cap": 1000},
+            limits={"max_position": 50000},
         )
 
         assert decision.allowed is True

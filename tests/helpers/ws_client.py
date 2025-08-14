@@ -88,7 +88,9 @@ class WSTestClient:
             self.connection_id += 1
             self.stats["connection_count"] += 1
 
-            logger.info(f"WebSocket connected to {self.uri} (connection #{self.connection_id})")
+            logger.info(
+                f"WebSocket connected to {self.uri} (connection #{self.connection_id})"
+            )
 
             # Start background tasks
             self._start_background_tasks()
@@ -154,7 +156,9 @@ class WSTestClient:
             if timeout is not None:
                 elapsed = asyncio.get_event_loop().time() - start_time
                 if elapsed >= timeout:
-                    raise TimeoutError(f"No matching message received within {timeout}s")
+                    raise TimeoutError(
+                        f"No matching message received within {timeout}s"
+                    )
 
             # Wait a bit before checking again
             await asyncio.sleep(0.01)
@@ -236,13 +240,18 @@ class WSTestClient:
                         await asyncio.sleep(self.read_delay_ms / 1000.0)
 
                     # Receive message with timeout
-                    message_raw = await asyncio.wait_for(self.websocket.recv(), timeout=1.0)
+                    message_raw = await asyncio.wait_for(
+                        self.websocket.recv(), timeout=1.0
+                    )
 
                     # Parse message
                     try:
                         message = json.loads(message_raw)
                     except json.JSONDecodeError:
-                        message = {"raw": message_raw, "timestamp": datetime.now(UTC).isoformat()}
+                        message = {
+                            "raw": message_raw,
+                            "timestamp": datetime.now(UTC).isoformat(),
+                        }
 
                     self.stats["messages_received"] += 1
 
@@ -255,7 +264,9 @@ class WSTestClient:
                         # Drop oldest message
                         dropped = self.message_buffer.pop(0)
                         self.dropped_messages += 1
-                        logger.warning(f"Message buffer full, dropped message: {dropped}")
+                        logger.warning(
+                            f"Message buffer full, dropped message: {dropped}"
+                        )
 
                     # Add to buffer
                     self.message_buffer.append(message)
@@ -362,7 +373,9 @@ class WSTestClientPool:
                 tasks.append(client.send_message(message))
 
         results = await asyncio.gather(*tasks, return_exceptions=True)
-        success_count = sum(1 for result in results if not isinstance(result, Exception))
+        success_count = sum(
+            1 for result in results if not isinstance(result, Exception)
+        )
 
         return success_count
 
@@ -434,7 +447,9 @@ async def simulate_slow_consumer(
 
             # Track max buffer size
             current_buffer_size = len(client.message_buffer)
-            stats["max_buffer_size"] = max(stats["max_buffer_size"], current_buffer_size)
+            stats["max_buffer_size"] = max(
+                stats["max_buffer_size"], current_buffer_size
+            )
 
     finally:
         # Restore original delay

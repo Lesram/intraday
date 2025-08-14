@@ -5,7 +5,7 @@ Tests that public API contracts (paths + DTOs) are stable and backwards compatib
 
 from dataclasses import dataclass
 import json
-from typing import Any, Optional
+from typing import Any
 
 from pydantic import BaseModel
 import pytest
@@ -17,7 +17,7 @@ from tests.helpers.app import TestAppContext
 class HealthResponseSchema(BaseModel):
     status: str
     timestamp: str
-    uptime_seconds: Optional[float] = None
+    uptime_seconds: float | None = None
 
 
 class ReadinessResponseSchema(BaseModel):
@@ -29,8 +29,8 @@ class ReadinessResponseSchema(BaseModel):
 class ErrorResponseSchema(BaseModel):
     error: str
     message: str
-    request_id: Optional[str] = None
-    details: Optional[dict[str, Any]] = None
+    request_id: str | None = None
+    details: dict[str, Any] | None = None
 
 
 class MetricsResponseSchema(BaseModel):
@@ -56,9 +56,9 @@ class RouteContractTest:
     path: str
     method: str
     expected_status: int
-    response_schema: Optional[type] = None
-    request_payload: Optional[dict[str, Any]] = None
-    headers: Optional[dict[str, str]] = None
+    response_schema: type | None = None
+    request_payload: dict[str, Any] | None = None
+    headers: dict[str, str] | None = None
     description: str = ""
 
 
@@ -185,7 +185,9 @@ class TestRoutesAndDTOsContract:
                     continue
 
                 if route_test.method == "GET":
-                    response = await client.get(route_test.path, headers=route_test.headers or {})
+                    response = await client.get(
+                        route_test.path, headers=route_test.headers or {}
+                    )
                 elif route_test.method == "POST":
                     response = await client.post(
                         route_test.path,
@@ -321,7 +323,9 @@ class TestRoutesAndDTOsContract:
                         # Log any new fields for review
                         extra_fields = set(data.keys()) - required_fields
                         if extra_fields:
-                            print(f"Endpoint {endpoint} has additional fields: {extra_fields}")
+                            print(
+                                f"Endpoint {endpoint} has additional fields: {extra_fields}"
+                            )
 
                 except Exception as e:
                     print(f"Could not test schema stability for {endpoint}: {e}")

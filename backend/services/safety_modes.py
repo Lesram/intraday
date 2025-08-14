@@ -12,10 +12,10 @@ This module provides comprehensive safety controls for live trading:
 import asyncio
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from datetime import UTC, datetime, time
 from enum import Enum
 import logging
-from typing import Any, Optional
+from typing import Any
 
 from prometheus_client import Counter, Gauge
 from pydantic import BaseModel, validator
@@ -23,6 +23,112 @@ from pydantic import BaseModel, validator
 from backend.infra.resilience import resilience_manager
 
 logger = logging.getLogger(__name__)
+
+
+class SafetyMode(Enum):
+    """Trading safety modes."""
+    NORMAL = "normal"
+    RESTRICTED = "restricted" 
+    HALT = "halt"
+
+
+class RiskLevel(Enum):
+    """Risk assessment levels."""
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+    CRITICAL = "critical"
+
+
+class TradingSafety:
+    """Trading safety mechanisms and controls."""
+    
+    def __init__(self):
+        self._safety_mode = SafetyMode.NORMAL
+        self._position_limits = {
+            'max_position_value': 100000,
+            'max_portfolio_concentration': 0.20
+        }
+        
+    def set_safety_mode(self, mode: SafetyMode):
+        """Set the current safety mode."""
+        self._safety_mode = mode
+        
+    def get_safety_mode(self) -> SafetyMode:
+        """Get the current safety mode."""
+        return self._safety_mode
+        
+    def is_trading_allowed(self) -> bool:
+        """Check if trading is currently allowed."""
+        return self._safety_mode != SafetyMode.HALT
+        
+    def get_max_position_size(self) -> float:
+        """Get maximum position size based on safety mode."""
+        if self._safety_mode == SafetyMode.HALT:
+            return 0
+        elif self._safety_mode == SafetyMode.RESTRICTED:
+            return self._position_limits['max_position_value'] * 0.5
+        return self._position_limits['max_position_value']
+        
+    def get_adjusted_position_size(self, requested_size: float) -> float:
+        """Get adjusted position size based on safety mode."""
+        if self._safety_mode == SafetyMode.RESTRICTED:
+            return requested_size * 0.5  # Reduce by 50% in restricted mode
+        return requested_size
+        
+    def assess_risk_level(self, portfolio_value: float, daily_pnl: float, max_drawdown: float) -> RiskLevel:
+        """Assess current risk level based on portfolio metrics."""
+        daily_pnl_pct = abs(daily_pnl) / portfolio_value if portfolio_value > 0 else 0
+        
+        if daily_pnl_pct > 0.05 or max_drawdown > 0.10:  # 5% daily loss or 10% drawdown
+            return RiskLevel.CRITICAL
+        elif daily_pnl_pct > 0.03 or max_drawdown > 0.07:  # 3% daily loss or 7% drawdown
+            return RiskLevel.HIGH
+        elif daily_pnl_pct > 0.01 or max_drawdown > 0.03:  # 1% daily loss or 3% drawdown
+            return RiskLevel.MEDIUM
+        return RiskLevel.LOW
+        
+    def check_circuit_breaker(self, portfolio_value: float, daily_pnl: float, current_drawdown: float):
+        """Check and potentially activate circuit breaker."""
+        risk_level = self.assess_risk_level(portfolio_value, daily_pnl, current_drawdown)
+        
+        if risk_level in [RiskLevel.HIGH, RiskLevel.CRITICAL]:
+            if risk_level == RiskLevel.CRITICAL:
+                self.set_safety_mode(SafetyMode.HALT)
+            else:
+                self.set_safety_mode(SafetyMode.RESTRICTED)
+                
+    def set_position_limits(self, max_position_value: float, max_portfolio_concentration: float):
+        """Set position limits."""
+        self._position_limits.update({
+            'max_position_value': max_position_value,
+            'max_portfolio_concentration': max_portfolio_concentration
+        })
+        
+    def is_position_allowed(self, symbol: str, position_value: float, portfolio_value: float) -> bool:
+        """Check if a position is allowed based on limits."""
+        if position_value > self._position_limits['max_position_value']:
+            return False
+            
+        concentration = position_value / portfolio_value if portfolio_value > 0 else 0
+        if concentration > self._position_limits['max_portfolio_concentration']:
+            return False
+            
+        return True
+        
+    def is_trading_time_allowed(self) -> bool:
+        """Check if current time is within allowed trading hours."""
+        now = datetime.now()
+        # Simple market hours check (9:30 AM - 4:00 PM EST)
+        market_open = time(9, 30)
+        market_close = time(16, 0)
+        current_time = now.time()
+        
+        # Weekend check (Saturday=5, Sunday=6)
+        if now.weekday() >= 5:
+            return False
+            
+        return market_open <= current_time <= market_close
 
 # Metrics for safety mode monitoring
 trading_mode_operations = Counter(
@@ -70,7 +176,9 @@ class TradingMode(Enum):
     @property
     def risk_level(self) -> int:
         """Return risk level (0=safe, 2=dangerous)."""
-        return {TradingMode.SHADOW: 0, TradingMode.DRY_RUN: 1, TradingMode.LIVE: 2}[self]
+        return {TradingMode.SHADOW: 0, TradingMode.DRY_RUN: 1, TradingMode.LIVE: 2}[
+            self
+        ]
 
     @property
     def allows_real_execution(self) -> bool:
@@ -103,11 +211,11 @@ class FeatureFlag:
     name: str
     enabled: bool
     scope: FeatureFlagScope
-    target: Optional[str] = None  # Symbol, user ID, or strategy name
+    target: str | None = None  # Symbol, user ID, or strategy name
     rollout_percentage: float = 100.0  # 0-100%
     conditions: dict[str, Any] = field(default_factory=dict)
     created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
-    expires_at: Optional[datetime] = None
+    expires_at: datetime | None = None
 
     def is_enabled_for(self, context: dict[str, Any]) -> bool:
         """Check if flag is enabled for given context."""
@@ -132,7 +240,9 @@ class FeatureFlag:
 
         # Check rollout percentage (simplified hash-based)
         if self.rollout_percentage < 100.0:
-            hash_input = f"{self.name}_{context.get('user_id', '')}_{context.get('symbol', '')}"
+            hash_input = (
+                f"{self.name}_{context.get('user_id', '')}_{context.get('symbol', '')}"
+            )
             hash_value = hash(hash_input) % 100
             if hash_value >= self.rollout_percentage:
                 return False
@@ -147,11 +257,11 @@ class KillSwitch:
     name: str
     active: bool
     scope: KillSwitchScope
-    target: Optional[str] = None  # Symbol, user ID, or strategy
+    target: str | None = None  # Symbol, user ID, or strategy
     reason: str = ""
-    activated_by: Optional[str] = None  # User who activated
-    activated_at: Optional[datetime] = None
-    auto_reset_at: Optional[datetime] = None  # Automatic reset time
+    activated_by: str | None = None  # User who activated
+    activated_at: datetime | None = None
+    auto_reset_at: datetime | None = None  # Automatic reset time
 
     def is_active_for(self, context: dict[str, Any]) -> bool:
         """Check if kill switch blocks given context."""
@@ -187,15 +297,15 @@ class TradingModeConfig(BaseModel):
     live_mode_confirmations: int = 1  # Number of confirmations needed
 
     # Risk limits per mode
-    max_order_value: Optional[float] = None
-    max_daily_volume: Optional[float] = None
-    allowed_symbols: Optional[set[str]] = None
-    blocked_symbols: Optional[set[str]] = None
+    max_order_value: float | None = None
+    max_daily_volume: float | None = None
+    allowed_symbols: set[str] | None = None
+    blocked_symbols: set[str] | None = None
 
     @validator("live_mode_confirmations")
     def validate_confirmations(cls, v, values):
         """Live mode should require at least one confirmation, but shadow/dry modes can have 0."""
-        mode = values.get('mode')
+        mode = values.get("mode")
         if mode == TradingMode.LIVE and v < 1:
             raise ValueError("Live mode must require at least 1 confirmation")
         return v
@@ -208,12 +318,12 @@ class TradeExecutionResult:
     order_id: str
     mode: TradingMode
     executed: bool
-    blocked_by: Optional[str] = None  # Kill switch or feature flag that blocked
-    simulation_result: Optional[dict[str, Any]] = None
-    real_result: Optional[dict[str, Any]] = None
+    blocked_by: str | None = None  # Kill switch or feature flag that blocked
+    simulation_result: dict[str, Any] | None = None
+    real_result: dict[str, Any] | None = None
     execution_time_ms: float = 0.0
     divergence_detected: bool = False
-    divergence_details: Optional[dict[str, Any]] = None
+    divergence_details: dict[str, Any] | None = None
 
 
 class SafetyModeManager:
@@ -350,9 +460,9 @@ class SafetyModeManager:
         name: str,
         scope: KillSwitchScope,
         reason: str,
-        target: Optional[str] = None,
-        activated_by: Optional[str] = None,
-        auto_reset_minutes: Optional[int] = None,
+        target: str | None = None,
+        activated_by: str | None = None,
+        auto_reset_minutes: int | None = None,
     ) -> bool:
         """
         Activate kill switch for emergency trading halt.
@@ -386,7 +496,9 @@ class SafetyModeManager:
             len([ks for ks in self._kill_switches.values() if ks.active])
         )
 
-        logger.critical(f"KILL SWITCH ACTIVATED: {name} - {reason} (scope: {scope.value})")
+        logger.critical(
+            f"KILL SWITCH ACTIVATED: {name} - {reason} (scope: {scope.value})"
+        )
 
         return True
 
@@ -406,7 +518,7 @@ class SafetyModeManager:
 
         return True
 
-    def is_blocked_by_kill_switch(self, context: dict[str, Any]) -> Optional[KillSwitch]:
+    def is_blocked_by_kill_switch(self, context: dict[str, Any]) -> KillSwitch | None:
         """Check if operation is blocked by any kill switch."""
 
         for kill_switch in self._kill_switches.values():
@@ -422,7 +534,11 @@ class SafetyModeManager:
     # Order Execution with Safety Controls
 
     async def execute_order_with_safety(
-        self, order_id: str, order_data: dict[str, Any], user_id: str, execution_func: Callable
+        self,
+        order_id: str,
+        order_data: dict[str, Any],
+        user_id: str,
+        execution_func: Callable,
     ) -> TradeExecutionResult:
         """
         Execute order with comprehensive safety controls.
@@ -449,7 +565,9 @@ class SafetyModeManager:
         blocking_kill_switch = self.is_blocked_by_kill_switch(execution_context)
         if blocking_kill_switch:
             trading_mode_operations.labels(
-                mode=self._current_mode.value, operation="submit_order", outcome="blocked"
+                mode=self._current_mode.value,
+                operation="submit_order",
+                outcome="blocked",
             ).inc()
 
             return TradeExecutionResult(
@@ -463,7 +581,9 @@ class SafetyModeManager:
         # Check feature flags
         if not self.is_feature_enabled("order_submission", execution_context):
             trading_mode_operations.labels(
-                mode=self._current_mode.value, operation="submit_order", outcome="blocked"
+                mode=self._current_mode.value,
+                operation="submit_order",
+                outcome="blocked",
             ).inc()
 
             return TradeExecutionResult(
@@ -476,19 +596,29 @@ class SafetyModeManager:
 
         # Execute based on current mode
         if self._current_mode == TradingMode.SHADOW:
-            return await self._execute_shadow_mode(order_id, order_data, execution_func, start_time)
+            return await self._execute_shadow_mode(
+                order_id, order_data, execution_func, start_time
+            )
         elif self._current_mode == TradingMode.DRY_RUN:
             return await self._execute_dry_run_mode(
                 order_id, order_data, execution_func, start_time
             )
         elif self._current_mode == TradingMode.LIVE:
-            return await self._execute_live_mode(order_id, order_data, execution_func, start_time)
+            return await self._execute_live_mode(
+                order_id, order_data, execution_func, start_time
+            )
 
         # Fallback to dry run
-        return await self._execute_dry_run_mode(order_id, order_data, execution_func, start_time)
+        return await self._execute_dry_run_mode(
+            order_id, order_data, execution_func, start_time
+        )
 
     async def _execute_shadow_mode(
-        self, order_id: str, order_data: dict[str, Any], execution_func: Callable, start_time: float
+        self,
+        order_id: str,
+        order_data: dict[str, Any],
+        execution_func: Callable,
+        start_time: float,
     ) -> TradeExecutionResult:
         """Execute in shadow mode - observe but don't submit."""
 
@@ -521,7 +651,11 @@ class SafetyModeManager:
         )
 
     async def _execute_dry_run_mode(
-        self, order_id: str, order_data: dict[str, Any], execution_func: Callable, start_time: float
+        self,
+        order_id: str,
+        order_data: dict[str, Any],
+        execution_func: Callable,
+        start_time: float,
     ) -> TradeExecutionResult:
         """Execute in dry run mode - full simulation."""
 
@@ -569,7 +703,11 @@ class SafetyModeManager:
         )
 
     async def _execute_live_mode(
-        self, order_id: str, order_data: dict[str, Any], execution_func: Callable, start_time: float
+        self,
+        order_id: str,
+        order_data: dict[str, Any],
+        execution_func: Callable,
+        start_time: float,
     ) -> TradeExecutionResult:
         """Execute in live mode - real money trading."""
 
@@ -661,7 +799,9 @@ class SafetyModeManager:
                     "scope": ks.scope.value,
                     "target": ks.target,
                     "reason": ks.reason,
-                    "activated_at": ks.activated_at.isoformat() if ks.activated_at else None,
+                    "activated_at": (
+                        ks.activated_at.isoformat() if ks.activated_at else None
+                    ),
                 }
                 for ks in active_switches
             ],

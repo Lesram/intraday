@@ -1,0 +1,121 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "All Tests & Report",
+            "type": "shell",
+            "command": "powershell",
+            "args": [
+                "-ExecutionPolicy", "Bypass",
+                "-File", "run_all_tests_and_report.ps1"
+            ],
+            "group": "test",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared",
+                "showReuseMessage": false,
+                "clear": true
+            },
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Fast Lane",
+            "type": "shell", 
+            "command": "powershell",
+            "args": [
+                "-ExecutionPolicy", "Bypass",
+                "-File", "run_all_tests_and_report.ps1",
+                "-Fast"
+            ],
+            "group": "test",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared",
+                "showReuseMessage": false,
+                "clear": true
+            },
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Quick Coverage Check",
+            "type": "shell",
+            "command": "python", 
+            "args": [
+                "-m", "pytest",
+                "-q",
+                "-m", "unit or api or services",
+                "--cov=backend",
+                "--cov-branch", 
+                "--cov-report=term-missing:skip-covered",
+                "--maxfail=5",
+                "--tb=short"
+            ],
+            "group": "test",
+            "presentation": {
+                "echo": true,
+                "reveal": "always", 
+                "focus": false,
+                "panel": "shared"
+            },
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Single Category Test",
+            "type": "shell",
+            "command": "python",
+            "args": [
+                "-m", "pytest",
+                "-v",
+                "-m", "${input:testCategory}",
+                "--cov=backend",
+                "--cov-branch",
+                "--cov-report=term-missing", 
+                "--tb=short"
+            ],
+            "group": "test",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false, 
+                "panel": "shared"
+            },
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "problemMatcher": []
+        }
+    ],
+    "inputs": [
+        {
+            "id": "testCategory",
+            "description": "Test category to run",
+            "default": "unit",
+            "type": "pickString",
+            "options": [
+                "unit",
+                "api", 
+                "services",
+                "risk",
+                "strategies",
+                "db",
+                "ws",
+                "integration",
+                "e2e",
+                "perf"
+            ]
+        }
+    ]
+}

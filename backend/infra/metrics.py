@@ -2,6 +2,7 @@
 Standardized metrics infrastructure with bounded label sets and centralized validation.
 Provides type-safe metric factories and enforces label allow-lists for cardinality control.
 """
+
 from collections.abc import Sequence
 import logging
 from typing import Final, Union
@@ -172,7 +173,9 @@ class MetricsRegistry:
     Provides type-safe metric creation with cardinality protection.
     """
 
-    def __init__(self, namespace: str = "intraday", registry: CollectorRegistry | None = None):
+    def __init__(
+        self, namespace: str = "intraday", registry: CollectorRegistry | None = None
+    ):
         self.namespace = namespace
         self.registry = registry or REGISTRY
         self._metrics: dict[str, Union[Counter, Histogram, Gauge]] = {}
@@ -208,7 +211,9 @@ class MetricsRegistry:
         # Check for missing required labels
         missing_labels = set(allowed_labels) - set(labels.keys())
         if missing_labels:
-            raise ValueError(f"Missing required labels for metric '{name}': {missing_labels}")
+            raise ValueError(
+                f"Missing required labels for metric '{name}': {missing_labels}"
+            )
 
         # Validate label values against bounded sets
         validated_labels = {}
@@ -265,7 +270,9 @@ class MetricsRegistry:
             )
             self._metrics[metric_key] = counter
 
-            logger.debug(f"Created counter metric: {full_name} with labels: {label_names}")
+            logger.debug(
+                f"Created counter metric: {full_name} with labels: {label_names}"
+            )
 
         metric = self._metrics[metric_key]
 
@@ -321,7 +328,9 @@ class MetricsRegistry:
                 # Try to get standardized buckets from observability contracts
                 try:
                     final_buckets = get_histogram_buckets(name)
-                    logger.debug(f"Using standardized buckets for {name}: {final_buckets}")
+                    logger.debug(
+                        f"Using standardized buckets for {name}: {final_buckets}"
+                    )
                 except (ValueError, NameError):
                     # Fall back to default Prometheus buckets
                     final_buckets = None
@@ -345,7 +354,9 @@ class MetricsRegistry:
                 )
             self._metrics[metric_key] = histogram
 
-            logger.debug(f"Created histogram metric: {full_name} with labels: {label_names}")
+            logger.debug(
+                f"Created histogram metric: {full_name} with labels: {label_names}"
+            )
 
         metric = self._metrics[metric_key]
 
@@ -395,7 +406,9 @@ class MetricsRegistry:
             )
             self._metrics[metric_key] = gauge
 
-            logger.debug(f"Created gauge metric: {full_name} with labels: {label_names}")
+            logger.debug(
+                f"Created gauge metric: {full_name} with labels: {label_names}"
+            )
 
         metric = self._metrics[metric_key]
 
@@ -423,7 +436,9 @@ class MetricsRegistry:
         histogram = self.histogram(name, labels)
         histogram.observe(value)
 
-    def set_gauge(self, name: str, value: float, labels: dict[str, str] | None = None) -> None:
+    def set_gauge(
+        self, name: str, value: float, labels: dict[str, str] | None = None
+    ) -> None:
         """Convenience method to set a gauge value."""
         gauge = self.gauge(name, labels)
         gauge.set(value)
@@ -437,7 +452,9 @@ class MetricsRegistry:
     def inc_strategy_netting_decisions(self, symbol: str, amount: float = 1.0) -> None:
         """Increment strategy netting decisions counter with symbol bucket."""
         bucket = self._get_symbol_bucket(symbol)
-        self.inc_counter("strategy_netting_decisions_total", {"symbol_bucket": bucket}, amount)
+        self.inc_counter(
+            "strategy_netting_decisions_total", {"symbol_bucket": bucket}, amount
+        )
 
     def inc_strategy_throttled(self, amount: float = 1.0) -> None:
         """Increment strategy throttled counter."""
@@ -488,7 +505,9 @@ class MetricsRegistry:
             Normalized route template
         """
         if self.observability_contract:
-            return self.observability_contract.validate_route_labeling(route_path, ROUTE_TEMPLATES)
+            return self.observability_contract.validate_route_labeling(
+                route_path, ROUTE_TEMPLATES
+            )
         else:
             # Fallback to legacy normalization
             return normalize_route(route_path)

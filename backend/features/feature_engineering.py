@@ -74,7 +74,11 @@ class FeatureEngineer:
             # Market regime
             "adx_period": 14,
             # Lookback periods for features - limited by settings
-            "lookback_periods": [5, 10, min(20, self.settings.trading.max_rolling_window)],
+            "lookback_periods": [
+                5,
+                10,
+                min(20, self.settings.trading.max_rolling_window),
+            ],
             # Feature normalization
             "normalize_features": True,
             "normalization_method": "zscore",  # 'zscore', 'minmax', 'robust'
@@ -261,7 +265,9 @@ class FeatureEngineer:
             ema_slow = exponential_moving_average(df["close"], self.config["macd_slow"])
             if isinstance(ema_fast, pd.Series) and isinstance(ema_slow, pd.Series):
                 df["macd"] = ema_fast - ema_slow
-                df["macd_signal"] = df["macd"].ewm(span=self.config["macd_signal"]).mean()
+                df["macd_signal"] = (
+                    df["macd"].ewm(span=self.config["macd_signal"]).mean()
+                )
                 df["macd_histogram"] = df["macd"] - df["macd_signal"]
 
         # Price momentum
@@ -274,8 +280,12 @@ class FeatureEngineer:
             df["roc_10"] = talib.ROC(df["close"].values, timeperiod=10)
             df["roc_20"] = talib.ROC(df["close"].values, timeperiod=20)
         else:
-            df["roc_10"] = ((df["close"] - df["close"].shift(10)) / df["close"].shift(10)) * 100
-            df["roc_20"] = ((df["close"] - df["close"].shift(20)) / df["close"].shift(20)) * 100
+            df["roc_10"] = (
+                (df["close"] - df["close"].shift(10)) / df["close"].shift(10)
+            ) * 100
+            df["roc_20"] = (
+                (df["close"] - df["close"].shift(20)) / df["close"].shift(20)
+            ) * 100
 
         return df
 
@@ -314,13 +324,17 @@ class FeatureEngineer:
                 matype=0,
             )
         else:
-            bb_upper, bb_middle, bb_lower = bollinger_bands(df["close"], bb_period, bb_std)
+            bb_upper, bb_middle, bb_lower = bollinger_bands(
+                df["close"], bb_period, bb_std
+            )
             df["bb_upper"] = bb_upper
             df["bb_middle"] = bb_middle
             df["bb_lower"] = bb_lower
 
         # Bollinger Band position
-        df["bb_position"] = (df["close"] - df["bb_lower"]) / (df["bb_upper"] - df["bb_lower"])
+        df["bb_position"] = (df["close"] - df["bb_lower"]) / (
+            df["bb_upper"] - df["bb_lower"]
+        )
         df["bb_width"] = (df["bb_upper"] - df["bb_lower"]) / df["bb_middle"]
 
         # Historical volatility
@@ -402,7 +416,9 @@ class FeatureEngineer:
             lowest_low = df["low"].rolling(window=k_period).min()
             highest_high = df["high"].rolling(window=k_period).max()
 
-            df["stoch_k"] = ((df["close"] - lowest_low) / (highest_high - lowest_low)) * 100
+            df["stoch_k"] = (
+                (df["close"] - lowest_low) / (highest_high - lowest_low)
+            ) * 100
             df["stoch_d"] = df["stoch_k"].rolling(window=d_period).mean()
 
         # Williams %R
@@ -418,7 +434,9 @@ class FeatureEngineer:
             period = self.config["williams_period"]
             highest_high = df["high"].rolling(window=period).max()
             lowest_low = df["low"].rolling(window=period).min()
-            df["williams_r"] = ((highest_high - df["close"]) / (highest_high - lowest_low)) * -100
+            df["williams_r"] = (
+                (highest_high - df["close"]) / (highest_high - lowest_low)
+            ) * -100
 
         # Commodity Channel Index (CCI)
         if TALIB_AVAILABLE:
@@ -504,17 +522,21 @@ class FeatureEngineer:
         df["high_low_ratio"] = df["high"] / df["low"]
         df["open_close_ratio"] = df["open"] / df["close"]
         df["body_size"] = abs(df["close"] - df["open"]) / df["open"]
-        df["shadow_upper"] = (df["high"] - np.maximum(df["open"], df["close"])) / df["open"]
-        df["shadow_lower"] = (np.minimum(df["open"], df["close"]) - df["low"]) / df["open"]
+        df["shadow_upper"] = (df["high"] - np.maximum(df["open"], df["close"])) / df[
+            "open"
+        ]
+        df["shadow_lower"] = (np.minimum(df["open"], df["close"]) - df["low"]) / df[
+            "open"
+        ]
 
         # Price position within range
         df["price_position"] = (df["close"] - df["low"]) / (df["high"] - df["low"])
 
         # VWAP approximation (using typical price)
         typical_price = (df["high"] + df["low"] + df["close"]) / 3
-        df["vwap_approx"] = (typical_price * df["volume"]).rolling(window=20).sum() / df[
-            "volume"
-        ].rolling(window=20).sum()
+        df["vwap_approx"] = (typical_price * df["volume"]).rolling(
+            window=20
+        ).sum() / df["volume"].rolling(window=20).sum()
         df["vwap_distance"] = (df["close"] - df["vwap_approx"]) / df["vwap_approx"]
 
         return df
@@ -537,8 +559,12 @@ class FeatureEngineer:
             df[f"volume_std_{period}"] = df["volume"].rolling(window=period).std()
 
             # Min/Max ratios
-            df[f"close_min_ratio_{period}"] = df["close"] / df["close"].rolling(window=period).min()
-            df[f"close_max_ratio_{period}"] = df["close"] / df["close"].rolling(window=period).max()
+            df[f"close_min_ratio_{period}"] = (
+                df["close"] / df["close"].rolling(window=period).min()
+            )
+            df[f"close_max_ratio_{period}"] = (
+                df["close"] / df["close"].rolling(window=period).max()
+            )
 
         return df
 
@@ -568,7 +594,9 @@ class FeatureEngineer:
                 if method == "zscore":
                     rolling_mean = df[col].rolling(window=window, min_periods=20).mean()
                     rolling_std = df[col].rolling(window=window, min_periods=20).std()
-                    normalized_columns[f"{col}_norm"] = (df[col] - rolling_mean) / rolling_std
+                    normalized_columns[f"{col}_norm"] = (
+                        df[col] - rolling_mean
+                    ) / rolling_std
                 elif method == "minmax":
                     rolling_min = df[col].rolling(window=window, min_periods=20).min()
                     rolling_max = df[col].rolling(window=window, min_periods=20).max()
@@ -576,13 +604,17 @@ class FeatureEngineer:
                         rolling_max - rolling_min
                     )
                 elif method == "robust":
-                    rolling_median = df[col].rolling(window=window, min_periods=20).median()
+                    rolling_median = (
+                        df[col].rolling(window=window, min_periods=20).median()
+                    )
                     rolling_mad = (
                         df[col]
                         .rolling(window=window, min_periods=20)
                         .apply(lambda x: np.median(np.abs(x - np.median(x))))
                     )
-                    normalized_columns[f"{col}_norm"] = (df[col] - rolling_median) / rolling_mad
+                    normalized_columns[f"{col}_norm"] = (
+                        df[col] - rolling_median
+                    ) / rolling_mad
 
         # Add all normalized columns at once to prevent fragmentation
         if normalized_columns:
@@ -637,7 +669,9 @@ class FeatureEngineer:
             df["body_ratio"] = abs(df["close"] - df["open"]) / (df["high"] - df["low"])
 
             # Simple volume features
-            df["volume_ratio"] = df["volume"] / df["volume"].rolling(10, min_periods=1).mean()
+            df["volume_ratio"] = (
+                df["volume"] / df["volume"].rolling(10, min_periods=1).mean()
+            )
 
             # Basic momentum (fast RSI)
             if self.config.get("rsi_fast_period"):
@@ -773,7 +807,9 @@ def validate_feature_schema(
         actual_dtype = str(features_df[feature].dtype)
 
         if not _is_dtype_compatible(actual_dtype, expected_dtype):
-            errors.append(f"Feature '{feature}': expected {expected_dtype}, got {actual_dtype}")
+            errors.append(
+                f"Feature '{feature}': expected {expected_dtype}, got {actual_dtype}"
+            )
 
     return len(errors) == 0, errors
 
@@ -791,7 +827,9 @@ def get_feature_schema(features_df: pd.DataFrame) -> dict[str, str]:
     return {col: str(features_df[col].dtype) for col in features_df.columns}
 
 
-def ensure_feature_order(features_df: pd.DataFrame, expected_order: list[str]) -> pd.DataFrame:
+def ensure_feature_order(
+    features_df: pd.DataFrame, expected_order: list[str]
+) -> pd.DataFrame:
     """
     Reorder feature columns to match expected order.
 
@@ -836,7 +874,9 @@ def create_feature_signature(
     if include_stats:
         numeric_features = features_df.select_dtypes(include=[np.number]).columns
         signature["numeric_features"] = list(numeric_features)
-        signature["categorical_features"] = list(set(features_df.columns) - set(numeric_features))
+        signature["categorical_features"] = list(
+            set(features_df.columns) - set(numeric_features)
+        )
 
         if len(numeric_features) > 0:
             signature["feature_stats"] = {
@@ -885,7 +925,7 @@ def validate_feature_ranges(
             warnings.append(
                 f"Feature '{feature}' range [{actual_min:.4f}, {actual_max:.4f}] "
                 f"outside expected range [{expected_min:.4f}, {expected_max:.4f}] "
-                f"with {tolerance*100}% tolerance"
+                f"with {tolerance * 100}% tolerance"
             )
 
     return len(warnings) == 0, warnings
@@ -922,7 +962,11 @@ def _is_dtype_compatible(actual_dtype: str, expected_dtype: str) -> bool:
         return True
 
     # Integer compatibility
-    if expected_norm in ["int", "int32", "int64"] and actual_norm in ["int", "int32", "int64"]:
+    if expected_norm in ["int", "int32", "int64"] and actual_norm in [
+        "int",
+        "int32",
+        "int64",
+    ]:
         return True
 
     return False
@@ -1000,7 +1044,9 @@ def compute_all_features(df: pd.DataFrame, *, fast: bool = True) -> pd.DataFrame
     return features
 
 
-def build_feature_frame(df_1m: pd.DataFrame, *, price_col: str = "close") -> FeatureFrame:
+def build_feature_frame(
+    df_1m: pd.DataFrame, *, price_col: str = "close"
+) -> FeatureFrame:
     """
     Build complete FeatureFrame with validation and alignment.
 
@@ -1029,7 +1075,9 @@ def build_feature_frame(df_1m: pd.DataFrame, *, price_col: str = "close") -> Fea
         if getattr(settings.features, "no_lookahead_enforced", True):
             try:
                 guard_no_lookahead(
-                    feature_frame.X, price_series, feature_cols=list(feature_frame.X.columns)
+                    feature_frame.X,
+                    price_series,
+                    feature_cols=list(feature_frame.X.columns),
                 )
             except Exception as e:
                 # Log but don't fail in production
@@ -1038,6 +1086,8 @@ def build_feature_frame(df_1m: pd.DataFrame, *, price_col: str = "close") -> Fea
 
                 # Increment metrics
                 metrics = get_metrics_registry()
-                metrics.counter("feature_no_lookahead_violations_total", {"bucket": "other"}).inc()
+                metrics.counter(
+                    "feature_no_lookahead_violations_total", {"bucket": "other"}
+                ).inc()
 
     return feature_frame

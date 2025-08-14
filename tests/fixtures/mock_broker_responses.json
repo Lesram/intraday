@@ -1,0 +1,33 @@
+{
+  "connection_success": {
+    "status": "connected",
+    "timestamp": "2024-01-02T09:30:00Z",
+    "account_id": "test_account_123",
+    "broker": "mock_broker"
+  },
+  "connection_failure": {
+    "status": "error",
+    "timestamp": "2024-01-02T09:30:00Z",
+    "error": "authentication_failed",
+    "message": "Invalid API credentials"
+  },
+  "rate_limit": {
+    "status": "error",
+    "timestamp": "2024-01-02T09:30:00Z",
+    "error": "rate_limit_exceeded",
+    "message": "Too many requests. Retry after 60 seconds.",
+    "retry_after": 60
+  },
+  "market_closed": {
+    "status": "error",
+    "timestamp": "2024-01-02T20:30:00Z",
+    "error": "market_closed",
+    "message": "Market is closed. Orders will be queued for next session."
+  },
+  "symbol_not_found": {
+    "status": "error",
+    "error": "invalid_symbol",
+    "message": "Symbol 'INVALID' not found",
+    "symbol": "INVALID"
+  }
+}

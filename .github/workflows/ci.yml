@@ -176,8 +176,9 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install pytest pytest-asyncio pytest-cov pytest-xdist coverage
+          pip install pytest pytest-asyncio pytest-cov pytest-xdist coverage diff_cover
           pip install -r requirements.txt
+          pip install -r requirements-dev.txt
 
       - name: Set up test environment
         env:
@@ -191,23 +192,28 @@ jobs:
             alembic upgrade head
           fi
 
-      - name: Run tests with coverage
+      - name: Run fast CI tests with coverage
         env:
           DATABASE_URL: postgresql://testuser:testpass@localhost:5432/testdb
           REDIS_URL: redis://localhost:6379/0
           TESTING: true
           PYTHONPATH: .
+          TEST_SEED: 42  # Deterministic tests
         run: |
-          pytest \
-            --cov=backend \
-            --cov-report=xml:coverage.xml \
-            --cov-report=html:htmlcov \
-            --cov-report=term-missing \
-            --cov-fail-under=30 \
-            --maxfail=1 \
-            --disable-warnings \
-            -x \
-            tests/
+          # Generate coverage with fast test suite 
+          coverage run --source=backend --omit="*/tests/*" -m pytest \
+            tests/unit/ tests/contract/ tests/integration/test_core_trading_flow.py \
+            tests/integration/test_authentication.py tests/e2e/test_golden_path.py \
+            -n auto --tb=short --durations=10 --strict-markers --disable-warnings \
+            --maxfail=3
+
+          # Generate coverage reports
+          coverage xml -o coverage.xml
+          coverage html -d htmlcov
+          coverage report --show-missing
+
+          # Check minimum coverage requirement 
+          coverage report --fail-under=80
         continue-on-error: false
 
       - name: Get baseline coverage (for PR comparison)
@@ -221,18 +227,56 @@ jobs:
             echo "📊 Found baseline coverage from main branch"
           else
             echo "⚠️  No baseline coverage found - treating as new feature branch"
-            echo "<coverage line-rate=\"0.28\"></coverage>" > baseline-coverage.xml
+            echo "<coverage line-rate=\"0.80\"></coverage>" > baseline-coverage.xml
           fi
+
+      - name: Diff coverage check (PR only)
+        if: github.event_name == 'pull_request'
+        run: |
+          # Check diff coverage - new/modified code should have 95% coverage
+          diff-cover coverage.xml --compare-branch=origin/main --diff-range-notation="..." --fail-under=95
+          
+          # Generate diff coverage HTML report
+          diff-cover coverage.xml --compare-branch=origin/main --diff-range-notation="..." --html-report=diff-coverage.html
+        continue-on-error: false
 
       - name: Coverage ratchet check
         if: github.event_name == 'pull_request'
         run: |
-          python scripts/ci/check_coverage_ratchet.py \
-            --current coverage.xml \
-            --baseline baseline-coverage.xml \
-            --min-coverage 30.0 \
-            --tolerance 1.0 \
-            --verbose
+          # Allow for transition period - will be updated to 80% minimum
+          python -c "
+          import xml.etree.ElementTree as ET
+          
+          # Read current coverage
+          tree = ET.parse('coverage.xml')
+          root = tree.getroot()
+          current_rate = float(root.get('line-rate'))
+          current_percent = current_rate * 100
+          
+          # Read baseline coverage
+          try:
+              baseline_tree = ET.parse('baseline-coverage.xml')
+              baseline_rate = float(baseline_tree.getroot().get('line-rate'))
+              baseline_percent = baseline_rate * 100
+          except:
+              baseline_percent = 30.0  # fallback minimum
+          
+          print(f'📊 Coverage: {current_percent:.1f}% (baseline: {baseline_percent:.1f}%)')
+          
+          # Check minimum and ratchet
+          min_coverage = 80.0
+          tolerance = 2.0
+          
+          if current_percent < min_coverage:
+              print(f'❌ Coverage {current_percent:.1f}% below minimum {min_coverage}%')
+              exit(1)
+              
+          if current_percent < (baseline_percent - tolerance):
+              print(f'❌ Coverage decreased by more than {tolerance}%')
+              exit(1)
+              
+          print('✅ Coverage requirements met')
+          "
         continue-on-error: false
 
       - name: Upload coverage reports
@@ -243,7 +287,16 @@ jobs:
           path: |
             coverage.xml
             htmlcov/
+            diff-coverage.html
           retention-days: 30
+
+      - name: Publish HTML coverage to Pages
+        if: github.ref == 'refs/heads/main'
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./htmlcov
+          destination_dir: coverage
 
       - name: Upload coverage to Codecov
         if: always()
@@ -288,13 +341,13 @@ jobs:
                   const coveragePercent = Math.round(parseFloat(match[1]) * 100);
                   coverageText = `${coveragePercent}%`;
 
-                  // Coverage status based on staged gates
-                  if (coveragePercent >= 50) {
-                    coverageStatus = '🎯'; // Target reached
-                  } else if (coveragePercent >= 40) {
-                    coverageStatus = '🟡'; // Stage 2
-                  } else if (coveragePercent >= 30) {
-                    coverageStatus = '🟢'; // Stage 1
+                  // Coverage status based on 80% requirement
+                  if (coveragePercent >= 90) {
+                    coverageStatus = '🎯'; // Excellent coverage
+                  } else if (coveragePercent >= 80) {
+                    coverageStatus = '�'; // Target met
+                  } else if (coveragePercent >= 70) {
+                    coverageStatus = '�'; // Close to target
                   } else {
                     coverageStatus = '🔴'; // Below minimum
                   }
@@ -314,10 +367,10 @@ jobs:
             | **Security Scan** | ${securityStatus} | Bandit + pip-audit |
             | **Tests & Coverage** | ${testStatus} | ${coverageStatus} ${coverageText} |
 
-            ### 📊 Coverage Staging Gates
-            - **Stage 1**: ≥30% (Current minimum) 🟢
-            - **Stage 2**: ≥40% (Next target) 🟡
-            - **Stage 3**: ≥50% (Final target) 🎯
+            ### 📊 Coverage Requirements
+            - **Minimum Global**: ≥80% 🟢
+            - **Diff Coverage**: ≥95% for new/modified code
+            - **Excellence**: ≥90% 🎯
             - **Ratchet**: No decrease vs main branch
 
             ### 🔧 Quality Standards

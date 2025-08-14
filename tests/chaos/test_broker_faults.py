@@ -26,12 +26,15 @@ class TestBrokerChaosFaults:
         from backend.api.main import app
 
         # Configure with chaos-friendly settings
-        with patch.dict("os.environ", {
-            "BROKER_TIMEOUT_SECONDS": "2",
-            "BROKER_RETRY_ATTEMPTS": "3",
-            "BROKER_BACKOFF_MULTIPLIER": "1.5",
-            "CHAOS_TESTING_MODE": "true"
-        }):
+        with patch.dict(
+            "os.environ",
+            {
+                "BROKER_TIMEOUT_SECONDS": "2",
+                "BROKER_RETRY_ATTEMPTS": "3",
+                "BROKER_BACKOFF_MULTIPLIER": "1.5",
+                "CHAOS_TESTING_MODE": "true",
+            },
+        ):
             yield app
 
     @pytest.fixture
@@ -45,7 +48,9 @@ class TestBrokerChaosFaults:
         return create_order_spec
 
     @pytest.mark.asyncio
-    async def test_broker_502_503_retry_pattern(self, chaos_test_app, chaos_broker_mock, order_factory):
+    async def test_broker_502_503_retry_pattern(
+        self, chaos_test_app, chaos_broker_mock, order_factory
+    ):
         """Test resilience to 502/503 broker errors with exponential backoff."""
         # Fault pattern: 502 → 502 → 200 (recovery after 2 failures)
         fault_sequence = [502, 502, 200, 503, 503, 200, 502, 200]
@@ -64,7 +69,7 @@ class TestBrokerChaosFaults:
                     raise HTTPStatusError(
                         message=f"Server Error {status_code}",
                         request=MagicMock(),
-                        response=MagicMock(status_code=status_code)
+                        response=MagicMock(status_code=status_code),
                     )
                 else:
                     # Success response
@@ -72,7 +77,7 @@ class TestBrokerChaosFaults:
                         "id": f"order_{fault_index}",
                         "status": "accepted",
                         "symbol": order_data.get("symbol", "AAPL"),
-                        "qty": order_data.get("qty", 100)
+                        "qty": order_data.get("qty", 100),
                     }
             else:
                 # Default success after fault sequence
@@ -80,11 +85,13 @@ class TestBrokerChaosFaults:
                     "id": f"order_success_{fault_index}",
                     "status": "accepted",
                     "symbol": order_data.get("symbol", "AAPL"),
-                    "qty": order_data.get("qty", 100)
+                    "qty": order_data.get("qty", 100),
                 }
 
         # Mock broker service with retry logic
-        with patch("backend.services.broker_service.BrokerService") as mock_broker_service:
+        with patch(
+            "backend.services.broker_service.BrokerService"
+        ) as mock_broker_service:
             mock_broker_instance = AsyncMock()
             mock_broker_service.return_value = mock_broker_instance
 
@@ -98,9 +105,12 @@ class TestBrokerChaosFaults:
                         result = await faulty_submit_order(order_spec)
                         return result
                     except HTTPStatusError as e:
-                        if e.response.status_code in [502, 503] and attempt < max_retries:
+                        if (
+                            e.response.status_code in [502, 503]
+                            and attempt < max_retries
+                        ):
                             # Exponential backoff
-                            await asyncio.sleep(backoff_seconds * (1.5 ** attempt))
+                            await asyncio.sleep(backoff_seconds * (1.5**attempt))
                             continue
                         else:
                             raise
@@ -131,15 +141,19 @@ class TestBrokerChaosFaults:
                     failed_orders += 1
 
         # Verify resilience - should recover from temporary faults
-        assert successful_orders >= 3, f"Only {successful_orders} orders succeeded despite retry logic"
-        assert failed_orders <= 1, f"Too many failures ({failed_orders}) - retry logic may be insufficient"
+        assert (
+            successful_orders >= 3
+        ), f"Only {successful_orders} orders succeeded despite retry logic"
+        assert (
+            failed_orders <= 1
+        ), f"Too many failures ({failed_orders}) - retry logic may be insufficient"
 
     @pytest.mark.asyncio
     async def test_broker_timeout_handling(self, chaos_test_app, order_factory):
         """Test system behavior under broker timeout conditions."""
         timeout_scenarios = [
-            {"delay_seconds": 0.5, "should_succeed": True},   # Fast response
-            {"delay_seconds": 1.5, "should_succeed": True},   # Moderate delay
+            {"delay_seconds": 0.5, "should_succeed": True},  # Fast response
+            {"delay_seconds": 1.5, "should_succeed": True},  # Moderate delay
             {"delay_seconds": 3.0, "should_succeed": False},  # Timeout (2s limit)
             {"delay_seconds": 5.0, "should_succeed": False},  # Severe timeout
         ]
@@ -152,11 +166,13 @@ class TestBrokerChaosFaults:
             return {
                 "id": f"delayed_order_{delay_seconds}",
                 "status": "accepted",
-                "processing_time": delay_seconds
+                "processing_time": delay_seconds,
             }
 
         # Mock broker service with timeout handling
-        with patch("backend.services.broker_service.BrokerService") as mock_broker_service:
+        with patch(
+            "backend.services.broker_service.BrokerService"
+        ) as mock_broker_service:
             mock_broker_instance = AsyncMock()
             mock_broker_service.return_value = mock_broker_instance
 
@@ -166,7 +182,7 @@ class TestBrokerChaosFaults:
                     # Use asyncio.wait_for to enforce timeout
                     result = await asyncio.wait_for(
                         delayed_broker_response(delay_seconds),
-                        timeout=2.0  # 2-second timeout
+                        timeout=2.0,  # 2-second timeout
                     )
                     return result
                 except TimeoutError:
@@ -175,13 +191,13 @@ class TestBrokerChaosFaults:
             # Test each timeout scenario
             for scenario in timeout_scenarios:
                 order_spec = order_factory(
-                    symbol="TIMEOUT_TEST",
-                    side="buy",
-                    quantity=100
+                    symbol="TIMEOUT_TEST", side="buy", quantity=100
                 )
 
                 try:
-                    result = await timeout_aware_submit(order_spec, scenario["delay_seconds"])
+                    result = await timeout_aware_submit(
+                        order_spec, scenario["delay_seconds"]
+                    )
                     success = True
                     error_type = None
                 except TimeoutException:
@@ -191,12 +207,14 @@ class TestBrokerChaosFaults:
                     success = False
                     error_type = type(e).__name__
 
-                timeout_results.append({
-                    "delay_seconds": scenario["delay_seconds"],
-                    "expected_success": scenario["should_succeed"],
-                    "actual_success": success,
-                    "error_type": error_type
-                })
+                timeout_results.append(
+                    {
+                        "delay_seconds": scenario["delay_seconds"],
+                        "expected_success": scenario["should_succeed"],
+                        "actual_success": success,
+                        "error_type": error_type,
+                    }
+                )
 
         # Verify timeout handling behavior
         for result in timeout_results:
@@ -243,7 +261,9 @@ class TestBrokerChaosFaults:
                 return {"status": "connected", "broker": "alpaca"}
 
         # Mock broker service with connection resilience
-        with patch("backend.services.broker_service.BrokerService") as mock_broker_service:
+        with patch(
+            "backend.services.broker_service.BrokerService"
+        ) as mock_broker_service:
             mock_broker_instance = AsyncMock()
             mock_broker_service.return_value = mock_broker_instance
 
@@ -257,11 +277,15 @@ class TestBrokerChaosFaults:
                             # First attempt - inject fault
                             await simulate_connection_fault(fault_type)
                         # Retry attempts - simulate recovery for recoverable faults
-                        elif fault_type in ["connection_refused", "ssl_error", "network_timeout"]:
+                        elif fault_type in [
+                            "connection_refused",
+                            "ssl_error",
+                            "network_timeout",
+                        ]:
                             return {
                                 "id": f"recovered_order_{fault_type}",
                                 "status": "accepted",
-                                "recovery_attempt": attempt
+                                "recovery_attempt": attempt,
                             }
                         else:
                             # Non-recoverable fault persists
@@ -283,9 +307,7 @@ class TestBrokerChaosFaults:
                 expected_recoverable = fault_scenario["recoverable"]
 
                 order_spec = order_factory(
-                    symbol=f"CONN_{fault_type.upper()}",
-                    side="buy",
-                    quantity=100
+                    symbol=f"CONN_{fault_type.upper()}", side="buy", quantity=100
                 )
 
                 try:
@@ -296,12 +318,14 @@ class TestBrokerChaosFaults:
                     recovered = False
                     error_type = type(e).__name__
 
-                connection_results.append({
-                    "fault_type": fault_type,
-                    "expected_recoverable": expected_recoverable,
-                    "actually_recovered": recovered,
-                    "error_type": error_type
-                })
+                connection_results.append(
+                    {
+                        "fault_type": fault_type,
+                        "expected_recoverable": expected_recoverable,
+                        "actually_recovered": recovered,
+                        "error_type": error_type,
+                    }
+                )
 
         # Verify connection resilience behavior
         for result in connection_results:
@@ -320,8 +344,16 @@ class TestBrokerChaosFaults:
         # Scenario: Some operations succeed, some fail - test graceful degradation
         operations = [
             {"operation": "submit_order", "symbol": "AAPL", "should_succeed": True},
-            {"operation": "submit_order", "symbol": "GOOGL", "should_succeed": False},  # Fails
-            {"operation": "cancel_order", "order_id": "order_123", "should_succeed": True},
+            {
+                "operation": "submit_order",
+                "symbol": "GOOGL",
+                "should_succeed": False,
+            },  # Fails
+            {
+                "operation": "cancel_order",
+                "order_id": "order_123",
+                "should_succeed": True,
+            },
             {"operation": "get_positions", "should_succeed": False},  # Fails
             {"operation": "submit_order", "symbol": "MSFT", "should_succeed": True},
             {"operation": "get_account", "should_succeed": False},  # Fails
@@ -330,7 +362,9 @@ class TestBrokerChaosFaults:
         operation_results = []
 
         # Mock broker service with partial failure injection
-        with patch("backend.services.broker_service.BrokerService") as mock_broker_service:
+        with patch(
+            "backend.services.broker_service.BrokerService"
+        ) as mock_broker_service:
             mock_broker_instance = AsyncMock()
             mock_broker_service.return_value = mock_broker_instance
 
@@ -339,16 +373,28 @@ class TestBrokerChaosFaults:
                 # Determine if this operation should fail based on test scenario
                 operation_config = next(
                     (op for op in operations if op["operation"] == operation_type),
-                    {"should_succeed": True}
+                    {"should_succeed": True},
                 )
 
                 if not operation_config["should_succeed"]:
                     # Simulate different types of failures
                     failure_types = [
-                        HTTPStatusError("Bad Request", request=MagicMock(), response=MagicMock(status_code=400)),
-                        HTTPStatusError("Unauthorized", request=MagicMock(), response=MagicMock(status_code=401)),
-                        HTTPStatusError("Rate Limited", request=MagicMock(), response=MagicMock(status_code=429)),
-                        Exception("Internal broker error")
+                        HTTPStatusError(
+                            "Bad Request",
+                            request=MagicMock(),
+                            response=MagicMock(status_code=400),
+                        ),
+                        HTTPStatusError(
+                            "Unauthorized",
+                            request=MagicMock(),
+                            response=MagicMock(status_code=401),
+                        ),
+                        HTTPStatusError(
+                            "Rate Limited",
+                            request=MagicMock(),
+                            response=MagicMock(status_code=429),
+                        ),
+                        Exception("Internal broker error"),
                     ]
 
                     failure = random.choice(failure_types)
@@ -358,13 +404,10 @@ class TestBrokerChaosFaults:
                     return {
                         "id": f"order_{kwargs.get('symbol', 'UNKNOWN')}",
                         "status": "accepted",
-                        "symbol": kwargs.get("symbol")
+                        "symbol": kwargs.get("symbol"),
                     }
                 elif operation_type == "cancel_order":
-                    return {
-                        "id": kwargs.get("order_id"),
-                        "status": "cancelled"
-                    }
+                    return {"id": kwargs.get("order_id"), "status": "cancelled"}
                 elif operation_type == "get_positions":
                     return [{"symbol": "AAPL", "qty": 100, "market_value": 15000}]
                 elif operation_type == "get_account":
@@ -378,14 +421,16 @@ class TestBrokerChaosFaults:
                 try:
                     if operation_type == "submit_order":
                         order_spec = order_factory(
-                            symbol=operation_config["symbol"],
-                            side="buy",
-                            quantity=100
+                            symbol=operation_config["symbol"], side="buy", quantity=100
                         )
-                        result = await partially_failing_operation("submit_order", symbol=operation_config["symbol"])
+                        result = await partially_failing_operation(
+                            "submit_order", symbol=operation_config["symbol"]
+                        )
 
                     elif operation_type == "cancel_order":
-                        result = await partially_failing_operation("cancel_order", order_id=operation_config["order_id"])
+                        result = await partially_failing_operation(
+                            "cancel_order", order_id=operation_config["order_id"]
+                        )
 
                     elif operation_type == "get_positions":
                         result = await partially_failing_operation("get_positions")
@@ -404,21 +449,27 @@ class TestBrokerChaosFaults:
                     error_type = type(e).__name__
                     result = None
 
-                operation_results.append({
-                    "operation": operation_type,
-                    "expected_success": expected_success,
-                    "actual_success": success,
-                    "error_type": error_type,
-                    "result": result
-                })
+                operation_results.append(
+                    {
+                        "operation": operation_type,
+                        "expected_success": expected_success,
+                        "actual_success": success,
+                        "error_type": error_type,
+                        "result": result,
+                    }
+                )
 
         # Verify partial failure handling
         successful_operations = [r for r in operation_results if r["actual_success"]]
         failed_operations = [r for r in operation_results if not r["actual_success"]]
 
         # Should have some successes and some failures as designed
-        assert len(successful_operations) == 3, f"Expected 3 successful operations, got {len(successful_operations)}"
-        assert len(failed_operations) == 3, f"Expected 3 failed operations, got {len(failed_operations)}"
+        assert (
+            len(successful_operations) == 3
+        ), f"Expected 3 successful operations, got {len(successful_operations)}"
+        assert (
+            len(failed_operations) == 3
+        ), f"Expected 3 failed operations, got {len(failed_operations)}"
 
         # Verify behavior matches expectations
         for result in operation_results:
@@ -426,9 +477,9 @@ class TestBrokerChaosFaults:
             actual = result["actual_success"]
             operation = result["operation"]
 
-            assert expected == actual, (
-                f"Operation {operation} success mismatch: expected {expected}, got {actual}"
-            )
+            assert (
+                expected == actual
+            ), f"Operation {operation} success mismatch: expected {expected}, got {actual}"
 
     @pytest.mark.asyncio
     async def test_broker_rate_limiting_backoff(self, chaos_test_app, order_factory):
@@ -458,8 +509,8 @@ class TestBrokerChaosFaults:
                         request=MagicMock(),
                         response=MagicMock(
                             status_code=429,
-                            headers={"Retry-After": str(scenario["retry_after"])}
-                        )
+                            headers={"Retry-After": str(scenario["retry_after"])},
+                        ),
                     )
                     raise error
                 else:
@@ -467,13 +518,15 @@ class TestBrokerChaosFaults:
                     return {
                         "id": "rate_limit_recovered",
                         "status": "accepted",
-                        "attempt": attempt_count
+                        "attempt": attempt_count,
                     }
             else:
                 return {"id": "final_success", "status": "accepted"}
 
         # Mock broker service with rate limit handling
-        with patch("backend.services.broker_service.BrokerService") as mock_broker_service:
+        with patch(
+            "backend.services.broker_service.BrokerService"
+        ) as mock_broker_service:
             mock_broker_instance = AsyncMock()
             mock_broker_service.return_value = mock_broker_instance
 
@@ -487,7 +540,10 @@ class TestBrokerChaosFaults:
                         return result
 
                     except HTTPStatusError as e:
-                        if e.response.status_code == 429 and retry_attempt < max_rate_limit_retries:
+                        if (
+                            e.response.status_code == 429
+                            and retry_attempt < max_rate_limit_retries
+                        ):
                             # Extract Retry-After header
                             retry_after = int(e.response.headers.get("Retry-After", 1))
 
@@ -496,11 +552,13 @@ class TestBrokerChaosFaults:
                             await asyncio.sleep(retry_after)
                             backoff_end = asyncio.get_event_loop().time()
 
-                            backoff_times.append({
-                                "attempt": retry_attempt + 1,
-                                "retry_after": retry_after,
-                                "actual_backoff": backoff_end - backoff_start
-                            })
+                            backoff_times.append(
+                                {
+                                    "attempt": retry_attempt + 1,
+                                    "retry_after": retry_after,
+                                    "actual_backoff": backoff_end - backoff_start,
+                                }
+                            )
                             continue
                         else:
                             raise
@@ -509,16 +567,18 @@ class TestBrokerChaosFaults:
 
             # Test rate limit resilience
             order_spec = order_factory(
-                symbol="RATE_LIMIT_TEST",
-                side="buy",
-                quantity=100
+                symbol="RATE_LIMIT_TEST", side="buy", quantity=100
             )
 
             result = await rate_limit_aware_submit(order_spec)
 
         # Verify rate limit backoff behavior
-        assert result["status"] == "accepted", "Order should succeed after rate limit backoff"
-        assert len(backoff_times) == 2, f"Expected 2 backoff attempts, got {len(backoff_times)}"
+        assert (
+            result["status"] == "accepted"
+        ), "Order should succeed after rate limit backoff"
+        assert (
+            len(backoff_times) == 2
+        ), f"Expected 2 backoff attempts, got {len(backoff_times)}"
 
         # Verify backoff times respect Retry-After headers
         for i, backoff in enumerate(backoff_times):
@@ -526,26 +586,45 @@ class TestBrokerChaosFaults:
             actual_backoff = backoff["actual_backoff"]
 
             # Allow some tolerance for timing precision
-            assert abs(actual_backoff - expected_retry_after) < 0.1, (
-                f"Backoff time {actual_backoff:.2f}s doesn't match Retry-After {expected_retry_after}s"
-            )
+            assert (
+                abs(actual_backoff - expected_retry_after) < 0.1
+            ), f"Backoff time {actual_backoff:.2f}s doesn't match Retry-After {expected_retry_after}s"
 
     @pytest.mark.asyncio
-    async def test_broker_data_corruption_detection(self, chaos_test_app, order_factory):
+    async def test_broker_data_corruption_detection(
+        self, chaos_test_app, order_factory
+    ):
         """Test detection and handling of corrupted broker responses."""
         # Data corruption scenarios
         corruption_scenarios = [
-            {"scenario": "malformed_json", "data": '{"id": "order_123", "status": "accepted"'},  # Missing closing brace
-            {"scenario": "invalid_fields", "data": {"id": None, "status": "accepted", "symbol": ""}},  # Invalid values
-            {"scenario": "missing_required", "data": {"status": "accepted"}},  # Missing required field 'id'
-            {"scenario": "unexpected_structure", "data": {"order": {"nested": {"id": "order_123"}}}},  # Wrong structure
-            {"scenario": "valid_response", "data": {"id": "order_123", "status": "accepted", "symbol": "AAPL"}},  # Valid for comparison
+            {
+                "scenario": "malformed_json",
+                "data": '{"id": "order_123", "status": "accepted"',
+            },  # Missing closing brace
+            {
+                "scenario": "invalid_fields",
+                "data": {"id": None, "status": "accepted", "symbol": ""},
+            },  # Invalid values
+            {
+                "scenario": "missing_required",
+                "data": {"status": "accepted"},
+            },  # Missing required field 'id'
+            {
+                "scenario": "unexpected_structure",
+                "data": {"order": {"nested": {"id": "order_123"}}},
+            },  # Wrong structure
+            {
+                "scenario": "valid_response",
+                "data": {"id": "order_123", "status": "accepted", "symbol": "AAPL"},
+            },  # Valid for comparison
         ]
 
         corruption_results = []
 
         # Mock broker service with corruption detection
-        with patch("backend.services.broker_service.BrokerService") as mock_broker_service:
+        with patch(
+            "backend.services.broker_service.BrokerService"
+        ) as mock_broker_service:
             mock_broker_instance = AsyncMock()
             mock_broker_service.return_value = mock_broker_instance
 
@@ -566,7 +645,9 @@ class TestBrokerChaosFaults:
                             raise ValueError(f"Missing or null required field: {field}")
 
                     # Check field validity
-                    if not response_data.get("id") or not isinstance(response_data["id"], str):
+                    if not response_data.get("id") or not isinstance(
+                        response_data["id"], str
+                    ):
                         raise ValueError("Invalid order ID in broker response")
 
                     if response_data.get("symbol") == "":
@@ -604,23 +685,29 @@ class TestBrokerChaosFaults:
                     error_type = str(e)
                     result = None
 
-                corruption_results.append({
-                    "scenario": scenario_name,
-                    "success": success,
-                    "error_type": error_type,
-                    "expected_valid": scenario_name == "valid_response"
-                })
+                corruption_results.append(
+                    {
+                        "scenario": scenario_name,
+                        "success": success,
+                        "error_type": error_type,
+                        "expected_valid": scenario_name == "valid_response",
+                    }
+                )
 
         # Verify corruption detection
         valid_responses = [r for r in corruption_results if r["success"]]
         corrupted_responses = [r for r in corruption_results if not r["success"]]
 
         # Only the valid response should succeed
-        assert len(valid_responses) == 1, f"Expected 1 valid response, got {len(valid_responses)}"
+        assert (
+            len(valid_responses) == 1
+        ), f"Expected 1 valid response, got {len(valid_responses)}"
         assert valid_responses[0]["scenario"] == "valid_response"
 
         # All corruption scenarios should be detected
-        assert len(corrupted_responses) == 4, f"Expected 4 corrupted responses detected, got {len(corrupted_responses)}"
+        assert (
+            len(corrupted_responses) == 4
+        ), f"Expected 4 corrupted responses detected, got {len(corrupted_responses)}"
 
         # Verify specific corruption types are caught
         corruption_types = {r["scenario"]: r["error_type"] for r in corrupted_responses}

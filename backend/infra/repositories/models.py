@@ -2,6 +2,7 @@
 Models repository - manages ML model registry and metadata.
 Implements async CRUD operations with proper error handling.
 """
+
 from datetime import datetime
 import logging
 from typing import Any
@@ -97,7 +98,9 @@ class ModelsRepo:
                     "Duplicate model registration attempted",
                     extra={"name": name, "version": version},
                 )
-                raise DuplicateModelError(f"Model {name} version {version} already exists") from e
+                raise DuplicateModelError(
+                    f"Model {name} version {version} already exists"
+                ) from e
 
             logger.error(
                 "Failed to register model",
@@ -131,7 +134,8 @@ class ModelsRepo:
             raise ModelNotFoundError(f"Model {name} version {version} not found")
 
         logger.info(
-            "Model status updated", extra={"name": name, "version": version, "status": status}
+            "Model status updated",
+            extra={"name": name, "version": version, "status": status},
         )
 
     async def update_performance_metrics(
@@ -185,7 +189,9 @@ class ModelsRepo:
             },
         )
 
-    async def get_model_by_name_version(self, name: str, version: str) -> ModelRegistry | None:
+    async def get_model_by_name_version(
+        self, name: str, version: str
+    ) -> ModelRegistry | None:
         """
         Get model by name and version.
 
@@ -216,7 +222,9 @@ class ModelsRepo:
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
 
-    async def get_models_by_name(self, name: str, status: str | None = None) -> list[ModelRegistry]:
+    async def get_models_by_name(
+        self, name: str, status: str | None = None
+    ) -> list[ModelRegistry]:
         """
         Get all versions of a model by name.
 
@@ -232,7 +240,11 @@ class ModelsRepo:
         if status:
             conditions.append(ModelRegistry.status == status)
 
-        stmt = select(ModelRegistry).where(and_(*conditions)).order_by(ModelRegistry.version.desc())
+        stmt = (
+            select(ModelRegistry)
+            .where(and_(*conditions))
+            .order_by(ModelRegistry.version.desc())
+        )
 
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
@@ -295,7 +307,9 @@ class ModelsRepo:
         # First, demote all current production models for this name
         await self.session.execute(
             update(ModelRegistry)
-            .where(and_(ModelRegistry.name == name, ModelRegistry.status == "production"))
+            .where(
+                and_(ModelRegistry.name == name, ModelRegistry.status == "production")
+            )
             .values(status="archived", updated_at=datetime.utcnow())
         )
 
@@ -313,7 +327,9 @@ class ModelsRepo:
         if not promoted_id:
             raise ModelNotFoundError(f"Model {name} version {version} not found")
 
-        logger.info("Model promoted to production", extra={"name": name, "version": version})
+        logger.info(
+            "Model promoted to production", extra={"name": name, "version": version}
+        )
 
     async def deprecate_model(self, name: str, version: str) -> None:
         """
@@ -366,7 +382,9 @@ class ModelsRepo:
         comparisons = []
         for model in models:
             metric_value = (
-                model.performance_metrics.get(metric_key) if model.performance_metrics else None
+                model.performance_metrics.get(metric_key)
+                if model.performance_metrics
+                else None
             )
 
             comparisons.append(
@@ -446,7 +464,10 @@ class ModelsRepo:
         # For safety, we'll just count for now rather than actually delete
         # In production, you might want to move to archive table first
         stmt = select(ModelRegistry).where(
-            and_(ModelRegistry.status == "deprecated", ModelRegistry.updated_at < cutoff_date)
+            and_(
+                ModelRegistry.status == "deprecated",
+                ModelRegistry.updated_at < cutoff_date,
+            )
         )
 
         result = await self.session.execute(stmt)

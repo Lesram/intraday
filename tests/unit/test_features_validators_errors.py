@@ -225,7 +225,9 @@ class TestLookaheadDetectionEdgeCases:
             index=dates,
         )
 
-        with pytest.raises(LookaheadLeakError, match="Potential lookahead bias detected"):
+        with pytest.raises(
+            LookaheadLeakError, match="Potential lookahead bias detected"
+        ):
             guard_no_lookahead(features, price, threshold=0.6)
 
     @pytest.mark.unit
@@ -265,7 +267,11 @@ class TestLookaheadDetectionEdgeCases:
         """Test lookahead detection with constant features."""
         dates = pd.date_range("2023-01-01", periods=200, freq="1min", tz="UTC")
         features = pd.DataFrame(
-            {"constant": [42.0] * 200, "zero": [0.0] * 200, "normal": np.random.randn(200)},
+            {
+                "constant": [42.0] * 200,
+                "zero": [0.0] * 200,
+                "normal": np.random.randn(200),
+            },
             index=dates,
         )
         price = pd.Series(100 + np.arange(200), index=dates)
@@ -281,7 +287,9 @@ class TestLookaheadDetectionEdgeCases:
             "2023-01-02", periods=100, freq="1min", tz="UTC"
         )  # Different dates
 
-        features = pd.DataFrame({"feature1": np.random.randn(200)}, index=dates_features)
+        features = pd.DataFrame(
+            {"feature1": np.random.randn(200)}, index=dates_features
+        )
         price = pd.Series(np.random.randn(100), index=dates_price)
 
         # Should handle mismatched indices by taking intersection
@@ -354,7 +362,9 @@ class TestFeatureAlignmentValidation:
         dates_features = pd.date_range("2023-01-01", periods=100, freq="1min", tz="UTC")
         dates_target = pd.date_range("2023-01-02", periods=50, freq="1min", tz="UTC")
 
-        features = pd.DataFrame({"feature1": np.random.randn(100)}, index=dates_features)
+        features = pd.DataFrame(
+            {"feature1": np.random.randn(100)}, index=dates_features
+        )
         target = pd.Series(np.random.randn(50), index=dates_target)
 
         with pytest.raises(ValueError, match="identical indices"):
@@ -365,7 +375,9 @@ class TestFeatureAlignmentValidation:
         """Test feature alignment with different lengths."""
         dates = pd.date_range("2023-01-01", periods=100, freq="1min", tz="UTC")
         features = pd.DataFrame({"feature1": np.random.randn(100)}, index=dates)
-        target = pd.Series(np.random.randn(50), index=dates[:50])  # Same index range but shorter
+        target = pd.Series(
+            np.random.randn(50), index=dates[:50]
+        )  # Same index range but shorter
 
         with pytest.raises(ValueError, match="same length"):
             validate_feature_alignment(features, target)
@@ -387,7 +399,8 @@ class TestFeatureAlignmentValidation:
         """Test proper feature-target alignment passes validation."""
         dates = pd.date_range("2023-01-01", periods=100, freq="1min", tz="UTC")
         features = pd.DataFrame(
-            {"feature1": np.random.randn(100), "feature2": np.random.randn(100)}, index=dates
+            {"feature1": np.random.randn(100), "feature2": np.random.randn(100)},
+            index=dates,
         )
 
         # Properly constructed target with NaN at the end (future shift)
@@ -407,9 +420,25 @@ class TestForwardFillLeakageDetection:
         """Test detection of excessive forward fills."""
         df = pd.DataFrame(
             {
-                "price": [100, 100, 100, 100, 100, 101, 102],  # 5 consecutive identical values
+                "price": [
+                    100,
+                    100,
+                    100,
+                    100,
+                    100,
+                    101,
+                    102,
+                ],  # 5 consecutive identical values
                 "volume": [1000, 1001, 1002, 1003, 1004, 1005, 1006],  # No forward fill
-                "bad_feature": [50, 50, 50, 50, 50, 50, 50],  # 7 consecutive identical (bad)
+                "bad_feature": [
+                    50,
+                    50,
+                    50,
+                    50,
+                    50,
+                    50,
+                    50,
+                ],  # 7 consecutive identical (bad)
             }
         )
 
@@ -424,7 +453,15 @@ class TestForwardFillLeakageDetection:
         df = pd.DataFrame(
             {
                 "price": [100, 100, 100, 101, 102, 102, 103],  # Max 3 consecutive
-                "volume": [1000, 1000, 1001, 1002, 1003, 1003, 1004],  # Max 2 consecutive
+                "volume": [
+                    1000,
+                    1000,
+                    1001,
+                    1002,
+                    1003,
+                    1003,
+                    1004,
+                ],  # Max 2 consecutive
             }
         )
 
@@ -451,7 +488,14 @@ class TestForwardFillLeakageDetection:
         df = pd.DataFrame(
             {
                 "precise": [1.0, 1.0, 1.0, 1.0, 1.0, 2.0],  # Exactly equal
-                "imprecise": [1.0, 1.0000000001, 1.0000000002, 1.0, 1.0, 2.0],  # Tiny differences
+                "imprecise": [
+                    1.0,
+                    1.0000000001,
+                    1.0000000002,
+                    1.0,
+                    1.0,
+                    2.0,
+                ],  # Tiny differences
             }
         )
 
@@ -480,7 +524,13 @@ class TestValidatorErrorHandling:
     def test_validators_with_single_row(self):
         """Test validators with single-row DataFrames."""
         single_row = pd.DataFrame(
-            {"open": [100.0], "high": [105.0], "low": [98.0], "close": [104.0], "volume": [1000]},
+            {
+                "open": [100.0],
+                "high": [105.0],
+                "low": [98.0],
+                "close": [104.0],
+                "volume": [1000],
+            },
             index=pd.date_range("2023-01-01", periods=1, freq="1D", tz="UTC"),
         )
 
@@ -519,14 +569,18 @@ class TestValidatorErrorHandling:
         features = pd.DataFrame(
             {f"feature_{i}": np.random.randn(n_periods) for i in range(10)}, index=dates
         )
-        price = pd.Series(100 + np.cumsum(np.random.randn(n_periods) * 0.1), index=dates)
+        price = pd.Series(
+            100 + np.cumsum(np.random.randn(n_periods) * 0.1), index=dates
+        )
 
         # Test should complete in reasonable time (< 10 seconds)
         start_time = time.time()
         guard_no_lookahead(features, price, threshold=0.8, window_size=100)
         elapsed_time = time.time() - start_time
 
-        assert elapsed_time < 10.0, f"Lookahead detection took {elapsed_time:.2f} seconds"
+        assert (
+            elapsed_time < 10.0
+        ), f"Lookahead detection took {elapsed_time:.2f} seconds"
 
     @pytest.mark.unit
     def test_synthetic_lookahead_with_edge_case_correlations(self):
@@ -565,7 +619,9 @@ class TestValidatorErrorHandling:
             pass  # This is acceptable
 
         # Sine wave and random walk should generally pass
-        guard_no_lookahead_synthetic(features, feature_cols=["sine_wave"], accuracy_threshold=0.9)
+        guard_no_lookahead_synthetic(
+            features, feature_cols=["sine_wave"], accuracy_threshold=0.9
+        )
 
 
 class TestRealWorldValidationScenarios:
@@ -627,7 +683,9 @@ class TestRealWorldValidationScenarios:
                 "high": np.random.uniform(0.05, 0.08, 20),
                 "low": np.random.uniform(0.005, 0.02, 20),
                 "close": np.random.uniform(0.02, 0.06, 20),
-                "volume": np.random.exponential(100000, 20),  # High volume typical for penny stocks
+                "volume": np.random.exponential(
+                    100000, 20
+                ),  # High volume typical for penny stocks
             },
             index=dates,
         )
@@ -638,7 +696,9 @@ class TestRealWorldValidationScenarios:
     def test_validation_with_crypto_data_characteristics(self):
         """Test validation with cryptocurrency-like data (24/7, high volatility)."""
         # 24/7 data with high volatility
-        dates = pd.date_range("2023-01-01", periods=168, freq="1H", tz="UTC")  # One week hourly
+        dates = pd.date_range(
+            "2023-01-01", periods=168, freq="1H", tz="UTC"
+        )  # One week hourly
 
         # High volatility returns
         returns = np.random.normal(0, 0.03, 168)  # 3% hourly volatility

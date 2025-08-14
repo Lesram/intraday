@@ -1,0 +1,227 @@
+name: Nightly Deep Tests
+
+on:
+  schedule:
+    # Run at 2 AM UTC every day
+    - cron: '0 2 * * *'
+  workflow_dispatch:  # Allow manual triggering
+
+env:
+  PYTHON_VERSION: "3.11"
+
+jobs:
+  deep-tests:
+    name: "🔬 Deep Testing Suite"
+    runs-on: ubuntu-latest
+    timeout-minutes: 60  # Allow up to 1 hour for comprehensive testing
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: testpass
+          POSTGRES_USER: testuser
+          POSTGRES_DB: testdb
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
+          
+          # Install additional testing dependencies
+          pip install hypothesis pytest-benchmark pytest-timeout pytest-randomly
+
+      - name: Set up test environment
+        env:
+          DATABASE_URL: postgresql://testuser:testpass@localhost:5432/testdb
+          REDIS_URL: redis://localhost:6379/0
+          TESTING: true
+        run: |
+          # Run database migrations if they exist
+          if [ -f "alembic/env.py" ]; then
+            pip install alembic
+            alembic upgrade head
+          fi
+
+      - name: Run deep test suite
+        env:
+          DATABASE_URL: postgresql://testuser:testpass@localhost:5432/testdb
+          REDIS_URL: redis://localhost:6379/0
+          TESTING: true
+          PYTHONPATH: .
+          TEST_SEED: 42  # Deterministic tests
+        run: |
+          # Run deep tests using Make target
+          make test-deep
+        timeout-minutes: 45
+        continue-on-error: false
+
+      - name: Generate comprehensive coverage report
+        if: always()
+        env:
+          DATABASE_URL: postgresql://testuser:testpass@localhost:5432/testdb
+          REDIS_URL: redis://localhost:6379/0
+          TESTING: true
+          PYTHONPATH: .
+          TEST_SEED: 42
+        run: |
+          # Generate coverage from all test types
+          coverage run --source=backend --omit="*/tests/*" -m pytest \
+            tests/ -x --tb=short --disable-warnings
+          
+          coverage xml -o deep-coverage.xml
+          coverage html -d deep-htmlcov
+          coverage report --show-missing
+          
+          echo "📊 Deep test coverage complete"
+
+      - name: Performance regression check
+        if: always()
+        run: |
+          # Check if performance results exist
+          if [ -f "performance-results.json" ]; then
+            echo "📈 Performance regression analysis"
+            python scripts/ci/check_performance_regression.py performance-results.json || true
+          else
+            echo "No performance results found for regression analysis"
+          fi
+
+      - name: Upload deep test results
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: deep-test-results
+          path: |
+            deep-coverage.xml
+            deep-htmlcov/
+            performance-results.json
+            test_reports/
+          retention-days: 7
+
+      - name: Publish deep coverage to Pages
+        if: success()
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./deep-htmlcov
+          destination_dir: deep-coverage
+
+      - name: Notify on failure
+        if: failure()
+        uses: actions/github-script@v6
+        with:
+          script: |
+            // Create issue or notify about nightly test failures
+            const title = `🚨 Nightly Deep Tests Failed - ${new Date().toISOString().split('T')[0]}`;
+            const body = `
+            ## Nightly Deep Test Failure
+            
+            **Workflow**: ${{ github.workflow }}
+            **Run ID**: ${{ github.run_id }}
+            **Commit**: ${{ github.sha }}
+            **Branch**: ${{ github.ref_name }}
+            
+            ### Failed Components
+            - Deep testing suite encountered failures
+            - Check logs: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+            
+            ### Next Steps
+            1. Review test failures in the workflow logs
+            2. Check for performance regressions
+            3. Validate test environment setup
+            4. Fix issues and monitor next nightly run
+            
+            ### Auto-Resolution
+            This issue will be automatically closed if tomorrow's nightly run succeeds.
+            
+            /cc @team-platform
+            `;
+            
+            // Check if there's already an open nightly failure issue
+            const issues = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              labels: ['nightly-failure', 'automated'],
+              state: 'open'
+            });
+            
+            if (issues.data.length === 0) {
+              // Create new issue
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: title,
+                body: body,
+                labels: ['nightly-failure', 'automated', 'bug']
+              });
+            } else {
+              // Update existing issue
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issues.data[0].number,
+                body: `⚠️ Nightly tests failed again on ${new Date().toISOString().split('T')[0]}\n\nRun: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}`
+              });
+            }
+
+  close-resolved-issues:
+    name: "✅ Close Resolved Issues"
+    runs-on: ubuntu-latest
+    needs: deep-tests
+    if: success()
+
+    steps:
+      - name: Close resolved nightly issues
+        uses: actions/github-script@v6
+        with:
+          script: |
+            // Find open nightly failure issues and close them
+            const issues = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              labels: ['nightly-failure', 'automated'],
+              state: 'open'
+            });
+            
+            for (const issue of issues.data) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                body: `✅ **Auto-Resolved**: Nightly deep tests passed successfully on ${new Date().toISOString().split('T')[0]}\n\nRun: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}`
+              });
+              
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                state: 'closed'
+              });
+            }

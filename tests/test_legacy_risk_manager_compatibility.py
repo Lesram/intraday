@@ -3,6 +3,7 @@ Legacy Risk Manager Compatibility Tests
 Tests to ensure the legacy RiskManager wrapper maintains backward compatibility.
 This file specifically tests the deprecated synchronous interface.
 """
+
 import warnings
 
 import pytest
@@ -31,7 +32,9 @@ class TestLegacyRiskManagerCompatibility:
 
             # Test basic order - we don't care if it's allowed or not,
             # just that it returns the correct tuple format
-            result = self.risk_manager.before_order(symbol="AAPL", intended_qty=50.0, price=150.0)
+            result = self.risk_manager.before_order(
+                symbol="AAPL", intended_qty=50.0, price=150.0
+            )
 
             # Verify it returns a tuple with exactly 3 elements
             assert isinstance(result, tuple)
@@ -96,8 +99,12 @@ class TestLegacyRiskManagerCompatibility:
     @pytest.mark.unit
     def test_legacy_before_order_emits_deprecation_warning(self):
         """Test that legacy before_order emits deprecation warning."""
-        with pytest.warns(DeprecationWarning, match="Synchronous before_order is deprecated"):
-            self.risk_manager.before_order(symbol="AAPL", intended_qty=10.0, price=150.0)
+        with pytest.warns(
+            DeprecationWarning, match="Synchronous before_order is deprecated"
+        ):
+            self.risk_manager.before_order(
+                symbol="AAPL", intended_qty=10.0, price=150.0
+            )
 
     @pytest.mark.unit
     def test_legacy_before_order_without_price(self):

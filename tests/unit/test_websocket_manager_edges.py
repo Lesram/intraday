@@ -11,7 +11,7 @@ from unittest.mock import AsyncMock
 from fastapi import WebSocketDisconnect
 import pytest
 
-from backend.api.main import WebSocketClientManager
+from backend.api.websocket_manager import WebSocketClientManager
 
 
 class TestWebSocketClientManager:

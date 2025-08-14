@@ -34,7 +34,7 @@ def mock_app_state():
 @pytest.fixture
 def client(mock_app_state):
     """Test client fixture with mocked application state."""
-    with patch('backend.api.main.app.state', mock_app_state):
+    with patch("backend.api.main.app.state", mock_app_state):
         return TestClient(app)
 
 
@@ -84,8 +84,7 @@ class TestAuthentication:
     def test_login_with_valid_credentials(self, client, user_repo):
         """Test successful login with valid credentials."""
         response = client.post(
-            "/auth/login",
-            data={"username": "admin", "password": "admin123"}
+            "/auth/login", data={"username": "admin", "password": "admin123"}
         )
 
         assert response.status_code == 200
@@ -102,8 +101,7 @@ class TestAuthentication:
     def test_login_with_invalid_credentials(self, client, user_repo):
         """Test login failure with invalid credentials."""
         response = client.post(
-            "/auth/login",
-            data={"username": "admin", "password": "wrongpassword"}
+            "/auth/login", data={"username": "admin", "password": "wrongpassword"}
         )
 
         assert response.status_code == 401
@@ -116,8 +114,7 @@ class TestAuthentication:
     def test_login_with_nonexistent_user(self, client, user_repo):
         """Test login failure with non-existent user."""
         response = client.post(
-            "/auth/login",
-            data={"username": "nonexistent", "password": "password"}
+            "/auth/login", data={"username": "nonexistent", "password": "password"}
         )
 
         assert response.status_code == 401
@@ -129,8 +126,7 @@ class TestAuthentication:
     def test_token_validation_with_valid_token(self, client, admin_token):
         """Test token validation with valid JWT."""
         response = client.post(
-            "/auth/token/validate",
-            headers={"Authorization": f"Bearer {admin_token}"}
+            "/auth/token/validate", headers={"Authorization": f"Bearer {admin_token}"}
         )
 
         assert response.status_code == 200
@@ -155,8 +151,7 @@ class TestAuthentication:
     def test_get_current_user_info(self, client, admin_token):
         """Test getting current user information."""
         response = client.get(
-            "/auth/me",
-            headers={"Authorization": f"Bearer {admin_token}"}
+            "/auth/me", headers={"Authorization": f"Bearer {admin_token}"}
         )
 
         assert response.status_code == 200
@@ -185,16 +180,13 @@ class TestAPIKeyAuthentication:
     def test_api_key_authentication(self, client):
         """Test API key authentication for machine-to-machine access."""
         # Use patch to mock the settings for the duration of this test
-        with patch('backend.infra.security.get_settings') as mock_get_settings:
+        with patch("backend.infra.security.get_settings") as mock_get_settings:
             mock_settings = MagicMock()
             mock_settings.api_keys = ["test-api-key-123"]
             mock_settings.security_dev_mode = False
             mock_get_settings.return_value = mock_settings
 
-            response = client.get(
-                "/auth/me",
-                headers={"X-API-Key": "test-api-key-123"}
-            )
+            response = client.get("/auth/me", headers={"X-API-Key": "test-api-key-123"})
 
             assert response.status_code == 200
             data = response.json()
@@ -206,16 +198,13 @@ class TestAPIKeyAuthentication:
     @pytest.mark.unit
     def test_invalid_api_key(self, client):
         """Test rejection of invalid API key."""
-        with patch('backend.infra.security.get_settings') as mock_get_settings:
+        with patch("backend.infra.security.get_settings") as mock_get_settings:
             mock_settings = MagicMock()
             mock_settings.api_keys = ["valid-key"]
             mock_settings.security_dev_mode = False
             mock_get_settings.return_value = mock_settings
 
-            response = client.get(
-                "/auth/me",
-                headers={"X-API-Key": "invalid-key"}
-            )
+            response = client.get("/auth/me", headers={"X-API-Key": "invalid-key"})
 
             assert response.status_code == 401
 
@@ -226,15 +215,12 @@ class TestDevMode:
     @pytest.mark.unit
     def test_dev_mode_bypass(self, client):
         """Test development mode authentication bypass."""
-        with patch('backend.infra.security.get_settings') as mock_get_settings:
+        with patch("backend.infra.security.get_settings") as mock_get_settings:
             mock_settings = MagicMock()
             mock_settings.security_dev_mode = True
             mock_get_settings.return_value = mock_settings
 
-            response = client.get(
-                "/auth/me",
-                headers={"X-Dev-Bypass": "true"}
-            )
+            response = client.get("/auth/me", headers={"X-Dev-Bypass": "true"})
 
             assert response.status_code == 200
             data = response.json()
@@ -252,7 +238,7 @@ class TestRoleBasedAccessControl:
         """Test that trader role can access trading endpoints."""
         response = client.get(
             "/api/v1/trades/history",
-            headers={"Authorization": f"Bearer {trader_token}"}
+            headers={"Authorization": f"Bearer {trader_token}"},
         )
 
         assert response.status_code == 200
@@ -262,8 +248,7 @@ class TestRoleBasedAccessControl:
     def test_trader_can_access_model_status(self, client, trader_token):
         """Test that trader role can access model status."""
         response = client.get(
-            "/api/v1/models/status",
-            headers={"Authorization": f"Bearer {trader_token}"}
+            "/api/v1/models/status", headers={"Authorization": f"Bearer {trader_token}"}
         )
 
         assert response.status_code == 200
@@ -273,8 +258,7 @@ class TestRoleBasedAccessControl:
     def test_trader_can_access_risk_metrics(self, client, trader_token):
         """Test that trader role can access risk metrics."""
         response = client.get(
-            "/api/v1/risk/metrics",
-            headers={"Authorization": f"Bearer {trader_token}"}
+            "/api/v1/risk/metrics", headers={"Authorization": f"Bearer {trader_token}"}
         )
 
         assert response.status_code == 200
@@ -285,8 +269,7 @@ class TestRoleBasedAccessControl:
         """Test that trader role cannot access admin-only endpoints."""
         # Try to trigger model training (admin only)
         response = client.post(
-            "/api/v1/models/train",
-            headers={"Authorization": f"Bearer {trader_token}"}
+            "/api/v1/models/train", headers={"Authorization": f"Bearer {trader_token}"}
         )
 
         assert response.status_code == 403
@@ -300,7 +283,7 @@ class TestRoleBasedAccessControl:
         response = client.put(
             "/api/v1/risk/limits",
             json={"max_position_size": 20000.0},
-            headers={"Authorization": f"Bearer {trader_token}"}
+            headers={"Authorization": f"Bearer {trader_token}"},
         )
 
         assert response.status_code == 403
@@ -313,15 +296,13 @@ class TestRoleBasedAccessControl:
         """Test that admin role can access all endpoints."""
         # Test trading endpoints
         response = client.get(
-            "/api/v1/trades/history",
-            headers={"Authorization": f"Bearer {admin_token}"}
+            "/api/v1/trades/history", headers={"Authorization": f"Bearer {admin_token}"}
         )
         assert response.status_code == 200
 
         # Test model training (admin only)
         response = client.post(
-            "/api/v1/models/train",
-            headers={"Authorization": f"Bearer {admin_token}"}
+            "/api/v1/models/train", headers={"Authorization": f"Bearer {admin_token}"}
         )
         assert response.status_code == 200
 
@@ -329,7 +310,7 @@ class TestRoleBasedAccessControl:
         response = client.put(
             "/api/v1/risk/limits",
             json={"max_position_size": 20000.0},
-            headers={"Authorization": f"Bearer {admin_token}"}
+            headers={"Authorization": f"Bearer {admin_token}"},
         )
         assert response.status_code == 200
 
@@ -339,21 +320,19 @@ class TestRoleBasedAccessControl:
         # Try trading endpoints
         response = client.get(
             "/api/v1/trades/history",
-            headers={"Authorization": f"Bearer {viewer_token}"}
+            headers={"Authorization": f"Bearer {viewer_token}"},
         )
         assert response.status_code == 403
 
         # Try model endpoints
         response = client.get(
-            "/api/v1/models/status",
-            headers={"Authorization": f"Bearer {viewer_token}"}
+            "/api/v1/models/status", headers={"Authorization": f"Bearer {viewer_token}"}
         )
         assert response.status_code == 403
 
         # Try risk endpoints
         response = client.get(
-            "/api/v1/risk/metrics",
-            headers={"Authorization": f"Bearer {viewer_token}"}
+            "/api/v1/risk/metrics", headers={"Authorization": f"Bearer {viewer_token}"}
         )
         assert response.status_code == 403
 
@@ -373,7 +352,9 @@ class TestUnauthorizedAccess:
             response = getattr(client, method.lower())(endpoint)
             assert response.status_code == 401
             data = response.json()
-            error_message = data.get("detail") or data.get("error", {}).get("message", "")
+            error_message = data.get("detail") or data.get("error", {}).get(
+                "message", ""
+            )
             assert "Authentication required" in error_message
 
     @pytest.mark.unit
@@ -441,8 +422,7 @@ class TestTokenSecurity:
         expired_token = create_access_token("admin", ["admin"], expires_minutes=-1)
 
         response = client.get(
-            "/auth/me",
-            headers={"Authorization": f"Bearer {expired_token}"}
+            "/auth/me", headers={"Authorization": f"Bearer {expired_token}"}
         )
 
         assert response.status_code == 401
@@ -454,8 +434,7 @@ class TestTokenSecurity:
     def test_malformed_token_rejection(self, client):
         """Test that malformed tokens are rejected."""
         response = client.get(
-            "/auth/me",
-            headers={"Authorization": "Bearer invalid.token.format"}
+            "/auth/me", headers={"Authorization": "Bearer invalid.token.format"}
         )
 
         assert response.status_code == 401
@@ -465,7 +444,7 @@ class TestTokenSecurity:
         """Test that tokens without Bearer prefix are rejected."""
         response = client.get(
             "/auth/me",
-            headers={"Authorization": admin_token}  # Missing "Bearer " prefix
+            headers={"Authorization": admin_token},  # Missing "Bearer " prefix
         )
 
         assert response.status_code == 401

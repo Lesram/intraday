@@ -2,6 +2,7 @@
 Tests for the persistence layer repositories.
 Tests all CRUD operations, idempotency, and error handling.
 """
+
 from datetime import datetime, timedelta
 from decimal import Decimal
 import uuid
@@ -28,11 +29,7 @@ TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
 @pytest.fixture
 async def async_engine():
     """Create test async engine."""
-    engine = create_async_engine(
-        TEST_DATABASE_URL,
-        echo=False,
-        future=True
-    )
+    engine = create_async_engine(TEST_DATABASE_URL, echo=False, future=True)
 
     # Create all tables
     async with engine.begin() as conn:
@@ -48,9 +45,7 @@ async def async_engine():
 async def async_session(async_engine):
     """Create test async session."""
     async_session_maker = async_sessionmaker(
-        async_engine,
-        class_=AsyncSession,
-        expire_on_commit=False
+        async_engine, class_=AsyncSession, expire_on_commit=False
     )
 
     async with async_session_maker() as session:
@@ -96,7 +91,9 @@ def audits_repo(async_session):
 class TestOrdersRepo:
     """Test OrdersRepo functionality."""
 
-    async def test_upsert_by_idempotency_creates_new_order(self, orders_repo, async_session):
+    async def test_upsert_by_idempotency_creates_new_order(
+        self, orders_repo, async_session
+    ):
         """Test creating a new order with idempotency key."""
         client_key = "test-order-001"
 
@@ -106,7 +103,7 @@ class TestOrdersRepo:
             side="buy",
             qty=Decimal("100"),
             order_type="market",
-            tif="gtc"
+            tif="gtc",
         )
 
         assert order.client_idempotency_key == client_key
@@ -116,7 +113,9 @@ class TestOrdersRepo:
         assert order.status == "accepted"
         assert order.id is not None
 
-    async def test_upsert_by_idempotency_returns_existing_order(self, orders_repo, async_session):
+    async def test_upsert_by_idempotency_returns_existing_order(
+        self, orders_repo, async_session
+    ):
         """Test idempotency - returns existing order for same key."""
         client_key = "test-order-002"
 
@@ -127,7 +126,7 @@ class TestOrdersRepo:
             side="buy",
             qty=Decimal("100"),
             order_type="market",
-            tif="gtc"
+            tif="gtc",
         )
 
         await async_session.commit()
@@ -136,10 +135,10 @@ class TestOrdersRepo:
         order2 = await orders_repo.upsert_by_idempotency(
             client_key=client_key,
             symbol="TSLA",  # Different symbol
-            side="sell",    # Different side
-            qty=Decimal("50"), # Different qty
+            side="sell",  # Different side
+            qty=Decimal("50"),  # Different qty
             order_type="limit",
-            tif="ioc"
+            tif="ioc",
         )
 
         # Should return the original order, not create new one
@@ -157,7 +156,7 @@ class TestOrdersRepo:
             side="buy",
             qty=Decimal("200"),
             order_type="limit",
-            tif="gtc"
+            tif="gtc",
         )
         await async_session.commit()
 
@@ -186,7 +185,7 @@ class TestOrdersRepo:
             side="sell",
             qty=Decimal("50"),
             order_type="market",
-            tif="gtc"
+            tif="gtc",
         )
         await async_session.commit()
 
@@ -195,7 +194,7 @@ class TestOrdersRepo:
             order.id,
             broker_order_id="BROKER-123456",
             status="submitted",
-            attributes={"exchange": "NASDAQ", "commission": "1.00"}
+            attributes={"exchange": "NASDAQ", "commission": "1.00"},
         )
         await async_session.commit()
 
@@ -210,18 +209,30 @@ class TestOrdersRepo:
         """Test getting active orders."""
         # Create orders with different statuses
         await orders_repo.upsert_by_idempotency(
-            client_key="active-1", symbol="AAPL", side="buy",
-            qty=Decimal("100"), order_type="market", tif="gtc"
+            client_key="active-1",
+            symbol="AAPL",
+            side="buy",
+            qty=Decimal("100"),
+            order_type="market",
+            tif="gtc",
         )
 
         order2 = await orders_repo.upsert_by_idempotency(
-            client_key="active-2", symbol="MSFT", side="sell",
-            qty=Decimal("200"), order_type="limit", tif="gtc"
+            client_key="active-2",
+            symbol="MSFT",
+            side="sell",
+            qty=Decimal("200"),
+            order_type="limit",
+            tif="gtc",
         )
 
         order3 = await orders_repo.upsert_by_idempotency(
-            client_key="filled-1", symbol="TSLA", side="buy",
-            qty=Decimal("50"), order_type="market", tif="ioc"
+            client_key="filled-1",
+            symbol="TSLA",
+            side="buy",
+            qty=Decimal("50"),
+            order_type="market",
+            tif="ioc",
         )
 
         # Update one to filled status
@@ -252,7 +263,7 @@ class TestExecutionsRepo:
             side="buy",
             qty=Decimal("100"),
             price=Decimal("150.50"),
-            execution_id="EXEC-001"
+            execution_id="EXEC-001",
         )
 
         assert execution.order_id == order_id
@@ -263,7 +274,9 @@ class TestExecutionsRepo:
         assert execution.execution_id == "EXEC-001"
         assert execution.id is not None
 
-    async def test_upsert_by_execution_id_creates_new(self, executions_repo, async_session):
+    async def test_upsert_by_execution_id_creates_new(
+        self, executions_repo, async_session
+    ):
         """Test creating execution with upsert."""
         order_id = uuid.uuid4()
 
@@ -273,13 +286,15 @@ class TestExecutionsRepo:
             side="sell",
             qty=Decimal("50"),
             price=Decimal("300.25"),
-            execution_id="EXEC-002"
+            execution_id="EXEC-002",
         )
 
         assert execution.symbol == "MSFT"
         assert execution.execution_id == "EXEC-002"
 
-    async def test_upsert_by_execution_id_returns_existing(self, executions_repo, async_session):
+    async def test_upsert_by_execution_id_returns_existing(
+        self, executions_repo, async_session
+    ):
         """Test upsert returns existing execution."""
         order_id = uuid.uuid4()
 
@@ -290,18 +305,18 @@ class TestExecutionsRepo:
             side="buy",
             qty=Decimal("25"),
             price=Decimal("2500.00"),
-            execution_id="EXEC-003"
+            execution_id="EXEC-003",
         )
         await async_session.commit()
 
         # Try to create with same execution_id
         exec2 = await executions_repo.upsert_by_execution_id(
             order_id=uuid.uuid4(),  # Different order ID
-            symbol="TSLA",          # Different symbol
-            side="sell",            # Different side
-            qty=Decimal("100"),     # Different qty
-            price=Decimal("250.00"), # Different price
-            execution_id="EXEC-003" # Same execution ID
+            symbol="TSLA",  # Different symbol
+            side="sell",  # Different side
+            qty=Decimal("100"),  # Different qty
+            price=Decimal("250.00"),  # Different price
+            execution_id="EXEC-003",  # Same execution ID
         )
 
         # Should return original execution
@@ -317,16 +332,28 @@ class TestExecutionsRepo:
 
         # Create multiple executions for same order
         await executions_repo.create_execution(
-            order_id=order_id, symbol="AAPL", side="buy",
-            qty=Decimal("50"), price=Decimal("150.00"), execution_id="EXEC-A1"
+            order_id=order_id,
+            symbol="AAPL",
+            side="buy",
+            qty=Decimal("50"),
+            price=Decimal("150.00"),
+            execution_id="EXEC-A1",
         )
         await executions_repo.create_execution(
-            order_id=order_id, symbol="AAPL", side="buy",
-            qty=Decimal("25"), price=Decimal("151.00"), execution_id="EXEC-A2"
+            order_id=order_id,
+            symbol="AAPL",
+            side="buy",
+            qty=Decimal("25"),
+            price=Decimal("151.00"),
+            execution_id="EXEC-A2",
         )
         await executions_repo.create_execution(
-            order_id=order_id, symbol="AAPL", side="buy",
-            qty=Decimal("25"), price=Decimal("150.50"), execution_id="EXEC-A3"
+            order_id=order_id,
+            symbol="AAPL",
+            side="buy",
+            qty=Decimal("25"),
+            price=Decimal("150.50"),
+            execution_id="EXEC-A3",
         )
         await async_session.commit()
 
@@ -339,17 +366,27 @@ class TestExecutionsRepo:
 
         # Create executions: 50@150 + 50@151 should give VWAP of 150.50
         await executions_repo.create_execution(
-            order_id=order_id, symbol="AAPL", side="buy",
-            qty=Decimal("50"), price=Decimal("150.00"), execution_id="VWAP-1"
+            order_id=order_id,
+            symbol="AAPL",
+            side="buy",
+            qty=Decimal("50"),
+            price=Decimal("150.00"),
+            execution_id="VWAP-1",
         )
         await executions_repo.create_execution(
-            order_id=order_id, symbol="AAPL", side="buy",
-            qty=Decimal("50"), price=Decimal("151.00"), execution_id="VWAP-2"
+            order_id=order_id,
+            symbol="AAPL",
+            side="buy",
+            qty=Decimal("50"),
+            price=Decimal("151.00"),
+            execution_id="VWAP-2",
         )
         await async_session.commit()
 
         vwap = await executions_repo.get_volume_weighted_avg_price(order_id)
-        expected_vwap = (Decimal("50") * Decimal("150.00") + Decimal("50") * Decimal("151.00")) / Decimal("100")
+        expected_vwap = (
+            Decimal("50") * Decimal("150.00") + Decimal("50") * Decimal("151.00")
+        ) / Decimal("100")
         assert vwap == expected_vwap  # Should be 150.50
 
 
@@ -363,7 +400,7 @@ class TestPositionsRepo:
             qty=Decimal("100"),
             avg_cost=Decimal("150.00"),
             market_value=Decimal("15100.00"),
-            unrealized_pnl=Decimal("100.00")
+            unrealized_pnl=Decimal("100.00"),
         )
 
         assert position.symbol == "AAPL"
@@ -372,7 +409,9 @@ class TestPositionsRepo:
         assert position.market_value == Decimal("15100.00")
         assert position.unrealized_pnl == Decimal("100.00")
 
-    async def test_upsert_position_updates_existing(self, positions_repo, async_session):
+    async def test_upsert_position_updates_existing(
+        self, positions_repo, async_session
+    ):
         """Test updating existing position."""
         # Create initial position
         await positions_repo.upsert_position(
@@ -382,8 +421,11 @@ class TestPositionsRepo:
 
         # Update position
         updated_position = await positions_repo.upsert_position(
-            symbol="MSFT", qty=Decimal("75"), avg_cost=Decimal("305.00"),
-            market_value=Decimal("23000.00"), unrealized_pnl=Decimal("375.00")
+            symbol="MSFT",
+            qty=Decimal("75"),
+            avg_cost=Decimal("305.00"),
+            market_value=Decimal("23000.00"),
+            unrealized_pnl=Decimal("375.00"),
         )
 
         assert updated_position.qty == Decimal("75")
@@ -394,16 +436,25 @@ class TestPositionsRepo:
         """Test portfolio summary calculation."""
         # Create multiple positions
         await positions_repo.upsert_position(
-            symbol="AAPL", qty=Decimal("100"), avg_cost=Decimal("150.00"),
-            market_value=Decimal("15100.00"), unrealized_pnl=Decimal("100.00")
+            symbol="AAPL",
+            qty=Decimal("100"),
+            avg_cost=Decimal("150.00"),
+            market_value=Decimal("15100.00"),
+            unrealized_pnl=Decimal("100.00"),
         )
         await positions_repo.upsert_position(
-            symbol="MSFT", qty=Decimal("-50"), avg_cost=Decimal("300.00"),
-            market_value=Decimal("-15200.00"), unrealized_pnl=Decimal("200.00")
+            symbol="MSFT",
+            qty=Decimal("-50"),
+            avg_cost=Decimal("300.00"),
+            market_value=Decimal("-15200.00"),
+            unrealized_pnl=Decimal("200.00"),
         )
         await positions_repo.upsert_position(
-            symbol="GOOGL", qty=Decimal("10"), avg_cost=Decimal("2500.00"),
-            market_value=Decimal("25100.00"), unrealized_pnl=Decimal("100.00")
+            symbol="GOOGL",
+            qty=Decimal("10"),
+            avg_cost=Decimal("2500.00"),
+            market_value=Decimal("25100.00"),
+            unrealized_pnl=Decimal("100.00"),
         )
         await async_session.commit()
 
@@ -412,7 +463,9 @@ class TestPositionsRepo:
         assert summary["total_positions"] == 3
         assert summary["long_positions"] == 2  # AAPL, GOOGL
         assert summary["short_positions"] == 1  # MSFT
-        assert summary["total_market_value"] == Decimal("25000.00")  # 15100 + (-15200) + 25100
+        assert summary["total_market_value"] == Decimal(
+            "25000.00"
+        )  # 15100 + (-15200) + 25100
         assert summary["total_unrealized_pnl"] == Decimal("400.00")  # 100 + 200 + 100
         assert "AAPL" in summary["symbols"]
         assert "MSFT" in summary["symbols"]
@@ -432,7 +485,7 @@ class TestSignalsRepo:
             strength=Decimal("0.85"),
             confidence=Decimal("0.92"),
             target_price=Decimal("155.00"),
-            stop_loss=Decimal("145.00")
+            stop_loss=Decimal("145.00"),
         )
 
         assert signal.symbol == "AAPL"
@@ -448,24 +501,36 @@ class TestSignalsRepo:
         """Test getting active signals."""
         # Create signals with different expiry
         await signals_repo.create_signal(
-            symbol="AAPL", model_name="model1", signal_type="buy",
-            direction="long", strength=Decimal("0.8"), confidence=Decimal("0.9")
+            symbol="AAPL",
+            model_name="model1",
+            signal_type="buy",
+            direction="long",
+            strength=Decimal("0.8"),
+            confidence=Decimal("0.9"),
         )
 
         # Create expired signal
         expired_time = datetime.utcnow() - timedelta(hours=1)
         await signals_repo.create_signal(
-            symbol="MSFT", model_name="model1", signal_type="sell",
-            direction="short", strength=Decimal("0.7"), confidence=Decimal("0.8"),
-            expiry=expired_time
+            symbol="MSFT",
+            model_name="model1",
+            signal_type="sell",
+            direction="short",
+            strength=Decimal("0.7"),
+            confidence=Decimal("0.8"),
+            expiry=expired_time,
         )
 
         # Create active signal with future expiry
         future_time = datetime.utcnow() + timedelta(hours=2)
         await signals_repo.create_signal(
-            symbol="GOOGL", model_name="model2", signal_type="buy",
-            direction="long", strength=Decimal("0.9"), confidence=Decimal("0.95"),
-            expiry=future_time
+            symbol="GOOGL",
+            model_name="model2",
+            signal_type="buy",
+            direction="long",
+            strength=Decimal("0.9"),
+            confidence=Decimal("0.95"),
+            expiry=future_time,
         )
         await async_session.commit()
 
@@ -482,16 +547,28 @@ class TestSignalsRepo:
         """Test getting high-confidence signals."""
         # Create signals with different confidence/strength
         await signals_repo.create_signal(
-            symbol="HIGH1", model_name="model1", signal_type="buy",
-            direction="long", strength=Decimal("0.9"), confidence=Decimal("0.95")  # High
+            symbol="HIGH1",
+            model_name="model1",
+            signal_type="buy",
+            direction="long",
+            strength=Decimal("0.9"),
+            confidence=Decimal("0.95"),  # High
         )
         await signals_repo.create_signal(
-            symbol="LOW1", model_name="model1", signal_type="sell",
-            direction="short", strength=Decimal("0.5"), confidence=Decimal("0.6")  # Low
+            symbol="LOW1",
+            model_name="model1",
+            signal_type="sell",
+            direction="short",
+            strength=Decimal("0.5"),
+            confidence=Decimal("0.6"),  # Low
         )
         await signals_repo.create_signal(
-            symbol="HIGH2", model_name="model2", signal_type="buy",
-            direction="long", strength=Decimal("0.85"), confidence=Decimal("0.9")  # High
+            symbol="HIGH2",
+            model_name="model2",
+            signal_type="buy",
+            direction="long",
+            strength=Decimal("0.85"),
+            confidence=Decimal("0.9"),  # High
         )
         await async_session.commit()
 
@@ -518,7 +595,7 @@ class TestModelsRepo:
             model_type="classification",
             status="training",
             metadata={"author": "data_team", "framework": "sklearn"},
-            performance_metrics={"accuracy": 0.89, "precision": 0.91}
+            performance_metrics={"accuracy": 0.89, "precision": 0.91},
         )
 
         assert model.name == "sentiment_analyzer"
@@ -546,10 +623,16 @@ class TestModelsRepo:
         """Test promoting model to production."""
         # Register multiple versions
         await models_repo.register_model(
-            name="trading_model", version="1.0.0", model_type="ensemble", status="production"
+            name="trading_model",
+            version="1.0.0",
+            model_type="ensemble",
+            status="production",
         )
         await models_repo.register_model(
-            name="trading_model", version="2.0.0", model_type="ensemble", status="testing"
+            name="trading_model",
+            version="2.0.0",
+            model_type="ensemble",
+            status="testing",
         )
         await async_session.commit()
 
@@ -576,7 +659,7 @@ class TestAuditsRepo:
             entity_id="123e4567-e89b-12d3-a456-426614174000",
             user_id="user123",
             ip_address="192.168.1.100",
-            details={"symbol": "AAPL", "qty": 100}
+            details={"symbol": "AAPL", "qty": 100},
         )
 
         assert audit.action == "CREATE_ORDER"
@@ -594,7 +677,7 @@ class TestAuditsRepo:
             action="ORDER_FILLED",
             order_id=order_id,
             user_id="trader1",
-            details={"fill_price": "150.25", "fill_qty": 50}
+            details={"fill_price": "150.25", "fill_qty": 50},
         )
 
         assert audit.action == "ORDER_FILLED"
@@ -609,7 +692,10 @@ class TestAuditsRepo:
             action="LOGIN", entity_type="user", entity_id="user1", user_id="user1"
         )
         await audits_repo.create_audit_log(
-            action="CREATE_ORDER", entity_type="order", entity_id="order1", user_id="user1"
+            action="CREATE_ORDER",
+            entity_type="order",
+            entity_id="order1",
+            user_id="user1",
         )
         await audits_repo.create_audit_log(
             action="LOGIN", entity_type="user", entity_id="user2", user_id="user2"
@@ -655,7 +741,7 @@ async def test_end_to_end_order_flow():
                 side="buy",
                 qty=Decimal("100"),
                 order_type="market",
-                tif="gtc"
+                tif="gtc",
             )
 
             # 2. Log order creation
@@ -663,7 +749,7 @@ async def test_end_to_end_order_flow():
                 action="ORDER_CREATED",
                 order_id=order.id,
                 user_id="test_user",
-                details={"symbol": "AAPL", "side": "buy", "qty": "100"}
+                details={"symbol": "AAPL", "side": "buy", "qty": "100"},
             )
 
             # 3. Create execution
@@ -673,7 +759,7 @@ async def test_end_to_end_order_flow():
                 side="buy",
                 qty=Decimal("100"),
                 price=Decimal("150.75"),
-                execution_id="E2E-EXEC-001"
+                execution_id="E2E-EXEC-001",
             )
 
             # 4. Update order status
@@ -684,7 +770,7 @@ async def test_end_to_end_order_flow():
                 symbol="AAPL",
                 qty=Decimal("100"),
                 avg_cost=Decimal("150.75"),
-                market_value=Decimal("15075.00")
+                market_value=Decimal("15075.00"),
             )
 
             # 6. Log position update
@@ -692,7 +778,7 @@ async def test_end_to_end_order_flow():
                 action="POSITION_UPDATED",
                 position_id=position.id,
                 user_id="test_user",
-                details={"new_qty": "100", "avg_cost": "150.75"}
+                details={"new_qty": "100", "avg_cost": "150.75"},
             )
 
             await session.commit()

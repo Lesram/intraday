@@ -2,6 +2,7 @@
 Simple persistence layer tests for Branch 2.3.
 Tests repository pattern with SQLite for compatibility.
 """
+
 from datetime import datetime
 import uuid
 
@@ -49,7 +50,9 @@ class TestOrder(Base):
     broker_order_id = Column(String(100), nullable=True)
     submitted_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
-    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_at = Column(
+        DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow
+    )
     attributes = Column(JSON, nullable=False, default=dict)
 
 
@@ -111,7 +114,9 @@ async def test_basic_order_operations():
             )
         )
 
-    async_session_maker = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+    async_session_maker = async_sessionmaker(
+        engine, class_=AsyncSession, expire_on_commit=False
+    )
 
     async with async_session_maker() as session:
         # Test inserting order data directly
@@ -220,7 +225,9 @@ async def test_repository_pattern_simulation():
             )
         )
 
-    async_session_maker = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+    async_session_maker = async_sessionmaker(
+        engine, class_=AsyncSession, expire_on_commit=False
+    )
 
     async with async_session_maker() as session:
         # Test order creation with idempotency
@@ -352,7 +359,9 @@ async def test_repository_pattern_simulation():
         assert pos_row is not None
 
         print("✅ Repository pattern simulation successful!")
-        print(f"   📝 Order: {order_row[2]} {order_row[3]} {order_row[4]}@{order_row[5]}")
+        print(
+            f"   📝 Order: {order_row[2]} {order_row[3]} {order_row[4]}@{order_row[5]}"
+        )
         print(f"   📈 Execution: {exec_row[4]}@{exec_row[5]} (ID: {exec_row[6]})")
         print(f"   💼 Position: {pos_row[2]} shares @ ${pos_row[3]} avg cost")
 

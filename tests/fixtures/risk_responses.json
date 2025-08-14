@@ -1,0 +1,36 @@
+{
+  "approved": {
+    "approved": true,
+    "risk_score": 0.25,
+    "checks_passed": [
+      "position_size",
+      "concentration",
+      "volatility"
+    ],
+    "position_limit_used": 0.15,
+    "portfolio_impact": 0.02,
+    "message": "Trade approved"
+  },
+  "rejected_position_limit": {
+    "approved": false,
+    "risk_score": 0.95,
+    "checks_failed": [
+      "position_size"
+    ],
+    "position_limit_used": 1.1,
+    "portfolio_impact": 0.25,
+    "message": "Position size exceeds risk limits",
+    "reason": "position_size_exceeded"
+  },
+  "rejected_concentration": {
+    "approved": false,
+    "risk_score": 0.85,
+    "checks_failed": [
+      "concentration"
+    ],
+    "sector_exposure": 0.6,
+    "symbol_exposure": 0.15,
+    "message": "Trade would exceed concentration limits",
+    "reason": "concentration_limit_exceeded"
+  }
+}

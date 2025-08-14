@@ -1,18 +1,27 @@
-# Coverage configuration for pytest-cov
-# Simple format for coverage tool compatibility
+# Coverage configuration for the trading platform
+# Sets coverage requirements and exclusions for CI/CD
 
 [run]
 source = backend
-omit =
-    backend/migrations/*
-    backend/tests/*
-    backend/scripts/*
-    backend/alembic/*
+branch = True
+parallel = True
+omit = 
     */tests/*
-    */test_*
+    */legacy/*
+    */__init__.py
+    backend/**/migrations/*
+    backend/**/generated/*
 
 [report]
-# Regexes for lines to exclude from consideration
+# Global minimum coverage requirement - targeting 40% initially
+fail_under = 40
+precision = 1
+skip_covered = True
+skip_empty = True
+sort = cover
+show_missing = True
+
+# Exclude lines from coverage
 exclude_lines =
     pragma: no cover
     def __repr__
@@ -22,17 +31,35 @@ exclude_lines =
     raise NotImplementedError
     if 0:
     if __name__ == .__main__.:
-
-ignore_errors = True
-precision = 2
+    class .*\bProtocol\):
+    @(abc\.)?abstractmethod
 
 [html]
-directory = htmlcov
+directory = test_reports/coverage_html
+title = Trading Platform Coverage Report
 
 [xml]
-output = coverage.xml
+output = test_reports/coverage.xml
 
-# Coverage staging notes:
-# Stage 1: 30% minimum (current)
-# Stage 2: 40% target (after unit tests)
-# Stage 3: 50% target (after integration tests)
+[json]
+output = test_reports/coverage.json
+
+# Per-package minimum coverage requirements
+# These are enforced in CI via coverage report analysis
+[coverage:backend/risk]
+fail_under = 85
+
+[coverage:backend/services] 
+fail_under = 85
+
+[coverage:backend/api]
+fail_under = 75
+
+[coverage:backend/strategies]
+fail_under = 80
+
+# Package-specific coverage floors - targeting high coverage for critical modules
+[coverage:paths]
+source =
+    backend/
+    */backend/

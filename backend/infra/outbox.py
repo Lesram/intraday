@@ -3,6 +3,7 @@ Outbox pattern implementation for exactly-once side-effects.
 Provides transactional outbox with exponential backoff and comprehensive observability.
 Enhanced with OpenTelemetry tracing, structured logging, and Prometheus metrics.
 """
+
 import asyncio
 from datetime import datetime, timedelta
 import logging
@@ -18,7 +19,11 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from backend.infra.logging import get_logger as get_structured_logger
 
 # B2.5 - Observability imports
-from backend.infra.observability import record_database_operation, record_outbox_metrics, trace_span
+from backend.infra.observability import (
+    record_database_operation,
+    record_outbox_metrics,
+    trace_span,
+)
 
 from ..config import get_settings
 from .schemas import OutboxEvent
@@ -29,7 +34,9 @@ logger = logging.getLogger(__name__)
 outbox_polled_total = Counter("outbox_polled_total", "Total outbox polling operations")
 
 outbox_dispatched_total = Counter(
-    "outbox_dispatched_total", "Total outbox dispatching operations", ["topic", "status"]
+    "outbox_dispatched_total",
+    "Total outbox dispatching operations",
+    ["topic", "status"],
 )
 
 outbox_dispatch_latency_seconds = Histogram(
@@ -39,9 +46,13 @@ outbox_dispatch_latency_seconds = Histogram(
     buckets=[0.1, 0.5, 1.0, 2.0, 5.0, 10.0, 30.0],
 )
 
-outbox_queue_gauge = Gauge("outbox_queue_gauge", "Current outbox queue size", ["status"])
+outbox_queue_gauge = Gauge(
+    "outbox_queue_gauge", "Current outbox queue size", ["status"]
+)
 
-broker_submit_total = Counter("broker_submit_total", "Total broker submissions", ["result"])
+broker_submit_total = Counter(
+    "broker_submit_total", "Total broker submissions", ["result"]
+)
 
 broker_submit_latency_seconds = Histogram(
     "broker_submit_latency_seconds",
@@ -57,7 +68,11 @@ class OutboxRepo:
         self.session = session
 
     async def enqueue(
-        self, *, topic: str, payload: dict[str, Any], session: AsyncSession | None = None
+        self,
+        *,
+        topic: str,
+        payload: dict[str, Any],
+        session: AsyncSession | None = None,
     ) -> uuid.UUID:
         """
         Enqueue an outbox event for processing.
@@ -114,7 +129,8 @@ class OutboxRepo:
         stmt = (
             select(OutboxEvent)
             .where(
-                OutboxEvent.status == "pending", OutboxEvent.next_attempt_at <= datetime.utcnow()
+                OutboxEvent.status == "pending",
+                OutboxEvent.next_attempt_at <= datetime.utcnow(),
             )
             .order_by(OutboxEvent.created_at.asc())
             .limit(limit)
@@ -124,11 +140,15 @@ class OutboxRepo:
         result = await session.execute(stmt)
         events = list(result.scalars().all())
 
-        logger.debug("Outbox batch claimed", extra={"batch_size": len(events), "limit": limit})
+        logger.debug(
+            "Outbox batch claimed", extra={"batch_size": len(events), "limit": limit}
+        )
 
         return events
 
-    async def mark_sent(self, event_id: uuid.UUID, *, session: AsyncSession | None = None) -> None:
+    async def mark_sent(
+        self, event_id: uuid.UUID, *, session: AsyncSession | None = None
+    ) -> None:
         """Mark an event as successfully sent."""
         session = session or self.session
 
@@ -157,7 +177,11 @@ class OutboxRepo:
         stmt = (
             update(OutboxEvent)
             .where(OutboxEvent.id == event_id)
-            .values(attempts=attempts, next_attempt_at=next_attempt_at, last_error=error_message)
+            .values(
+                attempts=attempts,
+                next_attempt_at=next_attempt_at,
+                last_error=error_message,
+            )
         )
 
         await session.execute(stmt)
@@ -193,7 +217,11 @@ class OutboxRepo:
 
         logger.error(
             "Outbox event permanently failed",
-            extra={"outbox_id": str(event_id), "attempts": attempts, "error": error_message},
+            extra={
+                "outbox_id": str(event_id),
+                "attempts": attempts,
+                "error": error_message,
+            },
         )
 
     async def get_queue_stats(self) -> dict[str, int]:
@@ -223,7 +251,9 @@ class OutboxRepo:
 class BackoffCalculator:
     """Calculates exponential backoff with jitter."""
 
-    def __init__(self, base_delay_ms: int = 200, max_delay_ms: int = 10000, jitter_ms: int = 150):
+    def __init__(
+        self, base_delay_ms: int = 200, max_delay_ms: int = 10000, jitter_ms: int = 150
+    ):
         self.base_delay_ms = base_delay_ms
         self.max_delay_ms = max_delay_ms
         self.jitter_ms = jitter_ms
@@ -326,9 +356,12 @@ class OutboxDispatcher:
                             events_processed = await self._process_batch()
 
                             # Update span with batch results
-                            batch_span.set_attribute("outbox.events_processed", events_processed)
                             batch_span.set_attribute(
-                                "outbox.batch_duration_seconds", time.time() - batch_start_time
+                                "outbox.events_processed", events_processed
+                            )
+                            batch_span.set_attribute(
+                                "outbox.batch_duration_seconds",
+                                time.time() - batch_start_time,
                             )
 
                             # Record outbox metrics
@@ -338,7 +371,8 @@ class OutboxDispatcher:
                                     dispatched_count=events_processed,
                                     failed_count=0,  # Will be updated in _dispatch_event if failures occur
                                     queue_size=0,  # Will be updated with actual queue size
-                                    dispatch_duration_seconds=time.time() - batch_start_time,
+                                    dispatch_duration_seconds=time.time()
+                                    - batch_start_time,
                                 )
 
                                 # Log structured outbox event
@@ -355,7 +389,9 @@ class OutboxDispatcher:
 
                         # Wait for next poll interval
                         poll_interval_sec = self.settings.outbox.poll_interval_ms / 1000
-                        await asyncio.wait_for(stop_event.wait(), timeout=poll_interval_sec)
+                        await asyncio.wait_for(
+                            stop_event.wait(), timeout=poll_interval_sec
+                        )
 
                     except TimeoutError:
                         # Expected timeout for polling interval
@@ -427,7 +463,9 @@ class OutboxDispatcher:
 
                 # Record database operation metrics
                 record_database_operation(
-                    operation="select", duration_seconds=time.time() - start_time, success=True
+                    operation="select",
+                    duration_seconds=time.time() - start_time,
+                    success=True,
                 )
 
                 if not events:
@@ -442,7 +480,8 @@ class OutboxDispatcher:
 
                 # Process events concurrently with semaphore
                 dispatch_tasks = [
-                    self._dispatch_event_with_semaphore(event, session) for event in events
+                    self._dispatch_event_with_semaphore(event, session)
+                    for event in events
                 ]
 
                 await asyncio.gather(*dispatch_tasks, return_exceptions=True)
@@ -514,13 +553,19 @@ class OutboxDispatcher:
 
                 # Update span with success info
                 span.set_attribute("outbox.status", "sent")
-                span.set_attribute("outbox.dispatch_duration_seconds", time.time() - start_time)
+                span.set_attribute(
+                    "outbox.dispatch_duration_seconds", time.time() - start_time
+                )
 
-                outbox_dispatched_total.labels(topic=event.topic, status="success").inc()
+                outbox_dispatched_total.labels(
+                    topic=event.topic, status="success"
+                ).inc()
 
                 # Record dispatch latency
                 dispatch_duration = time.time() - start_time
-                outbox_dispatch_latency_seconds.labels(topic=event.topic).observe(dispatch_duration)
+                outbox_dispatch_latency_seconds.labels(topic=event.topic).observe(
+                    dispatch_duration
+                )
 
                 # Log structured success event
                 structured_logger.log_outbox_event(
@@ -553,7 +598,10 @@ class OutboxDispatcher:
                     # Mark as permanently failed
                     db_start_time = time.time()
                     await repo.mark_failed(
-                        event.id, attempts=new_attempts, error_message=str(e), session=session
+                        event.id,
+                        attempts=new_attempts,
+                        error_message=str(e),
+                        session=session,
                     )
                     db_duration = time.time() - db_start_time
 
@@ -564,7 +612,9 @@ class OutboxDispatcher:
                     span.set_attribute("outbox.status", "failed")
                     span.set_attribute("outbox.final_attempt", True)
 
-                    outbox_dispatched_total.labels(topic=event.topic, status="failed").inc()
+                    outbox_dispatched_total.labels(
+                        topic=event.topic, status="failed"
+                    ).inc()
 
                     # Log structured failure event
                     structured_logger.log_outbox_event(
@@ -578,7 +628,9 @@ class OutboxDispatcher:
 
                 else:
                     # Schedule retry with backoff
-                    next_attempt = self.backoff_calculator.next_attempt_time(new_attempts)
+                    next_attempt = self.backoff_calculator.next_attempt_time(
+                        new_attempts
+                    )
 
                     db_start_time = time.time()
                     await repo.mark_retry(
@@ -597,7 +649,9 @@ class OutboxDispatcher:
                     span.set_attribute("outbox.status", "retry")
                     span.set_attribute("outbox.next_retry", next_attempt.isoformat())
 
-                    outbox_dispatched_total.labels(topic=event.topic, status="retry").inc()
+                    outbox_dispatched_total.labels(
+                        topic=event.topic, status="retry"
+                    ).inc()
 
                     # Log structured retry event
                     structured_logger.log_outbox_event(
@@ -627,7 +681,9 @@ class OutboxDispatcher:
             raise ValueError("Missing required order fields in payload")
 
         # Prepare headers with idempotency key
-        headers = {self.settings.outbox.broker_idempotency_header: client_idempotency_key}
+        headers = {
+            self.settings.outbox.broker_idempotency_header: client_idempotency_key
+        }
 
         # Submit to broker
         start_time = asyncio.get_event_loop().time()

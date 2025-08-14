@@ -3,6 +3,7 @@ Database infrastructure for async PostgreSQL operations.
 Provides engine, session management, health checks, and FastAPI dependencies.
 Enhanced with comprehensive observability including tracing and metrics.
 """
+
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 import logging
@@ -41,27 +42,36 @@ def get_engine() -> AsyncEngine:
 def get_sessionmaker() -> async_sessionmaker[AsyncSession]:
     """Get the async sessionmaker."""
     if _sessionmaker is None:
-        raise RuntimeError("Database sessionmaker not initialized. Call init_db() first.")
+        raise RuntimeError(
+            "Database sessionmaker not initialized. Call init_db() first."
+        )
     return _sessionmaker
 
 
-def init_db() -> tuple[AsyncEngine, async_sessionmaker[AsyncSession]]:
+def init_db(database_url: str | None = None) -> async_sessionmaker[AsyncSession]:
     """
-    Initialize database engine and sessionmaker from settings.
+    Initialize database engine and sessionmaker from settings or provided URL.
+
+    Args:
+        database_url: Optional database URL override. If not provided, uses settings.
 
     Returns:
-        Tuple of (engine, sessionmaker)
+        async_sessionmaker with expire_on_commit=False
     """
     global _engine, _sessionmaker
 
     settings = get_settings()
 
-    # Use data.database_url from the nested config
-    database_url = settings.data.database_url
+    # Use provided URL or fallback to settings
+    if database_url is None:
+        # Use data.database_url from the nested config
+        database_url = settings.data.database_url
 
     # Convert sqlite URL to async postgres if needed for production
     if database_url.startswith("sqlite"):
-        logger.warning("SQLite detected. For production, use PostgreSQL with asyncpg driver.")
+        logger.warning(
+            "SQLite detected. For production, use PostgreSQL with asyncpg driver."
+        )
         # For SQLite, use aiosqlite
         if not database_url.startswith("sqlite+aiosqlite"):
             database_url = database_url.replace("sqlite:", "sqlite+aiosqlite:")
@@ -77,7 +87,7 @@ def init_db() -> tuple[AsyncEngine, async_sessionmaker[AsyncSession]]:
         future=True,
     )
 
-    # Create sessionmaker
+    # Create sessionmaker with expire_on_commit=False
     _sessionmaker = async_sessionmaker(
         _engine,
         class_=AsyncSession,
@@ -87,16 +97,23 @@ def init_db() -> tuple[AsyncEngine, async_sessionmaker[AsyncSession]]:
     logger.info(
         "Database initialized",
         extra={
-            "database_url": database_url.split("@")[-1]
-            if "@" in database_url
-            else database_url,  # Hide credentials
+            "database_url": (
+                database_url.split("@")[-1] if "@" in database_url else database_url
+            ),  # Hide credentials
             "pool_size": settings.database.pool_size,
             "max_overflow": settings.database.max_overflow,
             "echo": settings.database.echo,
         },
     )
 
-    return _engine, _sessionmaker
+    return _sessionmaker
+
+
+@asynccontextmanager
+async def get_session_from(app_state) -> AsyncGenerator[AsyncSession, None]:
+    """Get AsyncSession from app state db_sessionmaker"""
+    async with app_state.db_sessionmaker() as session:
+        yield session
 
 
 async def db_health_check() -> bool:
@@ -116,7 +133,8 @@ async def db_health_check() -> bool:
     structured_logger = get_structured_logger(__name__)
 
     with trace_span(
-        "database_health_check", {"db.operation": "health_check", "db.system": "postgresql"}
+        "database_health_check",
+        {"db.operation": "health_check", "db.system": "postgresql"},
     ) as span:
         try:
             async with _engine.begin() as conn:
@@ -128,7 +146,9 @@ async def db_health_check() -> bool:
                 if row and row[0] == 1:
                     # Record successful health check metrics
                     record_database_operation(
-                        operation="health_check", duration_seconds=duration_seconds, success=True
+                        operation="health_check",
+                        duration_seconds=duration_seconds,
+                        success=True,
                     )
 
                     # Update span with success info
@@ -143,13 +163,17 @@ async def db_health_check() -> bool:
                     logger.debug("Database health check passed")
                     return True
                 else:
-                    raise RuntimeError("Database health check failed: unexpected result")
+                    raise RuntimeError(
+                        "Database health check failed: unexpected result"
+                    )
         except Exception as e:
             duration_seconds = time.time() - start_time
 
             # Record failed health check metrics
             record_database_operation(
-                operation="health_check", duration_seconds=duration_seconds, success=False
+                operation="health_check",
+                duration_seconds=duration_seconds,
+                success=False,
             )
 
             # Update span with error info
@@ -161,7 +185,9 @@ async def db_health_check() -> bool:
 
             # Log structured error event
             structured_logger.log_database_operation(
-                operation="health_check", duration_ms=duration_seconds * 1000, error=str(e)
+                operation="health_check",
+                duration_ms=duration_seconds * 1000,
+                error=str(e),
             )
 
             logger.error("Database health check failed", extra={"error": str(e)})

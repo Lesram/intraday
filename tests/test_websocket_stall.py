@@ -3,13 +3,14 @@ WebSocket Stall Test
 Integration test for WebSocket backpressure policy that confirms
 slow consumers don't stall the server
 """
+
 import asyncio
 import time
 from unittest.mock import AsyncMock
 
 import pytest
 
-from backend.api.main import WebSocketClientManager
+from backend.api.websocket_manager import WebSocketClientManager
 
 
 class TestWebSocketStallScenario:
@@ -49,7 +50,9 @@ class TestWebSocketStallScenario:
 
         # Server should complete message sending quickly (under 1 second)
         # even with slow consumer present
-        assert send_time < 1.0, f"Message sending took {send_time:.2f}s, server may be stalled"
+        assert (
+            send_time < 1.0
+        ), f"Message sending took {send_time:.2f}s, server may be stalled"
 
         # Wait a bit for processing
         await asyncio.sleep(0.5)
@@ -90,7 +93,9 @@ class TestWebSocketStallScenario:
         ws_manager = WebSocketClientManager(max_queue_size=3)
 
         # Create a consumer that doesn't process messages (simulates stall)
-        stalled_consumer = MockWebSocketConsumer("stalled_consumer", process_delay=float("inf"))
+        stalled_consumer = MockWebSocketConsumer(
+            "stalled_consumer", process_delay=float("inf")
+        )
         await ws_manager.add_client("stalled_consumer", stalled_consumer.websocket)
 
         # Send more messages than queue capacity
@@ -159,7 +164,9 @@ class TestWebSocketStallScenario:
         broadcast_time = time.time() - start_time
 
         # Broadcasting should complete quickly regardless of consumer speeds
-        assert broadcast_time < 2.0, f"Broadcasting took {broadcast_time:.2f}s, too slow"
+        assert (
+            broadcast_time < 2.0
+        ), f"Broadcasting took {broadcast_time:.2f}s, too slow"
 
         # Wait for some processing
         await asyncio.sleep(1.0)
@@ -204,16 +211,22 @@ class TestWebSocketStallScenario:
         await ws_manager.add_client("new_consumer", new_consumer.websocket)
         add_time = time.time() - add_start
 
-        assert add_time < 0.1, f"Adding new consumer took {add_time:.3f}s during backlog"
+        assert (
+            add_time < 0.1
+        ), f"Adding new consumer took {add_time:.3f}s during backlog"
 
         # 2. Send messages to the new consumer
         new_task = asyncio.create_task(new_consumer.start_processing())
 
         message_start = time.time()
-        await ws_manager.broadcast_message({"type": "new_message", "for": "new_consumer"})
+        await ws_manager.broadcast_message(
+            {"type": "new_message", "for": "new_consumer"}
+        )
         message_time = time.time() - message_start
 
-        assert message_time < 0.1, f"Sending message took {message_time:.3f}s during backlog"
+        assert (
+            message_time < 0.1
+        ), f"Sending message took {message_time:.3f}s during backlog"
 
         # 3. The new consumer should receive messages promptly
         await asyncio.sleep(0.1)
@@ -256,7 +269,9 @@ class TestWebSocketStallScenario:
         heartbeat_time = time.time() - initial_time
 
         # Heartbeat should continue operating (not stalled)
-        assert heartbeat_time < 0.2, f"Heartbeat cycle took {heartbeat_time:.3f}s, may be stalled"
+        assert (
+            heartbeat_time < 0.2
+        ), f"Heartbeat cycle took {heartbeat_time:.3f}s, may be stalled"
 
         # Stop heartbeat
         await ws_manager.stop_heartbeat()
@@ -304,7 +319,9 @@ class TestStallDetectionAndRecovery:
         ws_manager = WebSocketClientManager(max_queue_size=2)
 
         # Create a consumer that can't keep up
-        problematic_consumer = MockWebSocketConsumer("problematic", process_delay=float("inf"))
+        problematic_consumer = MockWebSocketConsumer(
+            "problematic", process_delay=float("inf")
+        )
         await ws_manager.add_client("problematic", problematic_consumer.websocket)
 
         # Fill its queue repeatedly (simulating continuous backpressure)
@@ -351,7 +368,9 @@ class TestStallDetectionAndRecovery:
         add_time = time.time() - add_start
 
         # Adding should still be fast despite other consumers being stalled
-        assert add_time < 0.5, f"Adding healthy consumer took {add_time:.3f}s after mass stall"
+        assert (
+            add_time < 0.5
+        ), f"Adding healthy consumer took {add_time:.3f}s after mass stall"
 
         # New consumer should receive messages promptly
         healthy_task = asyncio.create_task(healthy_consumer.start_processing())

@@ -42,7 +42,7 @@ class AlpacaMockResponder:
             "trade_suspended_by_user": False,
             "pattern_day_trader": False,
             "day_trading_buying_power": "400000.00",
-            "max_day_trading_buying_power": "400000.00"
+            "max_day_trading_buying_power": "400000.00",
         }
 
     def setup_responders(self, respx_mock: respx.MockRouter) -> None:
@@ -62,12 +62,15 @@ class AlpacaMockResponder:
 
         # Health check endpoint
         respx_mock.get(f"{self.base_url}/v2/clock").mock(
-            return_value=Response(200, json={
-                "timestamp": datetime.now(UTC).isoformat(),
-                "is_open": True,
-                "next_open": "2023-12-04T14:30:00-05:00",
-                "next_close": "2023-12-04T21:00:00-05:00"
-            })
+            return_value=Response(
+                200,
+                json={
+                    "timestamp": datetime.now(UTC).isoformat(),
+                    "is_open": True,
+                    "next_open": "2023-12-04T14:30:00-05:00",
+                    "next_close": "2023-12-04T21:00:00-05:00",
+                },
+            )
         )
 
     def setup_orders_responders(self, respx_mock: respx.MockRouter) -> None:
@@ -82,7 +85,9 @@ class AlpacaMockResponder:
                 # Create order record
                 order = {
                     "id": order_id,
-                    "client_order_id": order_data.get("client_order_id", str(uuid.uuid4())),
+                    "client_order_id": order_data.get(
+                        "client_order_id", str(uuid.uuid4())
+                    ),
                     "created_at": datetime.now(UTC).isoformat(),
                     "updated_at": datetime.now(UTC).isoformat(),
                     "submitted_at": datetime.now(UTC).isoformat(),
@@ -102,7 +107,7 @@ class AlpacaMockResponder:
                     "stop_price": order_data.get("stop_price"),
                     "status": "submitted",
                     "extended_hours": order_data.get("extended_hours", False),
-                    "legs": None
+                    "legs": None,
                 }
 
                 # Store in mock database
@@ -111,10 +116,10 @@ class AlpacaMockResponder:
                 return Response(201, json=order)
 
             except Exception as e:
-                return Response(400, json={
-                    "code": 40010001,
-                    "message": f"Invalid order data: {str(e)}"
-                })
+                return Response(
+                    400,
+                    json={"code": 40010001, "message": f"Invalid order data: {str(e)}"},
+                )
 
         respx_mock.post(f"{self.base_url}/v2/orders").mock(
             side_effect=submit_order_handler
@@ -126,10 +131,9 @@ class AlpacaMockResponder:
             if order_id in self.orders_db:
                 return Response(200, json=self.orders_db[order_id])
             else:
-                return Response(404, json={
-                    "code": 40410000,
-                    "message": "Order not found"
-                })
+                return Response(
+                    404, json={"code": 40410000, "message": "Order not found"}
+                )
 
         respx_mock.get(f"{self.base_url}/v2/orders").mock(
             return_value=Response(200, json=list(self.orders_db.values()))
@@ -150,15 +154,14 @@ class AlpacaMockResponder:
                     order["updated_at"] = datetime.now(UTC).isoformat()
                     return Response(204)
                 else:
-                    return Response(422, json={
-                        "code": 42210000,
-                        "message": "Order cannot be canceled"
-                    })
+                    return Response(
+                        422,
+                        json={"code": 42210000, "message": "Order cannot be canceled"},
+                    )
             else:
-                return Response(404, json={
-                    "code": 40410000,
-                    "message": "Order not found"
-                })
+                return Response(
+                    404, json={"code": 40410000, "message": "Order not found"}
+                )
 
         respx_mock.delete(f"{self.base_url}/v2/orders/{respx.patterns.STR}").mock(
             side_effect=cancel_order_handler
@@ -178,10 +181,9 @@ class AlpacaMockResponder:
             if symbol in self.positions_db:
                 return Response(200, json=self.positions_db[symbol])
             else:
-                return Response(404, json={
-                    "code": 40410000,
-                    "message": "Position not found"
-                })
+                return Response(
+                    404, json={"code": 40410000, "message": "Position not found"}
+                )
 
         respx_mock.get(f"{self.base_url}/v2/positions/{respx.patterns.STR}").mock(
             side_effect=get_position_handler
@@ -193,21 +195,24 @@ class AlpacaMockResponder:
         # GET /v2/stocks/{symbol}/quotes/latest
         def get_quote_handler(request):
             symbol = request.url.path.split("/")[-3]  # Extract symbol from path
-            return Response(200, json={
-                "quote": {
-                    "timestamp": datetime.now(UTC).isoformat(),
-                    "bid": 100.50,
-                    "ask": 100.52,
-                    "bid_size": 100,
-                    "ask_size": 200,
-                    "exchange": "NASDAQ"
+            return Response(
+                200,
+                json={
+                    "quote": {
+                        "timestamp": datetime.now(UTC).isoformat(),
+                        "bid": 100.50,
+                        "ask": 100.52,
+                        "bid_size": 100,
+                        "ask_size": 200,
+                        "exchange": "NASDAQ",
+                    },
+                    "symbol": symbol,
                 },
-                "symbol": symbol
-            })
+            )
 
-        respx_mock.get(f"{self.base_url}/v2/stocks/{respx.patterns.STR}/quotes/latest").mock(
-            side_effect=get_quote_handler
-        )
+        respx_mock.get(
+            f"{self.base_url}/v2/stocks/{respx.patterns.STR}/quotes/latest"
+        ).mock(side_effect=get_quote_handler)
 
     def add_order(self, order_data: dict[str, Any]) -> str:
         """Add a mock order to the database."""
@@ -234,13 +239,15 @@ class AlpacaMockResponder:
             "stop_price": order_data.get("stop_price"),
             "status": "submitted",
             "extended_hours": order_data.get("extended_hours", False),
-            "legs": None
+            "legs": None,
         }
 
         self.orders_db[order_id] = order
         return order_id
 
-    def fill_order(self, order_id: str, fill_qty: str | None = None, fill_price: str | None = None) -> None:
+    def fill_order(
+        self, order_id: str, fill_qty: str | None = None, fill_price: str | None = None
+    ) -> None:
         """Mark an order as filled."""
         if order_id not in self.orders_db:
             raise ValueError(f"Order {order_id} not found")
@@ -281,7 +288,7 @@ class AlpacaMockResponder:
                 "unrealized_intraday_plpc": "0.0000",
                 "current_price": fill_price,
                 "lastday_price": fill_price,
-                "change_today": "0.00"
+                "change_today": "0.00",
             }
 
     def add_position(self, symbol: str, qty: str, avg_price: str = "100.50") -> None:
@@ -305,7 +312,7 @@ class AlpacaMockResponder:
             "unrealized_intraday_plpc": "0.0000",
             "current_price": avg_price,
             "lastday_price": avg_price,
-            "change_today": "0.00"
+            "change_today": "0.00",
         }
 
     def reset(self) -> None:
@@ -317,7 +324,10 @@ class AlpacaMockResponder:
 
 # Factory functions for common test scenarios
 
-def create_fault_responder(base_url: str = "https://paper-api.alpaca.markets") -> respx.MockRouter:
+
+def create_fault_responder(
+    base_url: str = "https://paper-api.alpaca.markets",
+) -> respx.MockRouter:
     """Create a responder that simulates various broker faults."""
     mock = respx.MockRouter()
     base_url = base_url.rstrip("/")
@@ -335,7 +345,9 @@ def create_fault_responder(base_url: str = "https://paper-api.alpaca.markets") -
     return mock
 
 
-def create_flaky_responder(base_url: str = "https://paper-api.alpaca.markets", success_rate: float = 0.7) -> respx.MockRouter:
+def create_flaky_responder(
+    base_url: str = "https://paper-api.alpaca.markets", success_rate: float = 0.7
+) -> respx.MockRouter:
     """Create a responder that succeeds only some percentage of the time."""
     import random
 
@@ -346,15 +358,18 @@ def create_flaky_responder(base_url: str = "https://paper-api.alpaca.markets", s
         if random.random() < success_rate:
             # Success case
             order_id = str(uuid.uuid4())
-            return Response(201, json={
-                "id": order_id,
-                "status": "submitted",
-                "symbol": "AAPL",
-                "qty": "100",
-                "side": "buy",
-                "type": "market",
-                "created_at": datetime.now(UTC).isoformat()
-            })
+            return Response(
+                201,
+                json={
+                    "id": order_id,
+                    "status": "submitted",
+                    "symbol": "AAPL",
+                    "qty": "100",
+                    "side": "buy",
+                    "type": "market",
+                    "created_at": datetime.now(UTC).isoformat(),
+                },
+            )
         else:
             # Failure case
             return Response(500, json={"message": "Internal Server Error"})
@@ -364,7 +379,9 @@ def create_flaky_responder(base_url: str = "https://paper-api.alpaca.markets", s
     return mock
 
 
-def create_backoff_responder(base_url: str = "https://paper-api.alpaca.markets", fail_count: int = 2) -> respx.MockRouter:
+def create_backoff_responder(
+    base_url: str = "https://paper-api.alpaca.markets", fail_count: int = 2
+) -> respx.MockRouter:
     """Create a responder that fails N times then succeeds (for backoff testing)."""
     mock = respx.MockRouter()
     base_url = base_url.rstrip("/")
@@ -376,19 +393,24 @@ def create_backoff_responder(base_url: str = "https://paper-api.alpaca.markets",
 
         if call_count["count"] <= fail_count:
             # Fail with 502
-            return Response(502, json={"message": f"Failure attempt {call_count['count']}"})
+            return Response(
+                502, json={"message": f"Failure attempt {call_count['count']}"}
+            )
         else:
             # Success
             order_id = str(uuid.uuid4())
-            return Response(201, json={
-                "id": order_id,
-                "status": "submitted",
-                "symbol": "AAPL",
-                "qty": "100",
-                "side": "buy",
-                "type": "market",
-                "created_at": datetime.now(UTC).isoformat()
-            })
+            return Response(
+                201,
+                json={
+                    "id": order_id,
+                    "status": "submitted",
+                    "symbol": "AAPL",
+                    "qty": "100",
+                    "side": "buy",
+                    "type": "market",
+                    "created_at": datetime.now(UTC).isoformat(),
+                },
+            )
 
     mock.post(f"{base_url}/v2/orders").mock(side_effect=backoff_handler)
 

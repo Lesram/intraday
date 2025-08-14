@@ -3,7 +3,6 @@ In-memory user repository for authentication.
 This will be replaced with database persistence in B2.3.
 """
 
-
 from pydantic import BaseModel
 
 from backend.infra.security import hash_password, verify_password
@@ -43,7 +42,9 @@ class UserRepository:
         if username in self._users:
             raise ValueError(f"User '{username}' already exists")
 
-        user = User(username=username, hashed_password=hash_password(password), roles=roles)
+        user = User(
+            username=username, hashed_password=hash_password(password), roles=roles
+        )
 
         self._users[username] = user
         return user
@@ -169,7 +170,9 @@ def _seed_dev_users():
 
     # Create trader user for development
     try:
-        trader_user = repo.create_user(username="trader", password="trader123", roles=["trader"])
+        trader_user = repo.create_user(
+            username="trader", password="trader123", roles=["trader"]
+        )
         print(f"Created dev trader user: {trader_user.username}")
     except ValueError:
         # User already exists
@@ -184,3 +187,31 @@ def _seed_dev_users():
     except ValueError:
         # User already exists
         pass
+
+
+class UsersRepo:
+    """Email-based user repository for new API endpoints."""
+    
+    def __init__(self):
+        """Initialize with empty user store."""
+        self._users_by_email: dict[str, dict] = {}
+        self._users_by_id: dict[str, dict] = {}
+    
+    async def get_by_email(self, email: str) -> dict | None:
+        """Get user by email address."""
+        return self._users_by_email.get(email)
+    
+    async def create(self, user_data: dict) -> dict:
+        """Create a new user."""
+        email = user_data["email"]
+        user_id = user_data["id"]
+        
+        # Store by both email and ID for lookups
+        self._users_by_email[email] = user_data
+        self._users_by_id[user_id] = user_data
+        
+        return user_data
+    
+    async def get_by_id(self, user_id: str) -> dict | None:
+        """Get user by ID."""
+        return self._users_by_id.get(user_id)

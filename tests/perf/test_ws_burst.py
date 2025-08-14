@@ -12,7 +12,6 @@ import logging
 import statistics
 import threading
 import time
-from typing import Optional
 
 import pytest
 import websockets
@@ -43,7 +42,11 @@ class ConnectionMetrics:
     @property
     def p95_latency(self) -> float:
         """Calculate P95 message latency."""
-        return statistics.quantiles(self.latencies, n=20)[18] if len(self.latencies) >= 20 else 0.0
+        return (
+            statistics.quantiles(self.latencies, n=20)[18]
+            if len(self.latencies) >= 20
+            else 0.0
+        )
 
 
 @dataclass
@@ -70,13 +73,17 @@ class TestResults:
     @property
     def messages_per_second(self) -> float:
         """Calculate overall message throughput."""
-        return self.total_messages / self.test_duration if self.test_duration > 0 else 0.0
+        return (
+            self.total_messages / self.test_duration if self.test_duration > 0 else 0.0
+        )
 
     @property
     def avg_connection_duration(self) -> float:
         """Calculate average connection duration."""
         durations = [
-            m.connection_duration for m in self.connection_metrics if m.connection_duration > 0
+            m.connection_duration
+            for m in self.connection_metrics
+            if m.connection_duration > 0
         ]
         return statistics.mean(durations) if durations else 0.0
 
@@ -92,7 +99,7 @@ class WebSocketBurstTester:
     def __init__(
         self,
         base_url: str = "ws://localhost:8000",
-        auth_token: Optional[str] = None,
+        auth_token: str | None = None,
         max_concurrent_connections: int = 100,
     ):
         self.base_url = base_url
@@ -122,7 +129,11 @@ class WebSocketBurstTester:
                 )
 
                 # Subscribe to market data
-                subscribe_msg = {"action": "subscribe", "channel": "quotes", "symbol": "AAPL"}
+                subscribe_msg = {
+                    "action": "subscribe",
+                    "channel": "quotes",
+                    "symbol": "AAPL",
+                }
                 await websocket.send(json.dumps(subscribe_msg))
                 metrics.messages_sent += 1
 
@@ -133,7 +144,9 @@ class WebSocketBurstTester:
                     while not self._stop_event.is_set():
                         try:
                             # Wait for message with timeout
-                            message = await asyncio.wait_for(websocket.recv(), timeout=1.0)
+                            message = await asyncio.wait_for(
+                                websocket.recv(), timeout=1.0
+                            )
 
                             receive_time = time.time()
                             metrics.messages_received += 1
@@ -147,14 +160,16 @@ class WebSocketBurstTester:
                             except json.JSONDecodeError:
                                 pass
 
-                        except asyncio.TimeoutError:
+                        except TimeoutError:
                             # Send heartbeat to keep connection alive
                             heartbeat = {"action": "ping"}
                             await websocket.send(json.dumps(heartbeat))
                             metrics.messages_sent += 1
 
                         except websockets.exceptions.ConnectionClosed:
-                            logger.warning(f"Connection {connection_id} closed by server")
+                            logger.warning(
+                                f"Connection {connection_id} closed by server"
+                            )
                             break
 
                 except Exception as e:
@@ -226,7 +241,9 @@ class WebSocketBurstTester:
                 else:
                     self.results.successful_connections += 1
 
-                self.results.total_messages += metrics.messages_received + metrics.messages_sent
+                self.results.total_messages += (
+                    metrics.messages_received + metrics.messages_sent
+                )
 
         self.results.test_duration = time.time() - test_start_time
 
@@ -236,7 +253,10 @@ class WebSocketBurstTester:
         return self.results
 
     async def connection_churn_test(
-        self, connections_per_wave: int = 20, num_waves: int = 5, wave_interval: float = 10.0
+        self,
+        connections_per_wave: int = 20,
+        num_waves: int = 5,
+        wave_interval: float = 10.0,
     ) -> TestResults:
         """
         Test connection churn - rapidly connecting and disconnecting.
@@ -284,18 +304,24 @@ class WebSocketBurstTester:
                     else:
                         self.results.successful_connections += 1
 
-                    self.results.total_messages += metrics.messages_received + metrics.messages_sent
+                    self.results.total_messages += (
+                        metrics.messages_received + metrics.messages_sent
+                    )
 
             # Reset stop event for next wave
             self._stop_event.clear()
 
             # Wait before next wave (except for last wave)
             if wave < num_waves - 1:
-                await asyncio.sleep(wave_interval - 5.0)  # Subtract the 5s we already waited
+                await asyncio.sleep(
+                    wave_interval - 5.0
+                )  # Subtract the 5s we already waited
 
         self.results.test_duration = time.time() - test_start_time
 
-        logger.info(f"Connection churn test completed in {self.results.test_duration:.2f}s")
+        logger.info(
+            f"Connection churn test completed in {self.results.test_duration:.2f}s"
+        )
         self._log_results()
 
         return self.results
@@ -309,7 +335,9 @@ class WebSocketBurstTester:
         logger.info(f"Success rate: {self.results.success_rate:.1f}%")
         logger.info(f"Total messages: {self.results.total_messages}")
         logger.info(f"Messages per second: {self.results.messages_per_second:.1f}")
-        logger.info(f"Average connection duration: {self.results.avg_connection_duration:.2f}s")
+        logger.info(
+            f"Average connection duration: {self.results.avg_connection_duration:.2f}s"
+        )
         logger.info(f"Total errors: {self.results.total_errors}")
 
         if self.results.connection_metrics:
@@ -318,9 +346,11 @@ class WebSocketBurstTester:
                 all_latencies.extend(metrics.latencies)
 
             if all_latencies:
-                logger.info(f"Average latency: {statistics.mean(all_latencies)*1000:.1f}ms")
                 logger.info(
-                    f"P95 latency: {statistics.quantiles(all_latencies, n=20)[18]*1000:.1f}ms"
+                    f"Average latency: {statistics.mean(all_latencies) * 1000:.1f}ms"
+                )
+                logger.info(
+                    f"P95 latency: {statistics.quantiles(all_latencies, n=20)[18] * 1000:.1f}ms"
                 )
 
 
@@ -341,7 +371,9 @@ class TestWebSocketPerformance:
         results = await tester.burst_test(num_connections=10, duration_seconds=15.0)
 
         # Assertions for performance thresholds
-        assert results.success_rate >= 90.0, f"Success rate too low: {results.success_rate}%"
+        assert (
+            results.success_rate >= 90.0
+        ), f"Success rate too low: {results.success_rate}%"
         assert (
             results.messages_per_second >= 1.0
         ), f"Message throughput too low: {results.messages_per_second}"
@@ -353,7 +385,9 @@ class TestWebSocketPerformance:
         results = await tester.burst_test(num_connections=25, duration_seconds=20.0)
 
         # Performance thresholds
-        assert results.success_rate >= 85.0, f"Success rate too low: {results.success_rate}%"
+        assert (
+            results.success_rate >= 85.0
+        ), f"Success rate too low: {results.success_rate}%"
         assert (
             results.messages_per_second >= 5.0
         ), f"Message throughput too low: {results.messages_per_second}"
@@ -370,7 +404,9 @@ class TestWebSocketPerformance:
         assert (
             results.success_rate >= 80.0
         ), f"Success rate too low under churn: {results.success_rate}%"
-        assert results.total_errors < 15, f"Too many errors during churn: {results.total_errors}"
+        assert (
+            results.total_errors < 15
+        ), f"Too many errors during churn: {results.total_errors}"
 
     @pytest.mark.asyncio
     async def test_websocket_latency_requirements(self, tester):
@@ -386,8 +422,12 @@ class TestWebSocketPerformance:
                 avg_latency_ms = statistics.mean(all_latencies) * 1000
                 p95_latency_ms = statistics.quantiles(all_latencies, n=20)[18] * 1000
 
-                assert avg_latency_ms < 100.0, f"Average latency too high: {avg_latency_ms:.1f}ms"
-                assert p95_latency_ms < 200.0, f"P95 latency too high: {p95_latency_ms:.1f}ms"
+                assert (
+                    avg_latency_ms < 100.0
+                ), f"Average latency too high: {avg_latency_ms:.1f}ms"
+                assert (
+                    p95_latency_ms < 200.0
+                ), f"P95 latency too high: {p95_latency_ms:.1f}ms"
 
 
 # Standalone execution for manual testing

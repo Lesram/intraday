@@ -78,7 +78,13 @@ def test_websocket_manager_accepts_registry():
 
 def test_prometheus_import_minimal():
     """Test prometheus_client imports work for core functionality"""
-    from prometheus_client import CollectorRegistry, Counter, Gauge, Histogram, generate_latest
+    from prometheus_client import (
+        CollectorRegistry,
+        Counter,
+        Gauge,
+        Histogram,
+        generate_latest,
+    )
 
     # Create isolated registry
     registry = CollectorRegistry()
@@ -86,7 +92,9 @@ def test_prometheus_import_minimal():
     # Create metrics
     counter = Counter("test_counter", "Test counter", ["label"], registry=registry)
     gauge = Gauge("test_gauge", "Test gauge", ["label"], registry=registry)
-    histogram = Histogram("test_histogram", "Test histogram", ["label"], registry=registry)
+    histogram = Histogram(
+        "test_histogram", "Test histogram", ["label"], registry=registry
+    )
 
     # Use metrics
     counter.labels(label="test").inc()
@@ -111,7 +119,8 @@ def test_parallel_registry_isolation():
     # Create multiple isolated registries
     registries = [CollectorRegistry() for _ in range(5)]
     metrics_wrappers = [
-        MetricsRegistry(namespace=f"test_{i}", registry=reg) for i, reg in enumerate(registries)
+        MetricsRegistry(namespace=f"test_{i}", registry=reg)
+        for i, reg in enumerate(registries)
     ]
 
     # Create metrics in each registry using standard metric names from allowlist
@@ -146,7 +155,9 @@ def test_parallel_registry_isolation():
                     if "route" in sample.labels:
                         assert sample.labels["route"] == f"/test_{i}"
 
-        assert found_expected_metric, f"Registry {i} should contain {expected_metric_name} metric"
+        assert (
+            found_expected_metric
+        ), f"Registry {i} should contain {expected_metric_name} metric"
 
         # Verify no cross-contamination - shouldn't contain metrics from other registries
         for j in range(len(registries)):

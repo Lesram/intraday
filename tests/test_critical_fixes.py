@@ -11,7 +11,14 @@ from unittest.mock import AsyncMock
 from fastapi.testclient import TestClient
 import pytest
 
-from backend.api.main import PROMETHEUS_AVAILABLE, app
+from backend.api.main import app
+
+# Check if prometheus is available
+try:
+    from prometheus_client import CollectorRegistry
+    PROMETHEUS_AVAILABLE = True
+except ImportError:
+    PROMETHEUS_AVAILABLE = False
 from backend.api.websocket_manager import WebSocketClientManager
 
 
@@ -40,7 +47,7 @@ class TestCriticalFixes:
             '{"type": "subscribe_portfolio"}',
             '{"type": "ping"}',
             '{"type": "unsubscribe_signals"}',
-            '{"type": "pong"}'
+            '{"type": "pong"}',
         ]
 
         mock_websocket.receive_text.side_effect = messages + [TimeoutError()]
@@ -60,7 +67,7 @@ class TestCriticalFixes:
 
                 if message_type == "subscribe_signals":
                     symbols = message.get("symbols", [])
-                    client_info['subscriptions'].add('signals')
+                    client_info["subscriptions"].add("signals")
 
                     # Verify task is created but doesn't block
                     if "signals" in background_tasks:
@@ -74,10 +81,12 @@ class TestCriticalFixes:
                     processing_time = time.time() - start_time
 
                     # Should be nearly instantaneous (< 10ms)
-                    assert processing_time < 0.01, f"Task creation took {processing_time}s, should be < 0.01s"
+                    assert (
+                        processing_time < 0.01
+                    ), f"Task creation took {processing_time}s, should be < 0.01s"
 
                 elif message_type == "subscribe_portfolio":
-                    client_info['subscriptions'].add('portfolio')
+                    client_info["subscriptions"].add("portfolio")
 
                     if "portfolio" in background_tasks:
                         background_tasks["portfolio"].cancel()
@@ -88,7 +97,9 @@ class TestCriticalFixes:
                     )
                     processing_time = time.time() - start_time
 
-                    assert processing_time < 0.01, f"Task creation took {processing_time}s, should be < 0.01s"
+                    assert (
+                        processing_time < 0.01
+                    ), f"Task creation took {processing_time}s, should be < 0.01s"
 
                 messages_processed += 1
 
@@ -106,7 +117,9 @@ class TestCriticalFixes:
             await ws_manager.remove_client(client_id)
 
         # Verify all messages were processed without blocking
-        assert messages_processed == len(messages), f"Only {messages_processed}/{len(messages)} messages processed"
+        assert messages_processed == len(
+            messages
+        ), f"Only {messages_processed}/{len(messages)} messages processed"
 
     async def _mock_signal_sender(self, client_id: str):
         """Mock signal sender that would run in background"""
@@ -134,8 +147,12 @@ class TestCriticalFixes:
 
         # Start some background tasks
         background_tasks = {}
-        background_tasks["signals"] = asyncio.create_task(self._long_running_task("signals"))
-        background_tasks["portfolio"] = asyncio.create_task(self._long_running_task("portfolio"))
+        background_tasks["signals"] = asyncio.create_task(
+            self._long_running_task("signals")
+        )
+        background_tasks["portfolio"] = asyncio.create_task(
+            self._long_running_task("portfolio")
+        )
 
         # Let tasks start
         await asyncio.sleep(0.1)
@@ -186,7 +203,7 @@ class TestCriticalFixes:
         await ws_manager.broadcast_message(test_message)
 
         # Fill queue to capacity to test backpressure
-        queue = client_info['queue']
+        queue = client_info["queue"]
         for i in range(queue.maxsize + 5):  # Overfill to trigger backpressure
             try:
                 await ws_manager.broadcast_message({"type": "test", "seq": i})
@@ -211,14 +228,14 @@ class TestCriticalFixes:
         client_info = ws_manager.clients[client_id]
 
         # Simulate stale client (no pong for > 60 seconds)
-        client_info['last_ping'] = time.time() - 70
+        client_info["last_ping"] = time.time() - 70
 
         # Run heartbeat check logic manually
         current_time = time.time()
         stale_clients = []
 
         for check_client_id, check_client_info in ws_manager.clients.items():
-            if current_time - check_client_info['last_ping'] > 60:
+            if current_time - check_client_info["last_ping"] > 60:
                 stale_clients.append(check_client_id)
 
         # Verify client was marked as stale
@@ -238,17 +255,17 @@ class TestCriticalFixes:
         client_info = ws_manager.clients[client_id]
 
         # Test subscription addition
-        client_info['subscriptions'].add('signals')
-        client_info['subscriptions'].add('portfolio')
+        client_info["subscriptions"].add("signals")
+        client_info["subscriptions"].add("portfolio")
 
-        assert 'signals' in client_info['subscriptions']
-        assert 'portfolio' in client_info['subscriptions']
+        assert "signals" in client_info["subscriptions"]
+        assert "portfolio" in client_info["subscriptions"]
 
         # Test subscription removal
-        client_info['subscriptions'].discard('signals')
+        client_info["subscriptions"].discard("signals")
 
-        assert 'signals' not in client_info['subscriptions']
-        assert 'portfolio' in client_info['subscriptions']
+        assert "signals" not in client_info["subscriptions"]
+        assert "portfolio" in client_info["subscriptions"]
 
         await ws_manager.remove_client(client_id)
 

@@ -42,7 +42,9 @@ class TradingSignal:
     def __post_init__(self) -> None:
         """Validate signal constraints."""
         if not (-1.0 <= self.target_exposure <= 1.0):
-            raise ValueError(f"target_exposure must be in [-1.0, 1.0], got {self.target_exposure}")
+            raise ValueError(
+                f"target_exposure must be in [-1.0, 1.0], got {self.target_exposure}"
+            )
         if not (0.0 <= self.confidence <= 1.0):
             raise ValueError(f"confidence must be in [0.0, 1.0], got {self.confidence}")
 
@@ -79,6 +81,10 @@ class ExecutionPlan:
     def __post_init__(self) -> None:
         """Validate plan constraints."""
         if not (-1.0 <= self.from_exposure <= 1.0):
-            raise ValueError(f"from_exposure must be in [-1.0, 1.0], got {self.from_exposure}")
+            raise ValueError(
+                f"from_exposure must be in [-1.0, 1.0], got {self.from_exposure}"
+            )
         if not (-1.0 <= self.to_exposure <= 1.0):
-            raise ValueError(f"to_exposure must be in [-1.0, 1.0], got {self.to_exposure}")
+            raise ValueError(
+                f"to_exposure must be in [-1.0, 1.0], got {self.to_exposure}"
+            )

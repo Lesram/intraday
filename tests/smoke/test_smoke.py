@@ -2,6 +2,7 @@
 Smoke tests for staging deployment validation.
 Fast, focused tests to verify critical functionality is working.
 """
+
 import json
 import time
 
@@ -82,7 +83,9 @@ def wait_for_ready(client):
             return True
 
         if attempt < max_attempts - 1:
-            print(f"Attempt {attempt + 1}/{max_attempts}: Not ready, waiting {wait_time}s...")
+            print(
+                f"Attempt {attempt + 1}/{max_attempts}: Not ready, waiting {wait_time}s..."
+            )
             time.sleep(wait_time)
 
     pytest.fail("Staging environment not ready within timeout")
@@ -138,7 +141,11 @@ class TestMetricsEndpoint:
         metrics_text = response.text
 
         # Check for essential metrics
-        expected_metrics = ["http_requests_total", "http_request_duration_seconds", "python_info"]
+        expected_metrics = [
+            "http_requests_total",
+            "http_request_duration_seconds",
+            "python_info",
+        ]
 
         missing_metrics = []
         for metric in expected_metrics:
@@ -157,7 +164,9 @@ class TestMetricsEndpoint:
         assert len(lines) > 0, "Metrics response is empty"
 
         # Check for metric lines (not just comments)
-        metric_lines = [line for line in lines if not line.startswith("#") and line.strip()]
+        metric_lines = [
+            line for line in lines if not line.startswith("#") and line.strip()
+        ]
         assert len(metric_lines) > 0, "No actual metrics found"
 
 
@@ -192,7 +201,9 @@ class TestAuthenticationSmoke:
 
     def test_login_endpoint_exists(self, client, wait_for_ready):
         """Test login endpoint exists (even if we can't authenticate)."""
-        response = client.post("/auth/login", json={"username": "test", "password": "test"})
+        response = client.post(
+            "/auth/login", json={"username": "test", "password": "test"}
+        )
 
         # We expect authentication to fail, but endpoint should exist
         assert response.status_code in [
@@ -228,7 +239,10 @@ class TestCORSSmoke:
         # OPTIONS request to simulate preflight
         response = client.session.options(
             f"{client.base_url}/api/v1/system/status",
-            headers={"Origin": "https://example.com", "Access-Control-Request-Method": "GET"},
+            headers={
+                "Origin": "https://example.com",
+                "Access-Control-Request-Method": "GET",
+            },
         )
 
         # CORS should be configured, even if origin is rejected
@@ -244,7 +258,11 @@ class TestRateLimitingSmoke:
         response = client.get("/health")
 
         # Rate limiting headers should be present
-        rate_limit_headers = ["x-ratelimit-limit", "x-ratelimit-remaining", "x-ratelimit-reset"]
+        rate_limit_headers = [
+            "x-ratelimit-limit",
+            "x-ratelimit-remaining",
+            "x-ratelimit-reset",
+        ]
 
         present_headers = []
         for header in rate_limit_headers:
@@ -319,7 +337,11 @@ class TestSecuritySmoke:
         """Test security headers are present."""
         response = client.get("/health")
 
-        expected_headers = ["x-content-type-options", "x-frame-options", "x-xss-protection"]
+        expected_headers = [
+            "x-content-type-options",
+            "x-frame-options",
+            "x-xss-protection",
+        ]
 
         missing_headers = []
         for header in expected_headers:
@@ -336,7 +358,11 @@ class TestSecuritySmoke:
         response_text = response.text.lower()
 
         # Check for common sensitive information leaks
-        sensitive_patterns = ["traceback", "stack trace", "internal server error details"]
+        sensitive_patterns = [
+            "traceback",
+            "stack trace",
+            "internal server error details",
+        ]
 
         leaks = []
         for pattern in sensitive_patterns:

@@ -18,7 +18,7 @@ from enum import Enum
 import logging
 import random
 import time
-from typing import Any, Optional
+from typing import Any
 
 from prometheus_client import Counter, Histogram
 
@@ -50,7 +50,9 @@ timeout_occurrences = Counter(
 )
 
 dlq_messages = Counter(
-    "resilience_dlq_messages_total", "Messages sent to Dead Letter Queue", ["service", "reason"]
+    "resilience_dlq_messages_total",
+    "Messages sent to Dead Letter Queue",
+    ["service", "reason"],
 )
 
 backoff_delays = Histogram(
@@ -138,19 +140,25 @@ class CircuitBreaker:
         """Execute function with circuit breaker protection."""
         async with self._lock:
             if await self._should_reject():
-                circuit_breaker_requests.labels(service=self.name, outcome="rejected").inc()
-                raise CircuitBreakerOpenException(f"Circuit breaker {self.name} is OPEN")
+                circuit_breaker_requests.labels(
+                    service=self.name, outcome="rejected"
+                ).inc()
+                raise CircuitBreakerOpenException(
+                    f"Circuit breaker {self.name} is OPEN"
+                )
 
         try:
             # Execute with timeout
-            result = await asyncio.wait_for(func(*args, **kwargs), timeout=self.config.timeout)
+            result = await asyncio.wait_for(
+                func(*args, **kwargs), timeout=self.config.timeout
+            )
 
             await self._on_success()
             circuit_breaker_requests.labels(service=self.name, outcome="success").inc()
 
             return result
 
-        except asyncio.TimeoutError:
+        except TimeoutError:
             timeout_occurrences.labels(service=self.name, operation=func.__name__).inc()
             await self._on_failure()
             circuit_breaker_requests.labels(service=self.name, outcome="timeout").inc()
@@ -195,9 +203,7 @@ class CircuitBreaker:
             if (
                 self.state == CircuitBreakerState.CLOSED
                 and self.failure_count >= self.config.failure_threshold
-            ):
-                await self._transition_to_open()
-            elif self.state == CircuitBreakerState.HALF_OPEN:
+            ) or self.state == CircuitBreakerState.HALF_OPEN:
                 await self._transition_to_open()
 
     async def _transition_to_open(self):
@@ -269,7 +275,7 @@ class RetryManager:
         self.backoff = ExponentialBackoff(config)
 
     async def execute_with_retry(
-        self, func: Callable, *args, idempotency_key: Optional[str] = None, **kwargs
+        self, func: Callable, *args, idempotency_key: str | None = None, **kwargs
     ) -> Any:
         """Execute function with retry logic."""
         last_exception = None
@@ -283,11 +289,15 @@ class RetryManager:
                 result = await func(*args, **kwargs)
 
                 retry_attempts.labels(
-                    service=self.name, attempt_number=str(attempt + 1), outcome="success"
+                    service=self.name,
+                    attempt_number=str(attempt + 1),
+                    outcome="success",
                 ).inc()
 
                 if attempt > 0:
-                    logger.info(f"Retry succeeded for {self.name} on attempt {attempt + 1}")
+                    logger.info(
+                        f"Retry succeeded for {self.name} on attempt {attempt + 1}"
+                    )
 
                 return result
 
@@ -295,10 +305,14 @@ class RetryManager:
                 last_exception = e
 
                 retry_attempts.labels(
-                    service=self.name, attempt_number=str(attempt + 1), outcome="failure"
+                    service=self.name,
+                    attempt_number=str(attempt + 1),
+                    outcome="failure",
                 ).inc()
 
-                logger.warning(f"Retry attempt {attempt + 1} failed for {self.name}: {e}")
+                logger.warning(
+                    f"Retry attempt {attempt + 1} failed for {self.name}: {e}"
+                )
 
                 # If this is the last attempt, don't wait
                 if attempt == self.config.max_attempts - 1:
@@ -325,7 +339,7 @@ class RetryManager:
         args: tuple,
         kwargs: dict,
         exception: Exception,
-        idempotency_key: Optional[str],
+        idempotency_key: str | None,
     ):
         """Send failed operation to Dead Letter Queue."""
         dlq_message = {
@@ -359,29 +373,33 @@ class ResilienceManager:
         self._default_retry_config = RetryConfig()
 
     def get_circuit_breaker(
-        self, service_name: str, config: Optional[CircuitBreakerConfig] = None
+        self, service_name: str, config: CircuitBreakerConfig | None = None
     ) -> CircuitBreaker:
         """Get or create circuit breaker for service."""
         if service_name not in self._circuit_breakers:
             cb_config = config or self._default_cb_config
-            self._circuit_breakers[service_name] = CircuitBreaker(service_name, cb_config)
+            self._circuit_breakers[service_name] = CircuitBreaker(
+                service_name, cb_config
+            )
         return self._circuit_breakers[service_name]
 
     def get_retry_manager(
-        self, service_name: str, config: Optional[RetryConfig] = None
+        self, service_name: str, config: RetryConfig | None = None
     ) -> RetryManager:
         """Get or create retry manager for service."""
         if service_name not in self._retry_managers:
             retry_config = config or self._default_retry_config
-            self._retry_managers[service_name] = RetryManager(service_name, retry_config)
+            self._retry_managers[service_name] = RetryManager(
+                service_name, retry_config
+            )
         return self._retry_managers[service_name]
 
     @asynccontextmanager
     async def resilient_call(
         self,
         service_name: str,
-        circuit_breaker_config: Optional[CircuitBreakerConfig] = None,
-        retry_config: Optional[RetryConfig] = None,
+        circuit_breaker_config: CircuitBreakerConfig | None = None,
+        retry_config: RetryConfig | None = None,
     ):
         """Context manager for resilient service calls."""
         cb = self.get_circuit_breaker(service_name, circuit_breaker_config)
@@ -397,7 +415,11 @@ class ResilienceManager:
 
     def get_health_status(self) -> dict[str, Any]:
         """Get health status of all resilience components."""
-        status = {"circuit_breakers": {}, "retry_managers": {}, "timestamp": time.time()}
+        status = {
+            "circuit_breakers": {},
+            "retry_managers": {},
+            "timestamp": time.time(),
+        }
 
         for name, cb in self._circuit_breakers.items():
             status["circuit_breakers"][name] = {
@@ -422,7 +444,7 @@ resilience_manager = ResilienceManager()
 
 
 # Convenience decorators for common patterns
-def circuit_breaker(service_name: str, config: Optional[CircuitBreakerConfig] = None):
+def circuit_breaker(service_name: str, config: CircuitBreakerConfig | None = None):
     """Decorator to add circuit breaker protection to async functions."""
 
     def decorator(func: Callable):
@@ -435,7 +457,7 @@ def circuit_breaker(service_name: str, config: Optional[CircuitBreakerConfig] = 
     return decorator
 
 
-def retry_with_backoff(service_name: str, config: Optional[RetryConfig] = None):
+def retry_with_backoff(service_name: str, config: RetryConfig | None = None):
     """Decorator to add retry logic with exponential backoff."""
 
     def decorator(func: Callable):

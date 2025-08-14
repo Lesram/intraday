@@ -25,6 +25,7 @@ from backend.strategies.types import Side
 @dataclass
 class FactoryConfig:
     """Configuration for test factories."""
+
     seed: int = 42
     default_symbol: str = "AAPL"
     default_account_id: str = "test-account-123"
@@ -45,6 +46,7 @@ def seed_random(seed: int | None = None) -> None:
 
 # Order factories
 
+
 def create_order_spec(
     symbol: str = None,
     side: Side = None,
@@ -54,7 +56,7 @@ def create_order_spec(
     stop_price: Decimal | None = None,
     time_in_force: str = None,
     client_order_id: str = None,
-    **kwargs
+    **kwargs,
 ) -> OrderSpec:
     """Create an OrderSpec for testing."""
 
@@ -62,14 +64,21 @@ def create_order_spec(
         symbol=symbol or factory_config.default_symbol,
         side=side if isinstance(side, str) else (side.value if side else "buy"),
         qty=quantity or Decimal("100"),
-        notional=(quantity or Decimal("100")) * Decimal(str(limit_price or factory_config.base_price)),
+        notional=(quantity or Decimal("100"))
+        * Decimal(str(limit_price or factory_config.base_price)),
         price=limit_price,
         tif=time_in_force or "day",
         attributes={
             "client_order_id": client_order_id or str(uuid.uuid4()),
-            "order_type": order_type.value if order_type else OrderType.MARKET.value if hasattr(OrderType, 'MARKET') else "market",
-            **kwargs
-        }
+            "order_type": (
+                order_type.value
+                if order_type
+                else (
+                    OrderType.MARKET.value if hasattr(OrderType, "MARKET") else "market"
+                )
+            ),
+            **kwargs,
+        },
     )
 
 
@@ -79,7 +88,7 @@ def create_market_buy_order(symbol: str = None, quantity: Decimal = None) -> Ord
         symbol=symbol,
         side=Side.BUY,
         order_type=OrderType.MARKET,
-        quantity=quantity or Decimal("100")
+        quantity=quantity or Decimal("100"),
     )
 
 
@@ -89,7 +98,7 @@ def create_market_sell_order(symbol: str = None, quantity: Decimal = None) -> Or
         symbol=symbol,
         side=Side.SELL,
         order_type=OrderType.MARKET,
-        quantity=quantity or Decimal("100")
+        quantity=quantity or Decimal("100"),
     )
 
 
@@ -97,7 +106,7 @@ def create_limit_order(
     symbol: str = None,
     side: Side = None,
     quantity: Decimal = None,
-    limit_price: Decimal = None
+    limit_price: Decimal = None,
 ) -> OrderSpec:
     """Create a limit order."""
     base_price = factory_config.base_price
@@ -107,14 +116,13 @@ def create_limit_order(
         side=side or Side.BUY,
         order_type=OrderType.LIMIT,
         quantity=quantity or Decimal("100"),
-        limit_price=limit_price or Decimal(str(base_price * 0.99))  # Slightly below market
+        limit_price=limit_price
+        or Decimal(str(base_price * 0.99)),  # Slightly below market
     )
 
 
 def create_stop_loss_order(
-    symbol: str = None,
-    quantity: Decimal = None,
-    stop_price: Decimal = None
+    symbol: str = None, quantity: Decimal = None, stop_price: Decimal = None
 ) -> OrderSpec:
     """Create a stop-loss order."""
     base_price = factory_config.base_price
@@ -124,17 +132,18 @@ def create_stop_loss_order(
         side=Side.SELL,
         order_type=OrderType.STOP,
         quantity=quantity or Decimal("100"),
-        stop_price=stop_price or Decimal(str(base_price * 0.95))  # 5% below market
+        stop_price=stop_price or Decimal(str(base_price * 0.95)),  # 5% below market
     )
 
 
 # Signal factories
 
+
 def create_signal_payload(
     symbol: str = None,
     signal_strength: float = None,
     timestamp: datetime = None,
-    features: dict[str, float] | None = None
+    features: dict[str, float] | None = None,
 ) -> dict[str, Any]:
     """Create a trading signal payload."""
 
@@ -146,15 +155,15 @@ def create_signal_payload(
         "metadata": {
             "model_version": "v1.0.0",
             "confidence": signal_strength or 0.7,
-            "source": "test_factory"
-        }
+            "source": "test_factory",
+        },
     }
 
 
 def create_batch_signals(
     symbols: list[str] = None,
     count: int = 10,
-    time_range: tuple[datetime, datetime] = None
+    time_range: tuple[datetime, datetime] = None,
 ) -> list[dict[str, Any]]:
     """Create a batch of trading signals."""
     symbols = symbols or ["AAPL", "GOOGL", "MSFT", "TSLA"]
@@ -171,54 +180,65 @@ def create_batch_signals(
         signal_time = start_time + (time_delta * i)
         symbol = random.choice(symbols)
 
-        signals.append(create_signal_payload(
-            symbol=symbol,
-            signal_strength=random.uniform(0.3, 0.9),
-            timestamp=signal_time
-        ))
+        signals.append(
+            create_signal_payload(
+                symbol=symbol,
+                signal_strength=random.uniform(0.3, 0.9),
+                timestamp=signal_time,
+            )
+        )
 
     return signals
 
 
 # Feature factories
 
+
 def create_sample_features(n_features: int = 20) -> dict[str, float]:
     """Create sample feature values."""
     features = {}
 
     # Price-based features
-    features.update({
-        "returns_1": random.gauss(0.0, 0.02),
-        "returns_5": random.gauss(0.0, 0.05),
-        "sma_20": random.uniform(95.0, 105.0),
-        "ema_12": random.uniform(95.0, 105.0),
-        "bollinger_upper": random.uniform(102.0, 108.0),
-        "bollinger_lower": random.uniform(92.0, 98.0),
-    })
+    features.update(
+        {
+            "returns_1": random.gauss(0.0, 0.02),
+            "returns_5": random.gauss(0.0, 0.05),
+            "sma_20": random.uniform(95.0, 105.0),
+            "ema_12": random.uniform(95.0, 105.0),
+            "bollinger_upper": random.uniform(102.0, 108.0),
+            "bollinger_lower": random.uniform(92.0, 98.0),
+        }
+    )
 
     # Technical indicators
-    features.update({
-        "rsi_14": random.uniform(20.0, 80.0),
-        "macd": random.gauss(0.0, 0.5),
-        "macd_signal": random.gauss(0.0, 0.3),
-        "stochastic_k": random.uniform(0.0, 100.0),
-        "williams_r": random.uniform(-100.0, 0.0),
-    })
+    features.update(
+        {
+            "rsi_14": random.uniform(20.0, 80.0),
+            "macd": random.gauss(0.0, 0.5),
+            "macd_signal": random.gauss(0.0, 0.3),
+            "stochastic_k": random.uniform(0.0, 100.0),
+            "williams_r": random.uniform(-100.0, 0.0),
+        }
+    )
 
     # Volume features
-    features.update({
-        "volume_sma_10": random.uniform(800000, 1200000),
-        "volume_ratio": random.uniform(0.5, 2.0),
-        "vwap": random.uniform(98.0, 102.0),
-        "obv": random.uniform(-1000000, 1000000),
-    })
+    features.update(
+        {
+            "volume_sma_10": random.uniform(800000, 1200000),
+            "volume_ratio": random.uniform(0.5, 2.0),
+            "vwap": random.uniform(98.0, 102.0),
+            "obv": random.uniform(-1000000, 1000000),
+        }
+    )
 
     # Volatility features
-    features.update({
-        "atr_14": random.uniform(1.0, 5.0),
-        "volatility_20": random.uniform(0.15, 0.45),
-        "volatility_ratio": random.uniform(0.8, 1.5),
-    })
+    features.update(
+        {
+            "atr_14": random.uniform(1.0, 5.0),
+            "volatility_20": random.uniform(0.15, 0.45),
+            "volatility_ratio": random.uniform(0.8, 1.5),
+        }
+    )
 
     # Add more features if requested
     while len(features) < n_features:
@@ -232,7 +252,7 @@ def create_feature_dataframe(
     n_periods: int = 100,
     n_features: int = 20,
     start_date: datetime = None,
-    freq: str = "1min"
+    freq: str = "1min",
 ) -> pd.DataFrame:
     """Create a DataFrame of feature data for testing."""
 
@@ -269,9 +289,7 @@ def create_feature_dataframe(
 
 
 def create_feature_frame(
-    n_periods: int = 100,
-    n_features: int = 20,
-    target_name: str = "target_return"
+    n_periods: int = 100, n_features: int = 20, target_name: str = "target_return"
 ) -> FeatureFrame:
     """Create a FeatureFrame for testing."""
 
@@ -285,23 +303,21 @@ def create_feature_frame(
             for col in features_df.columns
         ],
         target_name=target_name,
-        created_at=datetime.now(UTC).isoformat()
+        created_at=datetime.now(UTC).isoformat(),
     )
 
-    return FeatureFrame(
-        data=features_df,
-        schema=schema
-    )
+    return FeatureFrame(data=features_df, schema=schema)
 
 
 # OHLCV factories
+
 
 def create_ohlcv_data(
     symbol: str = None,
     n_periods: int = 100,
     start_date: datetime = None,
     freq: str = "1min",
-    base_price: float = None
+    base_price: float = None,
 ) -> pd.DataFrame:
     """Create OHLCV data for testing."""
 
@@ -333,24 +349,27 @@ def create_ohlcv_data(
         # Generate volume
         volume = np.random.exponential(1000)
 
-        ohlcv_data.append({
-            "open": open_price,
-            "high": high,
-            "low": low,
-            "close": close,
-            "volume": volume
-        })
+        ohlcv_data.append(
+            {
+                "open": open_price,
+                "high": high,
+                "low": low,
+                "close": close,
+                "volume": volume,
+            }
+        )
 
     return pd.DataFrame(ohlcv_data, index=dates)
 
 
 # Position factories
 
+
 def create_position_data(
     symbol: str = None,
     quantity: Decimal = None,
     avg_price: Decimal = None,
-    current_price: Decimal = None
+    current_price: Decimal = None,
 ) -> dict[str, Any]:
     """Create position data for testing."""
 
@@ -371,15 +390,16 @@ def create_position_data(
         "market_value": str(market_value),
         "cost_basis": str(cost_basis),
         "unrealized_pl": str(unrealized_pl),
-        "unrealized_plpc": str((unrealized_pl / cost_basis) * 100) if cost_basis else "0.0",
+        "unrealized_plpc": (
+            str((unrealized_pl / cost_basis) * 100) if cost_basis else "0.0"
+        ),
         "side": "long" if quantity > 0 else "short",
         "created_at": datetime.now(UTC).isoformat(),
     }
 
 
 def create_portfolio_snapshot(
-    symbols: list[str] = None,
-    total_value: Decimal = None
+    symbols: list[str] = None, total_value: Decimal = None
 ) -> dict[str, Any]:
     """Create a portfolio snapshot for testing."""
 
@@ -396,19 +416,24 @@ def create_portfolio_snapshot(
         else:
             # Random allocation
             max_allocation = remaining_value * Decimal("0.4")  # Max 40% per position
-            position_value = Decimal(str(random.uniform(float(max_allocation * 0.1), float(max_allocation))))
+            position_value = Decimal(
+                str(random.uniform(float(max_allocation * 0.1), float(max_allocation)))
+            )
             remaining_value -= position_value
 
         # Calculate quantity and price
         price = Decimal(str(random.uniform(50, 200)))
         quantity = position_value / price
 
-        positions.append(create_position_data(
-            symbol=symbol,
-            quantity=quantity,
-            avg_price=price,
-            current_price=price * Decimal(str(random.uniform(0.95, 1.05)))  # +/- 5%
-        ))
+        positions.append(
+            create_position_data(
+                symbol=symbol,
+                quantity=quantity,
+                avg_price=price,
+                current_price=price
+                * Decimal(str(random.uniform(0.95, 1.05))),  # +/- 5%
+            )
+        )
 
     return {
         "positions": positions,
@@ -421,10 +446,9 @@ def create_portfolio_snapshot(
 
 # Database record factories
 
+
 def create_order_record(
-    order_spec: OrderSpec = None,
-    status: str = "submitted",
-    broker_order_id: str = None
+    order_spec: OrderSpec = None, status: str = "submitted", broker_order_id: str = None
 ) -> dict[str, Any]:
     """Create an order database record."""
 
@@ -451,9 +475,7 @@ def create_order_record(
 
 
 def create_execution_record(
-    order_id: str,
-    fill_quantity: Decimal = None,
-    fill_price: Decimal = None
+    order_id: str, fill_quantity: Decimal = None, fill_price: Decimal = None
 ) -> dict[str, Any]:
     """Create an execution database record."""
 
@@ -470,6 +492,7 @@ def create_execution_record(
 
 # Bulk factories for performance testing
 
+
 def create_bulk_orders(count: int = 1000) -> list[OrderSpec]:
     """Create many orders for performance testing."""
     symbols = ["AAPL", "GOOGL", "MSFT", "TSLA", "NVDA", "META", "AMZN", "NFLX"]
@@ -478,37 +501,50 @@ def create_bulk_orders(count: int = 1000) -> list[OrderSpec]:
 
     orders = []
     for _ in range(count):
-        orders.append(create_order_spec(
-            symbol=random.choice(symbols),
-            side=random.choice(sides),
-            order_type=random.choice(order_types),
-            quantity=Decimal(str(random.randint(1, 1000))),
-            limit_price=Decimal(str(random.uniform(50, 200))) if random.choice(order_types) == OrderType.LIMIT else None
-        ))
+        orders.append(
+            create_order_spec(
+                symbol=random.choice(symbols),
+                side=random.choice(sides),
+                order_type=random.choice(order_types),
+                quantity=Decimal(str(random.randint(1, 1000))),
+                limit_price=(
+                    Decimal(str(random.uniform(50, 200)))
+                    if random.choice(order_types) == OrderType.LIMIT
+                    else None
+                ),
+            )
+        )
 
     return orders
 
 
 def create_bulk_signals(count: int = 1000) -> list[dict[str, Any]]:
     """Create many signals for performance testing."""
-    symbols = ["AAPL", "GOOGL", "MSFT", "TSLA", "NVDA", "META", "AMZN", "NFLX"] * (count // 8 + 1)
+    symbols = ["AAPL", "GOOGL", "MSFT", "TSLA", "NVDA", "META", "AMZN", "NFLX"] * (
+        count // 8 + 1
+    )
 
     signals = []
     base_time = datetime.now(UTC) - timedelta(hours=1)
 
     for i in range(count):
-        signal_time = base_time + timedelta(seconds=i * 3.6)  # One signal per 3.6 seconds
+        signal_time = base_time + timedelta(
+            seconds=i * 3.6
+        )  # One signal per 3.6 seconds
 
-        signals.append(create_signal_payload(
-            symbol=symbols[i],
-            signal_strength=random.uniform(0.1, 0.9),
-            timestamp=signal_time
-        ))
+        signals.append(
+            create_signal_payload(
+                symbol=symbols[i],
+                signal_strength=random.uniform(0.1, 0.9),
+                timestamp=signal_time,
+            )
+        )
 
     return signals
 
 
 # Utility functions
+
 
 def reset_factory_config(config: FactoryConfig = None) -> None:
     """Reset factory configuration."""
@@ -518,6 +554,7 @@ def reset_factory_config(config: FactoryConfig = None) -> None:
 
 def with_deterministic_seed(seed: int = 42):
     """Decorator to run a test with deterministic randomization."""
+
     def decorator(func):
         def wrapper(*args, **kwargs):
             original_random_state = random.getstate()
@@ -531,4 +568,5 @@ def with_deterministic_seed(seed: int = 42):
                 np.random.set_state(original_numpy_state)
 
         return wrapper
+
     return decorator

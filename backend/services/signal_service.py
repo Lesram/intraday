@@ -1,0 +1,50 @@
+"""
+Signal service for generating and managing trading signals.
+"""
+
+import asyncio
+from typing import Dict, List, Any
+from datetime import datetime
+
+
+class SignalService:
+    """Service for generating trading signals"""
+    
+    def __init__(self):
+        self.signals = {}
+    
+    async def get_signals(self, symbol: str = None) -> List[Dict[str, Any]]:
+        """Get trading signals"""
+        if symbol:
+            return [{
+                "symbol": symbol,
+                "signal": "BUY",
+                "confidence": 0.75,
+                "timestamp": datetime.utcnow().isoformat()
+            }]
+        
+        return [{
+            "symbol": "AAPL",
+            "signal": "BUY", 
+            "confidence": 0.8,
+            "timestamp": datetime.utcnow().isoformat()
+        }]
+    
+    async def generate_signal(self, symbol: str, data: Dict[str, Any]) -> Dict[str, Any]:
+        """Generate a trading signal"""
+        return {
+            "symbol": symbol,
+            "signal": "BUY",
+            "confidence": 0.75,
+            "timestamp": datetime.utcnow().isoformat(),
+            "data": data
+        }
+
+
+# Global instance
+signal_service = SignalService()
+
+
+async def get_signal_service():
+    """Get signal service instance"""
+    return signal_service

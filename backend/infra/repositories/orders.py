@@ -2,6 +2,7 @@
 Orders repository - handles order lifecycle and idempotency.
 Implements async CRUD operations with proper error handling.
 """
+
 from datetime import datetime
 from decimal import Decimal
 import logging
@@ -124,7 +125,10 @@ class OrdersRepo:
                 if existing_order:
                     logger.debug(
                         "Order created by another process",
-                        extra={"client_key": client_key, "order_id": str(existing_order.id)},
+                        extra={
+                            "client_key": client_key,
+                            "order_id": str(existing_order.id),
+                        },
                     )
                     return existing_order
 
@@ -132,7 +136,9 @@ class OrdersRepo:
                 "Failed to create order",
                 extra={"client_key": client_key, "symbol": symbol, "error": str(e)},
             )
-            raise DuplicateOrderError(f"Failed to create order with key {client_key}") from e
+            raise DuplicateOrderError(
+                f"Failed to create order with key {client_key}"
+            ) from e
 
     async def set_status(self, order_id: uuid.UUID, status: str) -> None:
         """
@@ -158,7 +164,9 @@ class OrdersRepo:
         if not updated_id:
             raise OrderNotFoundError(f"Order {order_id} not found")
 
-        logger.info("Order status updated", extra={"order_id": str(order_id), "status": status})
+        logger.info(
+            "Order status updated", extra={"order_id": str(order_id), "status": status}
+        )
 
     async def attach_broker_result(
         self,
@@ -203,7 +211,12 @@ class OrdersRepo:
             merged_attrs = {**(current_attrs or {}), **attributes}
             values["attributes"] = merged_attrs
 
-        stmt = update(Order).where(Order.id == order_id).values(**values).returning(Order.id)
+        stmt = (
+            update(Order)
+            .where(Order.id == order_id)
+            .values(**values)
+            .returning(Order.id)
+        )
 
         result = await self.session.execute(stmt)
         updated_id = result.scalar_one_or_none()

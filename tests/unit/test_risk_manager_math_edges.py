@@ -64,11 +64,15 @@ class TestKellyFractionEdgeCases:
     def test_kelly_boundary_conditions(self):
         """Test Kelly fraction at exact boundary conditions."""
         # Test at exact floor boundary
-        kelly = RiskMathUtils.kelly_fraction(0.05, 1.0, kelly_floor=0.05, kelly_ceiling=0.2)
+        kelly = RiskMathUtils.kelly_fraction(
+            0.05, 1.0, kelly_floor=0.05, kelly_ceiling=0.2
+        )
         assert kelly == 0.05
 
         # Test at exact ceiling boundary
-        kelly = RiskMathUtils.kelly_fraction(0.21, 1.0, kelly_floor=0.0, kelly_ceiling=0.2)
+        kelly = RiskMathUtils.kelly_fraction(
+            0.21, 1.0, kelly_floor=0.0, kelly_ceiling=0.2
+        )
         assert kelly == 0.2
 
 
@@ -306,9 +310,15 @@ class TestEWMAVolatilityEdgeCases:
         """Test EWMA with different decay parameters."""
         returns = np.random.normal(0.0, 0.02, 100)
 
-        vol_fast = RiskMathUtils.ewma_volatility(returns, lambda_param=0.90)  # Fast decay
-        vol_medium = RiskMathUtils.ewma_volatility(returns, lambda_param=0.94)  # Medium decay
-        vol_slow = RiskMathUtils.ewma_volatility(returns, lambda_param=0.97)  # Slow decay
+        vol_fast = RiskMathUtils.ewma_volatility(
+            returns, lambda_param=0.90
+        )  # Fast decay
+        vol_medium = RiskMathUtils.ewma_volatility(
+            returns, lambda_param=0.94
+        )  # Medium decay
+        vol_slow = RiskMathUtils.ewma_volatility(
+            returns, lambda_param=0.97
+        )  # Slow decay
 
         # All should be positive
         assert all(vol > 0 for vol in [vol_fast, vol_medium, vol_slow])
@@ -350,7 +360,10 @@ class TestAsyncRiskManagerEdgeCases:
 
         # Order for zero-volatility asset
         order = OrderSpec(
-            symbol="STABLE_ASSET", side=Side.BUY, qty=Decimal("100"), notional=Decimal("10000")
+            symbol="STABLE_ASSET",
+            side=Side.BUY,
+            qty=Decimal("100"),
+            notional=Decimal("10000"),
         )
 
         # Should handle gracefully without crashing
@@ -388,7 +401,11 @@ class TestAsyncRiskManagerEdgeCases:
         result = await risk_manager.evaluate_order_async(order, portfolio)
         assert isinstance(result, dict)
         # Should consider correlation in risk assessment
-        assert "concentration_risk" in result or "sector_exposure" in result or "allowed" in result
+        assert (
+            "concentration_risk" in result
+            or "sector_exposure" in result
+            or "allowed" in result
+        )
 
     @pytest.mark.unit
     @pytest.mark.asyncio
@@ -415,14 +432,19 @@ class TestAsyncRiskManagerEdgeCases:
         # Test with mock portfolio history
         with patch.object(risk_manager, "_get_portfolio_history") as mock_history:
             mock_history.return_value = [
-                {"timestamp": pd.Timestamp.now() - pd.Timedelta(days=99 - i), "total_value": val}
+                {
+                    "timestamp": pd.Timestamp.now() - pd.Timedelta(days=99 - i),
+                    "total_value": val,
+                }
                 for i, val in enumerate(volatile_values)
             ]
 
             portfolio = PortfolioState(
                 total_value=volatile_values[-1],
                 available_cash=10000.0,
-                positions={"SPY": {"qty": 100, "avg_price": 400.0, "market_value": 40000.0}},
+                positions={
+                    "SPY": {"qty": 100, "avg_price": 400.0, "market_value": 40000.0}
+                },
                 daily_pnl=0.0,
                 unrealized_pnl=0.0,
             )
@@ -483,7 +505,10 @@ class TestAsyncRiskManagerEdgeCases:
             )
 
             order = OrderSpec(
-                symbol="DECLINING_STOCK", action="buy", quantity=100, order_type="market"
+                symbol="DECLINING_STOCK",
+                action="buy",
+                quantity=100,
+                order_type="market",
             )
 
             result = await risk_manager.evaluate_order_async(order, portfolio)
@@ -692,7 +717,9 @@ class TestCombinedMathStability:
                     assert vol >= 0 or np.isnan(vol)
 
                     if len(returns) > 1:
-                        kelly = RiskMathUtils.kelly_fraction(np.mean(returns), np.var(returns))
+                        kelly = RiskMathUtils.kelly_fraction(
+                            np.mean(returns), np.var(returns)
+                        )
                         assert kelly >= 0 or np.isnan(kelly)
 
             except (ValueError, ZeroDivisionError) as e:

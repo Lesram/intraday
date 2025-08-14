@@ -7,6 +7,7 @@ For new tests, use AsyncRiskManager in test_risk_manager_current.py instead.
 These tests are kept only for backward compatibility validation.
 Do not use these patterns in new code.
 """
+
 from datetime import datetime, timedelta
 from unittest.mock import Mock
 import warnings
@@ -94,7 +95,9 @@ class TestLegacyRiskManager:
     def test_kelly_position_sizing(self):
         """Test Kelly criterion position sizing"""
         # Test with valid win rate and ratio
-        kelly_fraction = self.risk_manager.kelly_position_size(prob_win=0.6, win_loss_ratio=1.5)
+        kelly_fraction = self.risk_manager.kelly_position_size(
+            prob_win=0.6, win_loss_ratio=1.5
+        )
 
         assert isinstance(kelly_fraction, float)
         assert 0 <= kelly_fraction <= 1  # Should be between 0 and 1
@@ -103,11 +106,15 @@ class TestLegacyRiskManager:
     def test_kelly_position_sizing_edge_cases(self):
         """Test Kelly criterion with edge cases"""
         # No edge case (50% win rate)
-        kelly_no_edge = self.risk_manager.kelly_position_size(prob_win=0.5, win_loss_ratio=1.0)
+        kelly_no_edge = self.risk_manager.kelly_position_size(
+            prob_win=0.5, win_loss_ratio=1.0
+        )
         assert kelly_no_edge >= 0.0
 
         # Negative edge case
-        kelly_negative = self.risk_manager.kelly_position_size(prob_win=0.3, win_loss_ratio=0.8)
+        kelly_negative = self.risk_manager.kelly_position_size(
+            prob_win=0.3, win_loss_ratio=0.8
+        )
         assert kelly_negative >= 0.0
 
     @pytest.mark.unit
@@ -239,7 +246,12 @@ class TestRiskManagerEdgeCases:
         """Test handling of single value data"""
         # Add minimal data
         self.risk_manager.portfolio_history = [
-            {"timestamp": datetime.now(), "total_value": 100000, "cash": 20000, "positions": 0}
+            {
+                "timestamp": datetime.now(),
+                "total_value": 100000,
+                "cash": 20000,
+                "positions": 0,
+            }
         ]
 
         var_result = self.risk_manager.calculate_var()
@@ -266,11 +278,15 @@ class TestRiskManagerEdgeCases:
     def test_invalid_parameters(self):
         """Test handling of invalid parameters"""
         # Test invalid confidence level
-        var_result = self.risk_manager.calculate_var(confidence=1.5)  # Invalid confidence
+        var_result = self.risk_manager.calculate_var(
+            confidence=1.5
+        )  # Invalid confidence
         assert isinstance(var_result, (int, float))
 
         # Test invalid Kelly parameters
-        kelly_result = self.risk_manager.kelly_position_size(-0.1, 1.0)  # Negative probability
+        kelly_result = self.risk_manager.kelly_position_size(
+            -0.1, 1.0
+        )  # Negative probability
         assert kelly_result >= 0.0
 
 
@@ -336,22 +352,30 @@ class TestRiskManagerEdgeCases:
     def test_kelly_criterion_edge_cases(self):
         """Test Kelly criterion with edge cases"""
         # Test with zero probability
-        kelly_zero = self.risk_manager.kelly_position_size(prob_win=0, win_loss_ratio=2.0)
+        kelly_zero = self.risk_manager.kelly_position_size(
+            prob_win=0, win_loss_ratio=2.0
+        )
         assert kelly_zero == 0
 
         # Test with very high probability (but capped)
-        kelly_high = self.risk_manager.kelly_position_size(prob_win=0.9, win_loss_ratio=2.0)
+        kelly_high = self.risk_manager.kelly_position_size(
+            prob_win=0.9, win_loss_ratio=2.0
+        )
         assert 0 < kelly_high <= 0.25  # Should be positive but capped at 25%
 
         # Test with very low win/loss ratio
-        kelly_low = self.risk_manager.kelly_position_size(prob_win=0.6, win_loss_ratio=0.1)
+        kelly_low = self.risk_manager.kelly_position_size(
+            prob_win=0.6, win_loss_ratio=0.1
+        )
         assert kelly_low == 0  # Should not bet with poor odds
 
     @pytest.mark.unit
     def test_invalid_method_handling(self):
         """Test handling of invalid VaR methods"""
         try:
-            var = self.risk_manager.calculate_var(confidence=0.95, method="invalid_method")
+            var = self.risk_manager.calculate_var(
+                confidence=0.95, method="invalid_method"
+            )
             # Should either return default or raise appropriate error
             assert var is not None or True  # Test passes if it handles gracefully
         except ValueError:

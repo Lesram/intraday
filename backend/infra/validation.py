@@ -2,6 +2,7 @@
 Input validation utilities with comprehensive edge case handling.
 Provides validation functions for trading platform inputs.
 """
+
 from decimal import Decimal
 import re
 from typing import Any
@@ -155,7 +156,9 @@ def validate_portfolio_constraints(portfolio_data: dict[str, Any]) -> list[str]:
 
     # Maximum single position concentration (30%)
     if max_position_weight > 0.30:
-        violations.append(f"Excessive concentration in single position: {max_position_weight:.1%}")
+        violations.append(
+            f"Excessive concentration in single position: {max_position_weight:.1%}"
+        )
 
     # Total portfolio exposure (should not exceed 100% for long positions)
     if total_weight > 1.0:

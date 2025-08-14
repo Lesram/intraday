@@ -243,7 +243,9 @@ class LSTMModel:
             logging.error(f"Error training LSTM model: {e}")
             return False
 
-    def predict(self, data: pd.DataFrame, target_column: str = "close") -> tuple[float, float]:
+    def predict(
+        self, data: pd.DataFrame, target_column: str = "close"
+    ) -> tuple[float, float]:
         """Make prediction with confidence score"""
         if not self.is_trained or self.model is None or self.scaler is None:
             return 0.0, 0.0
@@ -441,9 +443,9 @@ class EnsembleModel:
         self.settings = get_settings()
 
         # MLOps integration
-        self.mlops_enabled = MLOPS_AVAILABLE and getattr(self.settings, "mlops", {}).get(
-            "inference_telemetry_enabled", True
-        )
+        self.mlops_enabled = MLOPS_AVAILABLE and getattr(
+            self.settings, "mlops", {}
+        ).get("inference_telemetry_enabled", True)
         if self.mlops_enabled:
             self.model_manager = get_model_manager()
         else:
@@ -471,12 +473,16 @@ class EnsembleModel:
         features_aligned = aligned_data.drop(columns=["target"])
         target_aligned = aligned_data["target"]
 
-        results["xgboost"] = await self.models["xgboost"].train(features_aligned, target_aligned)
+        results["xgboost"] = await self.models["xgboost"].train(
+            features_aligned, target_aligned
+        )
         results["random_forest"] = await self.models["random_forest"].train(
             features_aligned, target_aligned
         )
 
-        audit_logger.info("ensemble_training_completed", results=results, timestamp=datetime.now())
+        audit_logger.info(
+            "ensemble_training_completed", results=results, timestamp=datetime.now()
+        )
 
         return results
 
@@ -493,7 +499,9 @@ class EnsembleModel:
             try:
                 # For inference: align features with current price but no target (y=None)
                 price_series = (
-                    price_data["close"] if "close" in price_data.columns else price_data.iloc[:, -1]
+                    price_data["close"]
+                    if "close" in price_data.columns
+                    else price_data.iloc[:, -1]
                 )
                 feature_frame = align_features_target(features, price_series)
 
@@ -504,7 +512,9 @@ class EnsembleModel:
                 settings = get_settings()
                 if getattr(settings.features, "no_lookahead_enforced", True):
                     try:
-                        guard_no_lookahead(features, price_series, list(features.columns))
+                        guard_no_lookahead(
+                            features, price_series, list(features.columns)
+                        )
                     except Exception as e:
                         if mlops_logger:
                             mlops_logger.warning(
@@ -513,7 +523,8 @@ class EnsembleModel:
                             )
                         if mlops_metrics:
                             mlops_metrics.counter(
-                                "feature_no_lookahead_violations_total", {"bucket": "inference"}
+                                "feature_no_lookahead_violations_total",
+                                {"bucket": "inference"},
                             ).inc()
 
             except Exception as e:
@@ -550,7 +561,9 @@ class EnsembleModel:
                                     extra_columns=list(extra),
                                 )
 
-                    features = self.model_manager.registry.assert_feature_schema(features, metadata)
+                    features = self.model_manager.registry.assert_feature_schema(
+                        features, metadata
+                    )
 
                     # Check for data drift
                     drift_result = self.model_manager.drift_detector.detect_data_drift(
@@ -607,9 +620,12 @@ class EnsembleModel:
 
         # Calculate weighted ensemble prediction
         weighted_sum = sum(
-            predictions[model] * self.weights[model] * confidences[model] for model in predictions
+            predictions[model] * self.weights[model] * confidences[model]
+            for model in predictions
         )
-        weight_sum = sum(self.weights[model] * confidences[model] for model in predictions)
+        weight_sum = sum(
+            self.weights[model] * confidences[model] for model in predictions
+        )
 
         ensemble_prediction = weighted_sum / weight_sum if weight_sum > 0 else 0.0
         ensemble_confidence = weight_sum / len(predictions) if predictions else 0.0
@@ -710,7 +726,9 @@ class EnsembleModel:
 
         return status
 
-    def save_models(self, model_dir: str = "backend/models/saved_models") -> dict[str, bool]:
+    def save_models(
+        self, model_dir: str = "backend/models/saved_models"
+    ) -> dict[str, bool]:
         """Save all trained models to disk with model card"""
         import json
         from pathlib import Path
@@ -741,13 +759,20 @@ class EnsembleModel:
                         results[model_name] = True
 
                         # Add training history to model card
-                        if hasattr(model, "training_history") and model.training_history:
+                        if (
+                            hasattr(model, "training_history")
+                            and model.training_history
+                        ):
                             model_card["training_metadata"][model_name] = {
-                                "final_loss": float(model.training_history.history["loss"][-1]),
+                                "final_loss": float(
+                                    model.training_history.history["loss"][-1]
+                                ),
                                 "final_val_loss": float(
                                     model.training_history.history["val_loss"][-1]
                                 ),
-                                "epochs_trained": len(model.training_history.history["loss"]),
+                                "epochs_trained": len(
+                                    model.training_history.history["loss"]
+                                ),
                                 "sequence_length": model.sequence_length,
                                 "random_seed": model.random_seed,
                             }
@@ -762,7 +787,9 @@ class EnsembleModel:
                             {
                                 "model": model.model,
                                 "scaler": getattr(model, "scaler", None),
-                                "feature_importance": getattr(model, "feature_importance", None),
+                                "feature_importance": getattr(
+                                    model, "feature_importance", None
+                                ),
                             },
                             str(model_file),
                         )
@@ -770,7 +797,9 @@ class EnsembleModel:
 
                         # Add model info to model card
                         model_card["training_metadata"][model_name] = {
-                            "feature_importance": getattr(model, "feature_importance", {}),
+                            "feature_importance": getattr(
+                                model, "feature_importance", {}
+                            ),
                             "is_trained": model.is_trained,
                         }
                     else:
@@ -799,7 +828,9 @@ class EnsembleModel:
 
         return results
 
-    def load_models(self, model_dir: str = "backend/models/saved_models") -> dict[str, bool]:
+    def load_models(
+        self, model_dir: str = "backend/models/saved_models"
+    ) -> dict[str, bool]:
         """Load all models from disk"""
         import json
         from pathlib import Path
@@ -843,7 +874,9 @@ class EnsembleModel:
                             model.sequence_length = metadata.get(
                                 "sequence_length", model.sequence_length
                             )
-                            model.random_seed = metadata.get("random_seed", model.random_seed)
+                            model.random_seed = metadata.get(
+                                "random_seed", model.random_seed
+                            )
                     else:
                         results[model_name] = False
 
@@ -854,7 +887,9 @@ class EnsembleModel:
                         model_data = joblib.load(str(model_file))
                         model.model = model_data.get("model")
                         model.scaler = model_data.get("scaler")
-                        model.feature_importance = model_data.get("feature_importance", {})
+                        model.feature_importance = model_data.get(
+                            "feature_importance", {}
+                        )
                         model.is_trained = True
                         results[model_name] = True
                     else:
@@ -902,7 +937,9 @@ class EnsembleModel:
         """
         if not self.mlops_enabled or not self.model_manager:
             if mlops_logger:
-                mlops_logger.warning("MLOps registration attempted but MLOps not available")
+                mlops_logger.warning(
+                    "MLOps registration attempted but MLOps not available"
+                )
             return None
 
         try:
@@ -914,9 +951,9 @@ class EnsembleModel:
                     "xgboost_available": XGBOOST_AVAILABLE,
                     "sklearn_available": SKLEARN_AVAILABLE,
                 },
-                "performance_history": self.performance_history[-10:]
-                if self.performance_history
-                else [],
+                "performance_history": (
+                    self.performance_history[-10:] if self.performance_history else []
+                ),
             }
 
             # Add individual model artifacts if available
@@ -926,7 +963,9 @@ class EnsembleModel:
                     if hasattr(model, "scaler") and model.scaler is not None:
                         artifacts[f"{model_name_key}_scaler"] = model.scaler
                     if hasattr(model, "feature_importance"):
-                        artifacts[f"{model_name_key}_feature_importance"] = model.feature_importance
+                        artifacts[f"{model_name_key}_feature_importance"] = (
+                            model.feature_importance
+                        )
                 else:
                     artifacts[f"{model_name_key}_trained"] = False
 
@@ -957,7 +996,9 @@ class EnsembleModel:
 
         except Exception as e:
             if mlops_logger:
-                mlops_logger.error(f"Failed to register ensemble model {model_name}: {e}")
+                mlops_logger.error(
+                    f"Failed to register ensemble model {model_name}: {e}"
+                )
             return None
 
     def promote_to_champion(self, model_name: str, version: str) -> bool:
@@ -975,7 +1016,9 @@ class EnsembleModel:
             return False
 
         try:
-            success = self.model_manager.registry.promote_to_champion(model_name, version)
+            success = self.model_manager.registry.promote_to_champion(
+                model_name, version
+            )
 
             if success and mlops_logger:
                 mlops_logger.info(
@@ -989,7 +1032,9 @@ class EnsembleModel:
                 mlops_logger.error(f"Failed to promote {model_name}/{version}: {e}")
             return False
 
-    def get_champion_version(self, model_name: str) -> Any | None:  # Returns ModelVersion if found
+    def get_champion_version(
+        self, model_name: str
+    ) -> Any | None:  # Returns ModelVersion if found
         """
         Get the champion model version from registry
 
@@ -1031,7 +1076,9 @@ class EnsembleModel:
                 champion = self.model_manager.registry.get_champion_model(model_name)
                 if not champion:
                     if mlops_logger:
-                        mlops_logger.warning(f"No champion model found for {model_name}")
+                        mlops_logger.warning(
+                            f"No champion model found for {model_name}"
+                        )
                     return False
                 version = champion.version
 

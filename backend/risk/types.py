@@ -2,6 +2,7 @@
 Risk management data types with strong typing and validation.
 Provides structured data containers for risk decisions, order specs, and portfolio state.
 """
+
 from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
@@ -10,6 +11,36 @@ from typing import Any, Literal
 
 # Type aliases for clarity
 Side = Literal["buy", "sell"]
+
+
+class OrderType(Enum):
+    """Order types for trading."""
+
+    MARKET = "market"
+    LIMIT = "limit"
+    STOP = "stop"
+    STOP_LIMIT = "stop_limit"
+
+
+class OrderStatus(Enum):
+    """Order status enumeration."""
+
+    NEW = "new"
+    SUBMITTED = "submitted"
+    PARTIAL = "partial"
+    FILLED = "filled"
+    CANCELED = "canceled"
+    REJECTED = "rejected"
+    PENDING = "pending"
+
+
+class TimeInForce(Enum):
+    """Time in force enumeration."""
+
+    DAY = "day"
+    GTC = "gtc"  # Good till canceled
+    IOC = "ioc"  # Immediate or cancel
+    FOK = "fok"  # Fill or kill
 
 
 class RiskLevel(Enum):

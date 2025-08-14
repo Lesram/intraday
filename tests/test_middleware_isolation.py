@@ -2,6 +2,7 @@
 Tests for middleware isolation in test environments.
 Validates that middleware uses app-scoped dependencies rather than global singletons.
 """
+
 import io
 
 from fastapi.testclient import TestClient

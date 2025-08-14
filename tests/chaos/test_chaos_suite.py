@@ -147,7 +147,9 @@ class TestCircuitBreakerChaos:
         fault_injector = ChaosFaultInjector(chaos_config)
 
         # Get circuit breaker
-        cb = resilience_manager.get_circuit_breaker("test_service", circuit_breaker_config)
+        cb = resilience_manager.get_circuit_breaker(
+            "test_service", circuit_breaker_config
+        )
 
         # Mock the service to always fail
         mock_external_service.side_effect = Exception("Service unavailable")
@@ -264,7 +266,9 @@ class TestRetryMechanismChaos:
     async def test_retry_with_intermittent_failures(self, retry_config):
         """Test retry mechanism with intermittent failures."""
 
-        retry_manager = resilience_manager.get_retry_manager("intermittent_test", retry_config)
+        retry_manager = resilience_manager.get_retry_manager(
+            "intermittent_test", retry_config
+        )
 
         call_count = 0
 
@@ -311,7 +315,9 @@ class TestRetryMechanismChaos:
     async def test_exponential_backoff_timing(self, retry_config):
         """Test that exponential backoff delays increase correctly."""
 
-        retry_manager = resilience_manager.get_retry_manager("backoff_test", retry_config)
+        retry_manager = resilience_manager.get_retry_manager(
+            "backoff_test", retry_config
+        )
 
         call_times = []
 
@@ -449,7 +455,9 @@ class TestExternalAPIResilienceChaos:
             backoff_multiplier=2.0,
         )
 
-        retry_manager = resilience_manager.get_retry_manager("rate_limited_api", retry_config)
+        retry_manager = resilience_manager.get_retry_manager(
+            "rate_limited_api", retry_config
+        )
 
         call_count = 0
 
@@ -537,7 +545,10 @@ class TestIdempotencyChaos:
 
         # First submission should succeed
         result1 = await retry_manager.execute_with_retry(
-            mock_order_service.submit_order, order_id, order_data, idempotency_key=order_id
+            mock_order_service.submit_order,
+            order_id,
+            order_data,
+            idempotency_key=order_id,
         )
 
         assert result1["status"] == "submitted"
@@ -545,7 +556,10 @@ class TestIdempotencyChaos:
 
         # Second submission with same ID should be detected as duplicate
         result2 = await retry_manager.execute_with_retry(
-            mock_order_service.submit_order, order_id, order_data, idempotency_key=order_id
+            mock_order_service.submit_order,
+            order_id,
+            order_data,
+            idempotency_key=order_id,
         )
 
         assert result2["status"] == "duplicate"

@@ -110,7 +110,9 @@ class TestSecurityConfig:
         assert "key2" in config.api_keys
         assert "key3" in config.api_keys
 
-    @patch.dict(os.environ, {"SECURITY_JWT_SECRET_KEY": "very-secure-32-character-secret-key"})
+    @patch.dict(
+        os.environ, {"SECURITY_JWT_SECRET_KEY": "very-secure-32-character-secret-key"}
+    )
     @pytest.mark.unit
     def test_security_env_vars(self):
         """Test loading security config from environment variables."""
@@ -137,7 +139,7 @@ class TestAlpacaConfig:
         # Valid URLs
         config = AlpacaConfig(
             base_url="https://api.alpaca.markets",
-            websocket_url="wss://stream.data.alpaca.markets/v2/iex"
+            websocket_url="wss://stream.data.alpaca.markets/v2/iex",
         )
         assert config.base_url == "https://api.alpaca.markets"
 
@@ -145,7 +147,9 @@ class TestAlpacaConfig:
         with pytest.raises(ValidationError):
             AlpacaConfig(base_url="invalid-url")
 
-    @patch.dict(os.environ, {"ALPACA_API_KEY": "test_key", "ALPACA_SECRET_KEY": "test_secret"})
+    @patch.dict(
+        os.environ, {"ALPACA_API_KEY": "test_key", "ALPACA_SECRET_KEY": "test_secret"}
+    )
     @pytest.mark.unit
     def test_alpaca_env_vars(self):
         """Test loading Alpaca config from environment variables."""
@@ -315,13 +319,16 @@ class TestNestedSettings:
         assert settings.metrics.log_level == "INFO"
         assert settings.trading.max_leverage == 2.0
 
-    @patch.dict(os.environ, {
-        "APP_ENVIRONMENT": "production",
-        "SECURITY_JWT_SECRET_KEY": "production-secure-32-character-secret-key-here",
-        "ALPACA_API_KEY": "prod_key",
-        "ALPACA_SECRET_KEY": "prod_secret",
-        "API_KEYS": "key1,key2"
-    })
+    @patch.dict(
+        os.environ,
+        {
+            "APP_ENVIRONMENT": "production",
+            "SECURITY_JWT_SECRET_KEY": "production-secure-32-character-secret-key-here",
+            "ALPACA_API_KEY": "prod_key",
+            "ALPACA_SECRET_KEY": "prod_secret",
+            "API_KEYS": "key1,key2",
+        },
+    )
     @pytest.mark.unit
     def test_production_validation(self):
         """Test production environment validation."""
@@ -360,14 +367,14 @@ class TestSettingsCache:
         """Test that cached settings have proper structure."""
         settings = get_settings()
 
-        assert hasattr(settings, 'app')
-        assert hasattr(settings, 'security')
-        assert hasattr(settings, 'alpaca')
-        assert hasattr(settings, 'data')
-        assert hasattr(settings, 'websocket')
-        assert hasattr(settings, 'metrics')
-        assert hasattr(settings, 'database')
-        assert hasattr(settings, 'trading')
+        assert hasattr(settings, "app")
+        assert hasattr(settings, "security")
+        assert hasattr(settings, "alpaca")
+        assert hasattr(settings, "data")
+        assert hasattr(settings, "websocket")
+        assert hasattr(settings, "metrics")
+        assert hasattr(settings, "database")
+        assert hasattr(settings, "trading")
 
 
 class TestBackwardCompatibility:
@@ -379,32 +386,32 @@ class TestBackwardCompatibility:
         legacy = get_legacy_settings()
 
         # Check that legacy keys exist
-        assert 'environment' in legacy
-        assert 'debug' in legacy
-        assert 'host' in legacy
-        assert 'port' in legacy
-        assert 'jwt_secret_key' in legacy
-        assert 'alpaca_api_key' in legacy
-        assert 'database_url' in legacy
-        assert 'max_daily_loss_pct' in legacy
+        assert "environment" in legacy
+        assert "debug" in legacy
+        assert "host" in legacy
+        assert "port" in legacy
+        assert "jwt_secret_key" in legacy
+        assert "alpaca_api_key" in legacy
+        assert "database_url" in legacy
+        assert "max_daily_loss_pct" in legacy
 
         # Check that values match nested access
         settings = get_settings()
-        assert legacy['environment'] == settings.app.environment
-        assert legacy['jwt_algorithm'] == settings.security.jwt_algorithm
-        assert legacy['alpaca_base_url'] == settings.alpaca.base_url
-        assert legacy['redis_port'] == settings.data.redis_port
+        assert legacy["environment"] == settings.app.environment
+        assert legacy["jwt_algorithm"] == settings.security.jwt_algorithm
+        assert legacy["alpaca_base_url"] == settings.alpaca.base_url
+        assert legacy["redis_port"] == settings.data.redis_port
 
     @pytest.mark.unit
     def test_legacy_settings_types(self):
         """Test that legacy settings maintain correct types."""
         legacy = get_legacy_settings()
 
-        assert isinstance(legacy['debug'], bool)
-        assert isinstance(legacy['port'], int)
-        assert isinstance(legacy['cors_origins'], list)
-        assert isinstance(legacy['api_keys'], list)
-        assert isinstance(legacy['ensemble_weights'], dict)
+        assert isinstance(legacy["debug"], bool)
+        assert isinstance(legacy["port"], int)
+        assert isinstance(legacy["cors_origins"], list)
+        assert isinstance(legacy["api_keys"], list)
+        assert isinstance(legacy["ensemble_weights"], dict)
 
 
 class TestValidationRequirements:
@@ -429,10 +436,13 @@ class TestValidationRequirements:
         except ValueError:
             pytest.fail("Development validation should be lenient")
 
-    @patch.dict(os.environ, {
-        "APP_ENVIRONMENT": "production",
-        "SECURITY_JWT_SECRET_KEY": "production-32-character-secret-key",
-    })
+    @patch.dict(
+        os.environ,
+        {
+            "APP_ENVIRONMENT": "production",
+            "SECURITY_JWT_SECRET_KEY": "production-32-character-secret-key",
+        },
+    )
     @pytest.mark.unit
     def test_validate_required_settings_production_missing(self):
         """Test validation fails in production with missing config."""
@@ -445,16 +455,19 @@ class TestValidationRequirements:
 class TestEnvironmentVariableLoading:
     """Test environment variable loading across all sections."""
 
-    @patch.dict(os.environ, {
-        "APP_DEBUG": "false",
-        "APP_PORT": "9000",
-        "SECURITY_JWT_EXPIRE_MINUTES": "60",
-        "ALPACA_PAPER_TRADING": "false",
-        "DATA_REDIS_PORT": "6380",
-        "WEBSOCKET_MAX_CONNECTIONS": "200",
-        "METRICS_LOG_LEVEL": "DEBUG",
-        "TRADING_MAX_LEVERAGE": "3.0",
-    })
+    @patch.dict(
+        os.environ,
+        {
+            "APP_DEBUG": "false",
+            "APP_PORT": "9000",
+            "SECURITY_JWT_EXPIRE_MINUTES": "60",
+            "ALPACA_PAPER_TRADING": "false",
+            "DATA_REDIS_PORT": "6380",
+            "WEBSOCKET_MAX_CONNECTIONS": "200",
+            "METRICS_LOG_LEVEL": "DEBUG",
+            "TRADING_MAX_LEVERAGE": "3.0",
+        },
+    )
     @pytest.mark.unit
     def test_env_var_loading_all_sections(self):
         """Test that all sections properly load from environment variables."""

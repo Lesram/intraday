@@ -2,6 +2,7 @@
 Coverage Batch-1 Tests: Risk math edges, validators, JWT negatives, order idempotency, WS backpressure, middleware exception path
 Targets specific modules for 40% coverage threshold.
 """
+
 import asyncio
 import time
 from unittest.mock import AsyncMock
@@ -211,7 +212,12 @@ class TestValidatorEdgeCases:
         # Invalid order type
         with pytest.raises(ValueError, match="Invalid order type"):
             validate_order(
-                {"symbol": "AAPL", "quantity": 100, "price": 10.50, "order_type": "INVALID"}
+                {
+                    "symbol": "AAPL",
+                    "quantity": 100,
+                    "price": 10.50,
+                    "order_type": "INVALID",
+                }
             )
 
     def test_portfolio_validation_constraints(self):
@@ -384,7 +390,9 @@ class TestJWTNegativeTests:
         # Wrong authentication scheme
         response = client.get(
             "/protected",
-            headers={"Authorization": "Basic dXNlcjpwYXNz"},  # Basic auth instead of Bearer
+            headers={
+                "Authorization": "Basic dXNlcjpwYXNz"
+            },  # Basic auth instead of Bearer
         )
         assert response.status_code == 401
 
@@ -434,7 +442,9 @@ class TestOrderIdempotency:
         import asyncio
 
         results = asyncio.run(
-            asyncio.gather(submit_order(), submit_order(), submit_order(), return_exceptions=True)
+            asyncio.gather(
+                submit_order(), submit_order(), submit_order(), return_exceptions=True
+            )
         )
 
         # Only one should succeed, others should be handled gracefully
@@ -600,7 +610,10 @@ class TestMiddlewareExceptionPaths:
         """Test rate limit middleware with application exceptions."""
         from fastapi import FastAPI, HTTPException
 
-        from backend.infra.security_hardening import RateLimitMiddleware, SimpleRateLimiter
+        from backend.infra.security_hardening import (
+            RateLimitMiddleware,
+            SimpleRateLimiter,
+        )
 
         app = FastAPI()
 
@@ -700,7 +713,9 @@ class TestMiddlewareExceptionPaths:
         # Create token for error user
         error_token = create_access_token("error_user", ["trader"])
 
-        response = client.get("/protected", headers={"Authorization": f"Bearer {error_token}"})
+        response = client.get(
+            "/protected", headers={"Authorization": f"Bearer {error_token}"}
+        )
 
         # Should get the application error, not auth error
         assert response.status_code == 422

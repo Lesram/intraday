@@ -2,7 +2,6 @@
 Test feature alignment for single and multi-timeframe scenarios.
 """
 
-
 import numpy as np
 import pandas as pd
 import pytest
@@ -22,14 +21,17 @@ class TestSingleTimeframeAlignment:
 
     def test_align_features_target_basic(self):
         """Test basic feature-target alignment."""
-        dates = pd.date_range('2023-01-01', periods=5, freq='1min', tz='UTC')
+        dates = pd.date_range("2023-01-01", periods=5, freq="1min", tz="UTC")
 
-        features = pd.DataFrame({
-            "sma_5": [100.0, 101.0, 102.0, 103.0, 104.0],
-            "rsi": [50.0, 55.0, 45.0, 60.0, 40.0]
-        }, index=dates)
+        features = pd.DataFrame(
+            {
+                "sma_5": [100.0, 101.0, 102.0, 103.0, 104.0],
+                "rsi": [50.0, 55.0, 45.0, 60.0, 40.0],
+            },
+            index=dates,
+        )
 
-        price = pd.Series([100, 101, 102, 103, 104], index=dates, name='close')
+        price = pd.Series([100, 101, 102, 103, 104], index=dates, name="close")
 
         result = align_features_target(features, price)
 
@@ -47,12 +49,12 @@ class TestSingleTimeframeAlignment:
 
     def test_align_features_target_misaligned_indices(self):
         """Test alignment with partially overlapping indices."""
-        dates_features = pd.date_range('2023-01-01', periods=5, freq='1min', tz='UTC')
-        dates_price = pd.date_range('2023-01-01 00:02:00', periods=4, freq='1min', tz='UTC')
+        dates_features = pd.date_range("2023-01-01", periods=5, freq="1min", tz="UTC")
+        dates_price = pd.date_range(
+            "2023-01-01 00:02:00", periods=4, freq="1min", tz="UTC"
+        )
 
-        features = pd.DataFrame({
-            "feature1": [1, 2, 3, 4, 5]
-        }, index=dates_features)
+        features = pd.DataFrame({"feature1": [1, 2, 3, 4, 5]}, index=dates_features)
 
         price = pd.Series([102, 103, 104, 105], index=dates_price)
 
@@ -65,12 +67,15 @@ class TestSingleTimeframeAlignment:
 
     def test_align_features_target_with_nans(self):
         """Test alignment with NaN values in features."""
-        dates = pd.date_range('2023-01-01', periods=5, freq='1min', tz='UTC')
+        dates = pd.date_range("2023-01-01", periods=5, freq="1min", tz="UTC")
 
-        features = pd.DataFrame({
-            "feature1": [1.0, np.nan, 3.0, 4.0, 5.0],  # NaN in second row
-            "feature2": [10.0, 20.0, 30.0, np.nan, 50.0]  # NaN in fourth row
-        }, index=dates)
+        features = pd.DataFrame(
+            {
+                "feature1": [1.0, np.nan, 3.0, 4.0, 5.0],  # NaN in second row
+                "feature2": [10.0, 20.0, 30.0, np.nan, 50.0],  # NaN in fourth row
+            },
+            index=dates,
+        )
 
         price = pd.Series([100, 101, 102, 103, 104], index=dates)
 
@@ -90,18 +95,16 @@ class TestMultiTimeframeAlignment:
     def test_align_multitimeframe_basic(self):
         """Test basic multi-timeframe alignment."""
         # 1-minute features
-        dates_1m = pd.date_range('2023-01-01', periods=10, freq='1min', tz='UTC')
-        features_1m = pd.DataFrame({
-            "price_1m": range(10),
-            "volume_1m": range(100, 110)
-        }, index=dates_1m)
+        dates_1m = pd.date_range("2023-01-01", periods=10, freq="1min", tz="UTC")
+        features_1m = pd.DataFrame(
+            {"price_1m": range(10), "volume_1m": range(100, 110)}, index=dates_1m
+        )
 
         # 5-minute features (every 5th minute)
         dates_5m = dates_1m[::5]  # Every 5th timestamp
-        features_5m = pd.DataFrame({
-            "sma_5m": [50, 55],
-            "rsi_5m": [45, 55]
-        }, index=dates_5m)
+        features_5m = pd.DataFrame(
+            {"sma_5m": [50, 55], "rsi_5m": [45, 55]}, index=dates_5m
+        )
 
         result = align_multitimeframe(features_1m, features_5m, max_ffill=5)
 
@@ -118,24 +121,20 @@ class TestMultiTimeframeAlignment:
 
     def test_align_multitimeframe_ffill_limit(self):
         """Test forward-fill limit enforcement."""
-        dates_1m = pd.date_range('2023-01-01', periods=20, freq='1min', tz='UTC')
-        features_1m = pd.DataFrame({
-            "price_1m": range(20)
-        }, index=dates_1m)
+        dates_1m = pd.date_range("2023-01-01", periods=20, freq="1min", tz="UTC")
+        features_1m = pd.DataFrame({"price_1m": range(20)}, index=dates_1m)
 
         # 5m features with large gaps
         dates_5m = dates_1m[[0, 10]]  # Only at 0 and 10 (10-minute gap)
-        features_5m = pd.DataFrame({
-            "indicator_5m": [100, 200]
-        }, index=dates_5m)
+        features_5m = pd.DataFrame({"indicator_5m": [100, 200]}, index=dates_5m)
 
         result = align_multitimeframe(features_1m, features_5m, max_ffill=3)
 
         # Values beyond ffill limit should be NaN
-        assert not pd.isna(result["indicator_5m_5m"].iloc[0])   # Original value
-        assert not pd.isna(result["indicator_5m_5m"].iloc[1])   # Ffilled (1 period)
-        assert not pd.isna(result["indicator_5m_5m"].iloc[3])   # Ffilled (3 periods)
-        assert pd.isna(result["indicator_5m_5m"].iloc[4])       # Beyond limit (4 periods)
+        assert not pd.isna(result["indicator_5m_5m"].iloc[0])  # Original value
+        assert not pd.isna(result["indicator_5m_5m"].iloc[1])  # Ffilled (1 period)
+        assert not pd.isna(result["indicator_5m_5m"].iloc[3])  # Ffilled (3 periods)
+        assert pd.isna(result["indicator_5m_5m"].iloc[4])  # Beyond limit (4 periods)
 
     def test_align_multitimeframe_non_datetime_index(self):
         """Test multi-timeframe alignment fails with non-datetime index."""
@@ -151,7 +150,7 @@ class TestTemporalValidation:
 
     def test_validate_temporal_order_valid(self):
         """Test validation with properly ordered datetime index."""
-        dates = pd.date_range('2023-01-01', periods=5, freq='1min', tz='UTC')
+        dates = pd.date_range("2023-01-01", periods=5, freq="1min", tz="UTC")
         df = pd.DataFrame({"value": [1, 2, 3, 4, 5]}, index=dates)
 
         # Should not raise
@@ -159,12 +158,15 @@ class TestTemporalValidation:
 
     def test_validate_temporal_order_non_monotonic(self):
         """Test validation fails with non-monotonic timestamps."""
-        dates = pd.to_datetime([
-            '2023-01-01 10:00',
-            '2023-01-01 10:01',
-            '2023-01-01 09:59',  # Out of order!
-            '2023-01-01 10:03'
-        ], utc=True)
+        dates = pd.to_datetime(
+            [
+                "2023-01-01 10:00",
+                "2023-01-01 10:01",
+                "2023-01-01 09:59",  # Out of order!
+                "2023-01-01 10:03",
+            ],
+            utc=True,
+        )
         df = pd.DataFrame({"value": [1, 2, 3, 4]}, index=dates)
 
         with pytest.raises(ValueError, match="Index must be monotonically increasing"):
@@ -172,7 +174,7 @@ class TestTemporalValidation:
 
     def test_validate_temporal_order_no_timezone(self):
         """Test validation fails with timezone-naive index."""
-        dates = pd.date_range('2023-01-01', periods=3, freq='1min')  # No timezone
+        dates = pd.date_range("2023-01-01", periods=3, freq="1min")  # No timezone
         df = pd.DataFrame({"value": [1, 2, 3]}, index=dates)
 
         with pytest.raises(ValueError, match="Index must be timezone-aware"):
@@ -180,12 +182,15 @@ class TestTemporalValidation:
 
     def test_validate_temporal_order_duplicates(self):
         """Test validation fails with duplicate timestamps."""
-        duplicate_dates = pd.to_datetime([
-            '2023-01-01 10:00',
-            '2023-01-01 10:01',
-            '2023-01-01 10:01',  # Duplicate!
-            '2023-01-01 10:02'
-        ], utc=True)
+        duplicate_dates = pd.to_datetime(
+            [
+                "2023-01-01 10:00",
+                "2023-01-01 10:01",
+                "2023-01-01 10:01",  # Duplicate!
+                "2023-01-01 10:02",
+            ],
+            utc=True,
+        )
         df = pd.DataFrame({"value": [1, 2, 3, 4]}, index=duplicate_dates)
 
         with pytest.raises(ValueError, match="Index cannot have duplicate timestamps"):
@@ -197,7 +202,7 @@ class TestMisalignmentDetection:
 
     def test_detect_misalignment_aligned(self):
         """Test misalignment detection with properly aligned data."""
-        dates = pd.date_range('2023-01-01', periods=5, freq='1min', tz='UTC')
+        dates = pd.date_range("2023-01-01", periods=5, freq="1min", tz="UTC")
         features = pd.DataFrame({"feature": [1, 2, 3, 4, 5]}, index=dates)
         price = pd.Series([100, 101, 102, 103, 104], index=dates)
 
@@ -210,8 +215,8 @@ class TestMisalignmentDetection:
 
     def test_detect_misalignment_no_overlap(self):
         """Test misalignment detection with no overlap."""
-        dates_features = pd.date_range('2023-01-01', periods=3, freq='1min', tz='UTC')
-        dates_price = pd.date_range('2023-01-02', periods=3, freq='1min', tz='UTC')
+        dates_features = pd.date_range("2023-01-01", periods=3, freq="1min", tz="UTC")
+        dates_price = pd.date_range("2023-01-02", periods=3, freq="1min", tz="UTC")
 
         features = pd.DataFrame({"feature": [1, 2, 3]}, index=dates_features)
         price = pd.Series([100, 101, 102], index=dates_price)
@@ -228,12 +233,12 @@ class TestTrainingSplits:
 
     def test_create_training_splits_basic(self):
         """Test basic temporal train/test split."""
-        dates = pd.date_range('2023-01-01', periods=100, freq='1min', tz='UTC')
+        dates = pd.date_range("2023-01-01", periods=100, freq="1min", tz="UTC")
 
-        X = pd.DataFrame({
-            "feature1": np.random.randn(100),
-            "feature2": np.random.randn(100)
-        }, index=dates)
+        X = pd.DataFrame(
+            {"feature1": np.random.randn(100), "feature2": np.random.randn(100)},
+            index=dates,
+        )
 
         y = pd.Series(np.random.randn(100), index=dates)
         mask = pd.Series([True] * 100, index=dates)
@@ -255,7 +260,7 @@ class TestTrainingSplits:
 
     def test_create_training_splits_insufficient_data(self):
         """Test training split with insufficient data."""
-        dates = pd.date_range('2023-01-01', periods=10, freq='1min', tz='UTC')
+        dates = pd.date_range("2023-01-01", periods=10, freq="1min", tz="UTC")
 
         X = pd.DataFrame({"feature1": range(10)}, index=dates)
         y = pd.Series(range(10), index=dates)
@@ -268,12 +273,12 @@ class TestTrainingSplits:
 
     def test_create_training_splits_with_invalid_rows(self):
         """Test training split with some invalid rows filtered out."""
-        dates = pd.date_range('2023-01-01', periods=100, freq='1min', tz='UTC')
+        dates = pd.date_range("2023-01-01", periods=100, freq="1min", tz="UTC")
 
-        X = pd.DataFrame({
-            "feature1": np.random.randn(100),
-            "feature2": np.random.randn(100)
-        }, index=dates)
+        X = pd.DataFrame(
+            {"feature1": np.random.randn(100), "feature2": np.random.randn(100)},
+            index=dates,
+        )
 
         y = pd.Series(np.random.randn(100), index=dates)
 
@@ -286,4 +291,4 @@ class TestTrainingSplits:
 
         # Should work with valid data only (50 valid rows)
         assert len(train_frame.X) == 40  # 80% of 50 valid rows
-        assert len(test_frame.X) == 10   # 20% of 50 valid rows
+        assert len(test_frame.X) == 10  # 20% of 50 valid rows

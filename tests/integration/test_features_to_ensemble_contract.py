@@ -10,7 +10,10 @@ import pandas as pd
 import pytest
 
 from backend.features.alignment import align_features_target
-from backend.features.feature_engineering import build_feature_frame, compute_all_features
+from backend.features.feature_engineering import (
+    build_feature_frame,
+    compute_all_features,
+)
 from backend.features.types import FeatureFrame, FeatureSchema
 from backend.mlops.model_manager import ModelManager
 from backend.models.ensemble_model import EnsembleModel
@@ -22,20 +25,23 @@ class TestFeatureToEnsemblePipeline:
     @pytest.fixture
     def sample_ohlcv_data(self):
         """Create sample OHLCV data for testing."""
-        dates = pd.date_range('2023-01-01', periods=500, freq='1min', tz='UTC')
+        dates = pd.date_range("2023-01-01", periods=500, freq="1min", tz="UTC")
         np.random.seed(42)
 
         # Generate realistic OHLCV data
         returns = np.random.normal(0, 0.02, len(dates))
         prices = 100 * np.exp(np.cumsum(returns))
 
-        return pd.DataFrame({
-            'open': prices * (1 + np.random.normal(0, 0.001, len(dates))),
-            'high': prices * (1 + np.abs(np.random.normal(0, 0.005, len(dates)))),
-            'low': prices * (1 - np.abs(np.random.normal(0, 0.005, len(dates)))),
-            'close': prices,
-            'volume': np.random.exponential(1000, len(dates)),
-        }, index=dates)
+        return pd.DataFrame(
+            {
+                "open": prices * (1 + np.random.normal(0, 0.001, len(dates))),
+                "high": prices * (1 + np.abs(np.random.normal(0, 0.005, len(dates)))),
+                "low": prices * (1 - np.abs(np.random.normal(0, 0.005, len(dates)))),
+                "close": prices,
+                "volume": np.random.exponential(1000, len(dates)),
+            },
+            index=dates,
+        )
 
     @pytest.fixture
     def mock_model_manager(self):
@@ -51,13 +57,15 @@ class TestFeatureToEnsemblePipeline:
                 {"name": "volume_sma_10", "dtype": "float64", "nullable": True},
             ],
             target_name="future_return_5min",
-            created_at="2023-01-01T00:00:00Z"
+            created_at="2023-01-01T00:00:00Z",
         )
 
-        manager.get_model_metadata = Mock(return_value={
-            "feature_schema": stored_schema.model_dump(),
-            "model_version": "v1.0.0"
-        })
+        manager.get_model_metadata = Mock(
+            return_value={
+                "feature_schema": stored_schema.model_dump(),
+                "model_version": "v1.0.0",
+            }
+        )
 
         return manager
 
@@ -72,14 +80,16 @@ class TestFeatureToEnsemblePipeline:
             return pd.Series(
                 np.random.normal(0, 0.01, len(features_df)),
                 index=features_df.index,
-                name="prediction"
+                name="prediction",
             )
 
         model.predict = AsyncMock(side_effect=mock_predict)
         return model
 
     @pytest.mark.asyncio
-    async def test_complete_feature_to_prediction_pipeline(self, sample_ohlcv_data, mock_model_manager, mock_ensemble_model):
+    async def test_complete_feature_to_prediction_pipeline(
+        self, sample_ohlcv_data, mock_model_manager, mock_ensemble_model
+    ):
         """Test complete pipeline from OHLCV data to model predictions."""
 
         # Step 1: Compute all features from OHLCV data
@@ -91,7 +101,9 @@ class TestFeatureToEnsemblePipeline:
         assert features_df.index.equals(sample_ohlcv_data.index)
 
         # Step 2: Create target variable (future returns)
-        target = sample_ohlcv_data['close'].pct_change().shift(-5).dropna()  # 5-period future return
+        target = (
+            sample_ohlcv_data["close"].pct_change().shift(-5).dropna()
+        )  # 5-period future return
         target.name = "future_return_5min"
 
         # Step 3: Align features with target (remove lookahead bias)
@@ -100,7 +112,9 @@ class TestFeatureToEnsemblePipeline:
         # Verify alignment
         assert aligned_features.index.equals(aligned_target.index)
         assert len(aligned_features) > 0
-        assert not aligned_features.isnull().all().all()  # At least some non-null values
+        assert (
+            not aligned_features.isnull().all().all()
+        )  # At least some non-null values
 
         # Step 4: Build FeatureFrame with schema validation
         feature_frame = build_feature_frame(aligned_features, expected_columns=None)
@@ -118,7 +132,7 @@ class TestFeatureToEnsemblePipeline:
             model=mock_ensemble_model,
             feature_data=feature_frame.data,
             target_data=aligned_target,
-            model_version="v1.0.0"
+            model_version="v1.0.0",
         )
 
         # Step 6: Simulate inference with schema validation
@@ -133,7 +147,7 @@ class TestFeatureToEnsemblePipeline:
         # Step 8: Validate inference features against stored schema
         inference_frame = build_feature_frame(
             inference_features,
-            expected_columns=[f["name"] for f in stored_schema.features]
+            expected_columns=[f["name"] for f in stored_schema.features],
         )
 
         # Verify schema compatibility
@@ -151,7 +165,9 @@ class TestFeatureToEnsemblePipeline:
         mock_ensemble_model.predict.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_schema_mismatch_detection(self, sample_ohlcv_data, mock_model_manager):
+    async def test_schema_mismatch_detection(
+        self, sample_ohlcv_data, mock_model_manager
+    ):
         """Test that schema mismatches are detected during inference."""
 
         # Step 1: Create features with specific schema
@@ -166,12 +182,12 @@ class TestFeatureToEnsemblePipeline:
                 {"name": "completely_different", "dtype": "int64", "nullable": False},
             ],
             target_name="future_return_5min",
-            created_at="2023-01-01T00:00:00Z"
+            created_at="2023-01-01T00:00:00Z",
         )
 
         mock_model_manager.get_model_metadata.return_value = {
             "feature_schema": stored_schema.model_dump(),
-            "model_version": "v1.0.0"
+            "model_version": "v1.0.0",
         }
 
         # Step 3: Try to validate current features against different schema
@@ -188,7 +204,7 @@ class TestFeatureToEnsemblePipeline:
         features_df = await compute_all_features(sample_ohlcv_data)
 
         # Create target with future information (5 periods ahead)
-        target = sample_ohlcv_data['close'].pct_change().shift(-5)
+        target = sample_ohlcv_data["close"].pct_change().shift(-5)
         target.name = "future_return_5min"
 
         # Align features and target
@@ -215,8 +231,8 @@ class TestFeatureToEnsemblePipeline:
 
         # Case 1: Features with all NaN columns
         features_df = await compute_all_features(sample_ohlcv_data)
-        features_df['all_nan_feature'] = np.nan
-        features_df['constant_feature'] = 42.0
+        features_df["all_nan_feature"] = np.nan
+        features_df["constant_feature"] = 42.0
 
         # Should handle gracefully
         feature_frame = build_feature_frame(features_df, expected_columns=None)
@@ -226,7 +242,7 @@ class TestFeatureToEnsemblePipeline:
         bad_features = features_df.copy()
         bad_features.index = range(len(bad_features))  # Convert to integer index
 
-        target = sample_ohlcv_data['close'].pct_change().shift(-1)
+        target = sample_ohlcv_data["close"].pct_change().shift(-1)
         target.name = "target"
 
         # Should handle index type mismatch
@@ -238,44 +254,56 @@ class TestFeatureToEnsemblePipeline:
         """Test pipeline integration with multi-timeframe features."""
 
         # Create higher timeframe data (5-minute bars from 1-minute)
-        ohlcv_5min = sample_ohlcv_data.resample('5min').agg({
-            'open': 'first',
-            'high': 'max',
-            'low': 'min',
-            'close': 'last',
-            'volume': 'sum'
-        }).dropna()
+        ohlcv_5min = (
+            sample_ohlcv_data.resample("5min")
+            .agg(
+                {
+                    "open": "first",
+                    "high": "max",
+                    "low": "min",
+                    "close": "last",
+                    "volume": "sum",
+                }
+            )
+            .dropna()
+        )
 
         # Compute features for both timeframes
         features_1min = await compute_all_features(sample_ohlcv_data)
         features_5min = await compute_all_features(ohlcv_5min)
 
         # Add timeframe suffix to avoid column conflicts
-        features_5min = features_5min.add_suffix('_5min')
+        features_5min = features_5min.add_suffix("_5min")
 
         # Align 5-minute features to 1-minute timeline (forward fill)
         features_5min_aligned = features_5min.reindex(
             features_1min.index,
-            method='ffill',
-            limit=5  # Max 5 periods forward fill
+            method="ffill",
+            limit=5,  # Max 5 periods forward fill
         )
 
         # Combine multi-timeframe features
         combined_features = pd.concat([features_1min, features_5min_aligned], axis=1)
 
         # Create target
-        target = sample_ohlcv_data['close'].pct_change().shift(-1).dropna()
+        target = sample_ohlcv_data["close"].pct_change().shift(-1).dropna()
         target.name = "target"
 
         # Align combined features with target
-        aligned_features, aligned_target = align_features_target(combined_features, target)
+        aligned_features, aligned_target = align_features_target(
+            combined_features, target
+        )
 
         # Verify multi-timeframe alignment
         assert not aligned_features.empty
-        assert len(aligned_features.columns) > len(features_1min.columns)  # Should have more features
+        assert len(aligned_features.columns) > len(
+            features_1min.columns
+        )  # Should have more features
 
         # Verify 5-minute features are properly forward-filled
-        five_min_cols = [col for col in aligned_features.columns if col.endswith('_5min')]
+        five_min_cols = [
+            col for col in aligned_features.columns if col.endswith("_5min")
+        ]
         assert len(five_min_cols) > 0
 
         # Check that forward fill worked (no excessive NaNs)
@@ -284,7 +312,9 @@ class TestFeatureToEnsemblePipeline:
             assert null_ratio < 0.5  # Less than 50% NaN after forward fill
 
     @pytest.mark.asyncio
-    async def test_feature_schema_persistence_integration(self, sample_ohlcv_data, mock_model_manager):
+    async def test_feature_schema_persistence_integration(
+        self, sample_ohlcv_data, mock_model_manager
+    ):
         """Test that feature schemas are properly persisted and retrieved."""
 
         # Step 1: Create and validate features
@@ -292,11 +322,13 @@ class TestFeatureToEnsemblePipeline:
         feature_frame = build_feature_frame(features_df, expected_columns=None)
 
         # Step 2: Create target
-        target = sample_ohlcv_data['close'].pct_change().shift(-1).dropna()
+        target = sample_ohlcv_data["close"].pct_change().shift(-1).dropna()
         target.name = "target_return"
 
         # Step 3: Align features and target
-        aligned_features, aligned_target = align_features_target(feature_frame.data, target)
+        aligned_features, aligned_target = align_features_target(
+            feature_frame.data, target
+        )
 
         # Step 4: Simulate model training and schema storage
         training_frame = build_feature_frame(aligned_features, expected_columns=None)
@@ -306,17 +338,21 @@ class TestFeatureToEnsemblePipeline:
             # Simulate schema extraction and storage
             schema = FeatureSchema(
                 features=[
-                    {"name": col, "dtype": str(feature_data[col].dtype), "nullable": True}
+                    {
+                        "name": col,
+                        "dtype": str(feature_data[col].dtype),
+                        "nullable": True,
+                    }
                     for col in feature_data.columns
                 ],
                 target_name=target_data.name,
-                created_at="2023-01-01T00:00:00Z"
+                created_at="2023-01-01T00:00:00Z",
             )
 
             # Store schema in mock metadata
             mock_model_manager.get_model_metadata.return_value = {
                 "feature_schema": schema.model_dump(),
-                "model_version": kwargs.get("model_version", "v1.0.0")
+                "model_version": kwargs.get("model_version", "v1.0.0"),
             }
 
             return "model_123"
@@ -328,7 +364,7 @@ class TestFeatureToEnsemblePipeline:
             model=Mock(),
             feature_data=training_frame.data,
             target_data=aligned_target,
-            model_version="v1.0.0"
+            model_version="v1.0.0",
         )
 
         # Step 5: Simulate inference with schema validation
@@ -341,7 +377,9 @@ class TestFeatureToEnsemblePipeline:
 
         # Validate inference features against stored schema
         expected_columns = [f["name"] for f in stored_schema.features]
-        inference_frame = build_feature_frame(inference_features, expected_columns=expected_columns)
+        inference_frame = build_feature_frame(
+            inference_features, expected_columns=expected_columns
+        )
 
         # Verify schema consistency
         assert inference_frame.schema.features == stored_schema.features
@@ -360,13 +398,15 @@ class TestErrorHandlingIntegration:
         """Test that malformed OHLCV data errors propagate correctly."""
 
         # Create malformed OHLCV data
-        bad_ohlcv = pd.DataFrame({
-            'open': [100, 101, np.nan],  # NaN in OHLCV
-            'high': [102, 103, 104],
-            'low': [99, 100, 101],
-            'close': [101, 102, 103],
-            'volume': [1000, 1100, 1200],
-        })
+        bad_ohlcv = pd.DataFrame(
+            {
+                "open": [100, 101, np.nan],  # NaN in OHLCV
+                "high": [102, 103, 104],
+                "low": [99, 100, 101],
+                "close": [101, 102, 103],
+                "volume": [1000, 1100, 1200],
+            }
+        )
 
         # Should raise validation error during feature computation
         with pytest.raises(ValueError, match="OHLCV validation failed"):
@@ -394,12 +434,14 @@ class TestErrorHandlingIntegration:
         features_df = await compute_all_features(sample_ohlcv_data)
 
         # Add a clearly leaky feature (future price)
-        features_df['future_price'] = sample_ohlcv_data['close'].shift(-10)
+        features_df["future_price"] = sample_ohlcv_data["close"].shift(-10)
 
         # Create target
-        target = sample_ohlcv_data['close'].pct_change()
+        target = sample_ohlcv_data["close"].pct_change()
         target.name = "return"
 
         # Should detect lookahead and raise error
-        with pytest.raises(LookaheadLeakError, match="Potential lookahead bias detected"):
+        with pytest.raises(
+            LookaheadLeakError, match="Potential lookahead bias detected"
+        ):
             guard_no_lookahead(features_df, target, threshold=0.8)

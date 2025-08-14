@@ -2,6 +2,7 @@
 Comprehensive test suite for Branch 2.5 observability infrastructure.
 Tests OpenTelemetry tracing, Prometheus metrics, structured logging, and integration.
 """
+
 import asyncio
 import json
 import logging
@@ -58,7 +59,7 @@ class TestObservabilityConfig:
             prometheus_enabled=False,
             otel_sampler="always_on",
             otel_sampler_arg=1.0,
-            latency_buckets_ms="5,10,25,50,100"
+            latency_buckets_ms="5,10,25,50,100",
         )
 
         assert config.service_name == "test-service"
@@ -92,45 +93,35 @@ class TestMetricsRegistry:
         # Valid metric with correct labels
         counter = metrics_registry.counter(
             "http_requests_total",
-            {"route": "/test", "method": "GET", "status": "success"}
+            {"route": "/test", "method": "GET", "status": "success"},
         )
         assert counter is not None
 
         # Test increment
         metrics_registry.inc_counter(
             "http_requests_total",
-            {"route": "/test", "method": "GET", "status": "success"}
+            {"route": "/test", "method": "GET", "status": "success"},
         )
 
     def test_histogram_creation_and_validation(self, metrics_registry):
         """Test histogram creation with label validation."""
         histogram = metrics_registry.histogram(
-            "http_request_duration_seconds",
-            {"route": "/test", "method": "GET"}
+            "http_request_duration_seconds", {"route": "/test", "method": "GET"}
         )
         assert histogram is not None
 
         # Test observation
         metrics_registry.observe_histogram(
-            "http_request_duration_seconds",
-            0.5,
-            {"route": "/test", "method": "GET"}
+            "http_request_duration_seconds", 0.5, {"route": "/test", "method": "GET"}
         )
 
     def test_gauge_creation_and_validation(self, metrics_registry):
         """Test gauge creation with label validation."""
-        gauge = metrics_registry.gauge(
-            "outbox_queue_gauge",
-            {"status": "pending"}
-        )
+        gauge = metrics_registry.gauge("outbox_queue_gauge", {"status": "pending"})
         assert gauge is not None
 
         # Test setting value
-        metrics_registry.set_gauge(
-            "outbox_queue_gauge",
-            10.0,
-            {"status": "pending"}
-        )
+        metrics_registry.set_gauge("outbox_queue_gauge", 10.0, {"status": "pending"})
 
     def test_invalid_metric_name_raises_error(self, metrics_registry):
         """Test that invalid metric names raise validation errors."""
@@ -140,10 +131,7 @@ class TestMetricsRegistry:
     def test_invalid_labels_raise_error(self, metrics_registry):
         """Test that invalid labels raise validation errors."""
         with pytest.raises(ValueError, match="Unexpected labels"):
-            metrics_registry.counter(
-                "http_requests_total",
-                {"invalid_label": "value"}
-            )
+            metrics_registry.counter("http_requests_total", {"invalid_label": "value"})
 
     def test_missing_required_labels_raise_error(self, metrics_registry):
         """Test that missing required labels raise validation errors."""
@@ -153,7 +141,10 @@ class TestMetricsRegistry:
     def test_route_normalization(self):
         """Test route path normalization for cardinality control."""
         # Test UUID replacement
-        assert normalize_route("/orders/123e4567-e89b-12d3-a456-426614174000") == "/orders/{id}"
+        assert (
+            normalize_route("/orders/123e4567-e89b-12d3-a456-426614174000")
+            == "/orders/{id}"
+        )
 
         # Test numeric ID replacement
         assert normalize_route("/orders/12345") == "/orders/{id}"
@@ -167,7 +158,9 @@ class TestMetricsRegistry:
     def test_alpaca_endpoint_normalization(self):
         """Test Alpaca endpoint normalization."""
         assert normalize_alpaca_endpoint("/v2/orders/abc123") == "/v2/orders/{id}"
-        assert normalize_alpaca_endpoint("/v2/positions/AAPL") == "/v2/positions/{symbol}"
+        assert (
+            normalize_alpaca_endpoint("/v2/positions/AAPL") == "/v2/positions/{symbol}"
+        )
         assert normalize_alpaca_endpoint("/v2/account") == "/v2/account"
 
 
@@ -178,9 +171,7 @@ class TestStructuredLogging:
     def log_formatter(self):
         """Create a test JSON formatter."""
         return JSONFormatter(
-            service_name="test-service",
-            service_version="1.0.0",
-            include_trace=True
+            service_name="test-service", service_version="1.0.0", include_trace=True
         )
 
     def test_json_formatter_basic_message(self, log_formatter):
@@ -192,7 +183,7 @@ class TestStructuredLogging:
             lineno=100,
             msg="Test message",
             args=(),
-            exc_info=None
+            exc_info=None,
         )
 
         # Mock trace attributes
@@ -215,14 +206,14 @@ class TestStructuredLogging:
         logger = get_logger("test.logger")
 
         # Mock the underlying logger to capture calls
-        with patch.object(logger, '_log_with_context') as mock_log:
+        with patch.object(logger, "_log_with_context") as mock_log:
             # Test HTTP request logging
             logger.log_http_request(
                 method="GET",
                 path="/test",
                 status_code=200,
                 duration_ms=50.0,
-                user_id="user123"
+                user_id="user123",
             )
 
             mock_log.assert_called_once()
@@ -236,12 +227,9 @@ class TestStructuredLogging:
         """Test database operation logging."""
         logger = get_logger("test.logger")
 
-        with patch.object(logger, '_log_with_context') as mock_log:
+        with patch.object(logger, "_log_with_context") as mock_log:
             logger.log_database_operation(
-                operation="select",
-                table="orders",
-                duration_ms=25.5,
-                rows_affected=5
+                operation="select", table="orders", duration_ms=25.5, rows_affected=5
             )
 
             mock_log.assert_called_once()
@@ -256,14 +244,14 @@ class TestStructuredLogging:
         """Test order event logging."""
         logger = get_logger("test.logger")
 
-        with patch.object(logger, '_log_with_context') as mock_log:
+        with patch.object(logger, "_log_with_context") as mock_log:
             logger.log_order_event(
                 event="order_submitted",
                 order_id="order123",
                 symbol="AAPL",
                 side="buy",
                 quantity=100.0,
-                price=150.50
+                price=150.50,
             )
 
             mock_log.assert_called_once()
@@ -281,9 +269,7 @@ class TestObservabilityInitialization:
     def test_observability_initialization_called(self):
         """Test that observability initialization works correctly."""
         config = ObservabilityConfig(
-            service_name="test-service",
-            otel_enabled=True,
-            prometheus_enabled=True
+            service_name="test-service", otel_enabled=True, prometheus_enabled=True
         )
 
         # Test that initialization doesn't raise an exception
@@ -312,7 +298,7 @@ class TestObservabilityInitialization:
                 level="INFO",
                 service_name="test-service",
                 json_format=True,
-                enable_trace_correlation=True
+                enable_trace_correlation=True,
             )
             success = True
         except Exception:
@@ -334,7 +320,7 @@ class TestObservabilityDecorators:
             return "success"
 
         # Mock the metrics registry to avoid dependencies
-        with patch('backend.infra.observability.get_metrics_registry') as mock_registry:
+        with patch("backend.infra.observability.get_metrics_registry") as mock_registry:
             mock_registry.return_value.observe_histogram = MagicMock()
 
             result = await test_async_function()
@@ -344,12 +330,14 @@ class TestObservabilityDecorators:
     def test_record_latency_decorator_sync(self):
         """Test record_latency decorator with sync functions."""
 
-        @record_latency("db_query_duration_seconds", extra_labels={"operation": "select"})
+        @record_latency(
+            "db_query_duration_seconds", extra_labels={"operation": "select"}
+        )
         def test_sync_function():
             time.sleep(0.1)
             return "success"
 
-        with patch('backend.infra.observability.get_metrics_registry') as mock_registry:
+        with patch("backend.infra.observability.get_metrics_registry") as mock_registry:
             mock_registry.return_value.observe_histogram = MagicMock()
 
             result = test_sync_function()
@@ -359,19 +347,25 @@ class TestObservabilityDecorators:
     @pytest.mark.asyncio
     async def test_trace_span_context_manager(self):
         """Test trace_span context manager."""
-        with patch('backend.infra.observability.get_tracer') as mock_tracer:
+        with patch("backend.infra.observability.get_tracer") as mock_tracer:
             mock_span = MagicMock()
-            mock_tracer.return_value.start_as_current_span.return_value.__enter__ = lambda self: mock_span
-            mock_tracer.return_value.start_as_current_span.return_value.__exit__ = lambda self, *args: None
+            mock_tracer.return_value.start_as_current_span.return_value.__enter__ = (
+                lambda self: mock_span
+            )
+            mock_tracer.return_value.start_as_current_span.return_value.__exit__ = (
+                lambda self, *args: None
+            )
 
             with trace_span("test_operation", {"test.attribute": "value"}):
                 pass
 
-            mock_tracer.return_value.start_as_current_span.assert_called_once_with("test_operation")
+            mock_tracer.return_value.start_as_current_span.assert_called_once_with(
+                "test_operation"
+            )
 
     def test_record_alpaca_request_metrics(self):
         """Test Alpaca request metrics recording."""
-        with patch('backend.infra.observability.get_metrics_registry') as mock_registry:
+        with patch("backend.infra.observability.get_metrics_registry") as mock_registry:
             mock_registry.return_value.inc_counter = MagicMock()
             mock_registry.return_value.observe_histogram = MagicMock()
 
@@ -379,39 +373,35 @@ class TestObservabilityDecorators:
                 endpoint="/v2/orders",
                 method="POST",
                 status_code=201,
-                duration_seconds=0.5
+                duration_seconds=0.5,
             )
 
             # Verify counter was incremented
             mock_registry.return_value.inc_counter.assert_called_once_with(
                 "alpaca_http_requests_total",
-                {"endpoint": "/v2/orders", "method": "POST", "status": "success"}
+                {"endpoint": "/v2/orders", "method": "POST", "status": "success"},
             )
 
             # Verify histogram was observed
             mock_registry.return_value.observe_histogram.assert_called_once_with(
                 "alpaca_http_latency_seconds",
                 0.5,
-                {"endpoint": "/v2/orders", "method": "POST"}
+                {"endpoint": "/v2/orders", "method": "POST"},
             )
 
     def test_record_database_operation_metrics(self):
         """Test database operation metrics recording."""
-        with patch('backend.infra.observability.get_metrics_registry') as mock_registry:
+        with patch("backend.infra.observability.get_metrics_registry") as mock_registry:
             mock_registry.return_value.observe_histogram = MagicMock()
             mock_registry.return_value.inc_counter = MagicMock()
 
             record_database_operation(
-                operation="select",
-                duration_seconds=0.025,
-                success=True
+                operation="select", duration_seconds=0.025, success=True
             )
 
             # Verify histogram was observed
             mock_registry.return_value.observe_histogram.assert_called_once_with(
-                "db_query_duration_seconds",
-                0.025,
-                {"operation": "select"}
+                "db_query_duration_seconds", 0.025, {"operation": "select"}
             )
 
             # Since this is a successful operation, health check counter should not be called
@@ -419,7 +409,7 @@ class TestObservabilityDecorators:
 
     def test_record_outbox_metrics_comprehensive(self):
         """Test comprehensive outbox metrics recording."""
-        with patch('backend.infra.observability.get_metrics_registry') as mock_registry:
+        with patch("backend.infra.observability.get_metrics_registry") as mock_registry:
             mock_registry.return_value.inc_counter = MagicMock()
             mock_registry.return_value.set_gauge = MagicMock()
             mock_registry.return_value.observe_histogram = MagicMock()
@@ -429,7 +419,7 @@ class TestObservabilityDecorators:
                 dispatched_count=5,
                 failed_count=2,
                 queue_size=10,
-                dispatch_duration_seconds=1.5
+                dispatch_duration_seconds=1.5,
             )
 
             # Verify multiple metrics were recorded
@@ -446,23 +436,25 @@ class TestObservabilityIntegration:
         """Test database health check with observability."""
         from backend.infra.db import db_health_check
 
-        with patch('backend.infra.db._engine') as mock_engine:
+        with patch("backend.infra.db._engine") as mock_engine:
             mock_conn = AsyncMock()
             mock_result = MagicMock()  # Regular mock for synchronous result
             mock_result.fetchone.return_value = (1,)
             mock_conn.execute.return_value = mock_result
-            mock_engine.begin.return_value.__aenter__ = AsyncMock(return_value=mock_conn)
+            mock_engine.begin.return_value.__aenter__ = AsyncMock(
+                return_value=mock_conn
+            )
             mock_engine.begin.return_value.__aexit__ = AsyncMock(return_value=None)
 
-            with patch('backend.infra.db.record_database_operation') as mock_record:
-                with patch('backend.infra.db.get_structured_logger'):
+            with patch("backend.infra.db.record_database_operation") as mock_record:
+                with patch("backend.infra.db.get_structured_logger"):
                     result = await db_health_check()
 
                     assert result is True
                     mock_record.assert_called_once()
                     args, kwargs = mock_record.call_args
-                    assert kwargs['operation'] == 'health_check'
-                    assert kwargs['success'] is True
+                    assert kwargs["operation"] == "health_check"
+                    assert kwargs["success"] is True
 
     @pytest.mark.asyncio
     async def test_alpaca_client_observability_integration(self):
@@ -470,10 +462,14 @@ class TestObservabilityIntegration:
         from backend.data.alpaca_client import AlpacaClient
 
         # Mock the dependencies to avoid actual API calls
-        with patch('backend.data.alpaca_client.ALPACA_AVAILABLE', True):
-            with patch('backend.data.alpaca_client.TradingClient') as mock_trading_client:
-                with patch('backend.data.alpaca_client.record_alpaca_request') as mock_record:
-                    with patch('backend.data.alpaca_client.get_structured_logger'):
+        with patch("backend.data.alpaca_client.ALPACA_AVAILABLE", True):
+            with patch(
+                "backend.data.alpaca_client.TradingClient"
+            ) as mock_trading_client:
+                with patch(
+                    "backend.data.alpaca_client.record_alpaca_request"
+                ) as mock_record:
+                    with patch("backend.data.alpaca_client.get_structured_logger"):
                         # Create mock order response
                         mock_order = MagicMock()
                         mock_order.id = "order123"
@@ -485,7 +481,9 @@ class TestObservabilityIntegration:
                         mock_order.status.value = "pending"
                         mock_order.created_at = "2024-01-01T10:00:00Z"
 
-                        mock_trading_client.return_value.submit_order.return_value = mock_order
+                        mock_trading_client.return_value.submit_order.return_value = (
+                            mock_order
+                        )
 
                         # Create Alpaca client in test mode
                         client = AlpacaClient("test_key", "test_secret", test_mode=True)
@@ -513,11 +511,10 @@ class TestObservabilityEndToEnd:
         registry = MetricsRegistry(namespace="test")
 
         # Add some metrics
-        registry.inc_counter("http_requests_total", {
-            "route": "/test",
-            "method": "GET",
-            "status": "success"
-        })
+        registry.inc_counter(
+            "http_requests_total",
+            {"route": "/test", "method": "GET", "status": "success"},
+        )
 
         # Get metrics data
         metrics_data = registry.get_metrics_data()
@@ -528,7 +525,7 @@ class TestObservabilityEndToEnd:
         assert "text/plain" in content_type
 
         # Decode and check content
-        metrics_text = metrics_data.decode('utf-8')
+        metrics_text = metrics_data.decode("utf-8")
         assert "test_http_requests_total" in metrics_text
 
     def test_structured_logging_with_trace_correlation(self):
@@ -538,11 +535,12 @@ class TestObservabilityEndToEnd:
             level="INFO",
             service_name="test-service",
             json_format=True,
-            enable_trace_correlation=True
+            enable_trace_correlation=True,
         )
 
         # Use a custom stream to capture output
         import io
+
         test_stream = io.StringIO()
 
         # Get the underlying Python logger and add our handler
@@ -567,9 +565,12 @@ class TestObservabilityEndToEnd:
 
 if __name__ == "__main__":
     # Run specific test categories
-    pytest.main([
-        __file__,
-        "-v",
-        "--tb=short",
-        "-k", "not integration"  # Skip integration tests by default
-    ])
+    pytest.main(
+        [
+            __file__,
+            "-v",
+            "--tb=short",
+            "-k",
+            "not integration",  # Skip integration tests by default
+        ]
+    )

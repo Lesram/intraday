@@ -79,7 +79,9 @@ class TestJWTTokenFailureModes:
         }
 
         wrong_issuer_token = jwt.encode(
-            claims, settings.security.jwt_secret_key, algorithm=settings.security.jwt_algorithm
+            claims,
+            settings.security.jwt_secret_key,
+            algorithm=settings.security.jwt_algorithm,
         )
 
         with pytest.raises(HTTPException) as exc_info:
@@ -105,7 +107,9 @@ class TestJWTTokenFailureModes:
         }
 
         wrong_audience_token = jwt.encode(
-            claims, settings.security.jwt_secret_key, algorithm=settings.security.jwt_algorithm
+            claims,
+            settings.security.jwt_secret_key,
+            algorithm=settings.security.jwt_algorithm,
         )
 
         with pytest.raises(HTTPException) as exc_info:
@@ -157,7 +161,9 @@ class TestJWTTokenFailureModes:
         }
 
         no_subject_token = jwt.encode(
-            claims, settings.security.jwt_secret_key, algorithm=settings.security.jwt_algorithm
+            claims,
+            settings.security.jwt_secret_key,
+            algorithm=settings.security.jwt_algorithm,
         )
 
         with pytest.raises(HTTPException) as exc_info:
@@ -319,7 +325,10 @@ class TestAPIKeyAuthentication:
     def test_verify_api_key_valid(self):
         """Test API key verification with valid key."""
         with patch("backend.config.get_settings") as mock_settings:
-            mock_settings.return_value.security.api_keys = ["valid-key-1", "valid-key-2"]
+            mock_settings.return_value.security.api_keys = [
+                "valid-key-1",
+                "valid-key-2",
+            ]
 
             assert verify_api_key("valid-key-1") is True
             assert verify_api_key("valid-key-2") is True
@@ -328,7 +337,10 @@ class TestAPIKeyAuthentication:
     def test_verify_api_key_invalid(self):
         """Test API key verification with invalid key."""
         with patch("backend.config.get_settings") as mock_settings:
-            mock_settings.return_value.security.api_keys = ["valid-key-1", "valid-key-2"]
+            mock_settings.return_value.security.api_keys = [
+                "valid-key-1",
+                "valid-key-2",
+            ]
 
             assert verify_api_key("invalid-key") is False
             assert verify_api_key("") is False
@@ -373,7 +385,9 @@ class TestRBACRoleBasedAccess:
         require_admin = require_roles("admin")
 
         # User with admin role should pass
-        admin_user = AuthenticatedUser(username="admin", roles=["admin"], token_id="test")
+        admin_user = AuthenticatedUser(
+            username="admin", roles=["admin"], token_id="test"
+        )
         result = require_admin(admin_user)
         assert result == admin_user
 
@@ -397,12 +411,16 @@ class TestRBACRoleBasedAccess:
         require_admin_or_trader = require_roles("admin", "trader")
 
         # Admin user should pass
-        admin_user = AuthenticatedUser(username="admin", roles=["admin"], token_id="test")
+        admin_user = AuthenticatedUser(
+            username="admin", roles=["admin"], token_id="test"
+        )
         result = require_admin_or_trader(admin_user)
         assert result == admin_user
 
         # Trader user should pass
-        trader_user = AuthenticatedUser(username="trader", roles=["trader"], token_id="test")
+        trader_user = AuthenticatedUser(
+            username="trader", roles=["trader"], token_id="test"
+        )
         result = require_admin_or_trader(trader_user)
         assert result == trader_user
 
@@ -412,7 +430,9 @@ class TestRBACRoleBasedAccess:
         require_admin_or_trader = require_roles("admin", "trader")
 
         # User with only viewer role should fail
-        viewer_user = AuthenticatedUser(username="viewer", roles=["viewer"], token_id="test")
+        viewer_user = AuthenticatedUser(
+            username="viewer", roles=["viewer"], token_id="test"
+        )
 
         with pytest.raises(HTTPException) as exc_info:
             require_admin_or_trader(viewer_user)
@@ -450,7 +470,9 @@ class TestRBACRoleBasedAccess:
         require_admin = require_roles("admin")
 
         # User with wrong case role should fail
-        wrong_case_user = AuthenticatedUser(username="user", roles=["Admin"], token_id="test")
+        wrong_case_user = AuthenticatedUser(
+            username="user", roles=["Admin"], token_id="test"
+        )
 
         with pytest.raises(HTTPException) as exc_info:
             require_admin(wrong_case_user)
@@ -466,7 +488,9 @@ class TestAuthenticationDependencies:
     async def test_get_current_user_valid_jwt(self):
         """Test get_current_user with valid JWT token."""
         valid_token = create_access_token("testuser", ["user"])
-        credentials = HTTPAuthorizationCredentials(scheme="Bearer", credentials=valid_token)
+        credentials = HTTPAuthorizationCredentials(
+            scheme="Bearer", credentials=valid_token
+        )
 
         mock_request = MagicMock()
         mock_request.headers = {}
@@ -509,7 +533,9 @@ class TestAuthenticationDependencies:
     @pytest.mark.asyncio
     async def test_get_current_user_invalid_jwt(self):
         """Test get_current_user with invalid JWT token."""
-        credentials = HTTPAuthorizationCredentials(scheme="Bearer", credentials="invalid.jwt.token")
+        credentials = HTTPAuthorizationCredentials(
+            scheme="Bearer", credentials="invalid.jwt.token"
+        )
 
         mock_request = MagicMock()
         mock_request.headers = {}
@@ -633,7 +659,9 @@ class TestSecurityEdgeCases:
             user_token,
             settings.security.jwt_secret_key,
             algorithms=[settings.security.jwt_algorithm],
-            options={"verify_signature": False},  # Skip signature check for modification
+            options={
+                "verify_signature": False
+            },  # Skip signature check for modification
         )
 
         # Modify roles
@@ -654,7 +682,9 @@ class TestSecurityEdgeCases:
     def test_token_expiration_boundary_conditions(self):
         """Test token expiration at exact boundary conditions."""
         # Create token that expires in 1 second
-        short_lived_token = create_access_token("user", ["role"], expires_minutes=1 / 60)
+        short_lived_token = create_access_token(
+            "user", ["role"], expires_minutes=1 / 60
+        )
 
         # Should be valid immediately
         claims = verify_token(short_lived_token)

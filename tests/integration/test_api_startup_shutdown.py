@@ -22,7 +22,7 @@ class TestAPIStartupShutdown:
         """Create ephemeral app instance with test database."""
         # Import here to avoid circular imports during collection
         from backend.api.main import app
-        from backend.config.settings import settings
+        from backend.settings import settings
         from backend.database.connection import get_database_session
 
         # Override database URL for testing
@@ -42,6 +42,7 @@ class TestAPIStartupShutdown:
             # Override dependency
             async def get_test_session():
                 from sqlalchemy.ext.asyncio import AsyncSession
+
                 async with AsyncSession(engine) as session:
                     yield session
 
@@ -71,8 +72,7 @@ class TestAPIStartupShutdown:
         from httpx import ASGITransport, AsyncClient
 
         async with AsyncClient(
-            transport=ASGITransport(app=ephemeral_app),
-            base_url="http://test"
+            transport=ASGITransport(app=ephemeral_app), base_url="http://test"
         ) as client:
             # Test that startup completed successfully by checking health
             response = await client.get("/health")
@@ -84,15 +84,15 @@ class TestAPIStartupShutdown:
             assert "uptime_seconds" in health_data
 
     @pytest.mark.asyncio
-    async def test_readiness_probe_checks_dependencies(self, ephemeral_app, mock_broker_service):
+    async def test_readiness_probe_checks_dependencies(
+        self, ephemeral_app, mock_broker_service
+    ):
         """Test readiness probe validates all dependencies."""
         from httpx import ASGITransport, AsyncClient
 
         async with AsyncClient(
-            transport=ASGITransport(app=ephemeral_app),
-            base_url="http://test"
+            transport=ASGITransport(app=ephemeral_app), base_url="http://test"
         ) as client:
-
             # Test readiness when all dependencies are healthy
             mock_broker_service.health_check.return_value = True
 
@@ -105,15 +105,15 @@ class TestAPIStartupShutdown:
             assert readiness_data["checks"]["broker"] is True
 
     @pytest.mark.asyncio
-    async def test_readiness_probe_fails_on_unhealthy_broker(self, ephemeral_app, mock_broker_service):
+    async def test_readiness_probe_fails_on_unhealthy_broker(
+        self, ephemeral_app, mock_broker_service
+    ):
         """Test readiness probe fails when broker is unhealthy."""
         from httpx import ASGITransport, AsyncClient
 
         async with AsyncClient(
-            transport=ASGITransport(app=ephemeral_app),
-            base_url="http://test"
+            transport=ASGITransport(app=ephemeral_app), base_url="http://test"
         ) as client:
-
             # Simulate broker health check failure
             mock_broker_service.health_check.return_value = False
 
@@ -122,8 +122,10 @@ class TestAPIStartupShutdown:
             assert response.status_code == 503  # Service Unavailable
             readiness_data = response.json()
             assert readiness_data["status"] == "not_ready"
-            assert readiness_data["checks"]["database"] is True  # DB should still be healthy
-            assert readiness_data["checks"]["broker"] is False   # Broker is unhealthy
+            assert (
+                readiness_data["checks"]["database"] is True
+            )  # DB should still be healthy
+            assert readiness_data["checks"]["broker"] is False  # Broker is unhealthy
 
     @pytest.mark.asyncio
     async def test_liveness_probe_basic_functionality(self, ephemeral_app):
@@ -131,10 +133,8 @@ class TestAPIStartupShutdown:
         from httpx import ASGITransport, AsyncClient
 
         async with AsyncClient(
-            transport=ASGITransport(app=ephemeral_app),
-            base_url="http://test"
+            transport=ASGITransport(app=ephemeral_app), base_url="http://test"
         ) as client:
-
             response = await client.get("/healthz")
 
             assert response.status_code == 200
@@ -143,7 +143,9 @@ class TestAPIStartupShutdown:
             assert "timestamp" in liveness_data
 
     @pytest.mark.asyncio
-    async def test_graceful_shutdown_with_background_tasks(self, ephemeral_app, mock_broker_service):
+    async def test_graceful_shutdown_with_background_tasks(
+        self, ephemeral_app, mock_broker_service
+    ):
         """Test that background tasks are cancelled gracefully on shutdown."""
         from httpx import ASGITransport, AsyncClient
 
@@ -175,10 +177,8 @@ class TestAPIStartupShutdown:
         with patch("asyncio.create_task", side_effect=track_create_task):
             # Start the application context
             async with AsyncClient(
-                transport=ASGITransport(app=ephemeral_app),
-                base_url="http://test"
+                transport=ASGITransport(app=ephemeral_app), base_url="http://test"
             ) as client:
-
                 # Start a background task
                 task = asyncio.create_task(mock_background_task())
                 background_tasks.append(task)
@@ -213,10 +213,8 @@ class TestAPIStartupShutdown:
             from httpx import ASGITransport, AsyncClient
 
             async with AsyncClient(
-                transport=ASGITransport(app=app),
-                base_url="http://test"
+                transport=ASGITransport(app=app), base_url="http://test"
             ) as client:
-
                 # Readiness check should fail
                 response = await client.get("/readyz")
 
@@ -231,10 +229,8 @@ class TestAPIStartupShutdown:
         from httpx import ASGITransport, AsyncClient
 
         async with AsyncClient(
-            transport=ASGITransport(app=ephemeral_app),
-            base_url="http://test"
+            transport=ASGITransport(app=ephemeral_app), base_url="http://test"
         ) as client:
-
             # Make multiple concurrent requests to health endpoints
             tasks = []
 
@@ -256,10 +252,8 @@ class TestAPIStartupShutdown:
         from httpx import ASGITransport, AsyncClient
 
         async with AsyncClient(
-            transport=ASGITransport(app=ephemeral_app),
-            base_url="http://test"
+            transport=ASGITransport(app=ephemeral_app), base_url="http://test"
         ) as client:
-
             response = await client.get("/metrics")
 
             assert response.status_code == 200
@@ -282,10 +276,8 @@ class TestAPIStartupShutdown:
             from httpx import ASGITransport, AsyncClient
 
             async with AsyncClient(
-                transport=ASGITransport(app=ephemeral_app),
-                base_url="http://test"
+                transport=ASGITransport(app=ephemeral_app), base_url="http://test"
             ) as client:
-
                 # Test health endpoint
                 response = await client.get("/health")
                 assert response.status_code == 200
@@ -293,7 +285,10 @@ class TestAPIStartupShutdown:
                 # Test that broker mock is working by checking readiness
                 response = await client.get("/readyz")
                 # Should be ready if broker mock is responding correctly
-                assert response.status_code in [200, 503]  # May depend on broker health check implementation
+                assert response.status_code in [
+                    200,
+                    503,
+                ]  # May depend on broker health check implementation
 
     @pytest.mark.asyncio
     async def test_startup_with_environment_variables(self, ephemeral_app):
@@ -314,10 +309,8 @@ class TestAPIStartupShutdown:
             from httpx import ASGITransport, AsyncClient
 
             async with AsyncClient(
-                transport=ASGITransport(app=ephemeral_app),
-                base_url="http://test"
+                transport=ASGITransport(app=ephemeral_app), base_url="http://test"
             ) as client:
-
                 response = await client.get("/health")
                 assert response.status_code == 200
 
@@ -346,10 +339,8 @@ class TestApplicationLifecycleEdgeCases:
 
         for i in range(5):
             async with AsyncClient(
-                transport=ASGITransport(app=app),
-                base_url="http://test"
+                transport=ASGITransport(app=app), base_url="http://test"
             ) as client:
-
                 # Quick health check
                 response = await client.get("/health")
                 assert response.status_code == 200
@@ -378,10 +369,8 @@ class TestApplicationLifecycleEdgeCases:
                 raise
 
         async with AsyncClient(
-            transport=ASGITransport(app=app),
-            base_url="http://test"
+            transport=ASGITransport(app=app), base_url="http://test"
         ) as client:
-
             # Start stubborn task
             task = asyncio.create_task(stubborn_background_task())
 

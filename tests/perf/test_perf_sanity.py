@@ -25,12 +25,15 @@ class TestPerformanceSanity:
         from backend.api.main import app
 
         # Configure with performance-optimized settings
-        with patch.dict("os.environ", {
-            "REDIS_POOL_SIZE": "20",
-            "DB_POOL_SIZE": "10",
-            "WORKER_CONCURRENCY": "4",
-            "PERFORMANCE_MODE": "true"
-        }):
+        with patch.dict(
+            "os.environ",
+            {
+                "REDIS_POOL_SIZE": "20",
+                "DB_POOL_SIZE": "10",
+                "WORKER_CONCURRENCY": "4",
+                "PERFORMANCE_MODE": "true",
+            },
+        ):
             yield app
 
     @pytest.fixture
@@ -55,10 +58,8 @@ class TestPerformanceSanity:
         latencies = []
 
         async with AsyncClient(
-            transport=ASGITransport(app=perf_test_app),
-            base_url="http://testserver"
+            transport=ASGITransport(app=perf_test_app), base_url="http://testserver"
         ) as client:
-
             # Warm up the application
             await client.get("/health")
             await asyncio.sleep(0.1)
@@ -69,7 +70,7 @@ class TestPerformanceSanity:
                     symbol="AAPL",
                     signal_type="BUY",
                     strength=0.8,
-                    features={"price_momentum": 0.05}
+                    features={"price_momentum": 0.05},
                 )
 
                 start_time = time.perf_counter()
@@ -77,7 +78,7 @@ class TestPerformanceSanity:
                 response = await client.post(
                     "/api/v1/signals",
                     json=signal_data,
-                    headers={"Content-Type": "application/json"}
+                    headers={"Content-Type": "application/json"},
                 )
 
                 end_time = time.perf_counter()
@@ -93,7 +94,9 @@ class TestPerformanceSanity:
         p99_latency = statistics.quantiles(latencies, n=100)[98]  # 99th percentile
 
         # Assert performance budget
-        assert p50_latency < latency_budget_ms, f"P50 latency {p50_latency:.1f}ms exceeds budget {latency_budget_ms}ms"
+        assert (
+            p50_latency < latency_budget_ms
+        ), f"P50 latency {p50_latency:.1f}ms exceeds budget {latency_budget_ms}ms"
 
         # Log performance metrics for monitoring
         print("\nAPI Latency Performance:")
@@ -125,7 +128,7 @@ class TestPerformanceSanity:
                 return {
                     "order_id": f"order_{orders_processed}",
                     "status": "ACCEPTED",
-                    "timestamp": time.time()
+                    "timestamp": time.time(),
                 }
 
             mock_order_service_instance.process_order.side_effect = mock_process_order
@@ -137,10 +140,7 @@ class TestPerformanceSanity:
 
                 for _ in range(batch_size):
                     order_spec = order_factory(
-                        symbol="AAPL",
-                        side="buy",
-                        quantity=100,
-                        order_type="market"
+                        symbol="AAPL", side="buy", quantity=100, order_type="market"
                     )
 
                     task = asyncio.create_task(
@@ -172,14 +172,16 @@ class TestPerformanceSanity:
         actual_throughput = orders_processed / actual_duration
 
         # Assert throughput requirement
-        assert actual_throughput >= min_throughput_ops, (
-            f"Throughput {actual_throughput:.1f} ops/sec below requirement {min_throughput_ops} ops/sec"
-        )
+        assert (
+            actual_throughput >= min_throughput_ops
+        ), f"Throughput {actual_throughput:.1f} ops/sec below requirement {min_throughput_ops} ops/sec"
 
         print("\nOrder Processing Throughput:")
         print(f"Orders processed: {orders_processed}")
         print(f"Duration: {actual_duration:.2f}s")
-        print(f"Throughput: {actual_throughput:.1f} orders/sec (requirement: {min_throughput_ops} orders/sec)")
+        print(
+            f"Throughput: {actual_throughput:.1f} orders/sec (requirement: {min_throughput_ops} orders/sec)"
+        )
 
     @pytest.mark.asyncio
     async def test_risk_engine_latency_budget(self, perf_test_app, order_factory):
@@ -204,7 +206,7 @@ class TestPerformanceSanity:
                 return {
                     "approved": True,
                     "risk_score": 0.3,
-                    "processing_time_ms": (end - start) * 1000
+                    "processing_time_ms": (end - start) * 1000,
                 }
 
             mock_risk_manager_instance.validate_order.side_effect = mock_validate_order
@@ -216,7 +218,7 @@ class TestPerformanceSanity:
                     side="buy" if i % 2 == 0 else "sell",
                     quantity=100 + (i * 10),
                     order_type="limit",
-                    price=150.0 + (i * 0.1)
+                    price=150.0 + (i * 0.1),
                 )
 
                 start_time = time.perf_counter()
@@ -234,9 +236,9 @@ class TestPerformanceSanity:
         p99_latency = statistics.quantiles(latencies, n=100)[98]
 
         # Assert performance budget
-        assert p95_latency < risk_latency_budget_ms, (
-            f"Risk engine P95 latency {p95_latency:.1f}ms exceeds budget {risk_latency_budget_ms}ms"
-        )
+        assert (
+            p95_latency < risk_latency_budget_ms
+        ), f"Risk engine P95 latency {p95_latency:.1f}ms exceeds budget {risk_latency_budget_ms}ms"
 
         print("\nRisk Engine Latency Performance:")
         print(f"P50: {p50_latency:.1f}ms")
@@ -265,7 +267,9 @@ class TestPerformanceSanity:
                     for i in range(100)  # Simulate result set
                 ]
 
-            mock_session.execute.return_value.fetchall.side_effect = mock_query_execution
+            mock_session.execute.return_value.fetchall.side_effect = (
+                mock_query_execution
+            )
 
             # Test different types of queries
             query_types = [
@@ -273,7 +277,7 @@ class TestPerformanceSanity:
                 "SELECT * FROM positions WHERE symbol IN ('AAPL', 'GOOGL', 'MSFT')",
                 "SELECT COUNT(*) FROM trades WHERE created_at > NOW() - INTERVAL '1 DAY'",
                 "SELECT symbol, AVG(price) FROM trades GROUP BY symbol",
-                "SELECT * FROM orders o JOIN positions p ON o.symbol = p.symbol"
+                "SELECT * FROM orders o JOIN positions p ON o.symbol = p.symbol",
             ]
 
             for i in range(num_queries):
@@ -295,9 +299,9 @@ class TestPerformanceSanity:
         # Analyze database performance
         p95_latency = statistics.quantiles(latencies, n=20)[18]
 
-        assert p95_latency < db_latency_budget_ms, (
-            f"Database P95 latency {p95_latency:.1f}ms exceeds budget {db_latency_budget_ms}ms"
-        )
+        assert (
+            p95_latency < db_latency_budget_ms
+        ), f"Database P95 latency {p95_latency:.1f}ms exceeds budget {db_latency_budget_ms}ms"
 
         print("\nDatabase Query Performance:")
         print(f"P95: {p95_latency:.1f}ms (budget: {db_latency_budget_ms}ms)")
@@ -314,7 +318,9 @@ class TestPerformanceSanity:
         clients_updated = 0
 
         # Mock WebSocket broadcaster
-        with patch("backend.websocket.broadcaster.WebSocketBroadcaster") as mock_broadcaster:
+        with patch(
+            "backend.websocket.broadcaster.WebSocketBroadcaster"
+        ) as mock_broadcaster:
             mock_broadcaster_instance = AsyncMock()
             mock_broadcaster.return_value = mock_broadcaster_instance
 
@@ -323,7 +329,7 @@ class TestPerformanceSanity:
             for i in range(num_clients):
                 active_connections[f"client_{i}"] = {
                     "queue": [],
-                    "last_update": time.time()
+                    "last_update": time.time(),
                 }
 
             async def mock_broadcast(message_data):
@@ -356,7 +362,7 @@ class TestPerformanceSanity:
                         "symbol": "AAPL",
                         "price": 150.0 + (time.time() % 10),
                         "timestamp": time.time(),
-                        "sequence": messages_sent
+                        "sequence": messages_sent,
                     }
 
                     await mock_broadcaster_instance.broadcast(json.dumps(message))
@@ -371,22 +377,26 @@ class TestPerformanceSanity:
 
         # Assert performance requirements
         min_acceptable_rate = target_msg_rate * 0.9  # 90% of target rate
-        assert actual_msg_rate >= min_acceptable_rate, (
-            f"WebSocket broadcast rate {actual_msg_rate:.1f} msgs/sec below requirement {min_acceptable_rate} msgs/sec"
-        )
+        assert (
+            actual_msg_rate >= min_acceptable_rate
+        ), f"WebSocket broadcast rate {actual_msg_rate:.1f} msgs/sec below requirement {min_acceptable_rate} msgs/sec"
 
         # Verify all clients received messages
-        total_client_messages = sum(len(conn["queue"]) for conn in active_connections.values())
+        total_client_messages = sum(
+            len(conn["queue"]) for conn in active_connections.values()
+        )
         expected_total = messages_sent * num_clients
 
-        assert total_client_messages == expected_total, (
-            f"Client message delivery mismatch: {total_client_messages} != {expected_total}"
-        )
+        assert (
+            total_client_messages == expected_total
+        ), f"Client message delivery mismatch: {total_client_messages} != {expected_total}"
 
         print("\nWebSocket Broadcast Performance:")
         print(f"Messages sent: {messages_sent}")
         print(f"Duration: {actual_duration:.2f}s")
-        print(f"Message rate: {actual_msg_rate:.1f} msgs/sec (target: {target_msg_rate} msgs/sec)")
+        print(
+            f"Message rate: {actual_msg_rate:.1f} msgs/sec (target: {target_msg_rate} msgs/sec)"
+        )
         print(f"Total client updates: {clients_updated}")
 
     @pytest.mark.asyncio
@@ -409,7 +419,9 @@ class TestPerformanceSanity:
         operations_completed = 0
 
         # Mock components to avoid external dependencies
-        with patch("backend.services.signal_service.SignalService") as mock_signal_service:
+        with patch(
+            "backend.services.signal_service.SignalService"
+        ) as mock_signal_service:
             mock_signal_service_instance = AsyncMock()
             mock_signal_service.return_value = mock_signal_service_instance
 
@@ -418,7 +430,9 @@ class TestPerformanceSanity:
                 await asyncio.sleep(0.001)
                 return {"status": "processed", "id": f"signal_{operations_completed}"}
 
-            mock_signal_service_instance.process_signal.side_effect = mock_process_signal
+            mock_signal_service_instance.process_signal.side_effect = (
+                mock_process_signal
+            )
 
             # Run sustained load test
             memory_readings = []
@@ -427,7 +441,7 @@ class TestPerformanceSanity:
                 signal_data = signal_factory(
                     symbol=f"STOCK_{i % 50}",  # Limited symbol rotation
                     signal_type="BUY" if i % 2 == 0 else "SELL",
-                    strength=0.7
+                    strength=0.7,
                 )
 
                 await mock_signal_service_instance.process_signal(signal_data)
@@ -443,14 +457,16 @@ class TestPerformanceSanity:
         memory_growth_mb = final_memory_mb - initial_memory_mb
 
         # Assert memory stability
-        assert memory_growth_mb < max_memory_growth_mb, (
-            f"Memory growth {memory_growth_mb:.1f}MB exceeds limit {max_memory_growth_mb}MB"
-        )
+        assert (
+            memory_growth_mb < max_memory_growth_mb
+        ), f"Memory growth {memory_growth_mb:.1f}MB exceeds limit {max_memory_growth_mb}MB"
 
         print("\nMemory Usage Performance:")
         print(f"Initial memory: {initial_memory_mb:.1f}MB")
         print(f"Final memory: {final_memory_mb:.1f}MB")
-        print(f"Memory growth: {memory_growth_mb:.1f}MB (limit: {max_memory_growth_mb}MB)")
+        print(
+            f"Memory growth: {memory_growth_mb:.1f}MB (limit: {max_memory_growth_mb}MB)"
+        )
         print(f"Operations completed: {operations_completed}")
 
     @pytest.mark.asyncio
@@ -465,16 +481,14 @@ class TestPerformanceSanity:
         async def make_concurrent_request(client: AsyncClient, request_id: int):
             """Make a single concurrent request."""
             signal_data = signal_factory(
-                symbol=f"CONC_{request_id % 10}",
-                signal_type="BUY",
-                strength=0.6
+                symbol=f"CONC_{request_id % 10}", signal_type="BUY", strength=0.6
             )
 
             start_time = time.perf_counter()
             response = await client.post(
                 "/api/v1/signals",
                 json=signal_data,
-                timeout=30.0  # Generous timeout
+                timeout=30.0,  # Generous timeout
             )
             end_time = time.perf_counter()
 
@@ -482,15 +496,13 @@ class TestPerformanceSanity:
                 "request_id": request_id,
                 "status_code": response.status_code,
                 "latency_ms": (end_time - start_time) * 1000,
-                "success": response.status_code in [200, 201, 202]
+                "success": response.status_code in [200, 201, 202],
             }
 
         # Execute concurrent requests
         async with AsyncClient(
-            transport=ASGITransport(app=perf_test_app),
-            base_url="http://testserver"
+            transport=ASGITransport(app=perf_test_app), base_url="http://testserver"
         ) as client:
-
             start_time = time.perf_counter()
 
             # Create all concurrent request tasks
@@ -506,16 +518,20 @@ class TestPerformanceSanity:
 
         # Analyze concurrency performance
         total_completion_time = end_time - start_time
-        successful_requests = [r for r in results if not isinstance(r, Exception) and r.get("success")]
+        successful_requests = [
+            r for r in results if not isinstance(r, Exception) and r.get("success")
+        ]
         failed_requests = len(results) - len(successful_requests)
 
         # Assert concurrency requirements
-        assert total_completion_time < max_completion_time_seconds, (
-            f"Concurrent requests took {total_completion_time:.2f}s, exceeding limit {max_completion_time_seconds}s"
-        )
+        assert (
+            total_completion_time < max_completion_time_seconds
+        ), f"Concurrent requests took {total_completion_time:.2f}s, exceeding limit {max_completion_time_seconds}s"
 
         success_rate = len(successful_requests) / num_concurrent_requests
-        assert success_rate >= 0.95, f"Success rate {success_rate:.2%} below 95% requirement"
+        assert (
+            success_rate >= 0.95
+        ), f"Success rate {success_rate:.2%} below 95% requirement"
 
         # Analyze latency under concurrency
         latencies = [r["latency_ms"] for r in successful_requests]
@@ -524,8 +540,12 @@ class TestPerformanceSanity:
             max_latency = max(latencies)
 
             print("\nConcurrent Request Performance:")
-            print(f"Total completion time: {total_completion_time:.2f}s (limit: {max_completion_time_seconds}s)")
-            print(f"Success rate: {success_rate:.2%} ({len(successful_requests)}/{num_concurrent_requests})")
+            print(
+                f"Total completion time: {total_completion_time:.2f}s (limit: {max_completion_time_seconds}s)"
+            )
+            print(
+                f"Success rate: {success_rate:.2%} ({len(successful_requests)}/{num_concurrent_requests})"
+            )
             print(f"Failed requests: {failed_requests}")
             print(f"Median latency: {median_latency:.1f}ms")
             print(f"Max latency: {max_latency:.1f}ms")

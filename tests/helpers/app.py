@@ -4,7 +4,6 @@ Provides ASGI client with lifespan, dependency overrides, startup/shutdown helpe
 """
 
 from contextlib import asynccontextmanager
-from typing import Optional
 from unittest.mock import MagicMock
 
 from fastapi import FastAPI
@@ -20,8 +19,8 @@ class TestAppContext:
     """Test context for managing app lifecycle and dependencies."""
 
     def __init__(self):
-        self.app: Optional[FastAPI] = None
-        self.client: Optional[AsyncClient] = None
+        self.app: FastAPI | None = None
+        self.client: AsyncClient | None = None
         self.dependency_overrides: dict = {}
         self.startup_called = 0
         self.shutdown_called = 0
@@ -38,7 +37,9 @@ class TestAppContext:
         await self._setup_test_patches()
 
         # Create ASGI client - this will trigger lifespan events during first request
-        self.client = AsyncClient(transport=ASGITransport(app=self.app), base_url="http://test")
+        self.client = AsyncClient(
+            transport=ASGITransport(app=self.app), base_url="http://test"
+        )
 
         return self
 

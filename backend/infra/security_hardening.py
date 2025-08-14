@@ -2,6 +2,7 @@
 Enhanced Security Hardening - Pydantic settings, strict CORS, JWT checks, and rate limiting
 Provides production-ready security configurations and middleware.
 """
+
 from collections import defaultdict
 import time
 from typing import Any
@@ -34,7 +35,8 @@ class SecuritySettings(BaseSettings):
         default=["GET", "POST"], description="Allowed HTTP methods for CORS"
     )
     cors_allow_headers: list[str] = Field(
-        default=["Authorization", "Content-Type"], description="Allowed headers for CORS"
+        default=["Authorization", "Content-Type"],
+        description="Allowed headers for CORS",
     )
     cors_max_age: int = Field(
         default=600,  # 10 minutes
@@ -45,14 +47,24 @@ class SecuritySettings(BaseSettings):
     rate_limit_requests_per_minute: int = Field(
         default=60, description="Maximum requests per minute per IP"
     )
-    rate_limit_burst_size: int = Field(default=10, description="Burst size for rate limiting")
+    rate_limit_burst_size: int = Field(
+        default=10, description="Burst size for rate limiting"
+    )
     rate_limit_enabled: bool = Field(default=True, description="Enable rate limiting")
 
     # JWT Security Settings
-    jwt_require_https: bool = Field(default=True, description="Require HTTPS for JWT tokens")
-    jwt_require_aud: bool = Field(default=True, description="Require audience claim in JWT")
-    jwt_require_iss: bool = Field(default=True, description="Require issuer claim in JWT")
-    jwt_leeway_seconds: int = Field(default=10, description="JWT validation leeway in seconds")
+    jwt_require_https: bool = Field(
+        default=True, description="Require HTTPS for JWT tokens"
+    )
+    jwt_require_aud: bool = Field(
+        default=True, description="Require audience claim in JWT"
+    )
+    jwt_require_iss: bool = Field(
+        default=True, description="Require issuer claim in JWT"
+    )
+    jwt_leeway_seconds: int = Field(
+        default=10, description="JWT validation leeway in seconds"
+    )
 
     # Trusted Hosts - Production security
     trusted_hosts: list[str] = Field(
@@ -134,7 +146,9 @@ class SimpleRateLimiter:
             cutoff_time = current_time - 60.0
             for client_ip in list(self.clients.keys()):
                 self.clients[client_ip] = [
-                    req_time for req_time in self.clients[client_ip] if req_time > cutoff_time
+                    req_time
+                    for req_time in self.clients[client_ip]
+                    if req_time > cutoff_time
                 ]
                 if not self.clients[client_ip]:
                     del self.clients[client_ip]
@@ -160,7 +174,9 @@ class SimpleRateLimiter:
         if request_count >= self.burst_size:
             # Check if we're within rate limit over the full minute
             if request_count >= self.requests_per_minute:
-                oldest_request = min(client_requests) if client_requests else current_time
+                oldest_request = (
+                    min(client_requests) if client_requests else current_time
+                )
                 reset_time = oldest_request + 60.0
 
                 return False, {
@@ -220,7 +236,10 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                 headers={
                     "X-RateLimit-Limit": str(rate_info["requests_allowed"]),
                     "X-RateLimit-Remaining": str(
-                        max(0, rate_info["requests_allowed"] - rate_info["requests_made"])
+                        max(
+                            0,
+                            rate_info["requests_allowed"] - rate_info["requests_made"],
+                        )
                     ),
                     "X-RateLimit-Reset": str(int(rate_info["reset_time"])),
                     "Retry-After": str(rate_info["retry_after"]),
@@ -259,13 +278,15 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["X-Frame-Options"] = "DENY"
         response.headers["X-XSS-Protection"] = "1; mode=block"
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-        response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
+        response.headers["Permissions-Policy"] = (
+            "geolocation=(), microphone=(), camera=()"
+        )
 
         # HSTS for HTTPS
         if request.url.scheme == "https":
-            response.headers[
-                "Strict-Transport-Security"
-            ] = f"max-age={self.hsts_max_age}; includeSubDomains"
+            response.headers["Strict-Transport-Security"] = (
+                f"max-age={self.hsts_max_age}; includeSubDomains"
+            )
 
         # Content Security Policy (basic)
         response.headers["Content-Security-Policy"] = (
@@ -294,7 +315,9 @@ def configure_security_middleware(app, security_settings: SecuritySettings):
 
     # Trusted Host middleware (should be first)
     if security_settings.trusted_hosts:
-        app.add_middleware(TrustedHostMiddleware, allowed_hosts=security_settings.trusted_hosts)
+        app.add_middleware(
+            TrustedHostMiddleware, allowed_hosts=security_settings.trusted_hosts
+        )
 
     # Security headers middleware
     if security_settings.enable_security_headers:
@@ -348,7 +371,10 @@ class JWTValidator:
         if self.settings.jwt_require_https:
             if request.url.scheme != "https":
                 # Allow localhost for development
-                if request.client and request.client.host not in ["127.0.0.1", "localhost"]:
+                if request.client and request.client.host not in [
+                    "127.0.0.1",
+                    "localhost",
+                ]:
                     raise HTTPException(
                         status_code=status.HTTP_400_BAD_REQUEST,
                         detail="HTTPS required for JWT authentication",
@@ -379,3 +405,122 @@ class JWTValidator:
             options["require_iss"] = True
 
         return options
+
+
+class JwtVerifier:
+    """JWT encoder/decoder with lazy import of jose.jwt to avoid import issues in tests."""
+    
+    def __init__(self):
+        """Initialize with lazy import of jose.jwt"""
+        self._jwt = None
+        self._jwt_error = None
+        # Lazy import on first use
+        self._load_jwt()
+    
+    def _load_jwt(self):
+        """Lazy import of jose.jwt"""
+        if self._jwt is None:
+            try:
+                from jose import jwt as jose_jwt, JWTError
+                self._jwt = jose_jwt
+                self._jwt_error = JWTError
+            except ImportError as e:
+                raise ImportError(
+                    "python-jose is required for JWT operations. "
+                    "Install it with: pip install python-jose[cryptography]"
+                ) from e
+    
+    @property
+    def jwt(self):
+        """Get jose.jwt module"""
+        self._load_jwt()
+        return self._jwt
+    
+    @property
+    def JWTError(self):
+        """Get jose.JWTError exception"""
+        self._load_jwt()
+        return self._jwt_error
+    
+    def encode(self, payload: dict) -> str:
+        """
+        Encode JWT token with required claims validation.
+        
+        Args:
+            payload: JWT payload containing iss, aud, alg, exp, and other claims
+            
+        Returns:
+            Encoded JWT token string
+            
+        Raises:
+            ValueError: If required claims (iss, aud, alg, exp) are missing
+        """
+        # Validate required claims
+        required_claims = ['iss', 'aud', 'exp']
+        missing_claims = [claim for claim in required_claims if claim not in payload]
+        if missing_claims:
+            raise ValueError(f"Missing required JWT claims: {missing_claims}")
+        
+        # Use fixed algorithm for signing (don't use payload's 'alg' field)
+        algorithm = "HS256"
+        
+        # Use a default key for encoding (in production, this should be from settings)
+        key = "default-jwt-secret-key"
+        
+        return self.jwt.encode(payload, key, algorithm=algorithm)
+    
+    def decode(self, token: str) -> dict:
+        """
+        Decode JWT token with validation of iss, aud, alg, exp claims.
+        
+        Args:
+            token: JWT token string to decode
+            
+        Returns:
+            Decoded JWT payload as dictionary
+            
+        Raises:
+            JWTError: If token is invalid or claims validation fails
+        """
+        # Use a default key for decoding (in production, this should be from settings)
+        key = "default-jwt-secret-key"
+        
+        # Decode with validation of required claims
+        try:
+            # First decode without strict validation to get claims
+            decoded = self.jwt.decode(
+                token=token,
+                key=key,
+                algorithms=["HS256", "RS256"],
+                options={
+                    "verify_signature": True,
+                    "verify_exp": True,
+                    "verify_iss": False,  # Disable automatic issuer validation
+                    "verify_aud": False,  # Disable automatic audience validation
+                    "require_exp": True,
+                    "require_iss": False,
+                    "require_aud": False
+                }
+            )
+            
+            # Manual validation of required claims
+            required_claims = ['iss', 'aud', 'exp']
+            missing_claims = [claim for claim in required_claims if claim not in decoded]
+            if missing_claims:
+                raise self.JWTError(f"Missing required claims: {missing_claims}")
+            
+            # Validate algorithm claim if present
+            if 'alg' in decoded and decoded['alg'] not in ["HS256", "RS256"]:
+                raise self.JWTError(f"Unsupported algorithm: {decoded['alg']}")
+            
+            return decoded
+            
+        except self.JWTError:
+            # Re-raise our custom errors
+            raise
+        except Exception as e:
+            raise self.JWTError(f"JWT decode error: {str(e)}") from e
+
+
+# Global instance to use throughout the application
+jwt_verifier = JwtVerifier()

@@ -2,6 +2,7 @@
 Executions repository - tracks order fills and trades.
 Implements async CRUD operations with proper error handling.
 """
+
 from datetime import datetime
 from decimal import Decimal
 import logging
@@ -103,11 +104,17 @@ class ExecutionsRepo:
                     "Duplicate execution ID",
                     extra={"execution_id": execution_id, "order_id": str(order_id)},
                 )
-                raise DuplicateExecutionError(f"Execution {execution_id} already exists") from e
+                raise DuplicateExecutionError(
+                    f"Execution {execution_id} already exists"
+                ) from e
 
             logger.error(
                 "Failed to create execution",
-                extra={"execution_id": execution_id, "order_id": str(order_id), "error": str(e)},
+                extra={
+                    "execution_id": execution_id,
+                    "order_id": str(order_id),
+                    "error": str(e),
+                },
             )
             raise
 
@@ -267,7 +274,9 @@ class ExecutionsRepo:
         executions = await self.get_by_order_id(order_id)
         return sum(execution.qty for execution in executions)
 
-    async def get_volume_weighted_avg_price(self, order_id: uuid.UUID) -> Decimal | None:
+    async def get_volume_weighted_avg_price(
+        self, order_id: uuid.UUID
+    ) -> Decimal | None:
         """
         Calculate volume-weighted average price for an order.
 
@@ -282,7 +291,9 @@ class ExecutionsRepo:
         if not executions:
             return None
 
-        total_notional = sum(execution.qty * execution.price for execution in executions)
+        total_notional = sum(
+            execution.qty * execution.price for execution in executions
+        )
         total_qty = sum(execution.qty for execution in executions)
 
         if total_qty == 0:

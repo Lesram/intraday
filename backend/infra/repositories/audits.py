@@ -2,6 +2,7 @@
 Audits repository - tracks system audit logs and compliance.
 Implements async CRUD operations with proper error handling.
 """
+
 from datetime import datetime
 import logging
 from typing import Any
@@ -238,7 +239,11 @@ class AuditsRepo:
         """
         stmt = (
             select(AuditLog)
-            .where(and_(AuditLog.entity_type == entity_type, AuditLog.entity_id == entity_id))
+            .where(
+                and_(
+                    AuditLog.entity_type == entity_type, AuditLog.entity_id == entity_id
+                )
+            )
             .order_by(AuditLog.timestamp.desc())
             .limit(limit)
         )
@@ -344,7 +349,10 @@ class AuditsRepo:
         return list(result.scalars().all())
 
     async def get_security_events(
-        self, start_time: datetime | None = None, end_time: datetime | None = None, limit: int = 100
+        self,
+        start_time: datetime | None = None,
+        end_time: datetime | None = None,
+        limit: int = 100,
     ) -> list[AuditLog]:
         """
         Get security-related audit events.
@@ -432,7 +440,9 @@ class AuditsRepo:
         # Count by entity type
         entity_type_counts = {}
         for log in logs:
-            entity_type_counts[log.entity_type] = entity_type_counts.get(log.entity_type, 0) + 1
+            entity_type_counts[log.entity_type] = (
+                entity_type_counts.get(log.entity_type, 0) + 1
+            )
 
         # Count by user
         user_counts = {}
@@ -460,8 +470,12 @@ class AuditsRepo:
             "entity_type_counts": entity_type_counts,
             "user_counts": user_counts,
             "unique_ips": unique_ips,
-            "top_actions": sorted(action_counts.items(), key=lambda x: x[1], reverse=True)[:10],
-            "top_users": sorted(user_counts.items(), key=lambda x: x[1], reverse=True)[:10],
+            "top_actions": sorted(
+                action_counts.items(), key=lambda x: x[1], reverse=True
+            )[:10],
+            "top_users": sorted(user_counts.items(), key=lambda x: x[1], reverse=True)[
+                :10
+            ],
         }
 
     async def search_logs(
@@ -505,15 +519,25 @@ class AuditsRepo:
 
         for field in search_fields:
             if field == "action":
-                search_conditions.append(func.lower(AuditLog.action).contains(search_lower))
+                search_conditions.append(
+                    func.lower(AuditLog.action).contains(search_lower)
+                )
             elif field == "entity_type":
-                search_conditions.append(func.lower(AuditLog.entity_type).contains(search_lower))
+                search_conditions.append(
+                    func.lower(AuditLog.entity_type).contains(search_lower)
+                )
             elif field == "entity_id":
-                search_conditions.append(func.lower(AuditLog.entity_id).contains(search_lower))
+                search_conditions.append(
+                    func.lower(AuditLog.entity_id).contains(search_lower)
+                )
             elif field == "user_id":
-                search_conditions.append(func.lower(AuditLog.user_id).contains(search_lower))
+                search_conditions.append(
+                    func.lower(AuditLog.user_id).contains(search_lower)
+                )
             elif field == "ip_address":
-                search_conditions.append(func.lower(AuditLog.ip_address).contains(search_lower))
+                search_conditions.append(
+                    func.lower(AuditLog.ip_address).contains(search_lower)
+                )
 
         if search_conditions:
             conditions.append(or_(*search_conditions))

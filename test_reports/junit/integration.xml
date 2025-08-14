@@ -1,0 +1,3 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="1" failures="0" skipped="0" tests="1" time="6.166" timestamp="2025-08-13T11:56:13.470921-07:00" hostname="BOOK-FVJOEO3Q00"><testcase classname="tests.integration.test_api_startup_shutdown.TestAPIStartupShutdown" name="test_app_startup_sequence" time="0.190"><error message="failed on setup with &quot;ModuleNotFoundError: No module named 'backend.config.settings'; 'backend.config' is not a package&quot;">tests\integration\test_api_startup_shutdown.py:25: in ephemeral_app
+    from backend.config.settings import settings
+E   ModuleNotFoundError: No module named 'backend.config.settings'; 'backend.config' is not a package</error></testcase></testsuite></testsuites>

@@ -9,11 +9,11 @@ import secrets
 import bcrypt
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from jose import JWTError, jwt
 from passlib.context import CryptContext
 from pydantic import BaseModel
 
 from backend.config import get_settings
+from backend.infra.security_hardening import jwt_verifier
 
 
 class UserClaims(BaseModel):
@@ -77,7 +77,9 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
         return False
 
 
-def create_access_token(subject: str, roles: list[str], expires_minutes: int | None = None) -> str:
+def create_access_token(
+    subject: str, roles: list[str], expires_minutes: int | None = None
+) -> str:
     """
     Create a JWT access token with user claims.
 
@@ -111,7 +113,7 @@ def create_access_token(subject: str, roles: list[str], expires_minutes: int | N
     )
 
     try:
-        encoded_jwt = jwt.encode(
+        encoded_jwt = jwt_verifier.encode(
             claims.model_dump(),
             settings.security.jwt_secret_key,
             algorithm=settings.security.jwt_algorithm,
@@ -137,7 +139,7 @@ def verify_token(token: str) -> UserClaims:
     settings = get_settings()
 
     try:
-        payload = jwt.decode(
+        payload = jwt_verifier.decode(
             token,
             settings.security.jwt_secret_key,
             algorithms=[settings.security.jwt_algorithm],
@@ -148,12 +150,13 @@ def verify_token(token: str) -> UserClaims:
         # Validate required claims
         if not payload.get("sub"):
             raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token: missing subject"
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid token: missing subject",
             )
 
         return UserClaims(**payload)
 
-    except JWTError as e:
+    except jwt_verifier.JWTError as e:
         if "expired" in str(e).lower():
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED, detail="Token has expired"
@@ -164,15 +167,18 @@ def verify_token(token: str) -> UserClaims:
             )
         elif "audience" in str(e).lower():
             raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token audience"
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid token audience",
             )
         else:
             raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED, detail=f"Invalid token: {str(e)}"
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail=f"Invalid token: {str(e)}",
             )
     except Exception:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="Could not validate credentials"
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Could not validate credentials",
         )
 
 
@@ -192,11 +198,14 @@ def verify_api_key(api_key: str) -> bool:
         return False
 
     # Use constant-time comparison to prevent timing attacks
-    return any(secrets.compare_digest(api_key, valid_key) for valid_key in settings.api_keys)
+    return any(
+        secrets.compare_digest(api_key, valid_key) for valid_key in settings.api_keys
+    )
 
 
 async def get_current_user(
-    request: Request, credentials: HTTPAuthorizationCredentials | None = Depends(security_scheme)
+    request: Request,
+    credentials: HTTPAuthorizationCredentials | None = Depends(security_scheme),
 ) -> AuthenticatedUser | None:
     """
     FastAPI dependency to extract current user from JWT token or API key.
@@ -233,13 +242,15 @@ async def get_current_user(
     # Try JWT authentication
     if credentials and credentials.credentials:
         claims = verify_token(credentials.credentials)
-        return AuthenticatedUser(username=claims.sub, roles=claims.roles, token_id=claims.jti)
+        return AuthenticatedUser(
+            username=claims.sub, roles=claims.roles, token_id=claims.jti
+        )
 
     return None
 
 
 async def get_authenticated_user(
-    current_user: AuthenticatedUser | None = Depends(get_current_user)
+    current_user: AuthenticatedUser | None = Depends(get_current_user),
 ) -> AuthenticatedUser:
     """
     FastAPI dependency that requires authentication.
@@ -280,7 +291,7 @@ def require_roles(*required_roles: str):
     """
 
     async def check_roles(
-        current_user: AuthenticatedUser = Depends(get_authenticated_user)
+        current_user: AuthenticatedUser = Depends(get_authenticated_user),
     ) -> AuthenticatedUser:
         user_roles = set(current_user.roles)
         required_roles_set = set(required_roles)

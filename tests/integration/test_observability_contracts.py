@@ -2,6 +2,7 @@
 Tests for observability contracts - ensuring consistent metrics configuration.
 Validates histogram buckets, route templates, and duplicate metric detection.
 """
+
 from prometheus_client import CollectorRegistry, Counter, Histogram
 import pytest
 
@@ -42,7 +43,19 @@ class TestHistogramBuckets:
     def test_get_histogram_buckets_alpaca(self):
         """Test Alpaca API latency buckets."""
         buckets = get_histogram_buckets("alpaca_http_latency_seconds")
-        expected = (0.050, 0.100, 0.250, 0.500, 1.0, 2.0, 5.0, 10.0, 30.0, 60.0, float("inf"))
+        expected = (
+            0.050,
+            0.100,
+            0.250,
+            0.500,
+            1.0,
+            2.0,
+            5.0,
+            10.0,
+            30.0,
+            60.0,
+            float("inf"),
+        )
         assert buckets == expected
 
     def test_get_histogram_buckets_database(self):
@@ -71,7 +84,9 @@ class TestHistogramBuckets:
     def test_all_buckets_end_with_infinity(self):
         """Ensure all bucket configurations end with infinity."""
         for metric_name, buckets in HISTOGRAM_BUCKETS.items():
-            assert buckets[-1] == float("inf"), f"{metric_name} buckets don't end with infinity"
+            assert buckets[-1] == float(
+                "inf"
+            ), f"{metric_name} buckets don't end with infinity"
 
     def test_buckets_are_sorted(self):
         """Ensure all bucket configurations are properly sorted."""
@@ -194,7 +209,9 @@ class TestObservabilityContract:
             "test_histogram", "Test histogram", registry=registry, buckets=buckets
         )
 
-        is_valid = contract.validate_histogram_buckets("http_request_duration_seconds", histogram)
+        is_valid = contract.validate_histogram_buckets(
+            "http_request_duration_seconds", histogram
+        )
         assert is_valid
 
     def test_validate_histogram_buckets_no_contract(self):
@@ -273,7 +290,9 @@ class TestMetricsRegistryIntegration:
         assert normalized_route == "/health"
 
         # Test parameterized route
-        normalized_route = metrics_registry.validate_route_template("/api/v1/orders/12345")
+        normalized_route = metrics_registry.validate_route_template(
+            "/api/v1/orders/12345"
+        )
         assert normalized_route == "/api/v1/orders/{id}"
 
     def test_duplicate_metric_detection_integration(self):

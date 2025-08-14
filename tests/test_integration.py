@@ -2,6 +2,7 @@
 Integration Tests
 Tests end-to-end workflows and component integration
 """
+
 import asyncio
 from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -23,7 +24,9 @@ from backend.strategies.trading_strategies import SignalType, StrategyManager
 class TestTradingWorkflow:
     """Test complete trading workflow integration"""
 
-    async def test_signal_to_execution_workflow(self, sample_price_data, sample_features):
+    async def test_signal_to_execution_workflow(
+        self, sample_price_data, sample_features
+    ):
         """Test complete workflow from signal generation to trade execution"""
 
         # Initialize components
@@ -33,14 +36,18 @@ class TestTradingWorkflow:
         feature_engineer = FeatureEngineer()
 
         # Mock external dependencies
-        with patch("backend.data.alpaca_client.AlpacaClient._init_clients") as mock_init:
+        with patch(
+            "backend.data.alpaca_client.AlpacaClient._init_clients"
+        ) as mock_init:
             mock_init.return_value = None  # Prevent real API connection
 
             alpaca_client = AlpacaClient(api_key="test_key", secret_key="test_secret")
             alpaca_client.connected = True  # Manually set connection status
 
             # Configure mock methods
-            alpaca_client.get_historical_data = AsyncMock(return_value=sample_price_data)
+            alpaca_client.get_historical_data = AsyncMock(
+                return_value=sample_price_data
+            )
             alpaca_client.submit_order = AsyncMock(
                 return_value={
                     "id": "test_order_123",
@@ -63,7 +70,9 @@ class TestTradingWorkflow:
             assert len(features.columns) > 10  # Should have many technical indicators
 
             # Step 3: Generate trading signal
-            signal = await strategy_manager.generate_combined_signal(symbol, price_data, features)
+            signal = await strategy_manager.generate_combined_signal(
+                symbol, price_data, features
+            )
             assert signal is not None
             assert signal.symbol == symbol
             assert isinstance(signal.confidence, float)
@@ -80,7 +89,9 @@ class TestTradingWorkflow:
                     else "sell"
                 )
                 price = (
-                    price_data["close"].iloc[-1] if hasattr(price_data, "columns") else 150.0
+                    price_data["close"].iloc[-1]
+                    if hasattr(price_data, "columns")
+                    else 150.0
                 )  # Use last price or default
 
                 order_spec = OrderSpec(
@@ -104,9 +115,12 @@ class TestTradingWorkflow:
                     order = await alpaca_client.submit_order(
                         symbol=symbol,
                         qty=signal.position_size,
-                        side="buy"
-                        if signal.signal_type in [SignalType.BUY, SignalType.STRONG_BUY]
-                        else "sell",
+                        side=(
+                            "buy"
+                            if signal.signal_type
+                            in [SignalType.BUY, SignalType.STRONG_BUY]
+                            else "sell"
+                        ),
                         type="market",
                     )
 
@@ -141,7 +155,9 @@ class TestModelTrainingWorkflow:
             mock_registry.register_model.return_value = mock_version_obj
 
             # Mock deploy_model method
-            with patch.object(model_manager, "deploy_model", return_value=True) as mock_deploy:
+            with patch.object(
+                model_manager, "deploy_model", return_value=True
+            ) as mock_deploy:
                 # Step 1: Train new model
                 model_version = await model_manager.train_and_register_model(
                     model_id="test_integration_model",
@@ -170,7 +186,10 @@ class TestModelTrainingWorkflow:
                 mock_challenger_obj.metrics = {"mse": 1.3, "mae": 1.1}
 
                 # Configure second call to return challenger version
-                mock_registry.register_model.side_effect = [mock_version_obj, mock_challenger_obj]
+                mock_registry.register_model.side_effect = [
+                    mock_version_obj,
+                    mock_challenger_obj,
+                ]
 
                 challenger_version = await model_manager.train_and_register_model(
                     model_id="test_integration_model",
@@ -179,7 +198,9 @@ class TestModelTrainingWorkflow:
                 )
 
                 # Mock A/B test method
-                with patch.object(model_manager, "run_champion_challenger_test") as mock_ab_test:
+                with patch.object(
+                    model_manager, "run_champion_challenger_test"
+                ) as mock_ab_test:
                     mock_ab_test.return_value = {
                         "recommendation": "promote_challenger",
                         "confidence": 0.85,
@@ -209,14 +230,31 @@ class TestRealTimeDataFlow:
     async def test_market_data_streaming(self, sample_price_data):
         """Test real-time market data processing"""
 
-        with patch("backend.data.alpaca_client.AlpacaClient._init_clients") as mock_init:
+        with patch(
+            "backend.data.alpaca_client.AlpacaClient._init_clients"
+        ) as mock_init:
             mock_init.return_value = None  # Prevent real API connection
 
             # Mock streaming data
             mock_stream_data = [
-                {"symbol": "AAPL", "price": 150.5, "volume": 1000, "timestamp": datetime.now()},
-                {"symbol": "AAPL", "price": 150.7, "volume": 1200, "timestamp": datetime.now()},
-                {"symbol": "AAPL", "price": 150.3, "volume": 800, "timestamp": datetime.now()},
+                {
+                    "symbol": "AAPL",
+                    "price": 150.5,
+                    "volume": 1000,
+                    "timestamp": datetime.now(),
+                },
+                {
+                    "symbol": "AAPL",
+                    "price": 150.7,
+                    "volume": 1200,
+                    "timestamp": datetime.now(),
+                },
+                {
+                    "symbol": "AAPL",
+                    "price": 150.3,
+                    "volume": 800,
+                    "timestamp": datetime.now(),
+                },
             ]
 
             # Mock the streaming connection
@@ -227,7 +265,9 @@ class TestRealTimeDataFlow:
             # Initialize components
             alpaca_client = AlpacaClient(api_key="test_key", secret_key="test_secret")
             alpaca_client.connected = True  # Manually set connection status
-            alpaca_client.stream_market_data = AsyncMock(side_effect=mock_stream_handler)
+            alpaca_client.stream_market_data = AsyncMock(
+                side_effect=mock_stream_handler
+            )
             feature_engineer = FeatureEngineer()
             risk_manager = AsyncRiskManager()
 
@@ -282,8 +322,12 @@ class TestPortfolioRebalancing:
 
         portfolio_value = sum(pos["market_value"] for pos in current_positions.values())
 
-        with patch.object(risk_manager, "get_positions", return_value=current_positions):
-            with patch.object(risk_manager, "get_portfolio_value", return_value=portfolio_value):
+        with patch.object(
+            risk_manager, "get_positions", return_value=current_positions
+        ):
+            with patch.object(
+                risk_manager, "get_portfolio_value", return_value=portfolio_value
+            ):
                 # Step 1: Calculate rebalancing needs
                 rebalancing_orders = []
 
@@ -340,7 +384,9 @@ class TestErrorRecovery:
 
         from backend.data.alpaca_client import AlpacaClient
 
-        with patch("backend.data.alpaca_client.AlpacaClient._init_clients") as mock_init:
+        with patch(
+            "backend.data.alpaca_client.AlpacaClient._init_clients"
+        ) as mock_init:
             mock_init.return_value = None  # Prevent real API connection
 
             alpaca_client = AlpacaClient(api_key="test_key", secret_key="test_secret")
@@ -391,13 +437,19 @@ class TestErrorRecovery:
 
         # Mock model failures
         with patch.object(
-            ensemble_model.models["lstm"], "predict", side_effect=Exception("Model failed")
+            ensemble_model.models["lstm"],
+            "predict",
+            side_effect=Exception("Model failed"),
         ):
             with patch.object(
-                ensemble_model.models["xgboost"], "predict", side_effect=Exception("Model failed")
+                ensemble_model.models["xgboost"],
+                "predict",
+                side_effect=Exception("Model failed"),
             ):
                 # Should still provide some prediction (even if degraded)
-                prediction = ensemble_model.predict(sample_price_data, sample_features, "AAPL")
+                prediction = ensemble_model.predict(
+                    sample_price_data, sample_features, "AAPL"
+                )
 
                 assert prediction is not None
                 assert prediction.ensemble_prediction is not None
@@ -411,7 +463,9 @@ class TestPerformanceUnderLoad:
     """Test system performance under load"""
 
     @pytest.mark.asyncio
-    async def test_concurrent_signal_generation(self, sample_price_data, sample_features):
+    async def test_concurrent_signal_generation(
+        self, sample_price_data, sample_features
+    ):
         """Test concurrent signal generation for multiple symbols"""
 
         risk_manager = AsyncRiskManager()
@@ -440,7 +494,9 @@ class TestPerformanceUnderLoad:
 
         # Check that most signals were successful
         successful_signals = [s for s in signals if not isinstance(s, Exception)]
-        assert len(successful_signals) >= len(symbols) * 0.8  # At least 80% success rate
+        assert (
+            len(successful_signals) >= len(symbols) * 0.8
+        )  # At least 80% success rate
 
         for signal in successful_signals:
             assert signal.symbol in symbols
@@ -463,7 +519,9 @@ class TestPerformanceUnderLoad:
         # Simulate extended operation
         for i in range(100):
             # Generate prediction
-            prediction = ensemble_model.predict(sample_price_data, sample_features, f"TEST_{i}")
+            prediction = ensemble_model.predict(
+                sample_price_data, sample_features, f"TEST_{i}"
+            )
 
             # Simulate risk calculation
             returns = np.random.normal(0, 0.02, 100)
@@ -505,13 +563,17 @@ class TestDataConsistency:
         critical_features = ["close", "sma_5", "sma_20", "rsi", "returns"]
         for column in critical_features:
             if column in features.columns:
-                assert not features[column].isnull().all(), f"Critical feature {column} is all NaN"
+                assert (
+                    not features[column].isnull().all()
+                ), f"Critical feature {column} is all NaN"
 
         # At least some features should have valid data
         valid_features_count = sum(
             1 for col in features.columns if not features[col].isnull().all()
         )
-        assert valid_features_count > 10, f"Too few valid features: {valid_features_count}"
+        assert (
+            valid_features_count > 10
+        ), f"Too few valid features: {valid_features_count}"
 
     def test_cross_component_data_flow(self, sample_price_data, sample_features):
         """Test data consistency between components"""

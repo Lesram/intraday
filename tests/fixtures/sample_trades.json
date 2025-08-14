@@ -1,0 +1,25 @@
+[
+  {
+    "timestamp": "2024-01-02T09:30:15.123456Z",
+    "symbol": "AAPL",
+    "price": 185.5,
+    "size": 100,
+    "side": "buy",
+    "trade_id": "t_001",
+    "conditions": [
+      "@",
+      "F"
+    ]
+  },
+  {
+    "timestamp": "2024-01-02T09:30:16.456789Z",
+    "symbol": "AAPL",
+    "price": 185.52,
+    "size": 50,
+    "side": "sell",
+    "trade_id": "t_002",
+    "conditions": [
+      "@"
+    ]
+  }
+]

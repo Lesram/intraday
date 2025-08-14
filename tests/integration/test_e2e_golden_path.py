@@ -47,7 +47,9 @@ class TestE2EGoldenPath:
         return mocks
 
     @pytest.mark.integration
-    def test_e2e_golden_path_complete_flow(self, client, isolated_registry, mock_dependencies):
+    def test_e2e_golden_path_complete_flow(
+        self, client, isolated_registry, mock_dependencies
+    ):
         """
         Test complete golden path: auth → feature ingest → risk check → order submission → outbox.
         Validates metrics, logging, and business logic at each step.
@@ -80,10 +82,16 @@ class TestE2EGoldenPath:
                 "rsi_14": 65.5,
                 "bollinger_position": 0.8,
             },
-            "technical_indicators": {"sma_20": 148.50, "ema_12": 149.75, "macd_signal": 0.15},
+            "technical_indicators": {
+                "sma_20": 148.50,
+                "ema_12": 149.75,
+                "macd_signal": 0.15,
+            },
         }
 
-        feature_response = client.post("/features/ingest", json=feature_payload, headers=headers)
+        feature_response = client.post(
+            "/features/ingest", json=feature_payload, headers=headers
+        )
 
         assert feature_response.status_code == 201
 
@@ -92,7 +100,9 @@ class TestE2EGoldenPath:
         assert feature_ingests >= 1
 
         # Step 3: Strategy Signal Generation (mock)
-        with patch("backend.strategies.engine.StrategyEngine.generate_signal") as mock_signal:
+        with patch(
+            "backend.strategies.engine.StrategyEngine.generate_signal"
+        ) as mock_signal:
             mock_signal.return_value = {
                 "symbol": "AAPL",
                 "source": "momentum",
@@ -116,7 +126,9 @@ class TestE2EGoldenPath:
         assert strategy_signals >= 1
 
         # Step 4: Risk Check
-        with patch("backend.risk.risk_manager.AsyncRiskManager.before_order") as mock_risk:
+        with patch(
+            "backend.risk.risk_manager.AsyncRiskManager.before_order"
+        ) as mock_risk:
             mock_risk.return_value = MagicMock(
                 allowed=True,
                 reason="approved",
@@ -133,7 +145,9 @@ class TestE2EGoldenPath:
             }
 
             # Test risk check endpoint directly
-            risk_response = client.post("/risk/check", json=order_payload, headers=headers)
+            risk_response = client.post(
+                "/risk/check", json=order_payload, headers=headers
+            )
 
             assert risk_response.status_code == 200
             risk_data = risk_response.json()
@@ -145,14 +159,18 @@ class TestE2EGoldenPath:
         assert risk_decisions >= 1
 
         # Step 5: Order Submission
-        with patch("backend.services.order_service.OrderService.submit_order") as mock_submit:
+        with patch(
+            "backend.services.order_service.OrderService.submit_order"
+        ) as mock_submit:
             mock_submit.return_value = {
                 "order_id": "order-12345",
                 "status": "accepted",
                 "submitted_at": "2025-08-10T14:35:00Z",
             }
 
-            order_response = client.post("/orders/submit", json=order_payload, headers=headers)
+            order_response = client.post(
+                "/orders/submit", json=order_payload, headers=headers
+            )
 
             assert order_response.status_code == 201
             order_data = order_response.json()
@@ -160,7 +178,9 @@ class TestE2EGoldenPath:
             assert order_data["status"] == "accepted"
 
         # Verify order metrics
-        order_submissions = get_metric_value(isolated_registry, "order_submissions_total")
+        order_submissions = get_metric_value(
+            isolated_registry, "order_submissions_total"
+        )
         assert order_submissions >= 1
 
         # Step 6: Outbox Event Generation
@@ -201,7 +221,9 @@ class TestE2EGoldenPath:
             assert all_metrics[metric] > 0, f"Metric {metric} was not incremented"
 
     @pytest.mark.integration
-    def test_e2e_risk_rejection_flow(self, client, isolated_registry, mock_dependencies):
+    def test_e2e_risk_rejection_flow(
+        self, client, isolated_registry, mock_dependencies
+    ):
         """Test E2E flow when risk manager rejects the order."""
 
         # Setup auth
@@ -211,7 +233,9 @@ class TestE2EGoldenPath:
         headers = {"Authorization": f"Bearer {auth_response.json()['access_token']}"}
 
         # Risk manager rejects order
-        with patch("backend.risk.risk_manager.AsyncRiskManager.before_order") as mock_risk:
+        with patch(
+            "backend.risk.risk_manager.AsyncRiskManager.before_order"
+        ) as mock_risk:
             mock_risk.return_value = MagicMock(
                 allowed=False,
                 reason="position_limit_exceeded",
@@ -229,7 +253,9 @@ class TestE2EGoldenPath:
             }
 
             # Should be rejected by risk check
-            risk_response = client.post("/risk/check", json=order_payload, headers=headers)
+            risk_response = client.post(
+                "/risk/check", json=order_payload, headers=headers
+            )
 
             assert risk_response.status_code == 200
             risk_data = risk_response.json()
@@ -237,11 +263,15 @@ class TestE2EGoldenPath:
             assert risk_data["reason"] == "position_limit_exceeded"
 
         # Order submission should fail
-        with patch("backend.services.order_service.OrderService.submit_order") as mock_submit:
+        with patch(
+            "backend.services.order_service.OrderService.submit_order"
+        ) as mock_submit:
             # Order service should respect risk decision
             mock_submit.side_effect = Exception("Risk check failed")
 
-            order_response = client.post("/orders/submit", json=order_payload, headers=headers)
+            order_response = client.post(
+                "/orders/submit", json=order_payload, headers=headers
+            )
 
             # Should be rejected
             assert order_response.status_code in [400, 403, 422]
@@ -251,7 +281,9 @@ class TestE2EGoldenPath:
         assert risk_blocks >= 1
 
         # No order should have been submitted
-        order_submissions = get_metric_value(isolated_registry, "order_submissions_total")
+        order_submissions = get_metric_value(
+            isolated_registry, "order_submissions_total"
+        )
         assert order_submissions == 0  # Should be 0 since order was blocked
 
     @pytest.mark.integration
@@ -260,14 +292,20 @@ class TestE2EGoldenPath:
 
         # Invalid credentials
         auth_response = client.post(
-            "/auth/login", json={"username": "invalid_user", "password": "wrong_password"}
+            "/auth/login",
+            json={"username": "invalid_user", "password": "wrong_password"},
         )
 
         # Should fail authentication
         assert auth_response.status_code == 401
 
         # Try to access protected endpoint without auth
-        order_payload = {"symbol": "AAPL", "side": "buy", "qty": 10, "order_type": "market"}
+        order_payload = {
+            "symbol": "AAPL",
+            "side": "buy",
+            "qty": 10,
+            "order_type": "market",
+        }
 
         # Should be rejected due to missing auth
         order_response = client.post("/orders/submit", json=order_payload)
@@ -306,7 +344,9 @@ class TestE2EGoldenPath:
         assert feature_response.status_code == 422
 
         # Verify validation error metrics
-        validation_errors = get_metric_value(isolated_registry, "feature_validation_errors_total")
+        validation_errors = get_metric_value(
+            isolated_registry, "feature_validation_errors_total"
+        )
         assert validation_errors >= 1
 
     @pytest.mark.integration
@@ -324,14 +364,19 @@ class TestE2EGoldenPath:
             assert "AAPL" in response["symbols"]
 
             # Simulate market data update
-            with patch("backend.api.websockets.broadcast_market_update") as mock_broadcast:
+            with patch(
+                "backend.api.websockets.broadcast_market_update"
+            ) as mock_broadcast:
                 mock_broadcast.return_value = None
 
                 # Trigger market data update via HTTP
                 auth_response = client.post(
-                    "/auth/login", json={"username": "test_user", "password": "test_pass"}
+                    "/auth/login",
+                    json={"username": "test_user", "password": "test_pass"},
                 )
-                headers = {"Authorization": f"Bearer {auth_response.json()['access_token']}"}
+                headers = {
+                    "Authorization": f"Bearer {auth_response.json()['access_token']}"
+                }
 
                 # Ingest new market data
                 market_update = {
@@ -346,7 +391,9 @@ class TestE2EGoldenPath:
                 assert update_response.status_code == 200
 
         # Verify WebSocket metrics
-        ws_connections = get_metric_value(isolated_registry, "websocket_connections_total")
+        ws_connections = get_metric_value(
+            isolated_registry, "websocket_connections_total"
+        )
         ws_messages = get_metric_value(isolated_registry, "websocket_messages_total")
 
         assert ws_connections >= 1

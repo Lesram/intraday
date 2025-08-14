@@ -2,6 +2,7 @@
 Signals repository - tracks trading signals and model predictions.
 Implements async CRUD operations with proper error handling.
 """
+
 from datetime import datetime
 from decimal import Decimal
 import logging
@@ -161,7 +162,9 @@ class SignalsRepo:
         if signal_type:
             conditions.append(Signal.signal_type == signal_type)
 
-        stmt = select(Signal).where(and_(*conditions)).order_by(Signal.created_at.desc())
+        stmt = (
+            select(Signal).where(and_(*conditions)).order_by(Signal.created_at.desc())
+        )
 
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
@@ -249,7 +252,9 @@ class SignalsRepo:
                     or_(Signal.expiry.is_(None), Signal.expiry > current_time),
                 )
             )
-            .order_by((Signal.confidence * Signal.strength).desc(), Signal.created_at.desc())
+            .order_by(
+                (Signal.confidence * Signal.strength).desc(), Signal.created_at.desc()
+            )
             .limit(limit)
         )
 
@@ -315,7 +320,10 @@ class SignalsRepo:
         return expired_count
 
     async def get_signal_performance_metrics(
-        self, model_name: str, start_time: datetime | None = None, end_time: datetime | None = None
+        self,
+        model_name: str,
+        start_time: datetime | None = None,
+        end_time: datetime | None = None,
     ) -> dict[str, Any]:
         """
         Calculate performance metrics for signals from a specific model.
@@ -361,7 +369,9 @@ class SignalsRepo:
         # Count signal types
         signal_types = {}
         for signal in signals:
-            signal_types[signal.signal_type] = signal_types.get(signal.signal_type, 0) + 1
+            signal_types[signal.signal_type] = (
+                signal_types.get(signal.signal_type, 0) + 1
+            )
 
         # Count directions
         directions = {}
@@ -370,7 +380,9 @@ class SignalsRepo:
 
         # Count active signals
         current_time = datetime.utcnow()
-        active_signals = sum(1 for s in signals if s.expiry is None or s.expiry > current_time)
+        active_signals = sum(
+            1 for s in signals if s.expiry is None or s.expiry > current_time
+        )
 
         return {
             "model_name": model_name,
@@ -413,7 +425,9 @@ class SignalsRepo:
             or_(Signal.expiry.is_(None), Signal.expiry > datetime.utcnow()),
         ]
 
-        stmt = select(Signal).where(and_(*conditions)).order_by(Signal.created_at.desc())
+        stmt = (
+            select(Signal).where(and_(*conditions)).order_by(Signal.created_at.desc())
+        )
 
         result = await self.session.execute(stmt)
         signals = list(result.scalars().all())
@@ -459,7 +473,9 @@ class SignalsRepo:
         consensus_type = max(type_counts, key=type_counts.get)
 
         # Calculate agreement percentages
-        direction_agreement = direction_counts[consensus_direction] / len(latest_signals)
+        direction_agreement = direction_counts[consensus_direction] / len(
+            latest_signals
+        )
         type_agreement = type_counts[consensus_type] / len(latest_signals)
 
         # Calculate average confidence and strength

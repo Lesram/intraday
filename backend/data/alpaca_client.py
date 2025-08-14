@@ -102,7 +102,9 @@ class AlpacaClient:
     Supports both paper and live trading modes.
     """
 
-    def __init__(self, api_key: str, secret_key: str, paper: bool = True, test_mode: bool = False):
+    def __init__(
+        self, api_key: str, secret_key: str, paper: bool = True, test_mode: bool = False
+    ):
         """
         Initialize Alpaca trading and data client.
 
@@ -185,7 +187,9 @@ class AlpacaClient:
             else:
                 # In test mode, log error but continue
                 self.connected = False
-                self.logger.warning("Test mode: continuing despite initialization error")
+                self.logger.warning(
+                    "Test mode: continuing despite initialization error"
+                )
 
     async def connect_data_stream(
         self,
@@ -354,7 +358,11 @@ class AlpacaClient:
             )
             raise
 
-    @record_latency("alpaca_http_latency_seconds", method="POST", extra_labels={"endpoint": "/v2/orders"})
+    @record_latency(
+        "alpaca_http_latency_seconds",
+        method="POST",
+        extra_labels={"endpoint": "/v2/orders"},
+    )
     def submit_order(
         self,
         symbol: str,
@@ -390,8 +398,8 @@ class AlpacaClient:
                 "alpaca.side": side,
                 "alpaca.order_type": order_type,
                 "alpaca.quantity": qty,
-                "alpaca.limit_price": limit_price
-            }
+                "alpaca.limit_price": limit_price,
+            },
         ) as span:
             try:
                 if not validate_symbol(symbol):
@@ -432,7 +440,7 @@ class AlpacaClient:
                     endpoint="/v2/orders",
                     method="POST",
                     status_code=201,  # Assume success if no exception
-                    duration_seconds=api_duration
+                    duration_seconds=api_duration,
                 )
 
                 # Create result object
@@ -442,7 +450,11 @@ class AlpacaClient:
                     side=order.side.value,
                     quantity=float(order.qty),
                     filled_quantity=float(order.filled_qty or 0),
-                    price=float(order.filled_avg_price) if order.filled_avg_price else None,
+                    price=(
+                        float(order.filled_avg_price)
+                        if order.filled_avg_price
+                        else None
+                    ),
                     status=order.status.value,
                     timestamp=order.created_at,
                 )
@@ -460,7 +472,7 @@ class AlpacaClient:
                     side=side,
                     quantity=qty,
                     price=limit_price,
-                    status=order.status.value
+                    status=order.status.value,
                 )
 
                 # Log to audit trail
@@ -493,7 +505,7 @@ class AlpacaClient:
                     endpoint="/v2/orders",
                     method="POST",
                     status_code=500,  # Assume server error for exceptions
-                    duration_seconds=error_duration
+                    duration_seconds=error_duration,
                 )
 
                 # Update span with error info
@@ -509,7 +521,7 @@ class AlpacaClient:
                     side=side,
                     quantity=qty,
                     price=limit_price,
-                    error=str(e)
+                    error=str(e),
                 )
 
                 self.logger.error(
@@ -521,7 +533,11 @@ class AlpacaClient:
                 )
                 raise
 
-    @record_latency("alpaca_http_latency_seconds", method="DELETE", extra_labels={"endpoint": "/v2/orders/{id}"})
+    @record_latency(
+        "alpaca_http_latency_seconds",
+        method="DELETE",
+        extra_labels={"endpoint": "/v2/orders/{id}"},
+    )
     def cancel_order(self, order_id: str) -> bool:
         """
         Cancel an existing order by ID.
@@ -538,10 +554,7 @@ class AlpacaClient:
 
         with trace_span(
             "alpaca_cancel_order",
-            {
-                "alpaca.operation": "cancel_order",
-                "alpaca.order_id": order_id
-            }
+            {"alpaca.operation": "cancel_order", "alpaca.order_id": order_id},
         ) as span:
             try:
                 self._rate_limit()
@@ -556,7 +569,7 @@ class AlpacaClient:
                     endpoint="/v2/orders/{id}",
                     method="DELETE",
                     status_code=200,  # Assume success if no exception
-                    duration_seconds=api_duration
+                    duration_seconds=api_duration,
                 )
 
                 # Update span with success info
@@ -565,9 +578,7 @@ class AlpacaClient:
 
                 # Log structured order event
                 structured_logger.log_order_event(
-                    event="order_cancelled",
-                    order_id=order_id,
-                    status="cancelled"
+                    event="order_cancelled", order_id=order_id, status="cancelled"
                 )
 
                 self.logger.info("Order cancelled", order_id=order_id)
@@ -588,7 +599,7 @@ class AlpacaClient:
                     endpoint="/v2/orders/{id}",
                     method="DELETE",
                     status_code=500,  # Assume server error for exceptions
-                    duration_seconds=error_duration
+                    duration_seconds=error_duration,
                 )
 
                 # Update span with error info
@@ -599,12 +610,12 @@ class AlpacaClient:
 
                 # Log structured error event
                 structured_logger.log_order_event(
-                    event="order_cancel_failed",
-                    order_id=order_id,
-                    error=str(e)
+                    event="order_cancel_failed", order_id=order_id, error=str(e)
                 )
 
-                self.logger.error("Failed to cancel order", order_id=order_id, error=str(e))
+                self.logger.error(
+                    "Failed to cancel order", order_id=order_id, error=str(e)
+                )
                 return False
 
     def get_account_status(self) -> dict[str, Any]:

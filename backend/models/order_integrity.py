@@ -16,7 +16,7 @@ import hashlib
 import json
 import logging
 import time
-from typing import Any, Optional
+from typing import Any
 import uuid
 
 from prometheus_client import Counter, Histogram
@@ -41,7 +41,9 @@ order_integrity_violations = Counter(
 )
 
 audit_log_entries = Counter(
-    "trading_audit_log_entries_total", "Audit log entries created", ["event_type", "entity_type"]
+    "trading_audit_log_entries_total",
+    "Audit log entries created",
+    ["event_type", "entity_type"],
 )
 
 idempotency_cache_hits = Counter(
@@ -213,7 +215,7 @@ class OrderSnapshot:
     quantity: int
     side: str  # buy/sell
     order_type: str  # market/limit
-    price: Optional[float] = None
+    price: float | None = None
     time_in_force: str = "day"
     metadata: dict[str, Any] = field(default_factory=dict)
     created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
@@ -243,19 +245,19 @@ class OrderEventSchema(BaseModel):
     timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
     # State transition info
-    from_state: Optional[OrderState] = None
-    to_state: Optional[OrderState] = None
-    trigger: Optional[TransitionTrigger] = None
+    from_state: OrderState | None = None
+    to_state: OrderState | None = None
+    trigger: TransitionTrigger | None = None
 
     # Event data
     event_data: dict[str, Any] = Field(default_factory=dict)
-    user_id: Optional[str] = None
+    user_id: str | None = None
     source_system: str = Field(default="trading-platform")
 
     # Integrity fields
-    idempotency_key: Optional[str] = None
-    parent_event_id: Optional[str] = None
-    correlation_id: Optional[str] = None
+    idempotency_key: str | None = None
+    parent_event_id: str | None = None
+    correlation_id: str | None = None
 
     @validator("schema_version")
     def validate_schema_version(cls, v):
@@ -278,7 +280,9 @@ class AuditLogEntry(Base):
     __tablename__ = "audit_log"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    event_id = Column(UUID(as_uuid=True), nullable=False, unique=True, default=uuid.uuid4)
+    event_id = Column(
+        UUID(as_uuid=True), nullable=False, unique=True, default=uuid.uuid4
+    )
 
     # Event metadata
     event_type = Column(String(50), nullable=False)
@@ -355,8 +359,8 @@ class OrderStateMachine:
         to_state: OrderState,
         trigger: TransitionTrigger,
         event_data: dict[str, Any],
-        user_id: Optional[str] = None,
-        idempotency_key: Optional[str] = None,
+        user_id: str | None = None,
+        idempotency_key: str | None = None,
     ) -> bool:
         """
         Execute state transition with validation and logging.
@@ -366,7 +370,9 @@ class OrderStateMachine:
 
         # Validate transition
         if not self.can_transition(from_state, to_state, trigger):
-            logger.warning(f"Invalid state transition: {from_state} -> {to_state} via {trigger}")
+            logger.warning(
+                f"Invalid state transition: {from_state} -> {to_state} via {trigger}"
+            )
 
             order_integrity_violations.labels(violation_type="invalid_transition").inc()
 
@@ -392,7 +398,9 @@ class OrderStateMachine:
         # Log to audit trail
         await self.audit_logger.log_event(event)
 
-        logger.info(f"Order {order_id} transitioned: {from_state} -> {to_state} via {trigger}")
+        logger.info(
+            f"Order {order_id} transitioned: {from_state} -> {to_state} via {trigger}"
+        )
         return True
 
     def get_valid_transitions(
@@ -422,7 +430,9 @@ class IdempotencyManager:
         self._outbox_cache = {}
         self.cache_backend = cache_backend
 
-    async def check_api_idempotency(self, key: str, operation: str) -> Optional[dict[str, Any]]:
+    async def check_api_idempotency(
+        self, key: str, operation: str
+    ) -> dict[str, Any] | None:
         """Check if API operation has already been processed."""
         cache_key = f"api:{operation}:{key}"
 
@@ -432,7 +442,9 @@ class IdempotencyManager:
 
         return None
 
-    async def record_api_operation(self, key: str, operation: str, result: dict[str, Any]):
+    async def record_api_operation(
+        self, key: str, operation: str, result: dict[str, Any]
+    ):
         """Record API operation result for idempotency."""
         cache_key = f"api:{operation}:{key}"
         self._api_cache[cache_key] = {
@@ -441,7 +453,9 @@ class IdempotencyManager:
             "operation": operation,
         }
 
-    async def check_service_idempotency(self, key: str, service: str) -> Optional[dict[str, Any]]:
+    async def check_service_idempotency(
+        self, key: str, service: str
+    ) -> dict[str, Any] | None:
         """Check if service operation has already been processed."""
         cache_key = f"service:{service}:{key}"
 
@@ -451,7 +465,9 @@ class IdempotencyManager:
 
         return None
 
-    async def record_service_operation(self, key: str, service: str, result: dict[str, Any]):
+    async def record_service_operation(
+        self, key: str, service: str, result: dict[str, Any]
+    ):
         """Record service operation result for idempotency."""
         cache_key = f"service:{service}:{key}"
         self._service_cache[cache_key] = {
@@ -523,9 +539,13 @@ class AuditLogger:
         self._previous_hash_cache[event.order_id] = data_hash
 
         # Record metrics
-        audit_log_entries.labels(event_type=event.event_type.value, entity_type="order").inc()
+        audit_log_entries.labels(
+            event_type=event.event_type.value, entity_type="order"
+        ).inc()
 
-        logger.debug(f"Audit event logged: {event.event_type} for order {event.order_id}")
+        logger.debug(
+            f"Audit event logged: {event.event_type} for order {event.order_id}"
+        )
 
     async def get_order_audit_trail(self, order_id: str) -> list[AuditLogEntry]:
         """Get complete audit trail for an order."""
@@ -547,8 +567,12 @@ class AuditLogger:
         for entry in trail:
             # Verify hash chain
             if previous_hash and entry.previous_hash != previous_hash:
-                logger.error(f"Audit integrity violation: hash chain broken for order {order_id}")
-                order_integrity_violations.labels(violation_type="hash_chain_broken").inc()
+                logger.error(
+                    f"Audit integrity violation: hash chain broken for order {order_id}"
+                )
+                order_integrity_violations.labels(
+                    violation_type="hash_chain_broken"
+                ).inc()
                 return False
 
             # Verify data hash
@@ -556,8 +580,12 @@ class AuditLogger:
             expected_hash = hashlib.sha256(event_json.encode()).hexdigest()
 
             if entry.data_hash != expected_hash:
-                logger.error(f"Audit integrity violation: data hash mismatch for order {order_id}")
-                order_integrity_violations.labels(violation_type="data_hash_mismatch").inc()
+                logger.error(
+                    f"Audit integrity violation: data hash mismatch for order {order_id}"
+                )
+                order_integrity_violations.labels(
+                    violation_type="data_hash_mismatch"
+                ).inc()
                 return False
 
             previous_hash = entry.data_hash
@@ -624,7 +652,9 @@ class OrderIntegrityService:
         }
 
         # Record API operation for idempotency
-        await self.idempotency_manager.record_api_operation(idempotency_key, "create_order", result)
+        await self.idempotency_manager.record_api_operation(
+            idempotency_key, "create_order", result
+        )
 
         return result
 
@@ -635,8 +665,8 @@ class OrderIntegrityService:
         to_state: OrderState,
         trigger: TransitionTrigger,
         event_data: dict[str, Any],
-        user_id: Optional[str] = None,
-        idempotency_key: Optional[str] = None,
+        user_id: str | None = None,
+        idempotency_key: str | None = None,
     ) -> bool:
         """
         Transition order state with full validation and logging.

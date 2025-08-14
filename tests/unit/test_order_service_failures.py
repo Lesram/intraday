@@ -188,7 +188,9 @@ class TestOrderServiceFailureHandling:
         mock_outbox_repo = AsyncMock()
 
         # Simulate database connection failure
-        mock_orders_repo.upsert_by_idempotency.side_effect = Exception("Database connection failed")
+        mock_orders_repo.upsert_by_idempotency.side_effect = Exception(
+            "Database connection failed"
+        )
 
         service = OrderService(mock_orders_repo, mock_outbox_repo)
 
@@ -244,20 +246,44 @@ class TestOrderServiceFailureHandling:
         # Invalid order parameters that should be caught
         invalid_orders = [
             # Zero quantity
-            {"symbol": "AAPL", "side": "buy", "qty": 0.0, "idempotency_key": "zero-qty"},
+            {
+                "symbol": "AAPL",
+                "side": "buy",
+                "qty": 0.0,
+                "idempotency_key": "zero-qty",
+            },
             # Negative quantity
-            {"symbol": "AAPL", "side": "buy", "qty": -100.0, "idempotency_key": "neg-qty"},
+            {
+                "symbol": "AAPL",
+                "side": "buy",
+                "qty": -100.0,
+                "idempotency_key": "neg-qty",
+            },
             # Empty symbol
-            {"symbol": "", "side": "buy", "qty": 100.0, "idempotency_key": "empty-symbol"},
+            {
+                "symbol": "",
+                "side": "buy",
+                "qty": 100.0,
+                "idempotency_key": "empty-symbol",
+            },
             # Invalid side
-            {"symbol": "AAPL", "side": "invalid", "qty": 100.0, "idempotency_key": "invalid-side"},
+            {
+                "symbol": "AAPL",
+                "side": "invalid",
+                "qty": 100.0,
+                "idempotency_key": "invalid-side",
+            },
         ]
 
         # Mock orders repo to raise validation error
-        mock_orders_repo.upsert_by_idempotency.side_effect = ValueError("Invalid order parameters")
+        mock_orders_repo.upsert_by_idempotency.side_effect = ValueError(
+            "Invalid order parameters"
+        )
 
         for invalid_order in invalid_orders:
-            with pytest.raises(Exception):  # Could be ValueError or other validation error
+            with pytest.raises(
+                Exception
+            ):  # Could be ValueError or other validation error
                 await service.submit_symbol_order(**invalid_order)
 
     @pytest.mark.unit
@@ -483,7 +509,9 @@ class TestOrderServiceStrategyIntegration:
             features={"momentum": 0.5, "mean_reversion": -0.2},
         )
 
-        results = await service.plan_and_submit(signals=[signal], idempotency_key="strategy-key-1")
+        results = await service.plan_and_submit(
+            signals=[signal], idempotency_key="strategy-key-1"
+        )
 
         assert len(results) == 1
         assert results[0]["symbol"] == "AAPL"
@@ -627,7 +655,9 @@ class TestOrderServiceStrategyIntegration:
             ),
         ]
 
-        results = await service.plan_and_submit(signals=signals, idempotency_key="mixed-key")
+        results = await service.plan_and_submit(
+            signals=signals, idempotency_key="mixed-key"
+        )
 
         assert len(results) == 3
 
@@ -673,7 +703,9 @@ class TestOrderServiceStrategyIntegration:
         mock_strategy_engine.plan_executions_from_signals.return_value = [plan]
 
         # Mock order submission failure
-        mock_orders_repo.upsert_by_idempotency.side_effect = Exception("Order submission failed")
+        mock_orders_repo.upsert_by_idempotency.side_effect = Exception(
+            "Order submission failed"
+        )
 
         service = OrderService(mock_orders_repo, mock_outbox_repo, mock_strategy_engine)
 
@@ -685,7 +717,9 @@ class TestOrderServiceStrategyIntegration:
             features={},
         )
 
-        results = await service.plan_and_submit(signals=[signal], idempotency_key="failure-key")
+        results = await service.plan_and_submit(
+            signals=[signal], idempotency_key="failure-key"
+        )
 
         assert len(results) == 1
         assert results[0]["symbol"] == "AAPL"

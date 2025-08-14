@@ -2,6 +2,7 @@
 SQLAlchemy 2.0 models for the trading platform.
 All models use async patterns and include proper indexes for performance.
 """
+
 from datetime import datetime
 from decimal import Decimal
 from typing import Any
@@ -15,6 +16,7 @@ from sqlalchemy import (
     Enum,
     ForeignKey,
     Index,
+    JSON,
     String,
     Text,
     UniqueConstraint,
@@ -24,6 +26,12 @@ from sqlalchemy.ext.asyncio import AsyncAttrs
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
+def get_json_type():
+    """Get the appropriate JSON type for the current database dialect."""
+    # This will be JSONB for PostgreSQL, JSON for others (SQLite, etc.)
+    return sa.JSON().with_variant(JSONB, "postgresql")
+
+
 # Base class with async support
 class Base(AsyncAttrs, DeclarativeBase):
     """Base class for all database models."""
@@ -31,13 +39,15 @@ class Base(AsyncAttrs, DeclarativeBase):
     # Naming convention for constraints
     __abstract__ = True
 
-    metadata = sa.MetaData(naming_convention={
-        "ix": "ix_%(column_0_label)s",
-        "uq": "uq_%(table_name)s_%(column_0_name)s",
-        "ck": "ck_%(table_name)s_%(constraint_name)s",
-        "fk": "fk_%(table_name)s_%(column_0_name)s_%(referred_table_name)s",
-        "pk": "pk_%(table_name)s"
-    })
+    metadata = sa.MetaData(
+        naming_convention={
+            "ix": "ix_%(column_0_label)s",
+            "uq": "uq_%(table_name)s_%(column_0_name)s",
+            "ck": "ck_%(table_name)s_%(constraint_name)s",
+            "fk": "fk_%(table_name)s_%(column_0_name)s_%(referred_table_name)s",
+            "pk": "pk_%(table_name)s",
+        }
+    )
 
 
 class Order(Base):
@@ -47,72 +57,59 @@ class Order(Base):
 
     # Primary key
     id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
-        primary_key=True,
-        default=uuid.uuid4
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
 
     # Idempotency key - ensures no duplicate orders
     client_idempotency_key: Mapped[str] = mapped_column(
-        String(255),
-        nullable=False,
-        unique=True,
-        index=True
+        String(255), nullable=False, unique=True, index=True
     )
 
     # Order details
     symbol: Mapped[str] = mapped_column(String(20), nullable=False, index=True)
     side: Mapped[str] = mapped_column(String(10), nullable=False)  # 'buy' or 'sell'
     qty: Mapped[Decimal] = mapped_column(DECIMAL(18, 6), nullable=False)
-    order_type: Mapped[str] = mapped_column(String(20), nullable=False)  # 'market', 'limit', etc.
+    order_type: Mapped[str] = mapped_column(
+        String(20), nullable=False
+    )  # 'market', 'limit', etc.
     tif: Mapped[str] = mapped_column(String(10), nullable=False)  # 'gtc', 'ioc', 'fok'
 
     # Status tracking
     status: Mapped[str] = mapped_column(
-        String(20),
-        nullable=False,
-        default='accepted',
-        index=True
+        String(20), nullable=False, default="accepted", index=True
     )
 
     # Timestamps
     submitted_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
-        server_default=sa.text("CURRENT_TIMESTAMP")
+        server_default=sa.text("CURRENT_TIMESTAMP"),
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
-        server_default=sa.text("CURRENT_TIMESTAMP")
+        server_default=sa.text("CURRENT_TIMESTAMP"),
     )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
         server_default=sa.text("CURRENT_TIMESTAMP"),
-        onupdate=sa.text("CURRENT_TIMESTAMP")
+        onupdate=sa.text("CURRENT_TIMESTAMP"),
     )
 
     # Broker integration
     broker_order_id: Mapped[str | None] = mapped_column(
-        String(100),
-        nullable=True,
-        index=True
+        String(100), nullable=True, index=True
     )
 
     # Flexible attributes for order-specific data
     attributes: Mapped[dict[str, Any]] = mapped_column(
-        JSONB,
-        nullable=False,
-        default=dict,
-        server_default=sa.text("'{}'::jsonb")
+        get_json_type(), nullable=False, default=dict, server_default=sa.text("'{}'")
     )
 
     # Relationships
     executions: Mapped[list["Execution"]] = relationship(
-        "Execution",
-        back_populates="order",
-        cascade="all, delete-orphan"
+        "Execution", back_populates="order", cascade="all, delete-orphan"
     )
 
     # Indexes
@@ -129,9 +126,7 @@ class Execution(Base):
 
     # Primary key
     id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
-        primary_key=True,
-        default=uuid.uuid4
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
 
     # Foreign key to order
@@ -139,16 +134,14 @@ class Execution(Base):
         UUID(as_uuid=True),
         ForeignKey("orders.id", ondelete="CASCADE"),
         nullable=False,
-        index=True
+        index=True,
     )
 
     # Execution details
     fill_qty: Mapped[Decimal] = mapped_column(DECIMAL(18, 6), nullable=False)
     fill_price: Mapped[Decimal] = mapped_column(DECIMAL(18, 6), nullable=False)
     ts: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        nullable=False,
-        index=True
+        DateTime(timezone=True), nullable=False, index=True
     )
     venue: Mapped[str] = mapped_column(String(50), nullable=False)
 
@@ -156,7 +149,7 @@ class Execution(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
-        server_default=sa.text("CURRENT_TIMESTAMP")
+        server_default=sa.text("CURRENT_TIMESTAMP"),
     )
 
     # Relationships
@@ -179,20 +172,24 @@ class Position(Base):
 
     # Position details
     qty: Mapped[Decimal] = mapped_column(DECIMAL(18, 6), nullable=False, default=0)
-    avg_price: Mapped[Decimal] = mapped_column(DECIMAL(18, 6), nullable=False, default=0)
-    realized_pnl: Mapped[Decimal] = mapped_column(DECIMAL(18, 6), nullable=False, default=0)
+    avg_price: Mapped[Decimal] = mapped_column(
+        DECIMAL(18, 6), nullable=False, default=0
+    )
+    realized_pnl: Mapped[Decimal] = mapped_column(
+        DECIMAL(18, 6), nullable=False, default=0
+    )
 
     # Timestamps
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
         server_default=sa.text("CURRENT_TIMESTAMP"),
-        onupdate=sa.text("CURRENT_TIMESTAMP")
+        onupdate=sa.text("CURRENT_TIMESTAMP"),
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
-        server_default=sa.text("CURRENT_TIMESTAMP")
+        server_default=sa.text("CURRENT_TIMESTAMP"),
     )
 
 
@@ -203,31 +200,24 @@ class Signal(Base):
 
     # Primary key
     id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
-        primary_key=True,
-        default=uuid.uuid4
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
 
     # Signal details
     symbol: Mapped[str] = mapped_column(String(20), nullable=False, index=True)
     strategy: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
     ts: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        nullable=False,
-        index=True
+        DateTime(timezone=True), nullable=False, index=True
     )
 
     # Flexible payload for signal data
-    payload: Mapped[dict[str, Any]] = mapped_column(
-        JSONB,
-        nullable=False
-    )
+    payload: Mapped[dict[str, Any]] = mapped_column(get_json_type(), nullable=False)
 
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
-        server_default=sa.text("CURRENT_TIMESTAMP")
+        server_default=sa.text("CURRENT_TIMESTAMP"),
     )
 
     # Indexes
@@ -244,9 +234,7 @@ class ModelRegistry(Base):
 
     # Primary key
     id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
-        primary_key=True,
-        default=uuid.uuid4
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
 
     # Model identification
@@ -256,30 +244,26 @@ class ModelRegistry(Base):
 
     # Model metadata
     metrics: Mapped[dict[str, Any]] = mapped_column(
-        JSONB,
-        nullable=False,
-        default=dict,
-        server_default=sa.text("'{}'::jsonb")
+        get_json_type(), nullable=False, default=dict, server_default=sa.text("'{}'")
     )
 
     # Model status
     active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     trained_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        nullable=False
+        DateTime(timezone=True), nullable=False
     )
 
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
-        server_default=sa.text("CURRENT_TIMESTAMP")
+        server_default=sa.text("CURRENT_TIMESTAMP"),
     )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
         server_default=sa.text("CURRENT_TIMESTAMP"),
-        onupdate=sa.text("CURRENT_TIMESTAMP")
+        onupdate=sa.text("CURRENT_TIMESTAMP"),
     )
 
     # Indexes and constraints
@@ -297,9 +281,7 @@ class AuditLog(Base):
 
     # Primary key
     id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
-        primary_key=True,
-        default=uuid.uuid4
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
 
     # Audit details
@@ -307,19 +289,20 @@ class AuditLog(Base):
         DateTime(timezone=True),
         nullable=False,
         index=True,
-        server_default=sa.text("CURRENT_TIMESTAMP")
+        server_default=sa.text("CURRENT_TIMESTAMP"),
     )
-    actor: Mapped[str] = mapped_column(String(255), nullable=False)  # user, system, etc.
+    actor: Mapped[str] = mapped_column(
+        String(255), nullable=False
+    )  # user, system, etc.
     action: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
-    entity: Mapped[str] = mapped_column(String(100), nullable=False, index=True)  # order, position, etc.
+    entity: Mapped[str] = mapped_column(
+        String(100), nullable=False, index=True
+    )  # order, position, etc.
     entity_id: Mapped[str] = mapped_column(String(255), nullable=False)
 
     # Flexible payload for audit data
     payload: Mapped[dict[str, Any]] = mapped_column(
-        JSONB,
-        nullable=False,
-        default=dict,
-        server_default=sa.text("'{}'::jsonb")
+        get_json_type(), nullable=False, default=dict, server_default=sa.text("'{}'")
     )
 
     # Hash chain for tamper detection (B9 will use this)
@@ -341,52 +324,31 @@ class OutboxEvent(Base):
 
     # Primary key
     id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
-        primary_key=True,
-        default=uuid.uuid4
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
 
     # Topic for routing to handlers
-    topic: Mapped[str] = mapped_column(
-        String(100),
-        nullable=False,
-        index=True
-    )
+    topic: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
 
     # Event payload with all necessary data
     payload: Mapped[dict[str, Any]] = mapped_column(
-        JSONB,
-        nullable=False,
-        default=dict,
-        server_default=sa.text("'{}'::jsonb")
+        get_json_type(), nullable=False, default=dict, server_default=sa.text("'{}'")
     )
 
     # Processing status
     status: Mapped[str] = mapped_column(
-        Enum(
-            "pending",
-            "sent",
-            "failed",
-            name="outbox_status"
-        ),
+        Enum("pending", "sent", "failed", name="outbox_status"),
         nullable=False,
         default="pending",
-        index=True
+        index=True,
     )
 
     # Retry tracking
-    attempts: Mapped[int] = mapped_column(
-        sa.Integer,
-        nullable=False,
-        default=0
-    )
+    attempts: Mapped[int] = mapped_column(sa.Integer, nullable=False, default=0)
 
     # Backoff scheduling
     next_attempt_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        nullable=False,
-        default=datetime.utcnow,
-        index=True
+        DateTime(timezone=True), nullable=False, default=datetime.utcnow, index=True
     )
 
     # Audit timestamps
@@ -394,12 +356,11 @@ class OutboxEvent(Base):
         DateTime(timezone=True),
         nullable=False,
         default=datetime.utcnow,
-        server_default=sa.text("CURRENT_TIMESTAMP")
+        server_default=sa.text("CURRENT_TIMESTAMP"),
     )
 
     sent_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True),
-        nullable=True
+        DateTime(timezone=True), nullable=True
     )
 
     # Error tracking

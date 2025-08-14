@@ -114,13 +114,17 @@ def test_parallel_test_isolation():
 
 
 @pytest.mark.metrics
-def test_websocket_metrics_integration(test_app, isolated_metrics_registry, mock_dependencies):
+def test_websocket_metrics_integration(
+    test_app, isolated_metrics_registry, mock_dependencies
+):
     """Test WebSocket metrics are recorded in isolated registry"""
     from backend.api.main import WebSocketClientManager
     from backend.infra.metrics import MetricsRegistry
 
     # Create WebSocket manager with isolated metrics
-    metrics_registry = MetricsRegistry(namespace="test", registry=isolated_metrics_registry)
+    metrics_registry = MetricsRegistry(
+        namespace="test", registry=isolated_metrics_registry
+    )
     ws_manager = WebSocketClientManager(metrics_registry=metrics_registry)
 
     # Verify the manager has the metrics registry
@@ -128,7 +132,9 @@ def test_websocket_metrics_integration(test_app, isolated_metrics_registry, mock
 
     # Test that metrics registry can record metrics
     if ws_manager.metrics_registry:
-        counter = ws_manager.metrics_registry.counter("websocket_test_metric", {"test": "value"})
+        counter = ws_manager.metrics_registry.counter(
+            "websocket_test_metric", {"test": "value"}
+        )
         counter.inc()
 
         # Verify metric was recorded

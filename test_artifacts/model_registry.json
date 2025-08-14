@@ -1,0 +1,52 @@
+{
+  "model_a": [
+    {
+      "model_id": "model_a",
+      "version": "v1",
+      "created_at": "2025-08-13T16:30:47.161853",
+      "status": "trained",
+      "metrics": {},
+      "training_data_hash": "2bee24c6bcac6f32fd736188f8cf6daa",
+      "feature_names": [
+        "feature1",
+        "feature2"
+      ],
+      "feature_dtypes": {
+        "feature1": "int64",
+        "feature2": "int64"
+      },
+      "train_window": {},
+      "artifact_hash": "72b243fee66a82c1f6159440c09f404686716023ae642e1662c43240b192da34",
+      "model_path": "test_artifacts\\model_a\\v1\\model.bin",
+      "metadata": {
+        "training_samples": 3,
+        "features_count": 2
+      }
+    }
+  ],
+  "model_b": [
+    {
+      "model_id": "model_b",
+      "version": "v1",
+      "created_at": "2025-08-13T16:30:47.167838",
+      "status": "trained",
+      "metrics": {},
+      "training_data_hash": "2bee24c6bcac6f32fd736188f8cf6daa",
+      "feature_names": [
+        "feature1",
+        "feature2"
+      ],
+      "feature_dtypes": {
+        "feature1": "int64",
+        "feature2": "int64"
+      },
+      "train_window": {},
+      "artifact_hash": "d07157f9b00eb72e3e3e999830b1d923bdf31c7fc881df362f8643d0846c0189",
+      "model_path": "test_artifacts\\model_b\\v1\\model.bin",
+      "metadata": {
+        "training_samples": 3,
+        "features_count": 2
+      }
+    }
+  ]
+}

@@ -3,6 +3,7 @@ Modern Risk Manager Tests
 Tests for AsyncRiskManager with proper typing using OrderSpec and PortfolioState.
 This is the preferred test pattern for new risk management tests.
 """
+
 import asyncio
 from datetime import UTC, datetime
 from decimal import Decimal
@@ -20,7 +21,9 @@ class TestAsyncRiskManagerModern:
     def setup_method(self):
         """Setup for each test method."""
         self.risk_manager = AsyncRiskManager(
-            max_position_per_symbol=10000, max_single_position_value=100000, max_portfolio_var=0.05
+            max_position_per_symbol=10000,
+            max_single_position_value=100000,
+            max_portfolio_var=0.05,
         )
 
     @pytest.mark.asyncio
@@ -215,7 +218,9 @@ class TestAsyncRiskManagerModern:
     async def test_error_handling(self):
         """Test error handling in risk assessment."""
         # Mock an internal method to raise an exception
-        with patch.object(self.risk_manager, "_evaluate_order_comprehensive") as mock_eval:
+        with patch.object(
+            self.risk_manager, "_evaluate_order_comprehensive"
+        ) as mock_eval:
             mock_eval.side_effect = Exception("Test error")
 
             order = OrderSpec(
@@ -278,10 +283,25 @@ class TestRiskMathUtilsModern:
 
     def test_parametric_var(self):
         """Test parametric VaR calculation."""
-        returns = [0.01, -0.02, 0.015, -0.005, 0.008, 0.012, -0.018, 0.003, -0.01, 0.007]
+        returns = [
+            0.01,
+            -0.02,
+            0.015,
+            -0.005,
+            0.008,
+            0.012,
+            -0.018,
+            0.003,
+            -0.01,
+            0.007,
+        ]
 
-        var_95 = self.math_utils.parametric_var(returns, confidence=0.05)  # 95% confidence
-        var_99 = self.math_utils.parametric_var(returns, confidence=0.01)  # 99% confidence
+        var_95 = self.math_utils.parametric_var(
+            returns, confidence=0.05
+        )  # 95% confidence
+        var_99 = self.math_utils.parametric_var(
+            returns, confidence=0.01
+        )  # 99% confidence
 
         assert isinstance(var_95, float)
         assert isinstance(var_99, float)

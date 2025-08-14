@@ -2,6 +2,7 @@
 Structured JSON logging with OpenTelemetry trace correlation.
 Provides consistent log formatting across HTTP, DB, broker, and outbox operations.
 """
+
 from datetime import UTC, datetime
 import json
 import logging
@@ -192,27 +193,39 @@ class StructuredLogger:
         else:
             self.logger.log(level, message, **kwargs)
 
-    def debug(self, message: str, context: dict[str, Any] | None = None, **kwargs) -> None:
+    def debug(
+        self, message: str, context: dict[str, Any] | None = None, **kwargs
+    ) -> None:
         """Log debug message with context."""
         self._log_with_context(logging.DEBUG, message, context, **kwargs)
 
-    def info(self, message: str, context: dict[str, Any] | None = None, **kwargs) -> None:
+    def info(
+        self, message: str, context: dict[str, Any] | None = None, **kwargs
+    ) -> None:
         """Log info message with context."""
         self._log_with_context(logging.INFO, message, context, **kwargs)
 
-    def warning(self, message: str, context: dict[str, Any] | None = None, **kwargs) -> None:
+    def warning(
+        self, message: str, context: dict[str, Any] | None = None, **kwargs
+    ) -> None:
         """Log warning message with context."""
         self._log_with_context(logging.WARNING, message, context, **kwargs)
 
-    def error(self, message: str, context: dict[str, Any] | None = None, **kwargs) -> None:
+    def error(
+        self, message: str, context: dict[str, Any] | None = None, **kwargs
+    ) -> None:
         """Log error message with context."""
         self._log_with_context(logging.ERROR, message, context, **kwargs)
 
-    def critical(self, message: str, context: dict[str, Any] | None = None, **kwargs) -> None:
+    def critical(
+        self, message: str, context: dict[str, Any] | None = None, **kwargs
+    ) -> None:
         """Log critical message with context."""
         self._log_with_context(logging.CRITICAL, message, context, **kwargs)
 
-    def exception(self, message: str, context: dict[str, Any] | None = None, **kwargs) -> None:
+    def exception(
+        self, message: str, context: dict[str, Any] | None = None, **kwargs
+    ) -> None:
         """Log exception with context and traceback."""
         kwargs.setdefault("exc_info", True)
         self._log_with_context(logging.ERROR, message, context, **kwargs)
@@ -452,7 +465,9 @@ def configure_structured_logging(
         )
     else:
         # Simple format for development
-        formatter = logging.Formatter(fmt="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+        formatter = logging.Formatter(
+            fmt="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+        )
 
     # Create handler
     handler = logging.StreamHandler(sys.stdout)

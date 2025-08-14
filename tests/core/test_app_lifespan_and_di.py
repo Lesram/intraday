@@ -4,13 +4,15 @@ Core test: App lifespan & dependency injection.
 Tests that the app factory/lifespan builds/tears down long-lived resources exactly once,
 and that DI works consistently across routes and WebSocket connections.
 """
+
 import time
 from unittest.mock import patch
 
 from fastapi import FastAPI
 import pytest
 
-from backend.api.main import WebSocketClientManager, lifespan
+from backend.api.websocket_manager import WebSocketClientManager
+from backend.api.factory import create_app
 from backend.data.alpaca_client import AlpacaClient
 from backend.models.ensemble_model import EnsembleModel
 from backend.risk.risk_manager import AsyncRiskManager
@@ -109,7 +111,9 @@ class TestAppLifespanAndDI:
         async with lifespan(test_app1):
             async with lifespan(test_app2):
                 # Each app should have its own instances
-                assert test_app1.state.alpaca_client is not test_app2.state.alpaca_client
+                assert (
+                    test_app1.state.alpaca_client is not test_app2.state.alpaca_client
+                )
                 assert test_app1.state.risk_manager is not test_app2.state.risk_manager
 
     @pytest.mark.asyncio
@@ -253,7 +257,9 @@ class TestLifespanResilience:
         test_app = FastAPI()
 
         # Mock the init_db function directly during the lifespan startup
-        with patch("backend.api.main.init_db", side_effect=Exception("Mock DB failure")):
+        with patch(
+            "backend.api.main.init_db", side_effect=Exception("Mock DB failure")
+        ):
             with pytest.raises(Exception, match="Mock DB failure"):
                 async with real_lifespan(test_app):
                     pass  # Should fail before reaching here

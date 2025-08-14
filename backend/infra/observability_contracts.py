@@ -2,6 +2,7 @@
 Observability Contracts - Fixed histogram buckets and route template enforcement
 Ensures consistent metrics across the platform with standardized buckets.
 """
+
 from typing import Final
 
 from prometheus_client import CollectorRegistry, Histogram
@@ -145,7 +146,9 @@ def validate_route_template(route_path: str, route_templates: dict[str, str]) ->
 
             if len(pattern_parts) == len(path_parts):
                 match = True
-                for pattern_part, path_part in zip(pattern_parts, path_parts):
+                for pattern_part, path_part in zip(
+                    pattern_parts, path_parts, strict=False
+                ):
                     if pattern_part.startswith("{") and pattern_part.endswith("}"):
                         # This is a parameter, skip validation
                         continue
@@ -200,7 +203,9 @@ class ObservabilityContract:
         self.registry = registry
         self._validated_routes: set[str] = set()
 
-    def validate_histogram_buckets(self, metric_name: str, histogram: Histogram) -> bool:
+    def validate_histogram_buckets(
+        self, metric_name: str, histogram: Histogram
+    ) -> bool:
         """
         Validate that a histogram uses the correct buckets.
 
@@ -226,7 +231,9 @@ class ObservabilityContract:
 
         return tuple(actual_buckets) == expected_buckets
 
-    def validate_route_labeling(self, route_path: str, route_templates: dict[str, str]) -> str:
+    def validate_route_labeling(
+        self, route_path: str, route_templates: dict[str, str]
+    ) -> str:
         """
         Validate and normalize route for consistent labeling.
 

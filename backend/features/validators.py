@@ -3,7 +3,6 @@ Feature validation and lookahead detection utilities.
 Provides validation for OHLCV data and guards against lookahead bias.
 """
 
-
 import numpy as np
 import pandas as pd
 
@@ -131,12 +130,16 @@ def guard_no_lookahead(
             suspicious_features.append(col)
 
     if suspicious_features:
-        message = f"Potential lookahead bias detected in features: {suspicious_features}"
+        message = (
+            f"Potential lookahead bias detected in features: {suspicious_features}"
+        )
         raise LookaheadLeakError(message, suspicious_features)
 
 
 def guard_no_lookahead_synthetic(
-    features: pd.DataFrame, feature_cols: list[str] | None = None, accuracy_threshold: float = 0.8
+    features: pd.DataFrame,
+    feature_cols: list[str] | None = None,
+    accuracy_threshold: float = 0.8,
 ) -> None:
     """
     Alternative lookahead detection using synthetic monotone series.
@@ -160,7 +163,8 @@ def guard_no_lookahead_synthetic(
 
     # Create synthetic monotone price series
     synthetic_price = pd.Series(
-        np.arange(len(features)) + np.random.normal(0, 0.01, len(features)), index=features.index
+        np.arange(len(features)) + np.random.normal(0, 0.01, len(features)),
+        index=features.index,
     )
     synthetic_returns = synthetic_price.pct_change().fillna(0)
     synthetic_future_returns = synthetic_returns.shift(-1).fillna(0)
@@ -208,10 +212,14 @@ def validate_feature_alignment(features: pd.DataFrame, target: pd.Series) -> Non
     # Check for proper target construction (no lookahead)
     # Target should be future returns, so first value should be NaN after shift
     if not pd.isna(target.iloc[-1]):  # Last target value should be NaN (no future data)
-        raise ValueError("Target appears to use future information (last value not NaN)")
+        raise ValueError(
+            "Target appears to use future information (last value not NaN)"
+        )
 
 
-def detect_forward_fill_leakage(df: pd.DataFrame, max_consecutive_fill: int = 5) -> list[str]:
+def detect_forward_fill_leakage(
+    df: pd.DataFrame, max_consecutive_fill: int = 5
+) -> list[str]:
     """
     Detect columns that might have problematic forward-filling.
 

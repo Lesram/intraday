@@ -18,7 +18,7 @@ class FeatureSchema:
     """Schema contract for feature data structures."""
 
     columns: list[str]
-    dtypes: dict[str, DType]    # name -> dtype string
+    dtypes: dict[str, DType]  # name -> dtype string
 
     def __post_init__(self):
         """Validate schema consistency."""
@@ -46,10 +46,20 @@ class FeatureSchema:
             actual_dtype = str(df[col].dtype)
 
             # Allow compatible numeric types
-            if expected_dtype.startswith('float') and pd.api.types.is_float_dtype(df[col]) or expected_dtype.startswith('int') and pd.api.types.is_integer_dtype(df[col]) or expected_dtype == 'bool' and pd.api.types.is_bool_dtype(df[col]) or actual_dtype == expected_dtype:
+            if (
+                expected_dtype.startswith("float")
+                and pd.api.types.is_float_dtype(df[col])
+                or expected_dtype.startswith("int")
+                and pd.api.types.is_integer_dtype(df[col])
+                or expected_dtype == "bool"
+                and pd.api.types.is_bool_dtype(df[col])
+                or actual_dtype == expected_dtype
+            ):
                 continue
             else:
-                raise ValueError(f"Column '{col}' has dtype {actual_dtype}, expected {expected_dtype}")
+                raise ValueError(
+                    f"Column '{col}' has dtype {actual_dtype}, expected {expected_dtype}"
+                )
 
     def reorder_columns(self, df: "pd.DataFrame") -> "pd.DataFrame":
         """Reorder DataFrame columns to match schema."""
@@ -60,8 +70,8 @@ class FeatureSchema:
 class FeatureFrame:
     """Feature data container with alignment guarantees."""
 
-    X: "pd.DataFrame"           # features, index aligned to price series
-    y: "pd.Series | None"       # optional target, same index
+    X: "pd.DataFrame"  # features, index aligned to price series
+    y: "pd.Series | None"  # optional target, same index
     index_mask: "pd.Series[bool]"  # True rows are valid for training/inference
 
     def __post_init__(self):
@@ -87,7 +97,7 @@ class FeatureFrame:
         return FeatureFrame(
             X=self.X[mask],
             y=self.y[mask] if self.y is not None else None,
-            index_mask=self.index_mask[mask]  # Will be all True
+            index_mask=self.index_mask[mask],  # Will be all True
         )
 
 
@@ -102,8 +112,12 @@ class LookaheadLeakError(ValueError):
 class SchemaValidationError(ValueError):
     """Raised when feature schema validation fails."""
 
-    def __init__(self, message: str, missing_columns: list[str] | None = None,
-                 extra_columns: list[str] | None = None):
+    def __init__(
+        self,
+        message: str,
+        missing_columns: list[str] | None = None,
+        extra_columns: list[str] | None = None,
+    ):
         super().__init__(message)
         self.missing_columns = missing_columns or []
         self.extra_columns = extra_columns or []

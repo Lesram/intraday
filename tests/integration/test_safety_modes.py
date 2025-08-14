@@ -136,7 +136,10 @@ class TestFeatureFlags:
         """Test symbol-specific feature flags."""
 
         flag = FeatureFlag(
-            name="options_trading", enabled=True, scope=FeatureFlagScope.SYMBOL, target="TSLA"
+            name="options_trading",
+            enabled=True,
+            scope=FeatureFlagScope.SYMBOL,
+            target="TSLA",
         )
 
         safety_manager.create_feature_flag(flag)
@@ -154,7 +157,10 @@ class TestFeatureFlags:
 
         # Create flag with 0% rollout
         flag = FeatureFlag(
-            name="zero_rollout", enabled=True, scope=FeatureFlagScope.GLOBAL, rollout_percentage=0.0
+            name="zero_rollout",
+            enabled=True,
+            scope=FeatureFlagScope.GLOBAL,
+            rollout_percentage=0.0,
         )
 
         safety_manager.create_feature_flag(flag)
@@ -247,7 +253,10 @@ class TestKillSwitches:
         """Test kill switch deactivation."""
 
         safety_manager.activate_kill_switch(
-            name="test_switch", scope=KillSwitchScope.GLOBAL, reason="Testing", activated_by="admin"
+            name="test_switch",
+            scope=KillSwitchScope.GLOBAL,
+            reason="Testing",
+            activated_by="admin",
         )
 
         # Initially blocked
@@ -288,7 +297,9 @@ class TestKillSwitches:
         assert len(active) == 0
 
         # Activate some switches
-        safety_manager.activate_kill_switch("switch1", KillSwitchScope.GLOBAL, "reason1")
+        safety_manager.activate_kill_switch(
+            "switch1", KillSwitchScope.GLOBAL, "reason1"
+        )
         safety_manager.activate_kill_switch(
             "switch2", KillSwitchScope.SYMBOL, "reason2", target="AAPL"
         )
@@ -307,7 +318,9 @@ class TestKillSwitches:
 class TestOrderExecution:
     """Test order execution with safety controls."""
 
-    async def test_shadow_mode_execution(self, safety_manager, sample_order, mock_execution_func):
+    async def test_shadow_mode_execution(
+        self, safety_manager, sample_order, mock_execution_func
+    ):
         """Test order execution in shadow mode."""
 
         await safety_manager.set_trading_mode(TradingMode.SHADOW, "admin")
@@ -325,7 +338,9 @@ class TestOrderExecution:
         assert result.real_result is None  # No real execution in shadow mode
         assert result.blocked_by is None
 
-    async def test_dry_run_mode_execution(self, safety_manager, sample_order, mock_execution_func):
+    async def test_dry_run_mode_execution(
+        self, safety_manager, sample_order, mock_execution_func
+    ):
         """Test order execution in dry run mode."""
 
         await safety_manager.set_trading_mode(TradingMode.DRY_RUN, "admin")
@@ -343,7 +358,9 @@ class TestOrderExecution:
         assert result.real_result is None
         assert result.execution_time_ms > 0
 
-    async def test_live_mode_execution(self, safety_manager, sample_order, mock_execution_func):
+    async def test_live_mode_execution(
+        self, safety_manager, sample_order, mock_execution_func
+    ):
         """Test order execution in live mode."""
 
         await safety_manager.set_trading_mode(TradingMode.LIVE, "admin")
@@ -392,7 +409,9 @@ class TestOrderExecution:
         """Test order blocked by disabled feature flag."""
 
         # Create disabled feature flag
-        flag = FeatureFlag(name="order_submission", enabled=False, scope=FeatureFlagScope.GLOBAL)
+        flag = FeatureFlag(
+            name="order_submission", enabled=False, scope=FeatureFlagScope.GLOBAL
+        )
 
         safety_manager.create_feature_flag(flag)
 
@@ -429,7 +448,9 @@ class TestOrderExecution:
         assert result.executed is False
         assert "exceeds limit" in result.blocked_by
 
-    async def test_live_mode_symbol_whitelist(self, safety_manager, mock_execution_func):
+    async def test_live_mode_symbol_whitelist(
+        self, safety_manager, mock_execution_func
+    ):
         """Test live mode symbol whitelist."""
 
         await safety_manager.set_trading_mode(TradingMode.LIVE, "admin")
@@ -550,14 +571,18 @@ class TestSafetyStatus:
 class TestIntegrationScenarios:
     """Test realistic integration scenarios."""
 
-    async def test_production_deployment_scenario(self, safety_manager, mock_execution_func):
+    async def test_production_deployment_scenario(
+        self, safety_manager, mock_execution_func
+    ):
         """Test realistic production deployment with gradual rollout."""
 
         # 1. Start in shadow mode for new feature
         await safety_manager.set_trading_mode(TradingMode.SHADOW, "devops")
 
         # 2. Enable feature for limited rollout
-        flag = FeatureFlag("new_algorithm", True, FeatureFlagScope.GLOBAL, rollout_percentage=10.0)
+        flag = FeatureFlag(
+            "new_algorithm", True, FeatureFlagScope.GLOBAL, rollout_percentage=10.0
+        )
         safety_manager.create_feature_flag(flag)
 
         # 3. Test orders execute in shadow mode
@@ -581,7 +606,9 @@ class TestIntegrationScenarios:
 
         assert safety_manager.get_current_mode() == TradingMode.LIVE
 
-    async def test_emergency_response_scenario(self, safety_manager, mock_execution_func):
+    async def test_emergency_response_scenario(
+        self, safety_manager, mock_execution_func
+    ):
         """Test emergency response and recovery."""
 
         # Start in live mode

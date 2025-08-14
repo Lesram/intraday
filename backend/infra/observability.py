@@ -2,6 +2,7 @@
 Core observability infrastructure with OpenTelemetry tracing, Prometheus metrics,
 and standardized latency instrumentation decorators.
 """
+
 import asyncio
 from collections.abc import Callable
 from contextlib import contextmanager
@@ -151,7 +152,9 @@ def _setup_tracing(config: ObservabilityConfig, resource: Resource) -> None:
         span_processor = BatchSpanProcessor(otlp_exporter)
         tracer_provider.add_span_processor(span_processor)
 
-        logger.info(f"OTLP trace exporter configured: {config.otel_exporter_otlp_endpoint}")
+        logger.info(
+            f"OTLP trace exporter configured: {config.otel_exporter_otlp_endpoint}"
+        )
 
     # Get tracer instance
     _tracer = trace.get_tracer(__name__)
@@ -167,7 +170,9 @@ def _setup_prometheus_metrics(config: ObservabilityConfig, resource: Resource) -
     prometheus_reader = PrometheusMetricReader()
 
     # Create meter provider with Prometheus reader
-    meter_provider = MeterProvider(resource=resource, metric_readers=[prometheus_reader])
+    meter_provider = MeterProvider(
+        resource=resource, metric_readers=[prometheus_reader]
+    )
     otel_metrics.set_meter_provider(meter_provider)
 
     # Get meter instance
@@ -198,7 +203,9 @@ def _setup_otel_metrics(config: ObservabilityConfig, resource: Resource) -> None
         meter_provider = otel_metrics.get_meter_provider()
         if hasattr(meter_provider, "_metric_readers"):
             meter_provider._metric_readers.append(otlp_reader)
-        logger.info(f"OTLP metrics exporter added: {config.otel_exporter_otlp_endpoint}")
+        logger.info(
+            f"OTLP metrics exporter added: {config.otel_exporter_otlp_endpoint}"
+        )
     except Exception as e:
         logger.warning(f"Could not add OTLP metrics exporter: {e}")
 
@@ -239,7 +246,9 @@ def get_meter() -> otel_metrics.Meter:
 
 
 @contextmanager
-def trace_span(name: str, attributes: dict[str, Union[str, int, float, bool]] | None = None):
+def trace_span(
+    name: str, attributes: dict[str, Union[str, int, float, bool]] | None = None
+):
     """
     Context manager for creating traced spans with automatic error handling.
 
@@ -429,7 +438,9 @@ def record_operation(
     # Add span event
     current_span = trace.get_current_span()
     if current_span:
-        current_span.add_event(f"operation_{operation}", attributes={"success": success, **labels})
+        current_span.add_event(
+            f"operation_{operation}", attributes={"success": success, **labels}
+        )
 
 
 def record_alpaca_request(
@@ -530,7 +541,9 @@ def record_outbox_metrics(
     # Record failures
     if failed_count > 0:
         metrics.inc_counter(
-            "outbox_dispatched_total", {"topic": "orders", "status": "failed"}, amount=failed_count
+            "outbox_dispatched_total",
+            {"topic": "orders", "status": "failed"},
+            amount=failed_count,
         )
 
     # Record queue size
@@ -539,7 +552,9 @@ def record_outbox_metrics(
     # Record dispatch latency
     if dispatch_duration_seconds is not None:
         metrics.observe_histogram(
-            "outbox_dispatch_latency_seconds", dispatch_duration_seconds, {"topic": "orders"}
+            "outbox_dispatch_latency_seconds",
+            dispatch_duration_seconds,
+            {"topic": "orders"},
         )
 
 
@@ -581,5 +596,6 @@ def record_websocket_metrics(
         metrics.inc_counter("websocket_connections_total", {"client_type": client_type})
     elif event == "message" and message_type and direction:
         metrics.inc_counter(
-            "websocket_messages_total", {"message_type": message_type, "direction": direction}
+            "websocket_messages_total",
+            {"message_type": message_type, "direction": direction},
         )

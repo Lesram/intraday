@@ -1,6 +1,7 @@
 """
 Simple test to validate middleware isolation works with basic fixtures.
 """
+
 import io
 import logging
 from unittest.mock import patch

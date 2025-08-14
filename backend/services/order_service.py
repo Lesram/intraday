@@ -96,7 +96,9 @@ class OrderService:
                 "side": side,
                 "qty": str(qty),
                 "status": order.status,
-                "submitted_at": order.submitted_at.isoformat() if order.submitted_at else None,
+                "submitted_at": (
+                    order.submitted_at.isoformat() if order.submitted_at else None
+                ),
                 "idempotency_key": idempotency_key,
             }
 
@@ -132,7 +134,9 @@ class OrderService:
             List of results, one per symbol with execution status
         """
         if not self.strategy_engine:
-            raise ValueError("StrategyEngine not configured for this OrderService instance")
+            raise ValueError(
+                "StrategyEngine not configured for this OrderService instance"
+            )
 
         if not signals:
             return []
@@ -141,7 +145,9 @@ class OrderService:
 
         try:
             # Generate execution plans through strategy engine
-            plans = await self.strategy_engine.generate_and_gate(signals, portfolio_state)
+            plans = await self.strategy_engine.generate_and_gate(
+                signals, portfolio_state
+            )
 
             results = []
             for i, plan in enumerate(plans):
@@ -152,7 +158,9 @@ class OrderService:
                     results.append(
                         {
                             "symbol": plan.symbol,
-                            "status": "risk_blocked" if not plan.risk_allowed else "no_change",
+                            "status": (
+                                "risk_blocked" if not plan.risk_allowed else "no_change"
+                            ),
                             "reason": plan.risk_reason or plan.reason,
                             "from_exposure": plan.from_exposure,
                             "to_exposure": plan.to_exposure,
@@ -167,7 +175,9 @@ class OrderService:
                     order_result = await self.submit_symbol_order(
                         symbol=plan.symbol,
                         side=plan.side,
-                        qty=float(abs(plan.qty)),  # Use absolute value, side determines direction
+                        qty=float(
+                            abs(plan.qty)
+                        ),  # Use absolute value, side determines direction
                         idempotency_key=symbol_key,
                         attributes={
                             "engine": "netting",
@@ -220,7 +230,9 @@ class OrderService:
                     "signals_count": len(signals),
                     "plans_count": len(plans),
                     "submitted_count": len([r for r in results if r.get("order_id")]),
-                    "blocked_count": len([r for r in results if not r.get("risk_allowed", True)]),
+                    "blocked_count": len(
+                        [r for r in results if not r.get("risk_allowed", True)]
+                    ),
                     "base_idempotency_key": base_key,
                 },
             )

@@ -2,6 +2,7 @@
 Tests for security hardening - Pydantic settings, CORS, JWT checks, and rate limiting.
 Comprehensive test coverage for all security components.
 """
+
 import os
 import time
 from unittest.mock import MagicMock, patch
@@ -27,7 +28,9 @@ class TestSecuritySettings:
     def test_security_settings_default_values(self):
         """Test default security settings."""
         # This should fail because cors_allow_origins is empty by default
-        with pytest.raises(ValidationError, match="CORS origins must be explicitly configured"):
+        with pytest.raises(
+            ValidationError, match="CORS origins must be explicitly configured"
+        ):
             SecuritySettings()
 
     def test_security_settings_valid_config(self):
@@ -76,21 +79,27 @@ class TestSecuritySettings:
 
     def test_trusted_hosts_validation_empty(self):
         """Test trusted hosts validation with empty list."""
-        with pytest.raises(ValidationError, match="At least one trusted host must be configured"):
-            SecuritySettings(cors_allow_origins=["https://example.com"], trusted_hosts=[])
+        with pytest.raises(
+            ValidationError, match="At least one trusted host must be configured"
+        ):
+            SecuritySettings(
+                cors_allow_origins=["https://example.com"], trusted_hosts=[]
+            )
 
     def test_rate_limit_validation_negative(self):
         """Test rate limit validation with negative value."""
         with pytest.raises(ValidationError, match="Rate limit must be positive"):
             SecuritySettings(
-                cors_allow_origins=["https://example.com"], rate_limit_requests_per_minute=-1
+                cors_allow_origins=["https://example.com"],
+                rate_limit_requests_per_minute=-1,
             )
 
     def test_rate_limit_validation_too_high(self):
         """Test rate limit validation with excessive value."""
         with pytest.raises(ValidationError, match="Rate limit too high"):
             SecuritySettings(
-                cors_allow_origins=["https://example.com"], rate_limit_requests_per_minute=20000
+                cors_allow_origins=["https://example.com"],
+                rate_limit_requests_per_minute=20000,
             )
 
     def test_security_settings_environment_variables(self):
@@ -106,7 +115,10 @@ class TestSecuritySettings:
             # Note: pydantic-settings parsing of lists from env vars requires custom parsing
             # For this test, we'll just verify the principle works
             settings = SecuritySettings(
-                cors_allow_origins=["https://api.example.com", "https://app.example.com"],
+                cors_allow_origins=[
+                    "https://api.example.com",
+                    "https://app.example.com",
+                ],
                 rate_limit_requests_per_minute=120,
                 jwt_require_https=False,
             )
@@ -385,7 +397,9 @@ class TestJWTValidator:
     def test_jwt_validator_initialization(self):
         """Test JWT validator initialization."""
         settings = SecuritySettings(
-            cors_allow_origins=["https://example.com"], jwt_require_https=True, jwt_require_aud=True
+            cors_allow_origins=["https://example.com"],
+            jwt_require_https=True,
+            jwt_require_aud=True,
         )
         validator = JWTValidator(settings)
         assert validator.settings is settings
@@ -437,7 +451,9 @@ class TestJWTValidator:
     def test_get_enhanced_jwt_verification_options(self):
         """Test JWT verification options generation."""
         settings = SecuritySettings(
-            cors_allow_origins=["https://example.com"], jwt_require_aud=True, jwt_require_iss=True
+            cors_allow_origins=["https://example.com"],
+            jwt_require_aud=True,
+            jwt_require_iss=True,
         )
         validator = JWTValidator(settings)
 
@@ -453,7 +469,9 @@ class TestJWTValidator:
     def test_get_jwt_verification_options_minimal(self):
         """Test JWT verification options with minimal requirements."""
         settings = SecuritySettings(
-            cors_allow_origins=["https://example.com"], jwt_require_aud=False, jwt_require_iss=False
+            cors_allow_origins=["https://example.com"],
+            jwt_require_aud=False,
+            jwt_require_iss=False,
         )
         validator = JWTValidator(settings)
 

@@ -5,7 +5,7 @@ JSON logging test helper for capturing and parsing structured logs.
 import json
 import logging
 import threading
-from typing import Any, Optional
+from typing import Any
 from unittest.mock import Mock
 
 
@@ -15,8 +15,8 @@ class JSONLogCapture:
     def __init__(self, logger_name: str = None):
         self.logger_name = logger_name or "root"
         self.records: list[dict[str, Any]] = []
-        self.handler: Optional[logging.Handler] = None
-        self.original_level: Optional[int] = None
+        self.handler: logging.Handler | None = None
+        self.original_level: int | None = None
         self._lock = threading.Lock()
 
     def __enter__(self):
@@ -72,14 +72,18 @@ class JSONLogCapture:
         required_fields = {"timestamp", "level", "message"}
         for record in json_records:
             missing_fields = required_fields - set(record.keys())
-            assert not missing_fields, f"Record missing required fields {missing_fields}: {record}"
+            assert (
+                not missing_fields
+            ), f"Record missing required fields {missing_fields}: {record}"
 
     def find_records_with_request_id(self, request_id: str) -> list[dict[str, Any]]:
         """Find all records with a specific request_id."""
         json_records = self.get_json_records()
         return [r for r in json_records if r.get("request_id") == request_id]
 
-    def assert_trace_context(self, require_trace_id: bool = False, require_span_id: bool = False):
+    def assert_trace_context(
+        self, require_trace_id: bool = False, require_span_id: bool = False
+    ):
         """Assert trace context is present when OTEL is enabled."""
         json_records = self.get_json_records()
 

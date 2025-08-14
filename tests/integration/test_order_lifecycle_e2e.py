@@ -25,7 +25,8 @@ class TestOrderLifecycleE2E:
     async def ephemeral_app(self):
         """Create ephemeral app instance with test database."""
         from backend.api.main import app
-        from backend.config.settings import settings
+        from backend.config import get_settings
+        settings = get_settings()
         from backend.database.connection import get_database_session
 
         # Override database URL for testing
@@ -45,6 +46,7 @@ class TestOrderLifecycleE2E:
             # Override dependency
             async def get_test_session():
                 from sqlalchemy.ext.asyncio import AsyncSession
+
                 async with AsyncSession(engine) as session:
                     yield session
 
@@ -71,8 +73,7 @@ class TestOrderLifecycleE2E:
         from httpx import ASGITransport, AsyncClient
 
         async with AsyncClient(
-            transport=ASGITransport(app=ephemeral_app),
-            base_url="http://test"
+            transport=ASGITransport(app=ephemeral_app), base_url="http://test"
         ) as client:
             yield client
 
@@ -89,19 +90,17 @@ class TestOrderLifecycleE2E:
             "side": "buy",
             "quantity": "100",
             "order_type": "market",
-            "time_in_force": "day"
+            "time_in_force": "day",
         }
 
         headers = {
             "X-Idempotency-Key": idempotency_key,
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
         }
 
         # Submit the trade request
         response = await test_client.post(
-            "/api/v1/trades",
-            json=trade_payload,
-            headers=headers
+            "/api/v1/trades", json=trade_payload, headers=headers
         )
 
         # Should be accepted successfully
@@ -132,7 +131,9 @@ class TestOrderLifecycleE2E:
         assert broker_order["status"] == "submitted"
 
     @pytest.mark.asyncio
-    async def test_idempotency_prevents_duplicate_orders(self, test_client, broker_mock):
+    async def test_idempotency_prevents_duplicate_orders(
+        self, test_client, broker_mock
+    ):
         """Test that duplicate requests with same idempotency key create only one order."""
 
         idempotency_key = str(uuid.uuid4())
@@ -142,25 +143,21 @@ class TestOrderLifecycleE2E:
             "side": "buy",
             "quantity": "50",
             "order_type": "market",
-            "time_in_force": "day"
+            "time_in_force": "day",
         }
 
         headers = {
             "X-Idempotency-Key": idempotency_key,
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
         }
 
         # Submit the same request twice
         response1 = await test_client.post(
-            "/api/v1/trades",
-            json=trade_payload,
-            headers=headers
+            "/api/v1/trades", json=trade_payload, headers=headers
         )
 
         response2 = await test_client.post(
-            "/api/v1/trades",
-            json=trade_payload,
-            headers=headers
+            "/api/v1/trades", json=trade_payload, headers=headers
         )
 
         # Both should succeed
@@ -179,17 +176,23 @@ class TestOrderLifecycleE2E:
 
         # Only one order should be sent to broker
         submitted_orders = list(broker_mock.orders_db.values())
-        googl_orders = [order for order in submitted_orders if order["symbol"] == "GOOGL"]
+        googl_orders = [
+            order for order in submitted_orders if order["symbol"] == "GOOGL"
+        ]
         assert len(googl_orders) == 1
 
     @pytest.mark.asyncio
-    async def test_outbox_pattern_ensures_at_least_once_delivery(self, test_client, broker_mock):
+    async def test_outbox_pattern_ensures_at_least_once_delivery(
+        self, test_client, broker_mock
+    ):
         """Test that outbox pattern ensures orders are delivered even with failures."""
 
         # First, simulate broker failure
         with respx.mock() as failing_mock:
             failing_mock.post(f"{broker_mock.base_url}/v2/orders").mock(
-                return_value=httpx.Response(500, json={"message": "Internal Server Error"})
+                return_value=httpx.Response(
+                    500, json={"message": "Internal Server Error"}
+                )
             )
 
             # Submit order during broker failure
@@ -197,18 +200,16 @@ class TestOrderLifecycleE2E:
                 "symbol": "MSFT",
                 "side": "sell",
                 "quantity": "75",
-                "order_type": "market"
+                "order_type": "market",
             }
 
             headers = {
                 "X-Idempotency-Key": str(uuid.uuid4()),
-                "Content-Type": "application/json"
+                "Content-Type": "application/json",
             }
 
             response = await test_client.post(
-                "/api/v1/trades",
-                json=trade_payload,
-                headers=headers
+                "/api/v1/trades", json=trade_payload, headers=headers
             )
 
             # Order should still be accepted (outbox pattern)
@@ -226,7 +227,9 @@ class TestOrderLifecycleE2E:
 
             # Order should eventually be delivered
             submitted_orders = list(broker_mock.orders_db.values())
-            msft_orders = [order for order in submitted_orders if order["symbol"] == "MSFT"]
+            msft_orders = [
+                order for order in submitted_orders if order["symbol"] == "MSFT"
+            ]
             assert len(msft_orders) == 1
 
             msft_order = msft_orders[0]
@@ -242,19 +245,17 @@ class TestOrderLifecycleE2E:
             "side": "buy",
             "quantity": "25",
             "order_type": "limit",
-            "limit_price": "200.50"
+            "limit_price": "200.50",
         }
 
         headers = {
             "X-Idempotency-Key": str(uuid.uuid4()),
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
         }
 
         # Submit order
         response = await test_client.post(
-            "/api/v1/trades",
-            json=trade_payload,
-            headers=headers
+            "/api/v1/trades", json=trade_payload, headers=headers
         )
 
         assert response.status_code == 201
@@ -297,18 +298,16 @@ class TestOrderLifecycleE2E:
             "symbol": "NVDA",
             "side": "buy",
             "quantity": "10",
-            "order_type": "market"
+            "order_type": "market",
         }
 
         headers = {
             "X-Idempotency-Key": str(uuid.uuid4()),
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
         }
 
         response = await test_client.post(
-            "/api/v1/trades",
-            json=trade_payload,
-            headers=headers
+            "/api/v1/trades", json=trade_payload, headers=headers
         )
 
         assert response.status_code == 201
@@ -325,7 +324,10 @@ class TestOrderLifecycleE2E:
         assert 'status="success"' in updated_metrics
 
         # Verify HTTP request metrics
-        assert "http_requests_total" in updated_metrics or "http_request_duration_seconds" in updated_metrics
+        assert (
+            "http_requests_total" in updated_metrics
+            or "http_request_duration_seconds" in updated_metrics
+        )
 
     @pytest.mark.asyncio
     async def test_risk_management_integration(self, test_client, broker_mock):
@@ -336,18 +338,16 @@ class TestOrderLifecycleE2E:
             "symbol": "AAPL",
             "side": "buy",
             "quantity": "10000",  # Large quantity
-            "order_type": "market"
+            "order_type": "market",
         }
 
         headers = {
             "X-Idempotency-Key": str(uuid.uuid4()),
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
         }
 
         response = await test_client.post(
-            "/api/v1/trades",
-            json=large_order_payload,
-            headers=headers
+            "/api/v1/trades", json=large_order_payload, headers=headers
         )
 
         # Depending on risk configuration, this could be:
@@ -377,20 +377,16 @@ class TestOrderLifecycleE2E:
 
         # Submit a trading signal instead of direct order
         signal_payload = create_signal_payload(
-            symbol="META",
-            signal_strength=0.8,
-            timestamp=datetime.now(UTC)
+            symbol="META", signal_strength=0.8, timestamp=datetime.now(UTC)
         )
 
         headers = {
             "X-Idempotency-Key": str(uuid.uuid4()),
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
         }
 
         response = await test_client.post(
-            "/api/v1/signals",
-            json=signal_payload,
-            headers=headers
+            "/api/v1/signals", json=signal_payload, headers=headers
         )
 
         # Should be accepted for processing
@@ -417,18 +413,16 @@ class TestOrderLifecycleE2E:
             "symbol": "AMZN",
             "side": "buy",
             "quantity": "5",
-            "order_type": "market"
+            "order_type": "market",
         }
 
         headers = {
             "X-Idempotency-Key": str(uuid.uuid4()),
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
         }
 
         response = await test_client.post(
-            "/api/v1/trades",
-            json=trade_payload,
-            headers=headers
+            "/api/v1/trades", json=trade_payload, headers=headers
         )
 
         assert response.status_code == 201
@@ -470,18 +464,16 @@ class TestOrderLifecycleE2E:
                 "symbol": symbol,
                 "side": "buy",
                 "quantity": str(10 + i),
-                "order_type": "market"
+                "order_type": "market",
             }
 
             headers = {
                 "X-Idempotency-Key": str(uuid.uuid4()),
-                "Content-Type": "application/json"
+                "Content-Type": "application/json",
             }
 
             task = test_client.post(
-                "/api/v1/trades",
-                json=trade_payload,
-                headers=headers
+                "/api/v1/trades", json=trade_payload, headers=headers
             )
             tasks.append(task)
 
@@ -513,18 +505,16 @@ class TestOrderLifecycleE2E:
             "side": "buy",
             "quantity": "100",
             "order_type": "limit",
-            "limit_price": "130.00"
+            "limit_price": "130.00",
         }
 
         headers = {
             "X-Idempotency-Key": str(uuid.uuid4()),
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
         }
 
         response = await test_client.post(
-            "/api/v1/trades",
-            json=trade_payload,
-            headers=headers
+            "/api/v1/trades", json=trade_payload, headers=headers
         )
 
         assert response.status_code == 201
@@ -538,7 +528,10 @@ class TestOrderLifecycleE2E:
 
         assert cancel_response.status_code == 200
         cancel_data = cancel_response.json()
-        assert cancel_data["status"] == "cancel_requested" or cancel_data["status"] == "cancelled"
+        assert (
+            cancel_data["status"] == "cancel_requested"
+            or cancel_data["status"] == "cancelled"
+        )
 
         # Wait for cancellation processing
         await asyncio.sleep(0.5)
@@ -550,4 +543,7 @@ class TestOrderLifecycleE2E:
         if len(ibm_orders) > 0:
             ibm_order = ibm_orders[0]
             # Order should be cancelled (if it was cancellable)
-            assert ibm_order["status"] in ["cancelled", "submitted"]  # May still be submitted if cancel failed
+            assert ibm_order["status"] in [
+                "cancelled",
+                "submitted",
+            ]  # May still be submitted if cancel failed
