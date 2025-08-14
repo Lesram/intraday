@@ -1,16 +1,47 @@
-def get_settings():
-    class Settings:
-        DEBUG = True
-        APP_ENV = 'test'
-        def __init__(self):
-            self.data = type('obj', (), {'database_url': 'sqlite:///./test.db'})()
-            self.app = type('obj', (), {'debug': True, 'environment': 'test'})()
-            self.security = type('obj', (), {'jwt_secret': 'test', 'jwt_expire_minutes': 60})()
-    return Settings()
+"""Configuration package public API.
 
-settings = get_settings()
-Settings = type(settings)
-AppConfig = Settings
-SecurityConfig = Settings
-WorkingSettings = Settings
-validate_required_settings = lambda: None
+This package exposes the strongly-typed Pydantic settings and helpers from
+``backend.config.base_settings`` so callers can use::
+
+    from backend.config import Settings, get_settings, AlpacaConfig, ...
+
+Compatibility: ``backend.config.settings`` continues to work via the dedicated
+module that re-exports from this package namespace.
+"""
+
+from .base_settings import (
+    AppConfig,
+    SecurityConfig,
+    AlpacaConfig,
+    DataConfig,
+    WebsocketConfig,
+    MetricsConfig,
+    DatabaseConfig,
+    TradingConfig,
+    OutboxConfig,
+    ObservabilityConfig,
+    MLOpsConfig,
+    Settings,
+    get_settings,
+    get_legacy_settings,
+    validate_required_settings,
+)
+
+__all__ = [
+    "AppConfig",
+    "SecurityConfig",
+    "AlpacaConfig",
+    "DataConfig",
+    "WebsocketConfig",
+    "MetricsConfig",
+    "DatabaseConfig",
+    "TradingConfig",
+    "OutboxConfig",
+    "ObservabilityConfig",
+    "MLOpsConfig",
+    "Settings",
+    "get_settings",
+    "get_legacy_settings",
+    "validate_required_settings",
+]
+

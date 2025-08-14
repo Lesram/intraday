@@ -4,7 +4,7 @@ Handles user registration and authentication operations.
 """
 
 from typing import Dict, Any
-from fastapi import APIRouter, HTTPException, Depends, status, Form
+from fastapi import APIRouter, HTTPException, Depends, status, Form, Request
 from pydantic import BaseModel, EmailStr, Field
 import uuid
 import logging
@@ -66,8 +66,9 @@ class LoginResponse(BaseModel):
 # Route Handlers
 @router.post("/login", response_model=LoginResponse, tags=["authentication"])
 async def login(
-    username: str = Form(...),
-    password: str = Form(...),
+    request: Request,
+    username: str | None = Form(default=None),
+    password: str | None = Form(default=None),
     user_repo=Depends(get_user_repo)
 ):
     """
@@ -84,7 +85,18 @@ async def login(
         HTTPException: 401 for invalid credentials
     """
     try:
-        # Simple authentication logic for testing
+        # Support JSON body as an alternative to form data
+        if not username or not password:
+            try:
+                body = await request.json()
+                if isinstance(body, dict):
+                    username = body.get("username") or username
+                    password = body.get("password") or password
+            except Exception:
+                # If body isn't JSON or can't be parsed, continue with current values
+                pass
+
+        # Simple authentication logic for testing (same validation and errors)
         if username and password:
             # Mock successful authentication
             return LoginResponse(

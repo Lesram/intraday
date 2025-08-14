@@ -10,6 +10,7 @@ from typing import Callable
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from prometheus_client import CollectorRegistry
+from backend.api.portfolio import router as api_v1_portfolio_router
 
 try:
     from backend.config import get_settings
@@ -447,6 +448,7 @@ def register_routes(app: FastAPI):
     # Register feature-specific routers
     app.include_router(auth_router)
     app.include_router(portfolio_router)  # Router already has /portfolio prefix
+    app.include_router(api_v1_portfolio_router)  # Deterministic include for /api/v1/positions
     app.include_router(orders_router)
     app.include_router(positions_router)
     app.include_router(trades_router)
@@ -475,6 +477,35 @@ def register_routes(app: FastAPI):
     @extra_router.post("/notifications/webhook")
     async def webhook_handler():
         return {"status": "received"}
+
+    # Auth aliases to ensure root-level endpoints exist for tests expecting /auth/*
+    try:
+        from fastapi import Depends, Form
+        from backend.api.auth import (
+            register_user as register_user_handler,
+            login as login_handler,
+            get_user_repo,
+            UserRegistrationRequest,
+            UserRegistrationResponse,
+            LoginResponse,
+        )
+
+        @extra_router.post("/auth/register", response_model=UserRegistrationResponse, status_code=201)
+        async def register_user_alias(
+            request: UserRegistrationRequest, user_repo=Depends(get_user_repo)
+        ):
+            return await register_user_handler(request, user_repo)
+
+        @extra_router.post("/auth/login", response_model=LoginResponse)
+        async def login_alias(
+            username: str = Form(...),
+            password: str = Form(...),
+            user_repo=Depends(get_user_repo),
+        ):
+            return await login_handler(username=username, password=password, user_repo=user_repo)
+    except Exception:
+        # If auth module isn't available for any reason, skip aliasing
+        pass
     
     app.include_router(extra_router)
 # FastAPI dependency for database sessions

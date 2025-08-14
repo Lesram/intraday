@@ -85,6 +85,24 @@ class OrderSpec:
         if self.price is not None and self.price <= 0:
             raise ValueError("price must be positive when specified")
 
+    # Provide dict-like access for tests/utilities that expect mapping semantics
+    def get(self, key: str, default: Any | None = None) -> Any | None:  # type: ignore[override]
+        if key == "symbol":
+            return self.symbol
+        if key == "qty":
+            return self.qty
+        if key == "price":
+            return self.price
+        if key == "tif":
+            return self.tif
+        # attributes may carry additional fields like client_order_id or order_type
+        if key == "attributes":
+            return self.attributes
+        # Allow access into attributes when present
+        if self.attributes and key in self.attributes:
+            return self.attributes.get(key, default)
+        return default
+
 
 @dataclass(frozen=True)
 class PortfolioState:

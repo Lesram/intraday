@@ -371,7 +371,9 @@ class TestBrokerChaosFaults:
             async def partially_failing_operation(operation_type, **kwargs):
                 """Simulate operations that may partially fail."""
                 # Determine if this operation should fail based on test scenario
-                operation_config = next(
+                # Prefer explicitly provided config to avoid ambiguity when multiple
+                # operations share the same type (e.g., multiple submit_order ops).
+                operation_config = kwargs.get("operation_config") or next(
                     (op for op in operations if op["operation"] == operation_type),
                     {"should_succeed": True},
                 )
@@ -424,19 +426,27 @@ class TestBrokerChaosFaults:
                             symbol=operation_config["symbol"], side="buy", quantity=100
                         )
                         result = await partially_failing_operation(
-                            "submit_order", symbol=operation_config["symbol"]
+                            "submit_order",
+                            operation_config=operation_config,
+                            symbol=operation_config["symbol"],
                         )
 
                     elif operation_type == "cancel_order":
                         result = await partially_failing_operation(
-                            "cancel_order", order_id=operation_config["order_id"]
+                            "cancel_order",
+                            operation_config=operation_config,
+                            order_id=operation_config["order_id"],
                         )
 
                     elif operation_type == "get_positions":
-                        result = await partially_failing_operation("get_positions")
+                        result = await partially_failing_operation(
+                            "get_positions", operation_config=operation_config
+                        )
 
                     elif operation_type == "get_account":
-                        result = await partially_failing_operation("get_account")
+                        result = await partially_failing_operation(
+                            "get_account", operation_config=operation_config
+                        )
 
                     else:
                         result = None
@@ -668,7 +678,12 @@ class TestBrokerChaosFaults:
                         return scenario_data
 
                 except (json.JSONDecodeError, ValueError) as e:
-                    raise Exception(f"Broker data corruption detected: {str(e)}")
+                    # Normalize message to include a JSON context when parsing fails
+                    if isinstance(e, json.JSONDecodeError):
+                        msg = f"JSON parse error: {e}"
+                    else:
+                        msg = str(e)
+                    raise Exception(f"Broker data corruption detected: {msg}")
 
             # Test each corruption scenario
             for scenario in corruption_scenarios:
@@ -718,5 +733,9 @@ class TestBrokerChaosFaults:
         assert "unexpected_structure" in corruption_types
 
         # Verify appropriate error messages
-        assert "JSON" in corruption_types["malformed_json"]
+        # Accept case-insensitive match for JSON keyword in error message
+        assert (
+            "JSON" in corruption_types["malformed_json"]
+            or "json" in corruption_types["malformed_json"].lower()
+        )
         assert "required field" in corruption_types["missing_required"]

@@ -1,0 +1,342 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="11" failures="0" skipped="12" tests="65" time="3.012" timestamp="2025-08-14T11:47:43.908575-07:00" hostname="BOOK-FVJOEO3Q00"><testcase classname="tests.services.test_order_service_behavioral.TestOrderServiceBasicBehavior" name="test_order_service_creation" time="0.003" /><testcase classname="tests.services.test_order_service_behavioral.TestOrderServiceBasicBehavior" name="test_order_service_with_strategy_engine" time="0.002" /><testcase classname="tests.services.test_order_service_behavioral.TestOrderServiceBasicBehavior" name="test_order_service_attributes_coverage" time="0.001" /><testcase classname="tests.services.test_order_service_behavioral.TestOrderServiceMethodCoverage" name="test_submit_symbol_order_parameters" time="0.001" /><testcase classname="tests.services.test_order_service_behavioral.TestOrderServiceMethodCoverage" name="test_strategy_signals_processing_exists" time="0.001" /><testcase classname="tests.services.test_order_service_behavioral.TestOrderServiceIntegrationPoints" name="test_repository_attributes" time="0.001" /><testcase classname="tests.services.test_order_service_behavioral.TestOrderServiceIntegrationPoints" name="test_strategy_engine_integration" time="0.001" /><testcase classname="tests.services.test_order_service_behavioral.TestOrderServiceErrorHandling" name="test_invalid_parameter_handling" time="0.001" /><testcase classname="tests.services.test_order_service_behavioral.TestOrderServiceErrorHandling" name="test_service_state_consistency" time="0.001" /><testcase classname="tests.services.test_order_service_behavioral.TestOrderServiceStringRepresentation" name="test_service_str_representation" time="0.001" /><testcase classname="tests.services.test_order_service_behavioral.TestOrderServiceStringRepresentation" name="test_service_type_checking" time="0.001" /><testcase classname="tests.services.test_order_service_enhanced.TestOrderServiceIdempotency" name="test_idempotent_order_creation_same_client_key" time="0.002"><error message="failed on setup with &quot;AttributeError: Mock object has no attribute 'update_status'&quot;">@pytest.fixture
+    def mock_orders_repo():
+        """Mock orders repository with deterministic responses."""
+        repo = AsyncMock(spec=OrdersRepo)
+    
+        # Default successful order creation
+        mock_order = MagicMock()
+        mock_order.id = "order-123"
+        mock_order.status = "new"
+        mock_order.symbol = "AAPL"
+        mock_order.side = "buy"
+        mock_order.qty = Decimal("100")
+        mock_order.submitted_at = datetime.utcnow()
+    
+        repo.upsert_by_idempotency.return_value = mock_order
+&gt;       repo.update_status.return_value = mock_order
+        ^^^^^^^^^^^^^^^^^^
+
+tests\services\test_order_service_enhanced.py:35: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;AsyncMock spec='OrdersRepo' id='2710828452608'&gt;, name = 'update_status'
+
+    def __getattr__(self, name):
+        if name in {'_mock_methods', '_mock_unsafe'}:
+            raise AttributeError(name)
+        elif self._mock_methods is not None:
+            if name not in self._mock_methods or name in _all_magics:
+&gt;               raise AttributeError("Mock object has no attribute %r" % name)
+E               AttributeError: Mock object has no attribute 'update_status'
+
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:658: AttributeError</error></testcase><testcase classname="tests.services.test_order_service_enhanced.TestOrderServiceIdempotency" name="test_different_client_keys_create_separate_orders" time="0.003"><error message="failed on setup with &quot;AttributeError: Mock object has no attribute 'update_status'&quot;">@pytest.fixture
+    def mock_orders_repo():
+        """Mock orders repository with deterministic responses."""
+        repo = AsyncMock(spec=OrdersRepo)
+    
+        # Default successful order creation
+        mock_order = MagicMock()
+        mock_order.id = "order-123"
+        mock_order.status = "new"
+        mock_order.symbol = "AAPL"
+        mock_order.side = "buy"
+        mock_order.qty = Decimal("100")
+        mock_order.submitted_at = datetime.utcnow()
+    
+        repo.upsert_by_idempotency.return_value = mock_order
+&gt;       repo.update_status.return_value = mock_order
+        ^^^^^^^^^^^^^^^^^^
+
+tests\services\test_order_service_enhanced.py:35: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;AsyncMock spec='OrdersRepo' id='2710828371120'&gt;, name = 'update_status'
+
+    def __getattr__(self, name):
+        if name in {'_mock_methods', '_mock_unsafe'}:
+            raise AttributeError(name)
+        elif self._mock_methods is not None:
+            if name not in self._mock_methods or name in _all_magics:
+&gt;               raise AttributeError("Mock object has no attribute %r" % name)
+E               AttributeError: Mock object has no attribute 'update_status'
+
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:658: AttributeError</error></testcase><testcase classname="tests.services.test_order_service_enhanced.TestOrderServiceRetryLogic" name="test_retry_with_429_rate_limit" time="0.002"><error message="failed on setup with &quot;AttributeError: Mock object has no attribute 'update_status'&quot;">@pytest.fixture
+    def mock_orders_repo():
+        """Mock orders repository with deterministic responses."""
+        repo = AsyncMock(spec=OrdersRepo)
+    
+        # Default successful order creation
+        mock_order = MagicMock()
+        mock_order.id = "order-123"
+        mock_order.status = "new"
+        mock_order.symbol = "AAPL"
+        mock_order.side = "buy"
+        mock_order.qty = Decimal("100")
+        mock_order.submitted_at = datetime.utcnow()
+    
+        repo.upsert_by_idempotency.return_value = mock_order
+&gt;       repo.update_status.return_value = mock_order
+        ^^^^^^^^^^^^^^^^^^
+
+tests\services\test_order_service_enhanced.py:35: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;AsyncMock spec='OrdersRepo' id='2710828453376'&gt;, name = 'update_status'
+
+    def __getattr__(self, name):
+        if name in {'_mock_methods', '_mock_unsafe'}:
+            raise AttributeError(name)
+        elif self._mock_methods is not None:
+            if name not in self._mock_methods or name in _all_magics:
+&gt;               raise AttributeError("Mock object has no attribute %r" % name)
+E               AttributeError: Mock object has no attribute 'update_status'
+
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:658: AttributeError</error></testcase><testcase classname="tests.services.test_order_service_enhanced.TestOrderServiceRetryLogic" name="test_retry_jitter_prevents_thundering_herd" time="0.002"><error message="failed on setup with &quot;AttributeError: Mock object has no attribute 'update_status'&quot;">@pytest.fixture
+    def mock_orders_repo():
+        """Mock orders repository with deterministic responses."""
+        repo = AsyncMock(spec=OrdersRepo)
+    
+        # Default successful order creation
+        mock_order = MagicMock()
+        mock_order.id = "order-123"
+        mock_order.status = "new"
+        mock_order.symbol = "AAPL"
+        mock_order.side = "buy"
+        mock_order.qty = Decimal("100")
+        mock_order.submitted_at = datetime.utcnow()
+    
+        repo.upsert_by_idempotency.return_value = mock_order
+&gt;       repo.update_status.return_value = mock_order
+        ^^^^^^^^^^^^^^^^^^
+
+tests\services\test_order_service_enhanced.py:35: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;AsyncMock spec='OrdersRepo' id='2710828415456'&gt;, name = 'update_status'
+
+    def __getattr__(self, name):
+        if name in {'_mock_methods', '_mock_unsafe'}:
+            raise AttributeError(name)
+        elif self._mock_methods is not None:
+            if name not in self._mock_methods or name in _all_magics:
+&gt;               raise AttributeError("Mock object has no attribute %r" % name)
+E               AttributeError: Mock object has no attribute 'update_status'
+
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:658: AttributeError</error></testcase><testcase classname="tests.services.test_order_service_enhanced.TestOrderServiceCircuitBreaker" name="test_circuit_breaker_open_state" time="0.001"><error message="failed on setup with &quot;AttributeError: Mock object has no attribute 'update_status'&quot;">@pytest.fixture
+    def mock_orders_repo():
+        """Mock orders repository with deterministic responses."""
+        repo = AsyncMock(spec=OrdersRepo)
+    
+        # Default successful order creation
+        mock_order = MagicMock()
+        mock_order.id = "order-123"
+        mock_order.status = "new"
+        mock_order.symbol = "AAPL"
+        mock_order.side = "buy"
+        mock_order.qty = Decimal("100")
+        mock_order.submitted_at = datetime.utcnow()
+    
+        repo.upsert_by_idempotency.return_value = mock_order
+&gt;       repo.update_status.return_value = mock_order
+        ^^^^^^^^^^^^^^^^^^
+
+tests\services\test_order_service_enhanced.py:35: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;AsyncMock spec='OrdersRepo' id='2710828405760'&gt;, name = 'update_status'
+
+    def __getattr__(self, name):
+        if name in {'_mock_methods', '_mock_unsafe'}:
+            raise AttributeError(name)
+        elif self._mock_methods is not None:
+            if name not in self._mock_methods or name in _all_magics:
+&gt;               raise AttributeError("Mock object has no attribute %r" % name)
+E               AttributeError: Mock object has no attribute 'update_status'
+
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:658: AttributeError</error></testcase><testcase classname="tests.services.test_order_service_enhanced.TestOrderServiceCircuitBreaker" name="test_circuit_breaker_half_open_recovery" time="0.001"><error message="failed on setup with &quot;AttributeError: Mock object has no attribute 'update_status'&quot;">@pytest.fixture
+    def mock_orders_repo():
+        """Mock orders repository with deterministic responses."""
+        repo = AsyncMock(spec=OrdersRepo)
+    
+        # Default successful order creation
+        mock_order = MagicMock()
+        mock_order.id = "order-123"
+        mock_order.status = "new"
+        mock_order.symbol = "AAPL"
+        mock_order.side = "buy"
+        mock_order.qty = Decimal("100")
+        mock_order.submitted_at = datetime.utcnow()
+    
+        repo.upsert_by_idempotency.return_value = mock_order
+&gt;       repo.update_status.return_value = mock_order
+        ^^^^^^^^^^^^^^^^^^
+
+tests\services\test_order_service_enhanced.py:35: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;AsyncMock spec='OrdersRepo' id='2710829057424'&gt;, name = 'update_status'
+
+    def __getattr__(self, name):
+        if name in {'_mock_methods', '_mock_unsafe'}:
+            raise AttributeError(name)
+        elif self._mock_methods is not None:
+            if name not in self._mock_methods or name in _all_magics:
+&gt;               raise AttributeError("Mock object has no attribute %r" % name)
+E               AttributeError: Mock object has no attribute 'update_status'
+
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:658: AttributeError</error></testcase><testcase classname="tests.services.test_order_service_enhanced.TestOrderServiceDLQAndMetrics" name="test_failed_order_sent_to_dlq" time="0.002"><error message="failed on setup with &quot;AttributeError: Mock object has no attribute 'update_status'&quot;">@pytest.fixture
+    def mock_orders_repo():
+        """Mock orders repository with deterministic responses."""
+        repo = AsyncMock(spec=OrdersRepo)
+    
+        # Default successful order creation
+        mock_order = MagicMock()
+        mock_order.id = "order-123"
+        mock_order.status = "new"
+        mock_order.symbol = "AAPL"
+        mock_order.side = "buy"
+        mock_order.qty = Decimal("100")
+        mock_order.submitted_at = datetime.utcnow()
+    
+        repo.upsert_by_idempotency.return_value = mock_order
+&gt;       repo.update_status.return_value = mock_order
+        ^^^^^^^^^^^^^^^^^^
+
+tests\services\test_order_service_enhanced.py:35: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;AsyncMock spec='OrdersRepo' id='2710829070288'&gt;, name = 'update_status'
+
+    def __getattr__(self, name):
+        if name in {'_mock_methods', '_mock_unsafe'}:
+            raise AttributeError(name)
+        elif self._mock_methods is not None:
+            if name not in self._mock_methods or name in _all_magics:
+&gt;               raise AttributeError("Mock object has no attribute %r" % name)
+E               AttributeError: Mock object has no attribute 'update_status'
+
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:658: AttributeError</error></testcase><testcase classname="tests.services.test_order_service_enhanced.TestOrderServiceDLQAndMetrics" name="test_admin_retry_from_dlq" time="0.002"><error message="failed on setup with &quot;AttributeError: Mock object has no attribute 'update_status'&quot;">@pytest.fixture
+    def mock_orders_repo():
+        """Mock orders repository with deterministic responses."""
+        repo = AsyncMock(spec=OrdersRepo)
+    
+        # Default successful order creation
+        mock_order = MagicMock()
+        mock_order.id = "order-123"
+        mock_order.status = "new"
+        mock_order.symbol = "AAPL"
+        mock_order.side = "buy"
+        mock_order.qty = Decimal("100")
+        mock_order.submitted_at = datetime.utcnow()
+    
+        repo.upsert_by_idempotency.return_value = mock_order
+&gt;       repo.update_status.return_value = mock_order
+        ^^^^^^^^^^^^^^^^^^
+
+tests\services\test_order_service_enhanced.py:35: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;AsyncMock spec='OrdersRepo' id='2710829228608'&gt;, name = 'update_status'
+
+    def __getattr__(self, name):
+        if name in {'_mock_methods', '_mock_unsafe'}:
+            raise AttributeError(name)
+        elif self._mock_methods is not None:
+            if name not in self._mock_methods or name in _all_magics:
+&gt;               raise AttributeError("Mock object has no attribute %r" % name)
+E               AttributeError: Mock object has no attribute 'update_status'
+
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:658: AttributeError</error></testcase><testcase classname="tests.services.test_order_service_enhanced.TestOrderServiceDLQAndMetrics" name="test_prometheus_metrics_increments" time="0.002"><error message="failed on setup with &quot;AttributeError: Mock object has no attribute 'update_status'&quot;">@pytest.fixture
+    def mock_orders_repo():
+        """Mock orders repository with deterministic responses."""
+        repo = AsyncMock(spec=OrdersRepo)
+    
+        # Default successful order creation
+        mock_order = MagicMock()
+        mock_order.id = "order-123"
+        mock_order.status = "new"
+        mock_order.symbol = "AAPL"
+        mock_order.side = "buy"
+        mock_order.qty = Decimal("100")
+        mock_order.submitted_at = datetime.utcnow()
+    
+        repo.upsert_by_idempotency.return_value = mock_order
+&gt;       repo.update_status.return_value = mock_order
+        ^^^^^^^^^^^^^^^^^^
+
+tests\services\test_order_service_enhanced.py:35: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;AsyncMock spec='OrdersRepo' id='2710829224768'&gt;, name = 'update_status'
+
+    def __getattr__(self, name):
+        if name in {'_mock_methods', '_mock_unsafe'}:
+            raise AttributeError(name)
+        elif self._mock_methods is not None:
+            if name not in self._mock_methods or name in _all_magics:
+&gt;               raise AttributeError("Mock object has no attribute %r" % name)
+E               AttributeError: Mock object has no attribute 'update_status'
+
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:658: AttributeError</error></testcase><testcase classname="tests.services.test_order_service_enhanced.TestOrderServiceContractIntegration" name="test_complete_order_lifecycle_with_metrics" time="0.001"><error message="failed on setup with &quot;AttributeError: Mock object has no attribute 'update_status'&quot;">@pytest.fixture
+    def mock_orders_repo():
+        """Mock orders repository with deterministic responses."""
+        repo = AsyncMock(spec=OrdersRepo)
+    
+        # Default successful order creation
+        mock_order = MagicMock()
+        mock_order.id = "order-123"
+        mock_order.status = "new"
+        mock_order.symbol = "AAPL"
+        mock_order.side = "buy"
+        mock_order.qty = Decimal("100")
+        mock_order.submitted_at = datetime.utcnow()
+    
+        repo.upsert_by_idempotency.return_value = mock_order
+&gt;       repo.update_status.return_value = mock_order
+        ^^^^^^^^^^^^^^^^^^
+
+tests\services\test_order_service_enhanced.py:35: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;AsyncMock spec='OrdersRepo' id='2710828120016'&gt;, name = 'update_status'
+
+    def __getattr__(self, name):
+        if name in {'_mock_methods', '_mock_unsafe'}:
+            raise AttributeError(name)
+        elif self._mock_methods is not None:
+            if name not in self._mock_methods or name in _all_magics:
+&gt;               raise AttributeError("Mock object has no attribute %r" % name)
+E               AttributeError: Mock object has no attribute 'update_status'
+
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:658: AttributeError</error></testcase><testcase classname="tests.services.test_order_service_enhanced.TestOrderServiceContractIntegration" name="test_order_service_error_handling_patterns" time="0.001"><error message="failed on setup with &quot;AttributeError: Mock object has no attribute 'update_status'&quot;">@pytest.fixture
+    def mock_orders_repo():
+        """Mock orders repository with deterministic responses."""
+        repo = AsyncMock(spec=OrdersRepo)
+    
+        # Default successful order creation
+        mock_order = MagicMock()
+        mock_order.id = "order-123"
+        mock_order.status = "new"
+        mock_order.symbol = "AAPL"
+        mock_order.side = "buy"
+        mock_order.qty = Decimal("100")
+        mock_order.submitted_at = datetime.utcnow()
+    
+        repo.upsert_by_idempotency.return_value = mock_order
+&gt;       repo.update_status.return_value = mock_order
+        ^^^^^^^^^^^^^^^^^^
+
+tests\services\test_order_service_enhanced.py:35: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;AsyncMock spec='OrdersRepo' id='2710829057664'&gt;, name = 'update_status'
+
+    def __getattr__(self, name):
+        if name in {'_mock_methods', '_mock_unsafe'}:
+            raise AttributeError(name)
+        elif self._mock_methods is not None:
+            if name not in self._mock_methods or name in _all_magics:
+&gt;               raise AttributeError("Mock object has no attribute %r" % name)
+E               AttributeError: Mock object has no attribute 'update_status'
+
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:658: AttributeError</error></testcase><testcase classname="tests.services.test_order_service_full_contract.TestOrderServiceFullContract" name="test_idempotency_same_client_order_id" time="0.008" /><testcase classname="tests.services.test_order_service_full_contract.TestOrderServiceFullContract" name="test_429_retry_with_jitter" time="0.003" /><testcase classname="tests.services.test_order_service_full_contract.TestOrderServiceFullContract" name="test_circuit_breaker_states" time="0.003" /><testcase classname="tests.services.test_order_service_full_contract.TestOrderServiceFullContract" name="test_dlq_management" time="0.003" /><testcase classname="tests.services.test_order_service_full_contract.TestOrderServiceFullContract" name="test_admin_dlq_retry" time="0.002" /><testcase classname="tests.services.test_order_service_full_contract.TestOrderServiceFullContract" name="test_cancel_order_idempotency" time="0.003" /><testcase classname="tests.services.test_order_service_full_contract.TestOrderServiceFullContract" name="test_order_rejection_path" time="0.048" /><testcase classname="tests.services.test_order_service_full_contract.TestOrderServiceFullContract" name="test_comprehensive_metrics_assertions" time="0.022" /><testcase classname="tests.services.test_order_service_full_contract.TestOrderServiceFullContract" name="test_order_state_transitions" time="0.001" /><testcase classname="tests.services.test_order_service_full_contract.TestOrderServiceFullContract" name="test_concurrent_order_processing" time="0.003" /><testcase classname="tests.services.test_order_service_full_contract.TestOrderServiceFullContract" name="test_order_size_and_value_limits" time="0.003" /><testcase classname="tests.services.test_order_service_full_contract_enhanced.TestOrderServiceIdempotency" name="test_same_client_key_returns_existing_order" time="0.004" /><testcase classname="tests.services.test_order_service_full_contract_enhanced.TestOrderServiceIdempotency" name="test_different_client_keys_create_separate_orders" time="0.004" /><testcase classname="tests.services.test_order_service_full_contract_enhanced.TestOrderServiceIdempotency" name="test_idempotency_with_concurrent_requests" time="0.006" /><testcase classname="tests.services.test_order_service_full_contract_enhanced.TestOrderServiceRetryLogic" name="test_retry_on_429_rate_limit_with_backoff" time="0.001"><skipped type="pytest.skip" message="Retry logic not implemented in OrderService - handled by outbox processing">C:\Users\Marsel\intra\algotrading_platform\tests\services\test_order_service_full_contract_enhanced.py:288: Retry logic not implemented in OrderService - handled by outbox processing</skipped></testcase><testcase classname="tests.services.test_order_service_full_contract_enhanced.TestOrderServiceRetryLogic" name="test_retry_jitter_prevents_thundering_herd" time="0.000"><skipped type="pytest.skip" message="Retry logic not implemented in OrderService - handled by outbox processing">C:\Users\Marsel\intra\algotrading_platform\tests\services\test_order_service_full_contract_enhanced.py:318: Retry logic not implemented in OrderService - handled by outbox processing</skipped></testcase><testcase classname="tests.services.test_order_service_full_contract_enhanced.TestOrderServiceRetryLogic" name="test_max_retries_exceeded_triggers_failure" time="0.000"><skipped type="pytest.skip" message="Retry logic not implemented in OrderService - handled by outbox processing">C:\Users\Marsel\intra\algotrading_platform\tests\services\test_order_service_full_contract_enhanced.py:358: Retry logic not implemented in OrderService - handled by outbox processing</skipped></testcase><testcase classname="tests.services.test_order_service_full_contract_enhanced.TestOrderServiceCircuitBreaker" name="test_circuit_breaker_opens_after_consecutive_failures" time="0.000"><skipped type="pytest.skip" message="Circuit breaker functionality not yet implemented in OrderService">C:\Users\Marsel\intra\algotrading_platform\tests\services\test_order_service_full_contract_enhanced.py:390: Circuit breaker functionality not yet implemented in OrderService</skipped></testcase><testcase classname="tests.services.test_order_service_full_contract_enhanced.TestOrderServiceCircuitBreaker" name="test_circuit_breaker_half_open_recovery" time="0.000"><skipped type="pytest.skip" message="Circuit breaker functionality not yet implemented in OrderService">C:\Users\Marsel\intra\algotrading_platform\tests\services\test_order_service_full_contract_enhanced.py:434: Circuit breaker functionality not yet implemented in OrderService</skipped></testcase><testcase classname="tests.services.test_order_service_full_contract_enhanced.TestOrderServiceCircuitBreaker" name="test_circuit_breaker_metrics_tracking" time="0.002" /><testcase classname="tests.services.test_order_service_full_contract_enhanced.TestOrderServiceDLQAndAdminRetry" name="test_failed_order_sent_to_dlq" time="0.000"><skipped type="pytest.skip" message="DLQ and admin retry functionality not implemented in OrderService">C:\Users\Marsel\intra\algotrading_platform\tests\services\test_order_service_full_contract_enhanced.py:509: DLQ and admin retry functionality not implemented in OrderService</skipped></testcase><testcase classname="tests.services.test_order_service_full_contract_enhanced.TestOrderServiceDLQAndAdminRetry" name="test_admin_retry_from_dlq" time="0.000"><skipped type="pytest.skip" message="DLQ and admin retry functionality not implemented in OrderService">C:\Users\Marsel\intra\algotrading_platform\tests\services\test_order_service_full_contract_enhanced.py:532: DLQ and admin retry functionality not implemented in OrderService</skipped></testcase><testcase classname="tests.services.test_order_service_full_contract_enhanced.TestOrderServiceDLQAndAdminRetry" name="test_dlq_item_max_retry_limit" time="0.000"><skipped type="pytest.skip" message="DLQ and admin retry functionality not implemented in OrderService">C:\Users\Marsel\intra\algotrading_platform\tests\services\test_order_service_full_contract_enhanced.py:570: DLQ and admin retry functionality not implemented in OrderService</skipped></testcase><testcase classname="tests.services.test_order_service_full_contract_enhanced.TestOrderServicePrometheusMetrics" name="test_orders_created_total_metric" time="0.000"><skipped type="pytest.skip" message="Prometheus metrics integration not yet implemented in OrderService">C:\Users\Marsel\intra\algotrading_platform\tests\services\test_order_service_full_contract_enhanced.py:599: Prometheus metrics integration not yet implemented in OrderService</skipped></testcase><testcase classname="tests.services.test_order_service_full_contract_enhanced.TestOrderServicePrometheusMetrics" name="test_orders_failed_total_with_reasons" time="0.000"><skipped type="pytest.skip" message="Prometheus metrics integration not yet implemented in OrderService">C:\Users\Marsel\intra\algotrading_platform\tests\services\test_order_service_full_contract_enhanced.py:617: Prometheus metrics integration not yet implemented in OrderService</skipped></testcase><testcase classname="tests.services.test_order_service_full_contract_enhanced.TestOrderServicePrometheusMetrics" name="test_order_retries_total_metric" time="0.000"><skipped type="pytest.skip" message="Prometheus metrics integration not yet implemented in OrderService">C:\Users\Marsel\intra\algotrading_platform\tests\services\test_order_service_full_contract_enhanced.py:650: Prometheus metrics integration not yet implemented in OrderService</skipped></testcase><testcase classname="tests.services.test_order_service_full_contract_enhanced.TestOrderServicePrometheusMetrics" name="test_order_duration_histogram" time="0.000"><skipped type="pytest.skip" message="Prometheus metrics integration not yet implemented in OrderService">C:\Users\Marsel\intra\algotrading_platform\tests\services\test_order_service_full_contract_enhanced.py:683: Prometheus metrics integration not yet implemented in OrderService</skipped></testcase><testcase classname="tests.services.test_order_service_working.TestOrderServiceWorking" name="test_submit_symbol_order_basic_functionality" time="0.003" /><testcase classname="tests.services.test_order_service_working.TestOrderServiceWorking" name="test_order_service_plan_and_submit" time="0.002" /><testcase classname="tests.services.test_order_service_working.TestOrderServiceWorking" name="test_order_service_initialization_mock" time="0.001" /><testcase classname="tests.services.test_order_service_working.TestOrderServiceWorking" name="test_order_service_constants_and_types" time="0.001" /><testcase classname="tests.services.test_positions_and_safety.TestPositionCalculator" name="test_position_size_calculation_basic" time="0.001" /><testcase classname="tests.services.test_positions_and_safety.TestPositionCalculator" name="test_position_size_zero_risk" time="0.001" /><testcase classname="tests.services.test_positions_and_safety.TestPositionCalculator" name="test_position_size_invalid_stop_loss" time="0.001" /><testcase classname="tests.services.test_positions_and_safety.TestPositionCalculator" name="test_portfolio_risk_calculation" time="0.001" /><testcase classname="tests.services.test_positions_and_safety.TestPositionCalculator" name="test_position_value_calculation" time="0.001" /><testcase classname="tests.services.test_positions_and_safety.TestTradingSafety" name="test_safety_mode_normal" time="0.001" /><testcase classname="tests.services.test_positions_and_safety.TestTradingSafety" name="test_safety_mode_restricted" time="0.001" /><testcase classname="tests.services.test_positions_and_safety.TestTradingSafety" name="test_safety_mode_halt" time="0.001" /><testcase classname="tests.services.test_positions_and_safety.TestTradingSafety" name="test_risk_level_assessment" time="0.001" /><testcase classname="tests.services.test_positions_and_safety.TestTradingSafety" name="test_circuit_breaker_activation" time="0.001" /><testcase classname="tests.services.test_positions_and_safety.TestTradingSafety" name="test_position_limit_enforcement" time="0.001" /><testcase classname="tests.services.test_positions_and_safety.TestTradingSafety" name="test_trading_hours_enforcement" time="0.001" /></testsuite></testsuites>

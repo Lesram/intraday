@@ -80,12 +80,22 @@ async def get_metrics(request: Request):
 
 
 @router.get("/health")
-async def health_check():
+async def health_check(request: Request):
     """Basic health check endpoint"""
+    # Compute uptime if app has start_time
+    start_time = getattr(request.app.state, "start_time", None)
+    uptime_seconds = None
+    if start_time is not None:
+        try:
+            uptime_seconds = max(0, int(time.time() - float(start_time)))
+        except Exception:
+            uptime_seconds = None
+
     return {
         "status": "healthy",
         "timestamp": datetime.now().isoformat(),
         "service": "algorithmic-trading-platform",
+        "uptime_seconds": uptime_seconds,
         "components": {
             "api": "healthy",
             "database": "healthy",  # Simplified for basic health check
@@ -114,7 +124,7 @@ async def liveness_probe():
         await asyncio.sleep(0.001)
 
         return {
-            "status": "healthy",
+            "status": "alive",
             "service": "algotrading-platform",
             "timestamp": datetime.now().isoformat(),
             "version": "1.0.0",

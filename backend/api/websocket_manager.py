@@ -8,7 +8,7 @@ import json
 import logging
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Any, Callable
+from typing import Any, Callable, Optional
 
 from fastapi import WebSocket, WebSocketDisconnect
 
@@ -26,7 +26,7 @@ audit_logger = get_logger("audit")
 
 
 @dataclass
-class WebSocketClientInfo:
+class ClientInfo:
     """Client information with queue and metadata."""
     client_id: str
     websocket: WebSocket
@@ -41,28 +41,31 @@ class WebSocketClientInfo:
             self.subscriptions = set()
     
     def __getitem__(self, key):
-        """Allow dictionary-style access for backward compatibility with tests"""
+        # Backward compatibility for any legacy dict-style usages
         return getattr(self, key)
-    
+
     def __setitem__(self, key, value):
-        """Allow dictionary-style assignment for backward compatibility with tests"""
         setattr(self, key, value)
+
+# Backward compatible alias
+WebSocketClientInfo = ClientInfo
 
 
 class WebSocketClientManager:
     """Enhanced WebSocket client manager with backpressure and metrics."""
     
     def __init__(
-        self, 
+        self,
         queue_max: int = 100,
         heartbeat_interval: int = 30,
         stale_connection_timeout: int = 300,
-        metrics_registry: CollectorRegistry = None,
-        now: Callable = None,
-        now_func: Callable = None  # Alternative parameter name for compatibility
+        metrics_registry: Optional[CollectorRegistry] = None,
+        now: Optional[Callable] = None,
+        now_func: Optional[Callable] = None,
     ):
         """Initialize WebSocket manager."""
         self.clients: dict[str, WebSocketClientInfo] = {}
+        # Injectable knobs
         self.queue_max = queue_max
         self.heartbeat_interval = heartbeat_interval
         self.stale_connection_timeout = stale_connection_timeout
@@ -75,8 +78,8 @@ class WebSocketClientManager:
             self.now = now
         else:
             self.now = lambda: datetime.now(timezone.utc)
-        
-        self._heartbeat_task: asyncio.Task | None = None
+
+        self._heartbeat_task: Optional[asyncio.Task] = None
         
         # For test compatibility - maintain old interfaces
         self.active_connections = {}

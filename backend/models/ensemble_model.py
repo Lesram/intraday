@@ -6,7 +6,7 @@ Combines LSTM, XGBoost, and RandomForest for comprehensive price prediction
 from dataclasses import dataclass
 from datetime import datetime
 import logging
-from typing import Any
+from typing import Any, Protocol
 
 import numpy as np
 import pandas as pd
@@ -113,6 +113,57 @@ class ModelPerformance:
     sharpe_ratio: float
     accuracy: float
     last_updated: datetime
+
+
+# Lightweight ensemble for tests: compose two submodels with weights
+class _Predictor(Protocol):
+    def predict(self, data: Any) -> Any:
+        ...
+
+
+class LightweightEnsemble:
+    """Tiny ensemble that linearly combines two submodels.
+
+    Expects submodels that return scalar-like predictions; raises ValueError on incompatible shapes.
+    """
+
+    def __init__(self, m1: _Predictor, m2: _Predictor, w1: float = 0.5, w2: float = 0.5):
+        self.m1 = m1
+        self.m2 = m2
+        self.w1 = w1
+        self.w2 = w2
+
+    def _to_scalar(self, y: Any) -> float:
+        # Try to coerce common structures to a scalar
+        if isinstance(y, (int, float)):
+            return float(y)
+        try:
+            import numpy as _np  # local import to avoid heavy dep in envs
+
+            if isinstance(y, _np.ndarray):
+                if y.shape == ():
+                    return float(y)
+                if y.size == 1:
+                    return float(y.ravel()[0])
+                raise ValueError("Non-scalar array output")
+        except Exception:
+            pass
+
+        # Pandas scalar or other wrappers
+        try:
+            import pandas as _pd  # local import
+
+            if isinstance(y, _pd.Series) and y.size == 1:
+                return float(y.iloc[0])
+        except Exception:
+            pass
+
+        raise ValueError("Unsupported prediction shape")
+
+    def predict(self, data: Any) -> float:
+        y1 = self._to_scalar(self.m1.predict(data))
+        y2 = self._to_scalar(self.m2.predict(data))
+        return self.w1 * y1 + self.w2 * y2
 
 
 class LSTMModel:

@@ -1,22 +1,11 @@
 """
 Database models module.
-Compatibility module for tests that expect backend.database.models
+Compatibility module for tests that expect backend.database.models with a SQLAlchemy Base.
 """
 
-# Mock database models for compatibility
-from typing import Any
-from datetime import datetime
+from sqlalchemy.orm import declarative_base
 
-class MockModel:
-    """Mock database model for testing"""
-    def __init__(self, **kwargs):
-        for k, v in kwargs.items():
-            setattr(self, k, v)
-        self.created_at = datetime.utcnow()
-        self.updated_at = datetime.utcnow()
+# Provide a declarative Base so tests can run `Base.metadata.create_all(...)`
+Base = declarative_base()
 
-# Common model types that tests might expect
-Order = MockModel
-Position = MockModel
-Trade = MockModel
-User = MockModel
+__all__ = ["Base"]

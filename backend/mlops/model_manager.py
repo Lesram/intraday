@@ -12,13 +12,61 @@ import json
 import logging
 from pathlib import Path
 import pickle
-from typing import Any, Protocol
+from typing import Any, Protocol, runtime_checkable, Optional
 
 import numpy as np
 import pandas as pd
 
 from ..config import get_settings
 from ..models.ensemble_model import EnsembleModel
+
+
+# Lightweight protocol and registry for tests/coverage
+@runtime_checkable
+class Model(Protocol):
+    """Lightweight model protocol for predict() behavior used in tests."""
+
+    def predict(self, data: Any) -> Any:
+        """Accepts a dict or numpy/pandas input and returns a prediction-like object."""
+        ...
+
+
+class NoopModel:
+    """Default no-op model for missing registry lookups."""
+
+    def __init__(self, name: str = "noop", version: str = "0.0.0") -> None:
+        self.name = name
+        self.version = version
+
+    def predict(self, data: Any) -> dict:
+        # Return a stable, inspectable payload
+        return {"prediction": 0.0, "model": self.name, "version": self.version}
+
+
+class InMemoryModelRegistry:
+    """Simple in-memory model registry used for fast tests without disk I/O."""
+
+    def __init__(self) -> None:
+        # store as {name: {version: model}}
+        self._store: dict[str, dict[str, Model]] = {}
+        self._latest: dict[str, str] = {}
+
+    def register(self, name: str, version: str, model: Model) -> None:
+        versions = self._store.setdefault(name, {})
+        versions[version] = model
+        self._latest[name] = version
+
+    def load(self, name: str, version: Optional[str] = None) -> Model:
+        if name not in self._store:
+            # missing model
+            return NoopModel(name=name, version=version or "0.0.0")
+
+        if not version or version == "latest":
+            version = self._latest.get(name)
+        model = self._store[name].get(version or "")
+        if model is None:
+            return NoopModel(name=name, version=version or "0.0.0")
+        return model
 
 
 class ModelNotFoundError(Exception):
