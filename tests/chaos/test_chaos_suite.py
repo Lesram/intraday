@@ -604,17 +604,20 @@ class TestChaosSchedulingIntegration:
 
         # This would be called by CI to discover chaos tests
         import inspect
+        import pytest
 
         from tests.chaos import test_chaos_suite
 
         chaos_tests = []
         for name, obj in inspect.getmembers(test_chaos_suite):
-            if inspect.isclass(obj) and hasattr(obj, "__pytest_mark__"):
-                for mark in obj.__pytest_mark__:
-                    if mark.name == "chaos":
+            if inspect.isclass(obj) and name.startswith('Test') and hasattr(obj, 'pytestmark'):
+                # Check if the class has chaos marker
+                for mark in getattr(obj, 'pytestmark', []):
+                    if hasattr(mark, 'name') and mark.name == "chaos":
                         chaos_tests.append(name)
+                        break
 
-        assert len(chaos_tests) > 0, "No chaos tests discovered"
+        assert len(chaos_tests) > 0, f"No chaos tests discovered. Found classes: {[name for name, obj in inspect.getmembers(test_chaos_suite) if inspect.isclass(obj) and name.startswith('Test')]}"
 
     @pytest.mark.asyncio
     async def test_chaos_test_reporting(self):

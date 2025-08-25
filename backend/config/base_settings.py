@@ -759,6 +759,27 @@ class Settings(BaseSettings):
 
         return self
 
+    # --- Legacy flat attribute shims for backward-compatibility ---
+    @property
+    def DATABASE_URL(self) -> str:  # noqa: N802 (legacy naming)
+        """Legacy flat accessor for database URL (used by some tests)."""
+        try:
+            return self.data.database_url
+        except Exception:
+            return ""
+
+    @DATABASE_URL.setter
+    def DATABASE_URL(self, value: str) -> None:  # noqa: N802 (legacy naming)
+        try:
+            self.data.database_url = value
+        except Exception:
+            pass
+
+    @DATABASE_URL.deleter
+    def DATABASE_URL(self) -> None:  # type: ignore[misc]
+        # No-op deleter for unittest.mock.patch cleanup compatibility
+        pass
+
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:

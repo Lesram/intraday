@@ -558,21 +558,22 @@ def record_outbox_metrics(
         )
 
 
-def record_auth_metrics(operation: str, success: bool) -> None:
+def record_auth_metrics(operation: str, success: bool, metrics: MetricsRegistry = None) -> None:
     """
     Record authentication metrics.
 
     Args:
         operation: Auth operation (attempt, token_validation)
         success: Whether operation succeeded
+        metrics: Optional metrics registry to use (defaults to global registry)
     """
-    metrics = get_metrics_registry()
+    registry = metrics if metrics is not None else get_metrics_registry()
     result = "success" if success else "error"
 
     if operation == "attempt":
-        metrics.inc_counter("auth_attempts_total", {"result": result})
+        registry.inc_counter("auth_attempts_total", {"result": result})
     elif operation == "token_validation":
-        metrics.inc_counter("auth_token_validations_total", {"result": result})
+        registry.inc_counter("auth_token_validations_total", {"result": result})
 
 
 def record_websocket_metrics(

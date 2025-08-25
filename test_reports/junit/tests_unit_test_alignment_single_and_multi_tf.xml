@@ -1,0 +1,157 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="4" skipped="0" tests="15" time="0.449" timestamp="2025-08-24T17:06:14.712665-07:00" hostname="BOOK-FVJOEO3Q00"><testcase classname="tests.unit.test_alignment_single_and_multi_tf.TestSingleTimeframeAlignment" name="test_align_features_target_basic" time="0.007" /><testcase classname="tests.unit.test_alignment_single_and_multi_tf.TestSingleTimeframeAlignment" name="test_align_features_target_misaligned_indices" time="0.004" /><testcase classname="tests.unit.test_alignment_single_and_multi_tf.TestSingleTimeframeAlignment" name="test_align_features_target_with_nans" time="0.003"><failure message="AttributeError: 'StubSeries' object has no attribute 'dtype'">self = &lt;test_alignment_single_and_multi_tf.TestSingleTimeframeAlignment object at 0x00000198261C0CE0&gt;
+
+    def test_align_features_target_with_nans(self):
+        """Test alignment with NaN values in features."""
+        dates = pd.date_range("2023-01-01", periods=5, freq="1min", tz="UTC")
+    
+        features = pd.DataFrame(
+            {
+                "feature1": [1.0, np.nan, 3.0, 4.0, 5.0],  # NaN in second row
+                "feature2": [10.0, 20.0, 30.0, np.nan, 50.0],  # NaN in fourth row
+            },
+            index=dates,
+        )
+    
+        price = pd.Series([100, 101, 102, 103, 104], index=dates)
+    
+        result = align_features_target(features, price)
+    
+        # Check validity mask properly identifies valid rows
+        expected_valid = ~features.isna().any(axis=1) &amp; ~result.y.isna()
+&gt;       pd.testing.assert_series_equal(result.index_mask, expected_valid)
+E       AttributeError: 'StubSeries' object has no attribute 'dtype'
+
+tests\unit\test_alignment_single_and_multi_tf.py:86: AttributeError</failure></testcase><testcase classname="tests.unit.test_alignment_single_and_multi_tf.TestMultiTimeframeAlignment" name="test_align_multitimeframe_basic" time="0.004"><failure message="assert False&#10; +  where False = all(&lt;generator object TestMultiTimeframeAlignment.test_align_multitimeframe_basic.&lt;locals&gt;.&lt;genexpr&gt; at 0x00000198261552F0&gt;)">self = &lt;test_alignment_single_and_multi_tf.TestMultiTimeframeAlignment object at 0x00000198261C0E30&gt;
+
+    def test_align_multitimeframe_basic(self):
+        """Test basic multi-timeframe alignment."""
+        # 1-minute features
+        dates_1m = pd.date_range("2023-01-01", periods=10, freq="1min", tz="UTC")
+        features_1m = pd.DataFrame(
+            {"price_1m": range(10), "volume_1m": range(100, 110)}, index=dates_1m
+        )
+    
+        # 5-minute features (every 5th minute)
+        dates_5m = dates_1m[::5]  # Every 5th timestamp
+        features_5m = pd.DataFrame(
+            {"sma_5m": [50, 55], "rsi_5m": [45, 55]}, index=dates_5m
+        )
+    
+        result = align_multitimeframe(features_1m, features_5m, max_ffill=5)
+    
+        # Should have all 1m timestamps
+        assert len(result) == 10
+    
+        # Should have columns from both timeframes with suffixes
+        expected_columns = ["price_1m", "volume_1m", "sma_5m_5m", "rsi_5m_5m"]
+&gt;       assert all(col in result.columns for col in expected_columns)
+E       assert False
+E        +  where False = all(&lt;generator object TestMultiTimeframeAlignment.test_align_multitimeframe_basic.&lt;locals&gt;.&lt;genexpr&gt; at 0x00000198261552F0&gt;)
+
+tests\unit\test_alignment_single_and_multi_tf.py:116: AssertionError</failure></testcase><testcase classname="tests.unit.test_alignment_single_and_multi_tf.TestMultiTimeframeAlignment" name="test_align_multitimeframe_ffill_limit" time="0.032" /><testcase classname="tests.unit.test_alignment_single_and_multi_tf.TestMultiTimeframeAlignment" name="test_align_multitimeframe_non_datetime_index" time="0.002" /><testcase classname="tests.unit.test_alignment_single_and_multi_tf.TestTemporalValidation" name="test_validate_temporal_order_valid" time="0.001" /><testcase classname="tests.unit.test_alignment_single_and_multi_tf.TestTemporalValidation" name="test_validate_temporal_order_non_monotonic" time="0.009" /><testcase classname="tests.unit.test_alignment_single_and_multi_tf.TestTemporalValidation" name="test_validate_temporal_order_no_timezone" time="0.002" /><testcase classname="tests.unit.test_alignment_single_and_multi_tf.TestTemporalValidation" name="test_validate_temporal_order_duplicates" time="0.003" /><testcase classname="tests.unit.test_alignment_single_and_multi_tf.TestMisalignmentDetection" name="test_detect_misalignment_aligned" time="0.002" /><testcase classname="tests.unit.test_alignment_single_and_multi_tf.TestMisalignmentDetection" name="test_detect_misalignment_no_overlap" time="0.001" /><testcase classname="tests.unit.test_alignment_single_and_multi_tf.TestTrainingSplits" name="test_create_training_splits_basic" time="0.002"><failure message="ValueError: Insufficient data for training (need 1000, got 100)">self = &lt;test_alignment_single_and_multi_tf.TestTrainingSplits object at 0x00000198261C1B50&gt;
+
+    def test_create_training_splits_basic(self):
+        """Test basic temporal train/test split."""
+        dates = pd.date_range("2023-01-01", periods=100, freq="1min", tz="UTC")
+    
+        X = pd.DataFrame(
+            {"feature1": np.random.randn(100), "feature2": np.random.randn(100)},
+            index=dates,
+        )
+    
+        y = pd.Series(np.random.randn(100), index=dates)
+        mask = pd.Series([True] * 100, index=dates)
+    
+        feature_frame = FeatureFrame(X=X, y=y, index_mask=mask)
+    
+&gt;       train_frame, test_frame = create_training_splits(feature_frame, train_ratio=0.8)
+                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\unit\test_alignment_single_and_multi_tf.py:248: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+feature_frame = FeatureFrame(X=                           feature1  feature2
+2023-01-01 00:00:00+00:00  0.496714 -1.415371
+2023-01-01 ...+00:00    True
+2023-01-01 01:38:00+00:00    True
+2023-01-01 01:39:00+00:00    True
+Freq: min, Length: 100, dtype: bool)
+train_ratio = 0.8, min_train_samples = 1000
+
+    def create_training_splits(
+        feature_frame: FeatureFrame, train_ratio: float = 0.8, min_train_samples: int = 1000
+    ) -&gt; tuple[FeatureFrame, FeatureFrame]:
+        """
+        Create temporal train/test splits maintaining time order.
+    
+        Args:
+            feature_frame: Input FeatureFrame
+            train_ratio: Fraction of data for training
+            min_train_samples: Minimum samples required for training
+    
+        Returns:
+            Tuple of (train_frame, test_frame)
+        """
+        valid_data = feature_frame.filter_valid()
+    
+        if len(valid_data.X) &lt; min_train_samples:
+&gt;           raise ValueError(
+                f"Insufficient data for training (need {min_train_samples}, got {len(valid_data.X)})"
+            )
+E           ValueError: Insufficient data for training (need 1000, got 100)
+
+backend\features\alignment.py:223: ValueError</failure></testcase><testcase classname="tests.unit.test_alignment_single_and_multi_tf.TestTrainingSplits" name="test_create_training_splits_insufficient_data" time="0.002" /><testcase classname="tests.unit.test_alignment_single_and_multi_tf.TestTrainingSplits" name="test_create_training_splits_with_invalid_rows" time="0.002"><failure message="ValueError: Insufficient data for training (need 1000, got 50)">self = &lt;test_alignment_single_and_multi_tf.TestTrainingSplits object at 0x00000198261C1F10&gt;
+
+    def test_create_training_splits_with_invalid_rows(self):
+        """Test training split with some invalid rows filtered out."""
+        dates = pd.date_range("2023-01-01", periods=100, freq="1min", tz="UTC")
+    
+        X = pd.DataFrame(
+            {"feature1": np.random.randn(100), "feature2": np.random.randn(100)},
+            index=dates,
+        )
+    
+        y = pd.Series(np.random.randn(100), index=dates)
+    
+        # Only half the rows are valid
+        mask = pd.Series([True, False] * 50, index=dates)
+    
+        feature_frame = FeatureFrame(X=X, y=y, index_mask=mask)
+    
+&gt;       train_frame, test_frame = create_training_splits(feature_frame, train_ratio=0.8)
+                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\unit\test_alignment_single_and_multi_tf.py:290: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+feature_frame = FeatureFrame(X=                           feature1  feature2
+2023-01-01 00:00:00+00:00  0.496714 -1.415371
+2023-01-01 ...:00    False
+2023-01-01 01:38:00+00:00     True
+2023-01-01 01:39:00+00:00    False
+Freq: min, Length: 100, dtype: bool)
+train_ratio = 0.8, min_train_samples = 1000
+
+    def create_training_splits(
+        feature_frame: FeatureFrame, train_ratio: float = 0.8, min_train_samples: int = 1000
+    ) -&gt; tuple[FeatureFrame, FeatureFrame]:
+        """
+        Create temporal train/test splits maintaining time order.
+    
+        Args:
+            feature_frame: Input FeatureFrame
+            train_ratio: Fraction of data for training
+            min_train_samples: Minimum samples required for training
+    
+        Returns:
+            Tuple of (train_frame, test_frame)
+        """
+        valid_data = feature_frame.filter_valid()
+    
+        if len(valid_data.X) &lt; min_train_samples:
+&gt;           raise ValueError(
+                f"Insufficient data for training (need {min_train_samples}, got {len(valid_data.X)})"
+            )
+E           ValueError: Insufficient data for training (need 1000, got 50)
+
+backend\features\alignment.py:223: ValueError</failure></testcase></testsuite></testsuites>

@@ -1,0 +1,414 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="1" failures="16" skipped="0" tests="22" time="1.467" timestamp="2025-08-24T17:06:27.330499-07:00" hostname="BOOK-FVJOEO3Q00"><testcase classname="tests.unit.test_api_endpoints_coverage.TestAPIEndpointsCoverage" name="test_generate_request_id" time="0.002" /><testcase classname="tests.unit.test_api_endpoints_coverage.TestAPIEndpointsCoverage" name="test_metrics_endpoint" time="0.004"><failure message="AttributeError: &lt;module 'backend.api.main' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\api\\main.py'&gt; does not have the attribute 'generate_latest'">args = (&lt;test_api_endpoints_coverage.TestAPIEndpointsCoverage object at 0x000002489A64ACC0&gt;,)
+keywargs = {'client': &lt;tests.helpers.robust_testclient.RobustTestClient object at 0x000002489A680F80&gt;}
+
+    @wraps(func)
+    def patched(*args, **keywargs):
+&gt;       with self.decoration_helper(patched,
+                                    args,
+                                    keywargs) as (newargs, newkeywargs):
+
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1387: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+..\..\AppData\Local\Programs\Python\Python312\Lib\contextlib.py:137: in __enter__
+    return next(self.gen)
+           ^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1369: in decoration_helper
+    arg = exit_stack.enter_context(patching)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\contextlib.py:526: in enter_context
+    result = _enter(cm)
+             ^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1458: in __enter__
+    original, local = self.get_original()
+                      ^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;unittest.mock._patch object at 0x000002489A648530&gt;
+
+    def get_original(self):
+        target = self.getter()
+        name = self.attribute
+    
+        original = DEFAULT
+        local = False
+    
+        try:
+            original = target.__dict__[name]
+        except (AttributeError, KeyError):
+            original = getattr(target, name, DEFAULT)
+        else:
+            local = True
+    
+        if name in _builtins and isinstance(target, ModuleType):
+            self.create = True
+    
+        if not self.create and original is DEFAULT:
+&gt;           raise AttributeError(
+                "%s does not have the attribute %r" % (target, name)
+            )
+E           AttributeError: &lt;module 'backend.api.main' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\api\\main.py'&gt; does not have the attribute 'generate_latest'
+
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1431: AttributeError</failure></testcase><testcase classname="tests.unit.test_api_endpoints_coverage.TestAPIEndpointsCoverage" name="test_metrics_endpoint_unavailable" time="0.001"><failure message="AttributeError: &lt;module 'backend.api.main' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\api\\main.py'&gt; does not have the attribute 'PROMETHEUS_AVAILABLE'">args = (&lt;test_api_endpoints_coverage.TestAPIEndpointsCoverage object at 0x000002489A64AE70&gt;,)
+keywargs = {'client': &lt;tests.helpers.robust_testclient.RobustTestClient object at 0x000002489A682330&gt;}
+
+    @wraps(func)
+    def patched(*args, **keywargs):
+&gt;       with self.decoration_helper(patched,
+                                    args,
+                                    keywargs) as (newargs, newkeywargs):
+
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1387: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+..\..\AppData\Local\Programs\Python\Python312\Lib\contextlib.py:137: in __enter__
+    return next(self.gen)
+           ^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1369: in decoration_helper
+    arg = exit_stack.enter_context(patching)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\contextlib.py:526: in enter_context
+    result = _enter(cm)
+             ^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1458: in __enter__
+    original, local = self.get_original()
+                      ^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;unittest.mock._patch object at 0x000002489A649850&gt;
+
+    def get_original(self):
+        target = self.getter()
+        name = self.attribute
+    
+        original = DEFAULT
+        local = False
+    
+        try:
+            original = target.__dict__[name]
+        except (AttributeError, KeyError):
+            original = getattr(target, name, DEFAULT)
+        else:
+            local = True
+    
+        if name in _builtins and isinstance(target, ModuleType):
+            self.create = True
+    
+        if not self.create and original is DEFAULT:
+&gt;           raise AttributeError(
+                "%s does not have the attribute %r" % (target, name)
+            )
+E           AttributeError: &lt;module 'backend.api.main' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\api\\main.py'&gt; does not have the attribute 'PROMETHEUS_AVAILABLE'
+
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1431: AttributeError</failure></testcase><testcase classname="tests.unit.test_api_endpoints_coverage.TestAPIEndpointsCoverage" name="test_health_check_basic" time="0.001"><error message="failed on setup with &quot;AttributeError: &lt;module 'backend.api.main' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\api\\main.py'&gt; does not have the attribute 'get_settings'&quot;">self = &lt;test_api_endpoints_coverage.TestAPIEndpointsCoverage object at 0x000002489A64AFC0&gt;
+
+    @pytest.fixture
+    def mock_settings(self):
+        """Mock settings"""
+&gt;       with patch('backend.api.main.get_settings') as mock_get_settings:
+
+tests\unit\test_api_endpoints_coverage.py:44: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1458: in __enter__
+    original, local = self.get_original()
+                      ^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;unittest.mock._patch object at 0x000002489A6836B0&gt;
+
+    def get_original(self):
+        target = self.getter()
+        name = self.attribute
+    
+        original = DEFAULT
+        local = False
+    
+        try:
+            original = target.__dict__[name]
+        except (AttributeError, KeyError):
+            original = getattr(target, name, DEFAULT)
+        else:
+            local = True
+    
+        if name in _builtins and isinstance(target, ModuleType):
+            self.create = True
+    
+        if not self.create and original is DEFAULT:
+&gt;           raise AttributeError(
+                "%s does not have the attribute %r" % (target, name)
+            )
+E           AttributeError: &lt;module 'backend.api.main' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\api\\main.py'&gt; does not have the attribute 'get_settings'
+
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1431: AttributeError</error></testcase><testcase classname="tests.unit.test_api_endpoints_coverage.TestAPIEndpointsCoverage" name="test_liveness_probe" time="0.017"><failure message="assert 404 == 200&#10; +  where 404 = &lt;Response [404 Not Found]&gt;.status_code">self = &lt;test_api_endpoints_coverage.TestAPIEndpointsCoverage object at 0x000002489A64B140&gt;
+client = &lt;tests.helpers.robust_testclient.RobustTestClient object at 0x000002489A6815E0&gt;
+
+    def test_liveness_probe(self, client):
+        """Test /healthz liveness probe"""
+        response = client.get("/healthz")
+&gt;       assert response.status_code == 200
+E       assert 404 == 200
+E        +  where 404 = &lt;Response [404 Not Found]&gt;.status_code
+
+tests\unit\test_api_endpoints_coverage.py:95: AssertionError</failure></testcase><testcase classname="tests.unit.test_api_endpoints_coverage.TestAPIEndpointsCoverage" name="test_readiness_probe" time="0.001"><failure message="AttributeError: &lt;module 'backend.api.main' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\api\\main.py'&gt; does not have the attribute 'init_db'">args = (&lt;test_api_endpoints_coverage.TestAPIEndpointsCoverage object at 0x000002489A64B2F0&gt;,)
+keywargs = {'client': &lt;tests.helpers.robust_testclient.RobustTestClient object at 0x000002489A7E6600&gt;}
+
+    @wraps(func)
+    def patched(*args, **keywargs):
+&gt;       with self.decoration_helper(patched,
+                                    args,
+                                    keywargs) as (newargs, newkeywargs):
+
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1387: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+..\..\AppData\Local\Programs\Python\Python312\Lib\contextlib.py:137: in __enter__
+    return next(self.gen)
+           ^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1369: in decoration_helper
+    arg = exit_stack.enter_context(patching)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\contextlib.py:526: in enter_context
+    result = _enter(cm)
+             ^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1458: in __enter__
+    original, local = self.get_original()
+                      ^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;unittest.mock._patch object at 0x000002489A6498E0&gt;
+
+    def get_original(self):
+        target = self.getter()
+        name = self.attribute
+    
+        original = DEFAULT
+        local = False
+    
+        try:
+            original = target.__dict__[name]
+        except (AttributeError, KeyError):
+            original = getattr(target, name, DEFAULT)
+        else:
+            local = True
+    
+        if name in _builtins and isinstance(target, ModuleType):
+            self.create = True
+    
+        if not self.create and original is DEFAULT:
+&gt;           raise AttributeError(
+                "%s does not have the attribute %r" % (target, name)
+            )
+E           AttributeError: &lt;module 'backend.api.main' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\api\\main.py'&gt; does not have the attribute 'init_db'
+
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1431: AttributeError</failure></testcase><testcase classname="tests.unit.test_api_endpoints_coverage.TestAPIEndpointsCoverage" name="test_auth_login_validation" time="0.009"><failure message="assert 401 == 422&#10; +  where 401 = &lt;Response [401 Unauthorized]&gt;.status_code">self = &lt;test_api_endpoints_coverage.TestAPIEndpointsCoverage object at 0x000002489A64B470&gt;
+client = &lt;tests.helpers.robust_testclient.RobustTestClient object at 0x000002489A7E7650&gt;
+
+    def test_auth_login_validation(self, client):
+        """Test login endpoint validation"""
+        # Test missing credentials
+        response = client.post("/auth/login", data={})
+&gt;       assert response.status_code == 422  # Validation error
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       assert 401 == 422
+E        +  where 401 = &lt;Response [401 Unauthorized]&gt;.status_code
+
+tests\unit\test_api_endpoints_coverage.py:110: AssertionError</failure></testcase><testcase classname="tests.unit.test_api_endpoints_coverage.TestAPIEndpointsCoverage" name="test_get_current_user_info" time="0.001"><failure message="AttributeError: &lt;module 'backend.api.main' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\api\\main.py'&gt; does not have the attribute 'get_current_user'">args = (&lt;test_api_endpoints_coverage.TestAPIEndpointsCoverage object at 0x000002489A64B5F0&gt;,)
+keywargs = {'client': &lt;tests.helpers.robust_testclient.RobustTestClient object at 0x000002489A7CD3A0&gt;}
+
+    @wraps(func)
+    def patched(*args, **keywargs):
+&gt;       with self.decoration_helper(patched,
+                                    args,
+                                    keywargs) as (newargs, newkeywargs):
+
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1387: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+..\..\AppData\Local\Programs\Python\Python312\Lib\contextlib.py:137: in __enter__
+    return next(self.gen)
+           ^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1369: in decoration_helper
+    arg = exit_stack.enter_context(patching)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\contextlib.py:526: in enter_context
+    result = _enter(cm)
+             ^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1458: in __enter__
+    original, local = self.get_original()
+                      ^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;unittest.mock._patch object at 0x000002489A6499A0&gt;
+
+    def get_original(self):
+        target = self.getter()
+        name = self.attribute
+    
+        original = DEFAULT
+        local = False
+    
+        try:
+            original = target.__dict__[name]
+        except (AttributeError, KeyError):
+            original = getattr(target, name, DEFAULT)
+        else:
+            local = True
+    
+        if name in _builtins and isinstance(target, ModuleType):
+            self.create = True
+    
+        if not self.create and original is DEFAULT:
+&gt;           raise AttributeError(
+                "%s does not have the attribute %r" % (target, name)
+            )
+E           AttributeError: &lt;module 'backend.api.main' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\api\\main.py'&gt; does not have the attribute 'get_current_user'
+
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1431: AttributeError</failure></testcase><testcase classname="tests.unit.test_api_endpoints_coverage.TestAPIEndpointsCoverage" name="test_portfolio_endpoint" time="0.006"><failure message="assert 404 in [200, 401, 422]&#10; +  where 404 = &lt;Response [404 Not Found]&gt;.status_code">self = &lt;test_api_endpoints_coverage.TestAPIEndpointsCoverage object at 0x000002489A64B770&gt;
+mock_auth = &lt;AsyncMock name='get_authenticated_user' id='2510852777616'&gt;
+client = &lt;tests.helpers.robust_testclient.RobustTestClient object at 0x000002489A7CE360&gt;
+
+    @patch('backend.api.main.get_authenticated_user')
+    def test_portfolio_endpoint(self, mock_auth, client):
+        """Test portfolio-related endpoints"""
+        mock_auth.return_value = Mock(username="test_user", roles=["trader"])
+    
+        with patch.object(app.state, 'alpaca_client', create=True) as mock_alpaca:
+            mock_alpaca.get_portfolio_positions = AsyncMock(return_value=[])
+            mock_alpaca.get_account_info = AsyncMock(return_value={"equity": "10000"})
+    
+            # Test portfolio positions endpoint
+            response = client.get("/api/v1/portfolio/positions",
+                                headers={"Authorization": "Bearer test_token"})
+&gt;           assert response.status_code in [200, 401, 422]
+E           assert 404 in [200, 401, 422]
+E            +  where 404 = &lt;Response [404 Not Found]&gt;.status_code
+
+tests\unit\test_api_endpoints_coverage.py:144: AssertionError</failure></testcase><testcase classname="tests.unit.test_api_endpoints_coverage.TestAPIEndpointsCoverage" name="test_trading_endpoints" time="0.006"><failure message="assert 404 in [200, 400, 401, 422]&#10; +  where 404 = &lt;Response [404 Not Found]&gt;.status_code">self = &lt;test_api_endpoints_coverage.TestAPIEndpointsCoverage object at 0x000002489A64B8F0&gt;
+mock_auth = &lt;AsyncMock name='get_authenticated_user' id='2510853258368'&gt;
+client = &lt;tests.helpers.robust_testclient.RobustTestClient object at 0x000002489A8435C0&gt;
+
+    @patch('backend.api.main.get_authenticated_user')
+    def test_trading_endpoints(self, mock_auth, client):
+        """Test trading-related endpoints"""
+        mock_auth.return_value = Mock(username="test_user", roles=["trader"])
+    
+        with patch.object(app.state, 'risk_manager', create=True) as mock_risk:
+            mock_risk.check_risk_limits = Mock(return_value=True)
+    
+            # Test order submission
+            response = client.post("/api/v1/orders/submit",
+                                 json={
+                                     "symbol": "AAPL",
+                                     "quantity": 10,
+                                     "side": "buy",
+                                     "type": "market"
+                                 },
+                                 headers={"Authorization": "Bearer test_token"})
+&gt;           assert response.status_code in [200, 400, 401, 422]
+E           assert 404 in [200, 400, 401, 422]
+E            +  where 404 = &lt;Response [404 Not Found]&gt;.status_code
+
+tests\unit\test_api_endpoints_coverage.py:163: AssertionError</failure></testcase><testcase classname="tests.unit.test_api_endpoints_coverage.TestAPIEndpointsCoverage" name="test_model_training_endpoint" time="0.004"><failure message="assert 404 in [200, 401, 422, 500]&#10; +  where 404 = &lt;Response [404 Not Found]&gt;.status_code">self = &lt;test_api_endpoints_coverage.TestAPIEndpointsCoverage object at 0x000002489A64BA70&gt;
+mock_auth = &lt;AsyncMock name='get_authenticated_user' id='2510852697904'&gt;
+client = &lt;tests.helpers.robust_testclient.RobustTestClient object at 0x000002489A7B9CD0&gt;
+
+    @patch('backend.api.main.get_authenticated_user')
+    def test_model_training_endpoint(self, mock_auth, client):
+        """Test ML model training endpoint"""
+        mock_auth.return_value = Mock(username="test_user", roles=["admin"])
+    
+        with patch.object(app.state, 'ensemble_model', create=True) as mock_model:
+            mock_model.train_models = AsyncMock(return_value=True)
+    
+            response = client.post("/api/v1/models/train",
+                                 json={"retrain": True},
+                                 headers={"Authorization": "Bearer test_token"})
+&gt;           assert response.status_code in [200, 401, 422, 500]
+E           assert 404 in [200, 401, 422, 500]
+E            +  where 404 = &lt;Response [404 Not Found]&gt;.status_code
+
+tests\unit\test_api_endpoints_coverage.py:176: AssertionError</failure></testcase><testcase classname="tests.unit.test_api_endpoints_coverage.TestAPIEndpointsCoverage" name="test_model_status_endpoint" time="0.005"><failure message="assert 404 in [200, 401, 422]&#10; +  where 404 = &lt;Response [404 Not Found]&gt;.status_code">self = &lt;test_api_endpoints_coverage.TestAPIEndpointsCoverage object at 0x000002489A64BBF0&gt;
+mock_auth = &lt;AsyncMock name='get_authenticated_user' id='2510852689696'&gt;
+client = &lt;tests.helpers.robust_testclient.RobustTestClient object at 0x000002489A7B93D0&gt;
+
+    @patch('backend.api.main.get_authenticated_user')
+    def test_model_status_endpoint(self, mock_auth, client):
+        """Test ML model status endpoint"""
+        mock_auth.return_value = Mock(username="test_user", roles=["trader"])
+    
+        with patch.object(app.state, 'ensemble_model', create=True) as mock_model:
+            mock_model.get_model_status = Mock(return_value={"status": "trained"})
+    
+            response = client.get("/api/v1/models/status",
+                                headers={"Authorization": "Bearer test_token"})
+&gt;           assert response.status_code in [200, 401, 422]
+E           assert 404 in [200, 401, 422]
+E            +  where 404 = &lt;Response [404 Not Found]&gt;.status_code
+
+tests\unit\test_api_endpoints_coverage.py:188: AssertionError</failure></testcase><testcase classname="tests.unit.test_api_endpoints_coverage.TestAPIEndpointsCoverage" name="test_risk_management_endpoints" time="0.007" /><testcase classname="tests.unit.test_api_endpoints_coverage.TestAPIEndpointsCoverage" name="test_exception_handlers" time="0.005"><failure message="assert 401 in [400, 422]&#10; +  where 401 = &lt;Response [401 Unauthorized]&gt;.status_code">self = &lt;test_api_endpoints_coverage.TestAPIEndpointsCoverage object at 0x000002489A64BF80&gt;
+client = &lt;tests.helpers.robust_testclient.RobustTestClient object at 0x0000024899220C20&gt;
+
+    def test_exception_handlers(self, client):
+        """Test various exception handlers"""
+        # Test routes that don't exist to trigger 404
+        response = client.get("/nonexistent")
+        assert response.status_code == 404
+    
+        # Test routes with malformed data
+        response = client.post("/auth/login", json={"malformed": "data"})
+&gt;       assert response.status_code in [400, 422]
+E       assert 401 in [400, 422]
+E        +  where 401 = &lt;Response [401 Unauthorized]&gt;.status_code
+
+tests\unit\test_api_endpoints_coverage.py:218: AssertionError</failure></testcase><testcase classname="tests.unit.test_api_endpoints_coverage.TestAPIEndpointsCoverage" name="test_websocket_endpoint_setup" time="0.004" /><testcase classname="tests.unit.test_api_endpoints_coverage.TestAPIEndpointsCoverage" name="test_trade_history_endpoint" time="0.003"><failure message="assert 404 in [200, 401, 422]&#10; +  where 404 = &lt;Response [404 Not Found]&gt;.status_code">self = &lt;test_api_endpoints_coverage.TestAPIEndpointsCoverage object at 0x000002489A64B9B0&gt;
+mock_auth = &lt;AsyncMock name='get_authenticated_user' id='2510852771904'&gt;
+client = &lt;tests.helpers.robust_testclient.RobustTestClient object at 0x000002489A3CD2B0&gt;
+
+    @patch('backend.api.main.get_authenticated_user')
+    def test_trade_history_endpoint(self, mock_auth, client):
+        """Test trade history endpoint"""
+        mock_auth.return_value = Mock(username="test_user", roles=["trader"])
+    
+        with patch.object(app.state, 'alpaca_client', create=True) as mock_alpaca:
+            mock_alpaca.get_orders = AsyncMock(return_value=[])
+    
+            response = client.get("/api/v1/trades/history",
+                                headers={"Authorization": "Bearer test_token"})
+&gt;           assert response.status_code in [200, 401, 422]
+E           assert 404 in [200, 401, 422]
+E            +  where 404 = &lt;Response [404 Not Found]&gt;.status_code
+
+tests\unit\test_api_endpoints_coverage.py:244: AssertionError</failure></testcase><testcase classname="tests.unit.test_api_endpoints_coverage.TestAPIEndpointsCoverage" name="test_dependency_injection_functions" time="0.001"><failure message="ImportError: cannot import name 'get_risk_manager' from 'backend.api.main' (C:\Users\Marsel\intra\algotrading_platform\backend\api\main.py)">self = &lt;test_api_endpoints_coverage.TestAPIEndpointsCoverage object at 0x000002489A64B050&gt;
+
+    def test_dependency_injection_functions(self):
+        """Test dependency injection functions"""
+&gt;       from backend.api.main import (
+            get_risk_manager, get_ensemble_model, get_strategy_manager,
+            get_alpaca_client, get_sentiment_analyzer, get_feature_engineer,
+            get_model_manager, get_ws_manager
+        )
+E       ImportError: cannot import name 'get_risk_manager' from 'backend.api.main' (C:\Users\Marsel\intra\algotrading_platform\backend\api\main.py)
+
+tests\unit\test_api_endpoints_coverage.py:248: ImportError</failure></testcase><testcase classname="tests.unit.test_api_endpoints_coverage.TestAPIEndpointsCoverage" name="test_lifespan_function" time="0.001"><failure message="ImportError: cannot import name 'lifespan' from 'backend.api.main' (C:\Users\Marsel\intra\algotrading_platform\backend\api\main.py)">self = &lt;test_api_endpoints_coverage.TestAPIEndpointsCoverage object at 0x000002489A6801A0&gt;
+
+    def test_lifespan_function(self):
+        """Test lifespan function components"""
+&gt;       from backend.api.main import lifespan, start_market_data_stream, start_model_retraining_loop
+E       ImportError: cannot import name 'lifespan' from 'backend.api.main' (C:\Users\Marsel\intra\algotrading_platform\backend\api\main.py)
+
+tests\unit\test_api_endpoints_coverage.py:272: ImportError</failure></testcase><testcase classname="tests.unit.test_api_endpoints_coverage.TestAPIEndpointsCoverage" name="test_error_handler_functions" time="0.001"><failure message="ImportError: cannot import name 'http_exception_handler' from 'backend.api.main' (C:\Users\Marsel\intra\algotrading_platform\backend\api\main.py)">self = &lt;test_api_endpoints_coverage.TestAPIEndpointsCoverage object at 0x000002489A6803B0&gt;
+
+    def test_error_handler_functions(self):
+        """Test error handler functions"""
+&gt;       from backend.api.main import (
+            http_exception_handler, validation_exception_handler,
+            general_exception_handler, schema_validation_exception_handler,
+            lookahead_leak_exception_handler
+        )
+E       ImportError: cannot import name 'http_exception_handler' from 'backend.api.main' (C:\Users\Marsel\intra\algotrading_platform\backend\api\main.py)
+
+tests\unit\test_api_endpoints_coverage.py:282: ImportError</failure></testcase><testcase classname="tests.unit.test_api_endpoints_coverage.TestAPIEndpointsCoverage" name="test_order_cancellation_endpoint" time="0.005" /><testcase classname="tests.unit.test_api_endpoints_coverage.TestAPIEndpointsCoverage" name="test_sentiment_analysis_endpoints" time="0.003" /><testcase classname="tests.unit.test_api_endpoints_coverage.TestAPIEndpointsCoverage" name="test_pydantic_models_coverage" time="0.001"><failure message="ImportError: cannot import name 'PYDANTIC_AVAILABLE' from 'backend.api.main' (C:\Users\Marsel\intra\algotrading_platform\backend\api\main.py)">self = &lt;test_api_endpoints_coverage.TestAPIEndpointsCoverage object at 0x000002489A6808F0&gt;
+
+    def test_pydantic_models_coverage(self):
+        """Test Pydantic model creation and validation"""
+        # Test various response models that exist in the API
+&gt;       from backend.api.main import PYDANTIC_AVAILABLE
+E       ImportError: cannot import name 'PYDANTIC_AVAILABLE' from 'backend.api.main' (C:\Users\Marsel\intra\algotrading_platform\backend\api\main.py)
+
+tests\unit\test_api_endpoints_coverage.py:330: ImportError</failure></testcase></testsuite></testsuites>

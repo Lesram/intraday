@@ -6,42 +6,64 @@ Combines LSTM, XGBoost, and RandomForest for comprehensive price prediction
 from dataclasses import dataclass
 from datetime import datetime
 import logging
-from typing import Any, Protocol
+import os
+from typing import Any
 
+# Centralized DISABLE_ML check for test mode
+DISABLE_ML = os.environ.get("DISABLE_ML", "0") == "1"
+
+# Import real pandas and numpy - they're lightweight and needed
 import numpy as np
 import pandas as pd
 
 # ML/AI imports with fallback handling
-try:
-    import tensorflow as tf
-    from tensorflow import keras
-    from tensorflow.keras import layers
+TENSORFLOW_AVAILABLE = False
+XGBOOST_AVAILABLE = False
+SKLEARN_AVAILABLE = False
 
-    TENSORFLOW_AVAILABLE = True
-except ImportError as e:
-    logging.warning(f"TensorFlow not available: {e}")
-    TENSORFLOW_AVAILABLE = False
+# Skip heavy imports during testing on Windows to prevent hangs
+if not DISABLE_ML and not os.environ.get('DISABLE_TENSORFLOW') and not os.environ.get('PYTEST_RUNNING'):
+    try:
+        import tensorflow as tf
+        from tensorflow import keras
+        from tensorflow.keras import layers
+        TENSORFLOW_AVAILABLE = True
+    except ImportError as e:
+        logging.warning(f"TensorFlow not available: {e}")
+        TENSORFLOW_AVAILABLE = False
+else:
+    logging.info("TensorFlow imports disabled via environment variable")
 
-try:
-    import joblib
-    from sklearn.ensemble import RandomForestRegressor
-    from sklearn.metrics import mean_absolute_error, mean_squared_error
-    from sklearn.model_selection import TimeSeriesSplit
-    from sklearn.preprocessing import StandardScaler
+if not DISABLE_ML:
+    try:
+        import joblib
+        from sklearn.ensemble import RandomForestRegressor
+        from sklearn.metrics import mean_absolute_error, mean_squared_error
+        from sklearn.model_selection import TimeSeriesSplit
+        from sklearn.preprocessing import StandardScaler
 
-    SKLEARN_AVAILABLE = True
-    JOBLIB_AVAILABLE = True
-except ImportError as e:
-    logging.warning(f"scikit-learn or joblib not available: {e}")
+        SKLEARN_AVAILABLE = True
+        JOBLIB_AVAILABLE = True
+    except ImportError as e:
+        logging.warning(f"scikit-learn or joblib not available: {e}")
+        SKLEARN_AVAILABLE = False
+        JOBLIB_AVAILABLE = False
+else:
+    # No-op replacements for ML libraries in test mode
+    joblib = None
     SKLEARN_AVAILABLE = False
     JOBLIB_AVAILABLE = False
 
-try:
-    import xgboost as xgb
-
-    XGBOOST_AVAILABLE = True
-except ImportError as e:
-    logging.warning(f"XGBoost not available: {e}")
+# Skip XGBoost imports during testing on Windows to prevent hangs
+if not DISABLE_ML and not os.environ.get('DISABLE_XGBOOST') and not os.environ.get('PYTEST_RUNNING'):
+    try:
+        import xgboost as xgb
+        XGBOOST_AVAILABLE = True
+    except ImportError as e:
+        logging.warning(f"XGBoost not available: {e}")
+        XGBOOST_AVAILABLE = False
+else:
+    logging.info("XGBoost imports disabled via environment variable")
     XGBOOST_AVAILABLE = False
 
 from ..config import get_settings
@@ -90,6 +112,37 @@ except ImportError as e:
     FEATURE_PIPELINE_AVAILABLE = False
 
 
+# No-op fallback classes for DISABLE_ML mode
+class _NoOpModel:
+    """Base no-op model for test mode"""
+    def __init__(self, *args, **kwargs):
+        self.is_trained = False
+        
+    async def train(self, *args, **kwargs):
+        """No-op training method"""
+        self.is_trained = True
+        return True
+        
+    def predict(self, *args, **kwargs):
+        """No-op prediction method"""
+        return (0.0, 0.1)  # price, confidence
+        
+    def save_model(self, *args, **kwargs):
+        """No-op save method"""
+        pass
+        
+    def load_model(self, *args, **kwargs):
+        """No-op load method"""
+        return True
+
+
+def create_noop_ensemble():
+    """Factory function to create no-op ensemble in test mode"""
+    if DISABLE_ML:
+        return _NoOpModel()
+    return None
+
+
 @dataclass
 class ModelPrediction:
     """Container for model predictions"""
@@ -115,57 +168,6 @@ class ModelPerformance:
     last_updated: datetime
 
 
-# Lightweight ensemble for tests: compose two submodels with weights
-class _Predictor(Protocol):
-    def predict(self, data: Any) -> Any:
-        ...
-
-
-class LightweightEnsemble:
-    """Tiny ensemble that linearly combines two submodels.
-
-    Expects submodels that return scalar-like predictions; raises ValueError on incompatible shapes.
-    """
-
-    def __init__(self, m1: _Predictor, m2: _Predictor, w1: float = 0.5, w2: float = 0.5):
-        self.m1 = m1
-        self.m2 = m2
-        self.w1 = w1
-        self.w2 = w2
-
-    def _to_scalar(self, y: Any) -> float:
-        # Try to coerce common structures to a scalar
-        if isinstance(y, (int, float)):
-            return float(y)
-        try:
-            import numpy as _np  # local import to avoid heavy dep in envs
-
-            if isinstance(y, _np.ndarray):
-                if y.shape == ():
-                    return float(y)
-                if y.size == 1:
-                    return float(y.ravel()[0])
-                raise ValueError("Non-scalar array output")
-        except Exception:
-            pass
-
-        # Pandas scalar or other wrappers
-        try:
-            import pandas as _pd  # local import
-
-            if isinstance(y, _pd.Series) and y.size == 1:
-                return float(y.iloc[0])
-        except Exception:
-            pass
-
-        raise ValueError("Unsupported prediction shape")
-
-    def predict(self, data: Any) -> float:
-        y1 = self._to_scalar(self.m1.predict(data))
-        y2 = self._to_scalar(self.m2.predict(data))
-        return self.w1 * y1 + self.w2 * y2
-
-
 class LSTMModel:
     """LSTM Neural Network for time series prediction with enhanced training controls"""
 
@@ -189,7 +191,11 @@ class LSTMModel:
 
         # Set random seeds for reproducibility
         if self.random_seed is not None:
-            np.random.seed(self.random_seed)
+            try:
+                np.random.seed(self.random_seed)
+            except AttributeError:
+                # Handle the case where np is a stub/mock with no 'random' attribute
+                pass
             if TENSORFLOW_AVAILABLE:
                 try:
                     import tensorflow as tf

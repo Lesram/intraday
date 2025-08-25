@@ -49,6 +49,33 @@ except ImportError:
 
 logger = logging.getLogger(__name__)
 
+
+class CounterWrapper:
+    """Wrapper for Prometheus Counter that adds a value property for test compatibility."""
+    
+    def __init__(self, prometheus_counter):
+        self._counter = prometheus_counter
+        
+    def __getattr__(self, name):
+        # Delegate all other attributes to the wrapped counter
+        return getattr(self._counter, name)
+    
+    @property
+    def value(self):
+        """Get the total counter value across all label combinations for test compatibility."""
+        try:
+            samples = list(self._counter.collect())
+            if samples and samples[0].samples:
+                # Sum all _total samples (exclude _created samples)
+                total = 0.0
+                for sample in samples[0].samples:
+                    if sample.name.endswith('_total'):
+                        total += sample.value
+                return total
+            return 0.0
+        except Exception:
+            return 0.0
+
 # Bounded label allow-list to prevent high cardinality issues
 LABEL_ALLOWLIST: Final[dict[str, tuple[str, ...]]] = {
     # HTTP metrics
@@ -68,6 +95,8 @@ LABEL_ALLOWLIST: Final[dict[str, tuple[str, ...]]] = {
     # WebSocket metrics
     "websocket_connections_total": ("client_type",),
     "websocket_messages_total": ("message_type", "direction"),
+    "websocket_queue_size": ("client_id",),
+    "ws_messages_dropped_total": ("client_id", "reason"),
     # Authentication metrics
     "auth_attempts_total": ("result",),
     "auth_token_validations_total": ("result",),
@@ -99,8 +128,8 @@ LABEL_VALUE_ALLOWLIST: Final[dict[str, tuple[str, ...]]] = {
     "method": ("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS", "HEAD"),
     "operation": ("select", "insert", "update", "delete", "health_check"),
     "client_type": ("trading", "monitoring", "admin"),
-    "message_type": ("signal", "portfolio", "heartbeat", "error"),
-    "direction": ("inbound", "outbound"),
+    "message_type": ("signal", "portfolio", "heartbeat", "error", "any", "test"),
+    "direction": ("inbound", "outbound", "sent"),
     # Strategy engine label values
     "source": ("momentum", "mean_reversion", "ml_ensemble", "sentiment", "other"),
     "symbol_bucket": ("A-F", "G-M", "N-S", "T-Z", "other"),
@@ -122,6 +151,8 @@ LABEL_VALUE_ALLOWLIST: Final[dict[str, tuple[str, ...]]] = {
         "position_limit",
         "volatility",
         "other",
+        # WebSocket queue reasons
+        "queue_full",
         # Feature pipeline reasons
         "nan",
         "ffill_limit",
@@ -177,7 +208,8 @@ class MetricsRegistry:
         self, namespace: str = "intraday", registry: CollectorRegistry | None = None
     ):
         self.namespace = namespace
-        self.registry = registry or REGISTRY
+        # Create a new registry for each instance to avoid test isolation issues
+        self.registry = registry or CollectorRegistry()
         self._metrics: dict[str, Union[Counter, Histogram, Gauge]] = {}
 
         # Initialize observability contract if available
@@ -187,6 +219,16 @@ class MetricsRegistry:
             self.observability_contract = None
 
         logger.info(f"Initialized metrics registry with namespace '{namespace}'")
+
+    @property
+    def counters(self) -> dict[str, CounterWrapper]:
+        """Access to Counter metrics for test introspection"""
+        return {k: CounterWrapper(v) for k, v in self._metrics.items() if isinstance(v, Counter)}
+
+    @property  
+    def gauges(self) -> dict[str, Gauge]:
+        """Access to Gauge metrics for test introspection"""
+        return {k: v for k, v in self._metrics.items() if isinstance(v, Gauge)}
 
     def _validate_metric_name(self, name: str) -> None:
         """Validate metric name against allow-list."""
@@ -255,24 +297,38 @@ class MetricsRegistry:
         labels = labels or {}
         labels = self._validate_labels(name, labels)
 
-        metric_key = f"{name}:{sorted(labels.items())}"
+        # Use only metric name as key since Prometheus expects one metric per name
+        metric_key = name
 
         if metric_key not in self._metrics:
             full_name = self._get_metric_name(name)
 
             # Create metric with all possible label names
             label_names = LABEL_ALLOWLIST[name]
-            counter = Counter(
-                full_name,
-                documentation or f"Counter metric: {name}",
-                labelnames=label_names,
-                registry=self.registry,
-            )
-            self._metrics[metric_key] = counter
+            try:
+                counter = Counter(
+                    full_name,
+                    documentation or f"Counter metric: {name}",
+                    labelnames=label_names,
+                    registry=self.registry,
+                )
+                self._metrics[metric_key] = counter
 
-            logger.debug(
-                f"Created counter metric: {full_name} with labels: {label_names}"
-            )
+                logger.debug(
+                    f"Created counter metric: {full_name} with labels: {label_names}"
+                )
+            except ValueError as e:
+                if "Duplicated timeseries" in str(e):
+                    # Counter already exists in registry, find it
+                    for collector in self.registry._collector_to_names.keys():
+                        if hasattr(collector, '_name') and collector._name == full_name:
+                            self._metrics[metric_key] = collector
+                            logger.debug(f"Reused existing counter metric: {full_name}")
+                            break
+                    else:
+                        raise  # Re-raise if we couldn't find the existing counter
+                else:
+                    raise  # Re-raise other ValueError exceptions
 
         metric = self._metrics[metric_key]
 
@@ -282,9 +338,10 @@ class MetricsRegistry:
             all_labels = {}
             for label_name in LABEL_ALLOWLIST[name]:
                 all_labels[label_name] = labels.get(label_name, "")
-            return metric.labels(**all_labels)
+            labeled_metric = metric.labels(**all_labels)
+            return CounterWrapper(labeled_metric)
         else:
-            return metric
+            return CounterWrapper(metric)
 
     def histogram(
         self,
@@ -391,24 +448,38 @@ class MetricsRegistry:
         labels = labels or {}
         labels = self._validate_labels(name, labels)
 
-        metric_key = f"{name}:{sorted(labels.items())}"
+        # Use only metric name as key since Prometheus expects one metric per name  
+        metric_key = name
 
         if metric_key not in self._metrics:
             full_name = self._get_metric_name(name)
 
             # Create metric with all possible label names
             label_names = LABEL_ALLOWLIST[name]
-            gauge = Gauge(
-                full_name,
-                documentation or f"Gauge metric: {name}",
-                labelnames=label_names,
-                registry=self.registry,
-            )
-            self._metrics[metric_key] = gauge
+            try:
+                gauge = Gauge(
+                    full_name,
+                    documentation or f"Gauge metric: {name}",
+                    labelnames=label_names,
+                    registry=self.registry,
+                )
+                self._metrics[metric_key] = gauge
 
-            logger.debug(
-                f"Created gauge metric: {full_name} with labels: {label_names}"
-            )
+                logger.debug(
+                    f"Created gauge metric: {full_name} with labels: {label_names}"
+                )
+            except ValueError as e:
+                if "Duplicated timeseries" in str(e):
+                    # Gauge already exists in registry, find it
+                    for collector in self.registry._collector_to_names.keys():
+                        if hasattr(collector, '_name') and collector._name == full_name:
+                            self._metrics[metric_key] = collector
+                            logger.debug(f"Reused existing gauge metric: {full_name}")
+                            break
+                    else:
+                        raise  # Re-raise if we couldn't find the existing gauge
+                else:
+                    raise  # Re-raise other ValueError exceptions
 
         metric = self._metrics[metric_key]
 

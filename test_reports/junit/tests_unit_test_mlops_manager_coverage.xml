@@ -1,0 +1,697 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="19" skipped="0" tests="20" time="1.757" timestamp="2025-08-24T17:08:01.328002-07:00" hostname="BOOK-FVJOEO3Q00"><testcase classname="tests.unit.test_mlops_manager_coverage.TestMLOpsModelManagerCoverage" name="test_model_manager_initialization" time="0.049" /><testcase classname="tests.unit.test_mlops_manager_coverage.TestMLOpsModelManagerCoverage" name="test_model_registration_functionality" time="0.001"><failure message="ImportError: cannot import name 'register_new_model' from 'backend.mlops.model_manager' (C:\Users\Marsel\intra\algotrading_platform\backend\mlops\model_manager.py)">self = &lt;test_mlops_manager_coverage.TestMLOpsModelManagerCoverage object at 0x000001EFD7E5A000&gt;
+mock_model_metadata = {'feature_names': ['rsi', 'macd', 'volume', 'sma_20'], 'model_id': 'model_123', 'performance_metrics': {'accuracy': 0.82, 'precision': 0.78, 'recall': 0.85}, 'target_variable': 'signal_direction', ...}
+
+    @pytest.mark.unit
+    def test_model_registration_functionality(self, mock_model_metadata):
+        """Test model registration functionality."""
+        with patch('backend.mlops.model_manager.register_model') as mock_register:
+            mock_register.return_value = {
+                'registration_id': 'reg_456',
+                'status': 'registered',
+                'model_uri': 's3://models/ensemble_v1.pkl'
+            }
+    
+&gt;           from backend.mlops.model_manager import register_new_model
+E           ImportError: cannot import name 'register_new_model' from 'backend.mlops.model_manager' (C:\Users\Marsel\intra\algotrading_platform\backend\mlops\model_manager.py)
+
+tests\unit\test_mlops_manager_coverage.py:66: ImportError</failure></testcase><testcase classname="tests.unit.test_mlops_manager_coverage.TestMLOpsModelManagerCoverage" name="test_model_versioning_system" time="0.001"><failure message="AttributeError: &lt;module 'backend.mlops.model_manager' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\mlops\\model_manager.py'&gt; does not have the attribute 'create_model_version'">self = &lt;test_mlops_manager_coverage.TestMLOpsModelManagerCoverage object at 0x000001EFD7FC51F0&gt;
+
+    @pytest.mark.unit
+    def test_model_versioning_system(self):
+        """Test model versioning system."""
+&gt;       with patch('backend.mlops.model_manager.create_model_version') as mock_version:
+
+tests\unit\test_mlops_manager_coverage.py:77: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1458: in __enter__
+    original, local = self.get_original()
+                      ^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;unittest.mock._patch object at 0x000001EFD7F2ED80&gt;
+
+    def get_original(self):
+        target = self.getter()
+        name = self.attribute
+    
+        original = DEFAULT
+        local = False
+    
+        try:
+            original = target.__dict__[name]
+        except (AttributeError, KeyError):
+            original = getattr(target, name, DEFAULT)
+        else:
+            local = True
+    
+        if name in _builtins and isinstance(target, ModuleType):
+            self.create = True
+    
+        if not self.create and original is DEFAULT:
+&gt;           raise AttributeError(
+                "%s does not have the attribute %r" % (target, name)
+            )
+E           AttributeError: &lt;module 'backend.mlops.model_manager' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\mlops\\model_manager.py'&gt; does not have the attribute 'create_model_version'
+
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1431: AttributeError</failure></testcase><testcase classname="tests.unit.test_mlops_manager_coverage.TestMLOpsModelManagerCoverage" name="test_model_deployment_pipeline" time="0.001"><failure message="AttributeError: &lt;module 'backend.mlops.model_manager' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\mlops\\model_manager.py'&gt; does not have the attribute 'deploy_model'">self = &lt;test_mlops_manager_coverage.TestMLOpsModelManagerCoverage object at 0x000001EFD7FC53A0&gt;
+
+    @pytest.mark.unit
+    def test_model_deployment_pipeline(self):
+        """Test model deployment pipeline."""
+&gt;       with patch('backend.mlops.model_manager.deploy_model') as mock_deploy:
+
+tests\unit\test_mlops_manager_coverage.py:101: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1458: in __enter__
+    original, local = self.get_original()
+                      ^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;unittest.mock._patch object at 0x000001EFD80D1310&gt;
+
+    def get_original(self):
+        target = self.getter()
+        name = self.attribute
+    
+        original = DEFAULT
+        local = False
+    
+        try:
+            original = target.__dict__[name]
+        except (AttributeError, KeyError):
+            original = getattr(target, name, DEFAULT)
+        else:
+            local = True
+    
+        if name in _builtins and isinstance(target, ModuleType):
+            self.create = True
+    
+        if not self.create and original is DEFAULT:
+&gt;           raise AttributeError(
+                "%s does not have the attribute %r" % (target, name)
+            )
+E           AttributeError: &lt;module 'backend.mlops.model_manager' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\mlops\\model_manager.py'&gt; does not have the attribute 'deploy_model'
+
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1431: AttributeError</failure></testcase><testcase classname="tests.unit.test_mlops_manager_coverage.TestMLOpsModelManagerCoverage" name="test_model_monitoring_system" time="0.001"><failure message="AttributeError: &lt;module 'backend.mlops.model_manager' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\mlops\\model_manager.py'&gt; does not have the attribute 'monitor_model_performance'">self = &lt;test_mlops_manager_coverage.TestMLOpsModelManagerCoverage object at 0x000001EFD7FC5520&gt;
+
+    @pytest.mark.unit
+    def test_model_monitoring_system(self):
+        """Test model monitoring system."""
+&gt;       with patch('backend.mlops.model_manager.monitor_model_performance') as mock_monitor:
+
+tests\unit\test_mlops_manager_coverage.py:125: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1458: in __enter__
+    original, local = self.get_original()
+                      ^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;unittest.mock._patch object at 0x000001EFD80D2480&gt;
+
+    def get_original(self):
+        target = self.getter()
+        name = self.attribute
+    
+        original = DEFAULT
+        local = False
+    
+        try:
+            original = target.__dict__[name]
+        except (AttributeError, KeyError):
+            original = getattr(target, name, DEFAULT)
+        else:
+            local = True
+    
+        if name in _builtins and isinstance(target, ModuleType):
+            self.create = True
+    
+        if not self.create and original is DEFAULT:
+&gt;           raise AttributeError(
+                "%s does not have the attribute %r" % (target, name)
+            )
+E           AttributeError: &lt;module 'backend.mlops.model_manager' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\mlops\\model_manager.py'&gt; does not have the attribute 'monitor_model_performance'
+
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1431: AttributeError</failure></testcase><testcase classname="tests.unit.test_mlops_manager_coverage.TestMLOpsModelManagerCoverage" name="test_model_rollback_functionality" time="0.001"><failure message="AttributeError: &lt;module 'backend.mlops.model_manager' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\mlops\\model_manager.py'&gt; does not have the attribute 'rollback_deployment'">self = &lt;test_mlops_manager_coverage.TestMLOpsModelManagerCoverage object at 0x000001EFD7FC56A0&gt;
+
+    @pytest.mark.unit
+    def test_model_rollback_functionality(self):
+        """Test model rollback functionality."""
+&gt;       with patch('backend.mlops.model_manager.rollback_deployment') as mock_rollback:
+
+tests\unit\test_mlops_manager_coverage.py:148: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1458: in __enter__
+    original, local = self.get_original()
+                      ^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;unittest.mock._patch object at 0x000001EFD80D21E0&gt;
+
+    def get_original(self):
+        target = self.getter()
+        name = self.attribute
+    
+        original = DEFAULT
+        local = False
+    
+        try:
+            original = target.__dict__[name]
+        except (AttributeError, KeyError):
+            original = getattr(target, name, DEFAULT)
+        else:
+            local = True
+    
+        if name in _builtins and isinstance(target, ModuleType):
+            self.create = True
+    
+        if not self.create and original is DEFAULT:
+&gt;           raise AttributeError(
+                "%s does not have the attribute %r" % (target, name)
+            )
+E           AttributeError: &lt;module 'backend.mlops.model_manager' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\mlops\\model_manager.py'&gt; does not have the attribute 'rollback_deployment'
+
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1431: AttributeError</failure></testcase><testcase classname="tests.unit.test_mlops_manager_coverage.TestMLOpsModelManagerCoverage" name="test_model_a_b_testing" time="0.001"><failure message="AttributeError: &lt;module 'backend.mlops.model_manager' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\mlops\\model_manager.py'&gt; does not have the attribute 'setup_ab_test'">self = &lt;test_mlops_manager_coverage.TestMLOpsModelManagerCoverage object at 0x000001EFD7FC5820&gt;
+
+    @pytest.mark.unit
+    def test_model_a_b_testing(self):
+        """Test A/B testing functionality."""
+&gt;       with patch('backend.mlops.model_manager.setup_ab_test') as mock_ab_test:
+
+tests\unit\test_mlops_manager_coverage.py:168: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1458: in __enter__
+    original, local = self.get_original()
+                      ^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;unittest.mock._patch object at 0x000001EFD80D3CB0&gt;
+
+    def get_original(self):
+        target = self.getter()
+        name = self.attribute
+    
+        original = DEFAULT
+        local = False
+    
+        try:
+            original = target.__dict__[name]
+        except (AttributeError, KeyError):
+            original = getattr(target, name, DEFAULT)
+        else:
+            local = True
+    
+        if name in _builtins and isinstance(target, ModuleType):
+            self.create = True
+    
+        if not self.create and original is DEFAULT:
+&gt;           raise AttributeError(
+                "%s does not have the attribute %r" % (target, name)
+            )
+E           AttributeError: &lt;module 'backend.mlops.model_manager' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\mlops\\model_manager.py'&gt; does not have the attribute 'setup_ab_test'
+
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1431: AttributeError</failure></testcase><testcase classname="tests.unit.test_mlops_manager_coverage.TestMLOpsModelManagerCoverage" name="test_model_performance_tracking" time="0.001"><failure message="AttributeError: &lt;module 'backend.mlops.model_manager' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\mlops\\model_manager.py'&gt; does not have the attribute 'track_performance'">self = &lt;test_mlops_manager_coverage.TestMLOpsModelManagerCoverage object at 0x000001EFD7FC5040&gt;
+
+    @pytest.mark.unit
+    def test_model_performance_tracking(self):
+        """Test model performance tracking."""
+&gt;       with patch('backend.mlops.model_manager.track_performance') as mock_track:
+
+tests\unit\test_mlops_manager_coverage.py:194: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1458: in __enter__
+    original, local = self.get_original()
+                      ^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;unittest.mock._patch object at 0x000001EFD7F2D010&gt;
+
+    def get_original(self):
+        target = self.getter()
+        name = self.attribute
+    
+        original = DEFAULT
+        local = False
+    
+        try:
+            original = target.__dict__[name]
+        except (AttributeError, KeyError):
+            original = getattr(target, name, DEFAULT)
+        else:
+            local = True
+    
+        if name in _builtins and isinstance(target, ModuleType):
+            self.create = True
+    
+        if not self.create and original is DEFAULT:
+&gt;           raise AttributeError(
+                "%s does not have the attribute %r" % (target, name)
+            )
+E           AttributeError: &lt;module 'backend.mlops.model_manager' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\mlops\\model_manager.py'&gt; does not have the attribute 'track_performance'
+
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1431: AttributeError</failure></testcase><testcase classname="tests.unit.test_mlops_manager_coverage.TestMLOpsModelManagerCoverage" name="test_model_artifact_management" time="0.001"><failure message="AttributeError: &lt;module 'backend.mlops.model_manager' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\mlops\\model_manager.py'&gt; does not have the attribute 'manage_artifacts'">self = &lt;test_mlops_manager_coverage.TestMLOpsModelManagerCoverage object at 0x000001EFD7FC55E0&gt;
+
+    @pytest.mark.unit
+    def test_model_artifact_management(self):
+        """Test model artifact management."""
+&gt;       with patch('backend.mlops.model_manager.manage_artifacts') as mock_artifacts:
+
+tests\unit\test_mlops_manager_coverage.py:222: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1458: in __enter__
+    original, local = self.get_original()
+                      ^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;unittest.mock._patch object at 0x000001EFD80D12B0&gt;
+
+    def get_original(self):
+        target = self.getter()
+        name = self.attribute
+    
+        original = DEFAULT
+        local = False
+    
+        try:
+            original = target.__dict__[name]
+        except (AttributeError, KeyError):
+            original = getattr(target, name, DEFAULT)
+        else:
+            local = True
+    
+        if name in _builtins and isinstance(target, ModuleType):
+            self.create = True
+    
+        if not self.create and original is DEFAULT:
+&gt;           raise AttributeError(
+                "%s does not have the attribute %r" % (target, name)
+            )
+E           AttributeError: &lt;module 'backend.mlops.model_manager' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\mlops\\model_manager.py'&gt; does not have the attribute 'manage_artifacts'
+
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1431: AttributeError</failure></testcase><testcase classname="tests.unit.test_mlops_manager_coverage.TestMLOpsModelManagerCoverage" name="test_model_validation_pipeline" time="0.001"><failure message="AttributeError: &lt;module 'backend.mlops.model_manager' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\mlops\\model_manager.py'&gt; does not have the attribute 'validate_model'">self = &lt;test_mlops_manager_coverage.TestMLOpsModelManagerCoverage object at 0x000001EFD7FC5A00&gt;
+
+    @pytest.mark.unit
+    def test_model_validation_pipeline(self):
+        """Test model validation pipeline."""
+&gt;       with patch('backend.mlops.model_manager.validate_model') as mock_validate:
+
+tests\unit\test_mlops_manager_coverage.py:249: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1458: in __enter__
+    original, local = self.get_original()
+                      ^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;unittest.mock._patch object at 0x000001EFD80D1730&gt;
+
+    def get_original(self):
+        target = self.getter()
+        name = self.attribute
+    
+        original = DEFAULT
+        local = False
+    
+        try:
+            original = target.__dict__[name]
+        except (AttributeError, KeyError):
+            original = getattr(target, name, DEFAULT)
+        else:
+            local = True
+    
+        if name in _builtins and isinstance(target, ModuleType):
+            self.create = True
+    
+        if not self.create and original is DEFAULT:
+&gt;           raise AttributeError(
+                "%s does not have the attribute %r" % (target, name)
+            )
+E           AttributeError: &lt;module 'backend.mlops.model_manager' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\mlops\\model_manager.py'&gt; does not have the attribute 'validate_model'
+
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1431: AttributeError</failure></testcase><testcase classname="tests.unit.test_mlops_manager_coverage.TestMLOpsModelManagerCoverage" name="test_model_retraining_scheduler" time="0.001"><failure message="AttributeError: &lt;module 'backend.mlops.model_manager' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\mlops\\model_manager.py'&gt; does not have the attribute 'schedule_retraining'">self = &lt;test_mlops_manager_coverage.TestMLOpsModelManagerCoverage object at 0x000001EFD7FC5B80&gt;
+
+    @pytest.mark.unit
+    def test_model_retraining_scheduler(self):
+        """Test model retraining scheduler."""
+&gt;       with patch('backend.mlops.model_manager.schedule_retraining') as mock_schedule:
+
+tests\unit\test_mlops_manager_coverage.py:280: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1458: in __enter__
+    original, local = self.get_original()
+                      ^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;unittest.mock._patch object at 0x000001EFD80D1010&gt;
+
+    def get_original(self):
+        target = self.getter()
+        name = self.attribute
+    
+        original = DEFAULT
+        local = False
+    
+        try:
+            original = target.__dict__[name]
+        except (AttributeError, KeyError):
+            original = getattr(target, name, DEFAULT)
+        else:
+            local = True
+    
+        if name in _builtins and isinstance(target, ModuleType):
+            self.create = True
+    
+        if not self.create and original is DEFAULT:
+&gt;           raise AttributeError(
+                "%s does not have the attribute %r" % (target, name)
+            )
+E           AttributeError: &lt;module 'backend.mlops.model_manager' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\mlops\\model_manager.py'&gt; does not have the attribute 'schedule_retraining'
+
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1431: AttributeError</failure></testcase><testcase classname="tests.unit.test_mlops_manager_coverage.TestMLOpsModelManagerCoverage" name="test_data_drift_detection" time="0.001"><failure message="ImportError: cannot import name 'monitor_data_drift' from 'backend.mlops.model_manager' (C:\Users\Marsel\intra\algotrading_platform\backend\mlops\model_manager.py)">self = &lt;test_mlops_manager_coverage.TestMLOpsModelManagerCoverage object at 0x000001EFD7FC5D00&gt;
+
+    @pytest.mark.unit
+    def test_data_drift_detection(self):
+        """Test data drift detection."""
+        with patch('backend.mlops.model_manager.detect_data_drift') as mock_drift:
+            mock_drift.return_value = {
+                'drift_detected': True,
+                'drift_score': 0.65,
+                'affected_features': ['rsi', 'volume'],
+                'drift_type': 'covariate_shift',
+                'recommendation': 'retrain_model'
+            }
+    
+&gt;           from backend.mlops.model_manager import monitor_data_drift
+E           ImportError: cannot import name 'monitor_data_drift' from 'backend.mlops.model_manager' (C:\Users\Marsel\intra\algotrading_platform\backend\mlops\model_manager.py)
+
+tests\unit\test_mlops_manager_coverage.py:314: ImportError</failure></testcase><testcase classname="tests.unit.test_mlops_manager_coverage.TestMLOpsModelManagerCoverage" name="test_model_explainability_service" time="0.001"><failure message="AttributeError: &lt;module 'backend.mlops.model_manager' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\mlops\\model_manager.py'&gt; does not have the attribute 'generate_explanations'">self = &lt;test_mlops_manager_coverage.TestMLOpsModelManagerCoverage object at 0x000001EFD7FC5F40&gt;
+
+    @pytest.mark.unit
+    def test_model_explainability_service(self):
+        """Test model explainability service."""
+&gt;       with patch('backend.mlops.model_manager.generate_explanations') as mock_explain:
+
+tests\unit\test_mlops_manager_coverage.py:327: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1458: in __enter__
+    original, local = self.get_original()
+                      ^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;unittest.mock._patch object at 0x000001EFD81A0D10&gt;
+
+    def get_original(self):
+        target = self.getter()
+        name = self.attribute
+    
+        original = DEFAULT
+        local = False
+    
+        try:
+            original = target.__dict__[name]
+        except (AttributeError, KeyError):
+            original = getattr(target, name, DEFAULT)
+        else:
+            local = True
+    
+        if name in _builtins and isinstance(target, ModuleType):
+            self.create = True
+    
+        if not self.create and original is DEFAULT:
+&gt;           raise AttributeError(
+                "%s does not have the attribute %r" % (target, name)
+            )
+E           AttributeError: &lt;module 'backend.mlops.model_manager' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\mlops\\model_manager.py'&gt; does not have the attribute 'generate_explanations'
+
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1431: AttributeError</failure></testcase><testcase classname="tests.unit.test_mlops_manager_coverage.TestMLOpsModelManagerCoverage" name="test_model_security_scanning" time="0.001"><failure message="AttributeError: &lt;module 'backend.mlops.model_manager' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\mlops\\model_manager.py'&gt; does not have the attribute 'scan_model_security'">self = &lt;test_mlops_manager_coverage.TestMLOpsModelManagerCoverage object at 0x000001EFD7FC6120&gt;
+
+    @pytest.mark.unit
+    def test_model_security_scanning(self):
+        """Test model security scanning."""
+&gt;       with patch('backend.mlops.model_manager.scan_model_security') as mock_scan:
+
+tests\unit\test_mlops_manager_coverage.py:352: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1458: in __enter__
+    original, local = self.get_original()
+                      ^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;unittest.mock._patch object at 0x000001EFD81A0890&gt;
+
+    def get_original(self):
+        target = self.getter()
+        name = self.attribute
+    
+        original = DEFAULT
+        local = False
+    
+        try:
+            original = target.__dict__[name]
+        except (AttributeError, KeyError):
+            original = getattr(target, name, DEFAULT)
+        else:
+            local = True
+    
+        if name in _builtins and isinstance(target, ModuleType):
+            self.create = True
+    
+        if not self.create and original is DEFAULT:
+&gt;           raise AttributeError(
+                "%s does not have the attribute %r" % (target, name)
+            )
+E           AttributeError: &lt;module 'backend.mlops.model_manager' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\mlops\\model_manager.py'&gt; does not have the attribute 'scan_model_security'
+
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1431: AttributeError</failure></testcase><testcase classname="tests.unit.test_mlops_manager_coverage.TestMLOpsModelManagerCoverage" name="test_model_resource_optimization" time="0.001"><failure message="AttributeError: &lt;module 'backend.mlops.model_manager' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\mlops\\model_manager.py'&gt; does not have the attribute 'optimize_resources'">self = &lt;test_mlops_manager_coverage.TestMLOpsModelManagerCoverage object at 0x000001EFD7FC6300&gt;
+
+    @pytest.mark.unit
+    def test_model_resource_optimization(self):
+        """Test model resource optimization."""
+&gt;       with patch('backend.mlops.model_manager.optimize_resources') as mock_optimize:
+
+tests\unit\test_mlops_manager_coverage.py:371: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1458: in __enter__
+    original, local = self.get_original()
+                      ^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;unittest.mock._patch object at 0x000001EFD80D1370&gt;
+
+    def get_original(self):
+        target = self.getter()
+        name = self.attribute
+    
+        original = DEFAULT
+        local = False
+    
+        try:
+            original = target.__dict__[name]
+        except (AttributeError, KeyError):
+            original = getattr(target, name, DEFAULT)
+        else:
+            local = True
+    
+        if name in _builtins and isinstance(target, ModuleType):
+            self.create = True
+    
+        if not self.create and original is DEFAULT:
+&gt;           raise AttributeError(
+                "%s does not have the attribute %r" % (target, name)
+            )
+E           AttributeError: &lt;module 'backend.mlops.model_manager' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\mlops\\model_manager.py'&gt; does not have the attribute 'optimize_resources'
+
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1431: AttributeError</failure></testcase><testcase classname="tests.unit.test_mlops_manager_coverage.TestMLOpsModelManagerCoverage" name="test_model_lineage_tracking" time="0.001"><failure message="AttributeError: &lt;module 'backend.mlops.model_manager' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\mlops\\model_manager.py'&gt; does not have the attribute 'track_lineage'">self = &lt;test_mlops_manager_coverage.TestMLOpsModelManagerCoverage object at 0x000001EFD7FC64E0&gt;
+
+    @pytest.mark.unit
+    def test_model_lineage_tracking(self):
+        """Test model lineage tracking."""
+&gt;       with patch('backend.mlops.model_manager.track_lineage') as mock_lineage:
+
+tests\unit\test_mlops_manager_coverage.py:397: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1458: in __enter__
+    original, local = self.get_original()
+                      ^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;unittest.mock._patch object at 0x000001EFD80D0830&gt;
+
+    def get_original(self):
+        target = self.getter()
+        name = self.attribute
+    
+        original = DEFAULT
+        local = False
+    
+        try:
+            original = target.__dict__[name]
+        except (AttributeError, KeyError):
+            original = getattr(target, name, DEFAULT)
+        else:
+            local = True
+    
+        if name in _builtins and isinstance(target, ModuleType):
+            self.create = True
+    
+        if not self.create and original is DEFAULT:
+&gt;           raise AttributeError(
+                "%s does not have the attribute %r" % (target, name)
+            )
+E           AttributeError: &lt;module 'backend.mlops.model_manager' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\mlops\\model_manager.py'&gt; does not have the attribute 'track_lineage'
+
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1431: AttributeError</failure></testcase><testcase classname="tests.unit.test_mlops_manager_coverage.TestMLOpsModelManagerCoverage" name="test_model_governance_compliance" time="0.001"><failure message="AttributeError: &lt;module 'backend.mlops.model_manager' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\mlops\\model_manager.py'&gt; does not have the attribute 'check_compliance'">self = &lt;test_mlops_manager_coverage.TestMLOpsModelManagerCoverage object at 0x000001EFD7FC66C0&gt;
+
+    @pytest.mark.unit
+    def test_model_governance_compliance(self):
+        """Test model governance and compliance."""
+&gt;       with patch('backend.mlops.model_manager.check_compliance') as mock_compliance:
+
+tests\unit\test_mlops_manager_coverage.py:420: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1458: in __enter__
+    original, local = self.get_original()
+                      ^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;unittest.mock._patch object at 0x000001EFD80D37A0&gt;
+
+    def get_original(self):
+        target = self.getter()
+        name = self.attribute
+    
+        original = DEFAULT
+        local = False
+    
+        try:
+            original = target.__dict__[name]
+        except (AttributeError, KeyError):
+            original = getattr(target, name, DEFAULT)
+        else:
+            local = True
+    
+        if name in _builtins and isinstance(target, ModuleType):
+            self.create = True
+    
+        if not self.create and original is DEFAULT:
+&gt;           raise AttributeError(
+                "%s does not have the attribute %r" % (target, name)
+            )
+E           AttributeError: &lt;module 'backend.mlops.model_manager' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\mlops\\model_manager.py'&gt; does not have the attribute 'check_compliance'
+
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1431: AttributeError</failure></testcase><testcase classname="tests.unit.test_mlops_manager_coverage.TestMLOpsModelManagerCoverage" name="test_model_feature_store_integration" time="0.001"><failure message="AttributeError: &lt;module 'backend.mlops.model_manager' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\mlops\\model_manager.py'&gt; does not have the attribute 'integrate_feature_store'">self = &lt;test_mlops_manager_coverage.TestMLOpsModelManagerCoverage object at 0x000001EFD7FC68A0&gt;
+
+    @pytest.mark.unit
+    def test_model_feature_store_integration(self):
+        """Test feature store integration."""
+&gt;       with patch('backend.mlops.model_manager.integrate_feature_store') as mock_feature_store:
+
+tests\unit\test_mlops_manager_coverage.py:447: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1458: in __enter__
+    original, local = self.get_original()
+                      ^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;unittest.mock._patch object at 0x000001EFD81A1820&gt;
+
+    def get_original(self):
+        target = self.getter()
+        name = self.attribute
+    
+        original = DEFAULT
+        local = False
+    
+        try:
+            original = target.__dict__[name]
+        except (AttributeError, KeyError):
+            original = getattr(target, name, DEFAULT)
+        else:
+            local = True
+    
+        if name in _builtins and isinstance(target, ModuleType):
+            self.create = True
+    
+        if not self.create and original is DEFAULT:
+&gt;           raise AttributeError(
+                "%s does not have the attribute %r" % (target, name)
+            )
+E           AttributeError: &lt;module 'backend.mlops.model_manager' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\mlops\\model_manager.py'&gt; does not have the attribute 'integrate_feature_store'
+
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1431: AttributeError</failure></testcase><testcase classname="tests.unit.test_mlops_manager_coverage.TestMLOpsModelManagerCoverage" name="test_model_experiment_tracking" time="0.001"><failure message="AttributeError: &lt;module 'backend.mlops.model_manager' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\mlops\\model_manager.py'&gt; does not have the attribute 'track_experiment'">self = &lt;test_mlops_manager_coverage.TestMLOpsModelManagerCoverage object at 0x000001EFD7FC6A80&gt;
+
+    @pytest.mark.unit
+    def test_model_experiment_tracking(self):
+        """Test model experiment tracking."""
+&gt;       with patch('backend.mlops.model_manager.track_experiment') as mock_experiment:
+
+tests\unit\test_mlops_manager_coverage.py:472: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1458: in __enter__
+    original, local = self.get_original()
+                      ^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;unittest.mock._patch object at 0x000001EFD81A19D0&gt;
+
+    def get_original(self):
+        target = self.getter()
+        name = self.attribute
+    
+        original = DEFAULT
+        local = False
+    
+        try:
+            original = target.__dict__[name]
+        except (AttributeError, KeyError):
+            original = getattr(target, name, DEFAULT)
+        else:
+            local = True
+    
+        if name in _builtins and isinstance(target, ModuleType):
+            self.create = True
+    
+        if not self.create and original is DEFAULT:
+&gt;           raise AttributeError(
+                "%s does not have the attribute %r" % (target, name)
+            )
+E           AttributeError: &lt;module 'backend.mlops.model_manager' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\mlops\\model_manager.py'&gt; does not have the attribute 'track_experiment'
+
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1431: AttributeError</failure></testcase><testcase classname="tests.unit.test_mlops_manager_coverage.TestMLOpsModelManagerCoverage" name="test_model_shadow_deployment" time="0.001"><failure message="AttributeError: &lt;module 'backend.mlops.model_manager' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\mlops\\model_manager.py'&gt; does not have the attribute 'deploy_shadow'">self = &lt;test_mlops_manager_coverage.TestMLOpsModelManagerCoverage object at 0x000001EFD7FC6C60&gt;
+
+    @pytest.mark.unit
+    def test_model_shadow_deployment(self):
+        """Test shadow deployment functionality."""
+&gt;       with patch('backend.mlops.model_manager.deploy_shadow') as mock_shadow:
+
+tests\unit\test_mlops_manager_coverage.py:499: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1458: in __enter__
+    original, local = self.get_original()
+                      ^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;unittest.mock._patch object at 0x000001EFD81A26C0&gt;
+
+    def get_original(self):
+        target = self.getter()
+        name = self.attribute
+    
+        original = DEFAULT
+        local = False
+    
+        try:
+            original = target.__dict__[name]
+        except (AttributeError, KeyError):
+            original = getattr(target, name, DEFAULT)
+        else:
+            local = True
+    
+        if name in _builtins and isinstance(target, ModuleType):
+            self.create = True
+    
+        if not self.create and original is DEFAULT:
+&gt;           raise AttributeError(
+                "%s does not have the attribute %r" % (target, name)
+            )
+E           AttributeError: &lt;module 'backend.mlops.model_manager' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\mlops\\model_manager.py'&gt; does not have the attribute 'deploy_shadow'
+
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1431: AttributeError</failure></testcase></testsuite></testsuites>

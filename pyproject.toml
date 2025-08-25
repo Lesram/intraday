@@ -297,31 +297,4 @@ precision = 2
 directory = "htmlcov"
 
 # Pytest Configuration
-[tool.pytest.ini_options]
-minversion = "7.0"
-testpaths = ["tests"]
-python_files = ["test_*.py", "*_test.py"]
-python_classes = ["Test*"]
-python_functions = ["test_*"]
-addopts = [
-    "--strict-markers",
-    "--strict-config",
-    "--verbose",
-    "--tb=short",
-    "--disable-warnings",
-]
-markers = [
-    "integration: marks tests as integration tests (may require external dependencies)",
-    "slow: marks tests as slow running",
-    "unit: marks tests as unit tests",
-    "perf: marks tests as performance/load tests (require specific infrastructure)",
-    "chaos: marks tests as chaos engineering tests (intentional fault injection)",
-    "e2e: marks tests as end-to-end tests",
-    "smoke: marks tests as smoke tests for quick validation",
-]
-asyncio_mode = "auto"
-filterwarnings = [
-    "ignore::UserWarning",
-    "ignore::DeprecationWarning",
-    "ignore::PendingDeprecationWarning",
-]
+## pytest configuration moved to repo root pytest.ini to avoid conflicts

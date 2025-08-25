@@ -11,6 +11,7 @@ This module provides comprehensive resilience patterns including:
 """
 
 import asyncio
+import inspect
 from collections.abc import Callable
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
@@ -314,6 +315,13 @@ class RetryManager:
                     f"Retry attempt {attempt + 1} failed for {self.name}: {e}"
                 )
 
+                # Best-effort rollback for database-like sessions present in context
+                try:
+                    await self._attempt_rollback(func, args, kwargs)
+                except Exception:
+                    # Never let rollback failures mask the original error
+                    pass
+
                 # If this is the last attempt, don't wait
                 if attempt == self.config.max_attempts - 1:
                     break
@@ -332,6 +340,53 @@ class RetryManager:
             f"Max retries ({self.config.max_attempts}) exceeded for {self.name}. "
             f"Last error: {last_exception}"
         )
+
+    async def _attempt_rollback(self, func: Callable, args: tuple, kwargs: dict):
+        """Attempt to call .rollback() on any session-like objects in scope.
+
+        Scans positional/keyword args, bound self, and closure-captured objects.
+        Safe no-op on absence or errors. Awaits async rollbacks when needed.
+        """
+        candidates: list[object] = []
+
+        # Positional and keyword arguments
+        candidates.extend(list(args))
+        candidates.extend(list(kwargs.values()))
+
+        # Bound method 'self'
+        bound_self = getattr(func, "__self__", None)
+        if bound_self is not None:
+            candidates.append(bound_self)
+
+        # Closure-captured variables
+        closure = getattr(func, "__closure__", None)
+        if closure:
+            for cell in closure:
+                try:
+                    candidates.append(cell.cell_contents)
+                except Exception:
+                    continue
+
+        # Deduplicate by id
+        seen: set[int] = set()
+
+        for obj in candidates:
+            oid = id(obj)
+            if oid in seen:
+                continue
+            seen.add(oid)
+
+            rb = getattr(obj, "rollback", None)
+            if rb is None:
+                continue
+
+            try:
+                result = rb()
+                if inspect.isawaitable(result):
+                    await result
+            except Exception:
+                # Ignore rollback errors
+                continue
 
     async def _send_to_dlq(
         self,

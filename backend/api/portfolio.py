@@ -59,10 +59,9 @@ async def get_positions(
     if repo is None:
         # If no repo is available, surface a 500 to satisfy smoke test expectations
         raise HTTPException(status_code=500, detail="Portfolio repository unavailable")
-    # Determine user_id from various possible shapes (dict or object)
-    user_id = getattr(user, "id", None) or getattr(user, "user_id", None)
-    if not user_id and isinstance(user, dict):
-        user_id = user.get("id") or user.get("user_id")
+    # Determine user_id using normalized extraction
+    from backend.infra.security import get_user_id, get_user_attribute
+    user_id = get_user_id(user) or get_user_attribute(user, "user_id")
 
     positions = []
     # Prefer the explicit by-user-id method if available

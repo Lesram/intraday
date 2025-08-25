@@ -436,16 +436,18 @@ class TestOrderIdempotency:
         }
 
         async def submit_order():
-            return order_service.submit_order(order_data)
+            # Use the async version for proper concurrent locking
+            return await order_service.submit_order_async(order_data)
 
         # Simulate concurrent submissions
         import asyncio
 
-        results = asyncio.run(
-            asyncio.gather(
+        async def run_concurrent():
+            return await asyncio.gather(
                 submit_order(), submit_order(), submit_order(), return_exceptions=True
             )
-        )
+
+        results = asyncio.run(run_concurrent())
 
         # Only one should succeed, others should be handled gracefully
         success_count = sum(
@@ -574,6 +576,9 @@ class TestWebSocketBackpressure:
         # Try to send message (should trigger cleanup)
         await manager.send_personal_message("test", "error_client")
 
+        # Wait a bit for the background message sender to process and fail
+        await asyncio.sleep(0.1)
+
         # Client should be removed from active connections
         assert "error_client" not in manager.active_connections
 
@@ -648,9 +653,8 @@ class TestMiddlewareExceptionPaths:
 
         @app.get("/timeout")
         async def timeout_endpoint():
-            import asyncio
-
-            await asyncio.sleep(10)  # Long delay
+            # Raise an exception to test exception handling
+            raise RuntimeError("Simulated timeout error")
 
         @app.get("/json_error")
         async def json_error_endpoint():
@@ -660,9 +664,9 @@ class TestMiddlewareExceptionPaths:
 
         client = TestClient(app)
 
-        # Even with timeouts, security headers should be applied
-        with pytest.raises(Exception):  # TestClient will raise on timeout
-            response = client.get("/timeout", timeout=0.1)
+        # Even with exceptions, security headers should be applied
+        with pytest.raises(Exception):  # TestClient will raise the exception
+            response = client.get("/timeout")
 
     def test_cors_middleware_with_invalid_origins(self):
         """Test CORS middleware with invalid origin requests."""

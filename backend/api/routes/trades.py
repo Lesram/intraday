@@ -7,7 +7,7 @@ from fastapi import APIRouter, HTTPException, Depends, Query
 from pydantic import BaseModel
 from datetime import datetime, timedelta
 
-from backend.api.auth import get_current_user
+from backend.infra.security import get_current_user, get_authenticated_user
 from backend.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -35,7 +35,7 @@ class TradeHistoryResponse(BaseModel):
 
 @router.get("/history", response_model=TradeHistoryResponse)
 async def get_trade_history(
-    current_user: dict = Depends(get_current_user),
+    current_user = Depends(get_authenticated_user),
     symbol: str = Query(None, description="Filter by symbol"),
     start_date: datetime = Query(None, description="Start date filter"),
     end_date: datetime = Query(None, description="End date filter"),
@@ -43,6 +43,14 @@ async def get_trade_history(
     page_size: int = Query(100, ge=1, le=1000, description="Page size")
 ):
     """Get trading history for the current user."""
+    # Check user has trading access
+    user_roles = current_user.roles if hasattr(current_user, 'roles') else []
+    if "read-only" in user_roles:
+        raise HTTPException(
+            status_code=403,
+            detail="Insufficient permissions"
+        )
+    
     try:
         # Mock data for now - in production this would query the trades repository
         mock_trades = [
@@ -162,3 +170,49 @@ async def get_trading_stats(
     except Exception as e:
         logger.error(f"Failed to get trading stats: {e}")
         raise HTTPException(status_code=500, detail="Failed to retrieve trading statistics")
+
+
+class TradeExecutionRequest(BaseModel):
+    """Trade execution request model."""
+    symbol: str
+    quantity: float
+    side: str  # "buy" or "sell"
+    order_type: str = "market"
+
+
+@router.post("/execute")
+async def execute_trade(
+    trade_request: TradeExecutionRequest,
+    current_user = Depends(get_authenticated_user)
+):
+    """Execute a trade order."""
+    if current_user is None:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    
+    # Check if user has trading privileges
+    user_roles = current_user.roles if hasattr(current_user, 'roles') else []
+    if "trader" not in user_roles and "admin" not in user_roles:
+        raise HTTPException(status_code=403, detail="Trading privileges required")
+    
+    try:
+        # Mock trade execution
+        import uuid
+        from datetime import datetime
+        
+        trade_id = str(uuid.uuid4())
+        mock_price = 150.00  # Mock price
+        
+        return {
+            "trade_id": trade_id,
+            "symbol": trade_request.symbol,
+            "quantity": trade_request.quantity,
+            "side": trade_request.side,
+            "order_type": trade_request.order_type,
+            "price": mock_price,
+            "timestamp": datetime.now(),
+            "status": "executed"
+        }
+        
+    except Exception as e:
+        logger.error(f"Failed to execute trade: {e}")
+        raise HTTPException(status_code=500, detail="Trade execution failed")

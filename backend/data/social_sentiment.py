@@ -6,10 +6,15 @@ Fetches social media data and computes sentiment using FinBERT.
 import asyncio
 from collections import defaultdict, deque
 from datetime import UTC, datetime, timedelta
+import os
 import re
 import time
 from typing import Any
 
+# Centralized DISABLE_ML check for test mode
+DISABLE_ML = os.environ.get("DISABLE_ML", "0") == "1"
+
+# Import real numpy - it's lightweight and needed
 import numpy as np
 
 # Social media APIs (with fallbacks for development)
@@ -35,15 +40,18 @@ except ImportError:
         pass
 
 
-# NLP and ML libraries (with fallbacks)
-try:
-    import torch
-    from transformers import AutoModelForSequenceClassification, AutoTokenizer, pipeline
+# NLP and ML libraries (with fallbacks) - Skip during testing to prevent hangs
+NLP_AVAILABLE = False
+if not DISABLE_ML and not os.environ.get('DISABLE_TORCH') and not os.environ.get('DISABLE_TRANSFORMERS') and not os.environ.get('PYTEST_RUNNING'):
+    try:
+        import torch
+        from transformers import AutoModelForSequenceClassification, AutoTokenizer, pipeline
+        NLP_AVAILABLE = True
+    except ImportError:
+        NLP_AVAILABLE = False
 
-    NLP_AVAILABLE = True
-except ImportError:
-    NLP_AVAILABLE = False
-
+# Fallback classes when imports are disabled
+if not NLP_AVAILABLE:
     class pipeline:
         pass
 
@@ -209,18 +217,25 @@ class SocialSentimentAnalyzer:
             # Load FinBERT model specifically trained for financial sentiment
             model_name = "ProsusAI/finbert"
 
+            if NLP_AVAILABLE:
+                device_id = 0 if hasattr(torch, 'cuda') and torch.cuda.is_available() else -1
+                device_name = "GPU" if hasattr(torch, 'cuda') and torch.cuda.is_available() else "CPU"
+            else:
+                device_id = -1
+                device_name = "CPU"
+
             self.finbert_pipeline = pipeline(
                 "sentiment-analysis",
                 model=model_name,
                 tokenizer=model_name,
-                device=0 if torch.cuda.is_available() else -1,
+                device=device_id,
             )
 
             self.model_loaded = True
             self.logger.info(
                 "FinBERT model loaded successfully",
                 model=model_name,
-                device="GPU" if torch.cuda.is_available() else "CPU",
+                device=device_name,
             )
 
         except Exception as e:

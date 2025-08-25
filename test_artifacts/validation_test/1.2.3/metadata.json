@@ -1,0 +1,28 @@
+{
+  "model_id": "validation_test",
+  "version": "1.2.3",
+  "created_at": "2025-08-25T00:05:47.820499+00:00",
+  "train_window": {},
+  "feature_names": [
+    "feature1",
+    "feature2"
+  ],
+  "feature_dtypes": {
+    "feature1": "int64",
+    "feature2": "int64"
+  },
+  "feature_schema": {
+    "columns": [
+      "feature1",
+      "feature2"
+    ],
+    "dtypes": {
+      "feature1": "int64",
+      "feature2": "int64"
+    }
+  },
+  "metrics": {},
+  "artifact_hash": "1928967465e58b749c1df49e2a10ae0efbb212857b8bc19f426ccf5a15969162",
+  "training_samples": 3,
+  "features_count": 2
+}

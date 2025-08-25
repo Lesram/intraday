@@ -1,7 +1,7 @@
 {
   "model_id": "test_predictor",
   "version": "v1",
-  "created_at": "2025-08-14T18:47:36.379461+00:00",
+  "created_at": "2025-08-24T03:28:02.416481+00:00",
   "train_window": {},
   "feature_names": [
     "feature1",
@@ -22,7 +22,7 @@
     }
   },
   "metrics": {},
-  "artifact_hash": "a201df08cd381f18fbecb2f43f05b445333f5d43a2c5f052d6703d9b659dc0a7",
+  "artifact_hash": "db95431fe580a8d17e5b2c6a8ab98943a69a9aa055ab4d62150c72617311ea02",
   "training_samples": 3,
   "features_count": 2
 }

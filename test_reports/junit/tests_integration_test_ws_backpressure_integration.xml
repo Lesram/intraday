@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="8" time="2.335" timestamp="2025-08-24T17:04:56.234104-07:00" hostname="BOOK-FVJOEO3Q00"><testcase classname="tests.integration.test_ws_backpressure_integration.TestWebSocketBackpressure" name="test_fast_and_slow_client_backpressure" time="1.621" /><testcase classname="tests.integration.test_ws_backpressure_integration.TestWebSocketBackpressure" name="test_slow_consumer_message_dropping_policy" time="0.003" /><testcase classname="tests.integration.test_ws_backpressure_integration.TestWebSocketBackpressure" name="test_websocket_connection_recovery_after_backpressure" time="0.306" /><testcase classname="tests.integration.test_ws_backpressure_integration.TestWebSocketBackpressure" name="test_multiple_slow_clients_isolation" time="0.032" /><testcase classname="tests.integration.test_ws_backpressure_integration.TestWebSocketBackpressure" name="test_websocket_metrics_during_backpressure" time="0.004"><failure message="assert 26 &lt;= 25">self = &lt;test_ws_backpressure_integration.TestWebSocketBackpressure object at 0x0000023E6A8DE6F0&gt;
+test_ws_server = ('ws://localhost:8001/ws', &lt;AsyncMock name='WebSocketBroadcaster()' id='2467101091136'&gt;)
+
+    @pytest.mark.asyncio
+    async def test_websocket_metrics_during_backpressure(self, test_ws_server):
+        """Test that WebSocket metrics are correctly updated during backpressure scenarios."""
+        server_url, mock_broadcaster = test_ws_server
+    
+        # Initialize metrics tracking
+        metrics = {
+            "ws_connections_total": 0,
+            "ws_messages_sent_total": 0,
+            "ws_messages_dropped_total": 0,
+            "ws_queue_size_current": {},
+        }
+    
+        # Set up clients
+        mock_broadcaster.active_connections = {
+            "client_1": {"queue": [], "slow": True},
+            "client_2": {"queue": [], "slow": False},
+        }
+    
+        metrics["ws_connections_total"] = len(mock_broadcaster.active_connections)
+    
+        # Send messages and track metrics
+        for i in range(50):
+            message = {"sequence": i}
+    
+            for client_id, client_state in mock_broadcaster.active_connections.items():
+                if client_state["slow"] and len(client_state["queue"]) &gt; 25:
+                    # Drop message
+                    client_state["queue"].pop(0)
+                    metrics["ws_messages_dropped_total"] += 1
+                else:
+                    client_state["queue"].append(message)
+                    metrics["ws_messages_sent_total"] += 1
+    
+                # Track current queue sizes
+                metrics["ws_queue_size_current"][client_id] = len(client_state["queue"])
+    
+        # Verify metrics
+        assert metrics["ws_connections_total"] == 2
+        assert metrics["ws_messages_sent_total"] &gt; 0
+        assert metrics["ws_messages_dropped_total"] &gt; 0
+    
+        # Verify queue size tracking
+        assert "client_1" in metrics["ws_queue_size_current"]
+        assert "client_2" in metrics["ws_queue_size_current"]
+&gt;       assert metrics["ws_queue_size_current"]["client_1"] &lt;= 25  # Capped due to drops
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       assert 26 &lt;= 25
+
+tests\integration\test_ws_backpressure_integration.py:313: AssertionError</failure></testcase><testcase classname="tests.integration.test_ws_backpressure_integration.TestWebSocketBackpressure" name="test_websocket_graceful_disconnection_under_load" time="0.003" /><testcase classname="tests.integration.test_ws_backpressure_integration.TestWebSocketBackpressure" name="test_websocket_connection_limit_enforcement" time="0.019" /><testcase classname="tests.integration.test_ws_backpressure_integration.TestWebSocketBackpressure" name="test_websocket_load_balancing_across_connections" time="0.016" /></testsuite></testsuites>

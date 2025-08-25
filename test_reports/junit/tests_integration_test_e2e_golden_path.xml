@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="5" skipped="1" tests="6" time="0.507" timestamp="2025-08-24T17:04:03.945286-07:00" hostname="BOOK-FVJOEO3Q00"><testcase classname="tests.integration.test_e2e_golden_path.TestE2EGoldenPath" name="test_e2e_golden_path_complete_flow" time="0.098"><failure message="assert 401 == 200&#10; +  where 401 = &lt;Response [401 Unauthorized]&gt;.status_code">self = &lt;test_e2e_golden_path.TestE2EGoldenPath object at 0x000001D52035C9E0&gt;
+client = &lt;tests.helpers.robust_testclient.RobustTestClient object at 0x000001D52047D8B0&gt;
+isolated_registry = &lt;prometheus_client.registry.CollectorRegistry object at 0x000001D52048CC50&gt;
+mock_dependencies = {'alpaca_client': &lt;AsyncMock id='2014882707648'&gt;, 'db_session': &lt;AsyncMock id='2014882601376'&gt;, 'order_service': &lt;AsyncMock id='2014880062336'&gt;, 'outbox_repo': &lt;AsyncMock id='2014882924544'&gt;, ...}
+
+    @pytest.mark.integration
+    def test_e2e_golden_path_complete_flow(
+        self, client, isolated_registry, mock_dependencies
+    ):
+        """
+        Test complete golden path: auth → feature ingest → risk check → order submission → outbox.
+        Validates metrics, logging, and business logic at each step.
+        """
+    
+        # Step 1: Authentication
+        auth_response = client.post(
+            "/auth/login", json={"username": "test_user", "password": "test_pass"}
+        )
+    
+        # Should succeed (mocked)
+&gt;       assert auth_response.status_code == 200
+E       assert 401 == 200
+E        +  where 401 = &lt;Response [401 Unauthorized]&gt;.status_code
+
+tests\integration\test_e2e_golden_path.py:64: AssertionError</failure></testcase><testcase classname="tests.integration.test_e2e_golden_path.TestE2EGoldenPath" name="test_e2e_risk_rejection_flow" time="0.000"><skipped type="pytest.skip" message="Temporarily skipped - endpoints need to be updated for new architecture">C:\Users\Marsel\intra\algotrading_platform\tests\integration\test_e2e_golden_path.py:118: Temporarily skipped - endpoints need to be updated for new architecture</skipped></testcase><testcase classname="tests.integration.test_e2e_golden_path.TestE2EGoldenPath" name="test_e2e_authentication_failure_flow" time="0.015"><failure message="assert 404 == 401&#10; +  where 404 = &lt;Response [404 Not Found]&gt;.status_code">self = &lt;test_e2e_golden_path.TestE2EGoldenPath object at 0x000001D52048CFB0&gt;
+client = &lt;tests.helpers.robust_testclient.RobustTestClient object at 0x000001D52164C1A0&gt;
+isolated_registry = &lt;prometheus_client.registry.CollectorRegistry object at 0x000001D52164CD70&gt;
+
+    @pytest.mark.integration
+    def test_e2e_authentication_failure_flow(self, client, isolated_registry):
+        """Test E2E flow when authentication fails."""
+    
+        # Invalid credentials
+        auth_response = client.post(
+            "/auth/login",
+            json={"username": "invalid_user", "password": "wrong_password"},
+        )
+    
+        # Should fail authentication
+        assert auth_response.status_code == 401
+    
+        # Try to access protected endpoint without auth
+        order_payload = {
+            "symbol": "AAPL",
+            "side": "buy",
+            "qty": 10,
+            "order_type": "market",
+        }
+    
+        # Should be rejected due to missing auth
+        order_response = client.post("/orders/submit", json=order_payload)
+&gt;       assert order_response.status_code == 401
+E       assert 404 == 401
+E        +  where 404 = &lt;Response [404 Not Found]&gt;.status_code
+
+tests\integration\test_e2e_golden_path.py:207: AssertionError</failure></testcase><testcase classname="tests.integration.test_e2e_golden_path.TestE2EGoldenPath" name="test_e2e_feature_validation_errors" time="0.012"><failure message="KeyError: 'access_token'">self = &lt;test_e2e_golden_path.TestE2EGoldenPath object at 0x000001D52048D130&gt;
+client = &lt;tests.helpers.robust_testclient.RobustTestClient object at 0x000001D52160EF00&gt;
+isolated_registry = &lt;prometheus_client.registry.CollectorRegistry object at 0x000001D52160FE00&gt;
+
+    @pytest.mark.integration
+    def test_e2e_feature_validation_errors(self, client, isolated_registry):
+        """Test E2E flow when feature data is invalid."""
+    
+        # Setup auth
+        auth_response = client.post(
+            "/auth/login", json={"username": "test_user", "password": "test_pass"}
+        )
+&gt;       headers = {"Authorization": f"Bearer {auth_response.json()['access_token']}"}
+                                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       KeyError: 'access_token'
+
+tests\integration\test_e2e_golden_path.py:221: KeyError</failure></testcase><testcase classname="tests.integration.test_e2e_golden_path.TestE2EGoldenPath" name="test_e2e_websocket_integration" time="0.012"><failure message="starlette.websockets.WebSocketDisconnect">self = &lt;test_e2e_golden_path.TestE2EGoldenPath object at 0x000001D52048D2B0&gt;
+client = &lt;tests.helpers.robust_testclient.RobustTestClient object at 0x000001D521739F10&gt;
+isolated_registry = &lt;prometheus_client.registry.CollectorRegistry object at 0x000001D52173B3E0&gt;
+
+    @pytest.mark.integration
+    def test_e2e_websocket_integration(self, client, isolated_registry):
+        """Test E2E WebSocket integration for real-time updates."""
+    
+        # Test WebSocket connection
+&gt;       with client.websocket_connect("/ws/market-data") as websocket:
+
+tests\integration\test_e2e_golden_path.py:252: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\testclient.py:121: in __enter__
+    self._raise_on_close(message)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;starlette.testclient.WebSocketTestSession object at 0x000001D521781970&gt;
+message = {'code': 1000, 'reason': '', 'type': 'websocket.close'}
+
+    def _raise_on_close(self, message: Message) -&gt; None:
+        if message["type"] == "websocket.close":
+&gt;           raise WebSocketDisconnect(code=message.get("code", 1000), reason=message.get("reason", ""))
+E           starlette.websockets.WebSocketDisconnect
+
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\testclient.py:150: WebSocketDisconnect</failure></testcase><testcase classname="tests.integration.test_e2e_golden_path.TestE2EGoldenPath" name="test_e2e_async_background_processing" time="0.031"><failure message="assert 0.0 &gt;= 4">self = &lt;test_e2e_golden_path.TestE2EGoldenPath object at 0x000001D52048D430&gt;
+isolated_registry = &lt;prometheus_client.registry.CollectorRegistry object at 0x000001D521782690&gt;
+
+    @pytest.mark.integration
+    async def test_e2e_async_background_processing(self, isolated_registry):
+        """Test E2E async background processing (outbox dispatcher)."""
+    
+        with patch("backend.infra.outbox.OutboxDispatcher") as mock_dispatcher:
+            # Setup mock dispatcher
+            mock_instance = AsyncMock()
+            mock_dispatcher.return_value = mock_instance
+    
+            # Simulate background outbox processing
+            mock_instance.poll_and_dispatch.return_value = {
+                "processed": 5,
+                "successful": 4,
+                "failed": 1,
+            }
+    
+            # Create app with background tasks
+            app = create_app(registry=isolated_registry)
+    
+            # Simulate background task execution
+            await mock_instance.poll_and_dispatch()
+    
+            # Verify dispatcher was called
+            mock_instance.poll_and_dispatch.assert_called_once()
+    
+        # Verify background processing metrics
+        outbox_processed = get_metric_value(isolated_registry, "outbox_processed_total")
+&gt;       assert outbox_processed &gt;= 4  # Successful processes
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       assert 0.0 &gt;= 4
+
+tests\integration\test_e2e_golden_path.py:324: AssertionError</failure></testcase></testsuite></testsuites>

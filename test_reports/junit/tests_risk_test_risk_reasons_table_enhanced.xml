@@ -1,0 +1,787 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="24" skipped="3" tests="31" time="1.002" timestamp="2025-08-24T17:03:06.697389-07:00" hostname="BOOK-FVJOEO3Q00"><testcase classname="tests.risk.test_risk_reasons_table_enhanced.TestRiskReasonsTable" name="test_risk_scenarios_comprehensive[DECLINING_STOCK-buy-1000-50.0-negative_mu_block-False-negative expected return-None]" time="0.019"><failure message="AssertionError: negative_mu_block: Expected allowed=False, got True&#10;assert True == False&#10; +  where True = &lt;MagicMock id='2544542920736'&gt;.allowed">self = &lt;test_risk_reasons_table_enhanced.TestRiskReasonsTable object at 0x000002507174DC10&gt;
+symbol = 'DECLINING_STOCK', side = 'buy', qty = 1000, price = 50.0
+scenario = 'negative_mu_block', expected_allowed = False
+expected_reason = 'negative expected return', expected_adj_qty = None
+risk_manager = &lt;test_risk_reasons_table_enhanced.MockRiskManager object at 0x0000025072902270&gt;
+
+    @pytest.mark.parametrize("symbol,side,qty,price,scenario,expected_allowed,expected_reason,expected_adj_qty",
+                             RISK_BLOCK_SCENARIOS)
+    @pytest.mark.asyncio
+    async def test_risk_scenarios_comprehensive(self, symbol, side, qty, price, scenario, expected_allowed,
+                                              expected_reason, expected_adj_qty, risk_manager):
+        """Test comprehensive risk scenarios return correct (allowed, reason, adjusted_qty) tuples."""
+        # Create order data
+        order_data = {
+            "symbol": symbol,
+            "side": side,
+            "qty": Decimal(str(qty)),
+            "price": Decimal(str(price)),
+            "order_type": "market",
+            "account_id": "test-account"
+        }
+    
+        # Execute risk check
+        result = await risk_manager.before_order(order_data)
+    
+        # Assert result structure
+        assert hasattr(result, 'allowed'), f"Risk result missing 'allowed' attribute for {scenario}"
+        assert hasattr(result, 'reason'), f"Risk result missing 'reason' attribute for {scenario}"
+        assert hasattr(result, 'adjusted_qty'), f"Risk result missing 'adjusted_qty' attribute for {scenario}"
+    
+        # Assert expected outcomes
+&gt;       assert result.allowed == expected_allowed, f"{scenario}: Expected allowed={expected_allowed}, got {result.allowed}"
+E       AssertionError: negative_mu_block: Expected allowed=False, got True
+E       assert True == False
+E        +  where True = &lt;MagicMock id='2544542920736'&gt;.allowed
+
+tests\risk\test_risk_reasons_table_enhanced.py:350: AssertionError</failure></testcase><testcase classname="tests.risk.test_risk_reasons_table_enhanced.TestRiskReasonsTable" name="test_risk_scenarios_comprehensive[BEAR_MARKET_ETF-buy-500-25.0-negative_mu_bear-False-bearish trend detected-None]" time="0.011"><failure message="AssertionError: negative_mu_bear: Expected allowed=False, got True&#10;assert True == False&#10; +  where True = &lt;MagicMock id='2544542390688'&gt;.allowed">self = &lt;test_risk_reasons_table_enhanced.TestRiskReasonsTable object at 0x00000250728C5E80&gt;
+symbol = 'BEAR_MARKET_ETF', side = 'buy', qty = 500, price = 25.0
+scenario = 'negative_mu_bear', expected_allowed = False
+expected_reason = 'bearish trend detected', expected_adj_qty = None
+risk_manager = &lt;test_risk_reasons_table_enhanced.MockRiskManager object at 0x000002507294A510&gt;
+
+    @pytest.mark.parametrize("symbol,side,qty,price,scenario,expected_allowed,expected_reason,expected_adj_qty",
+                             RISK_BLOCK_SCENARIOS)
+    @pytest.mark.asyncio
+    async def test_risk_scenarios_comprehensive(self, symbol, side, qty, price, scenario, expected_allowed,
+                                              expected_reason, expected_adj_qty, risk_manager):
+        """Test comprehensive risk scenarios return correct (allowed, reason, adjusted_qty) tuples."""
+        # Create order data
+        order_data = {
+            "symbol": symbol,
+            "side": side,
+            "qty": Decimal(str(qty)),
+            "price": Decimal(str(price)),
+            "order_type": "market",
+            "account_id": "test-account"
+        }
+    
+        # Execute risk check
+        result = await risk_manager.before_order(order_data)
+    
+        # Assert result structure
+        assert hasattr(result, 'allowed'), f"Risk result missing 'allowed' attribute for {scenario}"
+        assert hasattr(result, 'reason'), f"Risk result missing 'reason' attribute for {scenario}"
+        assert hasattr(result, 'adjusted_qty'), f"Risk result missing 'adjusted_qty' attribute for {scenario}"
+    
+        # Assert expected outcomes
+&gt;       assert result.allowed == expected_allowed, f"{scenario}: Expected allowed={expected_allowed}, got {result.allowed}"
+E       AssertionError: negative_mu_bear: Expected allowed=False, got True
+E       assert True == False
+E        +  where True = &lt;MagicMock id='2544542390688'&gt;.allowed
+
+tests\risk\test_risk_reasons_table_enhanced.py:350: AssertionError</failure></testcase><testcase classname="tests.risk.test_risk_reasons_table_enhanced.TestRiskReasonsTable" name="test_risk_scenarios_comprehensive[STABLE_BOND-buy-10000-100.0-low_volatility_block-False-insufficient volatility-None]" time="0.005"><failure message="AssertionError: low_volatility_block: Expected allowed=False, got True&#10;assert True == False&#10; +  where True = &lt;MagicMock id='2544543935152'&gt;.allowed">self = &lt;test_risk_reasons_table_enhanced.TestRiskReasonsTable object at 0x00000250728C6840&gt;
+symbol = 'STABLE_BOND', side = 'buy', qty = 10000, price = 100.0
+scenario = 'low_volatility_block', expected_allowed = False
+expected_reason = 'insufficient volatility', expected_adj_qty = None
+risk_manager = &lt;test_risk_reasons_table_enhanced.MockRiskManager object at 0x0000025071891460&gt;
+
+    @pytest.mark.parametrize("symbol,side,qty,price,scenario,expected_allowed,expected_reason,expected_adj_qty",
+                             RISK_BLOCK_SCENARIOS)
+    @pytest.mark.asyncio
+    async def test_risk_scenarios_comprehensive(self, symbol, side, qty, price, scenario, expected_allowed,
+                                              expected_reason, expected_adj_qty, risk_manager):
+        """Test comprehensive risk scenarios return correct (allowed, reason, adjusted_qty) tuples."""
+        # Create order data
+        order_data = {
+            "symbol": symbol,
+            "side": side,
+            "qty": Decimal(str(qty)),
+            "price": Decimal(str(price)),
+            "order_type": "market",
+            "account_id": "test-account"
+        }
+    
+        # Execute risk check
+        result = await risk_manager.before_order(order_data)
+    
+        # Assert result structure
+        assert hasattr(result, 'allowed'), f"Risk result missing 'allowed' attribute for {scenario}"
+        assert hasattr(result, 'reason'), f"Risk result missing 'reason' attribute for {scenario}"
+        assert hasattr(result, 'adjusted_qty'), f"Risk result missing 'adjusted_qty' attribute for {scenario}"
+    
+        # Assert expected outcomes
+&gt;       assert result.allowed == expected_allowed, f"{scenario}: Expected allowed={expected_allowed}, got {result.allowed}"
+E       AssertionError: low_volatility_block: Expected allowed=False, got True
+E       assert True == False
+E        +  where True = &lt;MagicMock id='2544543935152'&gt;.allowed
+
+tests\risk\test_risk_reasons_table_enhanced.py:350: AssertionError</failure></testcase><testcase classname="tests.risk.test_risk_reasons_table_enhanced.TestRiskReasonsTable" name="test_risk_scenarios_comprehensive[PENNY_STABLE-sell-50000-0.01-zero_volatility-False-no price movement-None]" time="0.015"><failure message="AssertionError: zero_volatility: Expected allowed=False, got True&#10;assert True == False&#10; +  where True = &lt;MagicMock id='2544543848960'&gt;.allowed">self = &lt;test_risk_reasons_table_enhanced.TestRiskReasonsTable object at 0x00000250728C68D0&gt;
+symbol = 'PENNY_STABLE', side = 'sell', qty = 50000, price = 0.01
+scenario = 'zero_volatility', expected_allowed = False
+expected_reason = 'no price movement', expected_adj_qty = None
+risk_manager = &lt;test_risk_reasons_table_enhanced.MockRiskManager object at 0x0000025072A62030&gt;
+
+    @pytest.mark.parametrize("symbol,side,qty,price,scenario,expected_allowed,expected_reason,expected_adj_qty",
+                             RISK_BLOCK_SCENARIOS)
+    @pytest.mark.asyncio
+    async def test_risk_scenarios_comprehensive(self, symbol, side, qty, price, scenario, expected_allowed,
+                                              expected_reason, expected_adj_qty, risk_manager):
+        """Test comprehensive risk scenarios return correct (allowed, reason, adjusted_qty) tuples."""
+        # Create order data
+        order_data = {
+            "symbol": symbol,
+            "side": side,
+            "qty": Decimal(str(qty)),
+            "price": Decimal(str(price)),
+            "order_type": "market",
+            "account_id": "test-account"
+        }
+    
+        # Execute risk check
+        result = await risk_manager.before_order(order_data)
+    
+        # Assert result structure
+        assert hasattr(result, 'allowed'), f"Risk result missing 'allowed' attribute for {scenario}"
+        assert hasattr(result, 'reason'), f"Risk result missing 'reason' attribute for {scenario}"
+        assert hasattr(result, 'adjusted_qty'), f"Risk result missing 'adjusted_qty' attribute for {scenario}"
+    
+        # Assert expected outcomes
+&gt;       assert result.allowed == expected_allowed, f"{scenario}: Expected allowed={expected_allowed}, got {result.allowed}"
+E       AssertionError: zero_volatility: Expected allowed=False, got True
+E       assert True == False
+E        +  where True = &lt;MagicMock id='2544543848960'&gt;.allowed
+
+tests\risk\test_risk_reasons_table_enhanced.py:350: AssertionError</failure></testcase><testcase classname="tests.risk.test_risk_reasons_table_enhanced.TestRiskReasonsTable" name="test_risk_scenarios_comprehensive[AAPL-buy-5000-150.0-symbol_daily_cap_exceeded-False-daily trading limit exceeded-None]" time="0.006"><failure message="AssertionError: symbol_daily_cap_exceeded: Expected allowed=False, got True&#10;assert True == False&#10; +  where True = &lt;MagicMock id='2544544190432'&gt;.allowed">self = &lt;test_risk_reasons_table_enhanced.TestRiskReasonsTable object at 0x00000250728C6960&gt;
+symbol = 'AAPL', side = 'buy', qty = 5000, price = 150.0
+scenario = 'symbol_daily_cap_exceeded', expected_allowed = False
+expected_reason = 'daily trading limit exceeded', expected_adj_qty = None
+risk_manager = &lt;test_risk_reasons_table_enhanced.MockRiskManager object at 0x0000025072A1FDA0&gt;
+
+    @pytest.mark.parametrize("symbol,side,qty,price,scenario,expected_allowed,expected_reason,expected_adj_qty",
+                             RISK_BLOCK_SCENARIOS)
+    @pytest.mark.asyncio
+    async def test_risk_scenarios_comprehensive(self, symbol, side, qty, price, scenario, expected_allowed,
+                                              expected_reason, expected_adj_qty, risk_manager):
+        """Test comprehensive risk scenarios return correct (allowed, reason, adjusted_qty) tuples."""
+        # Create order data
+        order_data = {
+            "symbol": symbol,
+            "side": side,
+            "qty": Decimal(str(qty)),
+            "price": Decimal(str(price)),
+            "order_type": "market",
+            "account_id": "test-account"
+        }
+    
+        # Execute risk check
+        result = await risk_manager.before_order(order_data)
+    
+        # Assert result structure
+        assert hasattr(result, 'allowed'), f"Risk result missing 'allowed' attribute for {scenario}"
+        assert hasattr(result, 'reason'), f"Risk result missing 'reason' attribute for {scenario}"
+        assert hasattr(result, 'adjusted_qty'), f"Risk result missing 'adjusted_qty' attribute for {scenario}"
+    
+        # Assert expected outcomes
+&gt;       assert result.allowed == expected_allowed, f"{scenario}: Expected allowed={expected_allowed}, got {result.allowed}"
+E       AssertionError: symbol_daily_cap_exceeded: Expected allowed=False, got True
+E       assert True == False
+E        +  where True = &lt;MagicMock id='2544544190432'&gt;.allowed
+
+tests\risk\test_risk_reasons_table_enhanced.py:350: AssertionError</failure></testcase><testcase classname="tests.risk.test_risk_reasons_table_enhanced.TestRiskReasonsTable" name="test_risk_scenarios_comprehensive[TSLA-sell-1000-800.0-symbol_cap_partial-True-reduced to daily limit-expected_adj_qty5]" time="0.005"><failure message="AssertionError: symbol_cap_partial: Expected reason but got None&#10;assert None is not None&#10; +  where None = &lt;MagicMock id='2544543898400'&gt;.reason">self = &lt;test_risk_reasons_table_enhanced.TestRiskReasonsTable object at 0x00000250728C69F0&gt;
+symbol = 'TSLA', side = 'sell', qty = 1000, price = 800.0
+scenario = 'symbol_cap_partial', expected_allowed = True
+expected_reason = 'reduced to daily limit', expected_adj_qty = Decimal('500')
+risk_manager = &lt;test_risk_reasons_table_enhanced.MockRiskManager object at 0x0000025072A2A060&gt;
+
+    @pytest.mark.parametrize("symbol,side,qty,price,scenario,expected_allowed,expected_reason,expected_adj_qty",
+                             RISK_BLOCK_SCENARIOS)
+    @pytest.mark.asyncio
+    async def test_risk_scenarios_comprehensive(self, symbol, side, qty, price, scenario, expected_allowed,
+                                              expected_reason, expected_adj_qty, risk_manager):
+        """Test comprehensive risk scenarios return correct (allowed, reason, adjusted_qty) tuples."""
+        # Create order data
+        order_data = {
+            "symbol": symbol,
+            "side": side,
+            "qty": Decimal(str(qty)),
+            "price": Decimal(str(price)),
+            "order_type": "market",
+            "account_id": "test-account"
+        }
+    
+        # Execute risk check
+        result = await risk_manager.before_order(order_data)
+    
+        # Assert result structure
+        assert hasattr(result, 'allowed'), f"Risk result missing 'allowed' attribute for {scenario}"
+        assert hasattr(result, 'reason'), f"Risk result missing 'reason' attribute for {scenario}"
+        assert hasattr(result, 'adjusted_qty'), f"Risk result missing 'adjusted_qty' attribute for {scenario}"
+    
+        # Assert expected outcomes
+        assert result.allowed == expected_allowed, f"{scenario}: Expected allowed={expected_allowed}, got {result.allowed}"
+    
+        if expected_reason:
+&gt;           assert result.reason is not None, f"{scenario}: Expected reason but got None"
+E           AssertionError: symbol_cap_partial: Expected reason but got None
+E           assert None is not None
+E            +  where None = &lt;MagicMock id='2544543898400'&gt;.reason
+
+tests\risk\test_risk_reasons_table_enhanced.py:353: AssertionError</failure></testcase><testcase classname="tests.risk.test_risk_reasons_table_enhanced.TestRiskReasonsTable" name="test_risk_scenarios_comprehensive[LEVERAGED_ETF-buy-1000-300.0-leverage_exceeded-False-leverage ratio too high-None]" time="0.004"><failure message="AssertionError: leverage_exceeded: Expected allowed=False, got True&#10;assert True == False&#10; +  where True = &lt;MagicMock id='2544543968352'&gt;.allowed">self = &lt;test_risk_reasons_table_enhanced.TestRiskReasonsTable object at 0x00000250728C6A80&gt;
+symbol = 'LEVERAGED_ETF', side = 'buy', qty = 1000, price = 300.0
+scenario = 'leverage_exceeded', expected_allowed = False
+expected_reason = 'leverage ratio too high', expected_adj_qty = None
+risk_manager = &lt;test_risk_reasons_table_enhanced.MockRiskManager object at 0x0000025072A2BEF0&gt;
+
+    @pytest.mark.parametrize("symbol,side,qty,price,scenario,expected_allowed,expected_reason,expected_adj_qty",
+                             RISK_BLOCK_SCENARIOS)
+    @pytest.mark.asyncio
+    async def test_risk_scenarios_comprehensive(self, symbol, side, qty, price, scenario, expected_allowed,
+                                              expected_reason, expected_adj_qty, risk_manager):
+        """Test comprehensive risk scenarios return correct (allowed, reason, adjusted_qty) tuples."""
+        # Create order data
+        order_data = {
+            "symbol": symbol,
+            "side": side,
+            "qty": Decimal(str(qty)),
+            "price": Decimal(str(price)),
+            "order_type": "market",
+            "account_id": "test-account"
+        }
+    
+        # Execute risk check
+        result = await risk_manager.before_order(order_data)
+    
+        # Assert result structure
+        assert hasattr(result, 'allowed'), f"Risk result missing 'allowed' attribute for {scenario}"
+        assert hasattr(result, 'reason'), f"Risk result missing 'reason' attribute for {scenario}"
+        assert hasattr(result, 'adjusted_qty'), f"Risk result missing 'adjusted_qty' attribute for {scenario}"
+    
+        # Assert expected outcomes
+&gt;       assert result.allowed == expected_allowed, f"{scenario}: Expected allowed={expected_allowed}, got {result.allowed}"
+E       AssertionError: leverage_exceeded: Expected allowed=False, got True
+E       assert True == False
+E        +  where True = &lt;MagicMock id='2544543968352'&gt;.allowed
+
+tests\risk\test_risk_reasons_table_enhanced.py:350: AssertionError</failure></testcase><testcase classname="tests.risk.test_risk_reasons_table_enhanced.TestRiskReasonsTable" name="test_risk_scenarios_comprehensive[MARGIN_HEAVY-buy-2000-200.0-margin_requirement-False-insufficient margin available-None]" time="0.016"><failure message="AssertionError: margin_requirement: Expected allowed=False, got True&#10;assert True == False&#10; +  where True = &lt;MagicMock id='2544542389920'&gt;.allowed">self = &lt;test_risk_reasons_table_enhanced.TestRiskReasonsTable object at 0x00000250728C6B10&gt;
+symbol = 'MARGIN_HEAVY', side = 'buy', qty = 2000, price = 200.0
+scenario = 'margin_requirement', expected_allowed = False
+expected_reason = 'insufficient margin available', expected_adj_qty = None
+risk_manager = &lt;test_risk_reasons_table_enhanced.MockRiskManager object at 0x0000025072A38290&gt;
+
+    @pytest.mark.parametrize("symbol,side,qty,price,scenario,expected_allowed,expected_reason,expected_adj_qty",
+                             RISK_BLOCK_SCENARIOS)
+    @pytest.mark.asyncio
+    async def test_risk_scenarios_comprehensive(self, symbol, side, qty, price, scenario, expected_allowed,
+                                              expected_reason, expected_adj_qty, risk_manager):
+        """Test comprehensive risk scenarios return correct (allowed, reason, adjusted_qty) tuples."""
+        # Create order data
+        order_data = {
+            "symbol": symbol,
+            "side": side,
+            "qty": Decimal(str(qty)),
+            "price": Decimal(str(price)),
+            "order_type": "market",
+            "account_id": "test-account"
+        }
+    
+        # Execute risk check
+        result = await risk_manager.before_order(order_data)
+    
+        # Assert result structure
+        assert hasattr(result, 'allowed'), f"Risk result missing 'allowed' attribute for {scenario}"
+        assert hasattr(result, 'reason'), f"Risk result missing 'reason' attribute for {scenario}"
+        assert hasattr(result, 'adjusted_qty'), f"Risk result missing 'adjusted_qty' attribute for {scenario}"
+    
+        # Assert expected outcomes
+&gt;       assert result.allowed == expected_allowed, f"{scenario}: Expected allowed={expected_allowed}, got {result.allowed}"
+E       AssertionError: margin_requirement: Expected allowed=False, got True
+E       assert True == False
+E        +  where True = &lt;MagicMock id='2544542389920'&gt;.allowed
+
+tests\risk\test_risk_reasons_table_enhanced.py:350: AssertionError</failure></testcase><testcase classname="tests.risk.test_risk_reasons_table_enhanced.TestRiskReasonsTable" name="test_risk_scenarios_comprehensive[ANY_SYMBOL-buy-100-50.0-market_kill_switch-False-trading halted by kill switch-None]" time="0.020"><failure message="AssertionError: market_kill_switch: Expected allowed=False, got True&#10;assert True == False&#10; +  where True = &lt;MagicMock id='2544544424512'&gt;.allowed">self = &lt;test_risk_reasons_table_enhanced.TestRiskReasonsTable object at 0x00000250728C6BA0&gt;
+symbol = 'ANY_SYMBOL', side = 'buy', qty = 100, price = 50.0
+scenario = 'market_kill_switch', expected_allowed = False
+expected_reason = 'trading halted by kill switch', expected_adj_qty = None
+risk_manager = &lt;test_risk_reasons_table_enhanced.MockRiskManager object at 0x0000025072A99820&gt;
+
+    @pytest.mark.parametrize("symbol,side,qty,price,scenario,expected_allowed,expected_reason,expected_adj_qty",
+                             RISK_BLOCK_SCENARIOS)
+    @pytest.mark.asyncio
+    async def test_risk_scenarios_comprehensive(self, symbol, side, qty, price, scenario, expected_allowed,
+                                              expected_reason, expected_adj_qty, risk_manager):
+        """Test comprehensive risk scenarios return correct (allowed, reason, adjusted_qty) tuples."""
+        # Create order data
+        order_data = {
+            "symbol": symbol,
+            "side": side,
+            "qty": Decimal(str(qty)),
+            "price": Decimal(str(price)),
+            "order_type": "market",
+            "account_id": "test-account"
+        }
+    
+        # Execute risk check
+        result = await risk_manager.before_order(order_data)
+    
+        # Assert result structure
+        assert hasattr(result, 'allowed'), f"Risk result missing 'allowed' attribute for {scenario}"
+        assert hasattr(result, 'reason'), f"Risk result missing 'reason' attribute for {scenario}"
+        assert hasattr(result, 'adjusted_qty'), f"Risk result missing 'adjusted_qty' attribute for {scenario}"
+    
+        # Assert expected outcomes
+&gt;       assert result.allowed == expected_allowed, f"{scenario}: Expected allowed={expected_allowed}, got {result.allowed}"
+E       AssertionError: market_kill_switch: Expected allowed=False, got True
+E       assert True == False
+E        +  where True = &lt;MagicMock id='2544544424512'&gt;.allowed
+
+tests\risk\test_risk_reasons_table_enhanced.py:350: AssertionError</failure></testcase><testcase classname="tests.risk.test_risk_reasons_table_enhanced.TestRiskReasonsTable" name="test_risk_scenarios_comprehensive[VOLATILE_MEME-sell-500-10.0-symbol_kill_switch-False-symbol trading suspended-None]" time="0.017"><failure message="AssertionError: symbol_kill_switch: Expected allowed=False, got True&#10;assert True == False&#10; +  where True = &lt;MagicMock id='2544544351248'&gt;.allowed">self = &lt;test_risk_reasons_table_enhanced.TestRiskReasonsTable object at 0x00000250728C6C30&gt;
+symbol = 'VOLATILE_MEME', side = 'sell', qty = 500, price = 10.0
+scenario = 'symbol_kill_switch', expected_allowed = False
+expected_reason = 'symbol trading suspended', expected_adj_qty = None
+risk_manager = &lt;test_risk_reasons_table_enhanced.MockRiskManager object at 0x0000025072B3FEF0&gt;
+
+    @pytest.mark.parametrize("symbol,side,qty,price,scenario,expected_allowed,expected_reason,expected_adj_qty",
+                             RISK_BLOCK_SCENARIOS)
+    @pytest.mark.asyncio
+    async def test_risk_scenarios_comprehensive(self, symbol, side, qty, price, scenario, expected_allowed,
+                                              expected_reason, expected_adj_qty, risk_manager):
+        """Test comprehensive risk scenarios return correct (allowed, reason, adjusted_qty) tuples."""
+        # Create order data
+        order_data = {
+            "symbol": symbol,
+            "side": side,
+            "qty": Decimal(str(qty)),
+            "price": Decimal(str(price)),
+            "order_type": "market",
+            "account_id": "test-account"
+        }
+    
+        # Execute risk check
+        result = await risk_manager.before_order(order_data)
+    
+        # Assert result structure
+        assert hasattr(result, 'allowed'), f"Risk result missing 'allowed' attribute for {scenario}"
+        assert hasattr(result, 'reason'), f"Risk result missing 'reason' attribute for {scenario}"
+        assert hasattr(result, 'adjusted_qty'), f"Risk result missing 'adjusted_qty' attribute for {scenario}"
+    
+        # Assert expected outcomes
+&gt;       assert result.allowed == expected_allowed, f"{scenario}: Expected allowed={expected_allowed}, got {result.allowed}"
+E       AssertionError: symbol_kill_switch: Expected allowed=False, got True
+E       assert True == False
+E        +  where True = &lt;MagicMock id='2544544351248'&gt;.allowed
+
+tests\risk\test_risk_reasons_table_enhanced.py:350: AssertionError</failure></testcase><testcase classname="tests.risk.test_risk_reasons_table_enhanced.TestRiskReasonsTable" name="test_risk_scenarios_comprehensive[EXPENSIVE_STOCK-buy-1-5000.0-notional_too_small_qty-False-trade size below minimum-None]" time="0.005"><failure message="AssertionError: notional_too_small_qty: Expected allowed=False, got True&#10;assert True == False&#10; +  where True = &lt;MagicMock id='2544544126912'&gt;.allowed">self = &lt;test_risk_reasons_table_enhanced.TestRiskReasonsTable object at 0x00000250728C6CC0&gt;
+symbol = 'EXPENSIVE_STOCK', side = 'buy', qty = 1, price = 5000.0
+scenario = 'notional_too_small_qty', expected_allowed = False
+expected_reason = 'trade size below minimum', expected_adj_qty = None
+risk_manager = &lt;test_risk_reasons_table_enhanced.MockRiskManager object at 0x0000025072A31D90&gt;
+
+    @pytest.mark.parametrize("symbol,side,qty,price,scenario,expected_allowed,expected_reason,expected_adj_qty",
+                             RISK_BLOCK_SCENARIOS)
+    @pytest.mark.asyncio
+    async def test_risk_scenarios_comprehensive(self, symbol, side, qty, price, scenario, expected_allowed,
+                                              expected_reason, expected_adj_qty, risk_manager):
+        """Test comprehensive risk scenarios return correct (allowed, reason, adjusted_qty) tuples."""
+        # Create order data
+        order_data = {
+            "symbol": symbol,
+            "side": side,
+            "qty": Decimal(str(qty)),
+            "price": Decimal(str(price)),
+            "order_type": "market",
+            "account_id": "test-account"
+        }
+    
+        # Execute risk check
+        result = await risk_manager.before_order(order_data)
+    
+        # Assert result structure
+        assert hasattr(result, 'allowed'), f"Risk result missing 'allowed' attribute for {scenario}"
+        assert hasattr(result, 'reason'), f"Risk result missing 'reason' attribute for {scenario}"
+        assert hasattr(result, 'adjusted_qty'), f"Risk result missing 'adjusted_qty' attribute for {scenario}"
+    
+        # Assert expected outcomes
+&gt;       assert result.allowed == expected_allowed, f"{scenario}: Expected allowed={expected_allowed}, got {result.allowed}"
+E       AssertionError: notional_too_small_qty: Expected allowed=False, got True
+E       assert True == False
+E        +  where True = &lt;MagicMock id='2544544126912'&gt;.allowed
+
+tests\risk\test_risk_reasons_table_enhanced.py:350: AssertionError</failure></testcase><testcase classname="tests.risk.test_risk_reasons_table_enhanced.TestRiskReasonsTable" name="test_risk_scenarios_comprehensive[CHEAP_PENNY-buy-10-0.05-notional_too_small_value-False-notional value too small-None]" time="0.017"><failure message="AssertionError: notional_too_small_value: Expected allowed=False, got True&#10;assert True == False&#10; +  where True = &lt;MagicMock id='2544543893984'&gt;.allowed">self = &lt;test_risk_reasons_table_enhanced.TestRiskReasonsTable object at 0x00000250728C6D50&gt;
+symbol = 'CHEAP_PENNY', side = 'buy', qty = 10, price = 0.05
+scenario = 'notional_too_small_value', expected_allowed = False
+expected_reason = 'notional value too small', expected_adj_qty = None
+risk_manager = &lt;test_risk_reasons_table_enhanced.MockRiskManager object at 0x0000025072A1E7B0&gt;
+
+    @pytest.mark.parametrize("symbol,side,qty,price,scenario,expected_allowed,expected_reason,expected_adj_qty",
+                             RISK_BLOCK_SCENARIOS)
+    @pytest.mark.asyncio
+    async def test_risk_scenarios_comprehensive(self, symbol, side, qty, price, scenario, expected_allowed,
+                                              expected_reason, expected_adj_qty, risk_manager):
+        """Test comprehensive risk scenarios return correct (allowed, reason, adjusted_qty) tuples."""
+        # Create order data
+        order_data = {
+            "symbol": symbol,
+            "side": side,
+            "qty": Decimal(str(qty)),
+            "price": Decimal(str(price)),
+            "order_type": "market",
+            "account_id": "test-account"
+        }
+    
+        # Execute risk check
+        result = await risk_manager.before_order(order_data)
+    
+        # Assert result structure
+        assert hasattr(result, 'allowed'), f"Risk result missing 'allowed' attribute for {scenario}"
+        assert hasattr(result, 'reason'), f"Risk result missing 'reason' attribute for {scenario}"
+        assert hasattr(result, 'adjusted_qty'), f"Risk result missing 'adjusted_qty' attribute for {scenario}"
+    
+        # Assert expected outcomes
+&gt;       assert result.allowed == expected_allowed, f"{scenario}: Expected allowed={expected_allowed}, got {result.allowed}"
+E       AssertionError: notional_too_small_value: Expected allowed=False, got True
+E       assert True == False
+E        +  where True = &lt;MagicMock id='2544543893984'&gt;.allowed
+
+tests\risk\test_risk_reasons_table_enhanced.py:350: AssertionError</failure></testcase><testcase classname="tests.risk.test_risk_reasons_table_enhanced.TestRiskReasonsTable" name="test_risk_scenarios_comprehensive[AAPL-buy-100-150.0-normal_allowed-True-None-None]" time="0.019" /><testcase classname="tests.risk.test_risk_reasons_table_enhanced.TestRiskReasonsTable" name="test_risk_scenarios_comprehensive[MSFT-sell-50-300.0-normal_sell_allowed-True-None-None]" time="0.005" /><testcase classname="tests.risk.test_risk_reasons_table_enhanced.TestRiskReasonsTable" name="test_risk_edge_cases[-buy-100-150.0-empty_symbol-invalid symbol]" time="0.004"><failure message="AssertionError: empty_symbol: Expected blocked but was allowed&#10;assert True is False&#10; +  where True = &lt;MagicMock id='2544544576528'&gt;.allowed">self = &lt;test_risk_reasons_table_enhanced.TestRiskReasonsTable object at 0x00000250728C7890&gt;
+symbol = '', side = 'buy', qty = 100, price = 150.0, scenario = 'empty_symbol'
+expected_pattern = 'invalid symbol'
+risk_manager = &lt;test_risk_reasons_table_enhanced.MockRiskManager object at 0x0000025072ACF950&gt;
+
+    @pytest.mark.parametrize("symbol,side,qty,price,scenario,expected_pattern", RISK_EDGE_CASES)
+    @pytest.mark.asyncio
+    async def test_risk_edge_cases(self, symbol, side, qty, price, scenario, expected_pattern, risk_manager):
+        """Test edge cases and validation errors in risk checking."""
+        order_data = {
+            "symbol": symbol,
+            "side": side,
+            "qty": Decimal(str(qty)) if qty != 0 else Decimal("0"),
+            "price": Decimal(str(price)) if price != 0 else Decimal("0"),
+            "order_type": "market",
+            "account_id": "test-account"
+        }
+    
+        # Execute risk check
+        result = await risk_manager.before_order(order_data)
+    
+        # Should be blocked for all edge cases
+&gt;       assert result.allowed is False, f"{scenario}: Expected blocked but was allowed"
+E       AssertionError: empty_symbol: Expected blocked but was allowed
+E       assert True is False
+E        +  where True = &lt;MagicMock id='2544544576528'&gt;.allowed
+
+tests\risk\test_risk_reasons_table_enhanced.py:380: AssertionError</failure></testcase><testcase classname="tests.risk.test_risk_reasons_table_enhanced.TestRiskReasonsTable" name="test_risk_edge_cases[VALIDSTOCK-invalid_side-100-150.0-invalid_side-invalid order side]" time="0.025"><failure message="AssertionError: invalid_side: Expected blocked but was allowed&#10;assert True is False&#10; +  where True = &lt;MagicMock id='2544545224400'&gt;.allowed">self = &lt;test_risk_reasons_table_enhanced.TestRiskReasonsTable object at 0x00000250728C7C50&gt;
+symbol = 'VALIDSTOCK', side = 'invalid_side', qty = 100, price = 150.0
+scenario = 'invalid_side', expected_pattern = 'invalid order side'
+risk_manager = &lt;test_risk_reasons_table_enhanced.MockRiskManager object at 0x0000025072B6CC20&gt;
+
+    @pytest.mark.parametrize("symbol,side,qty,price,scenario,expected_pattern", RISK_EDGE_CASES)
+    @pytest.mark.asyncio
+    async def test_risk_edge_cases(self, symbol, side, qty, price, scenario, expected_pattern, risk_manager):
+        """Test edge cases and validation errors in risk checking."""
+        order_data = {
+            "symbol": symbol,
+            "side": side,
+            "qty": Decimal(str(qty)) if qty != 0 else Decimal("0"),
+            "price": Decimal(str(price)) if price != 0 else Decimal("0"),
+            "order_type": "market",
+            "account_id": "test-account"
+        }
+    
+        # Execute risk check
+        result = await risk_manager.before_order(order_data)
+    
+        # Should be blocked for all edge cases
+&gt;       assert result.allowed is False, f"{scenario}: Expected blocked but was allowed"
+E       AssertionError: invalid_side: Expected blocked but was allowed
+E       assert True is False
+E        +  where True = &lt;MagicMock id='2544545224400'&gt;.allowed
+
+tests\risk\test_risk_reasons_table_enhanced.py:380: AssertionError</failure></testcase><testcase classname="tests.risk.test_risk_reasons_table_enhanced.TestRiskReasonsTable" name="test_risk_edge_cases[VALIDSTOCK-buy-0-150.0-zero_quantity-quantity must be positive]" time="0.016"><failure message="AssertionError: zero_quantity: Expected blocked but was allowed&#10;assert True is False&#10; +  where True = &lt;MagicMock id='2544543899600'&gt;.allowed">self = &lt;test_risk_reasons_table_enhanced.TestRiskReasonsTable object at 0x00000250728C7D10&gt;
+symbol = 'VALIDSTOCK', side = 'buy', qty = 0, price = 150.0
+scenario = 'zero_quantity', expected_pattern = 'quantity must be positive'
+risk_manager = &lt;test_risk_reasons_table_enhanced.MockRiskManager object at 0x0000025072B1D910&gt;
+
+    @pytest.mark.parametrize("symbol,side,qty,price,scenario,expected_pattern", RISK_EDGE_CASES)
+    @pytest.mark.asyncio
+    async def test_risk_edge_cases(self, symbol, side, qty, price, scenario, expected_pattern, risk_manager):
+        """Test edge cases and validation errors in risk checking."""
+        order_data = {
+            "symbol": symbol,
+            "side": side,
+            "qty": Decimal(str(qty)) if qty != 0 else Decimal("0"),
+            "price": Decimal(str(price)) if price != 0 else Decimal("0"),
+            "order_type": "market",
+            "account_id": "test-account"
+        }
+    
+        # Execute risk check
+        result = await risk_manager.before_order(order_data)
+    
+        # Should be blocked for all edge cases
+&gt;       assert result.allowed is False, f"{scenario}: Expected blocked but was allowed"
+E       AssertionError: zero_quantity: Expected blocked but was allowed
+E       assert True is False
+E        +  where True = &lt;MagicMock id='2544543899600'&gt;.allowed
+
+tests\risk\test_risk_reasons_table_enhanced.py:380: AssertionError</failure></testcase><testcase classname="tests.risk.test_risk_reasons_table_enhanced.TestRiskReasonsTable" name="test_risk_edge_cases[VALIDSTOCK-buy--100-150.0-negative_quantity-quantity cannot be negative]" time="0.017"><failure message="AssertionError: negative_quantity: Expected blocked but was allowed&#10;assert True is False&#10; +  where True = &lt;MagicMock id='2544544122640'&gt;.allowed">self = &lt;test_risk_reasons_table_enhanced.TestRiskReasonsTable object at 0x00000250728C6E40&gt;
+symbol = 'VALIDSTOCK', side = 'buy', qty = -100, price = 150.0
+scenario = 'negative_quantity', expected_pattern = 'quantity cannot be negative'
+risk_manager = &lt;test_risk_reasons_table_enhanced.MockRiskManager object at 0x0000025072A288F0&gt;
+
+    @pytest.mark.parametrize("symbol,side,qty,price,scenario,expected_pattern", RISK_EDGE_CASES)
+    @pytest.mark.asyncio
+    async def test_risk_edge_cases(self, symbol, side, qty, price, scenario, expected_pattern, risk_manager):
+        """Test edge cases and validation errors in risk checking."""
+        order_data = {
+            "symbol": symbol,
+            "side": side,
+            "qty": Decimal(str(qty)) if qty != 0 else Decimal("0"),
+            "price": Decimal(str(price)) if price != 0 else Decimal("0"),
+            "order_type": "market",
+            "account_id": "test-account"
+        }
+    
+        # Execute risk check
+        result = await risk_manager.before_order(order_data)
+    
+        # Should be blocked for all edge cases
+&gt;       assert result.allowed is False, f"{scenario}: Expected blocked but was allowed"
+E       AssertionError: negative_quantity: Expected blocked but was allowed
+E       assert True is False
+E        +  where True = &lt;MagicMock id='2544544122640'&gt;.allowed
+
+tests\risk\test_risk_reasons_table_enhanced.py:380: AssertionError</failure></testcase><testcase classname="tests.risk.test_risk_reasons_table_enhanced.TestRiskReasonsTable" name="test_risk_edge_cases[VALIDSTOCK-buy-100-0-zero_price-price must be positive]" time="0.048"><failure message="AssertionError: zero_price: Expected blocked but was allowed&#10;assert True is False&#10; +  where True = &lt;MagicMock id='2544544929968'&gt;.allowed">self = &lt;test_risk_reasons_table_enhanced.TestRiskReasonsTable object at 0x00000250728C6D20&gt;
+symbol = 'VALIDSTOCK', side = 'buy', qty = 100, price = 0
+scenario = 'zero_price', expected_pattern = 'price must be positive'
+risk_manager = &lt;test_risk_reasons_table_enhanced.MockRiskManager object at 0x0000025072A61820&gt;
+
+    @pytest.mark.parametrize("symbol,side,qty,price,scenario,expected_pattern", RISK_EDGE_CASES)
+    @pytest.mark.asyncio
+    async def test_risk_edge_cases(self, symbol, side, qty, price, scenario, expected_pattern, risk_manager):
+        """Test edge cases and validation errors in risk checking."""
+        order_data = {
+            "symbol": symbol,
+            "side": side,
+            "qty": Decimal(str(qty)) if qty != 0 else Decimal("0"),
+            "price": Decimal(str(price)) if price != 0 else Decimal("0"),
+            "order_type": "market",
+            "account_id": "test-account"
+        }
+    
+        # Execute risk check
+        result = await risk_manager.before_order(order_data)
+    
+        # Should be blocked for all edge cases
+&gt;       assert result.allowed is False, f"{scenario}: Expected blocked but was allowed"
+E       AssertionError: zero_price: Expected blocked but was allowed
+E       assert True is False
+E        +  where True = &lt;MagicMock id='2544544929968'&gt;.allowed
+
+tests\risk\test_risk_reasons_table_enhanced.py:380: AssertionError</failure></testcase><testcase classname="tests.risk.test_risk_reasons_table_enhanced.TestRiskReasonsTable" name="test_risk_edge_cases[VALIDSTOCK-buy-100--50.0-negative_price-price cannot be negative]" time="0.005"><failure message="AssertionError: negative_price: Expected blocked but was allowed&#10;assert True is False&#10; +  where True = &lt;MagicMock id='2544544255488'&gt;.allowed">self = &lt;test_risk_reasons_table_enhanced.TestRiskReasonsTable object at 0x00000250728C6C00&gt;
+symbol = 'VALIDSTOCK', side = 'buy', qty = 100, price = -50.0
+scenario = 'negative_price', expected_pattern = 'price cannot be negative'
+risk_manager = &lt;test_risk_reasons_table_enhanced.MockRiskManager object at 0x0000025072B25400&gt;
+
+    @pytest.mark.parametrize("symbol,side,qty,price,scenario,expected_pattern", RISK_EDGE_CASES)
+    @pytest.mark.asyncio
+    async def test_risk_edge_cases(self, symbol, side, qty, price, scenario, expected_pattern, risk_manager):
+        """Test edge cases and validation errors in risk checking."""
+        order_data = {
+            "symbol": symbol,
+            "side": side,
+            "qty": Decimal(str(qty)) if qty != 0 else Decimal("0"),
+            "price": Decimal(str(price)) if price != 0 else Decimal("0"),
+            "order_type": "market",
+            "account_id": "test-account"
+        }
+    
+        # Execute risk check
+        result = await risk_manager.before_order(order_data)
+    
+        # Should be blocked for all edge cases
+&gt;       assert result.allowed is False, f"{scenario}: Expected blocked but was allowed"
+E       AssertionError: negative_price: Expected blocked but was allowed
+E       assert True is False
+E        +  where True = &lt;MagicMock id='2544544255488'&gt;.allowed
+
+tests\risk\test_risk_reasons_table_enhanced.py:380: AssertionError</failure></testcase><testcase classname="tests.risk.test_risk_reasons_table_enhanced.TestRiskReasonsTable" name="test_negative_mu_detection" time="0.005"><failure message="AssertionError: assert True is False&#10; +  where True = &lt;MagicMock id='2544544402320'&gt;.allowed">self = &lt;test_risk_reasons_table_enhanced.TestRiskReasonsTable object at 0x0000025072900050&gt;
+risk_manager = &lt;test_risk_reasons_table_enhanced.MockRiskManager object at 0x0000025072A81070&gt;
+mock_volatility_analyzer = &lt;AsyncMock id='2544545202592'&gt;
+
+    @pytest.mark.asyncio
+    async def test_negative_mu_detection(self, risk_manager, mock_volatility_analyzer):
+        """Test detection of negative expected returns (μ &lt; 0)."""
+        # Configure volatility analyzer for negative expected return
+        mock_volatility_analyzer.analyze_symbol_risk.return_value = {
+            "expected_return": -0.08,  # Negative 8% expected return
+            "volatility": 0.25,
+            "recommendation": "avoid_long_positions"
+        }
+    
+        order_data = {
+            "symbol": "DECLINING_TECH",
+            "side": "buy",  # Buying declining stock
+            "qty": Decimal("100"),
+            "price": Decimal("50.0"),
+            "account_id": "test"
+        }
+    
+        result = await risk_manager.before_order(order_data)
+    
+&gt;       assert result.allowed is False
+E       AssertionError: assert True is False
+E        +  where True = &lt;MagicMock id='2544544402320'&gt;.allowed
+
+tests\risk\test_risk_reasons_table_enhanced.py:404: AssertionError</failure></testcase><testcase classname="tests.risk.test_risk_reasons_table_enhanced.TestRiskReasonsTable" name="test_zero_volatility_detection" time="0.014"><failure message="AssertionError: assert True is False&#10; +  where True = &lt;MagicMock id='2544544525024'&gt;.allowed">self = &lt;test_risk_reasons_table_enhanced.TestRiskReasonsTable object at 0x0000025072900350&gt;
+risk_manager = &lt;test_risk_reasons_table_enhanced.MockRiskManager object at 0x0000025072AA4E30&gt;
+mock_volatility_analyzer = &lt;AsyncMock id='2544544555488'&gt;
+
+    @pytest.mark.asyncio
+    async def test_zero_volatility_detection(self, risk_manager, mock_volatility_analyzer):
+        """Test detection of near-zero volatility (σ ≈ 0)."""
+        # Configure for extremely low volatility
+        mock_volatility_analyzer.analyze_symbol_risk.return_value = {
+            "expected_return": 0.02,
+            "volatility": 0.0001,  # Near zero volatility
+            "recommendation": "insufficient_opportunity"
+        }
+        mock_volatility_analyzer.is_low_volatility.return_value = True
+    
+        order_data = {
+            "symbol": "STABLE_UTILITY",
+            "side": "buy",
+            "qty": Decimal("1000"),
+            "price": Decimal("100.0"),
+            "account_id": "test"
+        }
+    
+        result = await risk_manager.before_order(order_data)
+    
+&gt;       assert result.allowed is False
+E       AssertionError: assert True is False
+E        +  where True = &lt;MagicMock id='2544544525024'&gt;.allowed
+
+tests\risk\test_risk_reasons_table_enhanced.py:429: AssertionError</failure></testcase><testcase classname="tests.risk.test_risk_reasons_table_enhanced.TestRiskReasonsTable" name="test_per_symbol_daily_cap_enforcement" time="0.017"><failure message="AssertionError: assert True is False&#10; +  where True = &lt;MagicMock id='2544544417168'&gt;.allowed">self = &lt;test_risk_reasons_table_enhanced.TestRiskReasonsTable object at 0x0000025072900680&gt;
+risk_manager = &lt;test_risk_reasons_table_enhanced.MockRiskManager object at 0x0000025072AC2DB0&gt;
+mock_position_limits = &lt;AsyncMock id='2544544517008'&gt;
+
+    @pytest.mark.asyncio
+    async def test_per_symbol_daily_cap_enforcement(self, risk_manager, mock_position_limits):
+        """Test per-symbol daily trading cap enforcement."""
+        # Configure position limits to simulate daily cap hit
+        def daily_cap_check(symbol, side, qty, **kwargs):
+            if symbol == "POPULAR_STOCK":
+                if qty &gt; 500:
+                    return False, "daily trading limit exceeded for POPULAR_STOCK", None
+                else:
+                    return True, "approaching daily limit", Decimal("300")  # Reduced quantity
+            return True, None, None
+    
+        mock_position_limits.check_single_position_limit.side_effect = daily_cap_check
+    
+        # Test exceeding daily cap
+        order_large = {
+            "symbol": "POPULAR_STOCK",
+            "side": "buy",
+            "qty": Decimal("1000"),  # Exceeds 500 limit
+            "price": Decimal("100.0"),
+            "account_id": "test"
+        }
+    
+        result_large = await risk_manager.before_order(order_large)
+&gt;       assert result_large.allowed is False
+E       AssertionError: assert True is False
+E        +  where True = &lt;MagicMock id='2544544417168'&gt;.allowed
+
+tests\risk\test_risk_reasons_table_enhanced.py:456: AssertionError</failure></testcase><testcase classname="tests.risk.test_risk_reasons_table_enhanced.TestRiskReasonsTable" name="test_leverage_ratio_enforcement" time="0.024"><failure message="AssertionError: assert True is False&#10; +  where True = &lt;MagicMock id='2544544511040'&gt;.allowed">self = &lt;test_risk_reasons_table_enhanced.TestRiskReasonsTable object at 0x00000250729009B0&gt;
+risk_manager = &lt;test_risk_reasons_table_enhanced.MockRiskManager object at 0x0000025072AA8200&gt;
+mock_margin_calculator = &lt;AsyncMock id='2544545209648'&gt;
+
+    @pytest.mark.asyncio
+    async def test_leverage_ratio_enforcement(self, risk_manager, mock_margin_calculator):
+        """Test leverage ratio limits enforcement."""
+        # Configure margin calculator for high leverage scenarios
+        def leverage_check(symbol, side, qty, price, **kwargs):
+            leverage_ratio = (qty * price) / 10000  # Assume $10k account
+    
+            if leverage_ratio &gt; 4.0:  # 4:1 max leverage
+                return False, f"leverage ratio {leverage_ratio:.1f}:1 exceeds maximum 4:1", None
+            elif symbol.startswith("3X_"):  # Leveraged ETF
+                return False, "leveraged instruments not permitted", None
+            else:
+                return True, None, None
+    
+        mock_margin_calculator.check_buying_power.side_effect = leverage_check
+    
+        # Test excessive leverage
+        high_leverage_order = {
+            "symbol": "EXPENSIVE_STOCK",
+            "side": "buy",
+            "qty": Decimal("100"),
+            "price": Decimal("500.0"),  # $50k notional on $10k account = 5:1 leverage
+            "account_id": "test"
+        }
+    
+        result = await risk_manager.before_order(high_leverage_order)
+&gt;       assert result.allowed is False
+E       AssertionError: assert True is False
+E        +  where True = &lt;MagicMock id='2544544511040'&gt;.allowed
+
+tests\risk\test_risk_reasons_table_enhanced.py:498: AssertionError</failure></testcase><testcase classname="tests.risk.test_risk_reasons_table_enhanced.TestRiskReasonsTable" name="test_kill_switch_scenarios" time="0.006"><failure message="AssertionError: assert True is False&#10; +  where True = &lt;MagicMock id='2544544930064'&gt;.allowed">self = &lt;test_risk_reasons_table_enhanced.TestRiskReasonsTable object at 0x0000025072900D10&gt;
+risk_manager = &lt;test_risk_reasons_table_enhanced.MockRiskManager object at 0x0000025072B270B0&gt;
+mock_kill_switch_manager = &lt;MagicMock id='2544544936256'&gt;
+
+    @pytest.mark.asyncio
+    async def test_kill_switch_scenarios(self, risk_manager, mock_kill_switch_manager):
+        """Test market and symbol-level kill switch enforcement."""
+        # Test market-wide kill switch
+        def kill_switch_check(symbol=None, **kwargs):
+            if symbol == "HALTED_MARKET_SYMBOL":
+                return True, "market-wide trading halt active"
+            elif symbol and "SUSPENDED" in symbol:
+                return True, f"symbol {symbol} suspended by exchange"
+            else:
+                return False, None
+    
+        mock_kill_switch_manager.is_trading_halted.side_effect = kill_switch_check
+    
+        # Market halt scenario
+        market_halt_order = {
+            "symbol": "HALTED_MARKET_SYMBOL",
+            "side": "buy",
+            "qty": Decimal("100"),
+            "price": Decimal("50.0"),
+            "account_id": "test"
+        }
+    
+        result_market = await risk_manager.before_order(market_halt_order)
+&gt;       assert result_market.allowed is False
+E       AssertionError: assert True is False
+E        +  where True = &lt;MagicMock id='2544544930064'&gt;.allowed
+
+tests\risk\test_risk_reasons_table_enhanced.py:538: AssertionError</failure></testcase><testcase classname="tests.risk.test_risk_reasons_table_enhanced.TestRiskReasonsTable" name="test_minimum_notional_enforcement" time="0.004"><failure message="AssertionError: assert True is False&#10; +  where True = &lt;MagicMock id='2544542914256'&gt;.allowed">self = &lt;test_risk_reasons_table_enhanced.TestRiskReasonsTable object at 0x0000025072901070&gt;
+risk_manager = &lt;test_risk_reasons_table_enhanced.MockRiskManager object at 0x0000025072A69820&gt;
+mock_margin_calculator = &lt;AsyncMock id='2544542989200'&gt;
+
+    @pytest.mark.asyncio
+    async def test_minimum_notional_enforcement(self, risk_manager, mock_margin_calculator):
+        """Test minimum notional value requirements."""
+        def notional_check(symbol, side, qty, price, **kwargs):
+            notional_value = qty * price
+            minimum_notional = Decimal("100.0")  # $100 minimum trade
+    
+            if notional_value &lt; minimum_notional:
+                return False, f"notional value ${notional_value} below minimum ${minimum_notional}", None
+            elif qty &lt; 10 and price &gt; 500:  # Odd lot of expensive stock
+                return False, "odd lot orders require minimum 10 shares for expensive stocks", None
+            else:
+                return True, None, None
+    
+        mock_margin_calculator.check_buying_power.side_effect = notional_check
+    
+        # Test below minimum notional
+        small_trade = {
+            "symbol": "CHEAP_STOCK",
+            "side": "buy",
+            "qty": Decimal("5"),
+            "price": Decimal("15.0"),  # $75 notional &lt; $100 minimum
+            "account_id": "test"
+        }
+    
+        result_small = await risk_manager.before_order(small_trade)
+&gt;       assert result_small.allowed is False
+E       AssertionError: assert True is False
+E        +  where True = &lt;MagicMock id='2544542914256'&gt;.allowed
+
+tests\risk\test_risk_reasons_table_enhanced.py:580: AssertionError</failure></testcase><testcase classname="tests.risk.test_risk_reasons_table_enhanced.TestRiskPrometheusMetrics" name="test_orders_blocked_total_by_reason" time="0.000"><skipped type="pytest.skip" message="Prometheus metrics integration not yet implemented in risk components">C:\Users\Marsel\intra\algotrading_platform\tests\risk\test_risk_reasons_table_enhanced.py:601: Prometheus metrics integration not yet implemented in risk components</skipped></testcase><testcase classname="tests.risk.test_risk_reasons_table_enhanced.TestRiskPrometheusMetrics" name="test_risk_checks_total_metric" time="0.000"><skipped type="pytest.skip" message="Prometheus metrics integration not yet implemented in risk components">C:\Users\Marsel\intra\algotrading_platform\tests\risk\test_risk_reasons_table_enhanced.py:643: Prometheus metrics integration not yet implemented in risk components</skipped></testcase><testcase classname="tests.risk.test_risk_reasons_table_enhanced.TestRiskPrometheusMetrics" name="test_position_limits_hit_tracking" time="0.000"><skipped type="pytest.skip" message="Prometheus metrics integration not yet implemented in risk components">C:\Users\Marsel\intra\algotrading_platform\tests\risk\test_risk_reasons_table_enhanced.py:679: Prometheus metrics integration not yet implemented in risk components</skipped></testcase><testcase classname="tests.risk.test_risk_reasons_table_enhanced.TestRiskManagerIntegration" name="test_complete_risk_decision_workflow" time="0.004" /><testcase classname="tests.risk.test_risk_reasons_table_enhanced.TestRiskManagerIntegration" name="test_risk_manager_performance_under_load" time="0.008" /></testsuite></testsuites>

@@ -1,133 +1,163 @@
-#!/usr/bin/env python3
 """
-Matrix test runner that executes pytest subsets sequentially with coverage and JUnit outputs.
-
-Outputs:
-- JUnit XML:   test_reports/junit/<subset>.xml
-- Coverage XML: test_reports/coverage.xml (merged across runs via --cov-append)
-- Coverage HTML: test_reports/coverage_html/
+Lightweight test matrix runner with stable defaults.
 
 Usage:
-    python scripts/run_matrix.py                  # run all subsets
-    python scripts/run_matrix.py api ws           # run only specific subsets (space-separated)
+    python scripts/run_matrix.py [suite] [extra pytest args]
+    python scripts/run_matrix.py --with-coverage [suite] [extra pytest args]
 
-Notes:
-- This runner disables strict coverage gates during matrix runs (adds --cov-fail-under=0)
-    to ensure artifacts are produced even if thresholds aren't met.
+Suites:
+    integration  -> runs tests marked integration
+    chaos        -> runs tests marked chaos
+    api          -> runs tests marked api
+    unit         -> runs tests marked unit
+    all          -> runs entire test suite
+
+Stability defaults:
+    - Isolated worker: xdist -n 1 (if pytest-xdist is installed)
+    - Faulthandler enabled via PYTHONFAULTHANDLER=1
+    - Timeouts via pytest.ini (thread method)
+
+Coverage:
+    Coverage is disabled by default to speed up local runs and avoid incidental
+    threshold failures. Enable it with either --with-coverage or env WITH_COV=1.
+    When enabled, this script runs tests under coverage and emits
+    test_reports/coverage.xml.
 """
 
 from __future__ import annotations
 
 import os
 import sys
+import shlex
+from typing import List, Optional
 import subprocess
-from pathlib import Path
 
 
-SUBSETS = [
-    "tests/api",
-    "tests/ws",
-    "tests/mlops",
-    "tests/services",
-    "tests/risk",
-    "tests/integration",
-]
+def _has_plugin(module_name: str) -> bool:
+    try:
+        __import__(module_name)
+        return True
+    except Exception:
+        return False
 
 
-def run():
-    # Determine repo and project directories
-    script_path = Path(__file__).resolve()
-    project_dir = script_path.parent.parent  # algotrading_platform/
+def build_args(suite: str, extra: List[str], with_cov: bool) -> List[str]:
+    args: List[str] = []
 
-    # Reports directories
-    reports_dir = project_dir / "test_reports"
-    junit_dir = reports_dir / "junit"
-    htmlcov_dir = reports_dir / "coverage_html"
-    cov_xml_path = reports_dir / "coverage.xml"
+    # Disable pytest-cov unless explicitly enabled and plugin is present
+    if not with_cov and _has_plugin("pytest_cov"):
+        args.append("--no-cov")
 
-    junit_dir.mkdir(parents=True, exist_ok=True)
-    htmlcov_dir.mkdir(parents=True, exist_ok=True)
-    reports_dir.mkdir(parents=True, exist_ok=True)
+    # Stable defaults
+    # - quiet output, show slow tests
+    # - single worker isolation to avoid cross-test leakage
+    args.extend(["-q", "--durations=10", "--maxfail=1", "-s"]) 
+    if _has_plugin("xdist"):
+        args.extend(["-n", "1"])  # Use worker isolation only if xdist is installed
 
-    # Build environment: ensure backend package importable
-    env = os.environ.copy()
-    # Prepend project_dir to PYTHONPATH so `backend` resolves
-    py_path = str(project_dir)
-    env["PYTHONPATH"] = (
-        py_path
-        if not env.get("PYTHONPATH")
-        else py_path + os.pathsep + env["PYTHONPATH"]
-    )
+    # Map suite to markers
+    suite = (suite or "").lower()
+    marker_map = {
+        "integration": "integration",
+        "chaos": "chaos",
+        "api": "api",
+        "unit": "unit",
+    }
 
-    # Use current Python executable (works in venvs)
-    py_exec = sys.executable
+    if suite and suite != "all":
+        marker = marker_map.get(suite)
+        if marker:
+            args.extend(["-m", marker])
+        else:
+            # Treat as a -k expression if it's not a known suite
+            args.extend(["-k", suite])
 
-    print(f"Running matrix from: {project_dir}")
-    print(f"Using Python: {py_exec}")
-    print(f"PYTHONPATH: {env['PYTHONPATH']}")
+    # Append any extra pytest args
+    args.extend(extra)
+    return args
 
-    overall_rc = 0
-    results = []
 
-    # Allow selecting subsets via CLI args (use names without tests/ prefix)
-    argv = sys.argv[1:]
-    if argv:
-        # Map args like "api ws" to paths under tests/
-        selected = [f"tests/{arg.strip('/')}" for arg in argv]
+def main() -> int:
+    try:
+        import pytest  # type: ignore
+    except Exception as exc:
+        print(f"Error: pytest is required to run the matrix: {exc}")
+        return 2
+
+    # Parse CLI: first arg is suite, the rest are pytest args
+    suite = "all"
+    extra: List[str] = []
+    with_cov = os.environ.get("WITH_COV", "0") == "1"
+
+    if len(sys.argv) > 1:
+        # Support a leading flag like --with-coverage
+        argv = sys.argv[1:]
+        if argv and argv[0] == "--with-coverage":
+            with_cov = True
+            argv = argv[1:]
+
+        if argv:
+            suite = argv[0]
+            extra = argv[1:]
+
+    # Support passing a single string of extra args (e.g., from CI)
+    if len(extra) == 1 and (" " in extra[0] or "\t" in extra[0]):
+        extra = shlex.split(extra[0])
+
+    # Drop any explicit --with-coverage passed via extra
+    extra = [a for a in extra if a != "--with-coverage"]
+
+    args = build_args(suite, extra, with_cov)
+    # Run from repo root to honor top-level pytest.ini if present. Walk upwards
+    # and choose the top-most directory containing a pytest.ini.
+    start_dir = os.path.dirname(__file__)
+    cur = start_dir
+    chosen: Optional[str] = None
+    while True:
+        if os.path.exists(os.path.join(cur, "pytest.ini")):
+            chosen = cur if chosen is None else chosen  # remember first seen
+        parent = os.path.dirname(cur)
+        if parent == cur:
+            break
+        cur = parent
+    # If multiple pytest.ini files exist in parents, prefer the highest (repo root)
+    # by re-walking and storing the last seen.
+    if chosen is not None:
+        cur = start_dir
+        last: Optional[str] = None
+        while True:
+            if os.path.exists(os.path.join(cur, "pytest.ini")):
+                last = cur
+            parent = os.path.dirname(cur)
+            if parent == cur:
+                break
+            cur = parent
+        os.chdir(last or chosen)
     else:
-        selected = SUBSETS
+        # Fallback to repo root guess: three levels up from scripts/run_matrix.py
+        os.chdir(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+    # Ensure faulthandler is active for any hangs
+    os.environ.setdefault("PYTHONFAULTHANDLER", "1")
 
-    for subset in selected:
-        subset_path = project_dir / subset
-        name = subset.replace("tests/", "").replace("/", "_") or "root"
-
-        if not subset_path.exists():
-            print(f"[SKIP] {subset} (not found)")
-            results.append((name, "skipped", 0))
-            continue
-
-        junit_xml = junit_dir / f"{name}.xml"
-
-        cmd = [
-            py_exec,
-            "-m",
-            "pytest",
-            str(subset_path),
-            "--junitxml",
-            str(junit_xml),
-            "--cov=backend",
-            f"--cov-report=xml:{cov_xml_path}",
-            f"--cov-report=html:{htmlcov_dir}",
-            "--cov-append",
-            "--cov-fail-under=0",  # disable coverage gate for matrix runs
-            "-o",
-            "addopts=",
-        ]
-
-        print("\n=== Running subset:", subset, "===")
+    if with_cov:
+        # Ensure coverage is available
         try:
-            rc = subprocess.call(cmd, cwd=str(project_dir), env=env)
-        except KeyboardInterrupt:
-            print("Interrupted by user.")
-            rc = 130
-        except Exception as e:
-            print(f"[ERROR] Failed to run {subset}: {e}")
-            rc = 1
+            __import__("coverage")
+        except Exception as exc:
+            print(f"Error: --with-coverage requested but 'coverage' is not installed: {exc}")
+            return 2
 
-        status = "ok" if rc == 0 else "fail"
-        results.append((name, status, rc))
-        overall_rc = overall_rc or rc
-
-    print("\n=== Matrix Summary ===")
-    for name, status, rc in results:
-        print(f"- {name}: {status} (rc={rc})")
-
-    print(f"\nJUnit:   {junit_dir}")
-    print(f"Coverage XML: {cov_xml_path}")
-    print(f"Coverage HTML: {htmlcov_dir}")
-
-    sys.exit(overall_rc)
+        # Run under coverage and emit XML report
+        try:
+            rc = subprocess.run([sys.executable, "-m", "coverage", "run", "-m", "pytest", *args]).returncode
+        finally:
+            # Attempt to generate XML even if tests failed
+            os.makedirs("test_reports", exist_ok=True)
+            subprocess.run([sys.executable, "-m", "coverage", "xml", "-o", os.path.join("test_reports", "coverage.xml")])
+        return rc
+    else:
+        return pytest.main(args)
 
 
 if __name__ == "__main__":
-    run()
+    raise SystemExit(main())

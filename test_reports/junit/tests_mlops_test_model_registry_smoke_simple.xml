@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="1" time="0.345" timestamp="2025-08-24T17:06:09.107319-07:00" hostname="BOOK-FVJOEO3Q00"><testcase classname="tests.mlops.test_model_registry_smoke_simple" name="test_model_registry_register_get_predict" time="0.014"><failure message="AttributeError: 'ModelVersion' object has no attribute 'predict'">def test_model_registry_register_get_predict():
+        if ModelRegistry is None:
+            pytest.skip("ModelRegistry not available")
+        reg = ModelRegistry()
+        reg.register_model("noop", NoOpModel())
+        model = reg.get_model("noop")
+        assert model is not None
+&gt;       assert model.predict([[1],[2]]) == [0,0]
+               ^^^^^^^^^^^^^
+E       AttributeError: 'ModelVersion' object has no attribute 'predict'
+
+tests\mlops\test_model_registry_smoke_simple.py:21: AttributeError</failure></testcase></testsuite></testsuites>

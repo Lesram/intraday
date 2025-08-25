@@ -1,0 +1,276 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="9" skipped="0" tests="12" time="29.513" timestamp="2025-08-24T17:03:24.354598-07:00" hostname="BOOK-FVJOEO3Q00"><testcase classname="tests.integration.test_api_startup_shutdown.TestAPIStartupShutdown" name="test_app_startup_sequence" time="0.225"><failure message="AssertionError: assert 'timestamp' in {'service': 'trading-platform', 'status': 'healthy'}">self = &lt;test_api_startup_shutdown.TestAPIStartupShutdown object at 0x000002AD280FD280&gt;
+ephemeral_app = &lt;fastapi.applications.FastAPI object at 0x000002AD282261E0&gt;
+mock_broker_service = &lt;AsyncMock name='BrokerService()' id='2942727894368'&gt;
+
+    @pytest.mark.asyncio
+    async def test_app_startup_sequence(self, ephemeral_app, mock_broker_service):
+        """Test that the application starts up correctly with all dependencies."""
+        from httpx import ASGITransport, AsyncClient
+    
+        async with AsyncClient(
+            transport=ASGITransport(app=ephemeral_app), base_url="http://test"
+        ) as client:
+            # Test that startup completed successfully by checking health
+            response = await client.get("/health")
+    
+            assert response.status_code == 200
+            health_data = response.json()
+            assert health_data["status"] == "healthy"
+&gt;           assert "timestamp" in health_data
+E           AssertionError: assert 'timestamp' in {'service': 'trading-platform', 'status': 'healthy'}
+
+tests\integration\test_api_startup_shutdown.py:83: AssertionError</failure></testcase><testcase classname="tests.integration.test_api_startup_shutdown.TestAPIStartupShutdown" name="test_readiness_probe_checks_dependencies" time="5.675"><failure message="assert 503 == 200&#10; +  where 503 = &lt;Response [503 Service Unavailable]&gt;.status_code">self = &lt;test_api_startup_shutdown.TestAPIStartupShutdown object at 0x000002AD28225700&gt;
+ephemeral_app = &lt;fastapi.applications.FastAPI object at 0x000002AD282261E0&gt;
+mock_broker_service = &lt;AsyncMock name='BrokerService()' id='2942745481232'&gt;
+
+    @pytest.mark.asyncio
+    async def test_readiness_probe_checks_dependencies(
+        self, ephemeral_app, mock_broker_service
+    ):
+        """Test readiness probe validates all dependencies."""
+        from httpx import ASGITransport, AsyncClient
+    
+        async with AsyncClient(
+            transport=ASGITransport(app=ephemeral_app), base_url="http://test"
+        ) as client:
+            # Test readiness when all dependencies are healthy
+            mock_broker_service.health_check.return_value = True
+    
+            response = await client.get("/readyz")
+    
+&gt;           assert response.status_code == 200
+E           assert 503 == 200
+E            +  where 503 = &lt;Response [503 Service Unavailable]&gt;.status_code
+
+tests\integration\test_api_startup_shutdown.py:101: AssertionError</failure></testcase><testcase classname="tests.integration.test_api_startup_shutdown.TestAPIStartupShutdown" name="test_readiness_probe_fails_on_unhealthy_broker" time="5.596"><failure message="AssertionError: assert 'not_ready' == 'degraded'&#10;  &#10;  - degraded&#10;  + not_ready">self = &lt;test_api_startup_shutdown.TestAPIStartupShutdown object at 0x000002AD28225AC0&gt;
+ephemeral_app = &lt;fastapi.applications.FastAPI object at 0x000002AD282261E0&gt;
+mock_broker_service = &lt;AsyncMock name='BrokerService()' id='2942747895056'&gt;
+
+    @pytest.mark.asyncio
+    async def test_readiness_probe_fails_on_unhealthy_broker(
+        self, ephemeral_app, mock_broker_service
+    ):
+        """Test readiness probe fails when broker is unhealthy."""
+        from httpx import ASGITransport, AsyncClient
+    
+        async with AsyncClient(
+            transport=ASGITransport(app=ephemeral_app), base_url="http://test"
+        ) as client:
+            # Simulate broker health check failure
+            mock_broker_service.health_check.return_value = False
+    
+            response = await client.get("/readyz")
+    
+            assert response.status_code == 503  # Service Unavailable
+            readiness_data = response.json()
+&gt;           assert readiness_data["status"] == "degraded"  # Modern status: ready/degraded
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           AssertionError: assert 'not_ready' == 'degraded'
+E             
+E             - degraded
+E             + not_ready
+
+tests\integration\test_api_startup_shutdown.py:127: AssertionError</failure></testcase><testcase classname="tests.integration.test_api_startup_shutdown.TestAPIStartupShutdown" name="test_liveness_probe_basic_functionality" time="0.007"><failure message="assert 404 == 200&#10; +  where 404 = &lt;Response [404 Not Found]&gt;.status_code">self = &lt;test_api_startup_shutdown.TestAPIStartupShutdown object at 0x000002AD28225CD0&gt;
+ephemeral_app = &lt;fastapi.applications.FastAPI object at 0x000002AD282261E0&gt;
+
+    @pytest.mark.asyncio
+    async def test_liveness_probe_basic_functionality(self, ephemeral_app):
+        """Test liveness probe responds when process is alive."""
+        from httpx import ASGITransport, AsyncClient
+    
+        async with AsyncClient(
+            transport=ASGITransport(app=ephemeral_app), base_url="http://test"
+        ) as client:
+            response = await client.get("/healthz")
+    
+&gt;           assert response.status_code == 200
+E           assert 404 == 200
+E            +  where 404 = &lt;Response [404 Not Found]&gt;.status_code
+
+tests\integration\test_api_startup_shutdown.py:148: AssertionError</failure></testcase><testcase classname="tests.integration.test_api_startup_shutdown.TestAPIStartupShutdown" name="test_graceful_shutdown_with_background_tasks" time="0.010"><failure message="AttributeError: 'State' object has no attribute 'register_task'">self = &lt;starlette.datastructures.State object at 0x000002AD28226090&gt;
+key = 'register_task'
+
+    def __getattr__(self, key: Any) -&gt; Any:
+        try:
+&gt;           return self._state[key]
+                   ^^^^^^^^^^^^^^^^
+E           KeyError: 'register_task'
+
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\datastructures.py:686: KeyError
+
+During handling of the above exception, another exception occurred:
+
+self = &lt;test_api_startup_shutdown.TestAPIStartupShutdown object at 0x000002AD28225EE0&gt;
+ephemeral_app = &lt;fastapi.applications.FastAPI object at 0x000002AD282261E0&gt;
+mock_broker_service = &lt;AsyncMock name='BrokerService()' id='2942748218944'&gt;
+
+    @pytest.mark.asyncio
+    async def test_graceful_shutdown_with_background_tasks(
+        self, ephemeral_app, mock_broker_service
+    ):
+        """Test that background tasks are cancelled gracefully on shutdown."""
+        # Track background task lifecycle
+        task_started = asyncio.Event()
+        task_cancelled = asyncio.Event()
+    
+        async def mock_background_task():
+            """Mock background task that tracks its lifecycle."""
+            task_started.set()
+            try:
+                # Simulate long-running task
+                await asyncio.sleep(10)  # Would run for 10s if not cancelled
+            except asyncio.CancelledError:
+                task_cancelled.set()
+                raise
+    
+        # Use the actual lifespan context to test shutdown behavior
+        async with ephemeral_app.router.lifespan_context(ephemeral_app):
+            # Start a background task and register it
+            task = asyncio.create_task(mock_background_task())
+&gt;           ephemeral_app.state.register_task(task)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\integration\test_api_startup_shutdown.py:176: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;starlette.datastructures.State object at 0x000002AD28226090&gt;
+key = 'register_task'
+
+    def __getattr__(self, key: Any) -&gt; Any:
+        try:
+            return self._state[key]
+        except KeyError:
+            message = "'{}' object has no attribute '{}'"
+&gt;           raise AttributeError(message.format(self.__class__.__name__, key))
+E           AttributeError: 'State' object has no attribute 'register_task'
+
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\datastructures.py:689: AttributeError</failure></testcase><testcase classname="tests.integration.test_api_startup_shutdown.TestAPIStartupShutdown" name="test_app_handles_database_connection_errors" time="5.627"><failure message="AssertionError: assert 'not_ready' == 'degraded'&#10;  &#10;  - degraded&#10;  + not_ready">self = &lt;test_api_startup_shutdown.TestAPIStartupShutdown object at 0x000002AD282260F0&gt;
+mock_broker_service = &lt;AsyncMock name='BrokerService()' id='2942748252624'&gt;
+
+    @pytest.mark.asyncio
+    async def test_app_handles_database_connection_errors(self, mock_broker_service):
+        """Test app startup behavior when database connection fails."""
+        from backend.api.main import app
+    
+        # Simulate database connection failure
+        with patch("backend.database.connection.get_database_session") as mock_db:
+            mock_db.side_effect = Exception("Database connection failed")
+    
+            from httpx import ASGITransport, AsyncClient
+    
+            async with AsyncClient(
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as client:
+                # Readiness check should fail
+                response = await client.get("/readyz")
+    
+                assert response.status_code == 503
+                readiness_data = response.json()
+&gt;               assert readiness_data["status"] == "degraded"  # Modern status format
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E               AssertionError: assert 'not_ready' == 'degraded'
+E                 
+E                 - degraded
+E                 + not_ready
+
+tests\integration\test_api_startup_shutdown.py:212: AssertionError</failure></testcase><testcase classname="tests.integration.test_api_startup_shutdown.TestAPIStartupShutdown" name="test_concurrent_health_checks" time="5.638"><failure message="assert 404 in [200, 503]&#10; +  where 404 = &lt;Response [404 Not Found]&gt;.status_code">self = &lt;test_api_startup_shutdown.TestAPIStartupShutdown object at 0x000002AD28226300&gt;
+ephemeral_app = &lt;fastapi.applications.FastAPI object at 0x000002AD282261E0&gt;
+mock_broker_service = &lt;AsyncMock name='BrokerService()' id='2942748182144'&gt;
+
+    @pytest.mark.asyncio
+    async def test_concurrent_health_checks(self, ephemeral_app, mock_broker_service):
+        """Test that multiple concurrent health checks work correctly."""
+        from httpx import ASGITransport, AsyncClient
+    
+        async with AsyncClient(
+            transport=ASGITransport(app=ephemeral_app), base_url="http://test"
+        ) as client:
+            # Make multiple concurrent requests to health endpoints
+            tasks = []
+    
+            for _ in range(10):
+                tasks.append(client.get("/health"))
+                tasks.append(client.get("/readyz"))
+                tasks.append(client.get("/healthz"))
+    
+            responses = await asyncio.gather(*tasks)
+    
+            # All responses should be successful
+            for response in responses:
+&gt;               assert response.status_code in [200, 503]  # 503 is valid for readiness
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E               assert 404 in [200, 503]
+E                +  where 404 = &lt;Response [404 Not Found]&gt;.status_code
+
+tests\integration\test_api_startup_shutdown.py:236: AssertionError</failure></testcase><testcase classname="tests.integration.test_api_startup_shutdown.TestAPIStartupShutdown" name="test_metrics_endpoint_availability" time="0.032"><failure message="assert 404 == 200&#10; +  where 404 = &lt;Response [404 Not Found]&gt;.status_code">self = &lt;test_api_startup_shutdown.TestAPIStartupShutdown object at 0x000002AD28226510&gt;
+ephemeral_app = &lt;fastapi.applications.FastAPI object at 0x000002AD282261E0&gt;
+
+    @pytest.mark.asyncio
+    async def test_metrics_endpoint_availability(self, ephemeral_app):
+        """Test that metrics endpoint is available during startup."""
+        from httpx import ASGITransport, AsyncClient
+    
+        async with AsyncClient(
+            transport=ASGITransport(app=ephemeral_app), base_url="http://test"
+        ) as client:
+            response = await client.get("/metrics")
+    
+&gt;           assert response.status_code == 200
+E           assert 404 == 200
+E            +  where 404 = &lt;Response [404 Not Found]&gt;.status_code
+
+tests\integration\test_api_startup_shutdown.py:249: AssertionError</failure></testcase><testcase classname="tests.integration.test_api_startup_shutdown.TestAPIStartupShutdown" name="test_app_startup_with_broker_mock" time="5.612" /><testcase classname="tests.integration.test_api_startup_shutdown.TestAPIStartupShutdown" name="test_startup_with_environment_variables" time="0.008" /><testcase classname="tests.integration.test_api_startup_shutdown.TestApplicationLifecycleEdgeCases" name="test_rapid_startup_shutdown_cycles" time="0.545" /><testcase classname="tests.integration.test_api_startup_shutdown.TestApplicationLifecycleEdgeCases" name="test_shutdown_timeout_handling" time="0.005"><failure message="AttributeError: 'State' object has no attribute 'register_task'">self = &lt;starlette.datastructures.State object at 0x000002AD28226090&gt;
+key = 'register_task'
+
+    def __getattr__(self, key: Any) -&gt; Any:
+        try:
+&gt;           return self._state[key]
+                   ^^^^^^^^^^^^^^^^
+E           KeyError: 'register_task'
+
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\datastructures.py:686: KeyError
+
+During handling of the above exception, another exception occurred:
+
+self = &lt;test_api_startup_shutdown.TestApplicationLifecycleEdgeCases object at 0x000002AD28226F30&gt;
+
+    @pytest.mark.asyncio
+    async def test_shutdown_timeout_handling(self):
+        """Test that shutdown timeouts are handled gracefully."""
+        from backend.api.main import app
+    
+        # Mock a task that takes too long to shutdown
+        long_running_task_started = asyncio.Event()
+    
+        async def stubborn_background_task():
+            long_running_task_started.set()
+            # Simulate a task that doesn't respond to cancellation quickly
+            try:
+                await asyncio.sleep(30)  # Very long task
+            except asyncio.CancelledError:
+                # Simulate slow cleanup
+                await asyncio.sleep(0.5)  # Takes time to cleanup
+                raise
+    
+        # Use the actual lifespan context to test shutdown behavior
+        async with app.router.lifespan_context(app):
+            # Start stubborn task and register it
+            task = asyncio.create_task(stubborn_background_task())
+&gt;           app.state.register_task(task)
+            ^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\integration\test_api_startup_shutdown.py:363: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;starlette.datastructures.State object at 0x000002AD28226090&gt;
+key = 'register_task'
+
+    def __getattr__(self, key: Any) -&gt; Any:
+        try:
+            return self._state[key]
+        except KeyError:
+            message = "'{}' object has no attribute '{}'"
+&gt;           raise AttributeError(message.format(self.__class__.__name__, key))
+E           AttributeError: 'State' object has no attribute 'register_task'
+
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\datastructures.py:689: AttributeError</failure></testcase></testsuite></testsuites>

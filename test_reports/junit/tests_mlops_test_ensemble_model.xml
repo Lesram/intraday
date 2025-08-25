@@ -1,0 +1,1 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="0" skipped="0" tests="1" time="0.153" timestamp="2025-08-24T17:05:30.904474-07:00" hostname="BOOK-FVJOEO3Q00"><testcase classname="tests.mlops.test_ensemble_model" name="test_ensemble_model_smoke" time="0.002" /></testsuite></testsuites>

@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="1" time="5.285" timestamp="2025-08-13T11:57:21.667423-07:00" hostname="BOOK-FVJOEO3Q00"><testcase classname="tests.perf.test_feature_perf.TestFeatureComputePerformance" name="test_feature_computation_performance[1000]" time="0.008"><failure message="ValueError: Invalid OHLC relationships detected (high &lt; low, etc.)">tests\perf\test_feature_perf.py:61: in test_feature_computation_performance
-    features_df = await compute_all_features(ohlcv_data)
-                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-backend\features\feature_engineering.py:1027: in compute_all_features
-    validate_ohlcv(df)
-backend\features\validators.py:47: in validate_ohlcv
-    raise ValueError("Invalid OHLC relationships detected (high &lt; low, etc.)")
-E   ValueError: Invalid OHLC relationships detected (high &lt; low, etc.)</failure></testcase></testsuite></testsuites>

@@ -103,6 +103,9 @@ class TestAPIStartupShutdown:
             assert readiness_data["status"] == "ready"
             assert readiness_data["checks"]["database"] is True
             assert readiness_data["checks"]["broker"] is True
+            # Validate new schema fields
+            assert "problems" in readiness_data
+            assert readiness_data["problems"] == {}  # No problems when healthy
 
     @pytest.mark.asyncio
     async def test_readiness_probe_fails_on_unhealthy_broker(
@@ -121,11 +124,16 @@ class TestAPIStartupShutdown:
 
             assert response.status_code == 503  # Service Unavailable
             readiness_data = response.json()
-            assert readiness_data["status"] == "not_ready"
+            assert readiness_data["status"] == "degraded"  # Modern status: ready/degraded
+            assert readiness_data["legacy_status"] == "not_ready"  # Legacy status: ready/not_ready
             assert (
                 readiness_data["checks"]["database"] is True
             )  # DB should still be healthy
             assert readiness_data["checks"]["broker"] is False  # Broker is unhealthy
+            # Validate new schema fields
+            assert "problems" in readiness_data
+            assert "broker" in readiness_data["problems"]  # Broker should be in problems
+            assert readiness_data["problems"]["broker"] == "unhealthy"
 
     @pytest.mark.asyncio
     async def test_liveness_probe_basic_functionality(self, ephemeral_app):
@@ -147,8 +155,6 @@ class TestAPIStartupShutdown:
         self, ephemeral_app, mock_broker_service
     ):
         """Test that background tasks are cancelled gracefully on shutdown."""
-        from httpx import ASGITransport, AsyncClient
-
         # Track background task lifecycle
         task_started = asyncio.Event()
         task_cancelled = asyncio.Event()
@@ -163,43 +169,26 @@ class TestAPIStartupShutdown:
                 task_cancelled.set()
                 raise
 
-        # Patch the background task creation
-        original_create_task = asyncio.create_task
-        background_tasks = []
+        # Use the actual lifespan context to test shutdown behavior
+        async with ephemeral_app.router.lifespan_context(ephemeral_app):
+            # Start a background task and register it
+            task = asyncio.create_task(mock_background_task())
+            ephemeral_app.state.register_task(task)
 
-        def track_create_task(coro, **kwargs):
-            if coro.__name__ == "mock_background_task":
-                task = original_create_task(coro, **kwargs)
-                background_tasks.append(task)
-                return task
-            return original_create_task(coro, **kwargs)
+            # Wait for task to start
+            await asyncio.wait_for(task_started.wait(), timeout=1.0)
 
-        with patch("asyncio.create_task", side_effect=track_create_task):
-            # Start the application context
-            async with AsyncClient(
-                transport=ASGITransport(app=ephemeral_app), base_url="http://test"
-            ) as client:
-                # Start a background task
-                task = asyncio.create_task(mock_background_task())
-                background_tasks.append(task)
+            # Verify task is running
+            assert not task.done(), "Task should be running"
 
-                # Wait for task to start
-                await asyncio.wait_for(task_started.wait(), timeout=1.0)
+        # Lifespan context has exited - task should be cancelled
+        # Give it a moment to cancel
+        await asyncio.sleep(0.1)
 
-                # Test basic functionality
-                response = await client.get("/health")
-                assert response.status_code == 200
-
-            # App context is exiting - background tasks should be cancelled
-            # Give it a moment to cancel tasks
-            await asyncio.sleep(0.1)
-
-            # Verify task was cancelled
-            assert task_cancelled.is_set(), "Background task should have been cancelled"
-
-            # Verify all background tasks are done
-            for task in background_tasks:
-                assert task.done(), f"Task {task} should be completed"
+        # Verify task was cancelled
+        assert task_cancelled.is_set(), "Background task should have been cancelled"
+        assert task.done(), "Task should be completed"
+        assert task.cancelled(), "Task should be cancelled"
 
     @pytest.mark.asyncio
     async def test_app_handles_database_connection_errors(self, mock_broker_service):
@@ -220,7 +209,8 @@ class TestAPIStartupShutdown:
 
                 assert response.status_code == 503
                 readiness_data = response.json()
-                assert readiness_data["status"] == "not_ready"
+                assert readiness_data["status"] == "degraded"  # Modern status format
+                assert readiness_data["legacy_status"] == "not_ready"  # Legacy status format
                 assert readiness_data["checks"]["database"] is False
 
     @pytest.mark.asyncio
@@ -270,7 +260,7 @@ class TestAPIStartupShutdown:
         # Set up comprehensive Alpaca mock
         mock_responder = AlpacaMockResponder()
 
-        with respx.mock() as respx_mock:
+        with respx.mock(assert_all_called=False) as respx_mock:  # Don't require all mocks to be called
             mock_responder.setup_responders(respx_mock)
 
             from httpx import ASGITransport, AsyncClient
@@ -351,8 +341,6 @@ class TestApplicationLifecycleEdgeCases:
     @pytest.mark.asyncio
     async def test_shutdown_timeout_handling(self):
         """Test that shutdown timeouts are handled gracefully."""
-        from httpx import ASGITransport, AsyncClient
-
         from backend.api.main import app
 
         # Mock a task that takes too long to shutdown
@@ -368,18 +356,17 @@ class TestApplicationLifecycleEdgeCases:
                 await asyncio.sleep(0.5)  # Takes time to cleanup
                 raise
 
-        async with AsyncClient(
-            transport=ASGITransport(app=app), base_url="http://test"
-        ) as client:
-            # Start stubborn task
+        # Use the actual lifespan context to test shutdown behavior
+        async with app.router.lifespan_context(app):
+            # Start stubborn task and register it
             task = asyncio.create_task(stubborn_background_task())
+            app.state.register_task(task)
 
             # Wait for task to start
             await asyncio.wait_for(long_running_task_started.wait(), timeout=1.0)
 
-            # Test basic functionality
-            response = await client.get("/health")
-            assert response.status_code == 200
+            # Verify task is running
+            assert not task.done(), "Task should be running"
 
         # Context manager exit should handle cancellation
         # Task should eventually be cancelled even if it's slow

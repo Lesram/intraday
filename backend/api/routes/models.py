@@ -9,7 +9,7 @@ from typing import Any, Dict
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 
-from backend.infra.security import get_current_user
+from backend.infra.security import get_authenticated_user
 from backend.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -84,7 +84,7 @@ def get_model_manager():
     return MockModelManager()
 
 
-def require_admin(current_user=Depends(get_current_user)):
+def require_admin(current_user=Depends(get_authenticated_user)):
     """Dependency that requires authenticated admin user"""
     if not current_user:
         raise HTTPException(
@@ -93,11 +93,11 @@ def require_admin(current_user=Depends(get_current_user)):
         )
     
     # In production, would check admin roles
-    user_roles = current_user.get("roles", [])
-    if "admin" not in user_roles and "trader" not in user_roles:
+    user_roles = current_user.roles if hasattr(current_user, 'roles') else []
+    if "admin" not in user_roles:
         raise HTTPException(
             status_code=403,
-            detail="Admin or trader privileges required"
+            detail="Insufficient permissions"
         )
     
     return current_user
@@ -137,13 +137,21 @@ async def train_models(
 
 @router.get("/status", tags=["ML Models", "Protected"])
 async def get_model_status(
-    current_user=Depends(require_admin),
+    current_user=Depends(get_authenticated_user),  # Allow traders and admins
     model_manager=Depends(get_model_manager),
 ):
     """
     Get current model status and training information.
-    Requires admin privileges.
+    Requires trader or admin privileges.
     """
+    # Check user has proper role access (not read-only)
+    user_roles = current_user.roles if hasattr(current_user, 'roles') else []
+    if "read-only" in user_roles:
+        raise HTTPException(
+            status_code=403,
+            detail="Insufficient permissions"
+        )
+        
     try:
         status = model_manager.get_model_status()
         return ModelStatusResponse(**status)

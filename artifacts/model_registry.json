@@ -1,0 +1,572 @@
+{
+  "test_model": [
+    {
+      "model_id": "test_model",
+      "version": "v1",
+      "created_at": "2025-08-23T20:25:56.122650",
+      "status": "trained",
+      "metrics": {},
+      "training_data_hash": "2bee24c6bcac6f32fd736188f8cf6daa",
+      "feature_names": [
+        "feature1",
+        "feature2"
+      ],
+      "feature_dtypes": {
+        "feature1": "int64",
+        "feature2": "int64"
+      },
+      "train_window": {},
+      "artifact_hash": "ae3aeeca3ef4f4d30a12a759c3965bfd3d90fd7cd12e3c5c54bc0964f8012dcd",
+      "model_path": "artifacts\\test_model\\v1\\model.bin",
+      "metadata": {
+        "training_samples": 3,
+        "features_count": 2,
+        "model_id": "test_model",
+        "version": "v1",
+        "created_at": "2025-08-24T03:25:56.122650+00:00",
+        "train_window": {},
+        "feature_names": [
+          "feature1",
+          "feature2"
+        ],
+        "feature_dtypes": {
+          "feature1": "int64",
+          "feature2": "int64"
+        },
+        "feature_schema": {
+          "columns": [
+            "feature1",
+            "feature2"
+          ],
+          "dtypes": {
+            "feature1": "int64",
+            "feature2": "int64"
+          }
+        },
+        "metrics": {},
+        "artifact_hash": "ae3aeeca3ef4f4d30a12a759c3965bfd3d90fd7cd12e3c5c54bc0964f8012dcd"
+      }
+    }
+  ],
+  "test_model_new": [
+    {
+      "model_id": "test_model_new",
+      "version": "v1",
+      "created_at": "2025-08-23T20:27:46.782854",
+      "status": "trained",
+      "metrics": {},
+      "training_data_hash": "2bee24c6bcac6f32fd736188f8cf6daa",
+      "feature_names": [
+        "feature1",
+        "feature2"
+      ],
+      "feature_dtypes": {
+        "feature1": "int64",
+        "feature2": "int64"
+      },
+      "train_window": {},
+      "artifact_hash": "630f089289a3b065ad3bf253844bc09078a5ff6fe7c527f64359ee7bf6d947a8",
+      "model_path": "artifacts\\test_model_new\\v1\\model.bin",
+      "metadata": {
+        "training_samples": 3,
+        "features_count": 2,
+        "model_id": "test_model_new",
+        "version": "v1",
+        "created_at": "2025-08-24T03:27:46.782854+00:00",
+        "train_window": {},
+        "feature_names": [
+          "feature1",
+          "feature2"
+        ],
+        "feature_dtypes": {
+          "feature1": "int64",
+          "feature2": "int64"
+        },
+        "feature_schema": {
+          "columns": [
+            "feature1",
+            "feature2"
+          ],
+          "dtypes": {
+            "feature1": "int64",
+            "feature2": "int64"
+          }
+        },
+        "metrics": {},
+        "artifact_hash": "630f089289a3b065ad3bf253844bc09078a5ff6fe7c527f64359ee7bf6d947a8"
+      }
+    }
+  ],
+  "noop": [
+    {
+      "model_id": "noop",
+      "version": "v1",
+      "created_at": "2025-08-23T20:29:24.461682",
+      "status": "trained",
+      "metrics": {},
+      "training_data_hash": "2bee24c6bcac6f32fd736188f8cf6daa",
+      "feature_names": [
+        "feature1",
+        "feature2"
+      ],
+      "feature_dtypes": {
+        "feature1": "int64",
+        "feature2": "int64"
+      },
+      "train_window": {},
+      "artifact_hash": "a4fab4333e1f0810a93ca41df7bae805862a0a5f2849365574383ecbd346f58c",
+      "model_path": "artifacts\\noop\\v1\\model.bin",
+      "metadata": {
+        "training_samples": 3,
+        "features_count": 2,
+        "model_id": "noop",
+        "version": "v1",
+        "created_at": "2025-08-24T03:29:24.460594+00:00",
+        "train_window": {},
+        "feature_names": [
+          "feature1",
+          "feature2"
+        ],
+        "feature_dtypes": {
+          "feature1": "int64",
+          "feature2": "int64"
+        },
+        "feature_schema": {
+          "columns": [
+            "feature1",
+            "feature2"
+          ],
+          "dtypes": {
+            "feature1": "int64",
+            "feature2": "int64"
+          }
+        },
+        "metrics": {},
+        "artifact_hash": "a4fab4333e1f0810a93ca41df7bae805862a0a5f2849365574383ecbd346f58c"
+      }
+    },
+    {
+      "model_id": "noop",
+      "version": "v2",
+      "created_at": "2025-08-23T20:29:52.417520",
+      "status": "trained",
+      "metrics": {},
+      "training_data_hash": "2bee24c6bcac6f32fd736188f8cf6daa",
+      "feature_names": [
+        "feature1",
+        "feature2"
+      ],
+      "feature_dtypes": {
+        "feature1": "int64",
+        "feature2": "int64"
+      },
+      "train_window": {},
+      "artifact_hash": "a4fab4333e1f0810a93ca41df7bae805862a0a5f2849365574383ecbd346f58c",
+      "model_path": "artifacts\\noop\\v2\\model.bin",
+      "metadata": {
+        "training_samples": 3,
+        "features_count": 2,
+        "model_id": "noop",
+        "version": "v2",
+        "created_at": "2025-08-24T03:29:52.415280+00:00",
+        "train_window": {},
+        "feature_names": [
+          "feature1",
+          "feature2"
+        ],
+        "feature_dtypes": {
+          "feature1": "int64",
+          "feature2": "int64"
+        },
+        "feature_schema": {
+          "columns": [
+            "feature1",
+            "feature2"
+          ],
+          "dtypes": {
+            "feature1": "int64",
+            "feature2": "int64"
+          }
+        },
+        "metrics": {},
+        "artifact_hash": "a4fab4333e1f0810a93ca41df7bae805862a0a5f2849365574383ecbd346f58c"
+      }
+    },
+    {
+      "model_id": "noop",
+      "version": "v3",
+      "created_at": "2025-08-23T20:34:57.540528",
+      "status": "trained",
+      "metrics": {},
+      "training_data_hash": "2bee24c6bcac6f32fd736188f8cf6daa",
+      "feature_names": [
+        "feature1",
+        "feature2"
+      ],
+      "feature_dtypes": {
+        "feature1": "int64",
+        "feature2": "int64"
+      },
+      "train_window": {},
+      "artifact_hash": "a4fab4333e1f0810a93ca41df7bae805862a0a5f2849365574383ecbd346f58c",
+      "model_path": "artifacts\\noop\\v3\\model.bin",
+      "metadata": {
+        "training_samples": 3,
+        "features_count": 2,
+        "model_id": "noop",
+        "version": "v3",
+        "created_at": "2025-08-24T03:34:57.539518+00:00",
+        "train_window": {},
+        "feature_names": [
+          "feature1",
+          "feature2"
+        ],
+        "feature_dtypes": {
+          "feature1": "int64",
+          "feature2": "int64"
+        },
+        "feature_schema": {
+          "columns": [
+            "feature1",
+            "feature2"
+          ],
+          "dtypes": {
+            "feature1": "int64",
+            "feature2": "int64"
+          }
+        },
+        "metrics": {},
+        "artifact_hash": "a4fab4333e1f0810a93ca41df7bae805862a0a5f2849365574383ecbd346f58c"
+      }
+    },
+    {
+      "model_id": "noop",
+      "version": "v4",
+      "created_at": "2025-08-23T20:40:32.109187",
+      "status": "trained",
+      "metrics": {},
+      "training_data_hash": "2bee24c6bcac6f32fd736188f8cf6daa",
+      "feature_names": [
+        "feature1",
+        "feature2"
+      ],
+      "feature_dtypes": {
+        "feature1": "int64",
+        "feature2": "int64"
+      },
+      "train_window": {},
+      "artifact_hash": "a4fab4333e1f0810a93ca41df7bae805862a0a5f2849365574383ecbd346f58c",
+      "model_path": "artifacts\\noop\\v4\\model.bin",
+      "metadata": {
+        "training_samples": 3,
+        "features_count": 2,
+        "model_id": "noop",
+        "version": "v4",
+        "created_at": "2025-08-24T03:40:32.105999+00:00",
+        "train_window": {},
+        "feature_names": [
+          "feature1",
+          "feature2"
+        ],
+        "feature_dtypes": {
+          "feature1": "int64",
+          "feature2": "int64"
+        },
+        "feature_schema": {
+          "columns": [
+            "feature1",
+            "feature2"
+          ],
+          "dtypes": {
+            "feature1": "int64",
+            "feature2": "int64"
+          }
+        },
+        "metrics": {},
+        "artifact_hash": "a4fab4333e1f0810a93ca41df7bae805862a0a5f2849365574383ecbd346f58c"
+      }
+    },
+    {
+      "model_id": "noop",
+      "version": "v5",
+      "created_at": "2025-08-23T21:00:22.884168",
+      "status": "trained",
+      "metrics": {},
+      "training_data_hash": "2bee24c6bcac6f32fd736188f8cf6daa",
+      "feature_names": [
+        "feature1",
+        "feature2"
+      ],
+      "feature_dtypes": {
+        "feature1": "int64",
+        "feature2": "int64"
+      },
+      "train_window": {},
+      "artifact_hash": "a4fab4333e1f0810a93ca41df7bae805862a0a5f2849365574383ecbd346f58c",
+      "model_path": "artifacts\\noop\\v5\\model.bin",
+      "metadata": {
+        "training_samples": 3,
+        "features_count": 2,
+        "model_id": "noop",
+        "version": "v5",
+        "created_at": "2025-08-24T04:00:22.883175+00:00",
+        "train_window": {},
+        "feature_names": [
+          "feature1",
+          "feature2"
+        ],
+        "feature_dtypes": {
+          "feature1": "int64",
+          "feature2": "int64"
+        },
+        "feature_schema": {
+          "columns": [
+            "feature1",
+            "feature2"
+          ],
+          "dtypes": {
+            "feature1": "int64",
+            "feature2": "int64"
+          }
+        },
+        "metrics": {},
+        "artifact_hash": "a4fab4333e1f0810a93ca41df7bae805862a0a5f2849365574383ecbd346f58c"
+      }
+    },
+    {
+      "model_id": "noop",
+      "version": "v6",
+      "created_at": "2025-08-23T21:01:10.808666",
+      "status": "trained",
+      "metrics": {},
+      "training_data_hash": "2bee24c6bcac6f32fd736188f8cf6daa",
+      "feature_names": [
+        "feature1",
+        "feature2"
+      ],
+      "feature_dtypes": {
+        "feature1": "int64",
+        "feature2": "int64"
+      },
+      "train_window": {},
+      "artifact_hash": "a4fab4333e1f0810a93ca41df7bae805862a0a5f2849365574383ecbd346f58c",
+      "model_path": "artifacts\\noop\\v6\\model.bin",
+      "metadata": {
+        "training_samples": 3,
+        "features_count": 2,
+        "model_id": "noop",
+        "version": "v6",
+        "created_at": "2025-08-24T04:01:10.807660+00:00",
+        "train_window": {},
+        "feature_names": [
+          "feature1",
+          "feature2"
+        ],
+        "feature_dtypes": {
+          "feature1": "int64",
+          "feature2": "int64"
+        },
+        "feature_schema": {
+          "columns": [
+            "feature1",
+            "feature2"
+          ],
+          "dtypes": {
+            "feature1": "int64",
+            "feature2": "int64"
+          }
+        },
+        "metrics": {},
+        "artifact_hash": "a4fab4333e1f0810a93ca41df7bae805862a0a5f2849365574383ecbd346f58c"
+      }
+    },
+    {
+      "model_id": "noop",
+      "version": "v7",
+      "created_at": "2025-08-23T21:02:35.314453",
+      "status": "trained",
+      "metrics": {},
+      "training_data_hash": "2bee24c6bcac6f32fd736188f8cf6daa",
+      "feature_names": [
+        "feature1",
+        "feature2"
+      ],
+      "feature_dtypes": {
+        "feature1": "int64",
+        "feature2": "int64"
+      },
+      "train_window": {},
+      "artifact_hash": "a4fab4333e1f0810a93ca41df7bae805862a0a5f2849365574383ecbd346f58c",
+      "model_path": "artifacts\\noop\\v7\\model.bin",
+      "metadata": {
+        "training_samples": 3,
+        "features_count": 2,
+        "model_id": "noop",
+        "version": "v7",
+        "created_at": "2025-08-24T04:02:35.314453+00:00",
+        "train_window": {},
+        "feature_names": [
+          "feature1",
+          "feature2"
+        ],
+        "feature_dtypes": {
+          "feature1": "int64",
+          "feature2": "int64"
+        },
+        "feature_schema": {
+          "columns": [
+            "feature1",
+            "feature2"
+          ],
+          "dtypes": {
+            "feature1": "int64",
+            "feature2": "int64"
+          }
+        },
+        "metrics": {},
+        "artifact_hash": "a4fab4333e1f0810a93ca41df7bae805862a0a5f2849365574383ecbd346f58c"
+      }
+    },
+    {
+      "model_id": "noop",
+      "version": "v8",
+      "created_at": "2025-08-23T21:49:25.512567",
+      "status": "trained",
+      "metrics": {},
+      "training_data_hash": "2bee24c6bcac6f32fd736188f8cf6daa",
+      "feature_names": [
+        "feature1",
+        "feature2"
+      ],
+      "feature_dtypes": {
+        "feature1": "int64",
+        "feature2": "int64"
+      },
+      "train_window": {},
+      "artifact_hash": "a4fab4333e1f0810a93ca41df7bae805862a0a5f2849365574383ecbd346f58c",
+      "model_path": "artifacts\\noop\\v8\\model.bin",
+      "metadata": {
+        "training_samples": 3,
+        "features_count": 2,
+        "model_id": "noop",
+        "version": "v8",
+        "created_at": "2025-08-24T04:49:25.508675+00:00",
+        "train_window": {},
+        "feature_names": [
+          "feature1",
+          "feature2"
+        ],
+        "feature_dtypes": {
+          "feature1": "int64",
+          "feature2": "int64"
+        },
+        "feature_schema": {
+          "columns": [
+            "feature1",
+            "feature2"
+          ],
+          "dtypes": {
+            "feature1": "int64",
+            "feature2": "int64"
+          }
+        },
+        "metrics": {},
+        "artifact_hash": "a4fab4333e1f0810a93ca41df7bae805862a0a5f2849365574383ecbd346f58c"
+      }
+    },
+    {
+      "model_id": "noop",
+      "version": "v9",
+      "created_at": "2025-08-24T11:49:40.407900",
+      "status": "trained",
+      "metrics": {},
+      "training_data_hash": "2bee24c6bcac6f32fd736188f8cf6daa",
+      "feature_names": [
+        "feature1",
+        "feature2"
+      ],
+      "feature_dtypes": {
+        "feature1": "int64",
+        "feature2": "int64"
+      },
+      "train_window": {},
+      "artifact_hash": "a4fab4333e1f0810a93ca41df7bae805862a0a5f2849365574383ecbd346f58c",
+      "model_path": "artifacts\\noop\\v9\\model.bin",
+      "metadata": {
+        "training_samples": 3,
+        "features_count": 2,
+        "model_id": "noop",
+        "version": "v9",
+        "created_at": "2025-08-24T18:49:40.402901+00:00",
+        "train_window": {},
+        "feature_names": [
+          "feature1",
+          "feature2"
+        ],
+        "feature_dtypes": {
+          "feature1": "int64",
+          "feature2": "int64"
+        },
+        "feature_schema": {
+          "columns": [
+            "feature1",
+            "feature2"
+          ],
+          "dtypes": {
+            "feature1": "int64",
+            "feature2": "int64"
+          }
+        },
+        "metrics": {},
+        "artifact_hash": "a4fab4333e1f0810a93ca41df7bae805862a0a5f2849365574383ecbd346f58c"
+      }
+    },
+    {
+      "model_id": "noop",
+      "version": "v10",
+      "created_at": "2025-08-24T17:06:09.258275",
+      "status": "trained",
+      "metrics": {},
+      "training_data_hash": "2bee24c6bcac6f32fd736188f8cf6daa",
+      "feature_names": [
+        "feature1",
+        "feature2"
+      ],
+      "feature_dtypes": {
+        "feature1": "int64",
+        "feature2": "int64"
+      },
+      "train_window": {},
+      "artifact_hash": "a4fab4333e1f0810a93ca41df7bae805862a0a5f2849365574383ecbd346f58c",
+      "model_path": "artifacts\\noop\\v10\\model.bin",
+      "metadata": {
+        "training_samples": 3,
+        "features_count": 2,
+        "model_id": "noop",
+        "version": "v10",
+        "created_at": "2025-08-25T00:06:09.255268+00:00",
+        "train_window": {},
+        "feature_names": [
+          "feature1",
+          "feature2"
+        ],
+        "feature_dtypes": {
+          "feature1": "int64",
+          "feature2": "int64"
+        },
+        "feature_schema": {
+          "columns": [
+            "feature1",
+            "feature2"
+          ],
+          "dtypes": {
+            "feature1": "int64",
+            "feature2": "int64"
+          }
+        },
+        "metrics": {},
+        "artifact_hash": "a4fab4333e1f0810a93ca41df7bae805862a0a5f2849365574383ecbd346f58c"
+      }
+    }
+  ]
+}

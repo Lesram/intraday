@@ -1,0 +1,698 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="21" skipped="0" tests="21" time="1.773" timestamp="2025-08-24T17:06:34.189484-07:00" hostname="BOOK-FVJOEO3Q00"><testcase classname="tests.unit.test_api_main_coverage.TestAPIMainCoverage" name="test_health_check_basic" time="0.087"><failure message="ImportError: cannot import name 'health_check' from 'backend.api.main' (C:\Users\Marsel\intra\algotrading_platform\backend\api\main.py)">self = &lt;test_api_main_coverage.TestAPIMainCoverage object at 0x0000021F2355D940&gt;
+mock_fastapi_app = &lt;fastapi.applications.FastAPI object at 0x0000021F236B6180&gt;
+
+    @pytest.mark.unit
+    def test_health_check_basic(self, mock_fastapi_app):
+        """Test basic health check endpoint functionality."""
+        with patch('backend.api.main.app', mock_fastapi_app):
+&gt;           from backend.api.main import health_check
+E           ImportError: cannot import name 'health_check' from 'backend.api.main' (C:\Users\Marsel\intra\algotrading_platform\backend\api\main.py)
+
+tests\unit\test_api_main_coverage.py:38: ImportError</failure></testcase><testcase classname="tests.unit.test_api_main_coverage.TestAPIMainCoverage" name="test_metrics_endpoint_basic" time="0.001"><failure message="AttributeError: &lt;module 'backend.api.main' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\api\\main.py'&gt; does not have the attribute 'get_metrics'">self = &lt;test_api_main_coverage.TestAPIMainCoverage object at 0x0000021F236B4350&gt;
+
+    @pytest.mark.unit
+    def test_metrics_endpoint_basic(self):
+        """Test metrics endpoint basic functionality."""
+&gt;       with patch('backend.api.main.get_metrics') as mock_get_metrics:
+
+tests\unit\test_api_main_coverage.py:56: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1458: in __enter__
+    original, local = self.get_original()
+                      ^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;unittest.mock._patch object at 0x0000021F24806A80&gt;
+
+    def get_original(self):
+        target = self.getter()
+        name = self.attribute
+    
+        original = DEFAULT
+        local = False
+    
+        try:
+            original = target.__dict__[name]
+        except (AttributeError, KeyError):
+            original = getattr(target, name, DEFAULT)
+        else:
+            local = True
+    
+        if name in _builtins and isinstance(target, ModuleType):
+            self.create = True
+    
+        if not self.create and original is DEFAULT:
+&gt;           raise AttributeError(
+                "%s does not have the attribute %r" % (target, name)
+            )
+E           AttributeError: &lt;module 'backend.api.main' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\api\\main.py'&gt; does not have the attribute 'get_metrics'
+
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1431: AttributeError</failure></testcase><testcase classname="tests.unit.test_api_main_coverage.TestAPIMainCoverage" name="test_order_submission_validation" time="0.001"><failure message="AttributeError: &lt;module 'backend.api.main' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\api\\main.py'&gt; does not have the attribute 'validate_order_request'">self = &lt;test_api_main_coverage.TestAPIMainCoverage object at 0x0000021F236B4620&gt;
+
+    @pytest.mark.unit
+    def test_order_submission_validation(self):
+        """Test order submission with validation."""
+&gt;       with patch('backend.api.main.validate_order_request') as mock_validate:
+
+tests\unit\test_api_main_coverage.py:74: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1458: in __enter__
+    original, local = self.get_original()
+                      ^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;unittest.mock._patch object at 0x0000021F24806B10&gt;
+
+    def get_original(self):
+        target = self.getter()
+        name = self.attribute
+    
+        original = DEFAULT
+        local = False
+    
+        try:
+            original = target.__dict__[name]
+        except (AttributeError, KeyError):
+            original = getattr(target, name, DEFAULT)
+        else:
+            local = True
+    
+        if name in _builtins and isinstance(target, ModuleType):
+            self.create = True
+    
+        if not self.create and original is DEFAULT:
+&gt;           raise AttributeError(
+                "%s does not have the attribute %r" % (target, name)
+            )
+E           AttributeError: &lt;module 'backend.api.main' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\api\\main.py'&gt; does not have the attribute 'validate_order_request'
+
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1431: AttributeError</failure></testcase><testcase classname="tests.unit.test_api_main_coverage.TestAPIMainCoverage" name="test_portfolio_status_retrieval" time="0.001"><failure message="AttributeError: &lt;module 'backend.api.main' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\api\\main.py'&gt; does not have the attribute 'get_portfolio_status'">self = &lt;test_api_main_coverage.TestAPIMainCoverage object at 0x0000021F236B47A0&gt;
+
+    @pytest.mark.unit
+    def test_portfolio_status_retrieval(self):
+        """Test portfolio status retrieval."""
+&gt;       with patch('backend.api.main.get_portfolio_status') as mock_get_portfolio:
+
+tests\unit\test_api_main_coverage.py:98: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1458: in __enter__
+    original, local = self.get_original()
+                      ^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;unittest.mock._patch object at 0x0000021F23817E00&gt;
+
+    def get_original(self):
+        target = self.getter()
+        name = self.attribute
+    
+        original = DEFAULT
+        local = False
+    
+        try:
+            original = target.__dict__[name]
+        except (AttributeError, KeyError):
+            original = getattr(target, name, DEFAULT)
+        else:
+            local = True
+    
+        if name in _builtins and isinstance(target, ModuleType):
+            self.create = True
+    
+        if not self.create and original is DEFAULT:
+&gt;           raise AttributeError(
+                "%s does not have the attribute %r" % (target, name)
+            )
+E           AttributeError: &lt;module 'backend.api.main' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\api\\main.py'&gt; does not have the attribute 'get_portfolio_status'
+
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1431: AttributeError</failure></testcase><testcase classname="tests.unit.test_api_main_coverage.TestAPIMainCoverage" name="test_risk_assessment_endpoint" time="0.001"><failure message="AttributeError: &lt;module 'backend.api.main' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\api\\main.py'&gt; does not have the attribute 'calculate_portfolio_risk'">self = &lt;test_api_main_coverage.TestAPIMainCoverage object at 0x0000021F236B4920&gt;
+
+    @pytest.mark.unit
+    def test_risk_assessment_endpoint(self):
+        """Test risk assessment endpoint."""
+&gt;       with patch('backend.api.main.calculate_portfolio_risk') as mock_risk_calc:
+
+tests\unit\test_api_main_coverage.py:119: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1458: in __enter__
+    original, local = self.get_original()
+                      ^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;unittest.mock._patch object at 0x0000021F24807EF0&gt;
+
+    def get_original(self):
+        target = self.getter()
+        name = self.attribute
+    
+        original = DEFAULT
+        local = False
+    
+        try:
+            original = target.__dict__[name]
+        except (AttributeError, KeyError):
+            original = getattr(target, name, DEFAULT)
+        else:
+            local = True
+    
+        if name in _builtins and isinstance(target, ModuleType):
+            self.create = True
+    
+        if not self.create and original is DEFAULT:
+&gt;           raise AttributeError(
+                "%s does not have the attribute %r" % (target, name)
+            )
+E           AttributeError: &lt;module 'backend.api.main' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\api\\main.py'&gt; does not have the attribute 'calculate_portfolio_risk'
+
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1431: AttributeError</failure></testcase><testcase classname="tests.unit.test_api_main_coverage.TestAPIMainCoverage" name="test_trading_signals_endpoint" time="0.001"><failure message="AttributeError: &lt;module 'backend.api.main' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\api\\main.py'&gt; does not have the attribute 'get_trading_signals'">self = &lt;test_api_main_coverage.TestAPIMainCoverage object at 0x0000021F236B4AA0&gt;
+
+    @pytest.mark.unit
+    def test_trading_signals_endpoint(self):
+        """Test trading signals endpoint."""
+&gt;       with patch('backend.api.main.get_trading_signals') as mock_signals:
+
+tests\unit\test_api_main_coverage.py:139: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1458: in __enter__
+    original, local = self.get_original()
+                      ^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;unittest.mock._patch object at 0x0000021F248044A0&gt;
+
+    def get_original(self):
+        target = self.getter()
+        name = self.attribute
+    
+        original = DEFAULT
+        local = False
+    
+        try:
+            original = target.__dict__[name]
+        except (AttributeError, KeyError):
+            original = getattr(target, name, DEFAULT)
+        else:
+            local = True
+    
+        if name in _builtins and isinstance(target, ModuleType):
+            self.create = True
+    
+        if not self.create and original is DEFAULT:
+&gt;           raise AttributeError(
+                "%s does not have the attribute %r" % (target, name)
+            )
+E           AttributeError: &lt;module 'backend.api.main' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\api\\main.py'&gt; does not have the attribute 'get_trading_signals'
+
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1431: AttributeError</failure></testcase><testcase classname="tests.unit.test_api_main_coverage.TestAPIMainCoverage" name="test_market_data_endpoint" time="0.001"><failure message="AttributeError: &lt;module 'backend.api.main' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\api\\main.py'&gt; does not have the attribute 'get_market_data'">self = &lt;test_api_main_coverage.TestAPIMainCoverage object at 0x0000021F236B4C20&gt;
+
+    @pytest.mark.unit
+    def test_market_data_endpoint(self):
+        """Test market data endpoint."""
+&gt;       with patch('backend.api.main.get_market_data') as mock_market_data:
+
+tests\unit\test_api_main_coverage.py:162: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1458: in __enter__
+    original, local = self.get_original()
+                      ^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;unittest.mock._patch object at 0x0000021F24806D50&gt;
+
+    def get_original(self):
+        target = self.getter()
+        name = self.attribute
+    
+        original = DEFAULT
+        local = False
+    
+        try:
+            original = target.__dict__[name]
+        except (AttributeError, KeyError):
+            original = getattr(target, name, DEFAULT)
+        else:
+            local = True
+    
+        if name in _builtins and isinstance(target, ModuleType):
+            self.create = True
+    
+        if not self.create and original is DEFAULT:
+&gt;           raise AttributeError(
+                "%s does not have the attribute %r" % (target, name)
+            )
+E           AttributeError: &lt;module 'backend.api.main' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\api\\main.py'&gt; does not have the attribute 'get_market_data'
+
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1431: AttributeError</failure></testcase><testcase classname="tests.unit.test_api_main_coverage.TestAPIMainCoverage" name="test_order_history_endpoint" time="0.001"><failure message="AttributeError: &lt;module 'backend.api.main' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\api\\main.py'&gt; does not have the attribute 'get_order_history'">self = &lt;test_api_main_coverage.TestAPIMainCoverage object at 0x0000021F236B4380&gt;
+
+    @pytest.mark.unit
+    def test_order_history_endpoint(self):
+        """Test order history endpoint."""
+&gt;       with patch('backend.api.main.get_order_history') as mock_history:
+
+tests\unit\test_api_main_coverage.py:185: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1458: in __enter__
+    original, local = self.get_original()
+                      ^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;unittest.mock._patch object at 0x0000021F248AC0E0&gt;
+
+    def get_original(self):
+        target = self.getter()
+        name = self.attribute
+    
+        original = DEFAULT
+        local = False
+    
+        try:
+            original = target.__dict__[name]
+        except (AttributeError, KeyError):
+            original = getattr(target, name, DEFAULT)
+        else:
+            local = True
+    
+        if name in _builtins and isinstance(target, ModuleType):
+            self.create = True
+    
+        if not self.create and original is DEFAULT:
+&gt;           raise AttributeError(
+                "%s does not have the attribute %r" % (target, name)
+            )
+E           AttributeError: &lt;module 'backend.api.main' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\api\\main.py'&gt; does not have the attribute 'get_order_history'
+
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1431: AttributeError</failure></testcase><testcase classname="tests.unit.test_api_main_coverage.TestAPIMainCoverage" name="test_performance_metrics_endpoint" time="0.001"><failure message="AttributeError: &lt;module 'backend.api.main' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\api\\main.py'&gt; does not have the attribute 'calculate_performance_metrics'">self = &lt;test_api_main_coverage.TestAPIMainCoverage object at 0x0000021F236B4A70&gt;
+
+    @pytest.mark.unit
+    def test_performance_metrics_endpoint(self):
+        """Test performance metrics endpoint."""
+&gt;       with patch('backend.api.main.calculate_performance_metrics') as mock_perf:
+
+tests\unit\test_api_main_coverage.py:210: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1458: in __enter__
+    original, local = self.get_original()
+                      ^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;unittest.mock._patch object at 0x0000021F248AE7E0&gt;
+
+    def get_original(self):
+        target = self.getter()
+        name = self.attribute
+    
+        original = DEFAULT
+        local = False
+    
+        try:
+            original = target.__dict__[name]
+        except (AttributeError, KeyError):
+            original = getattr(target, name, DEFAULT)
+        else:
+            local = True
+    
+        if name in _builtins and isinstance(target, ModuleType):
+            self.create = True
+    
+        if not self.create and original is DEFAULT:
+&gt;           raise AttributeError(
+                "%s does not have the attribute %r" % (target, name)
+            )
+E           AttributeError: &lt;module 'backend.api.main' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\api\\main.py'&gt; does not have the attribute 'calculate_performance_metrics'
+
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1431: AttributeError</failure></testcase><testcase classname="tests.unit.test_api_main_coverage.TestAPIMainCoverage" name="test_strategy_status_endpoint" time="0.001"><failure message="AttributeError: &lt;module 'backend.api.main' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\api\\main.py'&gt; does not have the attribute 'get_strategy_status'">self = &lt;test_api_main_coverage.TestAPIMainCoverage object at 0x0000021F236B4E00&gt;
+
+    @pytest.mark.unit
+    def test_strategy_status_endpoint(self):
+        """Test strategy status endpoint."""
+&gt;       with patch('backend.api.main.get_strategy_status') as mock_strategy:
+
+tests\unit\test_api_main_coverage.py:231: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1458: in __enter__
+    original, local = self.get_original()
+                      ^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;unittest.mock._patch object at 0x0000021F24806BD0&gt;
+
+    def get_original(self):
+        target = self.getter()
+        name = self.attribute
+    
+        original = DEFAULT
+        local = False
+    
+        try:
+            original = target.__dict__[name]
+        except (AttributeError, KeyError):
+            original = getattr(target, name, DEFAULT)
+        else:
+            local = True
+    
+        if name in _builtins and isinstance(target, ModuleType):
+            self.create = True
+    
+        if not self.create and original is DEFAULT:
+&gt;           raise AttributeError(
+                "%s does not have the attribute %r" % (target, name)
+            )
+E           AttributeError: &lt;module 'backend.api.main' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\api\\main.py'&gt; does not have the attribute 'get_strategy_status'
+
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1431: AttributeError</failure></testcase><testcase classname="tests.unit.test_api_main_coverage.TestAPIMainCoverage" name="test_system_status_endpoint" time="0.001"><failure message="AttributeError: &lt;module 'backend.api.main' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\api\\main.py'&gt; does not have the attribute 'get_system_status'">self = &lt;test_api_main_coverage.TestAPIMainCoverage object at 0x0000021F236B4F80&gt;
+
+    @pytest.mark.unit
+    def test_system_status_endpoint(self):
+        """Test system status endpoint."""
+&gt;       with patch('backend.api.main.get_system_status') as mock_system:
+
+tests\unit\test_api_main_coverage.py:252: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1458: in __enter__
+    original, local = self.get_original()
+                      ^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;unittest.mock._patch object at 0x0000021F248067E0&gt;
+
+    def get_original(self):
+        target = self.getter()
+        name = self.attribute
+    
+        original = DEFAULT
+        local = False
+    
+        try:
+            original = target.__dict__[name]
+        except (AttributeError, KeyError):
+            original = getattr(target, name, DEFAULT)
+        else:
+            local = True
+    
+        if name in _builtins and isinstance(target, ModuleType):
+            self.create = True
+    
+        if not self.create and original is DEFAULT:
+&gt;           raise AttributeError(
+                "%s does not have the attribute %r" % (target, name)
+            )
+E           AttributeError: &lt;module 'backend.api.main' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\api\\main.py'&gt; does not have the attribute 'get_system_status'
+
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1431: AttributeError</failure></testcase><testcase classname="tests.unit.test_api_main_coverage.TestAPIMainCoverage" name="test_error_handler_functionality" time="0.001"><failure message="ImportError: cannot import name 'handle_api_error' from 'backend.api.main' (C:\Users\Marsel\intra\algotrading_platform\backend\api\main.py)">self = &lt;test_api_main_coverage.TestAPIMainCoverage object at 0x0000021F236B5100&gt;
+
+    @pytest.mark.unit
+    def test_error_handler_functionality(self):
+        """Test error handling functionality."""
+&gt;       from backend.api.main import handle_api_error
+E       ImportError: cannot import name 'handle_api_error' from 'backend.api.main' (C:\Users\Marsel\intra\algotrading_platform\backend\api\main.py)
+
+tests\unit\test_api_main_coverage.py:273: ImportError</failure></testcase><testcase classname="tests.unit.test_api_main_coverage.TestAPIMainCoverage" name="test_middleware_functionality" time="0.001"><failure message="AttributeError: &lt;module 'backend.api.main' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\api\\main.py'&gt; does not have the attribute 'request_middleware'">self = &lt;test_api_main_coverage.TestAPIMainCoverage object at 0x0000021F236B5340&gt;
+
+    @pytest.mark.unit
+    def test_middleware_functionality(self):
+        """Test middleware functionality."""
+&gt;       with patch('backend.api.main.request_middleware') as mock_middleware:
+
+tests\unit\test_api_main_coverage.py:286: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1458: in __enter__
+    original, local = self.get_original()
+                      ^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;unittest.mock._patch object at 0x0000021F248AF680&gt;
+
+    def get_original(self):
+        target = self.getter()
+        name = self.attribute
+    
+        original = DEFAULT
+        local = False
+    
+        try:
+            original = target.__dict__[name]
+        except (AttributeError, KeyError):
+            original = getattr(target, name, DEFAULT)
+        else:
+            local = True
+    
+        if name in _builtins and isinstance(target, ModuleType):
+            self.create = True
+    
+        if not self.create and original is DEFAULT:
+&gt;           raise AttributeError(
+                "%s does not have the attribute %r" % (target, name)
+            )
+E           AttributeError: &lt;module 'backend.api.main' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\api\\main.py'&gt; does not have the attribute 'request_middleware'
+
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1431: AttributeError</failure></testcase><testcase classname="tests.unit.test_api_main_coverage.TestAPIMainCoverage" name="test_authentication_validation" time="0.001"><failure message="AttributeError: &lt;module 'backend.api.main' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\api\\main.py'&gt; does not have the attribute 'validate_auth_token'">self = &lt;test_api_main_coverage.TestAPIMainCoverage object at 0x0000021F236B5520&gt;
+
+    @pytest.mark.unit
+    def test_authentication_validation(self):
+        """Test authentication validation."""
+&gt;       with patch('backend.api.main.validate_auth_token') as mock_validate:
+
+tests\unit\test_api_main_coverage.py:300: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1458: in __enter__
+    original, local = self.get_original()
+                      ^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;unittest.mock._patch object at 0x0000021F248ADCA0&gt;
+
+    def get_original(self):
+        target = self.getter()
+        name = self.attribute
+    
+        original = DEFAULT
+        local = False
+    
+        try:
+            original = target.__dict__[name]
+        except (AttributeError, KeyError):
+            original = getattr(target, name, DEFAULT)
+        else:
+            local = True
+    
+        if name in _builtins and isinstance(target, ModuleType):
+            self.create = True
+    
+        if not self.create and original is DEFAULT:
+&gt;           raise AttributeError(
+                "%s does not have the attribute %r" % (target, name)
+            )
+E           AttributeError: &lt;module 'backend.api.main' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\api\\main.py'&gt; does not have the attribute 'validate_auth_token'
+
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1431: AttributeError</failure></testcase><testcase classname="tests.unit.test_api_main_coverage.TestAPIMainCoverage" name="test_rate_limiting_functionality" time="0.001"><failure message="AttributeError: &lt;module 'backend.api.main' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\api\\main.py'&gt; does not have the attribute 'check_rate_limit'">self = &lt;test_api_main_coverage.TestAPIMainCoverage object at 0x0000021F236B5700&gt;
+
+    @pytest.mark.unit
+    def test_rate_limiting_functionality(self):
+        """Test rate limiting functionality."""
+&gt;       with patch('backend.api.main.check_rate_limit') as mock_rate_limit:
+
+tests\unit\test_api_main_coverage.py:314: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1458: in __enter__
+    original, local = self.get_original()
+                      ^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;unittest.mock._patch object at 0x0000021F248AC770&gt;
+
+    def get_original(self):
+        target = self.getter()
+        name = self.attribute
+    
+        original = DEFAULT
+        local = False
+    
+        try:
+            original = target.__dict__[name]
+        except (AttributeError, KeyError):
+            original = getattr(target, name, DEFAULT)
+        else:
+            local = True
+    
+        if name in _builtins and isinstance(target, ModuleType):
+            self.create = True
+    
+        if not self.create and original is DEFAULT:
+&gt;           raise AttributeError(
+                "%s does not have the attribute %r" % (target, name)
+            )
+E           AttributeError: &lt;module 'backend.api.main' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\api\\main.py'&gt; does not have the attribute 'check_rate_limit'
+
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1431: AttributeError</failure></testcase><testcase classname="tests.unit.test_api_main_coverage.TestAPIMainCoverage" name="test_websocket_connection_handling" time="0.001"><failure message="AttributeError: &lt;module 'backend.api.main' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\api\\main.py'&gt; does not have the attribute 'handle_websocket_connection'">self = &lt;test_api_main_coverage.TestAPIMainCoverage object at 0x0000021F236B58E0&gt;
+
+    @pytest.mark.unit
+    def test_websocket_connection_handling(self):
+        """Test WebSocket connection handling."""
+&gt;       with patch('backend.api.main.handle_websocket_connection') as mock_ws:
+
+tests\unit\test_api_main_coverage.py:328: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1458: in __enter__
+    original, local = self.get_original()
+                      ^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;unittest.mock._patch object at 0x0000021F248AD8E0&gt;
+
+    def get_original(self):
+        target = self.getter()
+        name = self.attribute
+    
+        original = DEFAULT
+        local = False
+    
+        try:
+            original = target.__dict__[name]
+        except (AttributeError, KeyError):
+            original = getattr(target, name, DEFAULT)
+        else:
+            local = True
+    
+        if name in _builtins and isinstance(target, ModuleType):
+            self.create = True
+    
+        if not self.create and original is DEFAULT:
+&gt;           raise AttributeError(
+                "%s does not have the attribute %r" % (target, name)
+            )
+E           AttributeError: &lt;module 'backend.api.main' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\api\\main.py'&gt; does not have the attribute 'handle_websocket_connection'
+
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1431: AttributeError</failure></testcase><testcase classname="tests.unit.test_api_main_coverage.TestAPIMainCoverage" name="test_data_validation_functions" time="0.001"><failure message="ImportError: cannot import name 'validate_request_data' from 'backend.api.main' (C:\Users\Marsel\intra\algotrading_platform\backend\api\main.py)">self = &lt;test_api_main_coverage.TestAPIMainCoverage object at 0x0000021F236B5AC0&gt;
+
+    @pytest.mark.unit
+    def test_data_validation_functions(self):
+        """Test data validation functions."""
+&gt;       from backend.api.main import validate_request_data
+E       ImportError: cannot import name 'validate_request_data' from 'backend.api.main' (C:\Users\Marsel\intra\algotrading_platform\backend\api\main.py)
+
+tests\unit\test_api_main_coverage.py:341: ImportError</failure></testcase><testcase classname="tests.unit.test_api_main_coverage.TestAPIMainCoverage" name="test_response_formatting" time="0.001"><failure message="AttributeError: &lt;module 'backend.api.main' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\api\\main.py'&gt; does not have the attribute 'format_api_response'">self = &lt;test_api_main_coverage.TestAPIMainCoverage object at 0x0000021F236B5CA0&gt;
+
+    @pytest.mark.unit
+    def test_response_formatting(self):
+        """Test response formatting."""
+&gt;       with patch('backend.api.main.format_api_response') as mock_format:
+
+tests\unit\test_api_main_coverage.py:359: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1458: in __enter__
+    original, local = self.get_original()
+                      ^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;unittest.mock._patch object at 0x0000021F248AF680&gt;
+
+    def get_original(self):
+        target = self.getter()
+        name = self.attribute
+    
+        original = DEFAULT
+        local = False
+    
+        try:
+            original = target.__dict__[name]
+        except (AttributeError, KeyError):
+            original = getattr(target, name, DEFAULT)
+        else:
+            local = True
+    
+        if name in _builtins and isinstance(target, ModuleType):
+            self.create = True
+    
+        if not self.create and original is DEFAULT:
+&gt;           raise AttributeError(
+                "%s does not have the attribute %r" % (target, name)
+            )
+E           AttributeError: &lt;module 'backend.api.main' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\api\\main.py'&gt; does not have the attribute 'format_api_response'
+
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1431: AttributeError</failure></testcase><testcase classname="tests.unit.test_api_main_coverage.TestAPIMainCoverage" name="test_logging_integration" time="0.001"><failure message="AttributeError: &lt;module 'backend.api.main' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\api\\main.py'&gt; does not have the attribute 'logger'">self = &lt;test_api_main_coverage.TestAPIMainCoverage object at 0x0000021F236B5E80&gt;
+
+    @pytest.mark.unit
+    def test_logging_integration(self):
+        """Test logging integration."""
+&gt;       with patch('backend.api.main.logger') as mock_logger:
+
+tests\unit\test_api_main_coverage.py:376: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1458: in __enter__
+    original, local = self.get_original()
+                      ^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;unittest.mock._patch object at 0x0000021F24806ED0&gt;
+
+    def get_original(self):
+        target = self.getter()
+        name = self.attribute
+    
+        original = DEFAULT
+        local = False
+    
+        try:
+            original = target.__dict__[name]
+        except (AttributeError, KeyError):
+            original = getattr(target, name, DEFAULT)
+        else:
+            local = True
+    
+        if name in _builtins and isinstance(target, ModuleType):
+            self.create = True
+    
+        if not self.create and original is DEFAULT:
+&gt;           raise AttributeError(
+                "%s does not have the attribute %r" % (target, name)
+            )
+E           AttributeError: &lt;module 'backend.api.main' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\api\\main.py'&gt; does not have the attribute 'logger'
+
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1431: AttributeError</failure></testcase><testcase classname="tests.unit.test_api_main_coverage.TestAPIMainCoverage" name="test_dependency_injection" time="0.001"><failure message="AttributeError: &lt;module 'backend.api.main' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\api\\main.py'&gt; does not have the attribute 'get_dependencies'">self = &lt;test_api_main_coverage.TestAPIMainCoverage object at 0x0000021F236B6060&gt;
+
+    @pytest.mark.unit
+    def test_dependency_injection(self):
+        """Test dependency injection functionality."""
+&gt;       with patch('backend.api.main.get_dependencies') as mock_deps:
+
+tests\unit\test_api_main_coverage.py:391: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1458: in __enter__
+    original, local = self.get_original()
+                      ^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;unittest.mock._patch object at 0x0000021F248064B0&gt;
+
+    def get_original(self):
+        target = self.getter()
+        name = self.attribute
+    
+        original = DEFAULT
+        local = False
+    
+        try:
+            original = target.__dict__[name]
+        except (AttributeError, KeyError):
+            original = getattr(target, name, DEFAULT)
+        else:
+            local = True
+    
+        if name in _builtins and isinstance(target, ModuleType):
+            self.create = True
+    
+        if not self.create and original is DEFAULT:
+&gt;           raise AttributeError(
+                "%s does not have the attribute %r" % (target, name)
+            )
+E           AttributeError: &lt;module 'backend.api.main' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\api\\main.py'&gt; does not have the attribute 'get_dependencies'
+
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1431: AttributeError</failure></testcase><testcase classname="tests.unit.test_api_main_coverage.TestAPIMainCoverage" name="test_cors_handling" time="0.001"><failure message="ImportError: cannot import name 'handle_cors_request' from 'backend.api.main' (C:\Users\Marsel\intra\algotrading_platform\backend\api\main.py)">self = &lt;test_api_main_coverage.TestAPIMainCoverage object at 0x0000021F236B6240&gt;
+
+    @pytest.mark.unit
+    def test_cors_handling(self):
+        """Test CORS handling functionality."""
+&gt;       from backend.api.main import handle_cors_request
+E       ImportError: cannot import name 'handle_cors_request' from 'backend.api.main' (C:\Users\Marsel\intra\algotrading_platform\backend\api\main.py)
+
+tests\unit\test_api_main_coverage.py:408: ImportError</failure></testcase></testsuite></testsuites>

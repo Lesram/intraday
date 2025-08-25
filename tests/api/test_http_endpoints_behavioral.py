@@ -137,8 +137,8 @@ class TestAuthenticationBehavior:
         assert response.status_code == 401
         
         data = response.json()
-        assert "error" in data
-        assert "detail" in data["error"]
+        assert "detail" in data
+        assert data["detail"] == "Authentication required"
 
 
 class TestErrorHandling:

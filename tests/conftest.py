@@ -4,6 +4,17 @@ Provides fixtures for testing with isolated metrics registries and loggers.
 Enhanced with deterministic behavior and global seeding.
 """
 
+# CRITICAL: Import light mode setup FIRST before anything else
+import sys
+import os
+sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
+try:
+    import conftest_light_mode
+except ImportError:
+    print("⚠️  Light mode setup not found - heavy ML libraries may load")
+
+# Now proceed with rest of conftest setup
+
 # Disable problematic imports that cause test conflicts
 import warnings
 import os
@@ -11,22 +22,33 @@ import os
 # Set environment variable to disable problematic ML libraries
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 os.environ['DISABLE_TRANSFORMERS'] = '1'
+os.environ['DISABLE_TORCH'] = '1'  
+os.environ['DISABLE_TENSORFLOW'] = '1'
+os.environ['DISABLE_XGBOOST'] = '1'
 os.environ['PYTEST_RUNNING'] = '1'
 
 # Comprehensive warning suppression
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 warnings.filterwarnings("ignore", category=UserWarning, module="transformers")
 warnings.filterwarnings("ignore", category=UserWarning, module="tensorflow") 
+warnings.filterwarnings("ignore", category=UserWarning, module="torch")
+warnings.filterwarnings("ignore", category=UserWarning, module="xgboost")
 
 # Mock problematic modules early to prevent import issues
 import sys
 from unittest.mock import MagicMock
 
-# Mock transformers module to prevent import issues
-if 'transformers' not in sys.modules:
-    sys.modules['transformers'] = MagicMock()
-    sys.modules['transformers.utils'] = MagicMock()
-    sys.modules['transformers.utils.import_utils'] = MagicMock()
+# Mock ALL heavy ML libraries to prevent import hangs on Windows
+heavy_ml_modules = [
+    'transformers', 'transformers.utils', 'transformers.utils.import_utils',
+    'torch', 'torch.nn', 'torch.optim', 'torch.utils', 'torch.utils.data',
+    'tensorflow', 'tensorflow.keras', 'tensorflow.keras.models', 'tensorflow.keras.layers',
+    'xgboost', 'sklearn.ensemble'
+]
+
+for module_name in heavy_ml_modules:
+    if module_name not in sys.modules:
+        sys.modules[module_name] = MagicMock()
 
 import asyncio
 from contextlib import contextmanager
@@ -42,6 +64,13 @@ from typing import Any
 from unittest.mock import AsyncMock, Mock, patch
 
 from fastapi.testclient import TestClient
+# IMPORTANT: Import and apply RobustTestClient fix for CancelledError issues
+try:
+    from tests.helpers.robust_testclient import patch_testclient_globally
+    patch_testclient_globally()
+    print("✅ Applied RobustTestClient fix globally - TestClient CancelledError resolved")
+except ImportError:
+    print("⚠️  RobustTestClient not available - TestClient may have CancelledError issues")
 # from freezegun import freeze_time  # Removed to avoid ML conflicts
 import numpy as np
 import pandas as pd
@@ -1090,3 +1119,11 @@ def sample_http_response():
         "headers": {"Content-Type": "application/json"},
         "body": '{"status": "success"}',
     }
+
+
+pytest_plugins = [
+    "tests.plugins.leak_guard",
+    "tests.plugins.leak_guard_session",
+    "tests.plugins.light_mode",
+    "tests.plugins.respx_compat",
+]

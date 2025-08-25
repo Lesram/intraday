@@ -1,0 +1,263 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="6" skipped="0" tests="28" time="0.609" timestamp="2025-08-24T17:08:55.701944-07:00" hostname="BOOK-FVJOEO3Q00"><testcase classname="tests.unit.test_risk_manager_comprehensive.TestRiskManagerComprehensive" name="test_risk_limit_validation_matrix[AAPL-buy-qty0-price0-10000-100000-0.05-True]" time="0.006" /><testcase classname="tests.unit.test_risk_manager_comprehensive.TestRiskManagerComprehensive" name="test_risk_limit_validation_matrix[GOOGL-sell-qty1-price1-5000-80000-0.04-True]" time="0.003"><failure message="AssertionError: assert (False or 'single_position_value_limit' in ['kelly_size_exceeded'])&#10; +  where False = RiskDecision(allowed=False, reason='single_position_value_limit', adjustments={'max_notional': '80000'}, limits={'max_...inal_qty=Decimal('50'), adjusted_qty=None, risk_score=None, timestamp=datetime.datetime(2025, 8, 25, 0, 8, 55, 889148)).allowed&#10; +  and   'single_position_value_limit' = RiskDecision(allowed=False, reason='single_position_value_limit', adjustments={'max_notional': '80000'}, limits={'max_...inal_qty=Decimal('50'), adjusted_qty=None, risk_score=None, timestamp=datetime.datetime(2025, 8, 25, 0, 8, 55, 889148)).reason">self = &lt;test_risk_manager_comprehensive.TestRiskManagerComprehensive object at 0x0000021F46274170&gt;
+risk_manager = &lt;backend.risk.risk_manager.AsyncRiskManager object at 0x0000021F465D90D0&gt;
+symbol = 'GOOGL', side = 'sell', qty = Decimal('50'), price = Decimal('2500')
+max_pos = 5000, max_val = 80000, max_var = 0.04, should_approve = True
+
+    @pytest.mark.parametrize("symbol,side,qty,price,max_pos,max_val,max_var,should_approve", RISK_LIMIT_VALIDATION_DATA)
+    @pytest.mark.asyncio
+    async def test_risk_limit_validation_matrix(
+        self, risk_manager, symbol, side, qty, price, max_pos, max_val, max_var, should_approve
+    ):
+        """Test risk limit validation with comprehensive parameter matrix"""
+        # Configure risk manager with test limits
+        risk_manager.max_position_per_symbol = max_pos
+        risk_manager.max_single_position_value = max_val
+        risk_manager.max_portfolio_var = max_var
+    
+        # Create order specification
+        order = OrderSpec(
+            symbol=symbol,
+            side=side,
+            qty=qty,
+            price=price,
+            notional=qty * price
+        )
+    
+        # Test risk evaluation
+        decision = await risk_manager.before_order(order)
+    
+        # Verify decision aligns with expected approval
+        if should_approve:
+&gt;           assert decision.allowed or decision.reason in ["kelly_size_exceeded"]
+E           AssertionError: assert (False or 'single_position_value_limit' in ['kelly_size_exceeded'])
+E            +  where False = RiskDecision(allowed=False, reason='single_position_value_limit', adjustments={'max_notional': '80000'}, limits={'max_...inal_qty=Decimal('50'), adjusted_qty=None, risk_score=None, timestamp=datetime.datetime(2025, 8, 25, 0, 8, 55, 889148)).allowed
+E            +  and   'single_position_value_limit' = RiskDecision(allowed=False, reason='single_position_value_limit', adjustments={'max_notional': '80000'}, limits={'max_...inal_qty=Decimal('50'), adjusted_qty=None, risk_score=None, timestamp=datetime.datetime(2025, 8, 25, 0, 8, 55, 889148)).reason
+
+tests\unit\test_risk_manager_comprehensive.py:120: AssertionError</failure></testcase><testcase classname="tests.unit.test_risk_manager_comprehensive.TestRiskManagerComprehensive" name="test_risk_limit_validation_matrix[MSFT-buy-qty2-price2-15000-120000-0.06-False]" time="0.021" /><testcase classname="tests.unit.test_risk_manager_comprehensive.TestRiskManagerComprehensive" name="test_risk_limit_validation_matrix[TSLA-sell-qty3-price3-50000-200000-0.08-False]" time="0.015" /><testcase classname="tests.unit.test_risk_manager_comprehensive.TestRiskManagerComprehensive" name="test_risk_limit_validation_matrix[AMZN-buy-qty4-price4-8000-90000-0.03-True]" time="0.015" /><testcase classname="tests.unit.test_risk_manager_comprehensive.TestRiskManagerComprehensive" name="test_risk_limit_validation_matrix[META-sell-qty5-price5-12000-110000-0.05-True]" time="0.004" /><testcase classname="tests.unit.test_risk_manager_comprehensive.TestRiskManagerComprehensive" name="test_risk_limit_validation_matrix[NVDA-buy-qty6-price6-35000-150000-0.07-False]" time="0.004" /><testcase classname="tests.unit.test_risk_manager_comprehensive.TestRiskManagerComprehensive" name="test_risk_limit_validation_matrix[SPY-sell-qty7-price7-6000-85000-0.04-True]" time="0.020" /><testcase classname="tests.unit.test_risk_manager_comprehensive.TestRiskManagerComprehensive" name="test_risk_breach_scenarios[position_limit_breach-risk_config0-breach_value0-pos_cap]" time="0.003"><failure message="AssertionError: assert ('pos_cap' in 'position_limit_exceeded' or 'position_limit_exceeded' in 'pos_cap')&#10; +  where 'position_limit_exceeded' = RiskDecision(allowed=False, reason='position_limit_exceeded', adjustments={'max_allowed': '50'}, limits={'max_position...nal_qty=Decimal('100'), adjusted_qty=None, risk_score=None, timestamp=datetime.datetime(2025, 8, 25, 0, 8, 56, 158181)).reason&#10; +  and   'position_limit_exceeded' = RiskDecision(allowed=False, reason='position_limit_exceeded', adjustments={'max_allowed': '50'}, limits={'max_position...nal_qty=Decimal('100'), adjusted_qty=None, risk_score=None, timestamp=datetime.datetime(2025, 8, 25, 0, 8, 56, 158181)).reason">self = &lt;test_risk_manager_comprehensive.TestRiskManagerComprehensive object at 0x0000021F465D8620&gt;
+breach_type = 'position_limit_breach'
+risk_config = {'max_position_per_symbol': 50}, breach_value = Decimal('100')
+expected_reason = 'pos_cap'
+
+    @pytest.mark.parametrize("breach_type,risk_config,breach_value,expected_reason", RISK_BREACH_SCENARIOS)
+    @pytest.mark.asyncio
+    async def test_risk_breach_scenarios(
+        self, breach_type, risk_config, breach_value, expected_reason
+    ):
+        """Test various risk breach scenarios and responses"""
+        # Configure risk manager with breach conditions
+        risk_manager = AsyncRiskManager(**risk_config)
+    
+        # Create order that should trigger breach
+        if breach_type == "position_limit_breach":
+            order = OrderSpec(
+                symbol="TEST",
+                side="buy",
+                qty=breach_value,
+                price=Decimal("100"),
+                notional=breach_value * Decimal("100")
+            )
+        elif breach_type == "notional_limit_breach":
+            order = OrderSpec(
+                symbol="TEST",
+                side="buy",
+                qty=Decimal("100"),
+                price=Decimal("2000"),
+                notional=breach_value
+            )
+        else:
+            order = OrderSpec(
+                symbol="TEST",
+                side="buy",
+                qty=Decimal("100"),
+                price=Decimal("100"),
+                notional=Decimal("10000")
+            )
+    
+        # Test risk evaluation
+        decision = await risk_manager.before_order(order)
+    
+        # Verify breach detection
+        assert not decision.allowed
+&gt;       assert expected_reason in decision.reason or decision.reason in expected_reason
+E       AssertionError: assert ('pos_cap' in 'position_limit_exceeded' or 'position_limit_exceeded' in 'pos_cap')
+E        +  where 'position_limit_exceeded' = RiskDecision(allowed=False, reason='position_limit_exceeded', adjustments={'max_allowed': '50'}, limits={'max_position...nal_qty=Decimal('100'), adjusted_qty=None, risk_score=None, timestamp=datetime.datetime(2025, 8, 25, 0, 8, 56, 158181)).reason
+E        +  and   'position_limit_exceeded' = RiskDecision(allowed=False, reason='position_limit_exceeded', adjustments={'max_allowed': '50'}, limits={'max_position...nal_qty=Decimal('100'), adjusted_qty=None, risk_score=None, timestamp=datetime.datetime(2025, 8, 25, 0, 8, 56, 158181)).reason
+
+tests\unit\test_risk_manager_comprehensive.py:169: AssertionError</failure></testcase><testcase classname="tests.unit.test_risk_manager_comprehensive.TestRiskManagerComprehensive" name="test_risk_breach_scenarios[notional_limit_breach-risk_config1-breach_value1-notional_cap]" time="0.002"><failure message="AssertionError: assert ('notional_cap' in 'single_position_value_limit' or 'single_position_value_limit' in 'notional_cap')&#10; +  where 'single_position_value_limit' = RiskDecision(allowed=False, reason='single_position_value_limit', adjustments={'max_notional': '50000'}, limits={'max_...nal_qty=Decimal('100'), adjusted_qty=None, risk_score=None, timestamp=datetime.datetime(2025, 8, 25, 0, 8, 56, 169937)).reason&#10; +  and   'single_position_value_limit' = RiskDecision(allowed=False, reason='single_position_value_limit', adjustments={'max_notional': '50000'}, limits={'max_...nal_qty=Decimal('100'), adjusted_qty=None, risk_score=None, timestamp=datetime.datetime(2025, 8, 25, 0, 8, 56, 169937)).reason">self = &lt;test_risk_manager_comprehensive.TestRiskManagerComprehensive object at 0x0000021F465D8860&gt;
+breach_type = 'notional_limit_breach'
+risk_config = {'max_single_position_value': 50000}
+breach_value = Decimal('200000'), expected_reason = 'notional_cap'
+
+    @pytest.mark.parametrize("breach_type,risk_config,breach_value,expected_reason", RISK_BREACH_SCENARIOS)
+    @pytest.mark.asyncio
+    async def test_risk_breach_scenarios(
+        self, breach_type, risk_config, breach_value, expected_reason
+    ):
+        """Test various risk breach scenarios and responses"""
+        # Configure risk manager with breach conditions
+        risk_manager = AsyncRiskManager(**risk_config)
+    
+        # Create order that should trigger breach
+        if breach_type == "position_limit_breach":
+            order = OrderSpec(
+                symbol="TEST",
+                side="buy",
+                qty=breach_value,
+                price=Decimal("100"),
+                notional=breach_value * Decimal("100")
+            )
+        elif breach_type == "notional_limit_breach":
+            order = OrderSpec(
+                symbol="TEST",
+                side="buy",
+                qty=Decimal("100"),
+                price=Decimal("2000"),
+                notional=breach_value
+            )
+        else:
+            order = OrderSpec(
+                symbol="TEST",
+                side="buy",
+                qty=Decimal("100"),
+                price=Decimal("100"),
+                notional=Decimal("10000")
+            )
+    
+        # Test risk evaluation
+        decision = await risk_manager.before_order(order)
+    
+        # Verify breach detection
+        assert not decision.allowed
+&gt;       assert expected_reason in decision.reason or decision.reason in expected_reason
+E       AssertionError: assert ('notional_cap' in 'single_position_value_limit' or 'single_position_value_limit' in 'notional_cap')
+E        +  where 'single_position_value_limit' = RiskDecision(allowed=False, reason='single_position_value_limit', adjustments={'max_notional': '50000'}, limits={'max_...nal_qty=Decimal('100'), adjusted_qty=None, risk_score=None, timestamp=datetime.datetime(2025, 8, 25, 0, 8, 56, 169937)).reason
+E        +  and   'single_position_value_limit' = RiskDecision(allowed=False, reason='single_position_value_limit', adjustments={'max_notional': '50000'}, limits={'max_...nal_qty=Decimal('100'), adjusted_qty=None, risk_score=None, timestamp=datetime.datetime(2025, 8, 25, 0, 8, 56, 169937)).reason
+
+tests\unit\test_risk_manager_comprehensive.py:169: AssertionError</failure></testcase><testcase classname="tests.unit.test_risk_manager_comprehensive.TestRiskManagerComprehensive" name="test_risk_breach_scenarios[var_limit_breach-risk_config2-0.05-var]" time="0.022"><failure message="AssertionError: assert ('var' in 'kelly_size_exceeded' or 'kelly_size_exceeded' in 'var')&#10; +  where 'kelly_size_exceeded' = RiskDecision(allowed=False, reason='kelly_size_exceeded', adjustments={'kelly_limit': '974.7670214825208'}, limits={},...adjusted_qty=Decimal('9.747670214825208'), risk_score=None, timestamp=datetime.datetime(2025, 8, 25, 0, 8, 56, 200283)).reason&#10; +  and   'kelly_size_exceeded' = RiskDecision(allowed=False, reason='kelly_size_exceeded', adjustments={'kelly_limit': '974.7670214825208'}, limits={},...adjusted_qty=Decimal('9.747670214825208'), risk_score=None, timestamp=datetime.datetime(2025, 8, 25, 0, 8, 56, 200283)).reason">self = &lt;test_risk_manager_comprehensive.TestRiskManagerComprehensive object at 0x0000021F465D89E0&gt;
+breach_type = 'var_limit_breach', risk_config = {'max_portfolio_var': 0.02}
+breach_value = 0.05, expected_reason = 'var'
+
+    @pytest.mark.parametrize("breach_type,risk_config,breach_value,expected_reason", RISK_BREACH_SCENARIOS)
+    @pytest.mark.asyncio
+    async def test_risk_breach_scenarios(
+        self, breach_type, risk_config, breach_value, expected_reason
+    ):
+        """Test various risk breach scenarios and responses"""
+        # Configure risk manager with breach conditions
+        risk_manager = AsyncRiskManager(**risk_config)
+    
+        # Create order that should trigger breach
+        if breach_type == "position_limit_breach":
+            order = OrderSpec(
+                symbol="TEST",
+                side="buy",
+                qty=breach_value,
+                price=Decimal("100"),
+                notional=breach_value * Decimal("100")
+            )
+        elif breach_type == "notional_limit_breach":
+            order = OrderSpec(
+                symbol="TEST",
+                side="buy",
+                qty=Decimal("100"),
+                price=Decimal("2000"),
+                notional=breach_value
+            )
+        else:
+            order = OrderSpec(
+                symbol="TEST",
+                side="buy",
+                qty=Decimal("100"),
+                price=Decimal("100"),
+                notional=Decimal("10000")
+            )
+    
+        # Test risk evaluation
+        decision = await risk_manager.before_order(order)
+    
+        # Verify breach detection
+        assert not decision.allowed
+&gt;       assert expected_reason in decision.reason or decision.reason in expected_reason
+E       AssertionError: assert ('var' in 'kelly_size_exceeded' or 'kelly_size_exceeded' in 'var')
+E        +  where 'kelly_size_exceeded' = RiskDecision(allowed=False, reason='kelly_size_exceeded', adjustments={'kelly_limit': '974.7670214825208'}, limits={},...adjusted_qty=Decimal('9.747670214825208'), risk_score=None, timestamp=datetime.datetime(2025, 8, 25, 0, 8, 56, 200283)).reason
+E        +  and   'kelly_size_exceeded' = RiskDecision(allowed=False, reason='kelly_size_exceeded', adjustments={'kelly_limit': '974.7670214825208'}, limits={},...adjusted_qty=Decimal('9.747670214825208'), risk_score=None, timestamp=datetime.datetime(2025, 8, 25, 0, 8, 56, 200283)).reason
+
+tests\unit\test_risk_manager_comprehensive.py:169: AssertionError</failure></testcase><testcase classname="tests.unit.test_risk_manager_comprehensive.TestRiskManagerComprehensive" name="test_risk_breach_scenarios[kelly_size_breach-risk_config3-0.3-kelly]" time="0.002" /><testcase classname="tests.unit.test_risk_manager_comprehensive.TestRiskManagerComprehensive" name="test_risk_breach_scenarios[correlation_breach-risk_config4-0.9-correlation]" time="0.002"><failure message="AssertionError: assert ('correlation' in 'kelly_size_exceeded' or 'kelly_size_exceeded' in 'correlation')&#10; +  where 'kelly_size_exceeded' = RiskDecision(allowed=False, reason='kelly_size_exceeded', adjustments={'kelly_limit': '974.7670214825208'}, limits={},...adjusted_qty=Decimal('9.747670214825208'), risk_score=None, timestamp=datetime.datetime(2025, 8, 25, 0, 8, 56, 220030)).reason&#10; +  and   'kelly_size_exceeded' = RiskDecision(allowed=False, reason='kelly_size_exceeded', adjustments={'kelly_limit': '974.7670214825208'}, limits={},...adjusted_qty=Decimal('9.747670214825208'), risk_score=None, timestamp=datetime.datetime(2025, 8, 25, 0, 8, 56, 220030)).reason">self = &lt;test_risk_manager_comprehensive.TestRiskManagerComprehensive object at 0x0000021F465D8B00&gt;
+breach_type = 'correlation_breach', risk_config = {'max_correlation': 0.7}
+breach_value = 0.9, expected_reason = 'correlation'
+
+    @pytest.mark.parametrize("breach_type,risk_config,breach_value,expected_reason", RISK_BREACH_SCENARIOS)
+    @pytest.mark.asyncio
+    async def test_risk_breach_scenarios(
+        self, breach_type, risk_config, breach_value, expected_reason
+    ):
+        """Test various risk breach scenarios and responses"""
+        # Configure risk manager with breach conditions
+        risk_manager = AsyncRiskManager(**risk_config)
+    
+        # Create order that should trigger breach
+        if breach_type == "position_limit_breach":
+            order = OrderSpec(
+                symbol="TEST",
+                side="buy",
+                qty=breach_value,
+                price=Decimal("100"),
+                notional=breach_value * Decimal("100")
+            )
+        elif breach_type == "notional_limit_breach":
+            order = OrderSpec(
+                symbol="TEST",
+                side="buy",
+                qty=Decimal("100"),
+                price=Decimal("2000"),
+                notional=breach_value
+            )
+        else:
+            order = OrderSpec(
+                symbol="TEST",
+                side="buy",
+                qty=Decimal("100"),
+                price=Decimal("100"),
+                notional=Decimal("10000")
+            )
+    
+        # Test risk evaluation
+        decision = await risk_manager.before_order(order)
+    
+        # Verify breach detection
+        assert not decision.allowed
+&gt;       assert expected_reason in decision.reason or decision.reason in expected_reason
+E       AssertionError: assert ('correlation' in 'kelly_size_exceeded' or 'kelly_size_exceeded' in 'correlation')
+E        +  where 'kelly_size_exceeded' = RiskDecision(allowed=False, reason='kelly_size_exceeded', adjustments={'kelly_limit': '974.7670214825208'}, limits={},...adjusted_qty=Decimal('9.747670214825208'), risk_score=None, timestamp=datetime.datetime(2025, 8, 25, 0, 8, 56, 220030)).reason
+E        +  and   'kelly_size_exceeded' = RiskDecision(allowed=False, reason='kelly_size_exceeded', adjustments={'kelly_limit': '974.7670214825208'}, limits={},...adjusted_qty=Decimal('9.747670214825208'), risk_score=None, timestamp=datetime.datetime(2025, 8, 25, 0, 8, 56, 220030)).reason
+
+tests\unit\test_risk_manager_comprehensive.py:169: AssertionError</failure></testcase><testcase classname="tests.unit.test_risk_manager_comprehensive.TestRiskManagerComprehensive" name="test_correlation_analysis[AAPL-MSFT-0.65-Technology-Technology-True]" time="0.002" /><testcase classname="tests.unit.test_risk_manager_comprehensive.TestRiskManagerComprehensive" name="test_correlation_analysis[TSLA-NVDA-0.45-Automotive-Technology-True]" time="0.002" /><testcase classname="tests.unit.test_risk_manager_comprehensive.TestRiskManagerComprehensive" name="test_correlation_analysis[SPY-QQQ-0.85-Index-Index-False]" time="0.002" /><testcase classname="tests.unit.test_risk_manager_comprehensive.TestRiskManagerComprehensive" name="test_correlation_analysis[AMZN-META-0.55-Technology-Technology-True]" time="0.002" /><testcase classname="tests.unit.test_risk_manager_comprehensive.TestRiskManagerComprehensive" name="test_correlation_analysis[GOOGL-AAPL-0.75-Technology-Technology-False]" time="0.002" /><testcase classname="tests.unit.test_risk_manager_comprehensive.TestRiskManagerComprehensive" name="test_kelly_position_sizing_calculation" time="0.002" /><testcase classname="tests.unit.test_risk_manager_comprehensive.TestRiskManagerComprehensive" name="test_var_calculation_and_limits" time="0.002" /><testcase classname="tests.unit.test_risk_manager_comprehensive.TestRiskManagerComprehensive" name="test_drawdown_protection_logic" time="0.002" /><testcase classname="tests.unit.test_risk_manager_comprehensive.TestRiskManagerComprehensive" name="test_sector_concentration_limits" time="0.013" /><testcase classname="tests.unit.test_risk_manager_comprehensive.TestRiskManagerComprehensive" name="test_volatility_adjustment_scenarios" time="0.002" /><testcase classname="tests.unit.test_risk_manager_comprehensive.TestRiskManagerComprehensive" name="test_risk_manager_initialization_configs" time="0.002" /><testcase classname="tests.unit.test_risk_manager_comprehensive.TestRiskManagerComprehensive" name="test_order_rejection_with_detailed_reasons" time="0.001" /><testcase classname="tests.unit.test_risk_manager_comprehensive.TestRiskManagerComprehensive" name="test_edge_case_zero_and_negative_positions" time="0.002"><failure message="TypeError: '&lt;' not supported between instances of 'NoneType' and 'int'">self = &lt;test_risk_manager_comprehensive.TestRiskManagerComprehensive object at 0x0000021F465DA960&gt;
+risk_manager = &lt;backend.risk.risk_manager.AsyncRiskManager object at 0x0000021F476F82F0&gt;
+
+    @pytest.mark.asyncio
+    async def test_edge_case_zero_and_negative_positions(self, risk_manager):
+        """Test handling of zero and negative position scenarios"""
+        # Test zero quantity order
+&gt;       zero_order = OrderSpec(
+            symbol="ZERO_TEST",
+            side="buy",
+            qty=Decimal("0"),
+            price=Decimal("100"),
+            notional=Decimal("0")
+        )
+
+tests\unit\test_risk_manager_comprehensive.py:417: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+backend\risk\types.py:137: in __init__
+    self.__post_init__()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = OrderSpec(symbol='ZERO_TEST', side='buy', qty=None, notional=Decimal('0'), price=Decimal('100'), tif=None, attributes=None, type=None)
+
+    def __post_init__(self):
+        """Validate order specification invariants."""
+&gt;       if self.qty &lt; 0:
+           ^^^^^^^^^^^^
+E       TypeError: '&lt;' not supported between instances of 'NoneType' and 'int'
+
+backend\risk\types.py:141: TypeError</failure></testcase><testcase classname="tests.unit.test_risk_manager_comprehensive.TestRiskManagerComprehensive" name="test_risk_math_utilities" time="0.001" /><testcase classname="tests.unit.test_risk_manager_comprehensive.TestRiskManagerComprehensive" name="test_concurrent_risk_evaluations" time="0.018" /></testsuite></testsuites>

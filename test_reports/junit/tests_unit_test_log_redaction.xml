@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="4" skipped="0" tests="10" time="0.357" timestamp="2025-08-24T17:07:55.968982-07:00" hostname="BOOK-FVJOEO3Q00"><testcase classname="tests.unit.test_log_redaction.TestLogRedaction" name="test_authorization_header_redaction" time="0.013" /><testcase classname="tests.unit.test_log_redaction.TestLogRedaction" name="test_api_key_redaction" time="0.002"><failure message="AssertionError: No redaction marker found in: Processing request: Config: {&quot;alpaca_key&quot;: &quot;PK_LIVE_secretkeyvalue123456789&quot;}&#10;assert False&#10; +  where False = any(&lt;generator object TestLogRedaction.test_api_key_redaction.&lt;locals&gt;.&lt;genexpr&gt; at 0x000001B1313A2260&gt;)">self = &lt;test_log_redaction.TestLogRedaction object at 0x000001B13141B3E0&gt;
+secure_logger = &lt;test_log_redaction.MockSecureLogger object at 0x000001B131448830&gt;
+
+    def test_api_key_redaction(self, secure_logger):
+        """Test redaction of API keys in various formats."""
+        test_cases = [
+            # Header format
+            "X-API-Key: pk_test_abcdefghijklmnopqrstuvwxyz123456",
+            "x-api-key: sk_live_1234567890abcdefghijklmnop",
+            # URL parameter format
+            "GET /api/data?api_key=pk_test_secret_key_here&amp;symbol=AAPL",
+            "POST /orders?api_key=very_long_secret_key_value&amp;side=buy",
+            # Alpaca-specific formats
+            "Alpaca key: PKTEST_abc123def456ghi789jkl012mno345pqr",
+            'Config: {"alpaca_key": "PK_LIVE_secretkeyvalue123456789"}',
+        ]
+    
+        for test_input in test_cases:
+            secure_logger.clear_logs()
+            secure_logger.info(f"Processing request: {test_input}")
+    
+            logs = secure_logger.get_logs()
+            log_message = logs[0]["message"]
+    
+            # Should contain redaction marker
+&gt;           assert any(
+                redacted in log_message
+                for redacted in [
+                    "[REDACTED_API_KEY]",
+                    "[REDACTED]",
+                    "[REDACTED_ALPACA_KEY]",
+                ]
+            ), f"No redaction marker found in: {log_message}"
+E           AssertionError: No redaction marker found in: Processing request: Config: {"alpaca_key": "PK_LIVE_secretkeyvalue123456789"}
+E           assert False
+E            +  where False = any(&lt;generator object TestLogRedaction.test_api_key_redaction.&lt;locals&gt;.&lt;genexpr&gt; at 0x000001B1313A2260&gt;)
+
+tests\unit\test_log_redaction.py:214: AssertionError</failure></testcase><testcase classname="tests.unit.test_log_redaction.TestLogRedaction" name="test_password_redaction" time="0.001" /><testcase classname="tests.unit.test_log_redaction.TestLogRedaction" name="test_jwt_token_redaction" time="0.001" /><testcase classname="tests.unit.test_log_redaction.TestLogRedaction" name="test_pci_compliance_redaction" time="0.001"><failure message="AssertionError: Credit card 4532-1234-5678-9012 not redacted&#10;assert '4532-1234-5678-9012' not in 'Payment log...:]] approved'&#10;  &#10;  '4532-1234-5678-9012' is contained here:&#10;    _CARD_****4532-1234-5678-9012[-4:]] approved">self = &lt;test_log_redaction.TestLogRedaction object at 0x000001B13141BB30&gt;
+secure_logger = &lt;test_log_redaction.MockSecureLogger object at 0x000001B131449B50&gt;
+
+    def test_pci_compliance_redaction(self, secure_logger):
+        """Test redaction of credit card numbers for PCI compliance."""
+        test_cases = [
+            # Various credit card formats
+            "Payment processed: 4532-1234-5678-9012 approved",
+            "Card ending in 9876: 5555 4444 3333 2222 declined",
+            "Transaction: 378282246310005 for $1,250.00",
+            # Should NOT redact non-card numbers
+            "Order ID: 1234567890123456 processed",  # Too many digits
+            "Account: 123-45-6789",  # Too few digits in wrong format
+        ]
+    
+        for test_input in test_cases:
+            secure_logger.clear_logs()
+            secure_logger.info(f"Payment log: {test_input}")
+    
+            logs = secure_logger.get_logs("INFO")
+            log_message = logs[0]["message"]
+    
+            # Credit card patterns should be redacted
+            card_patterns = [
+                "4532-1234-5678-9012",
+                "5555 4444 3333 2222",
+                "378282246310005",
+            ]
+            for card in card_patterns:
+                if card in test_input:
+&gt;                   assert card not in log_message, f"Credit card {card} not redacted"
+E                   AssertionError: Credit card 4532-1234-5678-9012 not redacted
+E                   assert '4532-1234-5678-9012' not in 'Payment log...:]] approved'
+E                     
+E                     '4532-1234-5678-9012' is contained here:
+E                       _CARD_****4532-1234-5678-9012[-4:]] approved
+
+tests\unit\test_log_redaction.py:324: AssertionError</failure></testcase><testcase classname="tests.unit.test_log_redaction.TestLogRedaction" name="test_selective_redaction_preserves_context" time="0.001"><failure message="assert 'pk_test_1234567890abcdef' not in 'User authen...Unauthorized'&#10;  &#10;  'pk_test_1234567890abcdef' is contained here:&#10;    PI-Key&quot;: &quot;pk_test_1234567890abcdef&quot;, &quot;User-Agent&quot;: &quot;TradingBot/1.0&quot;} Status: 401 Unauthorized&#10;  ?           ++++++++++++++++++++++++">self = &lt;test_log_redaction.TestLogRedaction object at 0x000001B13141BD10&gt;
+secure_logger = &lt;test_log_redaction.MockSecureLogger object at 0x000001B13144A630&gt;
+
+    def test_selective_redaction_preserves_context(self, secure_logger):
+        """Test that redaction preserves important context while masking sensitive data."""
+        test_input = (
+            "User authentication: POST /api/login "
+            'Headers: {"Authorization": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.payload.sig", '
+            '"X-API-Key": "pk_test_1234567890abcdef", "User-Agent": "TradingBot/1.0"} '
+            "Status: 401 Unauthorized"
+        )
+    
+        secure_logger.info(test_input)
+        logs = secure_logger.get_logs()
+        log_message = logs[0]["message"]
+    
+        # Context should be preserved
+        assert "POST /api/login" in log_message
+        assert "Status: 401 Unauthorized" in log_message
+        assert 'User-Agent": "TradingBot/1.0"' in log_message
+    
+        # Sensitive data should be redacted
+        assert "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.payload.sig" not in log_message
+&gt;       assert "pk_test_1234567890abcdef" not in log_message
+E       assert 'pk_test_1234567890abcdef' not in 'User authen...Unauthorized'
+E         
+E         'pk_test_1234567890abcdef' is contained here:
+E           PI-Key": "pk_test_1234567890abcdef", "User-Agent": "TradingBot/1.0"} Status: 401 Unauthorized
+E         ?           ++++++++++++++++++++++++
+
+tests\unit\test_log_redaction.py:347: AssertionError</failure></testcase><testcase classname="tests.unit.test_log_redaction.TestLogRedaction" name="test_redaction_disabled_mode" time="0.001" /><testcase classname="tests.unit.test_log_redaction.TestLogRedaction" name="test_redaction_statistics_tracking" time="0.001" /><testcase classname="tests.unit.test_log_redaction.TestLogRedaction" name="test_complex_mixed_sensitive_data" time="0.001"><failure message="AssertionError: Context '&quot;symbol&quot;: &quot;AAPL&quot;' was incorrectly redacted&#10;assert '&quot;symbol&quot;: &quot;AAPL&quot;' in '\n        Trading API Request:\n        URL: https://api.example.com/v1/orders?api_key=[REDACTED]\n        Headers:[REDACTED]@localhost:5432/trading\n        Response: Order placed successfully\n        '">self = &lt;test_log_redaction.TestLogRedaction object at 0x000001B1314481D0&gt;
+secure_logger = &lt;test_log_redaction.MockSecureLogger object at 0x000001B13144B9E0&gt;
+
+    def test_complex_mixed_sensitive_data(self, secure_logger):
+        """Test redaction of complex logs with multiple types of sensitive data."""
+        complex_log = """
+        Trading API Request:
+        URL: https://api.example.com/v1/orders?api_key=pk_test_super_secret_key_here
+        Headers: {
+            "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.user_data.signature",
+            "X-API-Key": "sk_live_another_secret_key_value",
+            "Content-Type": "application/json"
+        }
+        Payload: {
+            "symbol": "AAPL",
+            "quantity": 100,
+            "user_credentials": {
+                "username": "trader123",
+                "password": "trading_password_123"
+            }
+        }
+        Database: postgresql://trader:db_secret_pass@localhost:5432/trading
+        Response: Order placed successfully
+        """
+    
+        secure_logger.info(complex_log)
+        logs = secure_logger.get_logs()
+        log_message = logs[0]["message"]
+    
+        # Should preserve non-sensitive context
+        context_items = [
+            "Trading API Request:",
+            '"symbol": "AAPL"',
+            '"quantity": 100',
+            "Response: Order placed successfully",
+            '"Content-Type": "application/json"',
+        ]
+    
+        for item in context_items:
+&gt;           assert item in log_message, f"Context '{item}' was incorrectly redacted"
+E           AssertionError: Context '"symbol": "AAPL"' was incorrectly redacted
+E           assert '"symbol": "AAPL"' in '\n        Trading API Request:\n        URL: https://api.example.com/v1/orders?api_key=[REDACTED]\n        Headers:[REDACTED]@localhost:5432/trading\n        Response: Order placed successfully\n        '
+
+tests\unit\test_log_redaction.py:423: AssertionError</failure></testcase><testcase classname="tests.unit.test_log_redaction.TestLogRedaction" name="test_redaction_deterministic_behavior" time="0.001" /></testsuite></testsuites>

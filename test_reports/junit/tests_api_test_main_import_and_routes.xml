@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="1" time="0.369" timestamp="2025-08-24T17:00:51.397305-07:00" hostname="BOOK-FVJOEO3Q00"><testcase classname="tests.api.test_main_import_and_routes" name="test_main_import_and_routes" time="0.092"><failure message="AssertionError: Missing route: /metrics. Got: ['/api/v1/positions', '/api/v1/risk/limits', '/api/v1/risk/limits/legacy', '/api/v1/risk/metrics', '/api/v1/risk/metrics/legacy', '/auth/login', '/auth/me', '/auth/register', '/auth/token', '/auth/token/validate', '/docs', '/docs/oauth2-redirect', '/health', '/livez', '/openapi.json', '/readyz', '/redoc', '/test/http-401', '/test/http-403', '/test/http-422', '/test/http-500']&#10;assert '/metrics' in ['/api/v1/positions', '/api/v1/risk/limits', '/api/v1/risk/limits/legacy', '/api/v1/risk/metrics', '/api/v1/risk/metrics/legacy', '/auth/login', ...]">def test_main_import_and_routes():
+        main = importlib.import_module('backend.api.main')
+    
+        assert hasattr(main, 'app')
+        app = main.app
+    
+        paths = sorted({r.path for r in app.routes})
+    
+        expected = [
+            "/api/v1/positions",
+            "/metrics",
+            "/healthz",
+            "/readyz",
+        ]
+    
+        for p in expected:
+&gt;           assert p in paths, f"Missing route: {p}. Got: {paths}"
+E           AssertionError: Missing route: /metrics. Got: ['/api/v1/positions', '/api/v1/risk/limits', '/api/v1/risk/limits/legacy', '/api/v1/risk/metrics', '/api/v1/risk/metrics/legacy', '/auth/login', '/auth/me', '/auth/register', '/auth/token', '/auth/token/validate', '/docs', '/docs/oauth2-redirect', '/health', '/livez', '/openapi.json', '/readyz', '/redoc', '/test/http-401', '/test/http-403', '/test/http-422', '/test/http-500']
+E           assert '/metrics' in ['/api/v1/positions', '/api/v1/risk/limits', '/api/v1/risk/limits/legacy', '/api/v1/risk/metrics', '/api/v1/risk/metrics/legacy', '/auth/login', ...]
+
+tests\api\test_main_import_and_routes.py:20: AssertionError</failure></testcase></testsuite></testsuites>

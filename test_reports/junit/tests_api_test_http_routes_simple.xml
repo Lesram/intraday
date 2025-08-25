@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="6" skipped="0" tests="25" time="5.180" timestamp="2025-08-24T17:00:26.873147-07:00" hostname="BOOK-FVJOEO3Q00"><testcase classname="tests.api.test_http_routes_simple.TestHttpRoutesSimple" name="test_health_endpoint" time="0.119"><failure message="AssertionError: assert 'timestamp' in {'service': 'trading-platform', 'status': 'healthy'}">self = &lt;test_http_routes_simple.TestHttpRoutesSimple object at 0x000001871F55B3B0&gt;
+client = &lt;tests.helpers.robust_testclient.RobustTestClient object at 0x0000018720843230&gt;
+
+    def test_health_endpoint(self, client):
+        """Test health endpoint coverage"""
+        response = client.get("/health")
+        assert response.status_code == 200
+    
+        data = response.json()
+        assert data["status"] == "healthy"
+&gt;       assert "timestamp" in data
+E       AssertionError: assert 'timestamp' in {'service': 'trading-platform', 'status': 'healthy'}
+
+tests\api\test_http_routes_simple.py:54: AssertionError</failure></testcase><testcase classname="tests.api.test_http_routes_simple.TestHttpRoutesSimple" name="test_healthz_liveness_probe" time="0.013"><failure message="assert 404 == 200&#10; +  where 404 = &lt;Response [404 Not Found]&gt;.status_code">self = &lt;test_http_routes_simple.TestHttpRoutesSimple object at 0x000001871F6928D0&gt;
+client = &lt;tests.helpers.robust_testclient.RobustTestClient object at 0x00000187209EFB00&gt;
+
+    def test_healthz_liveness_probe(self, client):
+        """Test Kubernetes liveness probe"""
+        response = client.get("/healthz")
+&gt;       assert response.status_code == 200
+E       assert 404 == 200
+E        +  where 404 = &lt;Response [404 Not Found]&gt;.status_code
+
+tests\api\test_http_routes_simple.py:60: AssertionError</failure></testcase><testcase classname="tests.api.test_http_routes_simple.TestHttpRoutesSimple" name="test_readyz_readiness_probe" time="4.145"><failure message="AssertionError: assert 'not_ready' in ['ready', 'not ready', 'degraded']">self = &lt;test_http_routes_simple.TestHttpRoutesSimple object at 0x000001871F6929C0&gt;
+client = &lt;tests.helpers.robust_testclient.RobustTestClient object at 0x0000018720A059A0&gt;
+
+    def test_readyz_readiness_probe(self, client):
+        """Test Kubernetes readiness probe"""
+        response = client.get("/readyz")
+        # In test environment, dependencies may not be ready, so 503 is expected
+        assert response.status_code in [200, 503]
+    
+        data = response.json()
+        # Handle different response formats
+        if "status" in data:
+&gt;           assert data["status"] in ["ready", "not ready", "degraded"]
+E           AssertionError: assert 'not_ready' in ['ready', 'not ready', 'degraded']
+
+tests\api\test_http_routes_simple.py:74: AssertionError</failure></testcase><testcase classname="tests.api.test_http_routes_simple.TestHttpRoutesSimple" name="test_metrics_endpoint" time="0.017"><failure message="assert 404 in [200, 501, 503]&#10; +  where 404 = &lt;Response [404 Not Found]&gt;.status_code">self = &lt;test_http_routes_simple.TestHttpRoutesSimple object at 0x000001871F692B40&gt;
+client = &lt;tests.helpers.robust_testclient.RobustTestClient object at 0x0000018720F82DB0&gt;
+
+    def test_metrics_endpoint(self, client):
+        """Test Prometheus metrics endpoint"""
+        with patch('backend.api.routes.system.PROMETHEUS_AVAILABLE', True), \
+             patch('backend.api.routes.system.generate_latest', return_value=b"# Test metrics\n"):
+            response = client.get("/metrics")
+            # Accept 501 Not Implemented as valid response
+&gt;           assert response.status_code in [200, 501, 503]
+E           assert 404 in [200, 501, 503]
+E            +  where 404 = &lt;Response [404 Not Found]&gt;.status_code
+
+tests\api\test_http_routes_simple.py:84: AssertionError</failure></testcase><testcase classname="tests.api.test_http_routes_simple.TestHttpRoutesSimple" name="test_auth_login_endpoint" time="0.015"><failure message="assert 401 == 200&#10; +  where 401 = &lt;Response [401 Unauthorized]&gt;.status_code">self = &lt;test_http_routes_simple.TestHttpRoutesSimple object at 0x000001871F692CC0&gt;
+client = &lt;tests.helpers.robust_testclient.RobustTestClient object at 0x000001872101BB60&gt;
+
+    def test_auth_login_endpoint(self, client):
+        """Test authentication login"""
+        response = client.post("/auth/login", data={
+            "username": "test_user",
+            "password": "test_password"
+        })
+        # Should succeed with mocked authentication
+&gt;       assert response.status_code == 200
+E       assert 401 == 200
+E        +  where 401 = &lt;Response [401 Unauthorized]&gt;.status_code
+
+tests\api\test_http_routes_simple.py:93: AssertionError</failure></testcase><testcase classname="tests.api.test_http_routes_simple.TestHttpRoutesSimple" name="test_auth_register_endpoint" time="0.236" /><testcase classname="tests.api.test_http_routes_simple.TestHttpRoutesSimple" name="test_protected_positions_endpoint" time="0.014" /><testcase classname="tests.api.test_http_routes_simple.TestHttpRoutesSimple" name="test_protected_trades_history_endpoint" time="0.013" /><testcase classname="tests.api.test_http_routes_simple.TestHttpRoutesSimple" name="test_protected_models_status_endpoint" time="0.013" /><testcase classname="tests.api.test_http_routes_simple.TestHttpRoutesSimple" name="test_protected_risk_metrics_endpoint" time="0.033" /><testcase classname="tests.api.test_http_routes_simple.TestHttpRoutesSimple" name="test_cors_preflight" time="0.012" /><testcase classname="tests.api.test_http_routes_simple.TestHttpRoutesSimple" name="test_large_payload_handling" time="0.014" /><testcase classname="tests.api.test_http_routes_simple.TestHttpRoutesSimple" name="test_invalid_endpoints" time="0.013" /><testcase classname="tests.api.test_http_routes_simple.TestHttpRoutesSimple" name="test_content_type_handling" time="0.016" /><testcase classname="tests.api.test_http_routes_simple.TestHttpRoutesSimple" name="test_request_validation" time="0.016" /><testcase classname="tests.api.test_http_routes_simple.TestHttpRoutesSimple" name="test_auth_me_endpoint" time="0.012" /><testcase classname="tests.api.test_http_routes_simple.TestHttpRoutesSimple" name="test_token_validation_endpoint" time="0.012"><failure message="assert False == True">self = &lt;test_http_routes_simple.TestHttpRoutesSimple object at 0x000001871F693800&gt;
+client = &lt;tests.helpers.robust_testclient.RobustTestClient object at 0x0000018720FC05F0&gt;
+
+    def test_token_validation_endpoint(self, client):
+        """Test token validation endpoint"""
+        headers = {"Authorization": "Bearer fake_token"}
+        with patch('backend.infra.security.get_current_user') as mock_auth:
+            mock_user = Mock()
+            mock_user.username = "test_user"
+            mock_user.roles = ["trader"]
+            mock_user.token_id = "token_123"
+            mock_auth.return_value = mock_user
+    
+            response = client.post("/auth/token/validate", headers=headers)
+            # Accept various response codes as endpoint may not exist
+            assert response.status_code in [200, 404, 401]
+    
+            if response.status_code == 200:
+                data = response.json()
+&gt;               assert data["valid"] == True
+E               assert False == True
+
+tests\api\test_http_routes_simple.py:305: AssertionError</failure></testcase><testcase classname="tests.api.test_http_routes_simple.TestHttpRoutesSimple" name="test_websocket_endpoint_exists" time="0.011" /><testcase classname="tests.api.test_http_routes_simple.TestHttpRoutesSimple" name="test_openapi_schema_generation" time="0.035" /><testcase classname="tests.api.test_http_routes_simple.TestHttpRoutesSimple" name="test_docs_endpoint" time="0.012" /><testcase classname="tests.api.test_http_routes_simple.TestRouteMetricsAndMiddleware" name="test_request_counting" time="0.019" /><testcase classname="tests.api.test_http_routes_simple.TestRouteMetricsAndMiddleware" name="test_response_time_tracking" time="0.013" /><testcase classname="tests.api.test_http_routes_simple.TestRouteMetricsAndMiddleware" name="test_error_handling_middleware" time="0.012" /><testcase classname="tests.api.test_http_routes_simple.TestRouteMetricsAndMiddleware" name="test_request_id_generation" time="0.010" /><testcase classname="tests.api.test_http_routes_simple.TestRouteMetricsAndMiddleware" name="test_structured_logging_coverage" time="0.013" /></testsuite></testsuites>

@@ -1,0 +1,420 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="10" skipped="0" tests="15" time="1.720" timestamp="2025-08-24T17:08:38.195348-07:00" hostname="BOOK-FVJOEO3Q00"><testcase classname="tests.unit.test_order_service_failures.TestOrderServiceIdempotency" name="test_submit_order_new_idempotency_key" time="0.035"><failure message="AssertionError: Expected 'add_order_submit_event' to have been called once. Called 0 times.">self = &lt;test_order_service_failures.TestOrderServiceIdempotency object at 0x000002C02B9FF0E0&gt;
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_submit_order_new_idempotency_key(self):
+        """Test order submission with new idempotency key."""
+        mock_orders_repo = AsyncMock()
+        mock_outbox_repo = AsyncMock()
+    
+        # Mock new order creation
+        new_order = Order(
+            id=uuid.uuid4(),
+            client_idempotency_key="new-key-123",
+            symbol="AAPL",
+            side="buy",
+            qty=Decimal("100"),
+            order_type="market",
+            tif="ioc",
+            status="accepted",
+            submitted_at=datetime.utcnow(),
+        )
+        mock_orders_repo.upsert_by_idempotency.return_value = new_order
+    
+        service = OrderService(mock_orders_repo, mock_outbox_repo)
+    
+        result = await service.submit_symbol_order(
+            symbol="AAPL", side="buy", qty=100.0, idempotency_key="new-key-123"
+        )
+    
+        # Should create new order and add to outbox
+        mock_orders_repo.upsert_by_idempotency.assert_called_once()
+&gt;       mock_outbox_repo.add_order_submit_event.assert_called_once()
+
+tests\unit\test_order_service_failures.py:51: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;AsyncMock name='mock.add_order_submit_event' id='3024391086416'&gt;
+
+    def assert_called_once(self):
+        """assert that the mock was called only once.
+        """
+        if not self.call_count == 1:
+            msg = ("Expected '%s' to have been called once. Called %s times.%s"
+                   % (self._mock_name or 'mock',
+                      self.call_count,
+                      self._calls_repr()))
+&gt;           raise AssertionError(msg)
+E           AssertionError: Expected 'add_order_submit_event' to have been called once. Called 0 times.
+
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:923: AssertionError</failure></testcase><testcase classname="tests.unit.test_order_service_failures.TestOrderServiceIdempotency" name="test_submit_order_duplicate_idempotency_key" time="0.021"><failure message="AssertionError: Expected 'add_order_submit_event' to have been called once. Called 0 times.">self = &lt;test_order_service_failures.TestOrderServiceIdempotency object at 0x000002C02BB697F0&gt;
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_submit_order_duplicate_idempotency_key(self):
+        """Test order submission with duplicate idempotency key."""
+        mock_orders_repo = AsyncMock()
+        mock_outbox_repo = AsyncMock()
+    
+        # Mock existing order return
+        existing_order = Order(
+            id=uuid.uuid4(),
+            client_idempotency_key="duplicate-key-123",
+            symbol="AAPL",
+            side="buy",
+            qty=Decimal("100"),
+            order_type="market",
+            tif="ioc",
+            status="filled",  # Already processed
+            submitted_at=datetime.utcnow() - timedelta(minutes=5),
+        )
+        mock_orders_repo.upsert_by_idempotency.return_value = existing_order
+    
+        service = OrderService(mock_orders_repo, mock_outbox_repo)
+    
+        result = await service.submit_symbol_order(
+            symbol="AAPL",  # Same symbol
+            side="buy",
+            qty=100.0,
+            idempotency_key="duplicate-key-123",
+        )
+    
+        # Should return existing order without adding to outbox again
+        mock_orders_repo.upsert_by_idempotency.assert_called_once()
+&gt;       mock_outbox_repo.add_order_submit_event.assert_called_once()  # Still called by service logic
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\unit\test_order_service_failures.py:89: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;AsyncMock name='mock.add_order_submit_event' id='3024391864544'&gt;
+
+    def assert_called_once(self):
+        """assert that the mock was called only once.
+        """
+        if not self.call_count == 1:
+            msg = ("Expected '%s' to have been called once. Called %s times.%s"
+                   % (self._mock_name or 'mock',
+                      self.call_count,
+                      self._calls_repr()))
+&gt;           raise AssertionError(msg)
+E           AssertionError: Expected 'add_order_submit_event' to have been called once. Called 0 times.
+
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:923: AssertionError</failure></testcase><testcase classname="tests.unit.test_order_service_failures.TestOrderServiceIdempotency" name="test_submit_order_concurrent_duplicate_keys" time="0.003" /><testcase classname="tests.unit.test_order_service_failures.TestOrderServiceIdempotency" name="test_idempotency_key_validation" time="0.026" /><testcase classname="tests.unit.test_order_service_failures.TestOrderServiceFailureHandling" name="test_orders_repo_database_failure" time="0.005" /><testcase classname="tests.unit.test_order_service_failures.TestOrderServiceFailureHandling" name="test_outbox_repo_failure_after_order_creation" time="0.003"><failure message="Failed: DID NOT RAISE &lt;class 'Exception'&gt;">self = &lt;test_order_service_failures.TestOrderServiceFailureHandling object at 0x000002C02BB6A000&gt;
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_outbox_repo_failure_after_order_creation(self):
+        """Test handling when outbox fails after successful order creation."""
+        mock_orders_repo = AsyncMock()
+        mock_outbox_repo = AsyncMock()
+    
+        # Order creation succeeds
+        new_order = Order(
+            id=uuid.uuid4(),
+            client_idempotency_key="outbox-fail-key",
+            symbol="AAPL",
+            side="buy",
+            qty=Decimal("100"),
+            order_type="market",
+            tif="ioc",
+            status="accepted",
+            submitted_at=datetime.utcnow(),
+        )
+        mock_orders_repo.upsert_by_idempotency.return_value = new_order
+    
+        # Outbox fails
+        mock_outbox_repo.add_order_submit_event.side_effect = Exception(
+            "Outbox service unavailable"
+        )
+    
+        service = OrderService(mock_orders_repo, mock_outbox_repo)
+    
+&gt;       with pytest.raises(Exception, match="Outbox service unavailable"):
+E       Failed: DID NOT RAISE &lt;class 'Exception'&gt;
+
+tests\unit\test_order_service_failures.py:233: Failed</failure></testcase><testcase classname="tests.unit.test_order_service_failures.TestOrderServiceFailureHandling" name="test_order_validation_failures" time="0.003" /><testcase classname="tests.unit.test_order_service_failures.TestOrderServiceFailureHandling" name="test_order_service_timeout_handling" time="1.015" /><testcase classname="tests.unit.test_order_service_failures.TestOrderServiceBrokerIntegration" name="test_outbox_event_payload_structure" time="0.006"><failure message="AssertionError: Expected 'add_order_submit_event' to have been called once. Called 0 times.">self = &lt;test_order_service_failures.TestOrderServiceBrokerIntegration object at 0x000002C02BB6A6C0&gt;
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_outbox_event_payload_structure(self):
+        """Test that outbox events have correct payload structure."""
+        mock_orders_repo = AsyncMock()
+        mock_outbox_repo = AsyncMock()
+    
+        order_id = uuid.uuid4()
+        new_order = Order(
+            id=order_id,
+            client_idempotency_key="payload-test-key",
+            symbol="AAPL",
+            side="buy",
+            qty=Decimal("100"),
+            order_type="limit",
+            tif="gtc",
+            status="accepted",
+            submitted_at=datetime.utcnow(),
+        )
+        mock_orders_repo.upsert_by_idempotency.return_value = new_order
+    
+        service = OrderService(mock_orders_repo, mock_outbox_repo)
+    
+        await service.submit_symbol_order(
+            symbol="AAPL",
+            side="buy",
+            qty=100.0,
+            idempotency_key="payload-test-key",
+            order_type="limit",
+            tif="gtc",
+            attributes={"priority": "high"},
+        )
+    
+        # Verify outbox event payload structure
+&gt;       mock_outbox_repo.add_order_submit_event.assert_called_once()
+
+tests\unit\test_order_service_failures.py:361: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;AsyncMock name='mock.add_order_submit_event' id='3024392446528'&gt;
+
+    def assert_called_once(self):
+        """assert that the mock was called only once.
+        """
+        if not self.call_count == 1:
+            msg = ("Expected '%s' to have been called once. Called %s times.%s"
+                   % (self._mock_name or 'mock',
+                      self.call_count,
+                      self._calls_repr()))
+&gt;           raise AssertionError(msg)
+E           AssertionError: Expected 'add_order_submit_event' to have been called once. Called 0 times.
+
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:923: AssertionError</failure></testcase><testcase classname="tests.unit.test_order_service_failures.TestOrderServiceBrokerIntegration" name="test_broker_retry_on_failure" time="0.003"><failure message="AssertionError: Expected 'add_order_submit_event' to have been called once. Called 0 times.">self = &lt;test_order_service_failures.TestOrderServiceBrokerIntegration object at 0x000002C02BB6A930&gt;
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_broker_retry_on_failure(self):
+        """Test that broker failures are handled via outbox retry mechanism."""
+        mock_orders_repo = AsyncMock()
+        mock_outbox_repo = AsyncMock()
+    
+        # Order creation succeeds
+        new_order = Order(
+            id=uuid.uuid4(),
+            client_idempotency_key="retry-test-key",
+            symbol="AAPL",
+            side="buy",
+            qty=Decimal("100"),
+            order_type="market",
+            tif="ioc",
+            status="accepted",
+            submitted_at=datetime.utcnow(),
+        )
+        mock_orders_repo.upsert_by_idempotency.return_value = new_order
+    
+        service = OrderService(mock_orders_repo, mock_outbox_repo)
+    
+        result = await service.submit_symbol_order(
+            symbol="AAPL", side="buy", qty=100.0, idempotency_key="retry-test-key"
+        )
+    
+        # Order should be created successfully
+        assert result["status"] == "accepted"
+    
+        # Outbox event should be queued for broker submission
+&gt;       mock_outbox_repo.add_order_submit_event.assert_called_once()
+
+tests\unit\test_order_service_failures.py:407: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;AsyncMock name='mock.add_order_submit_event' id='3024391916384'&gt;
+
+    def assert_called_once(self):
+        """assert that the mock was called only once.
+        """
+        if not self.call_count == 1:
+            msg = ("Expected '%s' to have been called once. Called %s times.%s"
+                   % (self._mock_name or 'mock',
+                      self.call_count,
+                      self._calls_repr()))
+&gt;           raise AssertionError(msg)
+E           AssertionError: Expected 'add_order_submit_event' to have been called once. Called 0 times.
+
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:923: AssertionError</failure></testcase><testcase classname="tests.unit.test_order_service_failures.TestOrderServiceBrokerIntegration" name="test_multiple_orders_outbox_isolation" time="0.004"><failure message="AssertionError: assert 0 == 3&#10; +  where 0 = &lt;AsyncMock name='mock.add_order_submit_event' id='3024392038608'&gt;.call_count&#10; +    where &lt;AsyncMock name='mock.add_order_submit_event' id='3024392038608'&gt; = &lt;AsyncMock id='3024392039328'&gt;.add_order_submit_event">self = &lt;test_order_service_failures.TestOrderServiceBrokerIntegration object at 0x000002C02BB6ABA0&gt;
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_multiple_orders_outbox_isolation(self):
+        """Test that multiple orders create isolated outbox events."""
+        mock_orders_repo = AsyncMock()
+        mock_outbox_repo = AsyncMock()
+    
+        # Create multiple orders
+        orders_data = [
+            {"symbol": "AAPL", "qty": 100, "key": "multi-1"},
+            {"symbol": "MSFT", "qty": 200, "key": "multi-2"},
+            {"symbol": "GOOGL", "qty": 50, "key": "multi-3"},
+        ]
+    
+        created_orders = []
+        for i, order_data in enumerate(orders_data):
+            order = Order(
+                id=uuid.uuid4(),
+                client_idempotency_key=order_data["key"],
+                symbol=order_data["symbol"],
+                side="buy",
+                qty=Decimal(str(order_data["qty"])),
+                order_type="market",
+                tif="ioc",
+                status="accepted",
+                submitted_at=datetime.utcnow(),
+            )
+            created_orders.append(order)
+    
+        mock_orders_repo.upsert_by_idempotency.side_effect = created_orders
+    
+        service = OrderService(mock_orders_repo, mock_outbox_repo)
+    
+        # Submit all orders
+        results = []
+        for order_data in orders_data:
+            result = await service.submit_symbol_order(
+                symbol=order_data["symbol"],
+                side="buy",
+                qty=float(order_data["qty"]),
+                idempotency_key=order_data["key"],
+            )
+            results.append(result)
+    
+        # Should have 3 separate outbox events
+&gt;       assert mock_outbox_repo.add_order_submit_event.call_count == 3
+E       AssertionError: assert 0 == 3
+E        +  where 0 = &lt;AsyncMock name='mock.add_order_submit_event' id='3024392038608'&gt;.call_count
+E        +    where &lt;AsyncMock name='mock.add_order_submit_event' id='3024392038608'&gt; = &lt;AsyncMock id='3024392039328'&gt;.add_order_submit_event
+
+tests\unit\test_order_service_failures.py:454: AssertionError</failure></testcase><testcase classname="tests.unit.test_order_service_failures.TestOrderServiceStrategyIntegration" name="test_plan_and_submit_single_signal" time="0.002"><failure message="TypeError: ExecutionPlan.__init__() missing 1 required positional argument: 'ts'">self = &lt;test_order_service_failures.TestOrderServiceStrategyIntegration object at 0x000002C02BB6AD20&gt;
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_plan_and_submit_single_signal(self):
+        """Test plan and submit with single trading signal."""
+        mock_orders_repo = AsyncMock()
+        mock_outbox_repo = AsyncMock()
+        mock_strategy_engine = AsyncMock()
+    
+        # Mock strategy engine planning
+        from backend.strategies.types import ExecutionPlan
+    
+&gt;       plan = ExecutionPlan(
+            symbol="AAPL",
+            side="buy",
+            qty=Decimal("100"),
+            reason="Signal strength above threshold",
+            risk_allowed=True,
+            from_exposure=0.0,
+            to_exposure=15000.0,
+            notional=Decimal("15000"),
+        )
+E       TypeError: ExecutionPlan.__init__() missing 1 required positional argument: 'ts'
+
+tests\unit\test_order_service_failures.py:475: TypeError</failure></testcase><testcase classname="tests.unit.test_order_service_failures.TestOrderServiceStrategyIntegration" name="test_plan_and_submit_risk_blocked_orders" time="0.002"><failure message="TypeError: ExecutionPlan.__init__() missing 1 required positional argument: 'ts'">self = &lt;test_order_service_failures.TestOrderServiceStrategyIntegration object at 0x000002C02BB6A840&gt;
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_plan_and_submit_risk_blocked_orders(self):
+        """Test plan and submit with risk-blocked orders."""
+        mock_orders_repo = AsyncMock()
+        mock_outbox_repo = AsyncMock()
+        mock_strategy_engine = AsyncMock()
+    
+        # Mock strategy engine with risk-blocked plan
+        from backend.strategies.types import ExecutionPlan
+    
+&gt;       blocked_plan = ExecutionPlan(
+            symbol="RISKY_STOCK",
+            side="buy",
+            qty=Decimal("1000"),  # Large quantity
+            reason="Signal detected but risk limits exceeded",
+            risk_allowed=False,
+            risk_reason="Position size exceeds maximum allocation",
+            from_exposure=0.0,
+            to_exposure=50000.0,  # Would exceed limits
+            notional=Decimal("50000"),
+        )
+E       TypeError: ExecutionPlan.__init__() missing 1 required positional argument: 'ts'
+
+tests\unit\test_order_service_failures.py:532: TypeError</failure></testcase><testcase classname="tests.unit.test_order_service_failures.TestOrderServiceStrategyIntegration" name="test_plan_and_submit_mixed_results" time="0.019"><failure message="TypeError: ExecutionPlan.__init__() missing 1 required positional argument: 'ts'">self = &lt;test_order_service_failures.TestOrderServiceStrategyIntegration object at 0x000002C02BB6A180&gt;
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_plan_and_submit_mixed_results(self):
+        """Test plan and submit with mix of successful and failed orders."""
+        mock_orders_repo = AsyncMock()
+        mock_outbox_repo = AsyncMock()
+        mock_strategy_engine = AsyncMock()
+    
+        # Mock multiple plans with different outcomes
+        from backend.strategies.types import ExecutionPlan
+    
+        plans = [
+            # Successful plan
+&gt;           ExecutionPlan(
+                symbol="AAPL",
+                side="buy",
+                qty=Decimal("100"),
+                reason="Strong buy signal",
+                risk_allowed=True,
+                from_exposure=0.0,
+                to_exposure=15000.0,
+                notional=Decimal("15000"),
+            ),
+            # Risk blocked plan
+            ExecutionPlan(
+                symbol="RISKY_STOCK",
+                side="buy",
+                qty=Decimal("0"),  # No quantity due to risk
+                reason="Signal detected but risk blocked",
+                risk_allowed=False,
+                risk_reason="Exceeds sector allocation",
+                from_exposure=0.0,
+                to_exposure=0.0,
+                notional=Decimal("0"),
+            ),
+            # No-op plan
+            ExecutionPlan(
+                symbol="STABLE_STOCK",
+                side="hold",
+                qty=Decimal("0"),
+                reason="No significant signal",
+                risk_allowed=True,
+                from_exposure=10000.0,
+                to_exposure=10000.0,  # No change
+                notional=Decimal("0"),
+            ),
+        ]
+E       TypeError: ExecutionPlan.__init__() missing 1 required positional argument: 'ts'
+
+tests\unit\test_order_service_failures.py:582: TypeError</failure></testcase><testcase classname="tests.unit.test_order_service_failures.TestOrderServiceStrategyIntegration" name="test_plan_and_submit_order_submission_failure" time="0.002"><failure message="TypeError: ExecutionPlan.__init__() missing 1 required positional argument: 'ts'">self = &lt;test_order_service_failures.TestOrderServiceStrategyIntegration object at 0x000002C02BB69BB0&gt;
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_plan_and_submit_order_submission_failure(self):
+        """Test plan and submit when order submission fails."""
+        mock_orders_repo = AsyncMock()
+        mock_outbox_repo = AsyncMock()
+        mock_strategy_engine = AsyncMock()
+    
+        # Mock successful plan
+        from backend.strategies.types import ExecutionPlan
+    
+&gt;       plan = ExecutionPlan(
+            symbol="AAPL",
+            side="buy",
+            qty=Decimal("100"),
+            reason="Buy signal",
+            risk_allowed=True,
+            from_exposure=0.0,
+            to_exposure=15000.0,
+            notional=Decimal("15000"),
+        )
+E       TypeError: ExecutionPlan.__init__() missing 1 required positional argument: 'ts'
+
+tests\unit\test_order_service_failures.py:693: TypeError</failure></testcase></testsuite></testsuites>

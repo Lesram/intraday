@@ -24,7 +24,7 @@ def test_positions_route_is_registered_and_protected():
 
     # Route inventory assertion
     paths = {r.path for r in app.routes}
-    assert "/api/v1/positions" in paths
+    assert "/api/v1/positions/" in paths  # Note: FastAPI normalizes to trailing slash
 
     # Endpoint call
     r = client.get("/api/v1/positions")

@@ -1,0 +1,511 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="6" skipped="0" tests="42" time="6.457" timestamp="2025-08-24T17:09:24.635684-07:00" hostname="BOOK-FVJOEO3Q00"><testcase classname="tests.unit.test_security_jwt_failures.TestJWTTokenFailureModes" name="test_verify_expired_token" time="0.009" /><testcase classname="tests.unit.test_security_jwt_failures.TestJWTTokenFailureModes" name="test_verify_malformed_token" time="0.001" /><testcase classname="tests.unit.test_security_jwt_failures.TestJWTTokenFailureModes" name="test_verify_token_wrong_issuer" time="0.001" /><testcase classname="tests.unit.test_security_jwt_failures.TestJWTTokenFailureModes" name="test_verify_token_wrong_audience" time="0.001" /><testcase classname="tests.unit.test_security_jwt_failures.TestJWTTokenFailureModes" name="test_verify_token_wrong_signature" time="0.001" /><testcase classname="tests.unit.test_security_jwt_failures.TestJWTTokenFailureModes" name="test_verify_token_missing_subject" time="0.002"><failure message="AssertionError: assert 'missing subject' in 'invalid token'&#10; +  where 'invalid token' = &lt;built-in method lower of str object at 0x000001A38A4DED70&gt;()&#10; +    where &lt;built-in method lower of str object at 0x000001A38A4DED70&gt; = 'Invalid token'.lower&#10; +      where 'Invalid token' = HTTPException(status_code=401, detail='Invalid token').detail&#10; +        where HTTPException(status_code=401, detail='Invalid token') = &lt;ExceptionInfo HTTPException(status_code=401, detail='Invalid token') tblen=3&gt;.value">self = &lt;test_security_jwt_failures.TestJWTTokenFailureModes object at 0x000001A38B572690&gt;
+
+    @pytest.mark.unit
+    def test_verify_token_missing_subject(self):
+        """Test verification of token with missing subject claim."""
+        settings = get_settings()
+    
+        claims = {
+            # Missing "sub" claim
+            "roles": ["user"],
+            "iss": settings.security.jwt_issuer,
+            "aud": settings.security.jwt_audience,
+            "exp": int((datetime.now(UTC) + timedelta(minutes=30)).timestamp()),
+            "iat": int(datetime.now(UTC).timestamp()),
+            "jti": "test-token-id",
+        }
+    
+        no_subject_token = jwt.encode(
+            claims,
+            settings.security.jwt_secret_key,
+            algorithm=settings.security.jwt_algorithm,
+        )
+    
+        with pytest.raises(HTTPException) as exc_info:
+            verify_token(no_subject_token)
+    
+        assert exc_info.value.status_code == status.HTTP_401_UNAUTHORIZED
+&gt;       assert "missing subject" in exc_info.value.detail.lower()
+E       AssertionError: assert 'missing subject' in 'invalid token'
+E        +  where 'invalid token' = &lt;built-in method lower of str object at 0x000001A38A4DED70&gt;()
+E        +    where &lt;built-in method lower of str object at 0x000001A38A4DED70&gt; = 'Invalid token'.lower
+E        +      where 'Invalid token' = HTTPException(status_code=401, detail='Invalid token').detail
+E        +        where HTTPException(status_code=401, detail='Invalid token') = &lt;ExceptionInfo HTTPException(status_code=401, detail='Invalid token') tblen=3&gt;.value
+
+tests\unit\test_security_jwt_failures.py:173: AssertionError</failure></testcase><testcase classname="tests.unit.test_security_jwt_failures.TestJWTTokenFailureModes" name="test_verify_token_unsupported_algorithm" time="0.001" /><testcase classname="tests.unit.test_security_jwt_failures.TestJWTTokenFailureModes" name="test_create_token_invalid_parameters" time="0.001" /><testcase classname="tests.unit.test_security_jwt_failures.TestPasswordHashVerification" name="test_hash_password_basic" time="0.175" /><testcase classname="tests.unit.test_security_jwt_failures.TestPasswordHashVerification" name="test_verify_password_correct" time="0.345" /><testcase classname="tests.unit.test_security_jwt_failures.TestPasswordHashVerification" name="test_verify_password_incorrect" time="0.346" /><testcase classname="tests.unit.test_security_jwt_failures.TestPasswordHashVerification" name="test_verify_password_empty_strings" time="0.344" /><testcase classname="tests.unit.test_security_jwt_failures.TestPasswordHashVerification" name="test_verify_password_special_characters" time="0.513" /><testcase classname="tests.unit.test_security_jwt_failures.TestPasswordHashVerification" name="test_verify_password_unicode_characters" time="0.512" /><testcase classname="tests.unit.test_security_jwt_failures.TestPasswordHashVerification" name="test_verify_password_very_long_password" time="0.513"><failure message="AssertionError: assert True is False&#10; +  where True = verify_password('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', '$2b$12$y2zcrWj64qE9lDLZADHoYeb7D59PCp.Ed20M/QJslGvNpolLuOCYa')">self = &lt;test_security_jwt_failures.TestPasswordHashVerification object at 0x000001A38B5738C0&gt;
+
+    @pytest.mark.unit
+    def test_verify_password_very_long_password(self):
+        """Test password verification with very long password."""
+        long_password = "a" * 1000  # 1000 character password
+        hashed = hash_password(long_password)
+    
+        assert verify_password(long_password, hashed) is True
+&gt;       assert verify_password(long_password[:-1], hashed) is False
+E       AssertionError: assert True is False
+E        +  where True = verify_password('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', '$2b$12$y2zcrWj64qE9lDLZADHoYeb7D59PCp.Ed20M/QJslGvNpolLuOCYa')
+
+tests\unit\test_security_jwt_failures.py:287: AssertionError</failure></testcase><testcase classname="tests.unit.test_security_jwt_failures.TestPasswordHashVerification" name="test_verify_password_malformed_hash" time="0.001" /><testcase classname="tests.unit.test_security_jwt_failures.TestPasswordHashVerification" name="test_password_hash_consistency" time="0.682" /><testcase classname="tests.unit.test_security_jwt_failures.TestAPIKeyAuthentication" name="test_verify_api_key_valid" time="0.003"><failure message="AssertionError: assert False is True&#10; +  where False = verify_api_key('valid-key-1')">self = &lt;test_security_jwt_failures.TestAPIKeyAuthentication object at 0x000001A38B573EC0&gt;
+
+    @pytest.mark.unit
+    def test_verify_api_key_valid(self):
+        """Test API key verification with valid key."""
+        with patch("backend.config.get_settings") as mock_settings:
+            mock_settings.return_value.security.api_keys = [
+                "valid-key-1",
+                "valid-key-2",
+            ]
+    
+&gt;           assert verify_api_key("valid-key-1") is True
+E           AssertionError: assert False is True
+E            +  where False = verify_api_key('valid-key-1')
+
+tests\unit\test_security_jwt_failures.py:333: AssertionError</failure></testcase><testcase classname="tests.unit.test_security_jwt_failures.TestAPIKeyAuthentication" name="test_verify_api_key_invalid" time="0.001" /><testcase classname="tests.unit.test_security_jwt_failures.TestAPIKeyAuthentication" name="test_verify_api_key_case_sensitive" time="0.001"><failure message="AssertionError: assert False is True&#10; +  where False = verify_api_key('CaseSensitiveKey')">self = &lt;test_security_jwt_failures.TestAPIKeyAuthentication object at 0x000001A38B5B42C0&gt;
+
+    @pytest.mark.unit
+    def test_verify_api_key_case_sensitive(self):
+        """Test that API key verification is case sensitive."""
+        with patch("backend.config.get_settings") as mock_settings:
+            mock_settings.return_value.security.api_keys = ["CaseSensitiveKey"]
+    
+&gt;           assert verify_api_key("CaseSensitiveKey") is True
+E           AssertionError: assert False is True
+E            +  where False = verify_api_key('CaseSensitiveKey')
+
+tests\unit\test_security_jwt_failures.py:355: AssertionError</failure></testcase><testcase classname="tests.unit.test_security_jwt_failures.TestAPIKeyAuthentication" name="test_verify_api_key_no_keys_configured" time="0.001" /><testcase classname="tests.unit.test_security_jwt_failures.TestAPIKeyAuthentication" name="test_verify_api_key_whitespace_handling" time="0.001" /><testcase classname="tests.unit.test_security_jwt_failures.TestRBACRoleBasedAccess" name="test_require_roles_single_role_match" time="0.001" /><testcase classname="tests.unit.test_security_jwt_failures.TestRBACRoleBasedAccess" name="test_require_roles_single_role_no_match" time="0.001" /><testcase classname="tests.unit.test_security_jwt_failures.TestRBACRoleBasedAccess" name="test_require_roles_multiple_roles_match" time="0.001" /><testcase classname="tests.unit.test_security_jwt_failures.TestRBACRoleBasedAccess" name="test_require_roles_multiple_roles_no_match" time="0.001" /><testcase classname="tests.unit.test_security_jwt_failures.TestRBACRoleBasedAccess" name="test_require_roles_user_multiple_roles" time="0.001" /><testcase classname="tests.unit.test_security_jwt_failures.TestRBACRoleBasedAccess" name="test_require_roles_empty_roles" time="0.001" /><testcase classname="tests.unit.test_security_jwt_failures.TestRBACRoleBasedAccess" name="test_require_roles_case_sensitive" time="0.001" /><testcase classname="tests.unit.test_security_jwt_failures.TestAuthenticationDependencies" name="test_get_current_user_valid_jwt" time="0.015" /><testcase classname="tests.unit.test_security_jwt_failures.TestAuthenticationDependencies" name="test_get_current_user_valid_api_key" time="0.013"><failure message="assert None is not None">self = &lt;test_security_jwt_failures.TestAuthenticationDependencies object at 0x000001A38B5B4F20&gt;
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_get_current_user_valid_api_key(self):
+        """Test get_current_user with valid API key."""
+        with patch("backend.infra.security.verify_api_key") as mock_verify:
+            mock_verify.return_value = True
+    
+            mock_request = MagicMock()
+            mock_request.headers = {"x-api-key": "valid-api-key"}
+    
+            user = await get_current_user(mock_request, None)
+    
+&gt;           assert user is not None
+E           assert None is not None
+
+tests\unit\test_security_jwt_failures.py:516: AssertionError</failure></testcase><testcase classname="tests.unit.test_security_jwt_failures.TestAuthenticationDependencies" name="test_get_current_user_no_credentials" time="0.021" /><testcase classname="tests.unit.test_security_jwt_failures.TestAuthenticationDependencies" name="test_get_current_user_invalid_jwt" time="0.002"><failure message="fastapi.exceptions.HTTPException: 401: Invalid token">jwt = b'invalid.jwt.token'
+
+    def _load(jwt):
+        if isinstance(jwt, str):
+            jwt = jwt.encode("utf-8")
+        try:
+            signing_input, crypto_segment = jwt.rsplit(b".", 1)
+            header_segment, claims_segment = signing_input.split(b".", 1)
+            header_data = base64url_decode(header_segment)
+        except ValueError:
+            raise JWSError("Not enough segments")
+        except (TypeError, binascii.Error):
+            raise JWSError("Invalid header padding")
+    
+        try:
+&gt;           header = json.loads(header_data.decode("utf-8"))
+                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           UnicodeDecodeError: 'utf-8' codec can't decode byte 0x8a in position 0: invalid start byte
+
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\jose\jws.py:189: UnicodeDecodeError
+
+During handling of the above exception, another exception occurred:
+
+token = 'invalid.jwt.token'
+key = 'your-super-secret-jwt-key-change-this-in-production'
+algorithms = ['HS256']
+options = {'require_aud': True, 'require_exp': True, 'require_iss': True, 'verify_aud': True, ...}
+audience = 'algotrading-users', issuer = 'algotrading-platform', subject = None
+access_token = None
+
+    def decode(token, key, algorithms=None, options=None, audience=None, issuer=None, subject=None, access_token=None):
+        """Verifies a JWT string's signature and validates reserved claims.
+    
+        Args:
+            token (str): A signed JWS to be verified.
+            key (str or iterable): A key to attempt to verify the payload with.
+                This can be simple string with an individual key (e.g. "a1234"),
+                a tuple or list of keys (e.g. ("a1234...", "b3579"),
+                a JSON string, (e.g. '["a1234", "b3579"]'),
+                a dict with the 'keys' key that gives a tuple or list of keys (e.g {'keys': [...]} ) or
+                a dict or JSON string for a JWK set as defined by RFC 7517 (e.g.
+                    {'keys': [{'kty': 'oct', 'k': 'YTEyMzQ'}, {'kty': 'oct', 'k':'YjM1Nzk'}]} or
+                    '{"keys": [{"kty":"oct","k":"YTEyMzQ"},{"kty":"oct","k":"YjM1Nzk"}]}'
+                ) in which case the keys must be base64 url safe encoded (with optional padding).
+            algorithms (str or list): Valid algorithms that should be used to verify the JWS.
+            audience (str): The intended audience of the token.  If the "aud" claim is
+                included in the claim set, then the audience must be included and must equal
+                the provided claim.
+            issuer (str or iterable): Acceptable value(s) for the issuer of the token.
+                If the "iss" claim is included in the claim set, then the issuer must be
+                given and the claim in the token must be among the acceptable values.
+            subject (str): The subject of the token.  If the "sub" claim is
+                included in the claim set, then the subject must be included and must equal
+                the provided claim.
+            access_token (str): An access token string. If the "at_hash" claim is included in the
+                claim set, then the access_token must be included, and it must match
+                the "at_hash" claim.
+            options (dict): A dictionary of options for skipping validation steps.
+    
+                defaults = {
+                    'verify_signature': True,
+                    'verify_aud': True,
+                    'verify_iat': True,
+                    'verify_exp': True,
+                    'verify_nbf': True,
+                    'verify_iss': True,
+                    'verify_sub': True,
+                    'verify_jti': True,
+                    'verify_at_hash': True,
+                    'require_aud': False,
+                    'require_iat': False,
+                    'require_exp': False,
+                    'require_nbf': False,
+                    'require_iss': False,
+                    'require_sub': False,
+                    'require_jti': False,
+                    'require_at_hash': False,
+                    'leeway': 0,
+                }
+    
+        Returns:
+            dict: The dict representation of the claims set, assuming the signature is valid
+                and all requested data validation passes.
+    
+        Raises:
+            JWTError: If the signature is invalid in any way.
+            ExpiredSignatureError: If the signature has expired.
+            JWTClaimsError: If any claim is invalid in any way.
+    
+        Examples:
+    
+            &gt;&gt;&gt; payload = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoiYiJ9.jiMyrsmD8AoHWeQgmxZ5yq8z0lXS67_QGs52AzC8Ru8'
+            &gt;&gt;&gt; jwt.decode(payload, 'secret', algorithms='HS256')
+    
+        """
+    
+        defaults = {
+            "verify_signature": True,
+            "verify_aud": True,
+            "verify_iat": True,
+            "verify_exp": True,
+            "verify_nbf": True,
+            "verify_iss": True,
+            "verify_sub": True,
+            "verify_jti": True,
+            "verify_at_hash": True,
+            "require_aud": False,
+            "require_iat": False,
+            "require_exp": False,
+            "require_nbf": False,
+            "require_iss": False,
+            "require_sub": False,
+            "require_jti": False,
+            "require_at_hash": False,
+            "leeway": 0,
+        }
+    
+        if options:
+            defaults.update(options)
+    
+        verify_signature = defaults.get("verify_signature", True)
+    
+        try:
+&gt;           payload = jws.verify(token, key, algorithms, verify=verify_signature)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\jose\jwt.py:159: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\jose\jws.py:74: in verify
+    header, payload, signing_input, signature = _load(token)
+                                                ^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+jwt = b'invalid.jwt.token'
+
+    def _load(jwt):
+        if isinstance(jwt, str):
+            jwt = jwt.encode("utf-8")
+        try:
+            signing_input, crypto_segment = jwt.rsplit(b".", 1)
+            header_segment, claims_segment = signing_input.split(b".", 1)
+            header_data = base64url_decode(header_segment)
+        except ValueError:
+            raise JWSError("Not enough segments")
+        except (TypeError, binascii.Error):
+            raise JWSError("Invalid header padding")
+    
+        try:
+            header = json.loads(header_data.decode("utf-8"))
+        except ValueError as e:
+&gt;           raise JWSError("Invalid header string: %s" % e)
+E           jose.exceptions.JWSError: Invalid header string: 'utf-8' codec can't decode byte 0x8a in position 0: invalid start byte
+
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\jose\jws.py:191: JWSError
+
+During handling of the above exception, another exception occurred:
+
+token = 'invalid.jwt.token'
+
+    def verify_jwt(token: str, *, secret: str, issuer: str, audience: str, alg: str = "HS256") -&gt; dict:
+        """
+        Strict JWT verification with explicit error handling.
+    
+        Args:
+            token: JWT token string
+            secret: Secret key for verification
+            issuer: Expected issuer
+            audience: Expected audience
+            alg: Expected algorithm (default HS256)
+    
+        Returns:
+            Decoded payload dictionary
+    
+        Raises:
+            HTTPException: For various token validation failures
+        """
+        if not token or "." not in token:
+            raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+    
+        # Import JWT library and exceptions
+        from jose import jwt, JWTError
+        from jose.exceptions import ExpiredSignatureError, JWTClaimsError
+    
+        try:
+            # Strict verification with all options
+&gt;           verified_payload = jwt.decode(
+                token,
+                secret,
+                algorithms=[alg],
+                options={
+                    "verify_signature": True,
+                    "verify_exp": True,
+                    "verify_iss": True,
+                    "verify_aud": True,
+                    "require_exp": True,
+                    "require_iss": True,
+                    "require_aud": True,
+                },
+                issuer=issuer,
+                audience=audience
+            )
+
+backend\infra\security.py:61: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+token = 'invalid.jwt.token'
+key = 'your-super-secret-jwt-key-change-this-in-production'
+algorithms = ['HS256']
+options = {'require_aud': True, 'require_exp': True, 'require_iss': True, 'verify_aud': True, ...}
+audience = 'algotrading-users', issuer = 'algotrading-platform', subject = None
+access_token = None
+
+    def decode(token, key, algorithms=None, options=None, audience=None, issuer=None, subject=None, access_token=None):
+        """Verifies a JWT string's signature and validates reserved claims.
+    
+        Args:
+            token (str): A signed JWS to be verified.
+            key (str or iterable): A key to attempt to verify the payload with.
+                This can be simple string with an individual key (e.g. "a1234"),
+                a tuple or list of keys (e.g. ("a1234...", "b3579"),
+                a JSON string, (e.g. '["a1234", "b3579"]'),
+                a dict with the 'keys' key that gives a tuple or list of keys (e.g {'keys': [...]} ) or
+                a dict or JSON string for a JWK set as defined by RFC 7517 (e.g.
+                    {'keys': [{'kty': 'oct', 'k': 'YTEyMzQ'}, {'kty': 'oct', 'k':'YjM1Nzk'}]} or
+                    '{"keys": [{"kty":"oct","k":"YTEyMzQ"},{"kty":"oct","k":"YjM1Nzk"}]}'
+                ) in which case the keys must be base64 url safe encoded (with optional padding).
+            algorithms (str or list): Valid algorithms that should be used to verify the JWS.
+            audience (str): The intended audience of the token.  If the "aud" claim is
+                included in the claim set, then the audience must be included and must equal
+                the provided claim.
+            issuer (str or iterable): Acceptable value(s) for the issuer of the token.
+                If the "iss" claim is included in the claim set, then the issuer must be
+                given and the claim in the token must be among the acceptable values.
+            subject (str): The subject of the token.  If the "sub" claim is
+                included in the claim set, then the subject must be included and must equal
+                the provided claim.
+            access_token (str): An access token string. If the "at_hash" claim is included in the
+                claim set, then the access_token must be included, and it must match
+                the "at_hash" claim.
+            options (dict): A dictionary of options for skipping validation steps.
+    
+                defaults = {
+                    'verify_signature': True,
+                    'verify_aud': True,
+                    'verify_iat': True,
+                    'verify_exp': True,
+                    'verify_nbf': True,
+                    'verify_iss': True,
+                    'verify_sub': True,
+                    'verify_jti': True,
+                    'verify_at_hash': True,
+                    'require_aud': False,
+                    'require_iat': False,
+                    'require_exp': False,
+                    'require_nbf': False,
+                    'require_iss': False,
+                    'require_sub': False,
+                    'require_jti': False,
+                    'require_at_hash': False,
+                    'leeway': 0,
+                }
+    
+        Returns:
+            dict: The dict representation of the claims set, assuming the signature is valid
+                and all requested data validation passes.
+    
+        Raises:
+            JWTError: If the signature is invalid in any way.
+            ExpiredSignatureError: If the signature has expired.
+            JWTClaimsError: If any claim is invalid in any way.
+    
+        Examples:
+    
+            &gt;&gt;&gt; payload = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoiYiJ9.jiMyrsmD8AoHWeQgmxZ5yq8z0lXS67_QGs52AzC8Ru8'
+            &gt;&gt;&gt; jwt.decode(payload, 'secret', algorithms='HS256')
+    
+        """
+    
+        defaults = {
+            "verify_signature": True,
+            "verify_aud": True,
+            "verify_iat": True,
+            "verify_exp": True,
+            "verify_nbf": True,
+            "verify_iss": True,
+            "verify_sub": True,
+            "verify_jti": True,
+            "verify_at_hash": True,
+            "require_aud": False,
+            "require_iat": False,
+            "require_exp": False,
+            "require_nbf": False,
+            "require_iss": False,
+            "require_sub": False,
+            "require_jti": False,
+            "require_at_hash": False,
+            "leeway": 0,
+        }
+    
+        if options:
+            defaults.update(options)
+    
+        verify_signature = defaults.get("verify_signature", True)
+    
+        try:
+            payload = jws.verify(token, key, algorithms, verify=verify_signature)
+        except JWSError as e:
+&gt;           raise JWTError(e)
+E           jose.exceptions.JWTError: Invalid header string: 'utf-8' codec can't decode byte 0x8a in position 0: invalid start byte
+
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\jose\jwt.py:161: JWTError
+
+During handling of the above exception, another exception occurred:
+
+self = &lt;test_security_jwt_failures.TestAuthenticationDependencies object at 0x000001A38B5B5400&gt;
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_get_current_user_invalid_jwt(self):
+        """Test get_current_user with invalid JWT token."""
+        credentials = HTTPAuthorizationCredentials(
+            scheme="Bearer", credentials="invalid.jwt.token"
+        )
+    
+        mock_request = MagicMock()
+        mock_request.headers = {}
+    
+        # Should not raise exception, just return None
+&gt;       user = await get_current_user(mock_request, credentials)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\unit\test_security_jwt_failures.py:544: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+backend\infra\security.py:361: in get_current_user
+    claims = verify_token(credentials.credentials)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend\infra\security.py:273: in verify_token
+    payload = verify_jwt(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+token = 'invalid.jwt.token'
+
+    def verify_jwt(token: str, *, secret: str, issuer: str, audience: str, alg: str = "HS256") -&gt; dict:
+        """
+        Strict JWT verification with explicit error handling.
+    
+        Args:
+            token: JWT token string
+            secret: Secret key for verification
+            issuer: Expected issuer
+            audience: Expected audience
+            alg: Expected algorithm (default HS256)
+    
+        Returns:
+            Decoded payload dictionary
+    
+        Raises:
+            HTTPException: For various token validation failures
+        """
+        if not token or "." not in token:
+            raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+    
+        # Import JWT library and exceptions
+        from jose import jwt, JWTError
+        from jose.exceptions import ExpiredSignatureError, JWTClaimsError
+    
+        try:
+            # Strict verification with all options
+            verified_payload = jwt.decode(
+                token,
+                secret,
+                algorithms=[alg],
+                options={
+                    "verify_signature": True,
+                    "verify_exp": True,
+                    "verify_iss": True,
+                    "verify_aud": True,
+                    "require_exp": True,
+                    "require_iss": True,
+                    "require_aud": True,
+                },
+                issuer=issuer,
+                audience=audience
+            )
+    
+            # Additional required claims validation
+            if not verified_payload.get("sub"):
+                raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="Missing subject")
+    
+            return verified_payload
+    
+        except ExpiredSignatureError:
+            raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="Token expired")
+        except JWTClaimsError as e:
+            # Handle claims errors (audience, issuer, etc.)
+            error_str = str(e).lower()
+            if "audience" in error_str or "aud" in error_str:
+                raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="Wrong audience")
+            elif "issuer" in error_str or "iss" in error_str:
+                raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="Wrong issuer")
+            else:
+                raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+        except JWTError as e:
+            # Handle other JWT errors with meaningful messages
+            error_str = str(e).lower()
+            if "expired" in error_str:
+                raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="Token expired")
+            elif "signature" in error_str:
+                raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="Invalid signature")
+            elif "audience" in error_str or "aud" in error_str:
+                raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="Wrong audience")
+            elif "issuer" in error_str or "iss" in error_str:
+                raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="Wrong issuer")
+            elif "algorithm" in error_str or "alg" in error_str:
+                raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="Unsupported algorithm")
+            else:
+&gt;               raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+E               fastapi.exceptions.HTTPException: 401: Invalid token
+
+backend\infra\security.py:109: HTTPException</failure></testcase><testcase classname="tests.unit.test_security_jwt_failures.TestAuthenticationDependencies" name="test_get_authenticated_user_with_user" time="0.002" /><testcase classname="tests.unit.test_security_jwt_failures.TestAuthenticationDependencies" name="test_get_authenticated_user_without_user" time="0.001" /><testcase classname="tests.unit.test_security_jwt_failures.TestSecurityEdgeCases" name="test_jwt_algorithm_confusion_attack" time="0.001" /><testcase classname="tests.unit.test_security_jwt_failures.TestSecurityEdgeCases" name="test_timing_attack_resistance" time="0.672" /><testcase classname="tests.unit.test_security_jwt_failures.TestSecurityEdgeCases" name="test_jwt_token_replay_protection" time="0.001" /><testcase classname="tests.unit.test_security_jwt_failures.TestSecurityEdgeCases" name="test_password_hash_entropy" time="1.692" /><testcase classname="tests.unit.test_security_jwt_failures.TestSecurityEdgeCases" name="test_role_injection_prevention" time="0.001" /><testcase classname="tests.unit.test_security_jwt_failures.TestSecurityEdgeCases" name="test_token_expiration_boundary_conditions" time="0.001" /><testcase classname="tests.unit.test_security_jwt_failures.TestSecurityEdgeCases" name="test_empty_or_null_role_handling" time="0.001" /></testsuite></testsuites>

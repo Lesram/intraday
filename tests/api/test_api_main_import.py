@@ -1,3 +1,3 @@
-def test_import_api_main_has_app():
-    from backend.api.main import app
-    assert app is not None
+def test_api_main_import_smoke():
+	from backend.api import main
+	assert hasattr(main, "app")

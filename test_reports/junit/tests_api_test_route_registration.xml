@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="5" skipped="0" tests="10" time="4.810" timestamp="2025-08-24T17:01:24.615058-07:00" hostname="BOOK-FVJOEO3Q00"><testcase classname="tests.api.test_route_registration.TestRouteRegistration" name="test_factory_creates_app_with_all_routes" time="0.096"><failure message="AssertionError: Root endpoint failed: {&quot;detail&quot;:&quot;Not Found&quot;}&#10;assert 404 == 200&#10; +  where 404 = &lt;Response [404 Not Found]&gt;.status_code">self = &lt;test_route_registration.TestRouteRegistration object at 0x0000018BBE6DD790&gt;
+
+    def test_factory_creates_app_with_all_routes(self):
+        """Test that create_app() registers all expected routes"""
+        app = create_app()
+        client = TestClient(app)
+    
+        # Test system routes
+        response = client.get("/")
+&gt;       assert response.status_code == 200, f"Root endpoint failed: {response.text}"
+E       AssertionError: Root endpoint failed: {"detail":"Not Found"}
+E       assert 404 == 200
+E        +  where 404 = &lt;Response [404 Not Found]&gt;.status_code
+
+tests\api\test_route_registration.py:22: AssertionError</failure></testcase><testcase classname="tests.api.test_route_registration.TestRouteRegistration" name="test_auth_routes_registered" time="0.194" /><testcase classname="tests.api.test_route_registration.TestRouteRegistration" name="test_portfolio_routes_registered" time="0.011" /><testcase classname="tests.api.test_route_registration.TestRouteRegistration" name="test_orders_routes_registered" time="0.010"><failure message="AssertionError: Order submit route not found: {&quot;detail&quot;:&quot;Not Found&quot;}&#10;assert 404 != 404&#10; +  where 404 = &lt;Response [404 Not Found]&gt;.status_code">self = &lt;test_route_registration.TestRouteRegistration object at 0x0000018BBE886300&gt;
+
+    def test_orders_routes_registered(self):
+        """Test that order routes are registered"""
+        app = create_app()
+        client = TestClient(app)
+    
+        # Test order submission endpoint exists
+        response = client.post("/api/v1/orders/submit", json={
+            "symbol": "AAPL",
+            "side": "buy",
+            "qty": 10
+        })
+        # Should process the request (not return 404), might return 401/422 for auth/validation
+&gt;       assert response.status_code != 404, f"Order submit route not found: {response.text}"
+E       AssertionError: Order submit route not found: {"detail":"Not Found"}
+E       assert 404 != 404
+E        +  where 404 = &lt;Response [404 Not Found]&gt;.status_code
+
+tests\api\test_route_registration.py:77: AssertionError</failure></testcase><testcase classname="tests.api.test_route_registration.TestRouteRegistration" name="test_signals_routes_registered" time="0.011"><failure message="AssertionError: Signals route not found: {&quot;detail&quot;:&quot;Not Found&quot;}&#10;assert 404 != 404&#10; +  where 404 = &lt;Response [404 Not Found]&gt;.status_code">self = &lt;test_route_registration.TestRouteRegistration object at 0x0000018BBE886480&gt;
+
+    def test_signals_routes_registered(self):
+        """Test that signal routes are registered"""
+        app = create_app()
+        client = TestClient(app)
+    
+        # Test signals endpoint exists
+        response = client.get("/api/v1/signals/AAPL")
+        # Should process the request (not return 404)
+&gt;       assert response.status_code != 404, f"Signals route not found: {response.text}"
+E       AssertionError: Signals route not found: {"detail":"Not Found"}
+E       assert 404 != 404
+E        +  where 404 = &lt;Response [404 Not Found]&gt;.status_code
+
+tests\api\test_route_registration.py:87: AssertionError</failure></testcase><testcase classname="tests.api.test_route_registration.TestRouteRegistration" name="test_models_routes_registered" time="0.010"><failure message="AssertionError: Model status route not found: {&quot;detail&quot;:&quot;Not Found&quot;}&#10;assert 404 != 404&#10; +  where 404 = &lt;Response [404 Not Found]&gt;.status_code">self = &lt;test_route_registration.TestRouteRegistration object at 0x0000018BBE886600&gt;
+
+    def test_models_routes_registered(self):
+        """Test that ML model routes are registered"""
+        app = create_app()
+        client = TestClient(app)
+    
+        # Test model status endpoint exists
+        response = client.get("/api/v1/models/status")
+        # Should process the request (not return 404), might return 401 for auth
+&gt;       assert response.status_code != 404, f"Model status route not found: {response.text}"
+E       AssertionError: Model status route not found: {"detail":"Not Found"}
+E       assert 404 != 404
+E        +  where 404 = &lt;Response [404 Not Found]&gt;.status_code
+
+tests\api\test_route_registration.py:97: AssertionError</failure></testcase><testcase classname="tests.api.test_route_registration.TestRouteRegistration" name="test_risk_routes_registered" time="0.014" /><testcase classname="tests.api.test_route_registration.TestRouteRegistration" name="test_readiness_probe_registered" time="4.134" /><testcase classname="tests.api.test_route_registration.TestRouteRegistration" name="test_all_expected_paths_exist" time="0.011"><failure message="AssertionError: Missing expected routes: ['/', '/healthz', '/metrics', '/api/v1/orders/submit', '/api/v1/orders/{order_id}', '/api/v1/signals/{symbol}', '/api/v1/models/status']. Registered routes: ['/openapi.json', '/docs', '/docs/oauth2-redirect', '/redoc', '/health', '/readyz', '/livez', '/api/v1/positions', '/test/http-401', '/test/http-403', '/test/http-422', '/test/http-500', '/api/v1/risk/metrics', '/api/v1/risk/limits', '/api/v1/risk/metrics/legacy', '/api/v1/risk/limits/legacy', '/auth/login', '/auth/register', '/auth/token/validate', '/auth/me', '/auth/token']&#10;assert not ['/', '/healthz', '/metrics', '/api/v1/orders/submit', '/api/v1/orders/{order_id}', '/api/v1/signals/{symbol}', ...]">self = &lt;test_route_registration.TestRouteRegistration object at 0x0000018BBE886A80&gt;
+
+    def test_all_expected_paths_exist(self):
+        """Comprehensive test that all expected paths are registered"""
+        app = create_app()
+    
+        # Get all registered routes
+        routes = []
+        for route in app.routes:
+            if hasattr(route, 'path'):
+                routes.append(route.path)
+    
+        # Expected core paths
+        expected_paths = [
+            "/",
+            "/health",
+            "/healthz",
+            "/readyz",
+            "/metrics",
+            "/auth/register",
+            "/auth/login",
+            "/api/v1/positions",
+            "/api/v1/orders/submit",
+            "/api/v1/orders/{order_id}",
+            "/api/v1/signals/{symbol}",
+            "/api/v1/models/status",
+            "/api/v1/risk/limits"
+        ]
+    
+        missing_paths = []
+        for expected in expected_paths:
+            if expected not in routes:
+                missing_paths.append(expected)
+    
+&gt;       assert not missing_paths, f"Missing expected routes: {missing_paths}. Registered routes: {routes}"
+E       AssertionError: Missing expected routes: ['/', '/healthz', '/metrics', '/api/v1/orders/submit', '/api/v1/orders/{order_id}', '/api/v1/signals/{symbol}', '/api/v1/models/status']. Registered routes: ['/openapi.json', '/docs', '/docs/oauth2-redirect', '/redoc', '/health', '/readyz', '/livez', '/api/v1/positions', '/test/http-401', '/test/http-403', '/test/http-422', '/test/http-500', '/api/v1/risk/metrics', '/api/v1/risk/limits', '/api/v1/risk/metrics/legacy', '/api/v1/risk/limits/legacy', '/auth/login', '/auth/register', '/auth/token/validate', '/auth/me', '/auth/token']
+E       assert not ['/', '/healthz', '/metrics', '/api/v1/orders/submit', '/api/v1/orders/{order_id}', '/api/v1/signals/{symbol}', ...]
+
+tests\api\test_route_registration.py:154: AssertionError</failure></testcase><testcase classname="tests.api.test_route_registration.TestRouteRegistration" name="test_no_duplicate_routes" time="0.007" /></testsuite></testsuites>

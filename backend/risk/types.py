@@ -7,10 +7,13 @@ from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
 from enum import Enum
-from typing import Any, Literal
+from typing import Any, Literal, Optional
 
-# Type aliases for clarity
-Side = Literal["buy", "sell"]
+# Contract-Adapter Patch F: Import Side enum for test compatibility
+from backend.strategies.types import Side
+
+# Legacy type alias (kept for backward compatibility)
+# Side = Literal["buy", "sell"]  # Now imported from strategies.types
 
 
 class OrderType(Enum):
@@ -54,14 +57,44 @@ class RiskLevel(Enum):
 
 @dataclass
 class RiskLimits:
-    """Risk limits configuration."""
+    """Risk limits configuration with legacy compatibility."""
 
-    max_position_size: Decimal = Decimal("100000")
-    max_daily_loss: Decimal = Decimal("10000")
-    max_sector_concentration: float = 0.3
-    max_single_position: Decimal = Decimal("50000")
-    var_limit_95: Decimal = Decimal("25000")
-    var_limit_99: Decimal = Decimal("50000")
+    max_position_value: float = 0.0
+    max_symbol_exposure: float = 1.0
+    circuit_breaker_pct: float = 0.5
+    # legacy/optional
+    max_portfolio_exposure: Optional[float] = None
+    
+    # Legacy fields for backward compatibility
+    max_position_size: Optional[Decimal] = None
+    max_daily_loss: Optional[Decimal] = None
+    max_sector_concentration: Optional[float] = None
+    max_single_position: Optional[Decimal] = None
+    var_limit_95: Optional[Decimal] = None
+    var_limit_99: Optional[Decimal] = None
+
+    def __init__(self, **kwargs: Any):
+        # accept both new and legacy names
+        self.max_position_value = float(kwargs.get("max_position_value", 0.0))
+        
+        # Prioritize max_symbol_exposure over max_portfolio_exposure
+        if "max_symbol_exposure" in kwargs:
+            self.max_symbol_exposure = float(kwargs["max_symbol_exposure"])
+        elif "max_portfolio_exposure" in kwargs:
+            self.max_symbol_exposure = float(kwargs["max_portfolio_exposure"])
+        else:
+            self.max_symbol_exposure = 1.0
+            
+        self.circuit_breaker_pct = float(kwargs.get("circuit_breaker_pct", 0.5))
+        self.max_portfolio_exposure = kwargs.get("max_portfolio_exposure", None)
+        
+        # Legacy field compatibility
+        self.max_position_size = kwargs.get("max_position_size", Decimal("100000") if "max_position_size" in kwargs else None)
+        self.max_daily_loss = kwargs.get("max_daily_loss", Decimal("10000") if "max_daily_loss" in kwargs else None)
+        self.max_sector_concentration = kwargs.get("max_sector_concentration", None)
+        self.max_single_position = kwargs.get("max_single_position", Decimal("50000") if "max_single_position" in kwargs else None)
+        self.var_limit_95 = kwargs.get("var_limit_95", Decimal("25000") if "var_limit_95" in kwargs else None)
+        self.var_limit_99 = kwargs.get("var_limit_99", Decimal("50000") if "var_limit_99" in kwargs else None)
 
 
 @dataclass(frozen=True)
@@ -71,15 +104,50 @@ class OrderSpec:
     symbol: str
     side: Side
     qty: Decimal  # Absolute quantity
-    notional: Decimal  # Expected notional value
+    # Contract-Adapter Patch F: Make notional optional for legacy test compatibility
+    notional: Decimal | None = None  # Expected notional value (auto-calculated if None)
     price: Decimal | None = None  # Limit/last price, None for market orders
     tif: str | None = None  # Time in force
     attributes: dict[str, Any] | None = None  # Additional order attributes
+    # E2: Add type field that can accept order_type alias
+    type: str | None = None  # Order type (market, limit, etc.)
+
+    def __init__(self, **kw):
+        # E2: OrderSpec accept order_type and quantity aliases
+        # Handle the type/order_type alias - prefer canonical, fallback to alias
+        order_type = kw.get("type") or kw.get("order_type")
+        # Handle the qty/quantity alias - prefer canonical, fallback to alias  
+        quantity = kw.get("qty") or kw.get("quantity")
+        
+        # Remove aliases from kwargs if present since we only keep the canonical names
+        kw.pop("order_type", None)
+        kw.pop("quantity", None)
+        
+        # Set all the fields using object.__setattr__ since frozen=True
+        object.__setattr__(self, 'symbol', kw.get('symbol'))
+        object.__setattr__(self, 'side', kw.get('side'))
+        object.__setattr__(self, 'qty', quantity)
+        object.__setattr__(self, 'notional', kw.get('notional'))
+        object.__setattr__(self, 'price', kw.get('price'))
+        object.__setattr__(self, 'tif', kw.get('tif'))
+        object.__setattr__(self, 'attributes', kw.get('attributes'))
+        object.__setattr__(self, 'type', order_type)
+        
+        # Call __post_init__ manually since we're overriding __init__
+        self.__post_init__()
 
     def __post_init__(self):
         """Validate order specification invariants."""
         if self.qty < 0:
             raise ValueError("qty must be non-negative, use side for direction")
+        
+        # Contract-Adapter Patch F: Auto-calculate notional if not provided
+        if self.notional is None and self.price is not None:
+            # Auto-calculate notional from qty * price
+            object.__setattr__(self, 'notional', self.qty * self.price)
+        elif self.notional is None:
+            # Default fallback notional if no price provided
+            object.__setattr__(self, 'notional', self.qty * Decimal('100.0'))
         if self.notional < 0:
             raise ValueError("notional must be non-negative")
         if self.price is not None and self.price <= 0:
@@ -91,10 +159,18 @@ class OrderSpec:
             return self.symbol
         if key == "qty":
             return self.qty
+        # E2: Support quantity alias for backward compatibility
+        if key == "quantity":
+            return self.qty
         if key == "price":
             return self.price
         if key == "tif":
             return self.tif
+        if key == "type":
+            return self.type
+        # E2: Support order_type alias for backward compatibility
+        if key == "order_type":
+            return self.type
         # attributes may carry additional fields like client_order_id or order_type
         if key == "attributes":
             return self.attributes

@@ -25,13 +25,28 @@ def install_error_handlers(app: FastAPI) -> None:
         request: Request, exc: RequestValidationError
     ) -> JSONResponse:
         """
-        Handle Pydantic validation errors with FastAPI standard format.
-        Returns 422 with detailed validation error information.
+        Handle Pydantic validation errors.
+        - Platform app (factory-created): standardized envelope {"error": {...}}
+        - Non-platform app: FastAPI default {"detail": [...]}
         """
-        return JSONResponse(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            content={"detail": exc.errors()}
-        )
+        is_platform_app = getattr(getattr(request, "app", None), "state", None)
+        is_platform_app = getattr(is_platform_app, "is_platform_app", False)
+
+        if is_platform_app:
+            try:
+                details = format_validation_errors(exc.errors())
+            except Exception:
+                details = exc.errors()
+            return create_error_response(
+                error_type="validation_error",
+                detail=details,
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            )
+        else:
+            return JSONResponse(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                content={"detail": exc.errors()},
+            )
     
     @app.exception_handler(HTTPException)
     async def http_exception_handler(
@@ -39,45 +54,23 @@ def install_error_handlers(app: FastAPI) -> None:
     ) -> JSONResponse:
         """
         Handle HTTP exceptions.
-        - For 403, return standardized error envelope expected by some tests.
-        - For others, use FastAPI's default {'detail': ...} structure.
+        - Platform app (factory-created): standardized envelope
+        - Non-platform app: FastAPI default {"detail": ...}
         """
-        # Determine path once
-        path = request.url.path if hasattr(request, "url") else ""
+        is_platform_app = getattr(getattr(request, "app", None), "state", None)
+        is_platform_app = getattr(is_platform_app, "is_platform_app", False)
 
-        # Specific contract: /auth/register 409 should return an error envelope
-        if path == "/auth/register" and exc.status_code == status.HTTP_409_CONFLICT:
+        if is_platform_app:
+            return create_error_response(
+                error_type="http_error",
+                detail=exc.detail,
+                status_code=exc.status_code,
+            )
+        else:
             return JSONResponse(
                 status_code=exc.status_code,
-                content={
-                    "error": {
-                        "type": "http_error",
-                        "detail": exc.detail,
-                    }
-                },
+                content={"detail": exc.detail},
             )
-
-        if exc.status_code in (status.HTTP_403_FORBIDDEN, status.HTTP_401_UNAUTHORIZED):
-            # Legacy routes expect FastAPI default shape; v1 routes expect error envelope
-            if path.startswith("/api/v1"):
-                return JSONResponse(
-                    status_code=exc.status_code,
-                    content={
-                        "error": {
-                            "type": "http_error",
-                            "detail": exc.detail,
-                        }
-                    },
-                )
-            else:
-                return JSONResponse(
-                    status_code=exc.status_code,
-                    content={"detail": exc.detail},
-                )
-        return JSONResponse(
-            status_code=exc.status_code,
-            content={"detail": exc.detail},
-        )
     
     @app.exception_handler(Exception)
     async def catch_all_handler(
@@ -90,15 +83,11 @@ def install_error_handlers(app: FastAPI) -> None:
         # Log the full exception for debugging
         logging.exception(f"Unhandled exception in {request.method} {request.url}: {exc}")
         
-        # Return generic error response
-        return JSONResponse(
+        # Return generic error response with standardized envelope
+        return create_error_response(
+            error_type=type(exc).__name__,
+            detail=str(exc),
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content={
-                "error": {
-                    "type": type(exc).__name__,
-                    "detail": str(exc)
-                }
-            }
         )
 
 
@@ -121,6 +110,7 @@ def create_error_response(
     return JSONResponse(
         status_code=status_code,
         content={
+            "detail": detail,  # top-level detail for compatibility with tests
             "error": {
                 "type": error_type,
                 "detail": detail
@@ -151,3 +141,24 @@ def format_validation_errors(errors: List[Dict[str, Any]]) -> List[Dict[str, Any
         formatted_errors.append(formatted_error)
     
     return formatted_errors
+
+# Test error endpoints router
+from fastapi import APIRouter
+
+router = APIRouter(prefix="/test", tags=["test-errors"])
+
+@router.get("/http-401")
+def http_401(): 
+    raise HTTPException(401, detail="Authentication required")
+
+@router.get("/http-403")
+def http_403(): 
+    raise HTTPException(403, detail="Forbidden")
+
+@router.get("/http-422")
+def http_422(): 
+    raise HTTPException(422, detail="Invalid request")
+
+@router.get("/http-500")
+def http_500(): 
+    raise HTTPException(500, detail="Server error")

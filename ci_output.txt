@@ -1,0 +1,40 @@
+Starting SEQUENTIAL Batched CI Runner with Light Mode
+Working Directory: C:\Users\Marsel\intra\algotrading_platform
+Environment secured for Light Mode
+Validating Light Mode setup...
+sitecustomize.py: Loading...
+sitecustomize.py: Stubbing ML packages...
+sitecustomize.py: Stubbed torch
+sitecustomize.py: Stubbed transformers
+sitecustomize.py: Stubbed tensorflow
+sitecustomize.py: Stubbed xgboost
+sitecustomize.py: Stubbed lightgbm
+sitecustomize.py: Stubbed spacy
+sitecustomize.py: Stubbed pytorch_lightning
+sitecustomize.py: Stubbed sklearn
+sitecustomize.py: Stubbed numpy
+sitecustomize.py: Stubbed pandas
+sitecustomize.py: Stubbed scipy
+sitecustomize.py: Stubbed matplotlib
+sitecustomize.py: Stubbed seaborn
+sitecustomize.py: Stubbed plotly
+sitecustomize.py: Stubbed prometheus_client
+sitecustomize.py: Stubbed httpx
+sitecustomize.py: Loading complete
+🚀 LIGHT MODE ACTIVATED: 10 heavy ML modules pre-stubbed
+   Environment variables set: DISABLE_ML, DISABLE_TORCH, etc.
+   Torch mocked: False
+Light Mode validation successful
+
+Configuring sequential test batches...
+Total batches configured: 7
+
+=== Starting Sequential Batch: api ===
+Found 25 test files in tests/api
+  Running: tests/api/test_api_main_import.py
+    PASSED
+  Running: tests/api/test_auth_register.py
+    FAILED (exit code: 1)
+  Running: tests/api/test_errors_contract.py
+    FAILED (exit code: 1)
+  Running: tests/api/test_errors_standardized.py

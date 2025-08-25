@@ -6,7 +6,7 @@ from typing import List, Dict, Any
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 
-from backend.api.auth import get_current_user
+from backend.infra.security import get_current_user
 from backend.services.positions_service import PositionsService
 from backend.utils.logger import get_logger
 

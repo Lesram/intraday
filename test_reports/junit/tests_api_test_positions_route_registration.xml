@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="1" time="0.363" timestamp="2025-08-24T17:01:18.489378-07:00" hostname="BOOK-FVJOEO3Q00"><testcase classname="tests.api.test_positions_route_registration" name="test_positions_route_is_registered_and_protected" time="0.088"><failure message="AssertionError: assert '/api/v1/positions/' in {'/api/v1/positions', '/api/v1/risk/limits', '/api/v1/risk/limits/legacy', '/api/v1/risk/metrics', '/api/v1/risk/metrics/legacy', '/auth/login', ...}">@pytest.mark.api
+    def test_positions_route_is_registered_and_protected():
+        app = create_app()
+        # Override the security dep that tests expect to override
+        app.dependency_overrides[get_current_user] = lambda: _FakeUser()
+        # Override the repo dep to avoid touching the real DB session in this sanity check
+        class _StubRepo:
+            async def list_positions(self, user_id: str):
+                return []
+    
+        app.dependency_overrides[get_portfolio_repo] = lambda: _StubRepo()
+        client = TestClient(app)
+    
+        # Route inventory assertion
+        paths = {r.path for r in app.routes}
+&gt;       assert "/api/v1/positions/" in paths  # Note: FastAPI normalizes to trailing slash
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AssertionError: assert '/api/v1/positions/' in {'/api/v1/positions', '/api/v1/risk/limits', '/api/v1/risk/limits/legacy', '/api/v1/risk/metrics', '/api/v1/risk/metrics/legacy', '/auth/login', ...}
+
+tests\api\test_positions_route_registration.py:27: AssertionError</failure></testcase></testsuite></testsuites>

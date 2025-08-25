@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="1" time="5.963" timestamp="2025-08-13T11:58:00.870690-07:00" hostname="BOOK-FVJOEO3Q00"><testcase classname="tests.chaos.test_broker_faults.TestBrokerChaosFaults" name="test_broker_502_503_retry_pattern" time="0.924"><failure message="AttributeError: module 'backend.services' has no attribute 'broker_service'. Did you mean: 'order_service'?">tests\chaos\test_broker_faults.py:92: in test_broker_502_503_retry_pattern
-    with patch(
-..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1442: in __enter__
-    self.target = self.getter()
-                  ^^^^^^^^^^^^^
-..\..\AppData\Local\Programs\Python\Python312\Lib\pkgutil.py:528: in resolve_name
-    result = getattr(result, p)
-             ^^^^^^^^^^^^^^^^^^
-E   AttributeError: module 'backend.services' has no attribute 'broker_service'. Did you mean: 'order_service'?</failure></testcase></testsuite></testsuites>

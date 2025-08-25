@@ -1,0 +1,372 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="14" skipped="0" tests="36" time="0.765" timestamp="2025-08-24T17:09:11.712482-07:00" hostname="BOOK-FVJOEO3Q00"><testcase classname="tests.unit.test_risk_manager_math_edges.TestKellyFractionEdgeCases" name="test_kelly_with_zero_variance" time="0.002" /><testcase classname="tests.unit.test_risk_manager_math_edges.TestKellyFractionEdgeCases" name="test_kelly_with_negative_variance" time="0.001" /><testcase classname="tests.unit.test_risk_manager_math_edges.TestKellyFractionEdgeCases" name="test_kelly_with_very_small_variance" time="0.001" /><testcase classname="tests.unit.test_risk_manager_math_edges.TestKellyFractionEdgeCases" name="test_kelly_with_extreme_values" time="0.001" /><testcase classname="tests.unit.test_risk_manager_math_edges.TestKellyFractionEdgeCases" name="test_kelly_with_negative_expected_return" time="0.001" /><testcase classname="tests.unit.test_risk_manager_math_edges.TestKellyFractionEdgeCases" name="test_kelly_numerical_precision" time="0.001" /><testcase classname="tests.unit.test_risk_manager_math_edges.TestKellyFractionEdgeCases" name="test_kelly_boundary_conditions" time="0.001" /><testcase classname="tests.unit.test_risk_manager_math_edges.TestParametricVaREdgeCases" name="test_var_with_insufficient_samples" time="0.001"><failure message="assert -0.0033680934494812916 == 5000.0">self = &lt;test_risk_manager_math_edges.TestParametricVaREdgeCases object at 0x000001AC107FE150&gt;
+
+    @pytest.mark.unit
+    def test_var_with_insufficient_samples(self):
+        """Test VaR with too few samples."""
+        portfolio_value = 100000
+        returns = np.array([0.01, 0.02])  # Less than minimum samples
+    
+        var = RiskMathUtils.parametric_var(returns)
+        expected_fallback = portfolio_value * 0.05
+&gt;       assert var == expected_fallback
+E       assert -0.0033680934494812916 == 5000.0
+
+tests\unit\test_risk_manager_math_edges.py:90: AssertionError</failure></testcase><testcase classname="tests.unit.test_risk_manager_math_edges.TestParametricVaREdgeCases" name="test_var_with_all_positive_returns" time="0.001"><failure message="assert -0.01 &gt; 0">self = &lt;test_risk_manager_math_edges.TestParametricVaREdgeCases object at 0x000001AC107FE2D0&gt;
+
+    @pytest.mark.unit
+    def test_var_with_all_positive_returns(self):
+        """Test VaR with all positive returns (no losses)."""
+        portfolio_value = 100000
+        returns = np.full(50, 0.01)  # All positive returns
+    
+        var = RiskMathUtils.parametric_var(returns)
+&gt;       assert var &gt; 0  # Should still return positive VaR
+        ^^^^^^^^^^^^^^
+E       assert -0.01 &gt; 0
+
+tests\unit\test_risk_manager_math_edges.py:99: AssertionError</failure></testcase><testcase classname="tests.unit.test_risk_manager_math_edges.TestParametricVaREdgeCases" name="test_var_with_all_negative_returns" time="0.001" /><testcase classname="tests.unit.test_risk_manager_math_edges.TestParametricVaREdgeCases" name="test_var_with_extreme_outliers" time="0.001" /><testcase classname="tests.unit.test_risk_manager_math_edges.TestParametricVaREdgeCases" name="test_var_confidence_levels" time="0.001" /><testcase classname="tests.unit.test_risk_manager_math_edges.TestParametricVaREdgeCases" name="test_var_with_zero_portfolio_value" time="0.001" /><testcase classname="tests.unit.test_risk_manager_math_edges.TestParametricVaREdgeCases" name="test_var_with_nan_returns" time="0.001"><failure message="assert -0.006634391524078255 == 5000.0">self = &lt;test_risk_manager_math_edges.TestParametricVaREdgeCases object at 0x000001AC107FEB70&gt;
+
+    @pytest.mark.unit
+    def test_var_with_nan_returns(self):
+        """Test VaR with NaN returns in the dataset."""
+        portfolio_value = 100000
+        returns = np.array([0.01, np.nan, 0.02, np.nan] * 15)  # 60 total, 30 valid
+    
+        var = RiskMathUtils.parametric_var(returns)
+        # Should fallback due to insufficient valid samples
+        expected_fallback = portfolio_value * 0.05
+&gt;       assert var == expected_fallback
+E       assert -0.006634391524078255 == 5000.0
+
+tests\unit\test_risk_manager_math_edges.py:158: AssertionError</failure></testcase><testcase classname="tests.unit.test_risk_manager_math_edges.TestParametricVaREdgeCases" name="test_var_with_infinite_returns" time="0.001"><failure message="assert -0.00791110313533144 &gt; 0">self = &lt;test_risk_manager_math_edges.TestParametricVaREdgeCases object at 0x000001AC107FED50&gt;
+
+    @pytest.mark.unit
+    def test_var_with_infinite_returns(self):
+        """Test VaR with infinite returns."""
+        portfolio_value = 100000
+        returns = np.array([0.01, np.inf, 0.02, -np.inf] + [0.01] * 50)
+    
+        var = RiskMathUtils.parametric_var(returns)
+        # Should handle infinities gracefully
+&gt;       assert var &gt; 0
+E       assert -0.00791110313533144 &gt; 0
+
+tests\unit\test_risk_manager_math_edges.py:168: AssertionError</failure></testcase><testcase classname="tests.unit.test_risk_manager_math_edges.TestHistoricalCVaREdgeCases" name="test_cvar_with_no_tail_observations" time="0.001"><failure message="assert -0.01 == 7000.000000000001">self = &lt;test_risk_manager_math_edges.TestHistoricalCVaREdgeCases object at 0x000001AC107FEF60&gt;
+
+    @pytest.mark.unit
+    def test_cvar_with_no_tail_observations(self):
+        """Test CVaR when no observations fall in the tail."""
+        portfolio_value = 100000
+        returns = np.full(50, 0.01)  # All returns are positive (no losses)
+    
+        cvar = RiskMathUtils.historical_cvar(returns)
+        expected_fallback = portfolio_value * 0.07
+&gt;       assert cvar == expected_fallback
+E       assert -0.01 == 7000.000000000001
+
+tests\unit\test_risk_manager_math_edges.py:183: AssertionError</failure></testcase><testcase classname="tests.unit.test_risk_manager_math_edges.TestHistoricalCVaREdgeCases" name="test_cvar_with_single_tail_observation" time="0.001" /><testcase classname="tests.unit.test_risk_manager_math_edges.TestHistoricalCVaREdgeCases" name="test_cvar_different_confidence_levels" time="0.001" /><testcase classname="tests.unit.test_risk_manager_math_edges.TestHistoricalCVaREdgeCases" name="test_cvar_with_extreme_tail" time="0.001"><failure message="assert 0.4600000000000001 &gt; (100000 * 0.1)">self = &lt;test_risk_manager_math_edges.TestHistoricalCVaREdgeCases object at 0x000001AC107FF500&gt;
+
+    @pytest.mark.unit
+    def test_cvar_with_extreme_tail(self):
+        """Test CVaR with extremely negative tail returns."""
+        portfolio_value = 100000
+        returns = np.concatenate(
+            [
+                np.random.normal(0.001, 0.01, 90),  # Normal returns
+                np.array(
+                    [
+                        -0.5,
+                        -0.3,
+                        -0.4,
+                        -0.2,
+                        -0.6,  # Extreme tail
+                        -0.1,
+                        -0.15,
+                        -0.25,
+                        -0.35,
+                        -0.45,
+                    ]
+                ),
+            ]
+        )
+    
+        cvar = RiskMathUtils.historical_cvar(returns)
+        assert cvar &gt; 0
+&gt;       assert cvar &gt; portfolio_value * 0.1  # Should be significant given extreme tail
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       assert 0.4600000000000001 &gt; (100000 * 0.1)
+
+tests\unit\test_risk_manager_math_edges.py:241: AssertionError</failure></testcase><testcase classname="tests.unit.test_risk_manager_math_edges.TestHistoricalCVaREdgeCases" name="test_cvar_precision_with_percentiles" time="0.001"><failure message="assert 9595.863636363636 &lt; (100000 * 0.01)&#10; +  where 9595.863636363636 = abs((0.09595959595959595 - 9595.959595959595))">self = &lt;test_risk_manager_math_edges.TestHistoricalCVaREdgeCases object at 0x000001AC107FF6E0&gt;
+
+    @pytest.mark.unit
+    def test_cvar_precision_with_percentiles(self):
+        """Test CVaR precision around percentile boundaries."""
+        portfolio_value = 100000
+        returns = np.linspace(-0.1, 0.1, 100)  # Uniform distribution
+    
+        cvar_95 = RiskMathUtils.historical_cvar(returns, 0.05)
+    
+        # With uniform distribution, should be able to verify calculation
+        expected_cutoff = np.percentile(returns, 5)  # 5th percentile
+        tail_returns = returns[returns &lt;= expected_cutoff]
+        expected_cvar = abs(np.mean(tail_returns)) * portfolio_value
+    
+&gt;       assert abs(cvar_95 - expected_cvar) &lt; portfolio_value * 0.01  # 1% tolerance
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       assert 9595.863636363636 &lt; (100000 * 0.01)
+E        +  where 9595.863636363636 = abs((0.09595959595959595 - 9595.959595959595))
+
+tests\unit\test_risk_manager_math_edges.py:256: AssertionError</failure></testcase><testcase classname="tests.unit.test_risk_manager_math_edges.TestHistoricalCVaREdgeCases" name="test_cvar_consistency_with_var" time="0.001" /><testcase classname="tests.unit.test_risk_manager_math_edges.TestEWMAVolatilityEdgeCases" name="test_ewma_with_constant_returns" time="0.001" /><testcase classname="tests.unit.test_risk_manager_math_edges.TestEWMAVolatilityEdgeCases" name="test_ewma_with_single_return" time="0.001" /><testcase classname="tests.unit.test_risk_manager_math_edges.TestEWMAVolatilityEdgeCases" name="test_ewma_with_extreme_volatility_regime" time="0.001" /><testcase classname="tests.unit.test_risk_manager_math_edges.TestEWMAVolatilityEdgeCases" name="test_ewma_with_different_lambda_values" time="0.001" /><testcase classname="tests.unit.test_risk_manager_math_edges.TestEWMAVolatilityEdgeCases" name="test_ewma_numerical_stability" time="0.001" /><testcase classname="tests.unit.test_risk_manager_math_edges.TestAsyncRiskManagerEdgeCases" name="test_position_sizing_with_zero_volatility" time="0.028"><failure message="AssertionError: assert False&#10; +  where False = isinstance(RiskDecision(allowed=False, reason='kelly_size_exceeded', adjustments={'kelly_limit': '974.7670214825208'}, limits={},...adjusted_qty=Decimal('974.7670214825208'), risk_score=None, timestamp=datetime.datetime(2025, 8, 25, 0, 9, 12, 206193)), dict)">self = &lt;test_risk_manager_math_edges.TestAsyncRiskManagerEdgeCases object at 0x000001AC107FFB00&gt;
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_position_sizing_with_zero_volatility(self):
+        """Test position sizing when volatility is zero."""
+        risk_manager = AsyncRiskManager()
+    
+        # Mock portfolio with zero volatility asset
+        portfolio = PortfolioState(
+            equity=Decimal("100000.0"),
+            cash=Decimal("50000.0"),
+            positions={"AAPL": Decimal("100")},
+            sector_map={"AAPL": "Technology"},
+        )
+    
+        # Order for zero-volatility asset
+        order = OrderSpec(
+            symbol="STABLE_ASSET",
+            side=Side.BUY,
+            qty=Decimal("100"),
+            notional=Decimal("10000"),
+        )
+    
+        # Should handle gracefully without crashing
+        result = await risk_manager.before_order(order, portfolio)
+&gt;       assert isinstance(result, dict)
+E       AssertionError: assert False
+E        +  where False = isinstance(RiskDecision(allowed=False, reason='kelly_size_exceeded', adjustments={'kelly_limit': '974.7670214825208'}, limits={},...adjusted_qty=Decimal('974.7670214825208'), risk_score=None, timestamp=datetime.datetime(2025, 8, 25, 0, 9, 12, 206193)), dict)
+
+tests\unit\test_risk_manager_math_edges.py:371: AssertionError</failure></testcase><testcase classname="tests.unit.test_risk_manager_math_edges.TestAsyncRiskManagerEdgeCases" name="test_position_sizing_with_extreme_correlation" time="0.002"><failure message="TypeError: PortfolioState.__init__() got an unexpected keyword argument 'total_value'">self = &lt;test_risk_manager_math_edges.TestAsyncRiskManagerEdgeCases object at 0x000001AC107FFDA0&gt;
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_position_sizing_with_extreme_correlation(self):
+        """Test position sizing with perfect correlation between assets."""
+        risk_manager = AsyncRiskManager()
+    
+        # Portfolio with highly correlated positions
+&gt;       portfolio = PortfolioState(
+            total_value=100000.0,
+            available_cash=20000.0,
+            positions={
+                "AAPL": {"qty": 100, "avg_price": 150.0, "market_value": 15000.0},
+                "MSFT": {"qty": 50, "avg_price": 300.0, "market_value": 15000.0},
+                "GOOGL": {"qty": 20, "avg_price": 2500.0, "market_value": 50000.0},
+            },
+            daily_pnl=0.0,
+            unrealized_pnl=0.0,
+        )
+E       TypeError: PortfolioState.__init__() got an unexpected keyword argument 'total_value'
+
+tests\unit\test_risk_manager_math_edges.py:381: TypeError</failure></testcase><testcase classname="tests.unit.test_risk_manager_math_edges.TestAsyncRiskManagerEdgeCases" name="test_drawdown_calculation_with_volatile_history" time="0.002"><failure message="AttributeError: &lt;backend.risk.risk_manager.AsyncRiskManager object at 0x000001AC109CC260&gt; does not have the attribute '_get_portfolio_history'">self = &lt;test_risk_manager_math_edges.TestAsyncRiskManagerEdgeCases object at 0x000001AC10830050&gt;
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_drawdown_calculation_with_volatile_history(self):
+        """Test drawdown calculation with highly volatile portfolio history."""
+        risk_manager = AsyncRiskManager()
+    
+        # Create volatile portfolio value history
+        base_value = 100000
+        volatile_values = []
+        for i in range(100):
+            # Simulate high volatility with occasional large drawdowns
+            if i in [20, 45, 70]:  # Simulate crashes
+                change = -0.15  # -15% drawdown days
+            else:
+                change = np.random.normal(0.001, 0.03)  # 3% daily volatility
+    
+            if i == 0:
+                volatile_values.append(base_value)
+            else:
+                new_value = volatile_values[-1] * (1 + change)
+                volatile_values.append(max(new_value, base_value * 0.1))  # Floor at 10%
+    
+        # Test with mock portfolio history
+&gt;       with patch.object(risk_manager, "_get_portfolio_history") as mock_history:
+
+tests\unit\test_risk_manager_math_edges.py:433: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1458: in __enter__
+    original, local = self.get_original()
+                      ^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;unittest.mock._patch object at 0x000001AC109CCDD0&gt;
+
+    def get_original(self):
+        target = self.getter()
+        name = self.attribute
+    
+        original = DEFAULT
+        local = False
+    
+        try:
+            original = target.__dict__[name]
+        except (AttributeError, KeyError):
+            original = getattr(target, name, DEFAULT)
+        else:
+            local = True
+    
+        if name in _builtins and isinstance(target, ModuleType):
+            self.create = True
+    
+        if not self.create and original is DEFAULT:
+&gt;           raise AttributeError(
+                "%s does not have the attribute %r" % (target, name)
+            )
+E           AttributeError: &lt;backend.risk.risk_manager.AsyncRiskManager object at 0x000001AC109CC260&gt; does not have the attribute '_get_portfolio_history'
+
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1431: AttributeError</failure></testcase><testcase classname="tests.unit.test_risk_manager_math_edges.TestAsyncRiskManagerEdgeCases" name="test_risk_limits_with_edge_case_orders" time="0.025"><failure message="TypeError: PortfolioState.__init__() got an unexpected keyword argument 'total_value'">self = &lt;test_risk_manager_math_edges.TestAsyncRiskManagerEdgeCases object at 0x000001AC108302C0&gt;
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_risk_limits_with_edge_case_orders(self):
+        """Test risk limits with edge case order specifications."""
+        risk_manager = AsyncRiskManager()
+    
+&gt;       portfolio = PortfolioState(
+            total_value=100000.0,
+            available_cash=50000.0,
+            positions={},
+            daily_pnl=-5000.0,  # Already down 5% today
+            unrealized_pnl=0.0,
+        )
+E       TypeError: PortfolioState.__init__() got an unexpected keyword argument 'total_value'
+
+tests\unit\test_risk_manager_math_edges.py:463: TypeError</failure></testcase><testcase classname="tests.unit.test_risk_manager_math_edges.TestAsyncRiskManagerEdgeCases" name="test_kelly_sizing_with_negative_expected_returns" time="0.002"><failure message="AttributeError: &lt;backend.risk.risk_manager.AsyncRiskManager object at 0x000001AC10914E00&gt; does not have the attribute '_calculate_expected_return'">self = &lt;test_risk_manager_math_edges.TestAsyncRiskManagerEdgeCases object at 0x000001AC10830530&gt;
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_kelly_sizing_with_negative_expected_returns(self):
+        """Test Kelly position sizing with negative expected returns."""
+        risk_manager = AsyncRiskManager()
+    
+        # Mock negative expected returns for an asset
+&gt;       with patch.object(risk_manager, "_calculate_expected_return") as mock_return:
+
+tests\unit\test_risk_manager_math_edges.py:496: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1458: in __enter__
+    original, local = self.get_original()
+                      ^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;unittest.mock._patch object at 0x000001AC10914E30&gt;
+
+    def get_original(self):
+        target = self.getter()
+        name = self.attribute
+    
+        original = DEFAULT
+        local = False
+    
+        try:
+            original = target.__dict__[name]
+        except (AttributeError, KeyError):
+            original = getattr(target, name, DEFAULT)
+        else:
+            local = True
+    
+        if name in _builtins and isinstance(target, ModuleType):
+            self.create = True
+    
+        if not self.create and original is DEFAULT:
+&gt;           raise AttributeError(
+                "%s does not have the attribute %r" % (target, name)
+            )
+E           AttributeError: &lt;backend.risk.risk_manager.AsyncRiskManager object at 0x000001AC10914E00&gt; does not have the attribute '_calculate_expected_return'
+
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1431: AttributeError</failure></testcase><testcase classname="tests.unit.test_risk_manager_math_edges.TestAsyncRiskManagerEdgeCases" name="test_portfolio_greek_calculations_edge_cases" time="0.002"><failure message="TypeError: PortfolioState.__init__() got an unexpected keyword argument 'total_value'">self = &lt;test_risk_manager_math_edges.TestAsyncRiskManagerEdgeCases object at 0x000001AC108307A0&gt;
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_portfolio_greek_calculations_edge_cases(self):
+        """Test portfolio Greek calculations with extreme scenarios."""
+        risk_manager = AsyncRiskManager()
+    
+        # Portfolio with options-heavy exposure
+&gt;       portfolio = PortfolioState(
+            total_value=100000.0,
+            available_cash=10000.0,
+            positions={
+                "AAPL_CALL_150": {
+                    "qty": 10,
+                    "avg_price": 5.0,
+                    "market_value": 5000.0,
+                    "delta": 0.7,
+                    "gamma": 0.05,
+                },
+                "SPY_PUT_400": {
+                    "qty": -5,
+                    "avg_price": 3.0,
+                    "market_value": -1500.0,
+                    "delta": -0.3,
+                    "gamma": 0.02,
+                },
+                "QQQ": {
+                    "qty": 100,
+                    "avg_price": 350.0,
+                    "market_value": 35000.0,
+                    "delta": 1.0,
+                    "gamma": 0.0,
+                },
+            },
+            daily_pnl=0.0,
+            unrealized_pnl=0.0,
+        )
+E       TypeError: PortfolioState.__init__() got an unexpected keyword argument 'total_value'
+
+tests\unit\test_risk_manager_math_edges.py:528: TypeError</failure></testcase><testcase classname="tests.unit.test_risk_manager_math_edges.TestCombinedMathStability" name="test_combined_risk_metrics_consistency" time="0.001" /><testcase classname="tests.unit.test_risk_manager_math_edges.TestCombinedMathStability" name="test_risk_metrics_under_market_stress" time="0.001" /><testcase classname="tests.unit.test_risk_manager_math_edges.TestCombinedMathStability" name="test_numerical_stability_with_extreme_portfolio_sizes" time="0.001" /><testcase classname="tests.unit.test_risk_manager_math_edges.TestCombinedMathStability" name="test_fuzz_small_returns_arrays" time="0.001"><failure message="AssertionError: assert (-0.0033680934494812916 &gt;= 0 or False)&#10; +  where False = &lt;ufunc 'isnan'&gt;(-0.0033680934494812916)&#10; +    where &lt;ufunc 'isnan'&gt; = np.isnan">self = &lt;test_risk_manager_math_edges.TestCombinedMathStability object at 0x000001AC10831010&gt;
+
+    @pytest.mark.unit
+    def test_fuzz_small_returns_arrays(self):
+        """Fuzz test with small returns arrays to hit numerical stability branches."""
+        np.random.seed(42)
+        portfolio_value = 100000
+    
+        # Generate various small arrays that might cause edge cases
+        test_arrays = [
+            # Empty and tiny arrays
+            np.array([]),
+            np.array([0.01]),
+            np.array([0.01, 0.02]),
+            # Arrays with special values
+            np.array([0.0] * 10),
+            np.array([np.nan, 0.01, 0.02]),
+            np.array([np.inf, 0.01, 0.02]),
+            np.array([-np.inf, 0.01, 0.02]),
+            # Very small variance arrays
+            np.array([0.01] * 50),  # Constant returns
+            np.array([0.01, 0.010001] * 25),  # Minimal variance
+            # Extreme value arrays
+            np.array([1.0, -1.0] * 5),  # 100% swings
+            np.array([1e-10] * 20),  # Tiny values
+            np.array([1e10, -1e10]),  # Huge values
+        ]
+    
+        for returns in test_arrays:
+            # All functions should handle gracefully without crashing
+            try:
+                if len(returns) &gt; 0:
+                    var = RiskMathUtils.parametric_var(returns)
+                    cvar = RiskMathUtils.historical_cvar(returns)
+                    vol = RiskMathUtils.ewma_volatility(returns)
+    
+                    # Results should be non-negative numbers (including zero)
+&gt;                   assert var &gt;= 0 or np.isnan(var)
+E                   AssertionError: assert (-0.0033680934494812916 &gt;= 0 or False)
+E                    +  where False = &lt;ufunc 'isnan'&gt;(-0.0033680934494812916)
+E                    +    where &lt;ufunc 'isnan'&gt; = np.isnan
+
+tests\unit\test_risk_manager_math_edges.py:715: AssertionError</failure></testcase></testsuite></testsuites>

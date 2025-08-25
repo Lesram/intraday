@@ -18,19 +18,28 @@ class FakeUserRepo:
         """Check if user exists by email."""
         return email in self.users
         
+    async def exists_by_email(self, email: str) -> bool:
+        """Check if user exists by email (async version for compatibility)."""
+        return email in self.users
+        
     async def get_by_email(self, email: str):
         """Get user by email, returns None if not found."""
         return self.users.get(email)
         
-    def create_user(self, email: str, password_hash: str) -> dict:
-        """Create a new user with email and password hash."""
+    def create_user(self, username: str, password: str, roles: list[str]) -> dict:
+        """Create a new user with username, password, and roles to match real UserRepository interface."""
         import uuid
+        
         user_data = {
-            "user_id": str(uuid.uuid4()),
-            "email": email,
-            "password_hash": password_hash
+            "id": str(uuid.uuid4()),  # Use 'id' key to match get_user_id() expectations
+            "user_id": str(uuid.uuid4()),  # Also include user_id for compatibility
+            "username": username,
+            "email": username,  # Use username as email for compatibility
+            "password_hash": f"hashed_{password}",  # Simple mock hash format for tests
+            "roles": roles
         }
-        self.users[email] = user_data
+        # Store by email for compatibility with exists_by_email and get_by_email
+        self.users[username] = user_data
         return user_data
         
     async def create(self, user_data: dict):
@@ -126,11 +135,10 @@ class TestAuthRegister:
             # Should return 409 Conflict
             assert response.status_code == status.HTTP_409_CONFLICT
             
-            # Check error response format
+            # Check error response format (FastAPI standard format)
             data = response.json()
-            assert "error" in data
-            assert data["error"]["type"] == "http_error"
-            assert data["error"]["detail"] == "Email already registered"
+            assert "detail" in data
+            assert data["detail"] == "Email already registered"
     
     def test_register_invalid_email_returns_422(self):
         """Test that invalid email format returns 422 validation error."""

@@ -14,7 +14,17 @@ import numpy as np
 import pandas as pd
 
 from ..config import get_settings
-from ..models.ensemble_model import EnsembleModel
+# Avoid importing heavy ML dependencies (TensorFlow) at module import time unless explicitly enabled.
+import os as _os  # local alias to avoid polluting namespace
+if _os.getenv("ENABLE_ML_MODELS", "").lower() in ("1", "true", "yes"):
+    try:  # pragma: no cover - import guard for optional ML environments
+        from ..models.ensemble_model import EnsembleModel  # type: ignore
+    except Exception:
+        class EnsembleModel:  # type: ignore
+            pass
+else:  # default: lightweight stub to keep imports fast in tests
+    class EnsembleModel:  # type: ignore
+        pass
 from ..risk.risk_manager import RiskManager
 from ..utils.helpers import calculate_sharpe_ratio
 from ..utils.logger import audit_logger

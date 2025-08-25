@@ -1,0 +1,177 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="4" skipped="0" tests="21" time="0.839" timestamp="2025-08-24T17:05:36.319816-07:00" hostname="BOOK-FVJOEO3Q00"><testcase classname="tests.mlops.test_model_manager_matrix.TestModelManagerMatrix" name="test_predict_valid_single_dict" time="0.089"><failure message="AttributeError: &lt;module 'backend.api.main' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\api\\main.py'&gt; does not have the attribute 'WebSocketClientManager'">self = &lt;test_model_manager_matrix.TestModelManagerMatrix object at 0x000002D63E59E510&gt;
+fake_model_manager = &lt;function fake_model_manager.&lt;locals&gt;._create_manager at 0x000002D63E673740&gt;
+create_test_app = &lt;function create_test_app.&lt;locals&gt;._create_app at 0x000002D63E6737E0&gt;
+
+    def test_predict_valid_single_dict(self, fake_model_manager, create_test_app):
+        """Test single prediction with valid dictionary input"""
+        model_manager = fake_model_manager()
+&gt;       client = create_test_app(model_manager)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\mlops\test_model_manager_matrix.py:116: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+tests\mlops\test_model_manager_matrix.py:92: in _create_app
+    with patch('backend.api.main.WebSocketClientManager'), \
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1458: in __enter__
+    original, local = self.get_original()
+                      ^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;unittest.mock._patch object at 0x000002D63E704350&gt;
+
+    def get_original(self):
+        target = self.getter()
+        name = self.attribute
+    
+        original = DEFAULT
+        local = False
+    
+        try:
+            original = target.__dict__[name]
+        except (AttributeError, KeyError):
+            original = getattr(target, name, DEFAULT)
+        else:
+            local = True
+    
+        if name in _builtins and isinstance(target, ModuleType):
+            self.create = True
+    
+        if not self.create and original is DEFAULT:
+&gt;           raise AttributeError(
+                "%s does not have the attribute %r" % (target, name)
+            )
+E           AttributeError: &lt;module 'backend.api.main' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\api\\main.py'&gt; does not have the attribute 'WebSocketClientManager'
+
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1431: AttributeError</failure></testcase><testcase classname="tests.mlops.test_model_manager_matrix.TestModelManagerMatrix" name="test_predict_batch_valid_list" time="0.002"><failure message="AttributeError: &lt;module 'backend.api.main' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\api\\main.py'&gt; does not have the attribute 'WebSocketClientManager'">self = &lt;test_model_manager_matrix.TestModelManagerMatrix object at 0x000002D63E6C9970&gt;
+fake_model_manager = &lt;function fake_model_manager.&lt;locals&gt;._create_manager at 0x000002D63E8D2D40&gt;
+create_test_app = &lt;function create_test_app.&lt;locals&gt;._create_app at 0x000002D63E8D2DE0&gt;
+
+    def test_predict_batch_valid_list(self, fake_model_manager, create_test_app):
+        """Test batch prediction with valid list input"""
+        model_manager = fake_model_manager()
+&gt;       client = create_test_app(model_manager)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\mlops\test_model_manager_matrix.py:137: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+tests\mlops\test_model_manager_matrix.py:92: in _create_app
+    with patch('backend.api.main.WebSocketClientManager'), \
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1458: in __enter__
+    original, local = self.get_original()
+                      ^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;unittest.mock._patch object at 0x000002D63E3EA9F0&gt;
+
+    def get_original(self):
+        target = self.getter()
+        name = self.attribute
+    
+        original = DEFAULT
+        local = False
+    
+        try:
+            original = target.__dict__[name]
+        except (AttributeError, KeyError):
+            original = getattr(target, name, DEFAULT)
+        else:
+            local = True
+    
+        if name in _builtins and isinstance(target, ModuleType):
+            self.create = True
+    
+        if not self.create and original is DEFAULT:
+&gt;           raise AttributeError(
+                "%s does not have the attribute %r" % (target, name)
+            )
+E           AttributeError: &lt;module 'backend.api.main' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\api\\main.py'&gt; does not have the attribute 'WebSocketClientManager'
+
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1431: AttributeError</failure></testcase><testcase classname="tests.mlops.test_model_manager_matrix.TestModelManagerMatrix" name="test_predict_invalid_schema" time="0.002" /><testcase classname="tests.mlops.test_model_manager_matrix.TestModelManagerMatrix" name="test_predict_wrong_dtypes" time="0.001" /><testcase classname="tests.mlops.test_model_manager_matrix.TestModelManagerMatrix" name="test_predict_with_nans" time="0.001" /><testcase classname="tests.mlops.test_model_manager_matrix.TestModelManagerMatrix" name="test_predict_model_returns_nans" time="0.001" /><testcase classname="tests.mlops.test_model_manager_matrix.TestModelManagerMatrix" name="test_predict_missing_model_fallback" time="0.001" /><testcase classname="tests.mlops.test_model_manager_matrix.TestModelManagerMatrix" name="test_model_health_check_with_version_hash" time="0.002"><failure message="AttributeError: &lt;module 'backend.api.main' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\api\\main.py'&gt; does not have the attribute 'WebSocketClientManager'">self = &lt;test_model_manager_matrix.TestModelManagerMatrix object at 0x000002D63E6CA270&gt;
+fake_model_manager = &lt;function fake_model_manager.&lt;locals&gt;._create_manager at 0x000002D63E8D3D80&gt;
+create_test_app = &lt;function create_test_app.&lt;locals&gt;._create_app at 0x000002D63E8D3E20&gt;
+
+    def test_model_health_check_with_version_hash(self, fake_model_manager, create_test_app):
+        """Test health check includes model version and hash when set"""
+        model_manager = fake_model_manager(version="v2.1.0", model_hash="abcdef789012")
+&gt;       client = create_test_app(model_manager)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\mlops\test_model_manager_matrix.py:250: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+tests\mlops\test_model_manager_matrix.py:92: in _create_app
+    with patch('backend.api.main.WebSocketClientManager'), \
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1458: in __enter__
+    original, local = self.get_original()
+                      ^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;unittest.mock._patch object at 0x000002D63E8FCF20&gt;
+
+    def get_original(self):
+        target = self.getter()
+        name = self.attribute
+    
+        original = DEFAULT
+        local = False
+    
+        try:
+            original = target.__dict__[name]
+        except (AttributeError, KeyError):
+            original = getattr(target, name, DEFAULT)
+        else:
+            local = True
+    
+        if name in _builtins and isinstance(target, ModuleType):
+            self.create = True
+    
+        if not self.create and original is DEFAULT:
+&gt;           raise AttributeError(
+                "%s does not have the attribute %r" % (target, name)
+            )
+E           AttributeError: &lt;module 'backend.api.main' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\api\\main.py'&gt; does not have the attribute 'WebSocketClientManager'
+
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1431: AttributeError</failure></testcase><testcase classname="tests.mlops.test_model_manager_matrix.TestModelManagerMatrix" name="test_health_endpoint_includes_model_info" time="0.002"><failure message="AttributeError: &lt;module 'backend.api.main' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\api\\main.py'&gt; does not have the attribute 'WebSocketClientManager'">self = &lt;test_model_manager_matrix.TestModelManagerMatrix object at 0x000002D63E6CA420&gt;
+fake_model_manager = &lt;function fake_model_manager.&lt;locals&gt;._create_manager at 0x000002D63E8D3060&gt;
+create_test_app = &lt;function create_test_app.&lt;locals&gt;._create_app at 0x000002D63E8D3CE0&gt;
+
+    def test_health_endpoint_includes_model_info(self, fake_model_manager, create_test_app):
+        """Test /healthz endpoint includes model version and SHA256"""
+        model_manager = fake_model_manager(version="v3.0.1", model_hash="fedcba210987")
+&gt;       client = create_test_app(model_manager)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\mlops\test_model_manager_matrix.py:263: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+tests\mlops\test_model_manager_matrix.py:92: in _create_app
+    with patch('backend.api.main.WebSocketClientManager'), \
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1458: in __enter__
+    original, local = self.get_original()
+                      ^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;unittest.mock._patch object at 0x000002D63E843350&gt;
+
+    def get_original(self):
+        target = self.getter()
+        name = self.attribute
+    
+        original = DEFAULT
+        local = False
+    
+        try:
+            original = target.__dict__[name]
+        except (AttributeError, KeyError):
+            original = getattr(target, name, DEFAULT)
+        else:
+            local = True
+    
+        if name in _builtins and isinstance(target, ModuleType):
+            self.create = True
+    
+        if not self.create and original is DEFAULT:
+&gt;           raise AttributeError(
+                "%s does not have the attribute %r" % (target, name)
+            )
+E           AttributeError: &lt;module 'backend.api.main' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\api\\main.py'&gt; does not have the attribute 'WebSocketClientManager'
+
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1431: AttributeError</failure></testcase><testcase classname="tests.mlops.test_model_manager_matrix.TestModelManagerMatrix" name="test_concurrent_predictions" time="0.002" /><testcase classname="tests.mlops.test_model_manager_matrix.TestModelManagerMatrix" name="test_prediction_error_handling" time="0.002" /><testcase classname="tests.mlops.test_model_manager_matrix.TestModelManagerMatrix" name="test_large_batch_prediction" time="0.001" /><testcase classname="tests.mlops.test_model_manager_matrix.TestModelManagerMatrix" name="test_model_memory_usage_tracking" time="0.001" /><testcase classname="tests.mlops.test_model_manager_matrix.TestModelManagerMatrix" name="test_model_version_comparison" time="0.004" /><testcase classname="tests.mlops.test_model_manager_matrix.TestModelManagerMatrix" name="test_model_hash_validation" time="0.002" /><testcase classname="tests.mlops.test_model_manager_matrix.TestModelManagerMatrix" name="test_prediction_input_validation" time="0.001" /><testcase classname="tests.mlops.test_model_manager_matrix.TestModelManagerMatrix" name="test_model_performance_metrics" time="0.001" /><testcase classname="tests.mlops.test_model_manager_matrix.TestModelManagerEdgeCases" name="test_model_initialization_failure" time="0.002" /><testcase classname="tests.mlops.test_model_manager_matrix.TestModelManagerEdgeCases" name="test_prediction_timeout_handling" time="0.102" /><testcase classname="tests.mlops.test_model_manager_matrix.TestModelManagerEdgeCases" name="test_model_state_consistency" time="0.002" /><testcase classname="tests.mlops.test_model_manager_matrix.TestModelManagerEdgeCases" name="test_memory_cleanup_on_errors" time="0.002" /></testsuite></testsuites>

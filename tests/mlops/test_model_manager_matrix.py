@@ -50,30 +50,37 @@ def fake_model_manager():
         if model is None:
             model = FakeModel()
         
-        with patch('backend.mlops.model_manager.ModelManager') as MockManager:
-            manager = MockManager.return_value
-            manager.model = model
-            manager.model_version = version
-            manager.model_sha256 = model_hash
-            manager.is_healthy = Mock(return_value=True)
-            manager.get_health_info = Mock(return_value={
-                "status": "healthy",
-                "model_version": version,
-                "model_sha256": model_hash,
-                "last_prediction": "2024-01-01T00:00:00Z"
-            })
+        # Import and try to instantiate ModelManager to trigger constructor errors
+        from backend.mlops.model_manager import ModelManager
+        from tempfile import mkdtemp
+        
+        # Create a real manager instance to trigger constructor exceptions
+        temp_dir = mkdtemp()
+        manager = ModelManager(model_store_path=temp_dir)
+        
+        # Patch its behavior for testing
+        manager.model = model
+        manager.model_version = version
+        manager.model_sha256 = model_hash
+        manager.is_healthy = Mock(return_value=True)
+        manager.get_health_info = Mock(return_value={
+            "status": "healthy", 
+            "model_version": version,
+            "model_sha256": model_hash,
+            "last_prediction": "2024-01-01T00:00:00Z"
+        })
+        
+        # Mock prediction methods
+        def mock_predict(data):
+            return model.predict(data)
+
+        def mock_predict_batch(batch_data):
+            return model.predict(batch_data)
             
-            # Mock prediction methods
-            def mock_predict(data):
-                return model.predict(data)
-            
-            def mock_predict_batch(batch_data):
-                return model.predict(batch_data)
-                
-            manager.predict = Mock(side_effect=mock_predict)
-            manager.predict_batch = Mock(side_effect=mock_predict_batch)
-            
-            return manager
+        manager.predict = Mock(side_effect=mock_predict)
+        manager.predict_batch = Mock(side_effect=mock_predict_batch)
+        
+        return manager
     
     return _create_manager
 

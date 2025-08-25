@@ -5,11 +5,54 @@ Contains common mathematical, financial, and utility functions.
 
 from datetime import datetime
 import hashlib
-from typing import Union
+from typing import Union, Any
 import uuid
 
 import numpy as np
 import pandas as pd
+
+
+def align_for_pandas_arithmetic(other: Any, index: pd.Index) -> pd.Series:
+    """
+    Align other data with DataFrame index for safe pandas arithmetic operations.
+    
+    Prevents "ValueError: other must be a DataFrame or Series" by normalizing 
+    inputs to properly aligned pandas Series before subtract/compare operations.
+    
+    Args:
+        other: Data to align (scalar, list, Series, DataFrame, etc.)
+        index: pandas Index to align with
+        
+    Returns:
+        pandas Series aligned with the provided index
+        
+    Examples:
+        >>> df = pd.DataFrame({'col': [1, 2, 3]}, index=[0, 1, 2])
+        >>> df['col'] - align_for_pandas_arithmetic(5, df.index)  # scalar
+        >>> df['col'] - align_for_pandas_arithmetic([1, 2, 3], df.index)  # list  
+        >>> df['col'] - align_for_pandas_arithmetic(other_series, df.index)  # series
+    """
+    if isinstance(other, (int, float)):
+        return pd.Series([other] * len(index), index=index)
+    if isinstance(other, pd.Series):
+        return other.reindex(index, fill_value=0)
+    if isinstance(other, pd.DataFrame):
+        return other.iloc[:, 0].reindex(index, fill_value=0)
+    if isinstance(other, (list, tuple, np.ndarray)):
+        # Ensure the data fits the index
+        other_list = list(other)
+        if len(other_list) > len(index):
+            other_list = other_list[:len(index)]
+        elif len(other_list) < len(index):
+            # Pad with last value or zero
+            pad_value = other_list[-1] if other_list else 0
+            other_list.extend([pad_value] * (len(index) - len(other_list)))
+        return pd.Series(other_list, index=index)
+    # Fallback: try to convert to Series
+    try:
+        return pd.Series(other, index=index)
+    except Exception:
+        return pd.Series([other] * len(index), index=index)
 
 
 def calculate_returns(

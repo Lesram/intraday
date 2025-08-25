@@ -1,0 +1,1390 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="47" skipped="0" tests="64" time="10.307" timestamp="2025-08-24T16:59:49.904968-07:00" hostname="BOOK-FVJOEO3Q00"><testcase classname="tests.api.test_http_routes_matrix_comprehensive.TestHTTPRoutesMatrix" name="test_routes_success_scenarios[GET-/-False-None-200-Root endpoint-/]" time="0.098"><failure message="AssertionError: Root endpoint: Expected 200, got 404. Response: {&quot;detail&quot;:&quot;Not Found&quot;}&#10;assert 404 == 200&#10; +  where 404 = &lt;Response [404 Not Found]&gt;.status_code">self = &lt;test_http_routes_matrix_comprehensive.TestHTTPRoutesMatrix object at 0x0000022ADF299D00&gt;
+method = 'GET', path = '/', requires_auth = False, body = None
+expected_status = 200, description = 'Root endpoint', route_template = '/'
+auth_client = &lt;tests.helpers.robust_testclient.RobustTestClient object at 0x0000022ADF517590&gt;
+unauth_client = &lt;tests.helpers.robust_testclient.RobustTestClient object at 0x0000022AE065F0B0&gt;
+
+    @pytest.mark.parametrize("method,path,requires_auth,body,expected_status,description,route_template",
+                             COMPREHENSIVE_ROUTES_DATA)
+    def test_routes_success_scenarios(self, method, path, requires_auth, body, expected_status,
+                                    description, route_template, auth_client, unauth_client):
+        """Test all routes for successful responses (200, 201, etc.)."""
+        client = auth_client if requires_auth else unauth_client
+    
+        # Make HTTP request based on method
+        if method == "GET":
+            response = client.get(path)
+        elif method == "POST":
+            if body:
+                response = client.post(path, json=body)
+            else:
+                response = client.post(path)
+        elif method == "PUT":
+            response = client.put(path, json=body or {})
+        else:
+            pytest.skip(f"Unsupported method: {method}")
+    
+        # Assert expected success status
+&gt;       assert response.status_code == expected_status, f"{description}: Expected {expected_status}, got {response.status_code}. Response: {response.text[:200]}"
+E       AssertionError: Root endpoint: Expected 200, got 404. Response: {"detail":"Not Found"}
+E       assert 404 == 200
+E        +  where 404 = &lt;Response [404 Not Found]&gt;.status_code
+
+tests\api\test_http_routes_matrix_comprehensive.py:178: AssertionError</failure></testcase><testcase classname="tests.api.test_http_routes_matrix_comprehensive.TestHTTPRoutesMatrix" name="test_routes_success_scenarios[GET-/health-False-None-200-Health check endpoint-/health]" time="0.014" /><testcase classname="tests.api.test_http_routes_matrix_comprehensive.TestHTTPRoutesMatrix" name="test_routes_success_scenarios[GET-/readyz-False-None-503-Readiness probe-/readyz]" time="4.139" /><testcase classname="tests.api.test_http_routes_matrix_comprehensive.TestHTTPRoutesMatrix" name="test_routes_success_scenarios[GET-/docs-False-None-200-API documentation-/docs]" time="0.013" /><testcase classname="tests.api.test_http_routes_matrix_comprehensive.TestHTTPRoutesMatrix" name="test_routes_success_scenarios[GET-/redoc-False-None-200-ReDoc documentation-/redoc]" time="0.011" /><testcase classname="tests.api.test_http_routes_matrix_comprehensive.TestHTTPRoutesMatrix" name="test_routes_success_scenarios[GET-/openapi.json-False-None-200-OpenAPI schema-/openapi.json]" time="0.032" /><testcase classname="tests.api.test_http_routes_matrix_comprehensive.TestHTTPRoutesMatrix" name="test_routes_success_scenarios[GET-/metrics-False-None-200-Prometheus metrics-/metrics]" time="0.010"><failure message="AssertionError: Prometheus metrics: Expected 200, got 404. Response: {&quot;detail&quot;:&quot;Not Found&quot;}&#10;assert 404 == 200&#10; +  where 404 = &lt;Response [404 Not Found]&gt;.status_code">self = &lt;test_http_routes_matrix_comprehensive.TestHTTPRoutesMatrix object at 0x0000022ADF4D3290&gt;
+method = 'GET', path = '/metrics', requires_auth = False, body = None
+expected_status = 200, description = 'Prometheus metrics'
+route_template = '/metrics'
+auth_client = &lt;tests.helpers.robust_testclient.RobustTestClient object at 0x0000022AE0A16A50&gt;
+unauth_client = &lt;tests.helpers.robust_testclient.RobustTestClient object at 0x0000022AE0796C60&gt;
+
+    @pytest.mark.parametrize("method,path,requires_auth,body,expected_status,description,route_template",
+                             COMPREHENSIVE_ROUTES_DATA)
+    def test_routes_success_scenarios(self, method, path, requires_auth, body, expected_status,
+                                    description, route_template, auth_client, unauth_client):
+        """Test all routes for successful responses (200, 201, etc.)."""
+        client = auth_client if requires_auth else unauth_client
+    
+        # Make HTTP request based on method
+        if method == "GET":
+            response = client.get(path)
+        elif method == "POST":
+            if body:
+                response = client.post(path, json=body)
+            else:
+                response = client.post(path)
+        elif method == "PUT":
+            response = client.put(path, json=body or {})
+        else:
+            pytest.skip(f"Unsupported method: {method}")
+    
+        # Assert expected success status
+&gt;       assert response.status_code == expected_status, f"{description}: Expected {expected_status}, got {response.status_code}. Response: {response.text[:200]}"
+E       AssertionError: Prometheus metrics: Expected 200, got 404. Response: {"detail":"Not Found"}
+E       assert 404 == 200
+E        +  where 404 = &lt;Response [404 Not Found]&gt;.status_code
+
+tests\api\test_http_routes_matrix_comprehensive.py:178: AssertionError</failure></testcase><testcase classname="tests.api.test_http_routes_matrix_comprehensive.TestHTTPRoutesMatrix" name="test_routes_success_scenarios[POST-/auth/login-False-body7-200-Login endpoint-/auth/login]" time="0.014"><failure message="AssertionError: Login endpoint: Expected 200, got 401. Response: {&quot;detail&quot;:&quot;Invalid username or password&quot;}&#10;assert 401 == 200&#10; +  where 401 = &lt;Response [401 Unauthorized]&gt;.status_code">self = &lt;test_http_routes_matrix_comprehensive.TestHTTPRoutesMatrix object at 0x0000022ADF4D3320&gt;
+method = 'POST', path = '/auth/login', requires_auth = False
+body = {'password': 'testpass', 'username': 'testuser'}, expected_status = 200
+description = 'Login endpoint', route_template = '/auth/login'
+auth_client = &lt;tests.helpers.robust_testclient.RobustTestClient object at 0x0000022AE0DD74A0&gt;
+unauth_client = &lt;tests.helpers.robust_testclient.RobustTestClient object at 0x0000022AE0E1F110&gt;
+
+    @pytest.mark.parametrize("method,path,requires_auth,body,expected_status,description,route_template",
+                             COMPREHENSIVE_ROUTES_DATA)
+    def test_routes_success_scenarios(self, method, path, requires_auth, body, expected_status,
+                                    description, route_template, auth_client, unauth_client):
+        """Test all routes for successful responses (200, 201, etc.)."""
+        client = auth_client if requires_auth else unauth_client
+    
+        # Make HTTP request based on method
+        if method == "GET":
+            response = client.get(path)
+        elif method == "POST":
+            if body:
+                response = client.post(path, json=body)
+            else:
+                response = client.post(path)
+        elif method == "PUT":
+            response = client.put(path, json=body or {})
+        else:
+            pytest.skip(f"Unsupported method: {method}")
+    
+        # Assert expected success status
+&gt;       assert response.status_code == expected_status, f"{description}: Expected {expected_status}, got {response.status_code}. Response: {response.text[:200]}"
+E       AssertionError: Login endpoint: Expected 200, got 401. Response: {"detail":"Invalid username or password"}
+E       assert 401 == 200
+E        +  where 401 = &lt;Response [401 Unauthorized]&gt;.status_code
+
+tests\api\test_http_routes_matrix_comprehensive.py:178: AssertionError</failure></testcase><testcase classname="tests.api.test_http_routes_matrix_comprehensive.TestHTTPRoutesMatrix" name="test_routes_success_scenarios[POST-/auth/register-False-body8-201-Registration endpoint-/auth/register]" time="0.232" /><testcase classname="tests.api.test_http_routes_matrix_comprehensive.TestHTTPRoutesMatrix" name="test_routes_success_scenarios[GET-/portfolio/positions-True-None-200-Portfolio positions-/portfolio/positions]" time="0.012"><failure message="AssertionError: Portfolio positions: Expected 200, got 404. Response: {&quot;detail&quot;:&quot;Not Found&quot;}&#10;assert 404 == 200&#10; +  where 404 = &lt;Response [404 Not Found]&gt;.status_code">self = &lt;test_http_routes_matrix_comprehensive.TestHTTPRoutesMatrix object at 0x0000022ADF4D3440&gt;
+method = 'GET', path = '/portfolio/positions', requires_auth = True, body = None
+expected_status = 200, description = 'Portfolio positions'
+route_template = '/portfolio/positions'
+auth_client = &lt;tests.helpers.robust_testclient.RobustTestClient object at 0x0000022AE0DBD8B0&gt;
+unauth_client = &lt;tests.helpers.robust_testclient.RobustTestClient object at 0x0000022AE0786B40&gt;
+
+    @pytest.mark.parametrize("method,path,requires_auth,body,expected_status,description,route_template",
+                             COMPREHENSIVE_ROUTES_DATA)
+    def test_routes_success_scenarios(self, method, path, requires_auth, body, expected_status,
+                                    description, route_template, auth_client, unauth_client):
+        """Test all routes for successful responses (200, 201, etc.)."""
+        client = auth_client if requires_auth else unauth_client
+    
+        # Make HTTP request based on method
+        if method == "GET":
+            response = client.get(path)
+        elif method == "POST":
+            if body:
+                response = client.post(path, json=body)
+            else:
+                response = client.post(path)
+        elif method == "PUT":
+            response = client.put(path, json=body or {})
+        else:
+            pytest.skip(f"Unsupported method: {method}")
+    
+        # Assert expected success status
+&gt;       assert response.status_code == expected_status, f"{description}: Expected {expected_status}, got {response.status_code}. Response: {response.text[:200]}"
+E       AssertionError: Portfolio positions: Expected 200, got 404. Response: {"detail":"Not Found"}
+E       assert 404 == 200
+E        +  where 404 = &lt;Response [404 Not Found]&gt;.status_code
+
+tests\api\test_http_routes_matrix_comprehensive.py:178: AssertionError</failure></testcase><testcase classname="tests.api.test_http_routes_matrix_comprehensive.TestHTTPRoutesMatrix" name="test_routes_success_scenarios[POST-/orders-True-body10-200-Create order-/orders]" time="0.011"><failure message="AssertionError: Create order: Expected 200, got 404. Response: {&quot;detail&quot;:&quot;Not Found&quot;}&#10;assert 404 == 200&#10; +  where 404 = &lt;Response [404 Not Found]&gt;.status_code">self = &lt;test_http_routes_matrix_comprehensive.TestHTTPRoutesMatrix object at 0x0000022ADF4D34D0&gt;
+method = 'POST', path = '/orders', requires_auth = True
+body = {'qty': 100, 'side': 'buy', 'symbol': 'AAPL'}, expected_status = 200
+description = 'Create order', route_template = '/orders'
+auth_client = &lt;tests.helpers.robust_testclient.RobustTestClient object at 0x0000022AE07858B0&gt;
+unauth_client = &lt;tests.helpers.robust_testclient.RobustTestClient object at 0x0000022ADF668920&gt;
+
+    @pytest.mark.parametrize("method,path,requires_auth,body,expected_status,description,route_template",
+                             COMPREHENSIVE_ROUTES_DATA)
+    def test_routes_success_scenarios(self, method, path, requires_auth, body, expected_status,
+                                    description, route_template, auth_client, unauth_client):
+        """Test all routes for successful responses (200, 201, etc.)."""
+        client = auth_client if requires_auth else unauth_client
+    
+        # Make HTTP request based on method
+        if method == "GET":
+            response = client.get(path)
+        elif method == "POST":
+            if body:
+                response = client.post(path, json=body)
+            else:
+                response = client.post(path)
+        elif method == "PUT":
+            response = client.put(path, json=body or {})
+        else:
+            pytest.skip(f"Unsupported method: {method}")
+    
+        # Assert expected success status
+&gt;       assert response.status_code == expected_status, f"{description}: Expected {expected_status}, got {response.status_code}. Response: {response.text[:200]}"
+E       AssertionError: Create order: Expected 200, got 404. Response: {"detail":"Not Found"}
+E       assert 404 == 200
+E        +  where 404 = &lt;Response [404 Not Found]&gt;.status_code
+
+tests\api\test_http_routes_matrix_comprehensive.py:178: AssertionError</failure></testcase><testcase classname="tests.api.test_http_routes_matrix_comprehensive.TestHTTPRoutesMatrix" name="test_routes_success_scenarios[GET-/orders/test-123-True-None-200-Get specific order-/orders/{order_id}]" time="0.011"><failure message="AssertionError: Get specific order: Expected 200, got 404. Response: {&quot;detail&quot;:&quot;Not Found&quot;}&#10;assert 404 == 200&#10; +  where 404 = &lt;Response [404 Not Found]&gt;.status_code">self = &lt;test_http_routes_matrix_comprehensive.TestHTTPRoutesMatrix object at 0x0000022ADF4D3560&gt;
+method = 'GET', path = '/orders/test-123', requires_auth = True, body = None
+expected_status = 200, description = 'Get specific order'
+route_template = '/orders/{order_id}'
+auth_client = &lt;tests.helpers.robust_testclient.RobustTestClient object at 0x0000022ADF669C40&gt;
+unauth_client = &lt;tests.helpers.robust_testclient.RobustTestClient object at 0x0000022AE0DA7650&gt;
+
+    @pytest.mark.parametrize("method,path,requires_auth,body,expected_status,description,route_template",
+                             COMPREHENSIVE_ROUTES_DATA)
+    def test_routes_success_scenarios(self, method, path, requires_auth, body, expected_status,
+                                    description, route_template, auth_client, unauth_client):
+        """Test all routes for successful responses (200, 201, etc.)."""
+        client = auth_client if requires_auth else unauth_client
+    
+        # Make HTTP request based on method
+        if method == "GET":
+            response = client.get(path)
+        elif method == "POST":
+            if body:
+                response = client.post(path, json=body)
+            else:
+                response = client.post(path)
+        elif method == "PUT":
+            response = client.put(path, json=body or {})
+        else:
+            pytest.skip(f"Unsupported method: {method}")
+    
+        # Assert expected success status
+&gt;       assert response.status_code == expected_status, f"{description}: Expected {expected_status}, got {response.status_code}. Response: {response.text[:200]}"
+E       AssertionError: Get specific order: Expected 200, got 404. Response: {"detail":"Not Found"}
+E       assert 404 == 200
+E        +  where 404 = &lt;Response [404 Not Found]&gt;.status_code
+
+tests\api\test_http_routes_matrix_comprehensive.py:178: AssertionError</failure></testcase><testcase classname="tests.api.test_http_routes_matrix_comprehensive.TestHTTPRoutesMatrix" name="test_routes_success_scenarios[POST-/orders/test-123/cancel-True-None-200-Cancel order-/orders/{order_id}/cancel]" time="0.012"><failure message="AssertionError: Cancel order: Expected 200, got 404. Response: {&quot;detail&quot;:&quot;Not Found&quot;}&#10;assert 404 == 200&#10; +  where 404 = &lt;Response [404 Not Found]&gt;.status_code">self = &lt;test_http_routes_matrix_comprehensive.TestHTTPRoutesMatrix object at 0x0000022ADF4D35F0&gt;
+method = 'POST', path = '/orders/test-123/cancel', requires_auth = True
+body = None, expected_status = 200, description = 'Cancel order'
+route_template = '/orders/{order_id}/cancel'
+auth_client = &lt;tests.helpers.robust_testclient.RobustTestClient object at 0x0000022AE0DA7620&gt;
+unauth_client = &lt;tests.helpers.robust_testclient.RobustTestClient object at 0x0000022ADF6698E0&gt;
+
+    @pytest.mark.parametrize("method,path,requires_auth,body,expected_status,description,route_template",
+                             COMPREHENSIVE_ROUTES_DATA)
+    def test_routes_success_scenarios(self, method, path, requires_auth, body, expected_status,
+                                    description, route_template, auth_client, unauth_client):
+        """Test all routes for successful responses (200, 201, etc.)."""
+        client = auth_client if requires_auth else unauth_client
+    
+        # Make HTTP request based on method
+        if method == "GET":
+            response = client.get(path)
+        elif method == "POST":
+            if body:
+                response = client.post(path, json=body)
+            else:
+                response = client.post(path)
+        elif method == "PUT":
+            response = client.put(path, json=body or {})
+        else:
+            pytest.skip(f"Unsupported method: {method}")
+    
+        # Assert expected success status
+&gt;       assert response.status_code == expected_status, f"{description}: Expected {expected_status}, got {response.status_code}. Response: {response.text[:200]}"
+E       AssertionError: Cancel order: Expected 200, got 404. Response: {"detail":"Not Found"}
+E       assert 404 == 200
+E        +  where 404 = &lt;Response [404 Not Found]&gt;.status_code
+
+tests\api\test_http_routes_matrix_comprehensive.py:178: AssertionError</failure></testcase><testcase classname="tests.api.test_http_routes_matrix_comprehensive.TestHTTPRoutesMatrix" name="test_routes_success_scenarios[GET-/signals-True-None-200-Get trading signals-/signals]" time="0.011"><failure message="AssertionError: Get trading signals: Expected 200, got 404. Response: {&quot;detail&quot;:&quot;Not Found&quot;}&#10;assert 404 == 200&#10; +  where 404 = &lt;Response [404 Not Found]&gt;.status_code">self = &lt;test_http_routes_matrix_comprehensive.TestHTTPRoutesMatrix object at 0x0000022ADF4D3680&gt;
+method = 'GET', path = '/signals', requires_auth = True, body = None
+expected_status = 200, description = 'Get trading signals'
+route_template = '/signals'
+auth_client = &lt;tests.helpers.robust_testclient.RobustTestClient object at 0x0000022AE07B58B0&gt;
+unauth_client = &lt;tests.helpers.robust_testclient.RobustTestClient object at 0x0000022AE0796180&gt;
+
+    @pytest.mark.parametrize("method,path,requires_auth,body,expected_status,description,route_template",
+                             COMPREHENSIVE_ROUTES_DATA)
+    def test_routes_success_scenarios(self, method, path, requires_auth, body, expected_status,
+                                    description, route_template, auth_client, unauth_client):
+        """Test all routes for successful responses (200, 201, etc.)."""
+        client = auth_client if requires_auth else unauth_client
+    
+        # Make HTTP request based on method
+        if method == "GET":
+            response = client.get(path)
+        elif method == "POST":
+            if body:
+                response = client.post(path, json=body)
+            else:
+                response = client.post(path)
+        elif method == "PUT":
+            response = client.put(path, json=body or {})
+        else:
+            pytest.skip(f"Unsupported method: {method}")
+    
+        # Assert expected success status
+&gt;       assert response.status_code == expected_status, f"{description}: Expected {expected_status}, got {response.status_code}. Response: {response.text[:200]}"
+E       AssertionError: Get trading signals: Expected 200, got 404. Response: {"detail":"Not Found"}
+E       assert 404 == 200
+E        +  where 404 = &lt;Response [404 Not Found]&gt;.status_code
+
+tests\api\test_http_routes_matrix_comprehensive.py:178: AssertionError</failure></testcase><testcase classname="tests.api.test_http_routes_matrix_comprehensive.TestHTTPRoutesMatrix" name="test_routes_success_scenarios[GET-/signals/AAPL-True-None-200-Get symbol signals-/signals/{symbol}]" time="0.011"><failure message="AssertionError: Get symbol signals: Expected 200, got 404. Response: {&quot;detail&quot;:&quot;Not Found&quot;}&#10;assert 404 == 200&#10; +  where 404 = &lt;Response [404 Not Found]&gt;.status_code">self = &lt;test_http_routes_matrix_comprehensive.TestHTTPRoutesMatrix object at 0x0000022ADF4D3710&gt;
+method = 'GET', path = '/signals/AAPL', requires_auth = True, body = None
+expected_status = 200, description = 'Get symbol signals'
+route_template = '/signals/{symbol}'
+auth_client = &lt;tests.helpers.robust_testclient.RobustTestClient object at 0x0000022AE0795070&gt;
+unauth_client = &lt;tests.helpers.robust_testclient.RobustTestClient object at 0x0000022AE0F507D0&gt;
+
+    @pytest.mark.parametrize("method,path,requires_auth,body,expected_status,description,route_template",
+                             COMPREHENSIVE_ROUTES_DATA)
+    def test_routes_success_scenarios(self, method, path, requires_auth, body, expected_status,
+                                    description, route_template, auth_client, unauth_client):
+        """Test all routes for successful responses (200, 201, etc.)."""
+        client = auth_client if requires_auth else unauth_client
+    
+        # Make HTTP request based on method
+        if method == "GET":
+            response = client.get(path)
+        elif method == "POST":
+            if body:
+                response = client.post(path, json=body)
+            else:
+                response = client.post(path)
+        elif method == "PUT":
+            response = client.put(path, json=body or {})
+        else:
+            pytest.skip(f"Unsupported method: {method}")
+    
+        # Assert expected success status
+&gt;       assert response.status_code == expected_status, f"{description}: Expected {expected_status}, got {response.status_code}. Response: {response.text[:200]}"
+E       AssertionError: Get symbol signals: Expected 200, got 404. Response: {"detail":"Not Found"}
+E       assert 404 == 200
+E        +  where 404 = &lt;Response [404 Not Found]&gt;.status_code
+
+tests\api\test_http_routes_matrix_comprehensive.py:178: AssertionError</failure></testcase><testcase classname="tests.api.test_http_routes_matrix_comprehensive.TestHTTPRoutesMatrix" name="test_routes_success_scenarios[POST-/models/train-True-body15-200-Train ML model-/models/train]" time="0.012"><failure message="AssertionError: Train ML model: Expected 200, got 404. Response: {&quot;detail&quot;:&quot;Not Found&quot;}&#10;assert 404 == 200&#10; +  where 404 = &lt;Response [404 Not Found]&gt;.status_code">self = &lt;test_http_routes_matrix_comprehensive.TestHTTPRoutesMatrix object at 0x0000022ADF4D37A0&gt;
+method = 'POST', path = '/models/train', requires_auth = True
+body = {'model_type': 'regression'}, expected_status = 200
+description = 'Train ML model', route_template = '/models/train'
+auth_client = &lt;tests.helpers.robust_testclient.RobustTestClient object at 0x0000022AE0F52E40&gt;
+unauth_client = &lt;tests.helpers.robust_testclient.RobustTestClient object at 0x0000022AE0F35250&gt;
+
+    @pytest.mark.parametrize("method,path,requires_auth,body,expected_status,description,route_template",
+                             COMPREHENSIVE_ROUTES_DATA)
+    def test_routes_success_scenarios(self, method, path, requires_auth, body, expected_status,
+                                    description, route_template, auth_client, unauth_client):
+        """Test all routes for successful responses (200, 201, etc.)."""
+        client = auth_client if requires_auth else unauth_client
+    
+        # Make HTTP request based on method
+        if method == "GET":
+            response = client.get(path)
+        elif method == "POST":
+            if body:
+                response = client.post(path, json=body)
+            else:
+                response = client.post(path)
+        elif method == "PUT":
+            response = client.put(path, json=body or {})
+        else:
+            pytest.skip(f"Unsupported method: {method}")
+    
+        # Assert expected success status
+&gt;       assert response.status_code == expected_status, f"{description}: Expected {expected_status}, got {response.status_code}. Response: {response.text[:200]}"
+E       AssertionError: Train ML model: Expected 200, got 404. Response: {"detail":"Not Found"}
+E       assert 404 == 200
+E        +  where 404 = &lt;Response [404 Not Found]&gt;.status_code
+
+tests\api\test_http_routes_matrix_comprehensive.py:178: AssertionError</failure></testcase><testcase classname="tests.api.test_http_routes_matrix_comprehensive.TestHTTPRoutesMatrix" name="test_routes_success_scenarios[GET-/models/status-True-None-200-Get model status-/models/status]" time="0.012"><failure message="AssertionError: Get model status: Expected 200, got 404. Response: {&quot;detail&quot;:&quot;Not Found&quot;}&#10;assert 404 == 200&#10; +  where 404 = &lt;Response [404 Not Found]&gt;.status_code">self = &lt;test_http_routes_matrix_comprehensive.TestHTTPRoutesMatrix object at 0x0000022ADF4D3830&gt;
+method = 'GET', path = '/models/status', requires_auth = True, body = None
+expected_status = 200, description = 'Get model status'
+route_template = '/models/status'
+auth_client = &lt;tests.helpers.robust_testclient.RobustTestClient object at 0x0000022AE0E82C00&gt;
+unauth_client = &lt;tests.helpers.robust_testclient.RobustTestClient object at 0x0000022AE0E82900&gt;
+
+    @pytest.mark.parametrize("method,path,requires_auth,body,expected_status,description,route_template",
+                             COMPREHENSIVE_ROUTES_DATA)
+    def test_routes_success_scenarios(self, method, path, requires_auth, body, expected_status,
+                                    description, route_template, auth_client, unauth_client):
+        """Test all routes for successful responses (200, 201, etc.)."""
+        client = auth_client if requires_auth else unauth_client
+    
+        # Make HTTP request based on method
+        if method == "GET":
+            response = client.get(path)
+        elif method == "POST":
+            if body:
+                response = client.post(path, json=body)
+            else:
+                response = client.post(path)
+        elif method == "PUT":
+            response = client.put(path, json=body or {})
+        else:
+            pytest.skip(f"Unsupported method: {method}")
+    
+        # Assert expected success status
+&gt;       assert response.status_code == expected_status, f"{description}: Expected {expected_status}, got {response.status_code}. Response: {response.text[:200]}"
+E       AssertionError: Get model status: Expected 200, got 404. Response: {"detail":"Not Found"}
+E       assert 404 == 200
+E        +  where 404 = &lt;Response [404 Not Found]&gt;.status_code
+
+tests\api\test_http_routes_matrix_comprehensive.py:178: AssertionError</failure></testcase><testcase classname="tests.api.test_http_routes_matrix_comprehensive.TestHTTPRoutesMatrix" name="test_routes_success_scenarios[PUT-/risk/limits-True-body17-200-Update risk limits-/risk/limits]" time="0.011"><failure message="AssertionError: Update risk limits: Expected 200, got 404. Response: {&quot;detail&quot;:&quot;Not Found&quot;}&#10;assert 404 == 200&#10; +  where 404 = &lt;Response [404 Not Found]&gt;.status_code">self = &lt;test_http_routes_matrix_comprehensive.TestHTTPRoutesMatrix object at 0x0000022ADF4D38C0&gt;
+method = 'PUT', path = '/risk/limits', requires_auth = True
+body = {'max_position': 10000}, expected_status = 200
+description = 'Update risk limits', route_template = '/risk/limits'
+auth_client = &lt;tests.helpers.robust_testclient.RobustTestClient object at 0x0000022AE0E809B0&gt;
+unauth_client = &lt;tests.helpers.robust_testclient.RobustTestClient object at 0x0000022AE07853A0&gt;
+
+    @pytest.mark.parametrize("method,path,requires_auth,body,expected_status,description,route_template",
+                             COMPREHENSIVE_ROUTES_DATA)
+    def test_routes_success_scenarios(self, method, path, requires_auth, body, expected_status,
+                                    description, route_template, auth_client, unauth_client):
+        """Test all routes for successful responses (200, 201, etc.)."""
+        client = auth_client if requires_auth else unauth_client
+    
+        # Make HTTP request based on method
+        if method == "GET":
+            response = client.get(path)
+        elif method == "POST":
+            if body:
+                response = client.post(path, json=body)
+            else:
+                response = client.post(path)
+        elif method == "PUT":
+            response = client.put(path, json=body or {})
+        else:
+            pytest.skip(f"Unsupported method: {method}")
+    
+        # Assert expected success status
+&gt;       assert response.status_code == expected_status, f"{description}: Expected {expected_status}, got {response.status_code}. Response: {response.text[:200]}"
+E       AssertionError: Update risk limits: Expected 200, got 404. Response: {"detail":"Not Found"}
+E       assert 404 == 200
+E        +  where 404 = &lt;Response [404 Not Found]&gt;.status_code
+
+tests\api\test_http_routes_matrix_comprehensive.py:178: AssertionError</failure></testcase><testcase classname="tests.api.test_http_routes_matrix_comprehensive.TestHTTPRoutesMatrix" name="test_routes_success_scenarios[GET-/risk/metrics-True-None-200-Get risk metrics-/risk/metrics]" time="0.011"><failure message="AssertionError: Get risk metrics: Expected 200, got 404. Response: {&quot;detail&quot;:&quot;Not Found&quot;}&#10;assert 404 == 200&#10; +  where 404 = &lt;Response [404 Not Found]&gt;.status_code">self = &lt;test_http_routes_matrix_comprehensive.TestHTTPRoutesMatrix object at 0x0000022ADF4D3950&gt;
+method = 'GET', path = '/risk/metrics', requires_auth = True, body = None
+expected_status = 200, description = 'Get risk metrics'
+route_template = '/risk/metrics'
+auth_client = &lt;tests.helpers.robust_testclient.RobustTestClient object at 0x0000022AE0787A70&gt;
+unauth_client = &lt;tests.helpers.robust_testclient.RobustTestClient object at 0x0000022AE1006450&gt;
+
+    @pytest.mark.parametrize("method,path,requires_auth,body,expected_status,description,route_template",
+                             COMPREHENSIVE_ROUTES_DATA)
+    def test_routes_success_scenarios(self, method, path, requires_auth, body, expected_status,
+                                    description, route_template, auth_client, unauth_client):
+        """Test all routes for successful responses (200, 201, etc.)."""
+        client = auth_client if requires_auth else unauth_client
+    
+        # Make HTTP request based on method
+        if method == "GET":
+            response = client.get(path)
+        elif method == "POST":
+            if body:
+                response = client.post(path, json=body)
+            else:
+                response = client.post(path)
+        elif method == "PUT":
+            response = client.put(path, json=body or {})
+        else:
+            pytest.skip(f"Unsupported method: {method}")
+    
+        # Assert expected success status
+&gt;       assert response.status_code == expected_status, f"{description}: Expected {expected_status}, got {response.status_code}. Response: {response.text[:200]}"
+E       AssertionError: Get risk metrics: Expected 200, got 404. Response: {"detail":"Not Found"}
+E       assert 404 == 200
+E        +  where 404 = &lt;Response [404 Not Found]&gt;.status_code
+
+tests\api\test_http_routes_matrix_comprehensive.py:178: AssertionError</failure></testcase><testcase classname="tests.api.test_http_routes_matrix_comprehensive.TestHTTPRoutesMatrix" name="test_routes_success_scenarios[GET-/portfolio/performance-True-None-200-Portfolio performance-/portfolio/performance]" time="0.012"><failure message="AssertionError: Portfolio performance: Expected 200, got 404. Response: {&quot;detail&quot;:&quot;Not Found&quot;}&#10;assert 404 == 200&#10; +  where 404 = &lt;Response [404 Not Found]&gt;.status_code">self = &lt;test_http_routes_matrix_comprehensive.TestHTTPRoutesMatrix object at 0x0000022ADF4D39E0&gt;
+method = 'GET', path = '/portfolio/performance', requires_auth = True
+body = None, expected_status = 200, description = 'Portfolio performance'
+route_template = '/portfolio/performance'
+auth_client = &lt;tests.helpers.robust_testclient.RobustTestClient object at 0x0000022AE1007620&gt;
+unauth_client = &lt;tests.helpers.robust_testclient.RobustTestClient object at 0x0000022AE1067590&gt;
+
+    @pytest.mark.parametrize("method,path,requires_auth,body,expected_status,description,route_template",
+                             COMPREHENSIVE_ROUTES_DATA)
+    def test_routes_success_scenarios(self, method, path, requires_auth, body, expected_status,
+                                    description, route_template, auth_client, unauth_client):
+        """Test all routes for successful responses (200, 201, etc.)."""
+        client = auth_client if requires_auth else unauth_client
+    
+        # Make HTTP request based on method
+        if method == "GET":
+            response = client.get(path)
+        elif method == "POST":
+            if body:
+                response = client.post(path, json=body)
+            else:
+                response = client.post(path)
+        elif method == "PUT":
+            response = client.put(path, json=body or {})
+        else:
+            pytest.skip(f"Unsupported method: {method}")
+    
+        # Assert expected success status
+&gt;       assert response.status_code == expected_status, f"{description}: Expected {expected_status}, got {response.status_code}. Response: {response.text[:200]}"
+E       AssertionError: Portfolio performance: Expected 200, got 404. Response: {"detail":"Not Found"}
+E       assert 404 == 200
+E        +  where 404 = &lt;Response [404 Not Found]&gt;.status_code
+
+tests\api\test_http_routes_matrix_comprehensive.py:178: AssertionError</failure></testcase><testcase classname="tests.api.test_http_routes_matrix_comprehensive.TestHTTPRoutesMatrix" name="test_routes_success_scenarios[GET-/market/data/AAPL-True-None-200-Market data-/market/data/{symbol}]" time="0.012"><failure message="AssertionError: Market data: Expected 200, got 404. Response: {&quot;detail&quot;:&quot;Not Found&quot;}&#10;assert 404 == 200&#10; +  where 404 = &lt;Response [404 Not Found]&gt;.status_code">self = &lt;test_http_routes_matrix_comprehensive.TestHTTPRoutesMatrix object at 0x0000022ADF4D3A70&gt;
+method = 'GET', path = '/market/data/AAPL', requires_auth = True, body = None
+expected_status = 200, description = 'Market data'
+route_template = '/market/data/{symbol}'
+auth_client = &lt;tests.helpers.robust_testclient.RobustTestClient object at 0x0000022AE1005DC0&gt;
+unauth_client = &lt;tests.helpers.robust_testclient.RobustTestClient object at 0x0000022AE1005AF0&gt;
+
+    @pytest.mark.parametrize("method,path,requires_auth,body,expected_status,description,route_template",
+                             COMPREHENSIVE_ROUTES_DATA)
+    def test_routes_success_scenarios(self, method, path, requires_auth, body, expected_status,
+                                    description, route_template, auth_client, unauth_client):
+        """Test all routes for successful responses (200, 201, etc.)."""
+        client = auth_client if requires_auth else unauth_client
+    
+        # Make HTTP request based on method
+        if method == "GET":
+            response = client.get(path)
+        elif method == "POST":
+            if body:
+                response = client.post(path, json=body)
+            else:
+                response = client.post(path)
+        elif method == "PUT":
+            response = client.put(path, json=body or {})
+        else:
+            pytest.skip(f"Unsupported method: {method}")
+    
+        # Assert expected success status
+&gt;       assert response.status_code == expected_status, f"{description}: Expected {expected_status}, got {response.status_code}. Response: {response.text[:200]}"
+E       AssertionError: Market data: Expected 200, got 404. Response: {"detail":"Not Found"}
+E       assert 404 == 200
+E        +  where 404 = &lt;Response [404 Not Found]&gt;.status_code
+
+tests\api\test_http_routes_matrix_comprehensive.py:178: AssertionError</failure></testcase><testcase classname="tests.api.test_http_routes_matrix_comprehensive.TestHTTPRoutesMatrix" name="test_routes_success_scenarios[POST-/strategies/backtest-True-body21-200-Run backtest-/strategies/backtest]" time="0.010"><failure message="AssertionError: Run backtest: Expected 200, got 404. Response: {&quot;detail&quot;:&quot;Not Found&quot;}&#10;assert 404 == 200&#10; +  where 404 = &lt;Response [404 Not Found]&gt;.status_code">self = &lt;test_http_routes_matrix_comprehensive.TestHTTPRoutesMatrix object at 0x0000022ADF4D3B00&gt;
+method = 'POST', path = '/strategies/backtest', requires_auth = True
+body = {'strategy': 'mean_reversion'}, expected_status = 200
+description = 'Run backtest', route_template = '/strategies/backtest'
+auth_client = &lt;tests.helpers.robust_testclient.RobustTestClient object at 0x0000022AE10044A0&gt;
+unauth_client = &lt;tests.helpers.robust_testclient.RobustTestClient object at 0x0000022AE07B5310&gt;
+
+    @pytest.mark.parametrize("method,path,requires_auth,body,expected_status,description,route_template",
+                             COMPREHENSIVE_ROUTES_DATA)
+    def test_routes_success_scenarios(self, method, path, requires_auth, body, expected_status,
+                                    description, route_template, auth_client, unauth_client):
+        """Test all routes for successful responses (200, 201, etc.)."""
+        client = auth_client if requires_auth else unauth_client
+    
+        # Make HTTP request based on method
+        if method == "GET":
+            response = client.get(path)
+        elif method == "POST":
+            if body:
+                response = client.post(path, json=body)
+            else:
+                response = client.post(path)
+        elif method == "PUT":
+            response = client.put(path, json=body or {})
+        else:
+            pytest.skip(f"Unsupported method: {method}")
+    
+        # Assert expected success status
+&gt;       assert response.status_code == expected_status, f"{description}: Expected {expected_status}, got {response.status_code}. Response: {response.text[:200]}"
+E       AssertionError: Run backtest: Expected 200, got 404. Response: {"detail":"Not Found"}
+E       assert 404 == 200
+E        +  where 404 = &lt;Response [404 Not Found]&gt;.status_code
+
+tests\api\test_http_routes_matrix_comprehensive.py:178: AssertionError</failure></testcase><testcase classname="tests.api.test_http_routes_matrix_comprehensive.TestHTTPRoutesMatrix" name="test_routes_success_scenarios[GET-/audit/logs-True-None-200-Audit logs-/audit/logs]" time="0.011"><failure message="AssertionError: Audit logs: Expected 200, got 404. Response: {&quot;detail&quot;:&quot;Not Found&quot;}&#10;assert 404 == 200&#10; +  where 404 = &lt;Response [404 Not Found]&gt;.status_code">self = &lt;test_http_routes_matrix_comprehensive.TestHTTPRoutesMatrix object at 0x0000022ADF4D3B90&gt;
+method = 'GET', path = '/audit/logs', requires_auth = True, body = None
+expected_status = 200, description = 'Audit logs'
+route_template = '/audit/logs'
+auth_client = &lt;tests.helpers.robust_testclient.RobustTestClient object at 0x0000022AE07B53D0&gt;
+unauth_client = &lt;tests.helpers.robust_testclient.RobustTestClient object at 0x0000022AE1014D10&gt;
+
+    @pytest.mark.parametrize("method,path,requires_auth,body,expected_status,description,route_template",
+                             COMPREHENSIVE_ROUTES_DATA)
+    def test_routes_success_scenarios(self, method, path, requires_auth, body, expected_status,
+                                    description, route_template, auth_client, unauth_client):
+        """Test all routes for successful responses (200, 201, etc.)."""
+        client = auth_client if requires_auth else unauth_client
+    
+        # Make HTTP request based on method
+        if method == "GET":
+            response = client.get(path)
+        elif method == "POST":
+            if body:
+                response = client.post(path, json=body)
+            else:
+                response = client.post(path)
+        elif method == "PUT":
+            response = client.put(path, json=body or {})
+        else:
+            pytest.skip(f"Unsupported method: {method}")
+    
+        # Assert expected success status
+&gt;       assert response.status_code == expected_status, f"{description}: Expected {expected_status}, got {response.status_code}. Response: {response.text[:200]}"
+E       AssertionError: Audit logs: Expected 200, got 404. Response: {"detail":"Not Found"}
+E       assert 404 == 200
+E        +  where 404 = &lt;Response [404 Not Found]&gt;.status_code
+
+tests\api\test_http_routes_matrix_comprehensive.py:178: AssertionError</failure></testcase><testcase classname="tests.api.test_http_routes_matrix_comprehensive.TestHTTPRoutesMatrix" name="test_routes_success_scenarios[POST-/notifications/webhook-False-body23-200-Webhook-/notifications/webhook]" time="0.011"><failure message="AssertionError: Webhook: Expected 200, got 404. Response: {&quot;detail&quot;:&quot;Not Found&quot;}&#10;assert 404 == 200&#10; +  where 404 = &lt;Response [404 Not Found]&gt;.status_code">self = &lt;test_http_routes_matrix_comprehensive.TestHTTPRoutesMatrix object at 0x0000022ADF4D3C20&gt;
+method = 'POST', path = '/notifications/webhook', requires_auth = False
+body = {'event': 'order_filled'}, expected_status = 200, description = 'Webhook'
+route_template = '/notifications/webhook'
+auth_client = &lt;tests.helpers.robust_testclient.RobustTestClient object at 0x0000022AE10174D0&gt;
+unauth_client = &lt;tests.helpers.robust_testclient.RobustTestClient object at 0x0000022AE10F1DC0&gt;
+
+    @pytest.mark.parametrize("method,path,requires_auth,body,expected_status,description,route_template",
+                             COMPREHENSIVE_ROUTES_DATA)
+    def test_routes_success_scenarios(self, method, path, requires_auth, body, expected_status,
+                                    description, route_template, auth_client, unauth_client):
+        """Test all routes for successful responses (200, 201, etc.)."""
+        client = auth_client if requires_auth else unauth_client
+    
+        # Make HTTP request based on method
+        if method == "GET":
+            response = client.get(path)
+        elif method == "POST":
+            if body:
+                response = client.post(path, json=body)
+            else:
+                response = client.post(path)
+        elif method == "PUT":
+            response = client.put(path, json=body or {})
+        else:
+            pytest.skip(f"Unsupported method: {method}")
+    
+        # Assert expected success status
+&gt;       assert response.status_code == expected_status, f"{description}: Expected {expected_status}, got {response.status_code}. Response: {response.text[:200]}"
+E       AssertionError: Webhook: Expected 200, got 404. Response: {"detail":"Not Found"}
+E       assert 404 == 200
+E        +  where 404 = &lt;Response [404 Not Found]&gt;.status_code
+
+tests\api\test_http_routes_matrix_comprehensive.py:178: AssertionError</failure></testcase><testcase classname="tests.api.test_http_routes_matrix_comprehensive.TestHTTPRoutesMatrix" name="test_routes_authentication_required[GET-/portfolio/positions-True-None-200-Portfolio positions-/portfolio/positions]" time="0.012"><failure message="AssertionError: Portfolio positions: Expected 401 (Unauthorized), got 404&#10;assert 404 == 401&#10; +  where 404 = &lt;Response [404 Not Found]&gt;.status_code">self = &lt;test_http_routes_matrix_comprehensive.TestHTTPRoutesMatrix object at 0x0000022ADF4D3EC0&gt;
+method = 'GET', path = '/portfolio/positions', requires_auth = True, body = None
+expected_status = 200, description = 'Portfolio positions'
+route_template = '/portfolio/positions'
+unauth_client = &lt;tests.helpers.robust_testclient.RobustTestClient object at 0x0000022AE10932F0&gt;
+
+    @pytest.mark.parametrize("method,path,requires_auth,body,expected_status,description,route_template",
+                             [route for route in COMPREHENSIVE_ROUTES_DATA if route[2]])  # Only protected routes
+    def test_routes_authentication_required(self, method, path, requires_auth, body, expected_status,
+                                          description, route_template, unauth_client):
+        """Test protected routes return 401 without authentication."""
+        # Make request without authentication
+        if method == "GET":
+            response = unauth_client.get(path)
+        elif method == "POST":
+            response = unauth_client.post(path, json=body or {})
+        elif method == "PUT":
+            response = unauth_client.put(path, json=body or {})
+        else:
+            pytest.skip(f"Unsupported method: {method}")
+    
+        # Should return 401 Unauthorized
+&gt;       assert response.status_code == 401, f"{description}: Expected 401 (Unauthorized), got {response.status_code}"
+E       AssertionError: Portfolio positions: Expected 401 (Unauthorized), got 404
+E       assert 404 == 401
+E        +  where 404 = &lt;Response [404 Not Found]&gt;.status_code
+
+tests\api\test_http_routes_matrix_comprehensive.py:196: AssertionError</failure></testcase><testcase classname="tests.api.test_http_routes_matrix_comprehensive.TestHTTPRoutesMatrix" name="test_routes_authentication_required[POST-/orders-True-body1-200-Create order-/orders]" time="0.011"><failure message="AssertionError: Create order: Expected 401 (Unauthorized), got 404&#10;assert 404 == 401&#10; +  where 404 = &lt;Response [404 Not Found]&gt;.status_code">self = &lt;test_http_routes_matrix_comprehensive.TestHTTPRoutesMatrix object at 0x0000022ADF5144D0&gt;
+method = 'POST', path = '/orders', requires_auth = True
+body = {'qty': 100, 'side': 'buy', 'symbol': 'AAPL'}, expected_status = 200
+description = 'Create order', route_template = '/orders'
+unauth_client = &lt;tests.helpers.robust_testclient.RobustTestClient object at 0x0000022AE1090AA0&gt;
+
+    @pytest.mark.parametrize("method,path,requires_auth,body,expected_status,description,route_template",
+                             [route for route in COMPREHENSIVE_ROUTES_DATA if route[2]])  # Only protected routes
+    def test_routes_authentication_required(self, method, path, requires_auth, body, expected_status,
+                                          description, route_template, unauth_client):
+        """Test protected routes return 401 without authentication."""
+        # Make request without authentication
+        if method == "GET":
+            response = unauth_client.get(path)
+        elif method == "POST":
+            response = unauth_client.post(path, json=body or {})
+        elif method == "PUT":
+            response = unauth_client.put(path, json=body or {})
+        else:
+            pytest.skip(f"Unsupported method: {method}")
+    
+        # Should return 401 Unauthorized
+&gt;       assert response.status_code == 401, f"{description}: Expected 401 (Unauthorized), got {response.status_code}"
+E       AssertionError: Create order: Expected 401 (Unauthorized), got 404
+E       assert 404 == 401
+E        +  where 404 = &lt;Response [404 Not Found]&gt;.status_code
+
+tests\api\test_http_routes_matrix_comprehensive.py:196: AssertionError</failure></testcase><testcase classname="tests.api.test_http_routes_matrix_comprehensive.TestHTTPRoutesMatrix" name="test_routes_authentication_required[GET-/orders/test-123-True-None-200-Get specific order-/orders/{order_id}]" time="0.012"><failure message="AssertionError: Get specific order: Expected 401 (Unauthorized), got 404&#10;assert 404 == 401&#10; +  where 404 = &lt;Response [404 Not Found]&gt;.status_code">self = &lt;test_http_routes_matrix_comprehensive.TestHTTPRoutesMatrix object at 0x0000022ADF514590&gt;
+method = 'GET', path = '/orders/test-123', requires_auth = True, body = None
+expected_status = 200, description = 'Get specific order'
+route_template = '/orders/{order_id}'
+unauth_client = &lt;tests.helpers.robust_testclient.RobustTestClient object at 0x0000022AE0795A30&gt;
+
+    @pytest.mark.parametrize("method,path,requires_auth,body,expected_status,description,route_template",
+                             [route for route in COMPREHENSIVE_ROUTES_DATA if route[2]])  # Only protected routes
+    def test_routes_authentication_required(self, method, path, requires_auth, body, expected_status,
+                                          description, route_template, unauth_client):
+        """Test protected routes return 401 without authentication."""
+        # Make request without authentication
+        if method == "GET":
+            response = unauth_client.get(path)
+        elif method == "POST":
+            response = unauth_client.post(path, json=body or {})
+        elif method == "PUT":
+            response = unauth_client.put(path, json=body or {})
+        else:
+            pytest.skip(f"Unsupported method: {method}")
+    
+        # Should return 401 Unauthorized
+&gt;       assert response.status_code == 401, f"{description}: Expected 401 (Unauthorized), got {response.status_code}"
+E       AssertionError: Get specific order: Expected 401 (Unauthorized), got 404
+E       assert 404 == 401
+E        +  where 404 = &lt;Response [404 Not Found]&gt;.status_code
+
+tests\api\test_http_routes_matrix_comprehensive.py:196: AssertionError</failure></testcase><testcase classname="tests.api.test_http_routes_matrix_comprehensive.TestHTTPRoutesMatrix" name="test_routes_authentication_required[POST-/orders/test-123/cancel-True-None-200-Cancel order-/orders/{order_id}/cancel]" time="0.012"><failure message="AssertionError: Cancel order: Expected 401 (Unauthorized), got 404&#10;assert 404 == 401&#10; +  where 404 = &lt;Response [404 Not Found]&gt;.status_code">self = &lt;test_http_routes_matrix_comprehensive.TestHTTPRoutesMatrix object at 0x0000022ADF514650&gt;
+method = 'POST', path = '/orders/test-123/cancel', requires_auth = True
+body = None, expected_status = 200, description = 'Cancel order'
+route_template = '/orders/{order_id}/cancel'
+unauth_client = &lt;tests.helpers.robust_testclient.RobustTestClient object at 0x0000022AE11195B0&gt;
+
+    @pytest.mark.parametrize("method,path,requires_auth,body,expected_status,description,route_template",
+                             [route for route in COMPREHENSIVE_ROUTES_DATA if route[2]])  # Only protected routes
+    def test_routes_authentication_required(self, method, path, requires_auth, body, expected_status,
+                                          description, route_template, unauth_client):
+        """Test protected routes return 401 without authentication."""
+        # Make request without authentication
+        if method == "GET":
+            response = unauth_client.get(path)
+        elif method == "POST":
+            response = unauth_client.post(path, json=body or {})
+        elif method == "PUT":
+            response = unauth_client.put(path, json=body or {})
+        else:
+            pytest.skip(f"Unsupported method: {method}")
+    
+        # Should return 401 Unauthorized
+&gt;       assert response.status_code == 401, f"{description}: Expected 401 (Unauthorized), got {response.status_code}"
+E       AssertionError: Cancel order: Expected 401 (Unauthorized), got 404
+E       assert 404 == 401
+E        +  where 404 = &lt;Response [404 Not Found]&gt;.status_code
+
+tests\api\test_http_routes_matrix_comprehensive.py:196: AssertionError</failure></testcase><testcase classname="tests.api.test_http_routes_matrix_comprehensive.TestHTTPRoutesMatrix" name="test_routes_authentication_required[GET-/signals-True-None-200-Get trading signals-/signals]" time="0.012"><failure message="AssertionError: Get trading signals: Expected 401 (Unauthorized), got 404&#10;assert 404 == 401&#10; +  where 404 = &lt;Response [404 Not Found]&gt;.status_code">self = &lt;test_http_routes_matrix_comprehensive.TestHTTPRoutesMatrix object at 0x0000022ADF514710&gt;
+method = 'GET', path = '/signals', requires_auth = True, body = None
+expected_status = 200, description = 'Get trading signals'
+route_template = '/signals'
+unauth_client = &lt;tests.helpers.robust_testclient.RobustTestClient object at 0x0000022AE11023F0&gt;
+
+    @pytest.mark.parametrize("method,path,requires_auth,body,expected_status,description,route_template",
+                             [route for route in COMPREHENSIVE_ROUTES_DATA if route[2]])  # Only protected routes
+    def test_routes_authentication_required(self, method, path, requires_auth, body, expected_status,
+                                          description, route_template, unauth_client):
+        """Test protected routes return 401 without authentication."""
+        # Make request without authentication
+        if method == "GET":
+            response = unauth_client.get(path)
+        elif method == "POST":
+            response = unauth_client.post(path, json=body or {})
+        elif method == "PUT":
+            response = unauth_client.put(path, json=body or {})
+        else:
+            pytest.skip(f"Unsupported method: {method}")
+    
+        # Should return 401 Unauthorized
+&gt;       assert response.status_code == 401, f"{description}: Expected 401 (Unauthorized), got {response.status_code}"
+E       AssertionError: Get trading signals: Expected 401 (Unauthorized), got 404
+E       assert 404 == 401
+E        +  where 404 = &lt;Response [404 Not Found]&gt;.status_code
+
+tests\api\test_http_routes_matrix_comprehensive.py:196: AssertionError</failure></testcase><testcase classname="tests.api.test_http_routes_matrix_comprehensive.TestHTTPRoutesMatrix" name="test_routes_authentication_required[GET-/signals/AAPL-True-None-200-Get symbol signals-/signals/{symbol}]" time="0.012"><failure message="AssertionError: Get symbol signals: Expected 401 (Unauthorized), got 404&#10;assert 404 == 401&#10; +  where 404 = &lt;Response [404 Not Found]&gt;.status_code">self = &lt;test_http_routes_matrix_comprehensive.TestHTTPRoutesMatrix object at 0x0000022ADF5147D0&gt;
+method = 'GET', path = '/signals/AAPL', requires_auth = True, body = None
+expected_status = 200, description = 'Get symbol signals'
+route_template = '/signals/{symbol}'
+unauth_client = &lt;tests.helpers.robust_testclient.RobustTestClient object at 0x0000022AE0A3FAA0&gt;
+
+    @pytest.mark.parametrize("method,path,requires_auth,body,expected_status,description,route_template",
+                             [route for route in COMPREHENSIVE_ROUTES_DATA if route[2]])  # Only protected routes
+    def test_routes_authentication_required(self, method, path, requires_auth, body, expected_status,
+                                          description, route_template, unauth_client):
+        """Test protected routes return 401 without authentication."""
+        # Make request without authentication
+        if method == "GET":
+            response = unauth_client.get(path)
+        elif method == "POST":
+            response = unauth_client.post(path, json=body or {})
+        elif method == "PUT":
+            response = unauth_client.put(path, json=body or {})
+        else:
+            pytest.skip(f"Unsupported method: {method}")
+    
+        # Should return 401 Unauthorized
+&gt;       assert response.status_code == 401, f"{description}: Expected 401 (Unauthorized), got {response.status_code}"
+E       AssertionError: Get symbol signals: Expected 401 (Unauthorized), got 404
+E       assert 404 == 401
+E        +  where 404 = &lt;Response [404 Not Found]&gt;.status_code
+
+tests\api\test_http_routes_matrix_comprehensive.py:196: AssertionError</failure></testcase><testcase classname="tests.api.test_http_routes_matrix_comprehensive.TestHTTPRoutesMatrix" name="test_routes_authentication_required[POST-/models/train-True-body6-200-Train ML model-/models/train]" time="0.010"><failure message="AssertionError: Train ML model: Expected 401 (Unauthorized), got 404&#10;assert 404 == 401&#10; +  where 404 = &lt;Response [404 Not Found]&gt;.status_code">self = &lt;test_http_routes_matrix_comprehensive.TestHTTPRoutesMatrix object at 0x0000022ADF514890&gt;
+method = 'POST', path = '/models/train', requires_auth = True
+body = {'model_type': 'regression'}, expected_status = 200
+description = 'Train ML model', route_template = '/models/train'
+unauth_client = &lt;tests.helpers.robust_testclient.RobustTestClient object at 0x0000022AE10057F0&gt;
+
+    @pytest.mark.parametrize("method,path,requires_auth,body,expected_status,description,route_template",
+                             [route for route in COMPREHENSIVE_ROUTES_DATA if route[2]])  # Only protected routes
+    def test_routes_authentication_required(self, method, path, requires_auth, body, expected_status,
+                                          description, route_template, unauth_client):
+        """Test protected routes return 401 without authentication."""
+        # Make request without authentication
+        if method == "GET":
+            response = unauth_client.get(path)
+        elif method == "POST":
+            response = unauth_client.post(path, json=body or {})
+        elif method == "PUT":
+            response = unauth_client.put(path, json=body or {})
+        else:
+            pytest.skip(f"Unsupported method: {method}")
+    
+        # Should return 401 Unauthorized
+&gt;       assert response.status_code == 401, f"{description}: Expected 401 (Unauthorized), got {response.status_code}"
+E       AssertionError: Train ML model: Expected 401 (Unauthorized), got 404
+E       assert 404 == 401
+E        +  where 404 = &lt;Response [404 Not Found]&gt;.status_code
+
+tests\api\test_http_routes_matrix_comprehensive.py:196: AssertionError</failure></testcase><testcase classname="tests.api.test_http_routes_matrix_comprehensive.TestHTTPRoutesMatrix" name="test_routes_authentication_required[GET-/models/status-True-None-200-Get model status-/models/status]" time="0.011"><failure message="AssertionError: Get model status: Expected 401 (Unauthorized), got 404&#10;assert 404 == 401&#10; +  where 404 = &lt;Response [404 Not Found]&gt;.status_code">self = &lt;test_http_routes_matrix_comprehensive.TestHTTPRoutesMatrix object at 0x0000022ADF514950&gt;
+method = 'GET', path = '/models/status', requires_auth = True, body = None
+expected_status = 200, description = 'Get model status'
+route_template = '/models/status'
+unauth_client = &lt;tests.helpers.robust_testclient.RobustTestClient object at 0x0000022AE116BC20&gt;
+
+    @pytest.mark.parametrize("method,path,requires_auth,body,expected_status,description,route_template",
+                             [route for route in COMPREHENSIVE_ROUTES_DATA if route[2]])  # Only protected routes
+    def test_routes_authentication_required(self, method, path, requires_auth, body, expected_status,
+                                          description, route_template, unauth_client):
+        """Test protected routes return 401 without authentication."""
+        # Make request without authentication
+        if method == "GET":
+            response = unauth_client.get(path)
+        elif method == "POST":
+            response = unauth_client.post(path, json=body or {})
+        elif method == "PUT":
+            response = unauth_client.put(path, json=body or {})
+        else:
+            pytest.skip(f"Unsupported method: {method}")
+    
+        # Should return 401 Unauthorized
+&gt;       assert response.status_code == 401, f"{description}: Expected 401 (Unauthorized), got {response.status_code}"
+E       AssertionError: Get model status: Expected 401 (Unauthorized), got 404
+E       assert 404 == 401
+E        +  where 404 = &lt;Response [404 Not Found]&gt;.status_code
+
+tests\api\test_http_routes_matrix_comprehensive.py:196: AssertionError</failure></testcase><testcase classname="tests.api.test_http_routes_matrix_comprehensive.TestHTTPRoutesMatrix" name="test_routes_authentication_required[PUT-/risk/limits-True-body8-200-Update risk limits-/risk/limits]" time="0.011"><failure message="AssertionError: Update risk limits: Expected 401 (Unauthorized), got 404&#10;assert 404 == 401&#10; +  where 404 = &lt;Response [404 Not Found]&gt;.status_code">self = &lt;test_http_routes_matrix_comprehensive.TestHTTPRoutesMatrix object at 0x0000022ADF514A10&gt;
+method = 'PUT', path = '/risk/limits', requires_auth = True
+body = {'max_position': 10000}, expected_status = 200
+description = 'Update risk limits', route_template = '/risk/limits'
+unauth_client = &lt;tests.helpers.robust_testclient.RobustTestClient object at 0x0000022AE119F200&gt;
+
+    @pytest.mark.parametrize("method,path,requires_auth,body,expected_status,description,route_template",
+                             [route for route in COMPREHENSIVE_ROUTES_DATA if route[2]])  # Only protected routes
+    def test_routes_authentication_required(self, method, path, requires_auth, body, expected_status,
+                                          description, route_template, unauth_client):
+        """Test protected routes return 401 without authentication."""
+        # Make request without authentication
+        if method == "GET":
+            response = unauth_client.get(path)
+        elif method == "POST":
+            response = unauth_client.post(path, json=body or {})
+        elif method == "PUT":
+            response = unauth_client.put(path, json=body or {})
+        else:
+            pytest.skip(f"Unsupported method: {method}")
+    
+        # Should return 401 Unauthorized
+&gt;       assert response.status_code == 401, f"{description}: Expected 401 (Unauthorized), got {response.status_code}"
+E       AssertionError: Update risk limits: Expected 401 (Unauthorized), got 404
+E       assert 404 == 401
+E        +  where 404 = &lt;Response [404 Not Found]&gt;.status_code
+
+tests\api\test_http_routes_matrix_comprehensive.py:196: AssertionError</failure></testcase><testcase classname="tests.api.test_http_routes_matrix_comprehensive.TestHTTPRoutesMatrix" name="test_routes_authentication_required[GET-/risk/metrics-True-None-200-Get risk metrics-/risk/metrics]" time="0.011"><failure message="AssertionError: Get risk metrics: Expected 401 (Unauthorized), got 404&#10;assert 404 == 401&#10; +  where 404 = &lt;Response [404 Not Found]&gt;.status_code">self = &lt;test_http_routes_matrix_comprehensive.TestHTTPRoutesMatrix object at 0x0000022ADF514AD0&gt;
+method = 'GET', path = '/risk/metrics', requires_auth = True, body = None
+expected_status = 200, description = 'Get risk metrics'
+route_template = '/risk/metrics'
+unauth_client = &lt;tests.helpers.robust_testclient.RobustTestClient object at 0x0000022AE117A9F0&gt;
+
+    @pytest.mark.parametrize("method,path,requires_auth,body,expected_status,description,route_template",
+                             [route for route in COMPREHENSIVE_ROUTES_DATA if route[2]])  # Only protected routes
+    def test_routes_authentication_required(self, method, path, requires_auth, body, expected_status,
+                                          description, route_template, unauth_client):
+        """Test protected routes return 401 without authentication."""
+        # Make request without authentication
+        if method == "GET":
+            response = unauth_client.get(path)
+        elif method == "POST":
+            response = unauth_client.post(path, json=body or {})
+        elif method == "PUT":
+            response = unauth_client.put(path, json=body or {})
+        else:
+            pytest.skip(f"Unsupported method: {method}")
+    
+        # Should return 401 Unauthorized
+&gt;       assert response.status_code == 401, f"{description}: Expected 401 (Unauthorized), got {response.status_code}"
+E       AssertionError: Get risk metrics: Expected 401 (Unauthorized), got 404
+E       assert 404 == 401
+E        +  where 404 = &lt;Response [404 Not Found]&gt;.status_code
+
+tests\api\test_http_routes_matrix_comprehensive.py:196: AssertionError</failure></testcase><testcase classname="tests.api.test_http_routes_matrix_comprehensive.TestHTTPRoutesMatrix" name="test_routes_authentication_required[GET-/portfolio/performance-True-None-200-Portfolio performance-/portfolio/performance]" time="0.010"><failure message="AssertionError: Portfolio performance: Expected 401 (Unauthorized), got 404&#10;assert 404 == 401&#10; +  where 404 = &lt;Response [404 Not Found]&gt;.status_code">self = &lt;test_http_routes_matrix_comprehensive.TestHTTPRoutesMatrix object at 0x0000022ADF514B90&gt;
+method = 'GET', path = '/portfolio/performance', requires_auth = True
+body = None, expected_status = 200, description = 'Portfolio performance'
+route_template = '/portfolio/performance'
+unauth_client = &lt;tests.helpers.robust_testclient.RobustTestClient object at 0x0000022ADF643E90&gt;
+
+    @pytest.mark.parametrize("method,path,requires_auth,body,expected_status,description,route_template",
+                             [route for route in COMPREHENSIVE_ROUTES_DATA if route[2]])  # Only protected routes
+    def test_routes_authentication_required(self, method, path, requires_auth, body, expected_status,
+                                          description, route_template, unauth_client):
+        """Test protected routes return 401 without authentication."""
+        # Make request without authentication
+        if method == "GET":
+            response = unauth_client.get(path)
+        elif method == "POST":
+            response = unauth_client.post(path, json=body or {})
+        elif method == "PUT":
+            response = unauth_client.put(path, json=body or {})
+        else:
+            pytest.skip(f"Unsupported method: {method}")
+    
+        # Should return 401 Unauthorized
+&gt;       assert response.status_code == 401, f"{description}: Expected 401 (Unauthorized), got {response.status_code}"
+E       AssertionError: Portfolio performance: Expected 401 (Unauthorized), got 404
+E       assert 404 == 401
+E        +  where 404 = &lt;Response [404 Not Found]&gt;.status_code
+
+tests\api\test_http_routes_matrix_comprehensive.py:196: AssertionError</failure></testcase><testcase classname="tests.api.test_http_routes_matrix_comprehensive.TestHTTPRoutesMatrix" name="test_routes_authentication_required[GET-/market/data/AAPL-True-None-200-Market data-/market/data/{symbol}]" time="0.012"><failure message="AssertionError: Market data: Expected 401 (Unauthorized), got 404&#10;assert 404 == 401&#10; +  where 404 = &lt;Response [404 Not Found]&gt;.status_code">self = &lt;test_http_routes_matrix_comprehensive.TestHTTPRoutesMatrix object at 0x0000022ADF514C50&gt;
+method = 'GET', path = '/market/data/AAPL', requires_auth = True, body = None
+expected_status = 200, description = 'Market data'
+route_template = '/market/data/{symbol}'
+unauth_client = &lt;tests.helpers.robust_testclient.RobustTestClient object at 0x0000022AE11C5760&gt;
+
+    @pytest.mark.parametrize("method,path,requires_auth,body,expected_status,description,route_template",
+                             [route for route in COMPREHENSIVE_ROUTES_DATA if route[2]])  # Only protected routes
+    def test_routes_authentication_required(self, method, path, requires_auth, body, expected_status,
+                                          description, route_template, unauth_client):
+        """Test protected routes return 401 without authentication."""
+        # Make request without authentication
+        if method == "GET":
+            response = unauth_client.get(path)
+        elif method == "POST":
+            response = unauth_client.post(path, json=body or {})
+        elif method == "PUT":
+            response = unauth_client.put(path, json=body or {})
+        else:
+            pytest.skip(f"Unsupported method: {method}")
+    
+        # Should return 401 Unauthorized
+&gt;       assert response.status_code == 401, f"{description}: Expected 401 (Unauthorized), got {response.status_code}"
+E       AssertionError: Market data: Expected 401 (Unauthorized), got 404
+E       assert 404 == 401
+E        +  where 404 = &lt;Response [404 Not Found]&gt;.status_code
+
+tests\api\test_http_routes_matrix_comprehensive.py:196: AssertionError</failure></testcase><testcase classname="tests.api.test_http_routes_matrix_comprehensive.TestHTTPRoutesMatrix" name="test_routes_authentication_required[POST-/strategies/backtest-True-body12-200-Run backtest-/strategies/backtest]" time="0.013"><failure message="AssertionError: Run backtest: Expected 401 (Unauthorized), got 404&#10;assert 404 == 401&#10; +  where 404 = &lt;Response [404 Not Found]&gt;.status_code">self = &lt;test_http_routes_matrix_comprehensive.TestHTTPRoutesMatrix object at 0x0000022ADF514D10&gt;
+method = 'POST', path = '/strategies/backtest', requires_auth = True
+body = {'strategy': 'mean_reversion'}, expected_status = 200
+description = 'Run backtest', route_template = '/strategies/backtest'
+unauth_client = &lt;tests.helpers.robust_testclient.RobustTestClient object at 0x0000022AE11FA4E0&gt;
+
+    @pytest.mark.parametrize("method,path,requires_auth,body,expected_status,description,route_template",
+                             [route for route in COMPREHENSIVE_ROUTES_DATA if route[2]])  # Only protected routes
+    def test_routes_authentication_required(self, method, path, requires_auth, body, expected_status,
+                                          description, route_template, unauth_client):
+        """Test protected routes return 401 without authentication."""
+        # Make request without authentication
+        if method == "GET":
+            response = unauth_client.get(path)
+        elif method == "POST":
+            response = unauth_client.post(path, json=body or {})
+        elif method == "PUT":
+            response = unauth_client.put(path, json=body or {})
+        else:
+            pytest.skip(f"Unsupported method: {method}")
+    
+        # Should return 401 Unauthorized
+&gt;       assert response.status_code == 401, f"{description}: Expected 401 (Unauthorized), got {response.status_code}"
+E       AssertionError: Run backtest: Expected 401 (Unauthorized), got 404
+E       assert 404 == 401
+E        +  where 404 = &lt;Response [404 Not Found]&gt;.status_code
+
+tests\api\test_http_routes_matrix_comprehensive.py:196: AssertionError</failure></testcase><testcase classname="tests.api.test_http_routes_matrix_comprehensive.TestHTTPRoutesMatrix" name="test_routes_authentication_required[GET-/audit/logs-True-None-200-Audit logs-/audit/logs]" time="0.012"><failure message="AssertionError: Audit logs: Expected 401 (Unauthorized), got 404&#10;assert 404 == 401&#10; +  where 404 = &lt;Response [404 Not Found]&gt;.status_code">self = &lt;test_http_routes_matrix_comprehensive.TestHTTPRoutesMatrix object at 0x0000022ADF514DD0&gt;
+method = 'GET', path = '/audit/logs', requires_auth = True, body = None
+expected_status = 200, description = 'Audit logs'
+route_template = '/audit/logs'
+unauth_client = &lt;tests.helpers.robust_testclient.RobustTestClient object at 0x0000022ADF643DD0&gt;
+
+    @pytest.mark.parametrize("method,path,requires_auth,body,expected_status,description,route_template",
+                             [route for route in COMPREHENSIVE_ROUTES_DATA if route[2]])  # Only protected routes
+    def test_routes_authentication_required(self, method, path, requires_auth, body, expected_status,
+                                          description, route_template, unauth_client):
+        """Test protected routes return 401 without authentication."""
+        # Make request without authentication
+        if method == "GET":
+            response = unauth_client.get(path)
+        elif method == "POST":
+            response = unauth_client.post(path, json=body or {})
+        elif method == "PUT":
+            response = unauth_client.put(path, json=body or {})
+        else:
+            pytest.skip(f"Unsupported method: {method}")
+    
+        # Should return 401 Unauthorized
+&gt;       assert response.status_code == 401, f"{description}: Expected 401 (Unauthorized), got {response.status_code}"
+E       AssertionError: Audit logs: Expected 401 (Unauthorized), got 404
+E       assert 404 == 401
+E        +  where 404 = &lt;Response [404 Not Found]&gt;.status_code
+
+tests\api\test_http_routes_matrix_comprehensive.py:196: AssertionError</failure></testcase><testcase classname="tests.api.test_http_routes_matrix_comprehensive.TestHTTPRoutesMatrix" name="test_routes_validation_errors[POST-/auth/register-invalid_body0-422-email-Invalid email format]" time="0.013"><failure message="AssertionError: Expected field 'email' in validation errors&#10;assert False&#10; +  where False = any(&lt;generator object TestHTTPRoutesMatrix.test_routes_validation_errors.&lt;locals&gt;.&lt;genexpr&gt; at 0x0000022AE121E7A0&gt;)">self = &lt;test_http_routes_matrix_comprehensive.TestHTTPRoutesMatrix object at 0x0000022ADF515070&gt;
+method = 'POST', path = '/auth/register'
+invalid_body = {'email': 'invalid-email'}, expected_status = 422
+error_field = 'email', description = 'Invalid email format'
+auth_client = &lt;tests.helpers.robust_testclient.RobustTestClient object at 0x0000022AE1179100&gt;
+
+    @pytest.mark.parametrize("method,path,invalid_body,expected_status,error_field,description",
+                             VALIDATION_ERROR_DATA)
+    def test_routes_validation_errors(self, method, path, invalid_body, expected_status, error_field,
+                                    description, auth_client):
+        """Test routes return 422 for validation errors."""
+        # Make request with invalid payload
+        if method == "POST":
+            response = auth_client.post(path, json=invalid_body)
+        elif method == "PUT":
+            response = auth_client.put(path, json=invalid_body)
+        else:
+            pytest.skip(f"Validation testing not applicable for {method}")
+    
+        # Should return 422 Unprocessable Entity
+        assert response.status_code == expected_status, f"{description}: Expected {expected_status}, got {response.status_code}"
+    
+        # Verify validation error format
+        error_response = response.json()
+        assert "detail" in error_response
+    
+        # Check that error details contain field information
+        if isinstance(error_response["detail"], list):
+            field_errors = [error.get("field", error.get("loc", [""])[0]) for error in error_response["detail"]]
+&gt;           assert any(error_field in str(field).lower() for field in field_errors), f"Expected field '{error_field}' in validation errors"
+E           AssertionError: Expected field 'email' in validation errors
+E           assert False
+E            +  where False = any(&lt;generator object TestHTTPRoutesMatrix.test_routes_validation_errors.&lt;locals&gt;.&lt;genexpr&gt; at 0x0000022AE121E7A0&gt;)
+
+tests\api\test_http_routes_matrix_comprehensive.py:226: AssertionError</failure></testcase><testcase classname="tests.api.test_http_routes_matrix_comprehensive.TestHTTPRoutesMatrix" name="test_routes_validation_errors[POST-/auth/register-invalid_body1-422-password-Password too short]" time="0.012"><failure message="AssertionError: Expected field 'password' in validation errors&#10;assert False&#10; +  where False = any(&lt;generator object TestHTTPRoutesMatrix.test_routes_validation_errors.&lt;locals&gt;.&lt;genexpr&gt; at 0x0000022AE1245000&gt;)">self = &lt;test_http_routes_matrix_comprehensive.TestHTTPRoutesMatrix object at 0x0000022ADF515490&gt;
+method = 'POST', path = '/auth/register', invalid_body = {'password': 'short'}
+expected_status = 422, error_field = 'password'
+description = 'Password too short'
+auth_client = &lt;tests.helpers.robust_testclient.RobustTestClient object at 0x0000022AE1267C20&gt;
+
+    @pytest.mark.parametrize("method,path,invalid_body,expected_status,error_field,description",
+                             VALIDATION_ERROR_DATA)
+    def test_routes_validation_errors(self, method, path, invalid_body, expected_status, error_field,
+                                    description, auth_client):
+        """Test routes return 422 for validation errors."""
+        # Make request with invalid payload
+        if method == "POST":
+            response = auth_client.post(path, json=invalid_body)
+        elif method == "PUT":
+            response = auth_client.put(path, json=invalid_body)
+        else:
+            pytest.skip(f"Validation testing not applicable for {method}")
+    
+        # Should return 422 Unprocessable Entity
+        assert response.status_code == expected_status, f"{description}: Expected {expected_status}, got {response.status_code}"
+    
+        # Verify validation error format
+        error_response = response.json()
+        assert "detail" in error_response
+    
+        # Check that error details contain field information
+        if isinstance(error_response["detail"], list):
+            field_errors = [error.get("field", error.get("loc", [""])[0]) for error in error_response["detail"]]
+&gt;           assert any(error_field in str(field).lower() for field in field_errors), f"Expected field '{error_field}' in validation errors"
+E           AssertionError: Expected field 'password' in validation errors
+E           assert False
+E            +  where False = any(&lt;generator object TestHTTPRoutesMatrix.test_routes_validation_errors.&lt;locals&gt;.&lt;genexpr&gt; at 0x0000022AE1245000&gt;)
+
+tests\api\test_http_routes_matrix_comprehensive.py:226: AssertionError</failure></testcase><testcase classname="tests.api.test_http_routes_matrix_comprehensive.TestHTTPRoutesMatrix" name="test_routes_validation_errors[POST-/orders-invalid_body2-422-symbol-Invalid symbol]" time="0.011"><failure message="AssertionError: Invalid symbol: Expected 422, got 404&#10;assert 404 == 422&#10; +  where 404 = &lt;Response [404 Not Found]&gt;.status_code">self = &lt;test_http_routes_matrix_comprehensive.TestHTTPRoutesMatrix object at 0x0000022ADF515550&gt;
+method = 'POST', path = '/orders'
+invalid_body = {'side': 'buy', 'symbol': 'INVALID_SYMBOL_TOO_LONG'}
+expected_status = 422, error_field = 'symbol', description = 'Invalid symbol'
+auth_client = &lt;tests.helpers.robust_testclient.RobustTestClient object at 0x0000022AE1297C20&gt;
+
+    @pytest.mark.parametrize("method,path,invalid_body,expected_status,error_field,description",
+                             VALIDATION_ERROR_DATA)
+    def test_routes_validation_errors(self, method, path, invalid_body, expected_status, error_field,
+                                    description, auth_client):
+        """Test routes return 422 for validation errors."""
+        # Make request with invalid payload
+        if method == "POST":
+            response = auth_client.post(path, json=invalid_body)
+        elif method == "PUT":
+            response = auth_client.put(path, json=invalid_body)
+        else:
+            pytest.skip(f"Validation testing not applicable for {method}")
+    
+        # Should return 422 Unprocessable Entity
+&gt;       assert response.status_code == expected_status, f"{description}: Expected {expected_status}, got {response.status_code}"
+E       AssertionError: Invalid symbol: Expected 422, got 404
+E       assert 404 == 422
+E        +  where 404 = &lt;Response [404 Not Found]&gt;.status_code
+
+tests\api\test_http_routes_matrix_comprehensive.py:217: AssertionError</failure></testcase><testcase classname="tests.api.test_http_routes_matrix_comprehensive.TestHTTPRoutesMatrix" name="test_routes_validation_errors[POST-/orders-invalid_body3-422-side-Invalid order side]" time="0.011"><failure message="AssertionError: Invalid order side: Expected 422, got 404&#10;assert 404 == 422&#10; +  where 404 = &lt;Response [404 Not Found]&gt;.status_code">self = &lt;test_http_routes_matrix_comprehensive.TestHTTPRoutesMatrix object at 0x0000022ADF515610&gt;
+method = 'POST', path = '/orders'
+invalid_body = {'qty': 100, 'side': 'invalid', 'symbol': 'AAPL'}
+expected_status = 422, error_field = 'side', description = 'Invalid order side'
+auth_client = &lt;tests.helpers.robust_testclient.RobustTestClient object at 0x0000022AE0DBDDF0&gt;
+
+    @pytest.mark.parametrize("method,path,invalid_body,expected_status,error_field,description",
+                             VALIDATION_ERROR_DATA)
+    def test_routes_validation_errors(self, method, path, invalid_body, expected_status, error_field,
+                                    description, auth_client):
+        """Test routes return 422 for validation errors."""
+        # Make request with invalid payload
+        if method == "POST":
+            response = auth_client.post(path, json=invalid_body)
+        elif method == "PUT":
+            response = auth_client.put(path, json=invalid_body)
+        else:
+            pytest.skip(f"Validation testing not applicable for {method}")
+    
+        # Should return 422 Unprocessable Entity
+&gt;       assert response.status_code == expected_status, f"{description}: Expected {expected_status}, got {response.status_code}"
+E       AssertionError: Invalid order side: Expected 422, got 404
+E       assert 404 == 422
+E        +  where 404 = &lt;Response [404 Not Found]&gt;.status_code
+
+tests\api\test_http_routes_matrix_comprehensive.py:217: AssertionError</failure></testcase><testcase classname="tests.api.test_http_routes_matrix_comprehensive.TestHTTPRoutesMatrix" name="test_routes_validation_errors[POST-/orders-invalid_body4-422-qty-Negative quantity]" time="0.011"><failure message="AssertionError: Negative quantity: Expected 422, got 404&#10;assert 404 == 422&#10; +  where 404 = &lt;Response [404 Not Found]&gt;.status_code">self = &lt;test_http_routes_matrix_comprehensive.TestHTTPRoutesMatrix object at 0x0000022ADF5156D0&gt;
+method = 'POST', path = '/orders'
+invalid_body = {'qty': -100, 'side': 'buy', 'symbol': 'AAPL'}
+expected_status = 422, error_field = 'qty', description = 'Negative quantity'
+auth_client = &lt;tests.helpers.robust_testclient.RobustTestClient object at 0x0000022AE127D8B0&gt;
+
+    @pytest.mark.parametrize("method,path,invalid_body,expected_status,error_field,description",
+                             VALIDATION_ERROR_DATA)
+    def test_routes_validation_errors(self, method, path, invalid_body, expected_status, error_field,
+                                    description, auth_client):
+        """Test routes return 422 for validation errors."""
+        # Make request with invalid payload
+        if method == "POST":
+            response = auth_client.post(path, json=invalid_body)
+        elif method == "PUT":
+            response = auth_client.put(path, json=invalid_body)
+        else:
+            pytest.skip(f"Validation testing not applicable for {method}")
+    
+        # Should return 422 Unprocessable Entity
+&gt;       assert response.status_code == expected_status, f"{description}: Expected {expected_status}, got {response.status_code}"
+E       AssertionError: Negative quantity: Expected 422, got 404
+E       assert 404 == 422
+E        +  where 404 = &lt;Response [404 Not Found]&gt;.status_code
+
+tests\api\test_http_routes_matrix_comprehensive.py:217: AssertionError</failure></testcase><testcase classname="tests.api.test_http_routes_matrix_comprehensive.TestHTTPRoutesMatrix" name="test_routes_validation_errors[PUT-/risk/limits-invalid_body5-422-max_position-Invalid number format]" time="0.011"><failure message="AssertionError: Invalid number format: Expected 422, got 404&#10;assert 404 == 422&#10; +  where 404 = &lt;Response [404 Not Found]&gt;.status_code">self = &lt;test_http_routes_matrix_comprehensive.TestHTTPRoutesMatrix object at 0x0000022ADF515790&gt;
+method = 'PUT', path = '/risk/limits'
+invalid_body = {'max_position': 'not_a_number'}, expected_status = 422
+error_field = 'max_position', description = 'Invalid number format'
+auth_client = &lt;tests.helpers.robust_testclient.RobustTestClient object at 0x0000022AE12AE180&gt;
+
+    @pytest.mark.parametrize("method,path,invalid_body,expected_status,error_field,description",
+                             VALIDATION_ERROR_DATA)
+    def test_routes_validation_errors(self, method, path, invalid_body, expected_status, error_field,
+                                    description, auth_client):
+        """Test routes return 422 for validation errors."""
+        # Make request with invalid payload
+        if method == "POST":
+            response = auth_client.post(path, json=invalid_body)
+        elif method == "PUT":
+            response = auth_client.put(path, json=invalid_body)
+        else:
+            pytest.skip(f"Validation testing not applicable for {method}")
+    
+        # Should return 422 Unprocessable Entity
+&gt;       assert response.status_code == expected_status, f"{description}: Expected {expected_status}, got {response.status_code}"
+E       AssertionError: Invalid number format: Expected 422, got 404
+E       assert 404 == 422
+E        +  where 404 = &lt;Response [404 Not Found]&gt;.status_code
+
+tests\api\test_http_routes_matrix_comprehensive.py:217: AssertionError</failure></testcase><testcase classname="tests.api.test_http_routes_matrix_comprehensive.TestHTTPRoutesMatrix" name="test_routes_validation_errors[POST-/models/train-invalid_body6-422-model_type-Invalid model type]" time="0.012"><failure message="AssertionError: Invalid model type: Expected 422, got 404&#10;assert 404 == 422&#10; +  where 404 = &lt;Response [404 Not Found]&gt;.status_code">self = &lt;test_http_routes_matrix_comprehensive.TestHTTPRoutesMatrix object at 0x0000022ADF515850&gt;
+method = 'POST', path = '/models/train'
+invalid_body = {'model_type': 'invalid_model'}, expected_status = 422
+error_field = 'model_type', description = 'Invalid model type'
+auth_client = &lt;tests.helpers.robust_testclient.RobustTestClient object at 0x0000022AE127CA70&gt;
+
+    @pytest.mark.parametrize("method,path,invalid_body,expected_status,error_field,description",
+                             VALIDATION_ERROR_DATA)
+    def test_routes_validation_errors(self, method, path, invalid_body, expected_status, error_field,
+                                    description, auth_client):
+        """Test routes return 422 for validation errors."""
+        # Make request with invalid payload
+        if method == "POST":
+            response = auth_client.post(path, json=invalid_body)
+        elif method == "PUT":
+            response = auth_client.put(path, json=invalid_body)
+        else:
+            pytest.skip(f"Validation testing not applicable for {method}")
+    
+        # Should return 422 Unprocessable Entity
+&gt;       assert response.status_code == expected_status, f"{description}: Expected {expected_status}, got {response.status_code}"
+E       AssertionError: Invalid model type: Expected 422, got 404
+E       assert 404 == 422
+E        +  where 404 = &lt;Response [404 Not Found]&gt;.status_code
+
+tests\api\test_http_routes_matrix_comprehensive.py:217: AssertionError</failure></testcase><testcase classname="tests.api.test_http_routes_matrix_comprehensive.TestHTTPRoutesMatrix" name="test_routes_validation_errors[POST-/auth/register-invalid_body7-422-missing_fields-Missing required fields]" time="0.013"><failure message="AssertionError: Expected field 'missing_fields' in validation errors&#10;assert False&#10; +  where False = any(&lt;generator object TestHTTPRoutesMatrix.test_routes_validation_errors.&lt;locals&gt;.&lt;genexpr&gt; at 0x0000022AE07C09E0&gt;)">self = &lt;test_http_routes_matrix_comprehensive.TestHTTPRoutesMatrix object at 0x0000022ADF515910&gt;
+method = 'POST', path = '/auth/register', invalid_body = {}
+expected_status = 422, error_field = 'missing_fields'
+description = 'Missing required fields'
+auth_client = &lt;tests.helpers.robust_testclient.RobustTestClient object at 0x0000022AE1006E10&gt;
+
+    @pytest.mark.parametrize("method,path,invalid_body,expected_status,error_field,description",
+                             VALIDATION_ERROR_DATA)
+    def test_routes_validation_errors(self, method, path, invalid_body, expected_status, error_field,
+                                    description, auth_client):
+        """Test routes return 422 for validation errors."""
+        # Make request with invalid payload
+        if method == "POST":
+            response = auth_client.post(path, json=invalid_body)
+        elif method == "PUT":
+            response = auth_client.put(path, json=invalid_body)
+        else:
+            pytest.skip(f"Validation testing not applicable for {method}")
+    
+        # Should return 422 Unprocessable Entity
+        assert response.status_code == expected_status, f"{description}: Expected {expected_status}, got {response.status_code}"
+    
+        # Verify validation error format
+        error_response = response.json()
+        assert "detail" in error_response
+    
+        # Check that error details contain field information
+        if isinstance(error_response["detail"], list):
+            field_errors = [error.get("field", error.get("loc", [""])[0]) for error in error_response["detail"]]
+&gt;           assert any(error_field in str(field).lower() for field in field_errors), f"Expected field '{error_field}' in validation errors"
+E           AssertionError: Expected field 'missing_fields' in validation errors
+E           assert False
+E            +  where False = any(&lt;generator object TestHTTPRoutesMatrix.test_routes_validation_errors.&lt;locals&gt;.&lt;genexpr&gt; at 0x0000022AE07C09E0&gt;)
+
+tests\api\test_http_routes_matrix_comprehensive.py:226: AssertionError</failure></testcase><testcase classname="tests.api.test_http_routes_matrix_comprehensive.TestHTTPRoutesMatrix" name="test_routes_forced_500_errors[GET-/portfolio/positions-backend.api.portfolio.get_positions-exception_to_raise0-Portfolio DB error]" time="0.015"><failure message="AssertionError: Portfolio DB error: Expected 500, got 404&#10;assert 404 == 500&#10; +  where 404 = &lt;Response [404 Not Found]&gt;.status_code">self = &lt;test_http_routes_matrix_comprehensive.TestHTTPRoutesMatrix object at 0x0000022ADF32D3A0&gt;
+method = 'GET', path = '/portfolio/positions'
+monkeypatch_target = 'backend.api.portfolio.get_positions'
+exception_to_raise = Exception('Database error')
+description = 'Portfolio DB error'
+monkeypatch = &lt;_pytest.monkeypatch.MonkeyPatch object at 0x0000022AE12648C0&gt;
+auth_client = &lt;tests.helpers.robust_testclient.RobustTestClient object at 0x0000022AE1264CE0&gt;
+
+    @pytest.mark.parametrize("method,path,monkeypatch_target,exception_to_raise,description",
+                             ERROR_FORCE_ROUTES)
+    def test_routes_forced_500_errors(self, method, path, monkeypatch_target, exception_to_raise,
+                                    description, monkeypatch, auth_client):
+        """Test routes return 500 when underlying services raise exceptions."""
+        # Monkeypatch the target function to raise an exception
+        with patch(monkeypatch_target, side_effect=exception_to_raise):
+            # Make request
+            if method == "GET":
+                response = auth_client.get(path)
+            elif method == "POST":
+                response = auth_client.post(path, json={})
+            else:
+                pytest.skip(f"Error forcing not implemented for {method}")
+    
+            # Should return 500 Internal Server Error
+&gt;           assert response.status_code == 500, f"{description}: Expected 500, got {response.status_code}"
+E           AssertionError: Portfolio DB error: Expected 500, got 404
+E           assert 404 == 500
+E            +  where 404 = &lt;Response [404 Not Found]&gt;.status_code
+
+tests\api\test_http_routes_matrix_comprehensive.py:244: AssertionError</failure></testcase><testcase classname="tests.api.test_http_routes_matrix_comprehensive.TestHTTPRoutesMatrix" name="test_routes_forced_500_errors[POST-/orders-backend.services.order_service.submit_order-exception_to_raise1-Order service error]" time="0.017"><failure message="AssertionError: Order service error: Expected 500, got 404&#10;assert 404 == 500&#10; +  where 404 = &lt;Response [404 Not Found]&gt;.status_code">self = &lt;test_http_routes_matrix_comprehensive.TestHTTPRoutesMatrix object at 0x0000022ADF515DC0&gt;
+method = 'POST', path = '/orders'
+monkeypatch_target = 'backend.services.order_service.submit_order'
+exception_to_raise = ConnectionError('Broker unreachable')
+description = 'Order service error'
+monkeypatch = &lt;_pytest.monkeypatch.MonkeyPatch object at 0x0000022AE12C3440&gt;
+auth_client = &lt;tests.helpers.robust_testclient.RobustTestClient object at 0x0000022AE12C34A0&gt;
+
+    @pytest.mark.parametrize("method,path,monkeypatch_target,exception_to_raise,description",
+                             ERROR_FORCE_ROUTES)
+    def test_routes_forced_500_errors(self, method, path, monkeypatch_target, exception_to_raise,
+                                    description, monkeypatch, auth_client):
+        """Test routes return 500 when underlying services raise exceptions."""
+        # Monkeypatch the target function to raise an exception
+        with patch(monkeypatch_target, side_effect=exception_to_raise):
+            # Make request
+            if method == "GET":
+                response = auth_client.get(path)
+            elif method == "POST":
+                response = auth_client.post(path, json={})
+            else:
+                pytest.skip(f"Error forcing not implemented for {method}")
+    
+            # Should return 500 Internal Server Error
+&gt;           assert response.status_code == 500, f"{description}: Expected 500, got {response.status_code}"
+E           AssertionError: Order service error: Expected 500, got 404
+E           assert 404 == 500
+E            +  where 404 = &lt;Response [404 Not Found]&gt;.status_code
+
+tests\api\test_http_routes_matrix_comprehensive.py:244: AssertionError</failure></testcase><testcase classname="tests.api.test_http_routes_matrix_comprehensive.TestHTTPRoutesMatrix" name="test_routes_forced_500_errors[GET-/signals-backend.services.signal_service.get_signals-exception_to_raise2-Signal service timeout]" time="0.012"><failure message="AssertionError: Signal service timeout: Expected 500, got 404&#10;assert 404 == 500&#10; +  where 404 = &lt;Response [404 Not Found]&gt;.status_code">self = &lt;test_http_routes_matrix_comprehensive.TestHTTPRoutesMatrix object at 0x0000022ADF515E80&gt;
+method = 'GET', path = '/signals'
+monkeypatch_target = 'backend.services.signal_service.get_signals'
+exception_to_raise = TimeoutError('ML model timeout')
+description = 'Signal service timeout'
+monkeypatch = &lt;_pytest.monkeypatch.MonkeyPatch object at 0x0000022AE12C3290&gt;
+auth_client = &lt;tests.helpers.robust_testclient.RobustTestClient object at 0x0000022AE12C2F90&gt;
+
+    @pytest.mark.parametrize("method,path,monkeypatch_target,exception_to_raise,description",
+                             ERROR_FORCE_ROUTES)
+    def test_routes_forced_500_errors(self, method, path, monkeypatch_target, exception_to_raise,
+                                    description, monkeypatch, auth_client):
+        """Test routes return 500 when underlying services raise exceptions."""
+        # Monkeypatch the target function to raise an exception
+        with patch(monkeypatch_target, side_effect=exception_to_raise):
+            # Make request
+            if method == "GET":
+                response = auth_client.get(path)
+            elif method == "POST":
+                response = auth_client.post(path, json={})
+            else:
+                pytest.skip(f"Error forcing not implemented for {method}")
+    
+            # Should return 500 Internal Server Error
+&gt;           assert response.status_code == 500, f"{description}: Expected 500, got {response.status_code}"
+E           AssertionError: Signal service timeout: Expected 500, got 404
+E           assert 404 == 500
+E            +  where 404 = &lt;Response [404 Not Found]&gt;.status_code
+
+tests\api\test_http_routes_matrix_comprehensive.py:244: AssertionError</failure></testcase><testcase classname="tests.api.test_http_routes_matrix_comprehensive.TestHTTPRoutesMatrix" name="test_routes_forced_500_errors[GET-/risk/metrics-backend.risk.risk_calculator.calculate_metrics-exception_to_raise3-Risk calculation error]" time="0.011"><failure message="AssertionError: Risk calculation error: Expected 500, got 404&#10;assert 404 == 500&#10; +  where 404 = &lt;Response [404 Not Found]&gt;.status_code">self = &lt;test_http_routes_matrix_comprehensive.TestHTTPRoutesMatrix object at 0x0000022ADF515F40&gt;
+method = 'GET', path = '/risk/metrics'
+monkeypatch_target = 'backend.risk.risk_calculator.calculate_metrics'
+exception_to_raise = ValueError('Invalid risk data')
+description = 'Risk calculation error'
+monkeypatch = &lt;_pytest.monkeypatch.MonkeyPatch object at 0x0000022AE0786F30&gt;
+auth_client = &lt;tests.helpers.robust_testclient.RobustTestClient object at 0x0000022AE0784A40&gt;
+
+    @pytest.mark.parametrize("method,path,monkeypatch_target,exception_to_raise,description",
+                             ERROR_FORCE_ROUTES)
+    def test_routes_forced_500_errors(self, method, path, monkeypatch_target, exception_to_raise,
+                                    description, monkeypatch, auth_client):
+        """Test routes return 500 when underlying services raise exceptions."""
+        # Monkeypatch the target function to raise an exception
+        with patch(monkeypatch_target, side_effect=exception_to_raise):
+            # Make request
+            if method == "GET":
+                response = auth_client.get(path)
+            elif method == "POST":
+                response = auth_client.post(path, json={})
+            else:
+                pytest.skip(f"Error forcing not implemented for {method}")
+    
+            # Should return 500 Internal Server Error
+&gt;           assert response.status_code == 500, f"{description}: Expected 500, got {response.status_code}"
+E           AssertionError: Risk calculation error: Expected 500, got 404
+E           assert 404 == 500
+E            +  where 404 = &lt;Response [404 Not Found]&gt;.status_code
+
+tests\api\test_http_routes_matrix_comprehensive.py:244: AssertionError</failure></testcase><testcase classname="tests.api.test_http_routes_matrix_comprehensive.TestHTTPRoutesMatrix" name="test_prometheus_route_template_labels" time="0.016"><failure message="AssertionError: Route template '/' not found in metrics&#10;assert None&#10; +  where None = &lt;function search at 0x0000022AAFFD54E0&gt;('http_requests_total.*route=&quot;/&quot;', '')&#10; +    where &lt;function search at 0x0000022AAFFD54E0&gt; = re.search">self = &lt;test_http_routes_matrix_comprehensive.TestHTTPRoutesMatrix object at 0x0000022ADF5160F0&gt;
+test_app = &lt;fastapi.applications.FastAPI object at 0x0000022AE1289B50&gt;
+isolated_prometheus_registry = &lt;prometheus_client.registry.CollectorRegistry object at 0x0000022AE10BEA50&gt;
+
+    def test_prometheus_route_template_labels(self, test_app, isolated_prometheus_registry):
+        """Test Prometheus metrics include correct route template labels."""
+        client = TestClient(test_app)
+    
+        # Make requests to different routes
+        test_routes = [
+            ("GET", "/", "/"),
+            ("GET", "/health", "/health"),
+            ("GET", "/orders/test-123", "/orders/{order_id}"),
+            ("GET", "/signals/AAPL", "/signals/{symbol}"),
+        ]
+    
+        for method, path, expected_template in test_routes:
+            response = client.get(path)
+            # Don't assert status - just generate metrics
+    
+        # Get metrics output
+        metrics_output = generate_latest(isolated_prometheus_registry).decode('utf-8')
+    
+        # Verify route template labels exist
+        for method, path, expected_template in test_routes:
+            # Look for http_requests_total metric with route template
+            route_label_pattern = rf'http_requests_total.*route="{re.escape(expected_template)}"'
+&gt;           assert re.search(route_label_pattern, metrics_output), f"Route template '{expected_template}' not found in metrics"
+E           AssertionError: Route template '/' not found in metrics
+E           assert None
+E            +  where None = &lt;function search at 0x0000022AAFFD54E0&gt;('http_requests_total.*route="/"', '')
+E            +    where &lt;function search at 0x0000022AAFFD54E0&gt; = re.search
+
+tests\api\test_http_routes_matrix_comprehensive.py:274: AssertionError</failure></testcase><testcase classname="tests.api.test_http_routes_matrix_comprehensive.TestHTTPRoutesMatrix" name="test_prometheus_latency_buckets" time="0.088"><failure message="AssertionError: Latency bucket le='0.005' not found in metrics&#10;assert None&#10; +  where None = &lt;function search at 0x0000022AAFFD54E0&gt;('http_request_duration_seconds_bucket.*le=&quot;0.005&quot;', '')&#10; +    where &lt;function search at 0x0000022AAFFD54E0&gt; = re.search">self = &lt;test_http_routes_matrix_comprehensive.TestHTTPRoutesMatrix object at 0x0000022ADF5162D0&gt;
+test_app = &lt;fastapi.applications.FastAPI object at 0x0000022AE131BC20&gt;
+isolated_prometheus_registry = &lt;prometheus_client.registry.CollectorRegistry object at 0x0000022AE07B7AA0&gt;
+
+    def test_prometheus_latency_buckets(self, test_app, isolated_prometheus_registry):
+        """Test Prometheus latency histograms include proper buckets."""
+        client = TestClient(test_app)
+    
+        # Make some requests to generate latency metrics
+        for _ in range(5):
+            client.get("/")
+            client.get("/health")
+            time.sleep(0.01)  # Small delay to generate measurable latency
+    
+        # Get metrics output
+        metrics_output = generate_latest(isolated_prometheus_registry).decode('utf-8')
+    
+        # Verify latency histogram buckets
+        expected_buckets = ["0.005", "0.01", "0.025", "0.05", "0.075", "0.1", "0.25", "0.5", "0.75", "1.0", "2.5", "5.0", "7.5", "10.0"]
+    
+        for bucket in expected_buckets:
+            bucket_pattern = rf'http_request_duration_seconds_bucket.*le="{bucket}"'
+&gt;           assert re.search(bucket_pattern, metrics_output), f"Latency bucket le='{bucket}' not found in metrics"
+E           AssertionError: Latency bucket le='0.005' not found in metrics
+E           assert None
+E            +  where None = &lt;function search at 0x0000022AAFFD54E0&gt;('http_request_duration_seconds_bucket.*le="0.005"', '')
+E            +    where &lt;function search at 0x0000022AAFFD54E0&gt; = re.search
+
+tests\api\test_http_routes_matrix_comprehensive.py:294: AssertionError</failure></testcase><testcase classname="tests.api.test_http_routes_matrix_comprehensive.TestHTTPRoutesMatrix" name="test_prometheus_metrics_endpoint_comprehensive" time="0.012"><failure message="TypeError: TestClient.get() got an unexpected keyword argument 'allow_redirects'">self = &lt;test_http_routes_matrix_comprehensive.TestHTTPRoutesMatrix object at 0x0000022ADF516480&gt;
+test_app = &lt;fastapi.applications.FastAPI object at 0x0000022AE0DBD8B0&gt;
+
+    def test_prometheus_metrics_endpoint_comprehensive(self, test_app):
+        """Test /metrics endpoint returns comprehensive Prometheus metrics."""
+        client = TestClient(test_app)
+    
+        # Make requests to generate various metrics
+        client.get("/")
+        client.get("/health")
+&gt;       client.get("/nonexistent", allow_redirects=False)  # Generate 404
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       TypeError: TestClient.get() got an unexpected keyword argument 'allow_redirects'
+
+tests\api\test_http_routes_matrix_comprehensive.py:307: TypeError</failure></testcase><testcase classname="tests.api.test_http_routes_matrix_comprehensive.TestHTTPRoutesMatrix" name="test_routes_response_time_tracking[GET-/-False-None-200-Root endpoint-/]" time="0.012" /><testcase classname="tests.api.test_http_routes_matrix_comprehensive.TestHTTPRoutesMatrix" name="test_routes_response_time_tracking[GET-/health-False-None-200-Health check endpoint-/health]" time="0.011" /><testcase classname="tests.api.test_http_routes_matrix_comprehensive.TestHTTPRoutesMatrix" name="test_routes_response_time_tracking[GET-/readyz-False-None-503-Readiness probe-/readyz]" time="4.069" /><testcase classname="tests.api.test_http_routes_matrix_comprehensive.TestHTTPRoutesMatrix" name="test_routes_response_time_tracking[GET-/docs-False-None-200-API documentation-/docs]" time="0.014" /><testcase classname="tests.api.test_http_routes_matrix_comprehensive.TestHTTPRoutesMatrix" name="test_routes_response_time_tracking[GET-/redoc-False-None-200-ReDoc documentation-/redoc]" time="0.010" /><testcase classname="tests.api.test_http_routes_matrix_comprehensive.TestHTTPRoutesMatrix" name="test_routes_response_time_tracking[GET-/openapi.json-False-None-200-OpenAPI schema-/openapi.json]" time="0.030" /><testcase classname="tests.api.test_http_routes_matrix_comprehensive.TestHTTPRoutesMatrix" name="test_routes_response_time_tracking[GET-/metrics-False-None-200-Prometheus metrics-/metrics]" time="0.012" /><testcase classname="tests.api.test_http_routes_matrix_comprehensive.TestHTTPRoutesMatrix" name="test_routes_response_time_tracking[POST-/auth/login-False-body7-200-Login endpoint-/auth/login]" time="0.011" /><testcase classname="tests.api.test_http_routes_matrix_comprehensive.TestHTTPRoutesMatrix" name="test_routes_response_time_tracking[POST-/auth/register-False-body8-201-Registration endpoint-/auth/register]" time="0.182" /><testcase classname="tests.api.test_http_routes_matrix_comprehensive.TestHTTPRoutesMatrix" name="test_routes_response_time_tracking[GET-/portfolio/positions-True-None-200-Portfolio positions-/portfolio/positions]" time="0.011" /><testcase classname="tests.api.test_http_routes_matrix_comprehensive.TestHTTPRoutesMatrix" name="test_routes_concurrent_access" time="0.084" /></testsuite></testsuites>

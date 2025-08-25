@@ -195,15 +195,35 @@ def collect_metrics(registry) -> list[MetricSample]:
 
         metrics_data = generate_latest(registry)
         parser = MetricsParser()
-        return parser.parse_metrics_text(metrics_data.decode("utf-8"))
+        parsed_metrics = parser.parse(metrics_data.decode("utf-8"))
+        
+        # Flatten the parsed metrics dict into a list of MetricSample objects
+        all_samples = []
+        for metric_samples in parsed_metrics.values():
+            all_samples.extend(metric_samples)
+        return all_samples
     except ImportError:
         return []
 
 
 def get_metric_value(
-    metrics: list[MetricSample], name: str, labels: dict = None
+    metrics_or_registry, name: str, labels: dict = None
 ) -> float:
-    """Get metric value by name and optional labels."""
+    """Get metric value by name and optional labels.
+    
+    Args:
+        metrics_or_registry: Either a list of MetricSample objects or a CollectorRegistry
+        name: Name of the metric to find
+        labels: Optional labels to match
+    """
+    # Handle both CollectorRegistry and list of MetricSample
+    if hasattr(metrics_or_registry, '_collector_to_names'):
+        # It's a CollectorRegistry, convert to metrics
+        metrics = collect_metrics(metrics_or_registry)
+    else:
+        # It's already a list of MetricSample
+        metrics = metrics_or_registry
+        
     for metric in metrics:
         if metric.name == name:
             if labels is None or all(

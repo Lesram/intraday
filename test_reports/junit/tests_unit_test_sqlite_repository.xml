@@ -1,0 +1,284 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="9" skipped="0" tests="13" time="0.629" timestamp="2025-08-24T17:09:41.790193-07:00" hostname="BOOK-FVJOEO3Q00"><testcase classname="tests.unit.test_sqlite_repository" name="test_session" time="0.001" /><testcase classname="tests.unit.test_sqlite_repository.TestDatabaseConnection" name="test_session_creation" time="0.039"><failure message="TypeError: cannot unpack non-iterable async_sessionmaker object">self = &lt;test_sqlite_repository.TestDatabaseConnection object at 0x000001F9B032E9C0&gt;
+
+    @pytest.mark.asyncio
+    async def test_session_creation(self):
+        """Test creating SQLite test session."""
+&gt;       async with test_session() as session:
+
+tests\unit\test_sqlite_repository.py:20: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+..\..\AppData\Local\Programs\Python\Python312\Lib\contextlib.py:210: in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+tests\helpers\test_db.py:90: in test_session
+    async with test_database() as (engine, sessionmaker):
+..\..\AppData\Local\Programs\Python\Python312\Lib\contextlib.py:210: in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+tests\helpers\test_db.py:74: in test_database
+    engine, sessionmaker = await db.initialize()
+                           ^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;tests.helpers.test_db.TestDatabase object at 0x000001F9B04A5F40&gt;
+
+    async def initialize(self) -&gt; tuple[AsyncEngine, async_sessionmaker[AsyncSession]]:
+        """Initialize test database and return engine/sessionmaker."""
+        db_url = self.create_temp_db()
+&gt;       self.engine, self.sessionmaker = init_db(database_url=db_url)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       TypeError: cannot unpack non-iterable async_sessionmaker object
+
+tests\helpers\test_db.py:37: TypeError</failure></testcase><testcase classname="tests.unit.test_sqlite_repository.TestDatabaseConnection" name="test_multiple_sessions_isolated" time="0.003"><failure message="TypeError: cannot unpack non-iterable async_sessionmaker object">self = &lt;test_sqlite_repository.TestDatabaseConnection object at 0x000001F9B04A40E0&gt;
+
+    @pytest.mark.asyncio
+    async def test_multiple_sessions_isolated(self):
+        """Test multiple test sessions are isolated."""
+        # Create two separate test sessions
+&gt;       async with test_session() as session1:
+
+tests\unit\test_sqlite_repository.py:33: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+..\..\AppData\Local\Programs\Python\Python312\Lib\contextlib.py:210: in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+tests\helpers\test_db.py:90: in test_session
+    async with test_database() as (engine, sessionmaker):
+..\..\AppData\Local\Programs\Python\Python312\Lib\contextlib.py:210: in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+tests\helpers\test_db.py:74: in test_database
+    engine, sessionmaker = await db.initialize()
+                           ^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;tests.helpers.test_db.TestDatabase object at 0x000001F9B0429100&gt;
+
+    async def initialize(self) -&gt; tuple[AsyncEngine, async_sessionmaker[AsyncSession]]:
+        """Initialize test database and return engine/sessionmaker."""
+        db_url = self.create_temp_db()
+&gt;       self.engine, self.sessionmaker = init_db(database_url=db_url)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       TypeError: cannot unpack non-iterable async_sessionmaker object
+
+tests\helpers\test_db.py:37: TypeError</failure></testcase><testcase classname="tests.unit.test_sqlite_repository.TestUsersRepository" name="test_users_repo_initialization" time="0.027"><failure message="TypeError: cannot unpack non-iterable async_sessionmaker object">self = &lt;test_sqlite_repository.TestUsersRepository object at 0x000001F9B04A4320&gt;
+
+    @pytest.mark.asyncio
+    async def test_users_repo_initialization(self):
+        """Test UsersRepo can be initialized without session."""
+&gt;       async with test_session() as session:
+
+tests\unit\test_sqlite_repository.py:55: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+..\..\AppData\Local\Programs\Python\Python312\Lib\contextlib.py:210: in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+tests\helpers\test_db.py:90: in test_session
+    async with test_database() as (engine, sessionmaker):
+..\..\AppData\Local\Programs\Python\Python312\Lib\contextlib.py:210: in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+tests\helpers\test_db.py:74: in test_database
+    engine, sessionmaker = await db.initialize()
+                           ^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;tests.helpers.test_db.TestDatabase object at 0x000001F9B0461310&gt;
+
+    async def initialize(self) -&gt; tuple[AsyncEngine, async_sessionmaker[AsyncSession]]:
+        """Initialize test database and return engine/sessionmaker."""
+        db_url = self.create_temp_db()
+&gt;       self.engine, self.sessionmaker = init_db(database_url=db_url)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       TypeError: cannot unpack non-iterable async_sessionmaker object
+
+tests\helpers\test_db.py:37: TypeError</failure></testcase><testcase classname="tests.unit.test_sqlite_repository.TestUsersRepository" name="test_user_repository_initialization" time="0.024" /><testcase classname="tests.unit.test_sqlite_repository.TestPositionsRepository" name="test_positions_repo_initialization" time="0.003"><failure message="TypeError: cannot unpack non-iterable async_sessionmaker object">self = &lt;test_sqlite_repository.TestPositionsRepository object at 0x000001F9B04A44A0&gt;
+
+    @pytest.mark.asyncio
+    async def test_positions_repo_initialization(self):
+        """Test PositionsRepo can be initialized with session."""
+&gt;       async with test_session() as session:
+
+tests\unit\test_sqlite_repository.py:75: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+..\..\AppData\Local\Programs\Python\Python312\Lib\contextlib.py:210: in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+tests\helpers\test_db.py:90: in test_session
+    async with test_database() as (engine, sessionmaker):
+..\..\AppData\Local\Programs\Python\Python312\Lib\contextlib.py:210: in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+tests\helpers\test_db.py:74: in test_database
+    engine, sessionmaker = await db.initialize()
+                           ^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;tests.helpers.test_db.TestDatabase object at 0x000001F9B0402EA0&gt;
+
+    async def initialize(self) -&gt; tuple[AsyncEngine, async_sessionmaker[AsyncSession]]:
+        """Initialize test database and return engine/sessionmaker."""
+        db_url = self.create_temp_db()
+&gt;       self.engine, self.sessionmaker = init_db(database_url=db_url)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       TypeError: cannot unpack non-iterable async_sessionmaker object
+
+tests\helpers\test_db.py:37: TypeError</failure></testcase><testcase classname="tests.unit.test_sqlite_repository.TestPositionsRepository" name="test_position_upsert_structure" time="0.003"><failure message="TypeError: cannot unpack non-iterable async_sessionmaker object">self = &lt;test_sqlite_repository.TestPositionsRepository object at 0x000001F9B04A4680&gt;
+
+    @pytest.mark.asyncio
+    async def test_position_upsert_structure(self):
+        """Test position upsert method exists and accepts correct parameters."""
+&gt;       async with test_session() as session:
+
+tests\unit\test_sqlite_repository.py:82: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+..\..\AppData\Local\Programs\Python\Python312\Lib\contextlib.py:210: in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+tests\helpers\test_db.py:90: in test_session
+    async with test_database() as (engine, sessionmaker):
+..\..\AppData\Local\Programs\Python\Python312\Lib\contextlib.py:210: in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+tests\helpers\test_db.py:74: in test_database
+    engine, sessionmaker = await db.initialize()
+                           ^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;tests.helpers.test_db.TestDatabase object at 0x000001F9B052F2F0&gt;
+
+    async def initialize(self) -&gt; tuple[AsyncEngine, async_sessionmaker[AsyncSession]]:
+        """Initialize test database and return engine/sessionmaker."""
+        db_url = self.create_temp_db()
+&gt;       self.engine, self.sessionmaker = init_db(database_url=db_url)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       TypeError: cannot unpack non-iterable async_sessionmaker object
+
+tests\helpers\test_db.py:37: TypeError</failure></testcase><testcase classname="tests.unit.test_sqlite_repository.TestDatabaseTransactionBehavior" name="test_session_context_manager" time="0.004"><failure message="TypeError: cannot unpack non-iterable async_sessionmaker object">self = &lt;test_sqlite_repository.TestDatabaseTransactionBehavior object at 0x000001F9B04A48C0&gt;
+
+    @pytest.mark.asyncio
+    async def test_session_context_manager(self):
+        """Test session context manager properly handles resources."""
+        session_ref = None
+    
+&gt;       async with test_session() as session:
+
+tests\unit\test_sqlite_repository.py:111: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+..\..\AppData\Local\Programs\Python\Python312\Lib\contextlib.py:210: in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+tests\helpers\test_db.py:90: in test_session
+    async with test_database() as (engine, sessionmaker):
+..\..\AppData\Local\Programs\Python\Python312\Lib\contextlib.py:210: in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+tests\helpers\test_db.py:74: in test_database
+    engine, sessionmaker = await db.initialize()
+                           ^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;tests.helpers.test_db.TestDatabase object at 0x000001F9B0402000&gt;
+
+    async def initialize(self) -&gt; tuple[AsyncEngine, async_sessionmaker[AsyncSession]]:
+        """Initialize test database and return engine/sessionmaker."""
+        db_url = self.create_temp_db()
+&gt;       self.engine, self.sessionmaker = init_db(database_url=db_url)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       TypeError: cannot unpack non-iterable async_sessionmaker object
+
+tests\helpers\test_db.py:37: TypeError</failure></testcase><testcase classname="tests.unit.test_sqlite_repository.TestDatabaseTransactionBehavior" name="test_transaction_isolation" time="0.003"><failure message="TypeError: cannot unpack non-iterable async_sessionmaker object">self = &lt;test_sqlite_repository.TestDatabaseTransactionBehavior object at 0x000001F9B04A4AA0&gt;
+
+    @pytest.mark.asyncio
+    async def test_transaction_isolation(self):
+        """Test that transactions are properly isolated."""
+        # Test demonstrates transaction boundary handling
+&gt;       async with test_session() as session:
+
+tests\unit\test_sqlite_repository.py:127: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+..\..\AppData\Local\Programs\Python\Python312\Lib\contextlib.py:210: in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+tests\helpers\test_db.py:90: in test_session
+    async with test_database() as (engine, sessionmaker):
+..\..\AppData\Local\Programs\Python\Python312\Lib\contextlib.py:210: in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+tests\helpers\test_db.py:74: in test_database
+    engine, sessionmaker = await db.initialize()
+                           ^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;tests.helpers.test_db.TestDatabase object at 0x000001F9B0460CB0&gt;
+
+    async def initialize(self) -&gt; tuple[AsyncEngine, async_sessionmaker[AsyncSession]]:
+        """Initialize test database and return engine/sessionmaker."""
+        db_url = self.create_temp_db()
+&gt;       self.engine, self.sessionmaker = init_db(database_url=db_url)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       TypeError: cannot unpack non-iterable async_sessionmaker object
+
+tests\helpers\test_db.py:37: TypeError</failure></testcase><testcase classname="tests.unit.test_sqlite_repository.TestSchemaValidation" name="test_position_schema_structure" time="0.001" /><testcase classname="tests.unit.test_sqlite_repository.TestSchemaValidation" name="test_user_schema_structure" time="0.001" /><testcase classname="tests.unit.test_sqlite_repository.TestDatabaseIntegrationReadiness" name="test_repository_integration_pattern" time="0.003"><failure message="TypeError: cannot unpack non-iterable async_sessionmaker object">self = &lt;test_sqlite_repository.TestDatabaseIntegrationReadiness object at 0x000001F9B04A51C0&gt;
+
+    @pytest.mark.asyncio
+    async def test_repository_integration_pattern(self):
+        """Test the repository pattern works with test database."""
+&gt;       async with test_session() as session:
+
+tests\unit\test_sqlite_repository.py:196: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+..\..\AppData\Local\Programs\Python\Python312\Lib\contextlib.py:210: in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+tests\helpers\test_db.py:90: in test_session
+    async with test_database() as (engine, sessionmaker):
+..\..\AppData\Local\Programs\Python\Python312\Lib\contextlib.py:210: in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+tests\helpers\test_db.py:74: in test_database
+    engine, sessionmaker = await db.initialize()
+                           ^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;tests.helpers.test_db.TestDatabase object at 0x000001F9B05EA2D0&gt;
+
+    async def initialize(self) -&gt; tuple[AsyncEngine, async_sessionmaker[AsyncSession]]:
+        """Initialize test database and return engine/sessionmaker."""
+        db_url = self.create_temp_db()
+&gt;       self.engine, self.sessionmaker = init_db(database_url=db_url)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       TypeError: cannot unpack non-iterable async_sessionmaker object
+
+tests\helpers\test_db.py:37: TypeError</failure></testcase><testcase classname="tests.unit.test_sqlite_repository.TestDatabaseIntegrationReadiness" name="test_sqlite_async_compatibility" time="0.003"><failure message="TypeError: cannot unpack non-iterable async_sessionmaker object">self = &lt;test_sqlite_repository.TestDatabaseIntegrationReadiness object at 0x000001F9B04A5430&gt;
+
+    @pytest.mark.asyncio
+    async def test_sqlite_async_compatibility(self):
+        """Test SQLite async operations work correctly."""
+&gt;       async with test_session() as session:
+
+tests\unit\test_sqlite_repository.py:211: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+..\..\AppData\Local\Programs\Python\Python312\Lib\contextlib.py:210: in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+tests\helpers\test_db.py:90: in test_session
+    async with test_database() as (engine, sessionmaker):
+..\..\AppData\Local\Programs\Python\Python312\Lib\contextlib.py:210: in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+tests\helpers\test_db.py:74: in test_database
+    engine, sessionmaker = await db.initialize()
+                           ^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;tests.helpers.test_db.TestDatabase object at 0x000001F9B05E9670&gt;
+
+    async def initialize(self) -&gt; tuple[AsyncEngine, async_sessionmaker[AsyncSession]]:
+        """Initialize test database and return engine/sessionmaker."""
+        db_url = self.create_temp_db()
+&gt;       self.engine, self.sessionmaker = init_db(database_url=db_url)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       TypeError: cannot unpack non-iterable async_sessionmaker object
+
+tests\helpers\test_db.py:37: TypeError</failure></testcase></testsuite></testsuites>

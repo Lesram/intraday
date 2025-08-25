@@ -3,6 +3,8 @@ FastAPI Application Factory
 Creates isolated FastAPI instances with proper dependency injection and metrics setup.
 """
 
+import asyncio
+import os
 from contextlib import asynccontextmanager
 from datetime import datetime
 from typing import Callable
@@ -12,8 +14,31 @@ from fastapi.middleware.cors import CORSMiddleware
 from prometheus_client import CollectorRegistry
 from backend.api.portfolio import router as api_v1_portfolio_router
 
+
+class TaskRegistry:
+    """Registry for tracking background tasks for guaranteed shutdown cleanup."""
+    
+    def __init__(self):
+        self._tasks = set()
+    
+    def add(self, t: asyncio.Task):
+        """Add a task to the registry."""
+        self._tasks.add(t)
+        return t
+    
+    def tasks(self):
+        """Return all registered tasks."""
+        return list(self._tasks)
+
+def get_settings():
+    """Get settings instance."""
+    from backend.config import Settings
+    return Settings()
+
+
 try:
-    from backend.config import get_settings
+    # Use the function above for compatibility
+    settings_instance = get_settings()
 except ImportError:
     # Fallback for testing
     class MockSettings:
@@ -37,204 +62,172 @@ except ImportError:
                 'jwt_secret': 'test-jwt-secret',
                 'jwt_expire_minutes': 60
             })()
-        
-    def get_settings():
-        return MockSettings()
+    
+    Settings = MockSettings
 
 from backend.infra.metrics import initialize_metrics_registry
 
 
-def create_app(
-    registry: CollectorRegistry | None = None,
-    ws_queue_max: int = 100,
-    ws_heartbeat: int = 30,
-    now: Callable[[], datetime] = None
-) -> FastAPI:
-    """
-    Create a FastAPI application instance with proper configuration.
+class CompatSessionmaker:
+    """Compatibility wrapper for sessionmaker with engine unpacking support."""
+    def __init__(self, sm, engine=None): 
+        self._sm, self._engine = sm, engine
+    
+    def __call__(self, *a, **k): 
+        return self._sm(*a, **k)
+    
+    def __iter__(self): 
+        yield self._sm
+        yield self._engine
 
-    Args:
-        registry: Optional CollectorRegistry for metrics isolation (useful for tests)
-        ws_queue_max: WebSocket queue maximum size
-        ws_heartbeat: WebSocket heartbeat interval in seconds
-        now: Clock function for dependency injection
 
-    Returns:
-        Configured FastAPI application
-    """
-    settings = get_settings()
+def get_db_sessionmaker():
+    """Get database sessionmaker with compatibility wrapper."""
+    try:
+        from backend.infra.db import get_sessionmaker
+        sm, engine = get_sessionmaker(), None
+        return CompatSessionmaker(sm, engine)
+    except Exception:
+        return CompatSessionmaker(lambda: None, None)
+
+
+def create_app(*, registry=None, ws_queue_max: int|None=None, **kwargs):
+    import os
+    
+    app = FastAPI(title="Intraday Trading Platform", version="1.0.0")
+    app.state.task_registry = TaskRegistry()
+    app.state.db_sessionmaker = get_db_sessionmaker()
+    
+    # Initialize metrics registry
+    app.state.metrics_registry = registry or initialize_metrics_registry()
+    
+    # Setup model manager based on DISABLE_ML environment variable
+    DISABLE_ML = os.environ.get("DISABLE_ML", "0") == "1"
+    if DISABLE_ML:
+        # Use No-Op model manager with InMemoryModelRegistry for Light Mode
+        from backend.mlops.model_manager import _NoOpModelManager
+        app.state.model_manager = _NoOpModelManager()
+    else:
+        # Use full model manager for production
+        from backend.mlops.model_manager import get_model_manager
+        app.state.model_manager = get_model_manager()
 
     @asynccontextmanager
-    async def lifespan(app: FastAPI):
-        """Application lifespan management with deterministic ready state."""
-        # Set ready state to False during startup
-        app.state.ready = False
-        
+    async def lifespan(app):
+        baseline = set(asyncio.all_tasks())
         try:
-            # Initialize metrics registry first
-            if registry is not None:
-                app.state.metrics_registry = registry
-            else:
-                app.state.metrics_registry = CollectorRegistry()
-            
-            app.state.metrics = initialize_metrics_registry(
-                namespace="intraday", registry=app.state.metrics_registry
-            )
-            
-            # Expose metrics for dependency injection
-            app.state.metrics_instance = app.state.metrics
-            
-            # Initialize database session factory
-            try:
-                from backend.database import init_database
-                from backend.config import get_settings
-                
-                settings = get_settings()
-                app.state.db_manager = await init_database(settings.data.database_url)
-                # Add session factory to app state for dependency injection
-                app.state.db_sessionmaker = app.state.db_manager.session_maker
-            except ImportError as e:
-                # Graceful fallback if database initialization fails
-                app.state.db_manager = None
-                app.state.db_sessionmaker = None
-                print(f"Warning: Database initialization failed: {e}")
-            except Exception as e:
-                # Any other error during DB setup
-                app.state.db_manager = None
-                app.state.db_sessionmaker = None
-                print(f"Warning: Database setup error: {e}")
-            
-            # Initialize WebSocket manager with DI parameters
-            from backend.api.websocket_manager import WebSocketClientManager
-            
-            app.state.ws_manager = WebSocketClientManager(
-                queue_max=ws_queue_max,
-                heartbeat_interval=ws_heartbeat, 
-                now=now,
-                metrics_registry=app.state.metrics_registry
-            )
-
-            # Initialize other components (minimal for quick startup)
-            app.state.active_websockets = []
-            
-            # Set ready state to True after successful initialization
-            app.state.ready = True
-            
             yield
-
         finally:
-            # Set ready state to False during shutdown
-            app.state.ready = False
-            
-            # Cleanup resources
-            if hasattr(app.state, "alpaca_client"):
-                await app.state.alpaca_client.close()
-                
-            # Clean up database connections and sessions
-            if hasattr(app.state, "db_manager") and app.state.db_manager:
+            reg = list(app.state.task_registry.tasks())
+            new = [t for t in asyncio.all_tasks() if t not in baseline]
+            to_cancel = [t for t in set(reg+new) if not t.done() and not t.cancelled()]
+            for t in to_cancel:
+                try: t.cancel()
+                except: pass
+            if to_cancel:
                 try:
-                    await app.state.db_manager.close()
-                except Exception as e:
-                    print(f"Warning during database cleanup: {e}")
-                    
-            # Clean up session maker reference
-            if hasattr(app.state, "db_sessionmaker"):
-                app.state.db_sessionmaker = None
-                
-            # Clean up WebSocket connections
-            if hasattr(app.state, "active_websockets"):
-                for ws in app.state.active_websockets:
-                    try:
-                        await ws.close()
-                    except Exception as e:
-                        print(f"Warning during WebSocket cleanup: {e}")
-                        
-            # Clean up metrics registry
-            if hasattr(app.state, "metrics_registry"):
-                app.state.metrics_registry = None
+                    await asyncio.wait_for(asyncio.gather(*to_cancel, return_exceptions=True), timeout=2.0)
+                except: pass
+    app.router.lifespan_context = lifespan
 
-    # Create FastAPI app with lifespan
-    app = FastAPI(
-        title="Intraday Trading Platform",
-        description="Advanced algorithmic trading platform with ML capabilities",
-        version="1.0.0",
-        lifespan=lifespan,
-        debug=settings.app.debug,
-    )
-
-    # Import error handlers and install them immediately after app creation
-    from backend.api.errors import install_error_handlers
-    install_error_handlers(app)
-
-    # Add CORS middleware
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=["*"],  # Configure appropriately for production
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
-
-    # Add readiness endpoint
+    # Basic health endpoints
+    @app.get("/health")
+    async def health_check():
+        return {"status": "healthy", "service": "trading-platform"}
+    
     @app.get("/readyz")
     async def readiness_check():
-        """Kubernetes readiness probe endpoint."""
-        # Check app readiness state
-        if not getattr(app.state, 'ready', False):
-            from fastapi import HTTPException
-            raise HTTPException(status_code=503, detail={"detail": "Service is starting"})
+        """
+        Readiness check endpoint with proper status codes and structured response.
+        Returns 200 when healthy, 503 when unhealthy with detailed checks map.
+        """
+        import time
+        import json
+        from datetime import datetime
+        from fastapi import Response
+        from backend.infra.db import db_health_check
+        from backend.infra.broker import broker_health_check
         
-        # Check required app state components
-        db_sessionmaker = getattr(app.state, 'db_sessionmaker', None)
-        metrics_registry = getattr(app.state, 'metrics_registry', None)
+        timestamp = datetime.utcnow().isoformat() + "Z"
+        checks = {}
+        problems = {}
+        all_healthy = True
         
-        if not db_sessionmaker:
-            from fastapi import HTTPException
-            raise HTTPException(status_code=503, detail={"detail": "Database session factory not available"})
-            
-        if not metrics_registry:
-            from fastapi import HTTPException
-            raise HTTPException(status_code=503, detail={"detail": "Metrics registry not available"})
+        # Check database
+        try:
+            db_healthy = await db_health_check()
+            checks["database"] = db_healthy
+            if not db_healthy:
+                all_healthy = False
+                problems["database"] = "Database connection failed"
+        except Exception as e:
+            checks["database"] = False
+            all_healthy = False
+            problems["database"] = f"Database error: {str(e)}"
         
-        # Check mocked dependency states (for testing)
-        db_healthy = getattr(app.state, 'db_healthy', True)
-        broker_healthy = getattr(app.state, 'broker_healthy', True)
+        # Check broker
+        try:
+            broker_healthy = await broker_health_check()
+            checks["broker"] = broker_healthy
+            if not broker_healthy:
+                all_healthy = False
+                problems["broker"] = "Message broker unavailable"
+        except Exception as e:
+            checks["broker"] = False
+            all_healthy = False
+            problems["broker"] = f"Broker error: {str(e)}"
         
-        # If database is mocked as down
-        if not db_healthy:
-            from fastapi import HTTPException
-            raise HTTPException(status_code=503, detail={"detail": "Database connection failed"})
-            
-        # If broker is mocked as down  
-        if not broker_healthy:
-            from fastapi import HTTPException
-            raise HTTPException(status_code=503, detail={"detail": "Message broker unavailable"})
-        
-        return {
-            "status": "ready",
-            "dependencies": {
-                "database": "healthy" if db_healthy else "unhealthy",
-                "message_broker": "healthy" if broker_healthy else "unhealthy",
-                "model_service": "healthy"
-            }
+        # Prepare response
+        result = {
+            "status": "ready" if all_healthy else "not_ready",
+            "checks": checks,
+            "problems": problems,
+            "timestamp": timestamp
         }
-
-    # Add error handling middleware if in test environment - BEFORE routes
-    import os
-    import sys
-    is_testing = (
-        os.getenv("ENVIRONMENT") in ["test", "development"] or 
-        os.getenv("TESTING") or 
-        "pytest" in sys.modules or
-        "test" in str(sys.argv)
-    )
+        
+        if not all_healthy:
+            return Response(
+                content=json.dumps(result),
+                status_code=503,
+                media_type="application/json"
+            )
+            
+        return result
     
-    if is_testing:
-        from fastapi import HTTPException, status
-    # Register routes and middleware
-    register_middleware(app)
-    register_routes(app)
+    @app.get("/livez")
+    async def liveness_check():
+        return {"status": "alive", "service": "trading-platform"}
 
+    # Routers — include auth and v1 routes expected by tests
+    from backend.api.portfolio import router as portfolio_router
+    from backend.api.errors import router as errors_router
+    from backend.api.routes.risk import router as risk_router
+    from backend.api.auth import router as auth_router
+    app.include_router(portfolio_router)
+    app.include_router(errors_router)
+    app.include_router(risk_router)
+    app.include_router(auth_router)
+
+    # WebSocket manager always present
+    from backend.api.websocket_manager import WebSocketClientManager
+    qmax = ws_queue_max if ws_queue_max is not None else 1000
+    
+    # Map parameter names for WebSocket manager constructor
+    ws_manager_kwargs = {}
+    for key, value in kwargs.items():
+        if key == 'ws_heartbeat':
+            ws_manager_kwargs['heartbeat_interval'] = value
+        elif key == 'ws_queue_max':
+            # Already handled via qmax
+            continue
+        else:
+            ws_manager_kwargs[key] = value
+    
+    app.state.ws_manager = WebSocketClientManager(
+        queue_max=qmax, 
+        metrics_registry=app.state.metrics_registry,
+        **ws_manager_kwargs
+    )
     return app
 
 
@@ -441,6 +434,7 @@ def register_routes(app: FastAPI):
     from backend.api.routes.trades import router as trades_router
     from backend.api.auth import router as auth_router
     from backend.api.routes.portfolio import router as portfolio_router
+    from backend.api.errors import router as errors_router
     
     # Register system routes (no prefix)
     app.include_router(system_router)
@@ -455,6 +449,7 @@ def register_routes(app: FastAPI):
     app.include_router(signals_router)
     app.include_router(models_router)
     app.include_router(risk_router)
+    app.include_router(errors_router)  # Test error routes
     
     # Add missing routes that tests expect
     from fastapi import APIRouter

@@ -182,7 +182,9 @@ class TestAPIKeyAuthentication:
         # Use patch to mock the settings for the duration of this test
         with patch("backend.infra.security.get_settings") as mock_get_settings:
             mock_settings = MagicMock()
-            mock_settings.api_keys = ["test-api-key-123"]
+            mock_security = MagicMock()
+            mock_security.api_keys = ["test-api-key-123"]
+            mock_settings.security = mock_security
             mock_settings.security_dev_mode = False
             mock_get_settings.return_value = mock_settings
 
@@ -200,7 +202,9 @@ class TestAPIKeyAuthentication:
         """Test rejection of invalid API key."""
         with patch("backend.infra.security.get_settings") as mock_get_settings:
             mock_settings = MagicMock()
-            mock_settings.api_keys = ["valid-key"]
+            mock_security = MagicMock()
+            mock_security.api_keys = ["valid-key"]
+            mock_settings.security = mock_security
             mock_settings.security_dev_mode = False
             mock_get_settings.return_value = mock_settings
 

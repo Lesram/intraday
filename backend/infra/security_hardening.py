@@ -246,7 +246,41 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                 },
             )
 
-        response = await call_next(request)
+        try:
+            response = await call_next(request)
+        except Exception as e:
+            # Convert exceptions to proper HTTP responses with rate limit headers
+            from fastapi import HTTPException
+            from starlette.responses import JSONResponse
+            
+            if isinstance(e, HTTPException):
+                # For HTTPException, return a proper response with rate limit headers
+                response = JSONResponse(
+                    status_code=e.status_code,
+                    content={"detail": e.detail},
+                    headers={
+                        "X-RateLimit-Limit": str(rate_info["requests_allowed"]),
+                        "X-RateLimit-Remaining": str(
+                            max(0, rate_info["requests_allowed"] - rate_info["requests_made"])
+                        ),
+                        "X-RateLimit-Reset": str(int(rate_info["reset_time"])),
+                    }
+                )
+                return response
+            else:
+                # For other exceptions, return 500 error with rate limit headers
+                response = JSONResponse(
+                    status_code=500,
+                    content={"detail": "Internal server error"},
+                    headers={
+                        "X-RateLimit-Limit": str(rate_info["requests_allowed"]),
+                        "X-RateLimit-Remaining": str(
+                            max(0, rate_info["requests_allowed"] - rate_info["requests_made"])
+                        ),
+                        "X-RateLimit-Reset": str(int(rate_info["reset_time"])),
+                    }
+                )
+                return response
 
         # Add rate limit headers to successful responses
         response.headers["X-RateLimit-Limit"] = str(rate_info["requests_allowed"])
@@ -268,28 +302,43 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request: Request, call_next):
         """Add security headers to responses."""
-        response = await call_next(request)
+        try:
+            response = await call_next(request)
+        except Exception as e:
+            # Even on exceptions, add security headers if possible
+            if hasattr(e, 'status_code') and hasattr(e, 'headers') and self.enabled:
+                # HTTPException-like object
+                if e.headers is None:
+                    e.headers = {}
+                self._add_security_headers(e.headers, request)
+            raise e
 
         if not self.enabled:
             return response
 
-        # Security headers
-        response.headers["X-Content-Type-Options"] = "nosniff"
-        response.headers["X-Frame-Options"] = "DENY"
-        response.headers["X-XSS-Protection"] = "1; mode=block"
-        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-        response.headers["Permissions-Policy"] = (
+        # Add security headers to successful responses
+        self._add_security_headers(response.headers, request)
+
+        return response
+
+    def _add_security_headers(self, headers, request):
+        """Helper method to add security headers."""
+        headers["X-Content-Type-Options"] = "nosniff"
+        headers["X-Frame-Options"] = "DENY"
+        headers["X-XSS-Protection"] = "1; mode=block"
+        headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        headers["Permissions-Policy"] = (
             "geolocation=(), microphone=(), camera=()"
         )
 
         # HSTS for HTTPS
         if request.url.scheme == "https":
-            response.headers["Strict-Transport-Security"] = (
+            headers["Strict-Transport-Security"] = (
                 f"max-age={self.hsts_max_age}; includeSubDomains"
             )
 
         # Content Security Policy (basic)
-        response.headers["Content-Security-Policy"] = (
+        headers["Content-Security-Policy"] = (
             "default-src 'self'; "
             "script-src 'self'; "
             "style-src 'self' 'unsafe-inline'; "
@@ -300,8 +349,6 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             "base-uri 'self'; "
             "form-action 'self'"
         )
-
-        return response
 
 
 def configure_security_middleware(app, security_settings: SecuritySettings):

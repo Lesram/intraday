@@ -12,6 +12,22 @@ import uuid
 from httpx import Response
 import respx
 
+# Compatibility shim for respx.patterns.STR (older/newer versions)
+try:
+    _STR_PATTERN = respx.patterns.STR  # type: ignore[attr-defined]
+except Exception:  # pragma: no cover - fallback when attribute missing
+    try:
+        from respx.patterns import Pattern
+
+        class _AnyStrPattern(Pattern):
+            def match(self, value):
+                return isinstance(value, str)
+
+        _STR_PATTERN = _AnyStrPattern()
+    except Exception:
+        # Last resort: use wildcard in URL formatting
+        _STR_PATTERN = "{any}"
+
 
 class AlpacaMockResponder:
     """Mock responder for Alpaca API endpoints."""
@@ -45,14 +61,14 @@ class AlpacaMockResponder:
             "max_day_trading_buying_power": "400000.00",
         }
 
-    def setup_responders(self, respx_mock: respx.MockRouter) -> None:
+    def setup_responders(self, respx_mock) -> None:
         """Set up all mock responders."""
         self.setup_account_responders(respx_mock)
         self.setup_orders_responders(respx_mock)
         self.setup_positions_responders(respx_mock)
         self.setup_market_data_responders(respx_mock)
 
-    def setup_account_responders(self, respx_mock: respx.MockRouter) -> None:
+    def setup_account_responders(self, respx_mock: respx) -> None:
         """Set up account-related mock responders."""
 
         # GET /v2/account
@@ -73,7 +89,7 @@ class AlpacaMockResponder:
             )
         )
 
-    def setup_orders_responders(self, respx_mock: respx.MockRouter) -> None:
+    def setup_orders_responders(self, respx_mock: respx) -> None:
         """Set up order-related mock responders."""
 
         # POST /v2/orders - Submit order
@@ -139,7 +155,7 @@ class AlpacaMockResponder:
             return_value=Response(200, json=list(self.orders_db.values()))
         )
 
-        respx_mock.get(f"{self.base_url}/v2/orders/{respx.patterns.STR}").mock(
+        respx_mock.get(f"{self.base_url}/v2/orders/{_STR_PATTERN}").mock(
             side_effect=get_order_handler
         )
 
@@ -163,11 +179,11 @@ class AlpacaMockResponder:
                     404, json={"code": 40410000, "message": "Order not found"}
                 )
 
-        respx_mock.delete(f"{self.base_url}/v2/orders/{respx.patterns.STR}").mock(
+        respx_mock.delete(f"{self.base_url}/v2/orders/{_STR_PATTERN}").mock(
             side_effect=cancel_order_handler
         )
 
-    def setup_positions_responders(self, respx_mock: respx.MockRouter) -> None:
+    def setup_positions_responders(self, respx_mock: respx) -> None:
         """Set up positions-related mock responders."""
 
         # GET /v2/positions
@@ -185,11 +201,11 @@ class AlpacaMockResponder:
                     404, json={"code": 40410000, "message": "Position not found"}
                 )
 
-        respx_mock.get(f"{self.base_url}/v2/positions/{respx.patterns.STR}").mock(
+        respx_mock.get(f"{self.base_url}/v2/positions/{_STR_PATTERN}").mock(
             side_effect=get_position_handler
         )
 
-    def setup_market_data_responders(self, respx_mock: respx.MockRouter) -> None:
+    def setup_market_data_responders(self, respx_mock: respx) -> None:
         """Set up market data mock responders."""
 
         # GET /v2/stocks/{symbol}/quotes/latest
@@ -211,7 +227,7 @@ class AlpacaMockResponder:
             )
 
         respx_mock.get(
-            f"{self.base_url}/v2/stocks/{respx.patterns.STR}/quotes/latest"
+            f"{self.base_url}/v2/stocks/{_STR_PATTERN}/quotes/latest"
         ).mock(side_effect=get_quote_handler)
 
     def add_order(self, order_data: dict[str, Any]) -> str:
@@ -327,9 +343,9 @@ class AlpacaMockResponder:
 
 def create_fault_responder(
     base_url: str = "https://paper-api.alpaca.markets",
-) -> respx.MockRouter:
+) -> respx:
     """Create a responder that simulates various broker faults."""
-    mock = respx.MockRouter()
+    mock = respx()
     base_url = base_url.rstrip("/")
 
     # Always return 502 Bad Gateway
@@ -347,11 +363,11 @@ def create_fault_responder(
 
 def create_flaky_responder(
     base_url: str = "https://paper-api.alpaca.markets", success_rate: float = 0.7
-) -> respx.MockRouter:
+) -> respx:
     """Create a responder that succeeds only some percentage of the time."""
     import random
 
-    mock = respx.MockRouter()
+    mock = respx()
     base_url = base_url.rstrip("/")
 
     def flaky_handler(request):
@@ -381,9 +397,9 @@ def create_flaky_responder(
 
 def create_backoff_responder(
     base_url: str = "https://paper-api.alpaca.markets", fail_count: int = 2
-) -> respx.MockRouter:
+) -> respx:
     """Create a responder that fails N times then succeeds (for backoff testing)."""
-    mock = respx.MockRouter()
+    mock = respx()
     base_url = base_url.rstrip("/")
 
     call_count = {"count": 0}
