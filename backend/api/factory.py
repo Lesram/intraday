@@ -101,6 +101,14 @@ def create_app(*, registry=None, ws_queue_max: int|None=None, **kwargs):
     # Initialize metrics registry
     app.state.metrics_registry = registry or initialize_metrics_registry()
     
+    # Initialize persistent risk manager for stateful risk limits
+    try:
+        from backend.risk.risk_manager import RiskManager
+        app.state.risk_manager = RiskManager()
+    except ImportError:
+        # Fallback for testing environments
+        app.state.risk_manager = None
+    
     # Setup model manager based on DISABLE_ML environment variable
     DISABLE_ML = os.environ.get("DISABLE_ML", "0") == "1"
     if DISABLE_ML:
@@ -277,6 +285,11 @@ def create_app(*, registry=None, ws_queue_max: int|None=None, **kwargs):
     
     # Temporary compatibility: include auth at root level for existing tests
     app.include_router(auth_router, tags=["Authentication - Legacy"])
+    
+    # Install standardized error handlers and mark as platform app
+    from backend.api.errors import install_error_handlers
+    install_error_handlers(app)
+    app.state.is_platform_app = True
 
     # WebSocket manager always present
     from backend.api.websocket_manager import WebSocketClientManager

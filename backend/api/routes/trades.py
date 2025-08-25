@@ -191,7 +191,13 @@ async def execute_trade(
     trade_request: TradeExecutionRequest,
     current_user = Depends(get_authenticated_user)
 ):
-    """Execute a trade order."""
+    """
+    Execute a trade order.
+    
+    **DEPRECATED**: This endpoint is deprecated. 
+    Use `/api/v1/orders/submit` for new order submissions instead.
+    This endpoint will be removed in a future version.
+    """
     if current_user is None:
         raise HTTPException(status_code=401, detail="Authentication required")
     
