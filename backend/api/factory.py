@@ -228,10 +228,15 @@ def create_app(*, registry=None, ws_queue_max: int|None=None, **kwargs):
             from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
             from fastapi import Response
             
-            registry = getattr(app.state, 'metrics_registry', None)
-            if registry:
-                content = generate_latest(registry)
+            metrics_registry = getattr(app.state, 'metrics_registry', None)
+            if metrics_registry and hasattr(metrics_registry, 'registry'):
+                # MetricsRegistry object with .registry attribute
+                content = generate_latest(metrics_registry.registry)
+            elif metrics_registry:
+                # Direct CollectorRegistry
+                content = generate_latest(metrics_registry)
             else:
+                # Use default registry
                 content = generate_latest()
             return Response(content=content, media_type=CONTENT_TYPE_LATEST)
         except ImportError:
