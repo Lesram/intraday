@@ -40,7 +40,7 @@ def app_with_routes(mock_settings):
             async def metrics():
                 return "# HELP http_requests_total HTTP requests\nhttp_requests_total{method=\"GET\"} 1"
             
-            @app.post("/api/orders")
+            @app.post("/api/v1/orders/submit")
             async def create_order():
                 # Should return 401 without auth
                 from fastapi import HTTPException
@@ -133,7 +133,7 @@ class TestAuthenticationBehavior:
     def test_protected_route_without_token_returns_401(self, client):
         """Test protected routes return 401 without valid JWT token"""
         # Try accessing a protected endpoint without token
-        response = client.post("/api/orders", json={"symbol": "AAPL", "quantity": 100})
+        response = client.post("/api/v1/orders/submit", json={"symbol": "AAPL", "quantity": 100})
         assert response.status_code == 401
         
         data = response.json()

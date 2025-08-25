@@ -165,7 +165,7 @@ class TestE2EGoldenPath:
             mock_submit.side_effect = Exception("Risk check failed")
 
             order_response = client.post(
-                "/orders/submit", json=order_payload, headers=headers
+                "/api/v1/orders/submit", json=order_payload, headers=headers
             )
 
             # Should be rejected
@@ -203,7 +203,7 @@ class TestE2EGoldenPath:
         }
 
         # Should be rejected due to missing auth
-        order_response = client.post("/orders/submit", json=order_payload)
+        order_response = client.post("/api/v1/orders/submit", json=order_payload)
         assert order_response.status_code == 401
 
         # Verify auth failure metrics
@@ -249,7 +249,7 @@ class TestE2EGoldenPath:
         """Test E2E WebSocket integration for real-time updates."""
 
         # Test WebSocket connection
-        with client.websocket_connect("/ws/market-data") as websocket:
+        with client.websocket_connect("/api/v1/ws/market-data") as websocket:
             # Send subscription message
             websocket.send_json({"action": "subscribe", "symbols": ["AAPL", "TSLA"]})
 
@@ -281,7 +281,7 @@ class TestE2EGoldenPath:
                 }
 
                 update_response = client.post(
-                    "/market-data/update", json=market_update, headers=headers
+                    "/api/v1/market-data/update", json=market_update, headers=headers
                 )
                 assert update_response.status_code == 200
 

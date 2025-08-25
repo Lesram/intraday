@@ -21,9 +21,9 @@ class TestWebSocketBackpressure:
         """Create WebSocket-enabled app for testing."""
         from backend.api.main import app
 
-        # Ensure WebSocket broadcaster is configured with test settings
+        # Ensure WebSocket manager is configured with test settings
         with patch(
-            "backend.websocket.broadcaster.WebSocketBroadcaster"
+            "backend.api.websocket_manager.WebSocketClientManager"
         ) as mock_broadcaster:
             mock_broadcaster_instance = AsyncMock()
             mock_broadcaster_instance.max_queue_size = 100

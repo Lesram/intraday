@@ -33,21 +33,21 @@ COMPREHENSIVE_ROUTES_DATA = [
     ("POST", "/auth/register", False, {"email": "test@example.com", "password": "testpass123"}, 201, "Registration endpoint", "/auth/register"),
     
     # Protected API endpoints with real route templates
-    ("GET", "/portfolio/positions", True, None, 200, "Portfolio positions", "/portfolio/positions"),
-    ("POST", "/orders", True, {"symbol": "AAPL", "side": "buy", "qty": 100}, 200, "Create order", "/orders"),
-    ("GET", "/orders/{order_id}", True, None, 200, "Get specific order", "/orders/{order_id}"),
-    ("POST", "/orders/{order_id}/cancel", True, None, 200, "Cancel order", "/orders/{order_id}/cancel"),
-    ("GET", "/signals", True, None, 200, "Get trading signals", "/signals"),
-    ("GET", "/signals/{symbol}", True, None, 200, "Get symbol signals", "/signals/{symbol}"),
-    ("POST", "/models/train", True, {"model_type": "regression"}, 200, "Train ML model", "/models/train"),
-    ("GET", "/models/status", True, None, 200, "Get model status", "/models/status"),
-    ("PUT", "/risk/limits", True, {"max_position": 10000}, 200, "Update risk limits", "/risk/limits"),
-    ("GET", "/risk/metrics", True, None, 200, "Get risk metrics", "/risk/metrics"),
-    ("GET", "/portfolio/performance", True, None, 200, "Portfolio performance", "/portfolio/performance"),
-    ("GET", "/market/data/{symbol}", True, None, 200, "Market data", "/market/data/{symbol}"),
-    ("POST", "/strategies/backtest", True, {"strategy": "mean_reversion"}, 200, "Run backtest", "/strategies/backtest"),
-    ("GET", "/audit/logs", True, None, 200, "Audit logs", "/audit/logs"),
-    ("POST", "/notifications/webhook", False, {"event": "order_filled"}, 200, "Webhook", "/notifications/webhook"),
+    ("GET", "/api/v1/positions", True, None, 200, "Portfolio positions", "/api/v1/positions"),
+    ("POST", "/api/v1/orders/submit", True, {"symbol": "AAPL", "side": "buy", "qty": 100}, 200, "Create order", "/api/v1/orders/submit"),
+    ("GET", "/api/v1/orders/{order_id}", True, None, 200, "Get specific order", "/api/v1/orders/{order_id}"),
+    ("POST", "/api/v1/orders/{order_id}/cancel", True, None, 200, "Cancel order", "/api/v1/orders/{order_id}/cancel"),
+    ("GET", "/api/v1/signals", True, None, 200, "Get trading signals", "/api/v1/signals"),
+    ("GET", "/api/v1/signals/{symbol}", True, None, 200, "Get symbol signals", "/api/v1/signals/{symbol}"),
+    ("POST", "/api/v1/models/train", True, {"model_type": "regression"}, 200, "Train ML model", "/api/v1/models/train"),
+    ("GET", "/api/v1/models/status", True, None, 200, "Get model status", "/api/v1/models/status"),
+    ("PUT", "/api/v1/risk/limits", True, {"max_position": 10000}, 200, "Update risk limits", "/api/v1/risk/limits"),
+    ("GET", "/api/v1/risk/metrics", True, None, 200, "Get risk metrics", "/api/v1/risk/metrics"),
+    ("GET", "/api/v1/portfolio/status", True, None, 200, "Portfolio performance", "/api/v1/portfolio/status"),
+    ("GET", "/api/v1/market-data/{symbol}", True, None, 200, "Market data", "/api/v1/market-data/{symbol}"),
+    ("POST", "/api/v1/strategies/backtest", True, {"strategy": "mean_reversion"}, 200, "Run backtest", "/api/v1/strategies/backtest"),
+    ("GET", "/api/v1/audit/logs", True, None, 200, "Audit logs", "/api/v1/audit/logs"),
+    ("POST", "/api/v1/notifications/webhook", False, {"event": "order_filled"}, 200, "Webhook", "/api/v1/notifications/webhook"),
 ]
 
 # Validation error test data
@@ -55,28 +55,28 @@ VALIDATION_ERROR_DATA = [
     # (method, path, invalid_body, expected_status, error_field, description)
     ("POST", "/auth/register", {"email": "invalid-email"}, 422, "email", "Invalid email format"),
     ("POST", "/auth/register", {"password": "short"}, 422, "password", "Password too short"),
-    ("POST", "/orders", {"symbol": "INVALID_SYMBOL_TOO_LONG", "side": "buy"}, 422, "symbol", "Invalid symbol"),
-    ("POST", "/orders", {"symbol": "AAPL", "side": "invalid", "qty": 100}, 422, "side", "Invalid order side"),
-    ("POST", "/orders", {"symbol": "AAPL", "side": "buy", "qty": -100}, 422, "qty", "Negative quantity"),
-    ("PUT", "/risk/limits", {"max_position": "not_a_number"}, 422, "max_position", "Invalid number format"),
-    ("POST", "/models/train", {"model_type": "invalid_model"}, 422, "model_type", "Invalid model type"),
+    ("POST", "/api/v1/orders/submit", {"symbol": "INVALID_SYMBOL_TOO_LONG", "side": "buy"}, 422, "symbol", "Invalid symbol"),
+    ("POST", "/api/v1/orders/submit", {"symbol": "AAPL", "side": "invalid", "qty": 100}, 422, "side", "Invalid order side"),
+    ("POST", "/api/v1/orders/submit", {"symbol": "AAPL", "side": "buy", "qty": -100}, 422, "qty", "Negative quantity"),
+    ("PUT", "/api/v1/risk/limits", {"max_position": "not_a_number"}, 422, "max_position", "Invalid number format"),
+    ("POST", "/api/v1/models/train", {"model_type": "invalid_model"}, 422, "model_type", "Invalid model type"),
 ]
 
 # Error forcing data for 500 testing
 ERROR_FORCE_ROUTES = [
     # (method, path, monkeypatch_target, exception_to_raise, description)
-    ("GET", "/portfolio/positions", "backend.api.portfolio.get_positions", Exception("Database error"), "Portfolio DB error"),
-    ("POST", "/orders", "backend.services.order_service.submit_order", ConnectionError("Broker unreachable"), "Order service error"),
-    ("GET", "/signals", "backend.services.signal_service.get_signals", TimeoutError("ML model timeout"), "Signal service timeout"),
+    ("GET", "/api/v1/positions", "backend.api.portfolio.get_positions", Exception("Database error"), "Portfolio DB error"),
+    ("POST", "/api/v1/orders/submit", "backend.services.order_service.submit_order", ConnectionError("Broker unreachable"), "Order service error"),
+    ("GET", "/api/v1/signals", "backend.services.signal_service.get_signals", TimeoutError("ML model timeout"), "Signal service timeout"),
     ("GET", "/risk/metrics", "backend.risk.risk_calculator.calculate_metrics", ValueError("Invalid risk data"), "Risk calculation error"),
 ]
 
 # Routes that should return 422 for validation errors
 VALIDATION_ERROR_ROUTES_DATA = [
     ("POST", "/auth/register", {}, 422, "Missing required fields"),
-    ("POST", "/orders", {"symbol": "", "qty": -1}, 422, "Invalid order parameters"),
-    ("POST", "/models/train", {"invalid_field": "value"}, 422, "Invalid model training params"),
-    ("PUT", "/risk/limits", {"max_position_size": -1000}, 422, "Invalid risk limits"),
+    ("POST", "/api/v1/orders/submit", {"symbol": "", "qty": -1}, 422, "Invalid order parameters"),
+    ("POST", "/api/v1/models/train", {"invalid_field": "value"}, 422, "Invalid model training params"),
+    ("PUT", "/api/v1/risk/limits", {"max_position_size": -1000}, 422, "Invalid risk limits"),
 ]
 
 # Routes that should trigger authentication errors

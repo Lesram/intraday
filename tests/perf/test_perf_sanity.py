@@ -317,9 +317,9 @@ class TestPerformanceSanity:
         messages_sent = 0
         clients_updated = 0
 
-        # Mock WebSocket broadcaster
+        # Mock WebSocket manager
         with patch(
-            "backend.websocket.broadcaster.WebSocketBroadcaster"
+            "backend.api.websocket_manager.WebSocketClientManager"
         ) as mock_broadcaster:
             mock_broadcaster_instance = AsyncMock()
             mock_broadcaster.return_value = mock_broadcaster_instance

@@ -109,7 +109,7 @@ class WebSocketBurstTester:
         self._stop_event = threading.Event()
 
     async def create_connection(
-        self, connection_id: str, endpoint: str = "/ws/market-data"
+        self, connection_id: str, endpoint: str = "/api/v1/ws/market-data"
     ) -> ConnectionMetrics:
         """Create a single WebSocket connection and collect metrics."""
         metrics = ConnectionMetrics(connection_id=connection_id)

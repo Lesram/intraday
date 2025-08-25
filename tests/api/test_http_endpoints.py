@@ -273,8 +273,6 @@ class TestCoreEndpoints:
         endpoints_to_test = [
             "/api/v1/orders",
             "/api/v1/positions",
-            "/api/orders", 
-            "/orders"
         ]
         
         for endpoint in endpoints_to_test:

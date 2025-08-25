@@ -18,7 +18,6 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from backend.infra.repositories.orders import OrdersRepo
 from backend.infra.repositories.positions import PositionsRepo  
 from backend.infra.repositories.executions import ExecutionsRepo  # Use executions instead of trades
-from backend.infra.database import DatabaseManager
 
 
 # Test fixtures for SQLite testing
