@@ -3,7 +3,7 @@ from pydantic import BaseModel, Field, ValidationError
 from typing import Any, Dict
 from backend.infra.security import get_current_user, get_authenticated_user, get_user_attribute  # tests override this
 
-router = APIRouter(prefix="/api/v1/risk", tags=["risk"])
+router = APIRouter(prefix="/risk", tags=["risk"])
 
 # Patch point:
 def get_risk_manager(request: Request):

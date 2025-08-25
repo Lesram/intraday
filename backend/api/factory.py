@@ -198,15 +198,59 @@ def create_app(*, registry=None, ws_queue_max: int|None=None, **kwargs):
     async def liveness_check():
         return {"status": "alive", "service": "trading-platform"}
 
-    # Routers — include auth and v1 routes expected by tests
-    from backend.api.portfolio import router as portfolio_router
-    from backend.api.errors import router as errors_router
-    from backend.api.routes.risk import router as risk_router
+    @app.get("/healthz")
+    async def healthz_check():
+        """Kubernetes-style health check alias."""
+        return {"status": "alive", "service": "trading-platform"}
+
+    @app.get("/metrics")
+    async def metrics():
+        """Prometheus metrics endpoint."""
+        try:
+            from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
+            from fastapi import Response
+            
+            registry = getattr(app.state, 'metrics_registry', None)
+            content = generate_latest(registry) if registry else generate_latest()
+            return Response(content=content, media_type=CONTENT_TYPE_LATEST)
+        except ImportError:
+            return {"error": "Prometheus client not available"}
+        except Exception as e:
+            return {"error": f"Metrics generation failed: {str(e)}"}
+
+    # Create unified API v1 router
+    from fastapi import APIRouter
+    api_v1_router = APIRouter(prefix="/api/v1", tags=["API v1"])
+    
+    # Import all routers
     from backend.api.auth import router as auth_router
-    app.include_router(portfolio_router)
-    app.include_router(errors_router)
-    app.include_router(risk_router)
-    app.include_router(auth_router)
+    from backend.api.portfolio import router as portfolio_router
+    from backend.api.routes.risk import router as risk_router
+    from backend.api.routes.orders import router as orders_router
+    from backend.api.routes.trades import router as trades_router
+    from backend.api.routes.signals import router as signals_router
+    from backend.api.routes.models import router as models_router
+    from backend.api.routes.system import router as system_router
+    from backend.api.routes.strategy import router as strategy_router
+    from backend.api.errors import router as errors_router
+    
+    # Include all routers under unified v1 prefix
+    api_v1_router.include_router(auth_router, tags=["Authentication"])
+    api_v1_router.include_router(portfolio_router, tags=["Portfolio"]) 
+    api_v1_router.include_router(risk_router, tags=["Risk Management"])
+    api_v1_router.include_router(orders_router, tags=["Orders"])
+    api_v1_router.include_router(trades_router, tags=["Trades"])
+    api_v1_router.include_router(signals_router, tags=["Signals"])
+    api_v1_router.include_router(models_router, tags=["Models"])
+    api_v1_router.include_router(system_router, tags=["System"])
+    api_v1_router.include_router(strategy_router, tags=["Strategy"])
+    
+    # Include the unified router and errors router
+    app.include_router(api_v1_router)
+    app.include_router(errors_router)  # Keep test error routes at root
+    
+    # Temporary compatibility: include auth at root level for existing tests
+    app.include_router(auth_router, tags=["Authentication - Legacy"])
 
     # WebSocket manager always present
     from backend.api.websocket_manager import WebSocketClientManager
@@ -430,7 +474,6 @@ def register_routes(app: FastAPI):
     from backend.api.routes.signals import router as signals_router
     from backend.api.routes.models import router as models_router
     from backend.api.routes.risk import router as risk_router
-    from backend.api.routes.positions import router as positions_router
     from backend.api.routes.trades import router as trades_router
     from backend.api.auth import router as auth_router
     from backend.api.routes.portfolio import router as portfolio_router
@@ -444,7 +487,6 @@ def register_routes(app: FastAPI):
     app.include_router(portfolio_router)  # Router already has /portfolio prefix
     app.include_router(api_v1_portfolio_router)  # Deterministic include for /api/v1/positions
     app.include_router(orders_router)
-    app.include_router(positions_router)
     app.include_router(trades_router)
     app.include_router(signals_router)
     app.include_router(models_router)

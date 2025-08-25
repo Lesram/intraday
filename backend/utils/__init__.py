@@ -16,8 +16,7 @@ from .utilities import (
 )
 
 # Export logger utilities  
-from .logger import get_logger
-from .loggers import get_audit_logger, get_application_logger
+from .logger import get_logger, audit_logger, performance_logger
 
 # Export helper functions that actually exist
 from .helpers import (
@@ -56,8 +55,7 @@ __all__ = [
     # Logger
     'get_logger',
     'audit_logger',
-    'get_audit_logger', 
-    'get_application_logger',
+    'performance_logger',
     # Helpers
     'align_for_pandas_arithmetic',
     'calculate_returns',

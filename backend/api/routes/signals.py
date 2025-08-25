@@ -7,8 +7,9 @@ import time
 import logging
 from datetime import datetime
 from typing import Any, Dict
+import uuid
 
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Request
 from pydantic import BaseModel, Field
 
 from backend.infra.security import get_current_user
@@ -17,6 +18,15 @@ from backend.utils.logger import get_logger
 logger = get_logger(__name__)
 
 router = APIRouter(prefix="/signals", tags=["Trading Signals"])
+
+
+# Request Models
+class SignalRequest(BaseModel):
+    symbol: str = Field(..., description="Trading symbol")
+    signal_strength: float = Field(..., description="Signal strength")
+    timestamp: str = Field(..., description="Signal timestamp")
+    features: Dict[str, float] = Field(default_factory=dict, description="Signal features")
+    metadata: Dict[str, Any] = Field(default_factory=dict, description="Signal metadata")
 
 
 # Response Models
@@ -316,3 +326,19 @@ async def get_advanced_signals(
     except Exception as e:
         logger.exception(f"Error in get_advanced_signals: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/")
+async def create_signal(request: Request, signal_request: SignalRequest):
+    """Create a new trading signal."""
+    # Generate signal ID
+    signal_id = str(uuid.uuid4())
+    
+    # Mock signal processing - in reality this would convert to orders
+    return {
+        "signal_id": signal_id,
+        "status": "accepted",
+        "symbol": signal_request.symbol,
+        "signal_strength": signal_request.signal_strength,
+        "processed_at": datetime.now().isoformat(),
+    }

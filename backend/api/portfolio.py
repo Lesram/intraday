@@ -14,7 +14,7 @@ from backend.infra.security import (
 from backend.infra.repositories import get_portfolio_repo
 
 
-router = APIRouter(prefix="/api/v1", tags=["portfolio"])
+router = APIRouter(prefix="/portfolio", tags=["portfolio"])
 
 
 class PositionResponse(BaseModel):
