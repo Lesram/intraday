@@ -99,6 +99,7 @@ class WebSocketClientManager:
     metrics_registry = None,
     now: Callable | None = None,
     now_func: Callable | None = None,  # Alternative parameter name for compatibility
+    **kwargs  # Absorb any unknown parameters for compatibility
     ):
         """Initialize WebSocket manager."""
         self.clients: dict[str, WebSocketClientInfo] = {}

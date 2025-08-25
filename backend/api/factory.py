@@ -131,6 +131,24 @@ def create_app(*, registry=None, ws_queue_max: int|None=None, **kwargs):
     app.router.lifespan_context = lifespan
 
     # Basic health endpoints
+    @app.get("/")
+    async def root():
+        """Root API information endpoint."""
+        return {
+            "service": "Algorithmic Trading Platform API",
+            "version": "1.0.0",
+            "status": "operational",
+            "api_version": "v1",
+            "endpoints": {
+                "health": "/health",
+                "readiness": "/readyz",
+                "liveness": "/livez",
+                "metrics": "/metrics",
+                "docs": "/docs",
+                "api": "/api/v1"
+            }
+        }
+
     @app.get("/health")
     async def health_check():
         return {"status": "healthy", "service": "trading-platform"}
@@ -211,12 +229,15 @@ def create_app(*, registry=None, ws_queue_max: int|None=None, **kwargs):
             from fastapi import Response
             
             registry = getattr(app.state, 'metrics_registry', None)
-            content = generate_latest(registry) if registry else generate_latest()
+            if registry:
+                content = generate_latest(registry)
+            else:
+                content = generate_latest()
             return Response(content=content, media_type=CONTENT_TYPE_LATEST)
         except ImportError:
-            return {"error": "Prometheus client not available"}
+            return Response(content="# Prometheus client not available\n", media_type="text/plain")
         except Exception as e:
-            return {"error": f"Metrics generation failed: {str(e)}"}
+            return Response(content=f"# Metrics generation failed: {str(e)}\n", media_type="text/plain")
 
     # Create unified API v1 router
     from fastapi import APIRouter
