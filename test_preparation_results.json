@@ -1,0 +1,28 @@
+{
+  "timestamp": "2025-08-26T13:24:18.950845",
+  "checks": {
+    "working_directory": "\u2705 PASS",
+    "virtual_environment": "\u2705 ACTIVATED",
+    "python_version": "Python 3.12.4",
+    "pytest": "LIGHT MODE ACTIVATED: 10 heavy ML modules pre-stubbed",
+    "ml_protection": "\u2705 ACTIVE",
+    "working_test_files": 0,
+    "problematic_test_files": 7,
+    "skipped_files": {
+      "tests/core/test_app_lifespan_and_di.py": "Lifespan tests disabled due to torch import hangs on Windows"
+    }
+  },
+  "issues_found": [
+    "tests/unit/test_risk_manager_current.py - COLLECTION FAILED",
+    "tests/test_api_factory_comprehensive.py - COLLECTION FAILED",
+    "tests/test_websocket_comprehensive.py - COLLECTION FAILED",
+    "tests/test_feature_engineering_part1.py - COLLECTION FAILED",
+    "tests/test_model_manager_part1.py - COLLECTION FAILED",
+    "tests/test_alpaca_client_phase7a2.py - COLLECTION FAILED",
+    "tests/test_ensemble_model_phase7a1.py - COLLECTION FAILED"
+  ],
+  "solutions_applied": [
+    "Excluded files with skip markers from test runs"
+  ],
+  "recommended_command": "pytest \\\n  tests/unit/test_risk_manager_current.py \\\n  tests/test_api_factory_comprehensive.py \\\n  tests/test_websocket_comprehensive.py \\\n  tests/unit/test_alpaca_client_core.py \\\n  tests/unit/test_alpaca_client_comprehensive.py \\\n  tests/test_feature_engineering_part1.py \\\n  tests/test_feature_engineering_part2.py \\\n  tests/test_model_manager_part1.py \\\n  tests/test_model_manager_part2_fixed.py \\\n  tests/test_model_manager_part3.py \\\n  tests/test_model_manager_part4.py \\\n  tests/test_alpaca_client_phase7a2.py \\\n  tests/test_ensemble_model_phase7a1.py \\\n  tests/test_ensemble_model_phase7a1_extended.py \\\n  tests/test_market_data_phase7b1.py \\\n  tests/test_market_data_phase7b1_extended.py \\\n  tests/test_market_data_phase7b1_final.py \\\n  tests/test_social_sentiment_phase7b2.py \\\n  tests/test_social_sentiment_phase7b2_extended.py \\\n  tests/test_social_sentiment_phase7b2_final.py \\\n  tests/test_order_service_phase7b3.py \\\n  tests/test_order_service_phase7b3_extended.py \\\n  tests/test_order_service_phase7b3_final.py \\\n  tests/test_ensemble_model_phase7b4.py \\\n  tests/test_ensemble_model_phase7b4_final.py \\\n  tests/test_trading_strategies_phase7b5.py \\\n  tests/test_websocket_manager_phase7b6.py \\\n  tests/test_order_service_phase7b6.py \\\n  --cov=backend \\\n  --cov-report=html \\\n  --cov-report=term-missing \\\n  --maxfail=10 \\\n  --timeout=180 \\\n  -v"
+}

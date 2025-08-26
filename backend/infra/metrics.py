@@ -369,7 +369,8 @@ class MetricsRegistry:
         labels = labels or {}
         labels = self._validate_labels(name, labels)
 
-        metric_key = f"{name}:{sorted(labels.items())}"
+        # Use only metric name as key since Prometheus expects one metric per name
+        metric_key = name
 
         if metric_key not in self._metrics:
             full_name = self._get_metric_name(name)
@@ -394,26 +395,39 @@ class MetricsRegistry:
                     logger.debug(f"Using default Prometheus buckets for {name}")
 
             # Create histogram with appropriate buckets
-            if final_buckets is not None:
-                histogram = Histogram(
-                    full_name,
-                    documentation or f"Histogram metric: {name}",
-                    labelnames=label_names,
-                    buckets=final_buckets,
-                    registry=self.registry,
-                )
-            else:
-                histogram = Histogram(
-                    full_name,
-                    documentation or f"Histogram metric: {name}",
-                    labelnames=label_names,
-                    registry=self.registry,
-                )
-            self._metrics[metric_key] = histogram
+            try:
+                if final_buckets is not None:
+                    histogram = Histogram(
+                        full_name,
+                        documentation or f"Histogram metric: {name}",
+                        labelnames=label_names,
+                        buckets=final_buckets,
+                        registry=self.registry,
+                    )
+                else:
+                    histogram = Histogram(
+                        full_name,
+                        documentation or f"Histogram metric: {name}",
+                        labelnames=label_names,
+                        registry=self.registry,
+                    )
+                self._metrics[metric_key] = histogram
 
-            logger.debug(
-                f"Created histogram metric: {full_name} with labels: {label_names}"
-            )
+                logger.debug(
+                    f"Created histogram metric: {full_name} with labels: {label_names}"
+                )
+            except ValueError as e:
+                if "Duplicated timeseries" in str(e):
+                    # Histogram already exists in registry, find it
+                    for collector in self.registry._collector_to_names.keys():
+                        if hasattr(collector, '_name') and collector._name == full_name:
+                            self._metrics[metric_key] = collector
+                            logger.debug(f"Reused existing histogram metric: {full_name}")
+                            break
+                    else:
+                        raise
+                else:
+                    raise
 
         metric = self._metrics[metric_key]
 

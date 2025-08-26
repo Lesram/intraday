@@ -156,10 +156,18 @@ class RegistryNoopModel:
 
 
 def get_model_manager(*args, **kwargs):
-    """Factory function that returns no-op manager in test mode"""
+    """Factory function that returns appropriate manager based on environment"""
     if DISABLE_ML:
         return _NoOpModelManager()
-    return ModelManager(*args, **kwargs)
+    
+    # Use singleton pattern for normal operation
+    global _model_manager
+    if _model_manager is None:
+        if args or kwargs:
+            _model_manager = ModelManager(*args, **kwargs)
+        else:
+            _model_manager = ModelManager()
+    return _model_manager
 
 
 class ModelNotFoundError(Exception):
@@ -194,15 +202,46 @@ class ModelManagerInterface(Protocol):
 class ModelManager:
     """Concrete ModelManager implementation for testing and production use."""
     
-    def __init__(self, model_store_path: str = "./models"):
+    def __init__(self, model_store_path: str = "./models", base_path: str = None):
+        # Handle backward compatibility - some tests use base_path instead of model_store_path
+        if base_path is not None:
+            model_store_path = base_path
+        
         self.model_store_path = Path(model_store_path)
+        self.base_path = str(self.model_store_path)  # Add base_path attribute for test compatibility
         self.model_store_path.mkdir(exist_ok=True, parents=True)
         self.models: dict[str, Any] = {}  # model_name -> model_object
         self.metadata: dict[str, ModelMetadata] = {}  # model_name -> metadata
         self.registry = ModelRegistry(str(self.model_store_path))
     
-    def register_model(self, model: Any, metadata: ModelMetadata) -> bool:
-        """Register a new model with metadata."""
+    def register_model(self, model: Any, metadata = None, version: str = None, **kwargs) -> bool:
+        """Register a new model with metadata (with backward compatibility)."""
+        # Handle different call signatures for test compatibility
+        if metadata is None or isinstance(metadata, str):
+            # Handle calls like register_model(model, "name", "version") or register_model(model, name="test", version="1.0.0")
+            if isinstance(metadata, str):
+                # register_model(model, "name", "version") - positional
+                name = metadata
+                version = version or "1.0.0"
+            else:
+                # register_model(model, name="test", version="1.0.0") - kwargs
+                name = kwargs.get('name', 'unknown')
+                version = version or kwargs.get('version', '1.0.0')
+            
+            features = kwargs.get('features', ['feature1'])
+            
+            # Create metadata from parameters for compatibility
+            metadata = ModelMetadata(
+                name=name,
+                version=version, 
+                features=features,
+                model_type=kwargs.get('model_type', 'unknown'),
+                created_at=kwargs.get('created_at', 'unknown')
+            )
+        
+        if not isinstance(metadata, ModelMetadata):
+            raise TypeError("metadata must be a ModelMetadata instance or provide name/version parameters")
+        
         try:
             # Basic metadata validation for smoke tests
             self._validate_metadata(metadata)
@@ -210,6 +249,23 @@ class ModelManager:
             # Store in-memory
             self.models[metadata.name] = model
             self.metadata[metadata.name] = metadata
+
+            # Also register with registry if available
+            if hasattr(self.registry, 'register_model'):
+                try:
+                    self.registry.register_model(
+                        model_id=metadata.name,
+                        model_obj=model,
+                        metadata={
+                            'version': metadata.version,
+                            'features': metadata.features,
+                            'model_type': metadata.model_type,
+                            'created_at': metadata.created_at
+                        },
+                        version=metadata.version
+                    )
+                except Exception as e:
+                    logging.warning(f"Registry registration failed: {e}")
 
             # Attempt to persist model artifact (pickle is patched in tests).
             # If persistence fails (e.g., unpicklable Mock), log and continue.
@@ -262,6 +318,21 @@ class ModelManager:
         """Make prediction using a specific model."""
         model = self.load_model(model_name)
         return model.predict(features)
+        
+    def get_model(self, model_id: str, version: str = None) -> Any:
+        """Get a model by ID (delegates to registry or loads from storage)."""
+        try:
+            # Try to get from registry first
+            if hasattr(self.registry, 'get_model'):
+                return self.registry.get_model(model_id, version)
+        except Exception:
+            pass
+        
+        # Fallback to load_model for backward compatibility
+        try:
+            return self.load_model(model_id)
+        except Exception:
+            return None
     
     def list_models(self) -> list[str]:
         """List all registered models."""
@@ -306,7 +377,7 @@ class _NoopModel:
 
 
 # Global model manager instance for dependency injection
-_model_manager: ModelManager = _NoopModel()
+_model_manager: ModelManager | None = None
 
 
 def _set_model_manager(model_manager: ModelManager) -> None:
@@ -317,6 +388,10 @@ def _set_model_manager(model_manager: ModelManager) -> None:
 
 def get_model_manager() -> ModelManager:
     """Get the current model manager instance"""
+    global _model_manager
+    if _model_manager is None:
+        # Initialize with default ModelManager if not set
+        _model_manager = ModelManager()
     return _model_manager
 
 # Backwards-compatible export names expected by some tests
@@ -554,6 +629,35 @@ class ModelRegistry:
 
         except Exception as e:
             logging.error(f"Error saving model registry: {e}")
+
+    # Compatibility adapter: some tests expect a 'register' method like InMemoryModelRegistry
+    def register(
+        self,
+        name,
+        version,
+        model,
+        *,
+        metadata=None,
+        artifacts_path=None,
+        feature_schema=None,
+    ):
+        """Compatibility layer that delegates to register_model.
+
+        This mirrors the simple signature used by test doubles and older code paths.
+        """
+        md = metadata or {}
+        if version:
+            md = {**md, "version": version}
+        # Delegate to register_model
+        return self.register_model(
+            model_id=name,
+            model_obj=model,
+            metadata=md,
+            version=version,
+            artifacts={"artifacts_path": artifacts_path} if artifacts_path else None,
+            feature_schema=feature_schema or {},
+            model_type="compat",
+        )
 
     def register_model(
         self,
@@ -1359,12 +1463,29 @@ class DriftDetector:
 
     def set_reference_data(self, model_id: str, data: pd.DataFrame):
         """Set reference data for drift detection"""
+        # Separate numeric and categorical data
+        numeric_data = data.select_dtypes(include=[np.number])
+        categorical_data = data.select_dtypes(exclude=[np.number])
+        
         reference_data = {
-            "mean": data.mean().to_dict(),
-            "std": data.std().to_dict(),
-            "correlations": data.corr().to_dict(),
             "feature_names": list(data.columns),
         }
+        
+        # Calculate statistics for numeric data only
+        if not numeric_data.empty:
+            reference_data.update({
+                "mean": numeric_data.mean().to_dict(),
+                "std": numeric_data.std().to_dict(),
+                "correlations": numeric_data.corr().to_dict() if len(numeric_data.columns) > 1 else {},
+            })
+        
+        # Store categorical feature information
+        if not categorical_data.empty:
+            reference_data["categorical_features"] = {
+                col: categorical_data[col].value_counts().to_dict() 
+                for col in categorical_data.columns
+            }
+        
         self.reference_data[model_id] = reference_data
         # Also update reference_distributions for compatibility
         self.reference_distributions[model_id] = reference_data
@@ -1394,21 +1515,47 @@ class DriftDetector:
             if feature not in current_data.columns:
                 continue
 
-            ref_mean = reference["mean"][feature]
-            ref_std = reference["std"][feature]
+            # Check if this is a numeric feature
+            if "mean" in reference and feature in reference["mean"]:
+                # Handle numeric feature
+                ref_mean = reference["mean"][feature]
+                ref_std = reference["std"][feature]
 
-            curr_mean = current_data[feature].mean()
-            curr_std = current_data[feature].std()
+                curr_mean = current_data[feature].mean()
+                curr_std = current_data[feature].std()
 
-            # Calculate drift score using normalized difference
-            mean_drift = abs(curr_mean - ref_mean) / (ref_std + 1e-8)
-            std_drift = abs(curr_std - ref_std) / (ref_std + 1e-8)
+                # Calculate drift score using normalized difference
+                mean_drift = abs(curr_mean - ref_mean) / (ref_std + 1e-8)
+                std_drift = abs(curr_std - ref_std) / (ref_std + 1e-8)
 
-            drift_score = (mean_drift + std_drift) / 2
-            drift_scores[feature] = drift_score
+                drift_score = (mean_drift + std_drift) / 2
+                drift_scores[feature] = drift_score
 
-            if drift_score > 2.0:  # Threshold for significant drift
-                affected_features.append(feature)
+                if drift_score > 2.0:  # Threshold for significant drift
+                    affected_features.append(feature)
+            
+            elif "categorical_features" in reference and feature in reference["categorical_features"]:
+                # Handle categorical feature
+                ref_dist = reference["categorical_features"][feature]
+                curr_dist = current_data[feature].value_counts().to_dict()
+                
+                # Simple categorical drift detection using value counts
+                all_categories = set(ref_dist.keys()) | set(curr_dist.keys())
+                total_ref = sum(ref_dist.values())
+                total_curr = len(current_data)
+                
+                # Calculate distribution difference
+                dist_diff = 0
+                for cat in all_categories:
+                    ref_prop = ref_dist.get(cat, 0) / total_ref
+                    curr_prop = curr_dist.get(cat, 0) / total_curr
+                    dist_diff += abs(ref_prop - curr_prop)
+                
+                drift_score = dist_diff / 2  # Normalize
+                drift_scores[feature] = drift_score
+                
+                if drift_score > 0.2:  # Lower threshold for categorical features
+                    affected_features.append(feature)
 
         # Overall drift severity
         avg_drift = np.mean(list(drift_scores.values()))
@@ -1646,10 +1793,6 @@ def get_champion_model(model_name: str) -> None:
     return None
 
 def register_model(model_name: str, model_obj, training_data, metrics: dict, feature_list: list, feature_dtypes: dict, train_window: dict) -> None:
-    """Stub function for compatibility."""
-    return None
-
-def get_model_manager():
     """Stub function for compatibility."""
     return None
 

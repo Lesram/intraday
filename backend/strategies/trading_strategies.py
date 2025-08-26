@@ -125,7 +125,7 @@ class BaseStrategy(ABC):
         self, symbol: str, price: float, confidence: float
     ) -> float:
         """Calculate position size based on confidence and risk"""
-        base_position = self.settings.max_position_size * confidence
+        base_position = self.settings.trading.max_position_size * confidence
 
         # Risk-adjusted position sizing
         portfolio_value = self.risk_manager.get_portfolio_value()
@@ -282,6 +282,14 @@ class MeanReversionStrategy(BaseStrategy):
         self, symbol: str, price_data: pd.DataFrame, features: pd.DataFrame
     ) -> TradingSignal:
         """Generate mean reversion signal"""
+        # Insufficient data guards
+        required_cols = ["close"]
+        for col in required_cols:
+            if col not in price_data or price_data[col].empty:
+                return TradingSignal(symbol=symbol, signal_type=SignalType.HOLD, confidence=0.0, target_price=0.0)
+        for col in ["rsi", "bb_upper", "bb_lower"]:
+            if col not in features or features[col].empty:
+                return TradingSignal(symbol=symbol, signal_type=SignalType.HOLD, confidence=0.0, target_price=0.0)
 
         current_price = price_data["close"].iloc[-1]
         current_rsi = features["rsi"].iloc[-1]
@@ -682,7 +690,7 @@ class StrategyManager:
 
         # Risk management constraint
         max_position = (
-            self.settings.max_position_size * 0.5
+            self.settings.trading.max_position_size * 0.5
         )  # Conservative for combined signals
         return min(final_size, max_position)
 
@@ -702,23 +710,36 @@ class StrategyManager:
                 strategy_scores[strategy_name] = max(0.1, score)  # Minimum weight
                 total_score += strategy_scores[strategy_name]
 
-        # Normalize weights
+        # Add minimum weights for untracked strategies
+        for strategy_name in self.strategies:
+            if strategy_name not in strategy_scores:
+                strategy_scores[strategy_name] = 0.1  # Default for new/untracked strategies
+                total_score += 0.1
+
+        # Normalize weights to ensure they sum to 1.0
         if total_score > 0:
             for strategy_name in self.strategies:
-                if strategy_name in strategy_scores:
-                    self.strategy_weights[strategy_name] = (
-                        strategy_scores[strategy_name] / total_score
-                    )
-                else:
-                    self.strategy_weights[strategy_name] = (
-                        0.1  # Default for new/untracked strategies
-                    )
+                self.strategy_weights[strategy_name] = (
+                    strategy_scores[strategy_name] / total_score
+                )
 
         audit_logger.info(
             "strategy_weights_updated",
             new_weights=self.strategy_weights,
             performance_scores=strategy_scores,
         )
+
+    def activate_strategy(self, strategy_name: str):
+        """Activate a specific strategy"""
+        if strategy_name in self.strategies:
+            self.strategies[strategy_name].is_active = True
+            audit_logger.info("strategy_activated", strategy_name=strategy_name)
+
+    def deactivate_strategy(self, strategy_name: str):
+        """Deactivate a specific strategy"""
+        if strategy_name in self.strategies:
+            self.strategies[strategy_name].is_active = False
+            audit_logger.info("strategy_deactivated", strategy_name=strategy_name)
 
     def get_strategy_status(self) -> dict[str, dict[str, Any]]:
         """Get status of all strategies"""

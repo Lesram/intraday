@@ -61,7 +61,7 @@ async def risk_metrics(
 
 @router.put("/limits")
 async def set_limits(
-    payload: dict, 
+    payload: RiskLimitsPayload, 
     mgr=Depends(get_risk_manager),
     user: Any = Depends(get_authenticated_user)
 ):
@@ -74,7 +74,7 @@ async def set_limits(
             detail="Insufficient permissions"
         )
     
-    return mgr.set_limits(payload)
+    return mgr.set_limits(payload.dict())
 
 # Legacy routes for backward compatibility
 @router.get("/metrics/legacy")

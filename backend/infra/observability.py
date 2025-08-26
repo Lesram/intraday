@@ -339,7 +339,14 @@ def record_latency(
                     # Record error metrics
                     duration = time.time() - start_time
                     error_labels = labels.copy()
-                    error_labels["status"] = "error"
+                    # Only add status if allowed for this histogram metric
+                    try:
+                        from .metrics import LABEL_ALLOWLIST as _ALLOW
+                        if "status" in _ALLOW.get(metric_name, ()):  # type: ignore[arg-type]
+                            error_labels["status"] = "error"
+                    except Exception:
+                        # If metrics allowlist unavailable, fall back to base labels
+                        pass
 
                     metrics = get_metrics_registry()
                     metrics.observe_histogram(metric_name, duration, error_labels)
@@ -386,7 +393,14 @@ def record_latency(
                     # Record error metrics
                     duration = time.time() - start_time
                     error_labels = labels.copy()
-                    error_labels["status"] = "error"
+                    # Only add status if allowed for this histogram metric
+                    try:
+                        from .metrics import LABEL_ALLOWLIST as _ALLOW
+                        if "status" in _ALLOW.get(metric_name, ()):  # type: ignore[arg-type]
+                            error_labels["status"] = "error"
+                    except Exception:
+                        # If metrics allowlist unavailable, fall back to base labels
+                        pass
 
                     metrics = get_metrics_registry()
                     metrics.observe_histogram(metric_name, duration, error_labels)

@@ -7,7 +7,7 @@ from datetime import datetime
 from typing import Any, Dict
 
 from fastapi import APIRouter, HTTPException, Depends
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from backend.infra.security import get_authenticated_user
 from backend.utils.logger import get_logger
@@ -25,6 +25,13 @@ def get_model_service():
     })()
 
 # Response Models
+class ModelTrainingRequest(BaseModel):
+    """Model training request."""
+    model_type: str = Field(..., pattern="^(ensemble|regression|classification|lstm)$", description="Type of model to train")
+    retrain: bool = Field(default=True, description="Whether to retrain the model")
+    features: list = Field(default_factory=lambda: ["technical", "sentiment"], description="Features to use")
+
+
 class ModelTrainingResponse(BaseModel):
     """Model training response."""
     training_id: str
@@ -106,7 +113,7 @@ def require_admin(current_user=Depends(get_authenticated_user)):
 # Route Handlers
 @router.post("/train", tags=["ML Models", "Protected"])
 async def train_models(
-    model_config: Dict[str, Any] = None,
+    model_config: ModelTrainingRequest,
     current_user=Depends(require_admin),
     model_manager=Depends(get_model_manager),
 ):
@@ -115,14 +122,7 @@ async def train_models(
     Requires admin privileges.
     """
     try:
-        if model_config is None:
-            model_config = {
-                "model_type": "ensemble",
-                "retrain": True,
-                "features": ["technical", "sentiment", "fundamental"]
-            }
-
-        result = await model_manager.start_training(model_config)
+        result = await model_manager.start_training(model_config.dict())
         
         logger.info(f"Model training started: {result['training_id']}")
         return ModelTrainingResponse(**result)

@@ -577,8 +577,11 @@ class SocialSentimentAnalyzer:
             if len(recent_data) < min_mentions:
                 return None
 
-            # Calculate metrics
+            # Calculate metrics (sanitize non-finite)
             sentiments = [d["sentiment"] for d in recent_data]
+            sentiments = [s for s in sentiments if np.isfinite(s)]
+            if not sentiments:
+                return None
 
             # Weighted average (more recent = higher weight)
             now = datetime.now(UTC)
@@ -605,10 +608,11 @@ class SocialSentimentAnalyzer:
 
             source_stats = {}
             for source, sents in sources.items():
+                clean_sents = [s for s in sents if np.isfinite(s)]
                 source_stats[source] = {
-                    "count": len(sents),
-                    "avg_sentiment": np.mean(sents),
-                    "std_sentiment": np.std(sents),
+                    "count": len(clean_sents),
+                    "avg_sentiment": float(np.mean(clean_sents)) if clean_sents else 0.0,
+                    "std_sentiment": float(np.std(clean_sents)) if clean_sents else 0.0,
                 }
 
             result = {
@@ -616,15 +620,12 @@ class SocialSentimentAnalyzer:
                 "timestamp": datetime.now(UTC),
                 "hours_analyzed": hours_back,
                 "total_mentions": len(recent_data),
-                "avg_sentiment": np.mean(sentiments),
+                "avg_sentiment": float(np.mean(sentiments)),
                 "weighted_sentiment": weighted_avg,
-                "sentiment_std": np.std(sentiments),
-                "positive_ratio": sum(1 for s in sentiments if s > 0.1)
-                / len(sentiments),
-                "negative_ratio": sum(1 for s in sentiments if s < -0.1)
-                / len(sentiments),
-                "neutral_ratio": sum(1 for s in sentiments if abs(s) <= 0.1)
-                / len(sentiments),
+                "sentiment_std": float(np.std(sentiments)),
+                "positive_ratio": (sum(1 for s in sentiments if s > 0.1) / len(sentiments)) if sentiments else 0.0,
+                "negative_ratio": (sum(1 for s in sentiments if s < -0.1) / len(sentiments)) if sentiments else 0.0,
+                "neutral_ratio": (sum(1 for s in sentiments if abs(s) <= 0.1) / len(sentiments)) if sentiments else 0.0,
                 "source_breakdown": source_stats,
                 "momentum": self._calculate_sentiment_momentum(symbol, hours_back),
             }
@@ -662,8 +663,14 @@ class SocialSentimentAnalyzer:
             recent_half = recent_data[mid_point:]  # More recent
             older_half = recent_data[:mid_point]  # Older
 
-            recent_avg = np.mean([d["sentiment"] for d in recent_half])
-            older_avg = np.mean([d["sentiment"] for d in older_half])
+            recent_vals = [d["sentiment"] for d in recent_half]
+            older_vals = [d["sentiment"] for d in older_half]
+            recent_vals = [s for s in recent_vals if np.isfinite(s)]
+            older_vals = [s for s in older_vals if np.isfinite(s)]
+            if not recent_vals or not older_vals:
+                return 0.0
+            recent_avg = np.mean(recent_vals)
+            older_avg = np.mean(older_vals)
 
             # Momentum is the difference
             momentum = recent_avg - older_avg

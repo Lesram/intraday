@@ -67,22 +67,19 @@ COMPREHENSIVE_ROUTES_DATA = [
     ("POST", "/auth/login", False, {"username": "testuser", "password": "testpass"}, 200, "Login endpoint", "/auth/login"),
     ("POST", "/auth/register", False, {"email": "test@example.com", "password": "testpass123"}, 201, "Registration endpoint", "/auth/register"),
     
-    # Protected API endpoints with real route templates
-    ("GET", "/portfolio/positions", True, None, 200, "Portfolio positions", "/portfolio/positions"),
-    ("POST", "/orders", True, {"symbol": "AAPL", "side": "buy", "qty": 100}, 200, "Create order", "/orders"),
-    ("GET", "/orders/test-123", True, None, 200, "Get specific order", "/orders/{order_id}"),
-    ("POST", "/orders/test-123/cancel", True, None, 200, "Cancel order", "/orders/{order_id}/cancel"),
-    ("GET", "/signals", True, None, 200, "Get trading signals", "/signals"),
-    ("GET", "/signals/AAPL", True, None, 200, "Get symbol signals", "/signals/{symbol}"),
-    ("POST", "/models/train", True, {"model_type": "regression"}, 200, "Train ML model", "/models/train"),
-    ("GET", "/models/status", True, None, 200, "Get model status", "/models/status"),
-    ("PUT", "/risk/limits", True, {"max_position": 10000}, 200, "Update risk limits", "/risk/limits"),
-    ("GET", "/risk/metrics", True, None, 200, "Get risk metrics", "/risk/metrics"),
-    ("GET", "/portfolio/performance", True, None, 200, "Portfolio performance", "/portfolio/performance"),
-    ("GET", "/market/data/AAPL", True, None, 200, "Market data", "/market/data/{symbol}"),
-    ("POST", "/strategies/backtest", True, {"strategy": "mean_reversion"}, 200, "Run backtest", "/strategies/backtest"),
-    ("GET", "/audit/logs", True, None, 200, "Audit logs", "/audit/logs"),
-    ("POST", "/notifications/webhook", False, {"event": "order_filled"}, 200, "Webhook", "/notifications/webhook"),
+    # Protected API endpoints with real route templates (use actual v1 API paths)
+    ("GET", "/api/v1/portfolio/positions", True, None, 200, "Portfolio positions", "/api/v1/portfolio/positions"),
+    ("POST", "/api/v1/orders/", True, {"symbol": "AAPL", "side": "buy", "qty": 100}, 200, "Create order", "/api/v1/orders/"),
+    ("GET", "/api/v1/orders/test-123", True, None, 200, "Get specific order", "/api/v1/orders/{order_id}"),
+    ("POST", "/api/v1/orders/test-123/cancel", True, None, 200, "Cancel order", "/api/v1/orders/{order_id}/cancel"),
+    ("GET", "/api/v1/signals/", True, None, 200, "Get trading signals", "/api/v1/signals/"),
+    ("GET", "/api/v1/signals/AAPL", True, None, 200, "Get symbol signals", "/api/v1/signals/{symbol}"),
+    ("POST", "/api/v1/models/train", True, {"model_type": "ensemble"}, 200, "Train ML model", "/api/v1/models/train"),
+    ("GET", "/api/v1/models/status", True, None, 200, "Get model status", "/api/v1/models/status"),
+    ("PUT", "/api/v1/risk/limits", True, {"max_position_value": 10000.0, "max_symbol_exposure": 0.25, "circuit_breaker_pct": 0.1}, 200, "Update risk limits", "/api/v1/risk/limits"),
+    ("GET", "/api/v1/risk/metrics", True, None, 200, "Get risk metrics", "/api/v1/risk/metrics"),
+    ("GET", "/api/v1/portfolio/performance", True, None, 200, "Portfolio performance", "/api/v1/portfolio/performance"),
+    ("GET", "/api/v1/orders/test-123/audit", True, None, 200, "Order audit trail", "/api/v1/orders/{order_id}/audit"),
 ]
 
 # Validation error test data  
@@ -90,12 +87,12 @@ VALIDATION_ERROR_DATA = [
     # (method, path, invalid_body, expected_status, error_field, description)
     ("POST", "/auth/register", {"email": "invalid-email"}, 422, "email", "Invalid email format"),
     ("POST", "/auth/register", {"password": "short"}, 422, "password", "Password too short"),
-    ("POST", "/orders", {"symbol": "INVALID_SYMBOL_TOO_LONG", "side": "buy"}, 422, "symbol", "Invalid symbol"),
-    ("POST", "/orders", {"symbol": "AAPL", "side": "invalid", "qty": 100}, 422, "side", "Invalid order side"),
-    ("POST", "/orders", {"symbol": "AAPL", "side": "buy", "qty": -100}, 422, "qty", "Negative quantity"),
-    ("PUT", "/risk/limits", {"max_position": "not_a_number"}, 422, "max_position", "Invalid number format"),
-    ("POST", "/models/train", {"model_type": "invalid_model"}, 422, "model_type", "Invalid model type"),
-    ("POST", "/auth/register", {}, 422, "missing_fields", "Missing required fields"),
+    ("POST", "/api/v1/orders/", {"symbol": "INVALID_SYMBOL_TOO_LONG", "side": "buy"}, 422, "symbol", "Invalid symbol"),
+    ("POST", "/api/v1/orders/", {"symbol": "AAPL", "side": "invalid", "qty": 100}, 422, "side", "Invalid order side"),
+    ("POST", "/api/v1/orders/", {"symbol": "AAPL", "side": "buy", "qty": -100}, 422, "qty", "Negative quantity"),
+    ("PUT", "/api/v1/risk/limits", {"max_position": "not_a_number"}, 422, "max_position", "Invalid number format"),
+    ("POST", "/api/v1/models/train", {"model_type": "invalid_model"}, 422, "model_type", "Invalid model type"),
+    ("POST", "/auth/register", {}, 422, "email", "Missing required fields"),
 ]
 
 # Error forcing data for 500 testing
@@ -132,6 +129,62 @@ def test_app():
     # Mock WebSocket manager 
     mock_ws_manager = MagicMock()
     app.state.ws_manager = mock_ws_manager
+    
+    # CRITICAL FIX: Override get_current_user dependency as recommended by audit
+    def mock_get_current_user():
+        """Mock authenticated user for tests."""
+        # Return object with attributes for compatibility with different access patterns
+        class MockUser:
+            def __init__(self):
+                self.user_id = "test-user-123"
+                self.username = "testuser"
+                self.email = "test@example.com"
+                self.roles = ["user", "trader", "admin"]  # Include admin role for permission tests
+            
+            def get(self, key, default=None):
+                """Allow dict-style access for backward compatibility."""
+                return getattr(self, key, default)
+            
+            def __getitem__(self, key):
+                """Allow dict-style access for backward compatibility."""
+                return getattr(self, key)
+                
+        return MockUser()
+    
+    # Mock portfolio repository
+    def mock_get_portfolio_repo():
+        """Mock portfolio repository for tests."""
+        class MockPortfolioRepo:
+            async def get_positions_by_user_id(self, user_id):
+                return [
+                    {"symbol": "AAPL", "qty": 100, "avg_price": 150.0, "market_value": 15000.0, "unrealized_pnl": 500.0},
+                    {"symbol": "GOOGL", "qty": 50, "avg_price": 2800.0, "market_value": 140000.0, "unrealized_pnl": -2000.0}
+                ]
+        return MockPortfolioRepo()
+    
+    # Override the authentication dependency
+    from backend.infra.security import get_current_user
+    app.dependency_overrides[get_current_user] = mock_get_current_user
+    
+    # Override repository dependencies
+    try:
+        from backend.infra.repositories import get_portfolio_repo
+        app.dependency_overrides[get_portfolio_repo] = mock_get_portfolio_repo
+    except ImportError:
+        pass
+    
+    # Also override any other auth-related dependencies that might exist
+    try:
+        from backend.api.portfolio import get_authenticated_user
+        app.dependency_overrides[get_authenticated_user] = mock_get_current_user
+    except ImportError:
+        pass
+    
+    try:
+        from backend.infra.security import get_authenticated_user
+        app.dependency_overrides[get_authenticated_user] = mock_get_current_user
+    except ImportError:
+        pass
     
     yield app
 

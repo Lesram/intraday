@@ -164,8 +164,8 @@ class TestAuthRegister:
         assert "detail" in data  # FastAPI validation errors use 'detail' directly
         assert isinstance(data["detail"], list)  # List of validation errors
         assert len(data["detail"]) > 0
-        # Check that email validation failed
-        assert any("email" in str(error.get("loc", [])) for error in data["detail"])
+        # Check that email validation failed - using actual response format
+        assert any("email" in error.get("field", "") for error in data["detail"])
     
     def test_register_password_too_short_returns_422(self):
         """Test that password shorter than 8 characters returns 422."""
@@ -191,8 +191,8 @@ class TestAuthRegister:
         assert "detail" in data  # FastAPI validation errors use 'detail' directly
         assert isinstance(data["detail"], list)
         assert len(data["detail"]) > 0
-        # Check that password validation failed
-        assert any("password" in str(error.get("loc", [])) for error in data["detail"])
+        # Check that password validation failed - using actual response format
+        assert any("password" in error.get("field", "") for error in data["detail"])
     
     def test_register_password_too_long_returns_422(self):
         """Test that password longer than 128 characters returns 422."""
@@ -218,8 +218,8 @@ class TestAuthRegister:
         assert "detail" in data  # FastAPI validation errors use 'detail' directly
         assert isinstance(data["detail"], list)
         assert len(data["detail"]) > 0
-        # Check that password validation failed (too long)
-        assert any("password" in str(error.get("loc", [])) for error in data["detail"])
+        # Check that password validation failed (too long) - using actual response format
+        assert any("password" in error.get("field", "") for error in data["detail"])
     
     def test_register_missing_email_returns_422(self):
         """Test that missing email field returns 422."""
@@ -244,8 +244,8 @@ class TestAuthRegister:
         assert "detail" in data  # FastAPI validation errors use 'detail' directly
         assert isinstance(data["detail"], list)
         assert len(data["detail"]) > 0
-        # Check that email validation failed (missing)
-        assert any("email" in str(error.get("loc", [])) for error in data["detail"])
+        # Check that email validation failed (missing) - using actual response format
+        assert any("email" in error.get("field", "") for error in data["detail"])
     
     def test_register_missing_password_returns_422(self):
         """Test that missing password field returns 422."""
@@ -270,8 +270,8 @@ class TestAuthRegister:
         assert "detail" in data  # FastAPI validation errors use 'detail' directly
         assert isinstance(data["detail"], list)
         assert len(data["detail"]) > 0
-        # Check that password validation failed (missing)
-        assert any("password" in str(error.get("loc", [])) for error in data["detail"])
+        # Check that password validation failed (missing) - using actual response format
+        assert any("password" in error.get("field", "") for error in data["detail"])
     
     def test_register_empty_payload_returns_422(self):
         """Test that empty payload returns 422."""
@@ -291,7 +291,7 @@ class TestAuthRegister:
         assert "detail" in data  # FastAPI validation errors use 'detail' directly
         assert isinstance(data["detail"], list)
         assert len(data["detail"]) > 0
-        # Check that both email and password are missing
-        locs = [str(error.get("loc", [])) for error in data["detail"]]
-        assert any("email" in loc for loc in locs)
-        assert any("password" in loc for loc in locs)
+        # Check that both email and password are missing - using actual response format
+        fields = [error.get("field", "") for error in data["detail"]]
+        assert any("email" in field for field in fields)
+        assert any("password" in field for field in fields)

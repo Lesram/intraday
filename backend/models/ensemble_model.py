@@ -504,7 +504,12 @@ class EnsembleModel:
             self.settings, "mlops", {}
         ).get("inference_telemetry_enabled", True)
         if self.mlops_enabled:
-            self.model_manager = get_model_manager()
+            try:
+                from ..mlops.model_manager import get_model_manager
+                self.model_manager = get_model_manager()
+            except ImportError:
+                self.mlops_enabled = False
+                self.model_manager = None
         else:
             self.model_manager = None
 
@@ -517,8 +522,18 @@ class EnsembleModel:
         """Train all models in the ensemble"""
         results = {}
 
-        # Train LSTM on price sequences
-        results["lstm"] = await self.models["lstm"].train(price_data, target_column)
+        # Train LSTM on price sequences with error handling
+        try:
+            results["lstm"] = await self.models["lstm"].train(price_data, target_column)
+        except Exception as e:
+            logging.warning(f"LSTM training failed: {e}")
+            results["lstm"] = False
+
+        # Handle empty data case
+        if price_data.empty or target_column not in price_data.columns:
+            results["xgboost"] = False
+            results["random_forest"] = False
+            return results
 
         # Train tree-based models on features with explicit index alignment
         target = price_data[target_column].shift(-1).dropna()  # Next period target
@@ -530,12 +545,21 @@ class EnsembleModel:
         features_aligned = aligned_data.drop(columns=["target"])
         target_aligned = aligned_data["target"]
 
-        results["xgboost"] = await self.models["xgboost"].train(
-            features_aligned, target_aligned
-        )
-        results["random_forest"] = await self.models["random_forest"].train(
-            features_aligned, target_aligned
-        )
+        try:
+            results["xgboost"] = await self.models["xgboost"].train(
+                features_aligned, target_aligned
+            )
+        except Exception as e:
+            logging.warning(f"XGBoost training failed: {e}")
+            results["xgboost"] = False
+            
+        try:
+            results["random_forest"] = await self.models["random_forest"].train(
+                features_aligned, target_aligned
+            )
+        except Exception as e:
+            logging.warning(f"Random Forest training failed: {e}")
+            results["random_forest"] = False
 
         audit_logger.info(
             "ensemble_training_completed", results=results, timestamp=datetime.now()
@@ -677,16 +701,25 @@ class EnsembleModel:
 
         # Calculate weighted ensemble prediction
         weighted_sum = sum(
-            predictions[model] * self.weights[model] * confidences[model]
+            predictions[model] * self.weights[model]
             for model in predictions
         )
         weight_sum = sum(
-            self.weights[model] * confidences[model] for model in predictions
+            self.weights[model] for model in predictions
         )
 
         ensemble_prediction = weighted_sum / weight_sum if weight_sum > 0 else 0.0
-        ensemble_confidence = weight_sum / len(predictions) if predictions else 0.0
+        
+        # Calculate confidence as weighted average of individual confidences
+        confidence_weighted_sum = sum(
+            confidences[model] * self.weights[model]
+            for model in predictions
+        )
+        ensemble_confidence = confidence_weighted_sum / weight_sum if weight_sum > 0 else 0.0
 
+        # Add processing time to metadata
+        processing_time_ms = (datetime.now() - start_time).total_seconds() * 1000
+        
         result = ModelPrediction(
             symbol=symbol,
             timestamp=datetime.now(),
@@ -697,6 +730,12 @@ class EnsembleModel:
             metadata={
                 "weights": self.weights,
                 "models_active": len([p for p in predictions.values() if p != 0.0]),
+                "processing_time_ms": processing_time_ms,
+                "timestamp": datetime.now().isoformat(),
+                "data_shape": {
+                    "price_rows": len(price_data),
+                    "feature_cols": len(features.columns),
+                },
             },
         )
 
