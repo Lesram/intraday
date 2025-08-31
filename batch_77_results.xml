@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="5" skipped="0" tests="5" time="1.608" timestamp="2025-08-29T00:15:34.737373-07:00" hostname="BOOK-FVJOEO3Q00"><testcase classname="tests.unit.test_ensemble_model_unit_backup.TestModelPrediction" name="test_model_prediction_creation" time="0.003"><failure message="TypeError: ModelPrediction.__init__() got an unexpected keyword argument 'price'">tests\unit\test_ensemble_model_unit_backup.py:39: in test_model_prediction_creation
+    prediction = ModelPrediction(
+E   TypeError: ModelPrediction.__init__() got an unexpected keyword argument 'price'</failure></testcase><testcase classname="tests.unit.test_ensemble_model_unit_backup.TestModelPrediction" name="test_model_prediction_with_optional_fields" time="0.002"><failure message="TypeError: ModelPrediction.__init__() got an unexpected keyword argument 'price'">tests\unit\test_ensemble_model_unit_backup.py:55: in test_model_prediction_with_optional_fields
+    prediction = ModelPrediction(
+E   TypeError: ModelPrediction.__init__() got an unexpected keyword argument 'price'</failure></testcase><testcase classname="tests.unit.test_ensemble_model_unit_backup.TestEnsembleTrainingConfig" name="test_training_config_defaults" time="0.002"><failure message="NameError: name 'EnsembleTrainingConfig' is not defined">tests\unit\test_ensemble_model_unit_backup.py:73: in test_training_config_defaults
+    config = EnsembleTrainingConfig()
+             ^^^^^^^^^^^^^^^^^^^^^^
+E   NameError: name 'EnsembleTrainingConfig' is not defined</failure></testcase><testcase classname="tests.unit.test_ensemble_model_unit_backup.TestEnsembleTrainingConfig" name="test_training_config_custom_values" time="0.002"><failure message="NameError: name 'EnsembleTrainingConfig' is not defined">tests\unit\test_ensemble_model_unit_backup.py:85: in test_training_config_custom_values
+    config = EnsembleTrainingConfig(
+             ^^^^^^^^^^^^^^^^^^^^^^
+E   NameError: name 'EnsembleTrainingConfig' is not defined</failure></testcase><testcase classname="tests.unit.test_ensemble_model_unit_backup.TestModelAvailability" name="test_model_availability_structure" time="0.002"><failure message="NameError: name 'MODEL_AVAILABILITY' is not defined">tests\unit\test_ensemble_model_unit_backup.py:107: in test_model_availability_structure
+    assert 'tensorflow' in MODEL_AVAILABILITY
+                           ^^^^^^^^^^^^^^^^^^
+E   NameError: name 'MODEL_AVAILABILITY' is not defined</failure></testcase></testsuite></testsuites>

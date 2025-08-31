@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="5" failures="0" skipped="0" tests="5" time="1.830" timestamp="2025-08-29T00:10:16.753552-07:00" hostname="BOOK-FVJOEO3Q00"><testcase classname="tests.risk.test_risk_block_reasons.TestRiskBlockReasons" name="test_risk_blocking_scenarios[positive_mu_normal_vol-True-None-expected_adjustment0]" time="0.005"><error message="failed on setup with &quot;AttributeError: module 'backend.risk' has no attribute 'manager'&quot;">tests\risk\test_risk_block_reasons.py:20: in risk_manager
+    with patch('backend.risk.manager.RiskManager.__init__', return_value=None):
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1442: in __enter__
+    self.target = self.getter()
+                  ^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\pkgutil.py:528: in resolve_name
+    result = getattr(result, p)
+             ^^^^^^^^^^^^^^^^^^
+E   AttributeError: module 'backend.risk' has no attribute 'manager'</error></testcase><testcase classname="tests.risk.test_risk_block_reasons.TestRiskBlockReasons" name="test_risk_blocking_scenarios[negative_expected_return-False-negative_expected_return-expected_adjustment1]" time="0.002"><error message="failed on setup with &quot;AttributeError: module 'backend.risk' has no attribute 'manager'&quot;">tests\risk\test_risk_block_reasons.py:20: in risk_manager
+    with patch('backend.risk.manager.RiskManager.__init__', return_value=None):
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1442: in __enter__
+    self.target = self.getter()
+                  ^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\pkgutil.py:528: in resolve_name
+    result = getattr(result, p)
+             ^^^^^^^^^^^^^^^^^^
+E   AttributeError: module 'backend.risk' has no attribute 'manager'</error></testcase><testcase classname="tests.risk.test_risk_block_reasons.TestRiskBlockReasons" name="test_risk_blocking_scenarios[zero_expected_return-False-zero_expected_return-expected_adjustment2]" time="0.002"><error message="failed on setup with &quot;AttributeError: module 'backend.risk' has no attribute 'manager'&quot;">tests\risk\test_risk_block_reasons.py:20: in risk_manager
+    with patch('backend.risk.manager.RiskManager.__init__', return_value=None):
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1442: in __enter__
+    self.target = self.getter()
+                  ^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\pkgutil.py:528: in resolve_name
+    result = getattr(result, p)
+             ^^^^^^^^^^^^^^^^^^
+E   AttributeError: module 'backend.risk' has no attribute 'manager'</error></testcase><testcase classname="tests.risk.test_risk_block_reasons.TestRiskBlockReasons" name="test_risk_blocking_scenarios[zero_volatility-False-zero_volatility-expected_adjustment3]" time="0.002"><error message="failed on setup with &quot;AttributeError: module 'backend.risk' has no attribute 'manager'&quot;">tests\risk\test_risk_block_reasons.py:20: in risk_manager
+    with patch('backend.risk.manager.RiskManager.__init__', return_value=None):
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1442: in __enter__
+    self.target = self.getter()
+                  ^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\pkgutil.py:528: in resolve_name
+    result = getattr(result, p)
+             ^^^^^^^^^^^^^^^^^^
+E   AttributeError: module 'backend.risk' has no attribute 'manager'</error></testcase><testcase classname="tests.risk.test_risk_block_reasons.TestRiskBlockReasons" name="test_risk_blocking_scenarios[extremely_low_volatility-False-low_volatility-expected_adjustment4]" time="0.002"><error message="failed on setup with &quot;AttributeError: module 'backend.risk' has no attribute 'manager'&quot;">tests\risk\test_risk_block_reasons.py:20: in risk_manager
+    with patch('backend.risk.manager.RiskManager.__init__', return_value=None):
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1442: in __enter__
+    self.target = self.getter()
+                  ^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\pkgutil.py:528: in resolve_name
+    result = getattr(result, p)
+             ^^^^^^^^^^^^^^^^^^
+E   AttributeError: module 'backend.risk' has no attribute 'manager'</error></testcase></testsuite></testsuites>

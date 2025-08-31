@@ -1,0 +1,157 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="5" skipped="0" tests="18" time="14.144" timestamp="2025-08-28T23:53:48.094746-07:00" hostname="BOOK-FVJOEO3Q00"><testcase classname="tests.test_async_risk_manager_modern.TestAsyncRiskManagerModern" name="test_before_order_basic_validation" time="0.008" /><testcase classname="tests.test_async_risk_manager_modern.TestAsyncRiskManagerModern" name="test_before_order_excessive_position_size" time="0.004" /><testcase classname="tests.test_async_risk_manager_modern.TestAsyncRiskManagerModern" name="test_before_order_excessive_notional_value" time="0.017" /><testcase classname="tests.test_async_risk_manager_modern.TestAsyncRiskManagerModern" name="test_before_order_with_portfolio_state" time="0.005" /><testcase classname="tests.test_async_risk_manager_modern.TestAsyncRiskManagerModern" name="test_before_order_sell_side" time="0.005" /><testcase classname="tests.test_async_risk_manager_modern.TestAsyncRiskManagerModern" name="test_before_order_market_order" time="0.005" /><testcase classname="tests.test_async_risk_manager_modern.TestAsyncRiskManagerModern" name="test_risk_decision_structure" time="0.005" /><testcase classname="tests.test_async_risk_manager_modern.TestAsyncRiskManagerModern" name="test_concurrent_risk_checks" time="0.006" /><testcase classname="tests.test_async_risk_manager_modern.TestAsyncRiskManagerModern" name="test_metrics_recording" time="0.007"><failure message="AssertionError: assert False&#10; +  where False = &lt;Mock name='mock.counter' id='2150882726816'&gt;.called&#10; +    where &lt;Mock name='mock.counter' id='2150882726816'&gt; = &lt;Mock id='2150887081888'&gt;.counter">tests\test_async_risk_manager_modern.py:214: in test_metrics_recording
+    assert mock_metrics.counter.called
+E   AssertionError: assert False
+E    +  where False = &lt;Mock name='mock.counter' id='2150882726816'&gt;.called
+E    +    where &lt;Mock name='mock.counter' id='2150882726816'&gt; = &lt;Mock id='2150887081888'&gt;.counter</failure></testcase><testcase classname="tests.test_async_risk_manager_modern.TestAsyncRiskManagerModern" name="test_error_handling" time="0.007" /><testcase classname="tests.test_async_risk_manager_modern.TestRiskMathUtilsModern" name="test_kelly_fraction_normal_case" time="0.002" /><testcase classname="tests.test_async_risk_manager_modern.TestRiskMathUtilsModern" name="test_kelly_fraction_edge_cases" time="0.002" /><testcase classname="tests.test_async_risk_manager_modern.TestRiskMathUtilsModern" name="test_ewma_volatility" time="0.002" /><testcase classname="tests.test_async_risk_manager_modern.TestRiskMathUtilsModern" name="test_parametric_var" time="0.002" /><testcase classname="tests.test_auth.TestAuthentication" name="test_login_with_valid_credentials" time="4.803"><failure message="TypeError: object Mock can't be used in 'await' expression">tests\test_auth.py:86: in test_login_with_valid_credentials
+    response = client.post(
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\testclient.py:552: in post
+    return super().post(
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py:1144: in post
+    return self.request(
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\testclient.py:451: in request
+    return super().request(
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py:825: in request
+    return self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py:914: in send
+    response = self._send_handling_auth(
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py:942: in _send_handling_auth
+    response = self._send_handling_redirects(
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py:979: in _send_handling_redirects
+    response = self._send_single_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py:1014: in _send_single_request
+    response = transport.handle_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\testclient.py:354: in handle_request
+    raise exc
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\testclient.py:351: in handle_request
+    portal.call(self.app, scope, receive, send)
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\anyio\from_thread.py:290: in call
+    return cast(T_Retval, self.start_task_soon(func, *args).result())
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\concurrent\futures\_base.py:456: in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\concurrent\futures\_base.py:401: in __get_result
+    raise self._exception
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\anyio\from_thread.py:221: in _call_func
+    retval = await retval_or_awaitable
+             ^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\testclient.py:77: in __call__
+    await instance(receive, send)
+E   TypeError: object Mock can't be used in 'await' expression</failure></testcase><testcase classname="tests.test_auth.TestAuthentication" name="test_login_with_invalid_credentials" time="1.969"><failure message="TypeError: object Mock can't be used in 'await' expression">tests\test_auth.py:103: in test_login_with_invalid_credentials
+    response = client.post(
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\testclient.py:552: in post
+    return super().post(
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py:1144: in post
+    return self.request(
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\testclient.py:451: in request
+    return super().request(
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py:825: in request
+    return self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py:914: in send
+    response = self._send_handling_auth(
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py:942: in _send_handling_auth
+    response = self._send_handling_redirects(
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py:979: in _send_handling_redirects
+    response = self._send_single_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py:1014: in _send_single_request
+    response = transport.handle_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\testclient.py:354: in handle_request
+    raise exc
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\testclient.py:351: in handle_request
+    portal.call(self.app, scope, receive, send)
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\anyio\from_thread.py:290: in call
+    return cast(T_Retval, self.start_task_soon(func, *args).result())
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\concurrent\futures\_base.py:449: in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\concurrent\futures\_base.py:401: in __get_result
+    raise self._exception
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\anyio\from_thread.py:221: in _call_func
+    retval = await retval_or_awaitable
+             ^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\testclient.py:77: in __call__
+    await instance(receive, send)
+E   TypeError: object Mock can't be used in 'await' expression</failure></testcase><testcase classname="tests.test_auth.TestAuthentication" name="test_login_with_nonexistent_user" time="2.063"><failure message="TypeError: object Mock can't be used in 'await' expression">tests\test_auth.py:116: in test_login_with_nonexistent_user
+    response = client.post(
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\testclient.py:552: in post
+    return super().post(
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py:1144: in post
+    return self.request(
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\testclient.py:451: in request
+    return super().request(
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py:825: in request
+    return self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py:914: in send
+    response = self._send_handling_auth(
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py:942: in _send_handling_auth
+    response = self._send_handling_redirects(
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py:979: in _send_handling_redirects
+    response = self._send_single_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py:1014: in _send_single_request
+    response = transport.handle_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\testclient.py:354: in handle_request
+    raise exc
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\testclient.py:351: in handle_request
+    portal.call(self.app, scope, receive, send)
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\anyio\from_thread.py:290: in call
+    return cast(T_Retval, self.start_task_soon(func, *args).result())
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\concurrent\futures\_base.py:456: in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\concurrent\futures\_base.py:401: in __get_result
+    raise self._exception
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\anyio\from_thread.py:221: in _call_func
+    retval = await retval_or_awaitable
+             ^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\testclient.py:77: in __call__
+    await instance(receive, send)
+E   TypeError: object Mock can't be used in 'await' expression</failure></testcase><testcase classname="tests.test_auth.TestAuthentication" name="test_token_validation_with_valid_token" time="2.011"><failure message="TypeError: object Mock can't be used in 'await' expression">tests\test_auth.py:128: in test_token_validation_with_valid_token
+    response = client.post(
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\testclient.py:552: in post
+    return super().post(
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py:1144: in post
+    return self.request(
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\testclient.py:451: in request
+    return super().request(
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py:825: in request
+    return self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py:914: in send
+    response = self._send_handling_auth(
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py:942: in _send_handling_auth
+    response = self._send_handling_redirects(
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py:979: in _send_handling_redirects
+    response = self._send_single_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py:1014: in _send_single_request
+    response = transport.handle_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\testclient.py:354: in handle_request
+    raise exc
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\testclient.py:351: in handle_request
+    portal.call(self.app, scope, receive, send)
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\anyio\from_thread.py:290: in call
+    return cast(T_Retval, self.start_task_soon(func, *args).result())
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\concurrent\futures\_base.py:449: in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\concurrent\futures\_base.py:401: in __get_result
+    raise self._exception
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\anyio\from_thread.py:221: in _call_func
+    retval = await retval_or_awaitable
+             ^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\testclient.py:77: in __call__
+    await instance(receive, send)
+E   TypeError: object Mock can't be used in 'await' expression</failure></testcase></testsuite></testsuites>

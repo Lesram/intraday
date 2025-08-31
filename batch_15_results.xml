@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="5" skipped="0" tests="13" time="2.515" timestamp="2025-08-28T23:56:53.959612-07:00" hostname="BOOK-FVJOEO3Q00"><testcase classname="tests.test_middleware_simple" name="test_basic_app_with_isolated_registry" time="0.308"><failure message="AttributeError: 'State' object has no attribute 'metrics'">..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\datastructures.py:686: in __getattr__
+    return self._state[key]
+           ^^^^^^^^^^^^^^^^
+E   KeyError: 'metrics'
+
+During handling of the above exception, another exception occurred:
+tests\test_middleware_simple.py:25: in test_basic_app_with_isolated_registry
+    assert app1.state.metrics.registry is registry1
+           ^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\datastructures.py:689: in __getattr__
+    raise AttributeError(message.format(self.__class__.__name__, key))
+E   AttributeError: 'State' object has no attribute 'metrics'</failure></testcase><testcase classname="tests.test_middleware_simple" name="test_middleware_uses_app_scoped_metrics" time="0.225" /><testcase classname="tests.test_middleware_simple" name="test_middleware_logs_with_structured_logger" time="0.137" /><testcase classname="tests.test_middleware_simple" name="test_timing_headers_added" time="0.097" /><testcase classname="tests.test_minimal_metrics" name="test_isolated_registry_creation" time="0.002" /><testcase classname="tests.test_minimal_metrics" name="test_metrics_registry_class" time="0.002" /><testcase classname="tests.test_minimal_metrics" name="test_factory_creates_app_with_registry" time="0.093"><failure message="AssertionError: assert False&#10; +  where False = hasattr(&lt;starlette.datastructures.State object at 0x0000023835C1FF50&gt;, 'metrics')&#10; +    where &lt;starlette.datastructures.State object at 0x0000023835C1FF50&gt; = &lt;fastapi.applications.FastAPI object at 0x0000023835C1D190&gt;.state">tests\test_minimal_metrics.py:56: in test_factory_creates_app_with_registry
+    assert hasattr(app.state, "metrics")
+E   AssertionError: assert False
+E    +  where False = hasattr(&lt;starlette.datastructures.State object at 0x0000023835C1FF50&gt;, 'metrics')
+E    +    where &lt;starlette.datastructures.State object at 0x0000023835C1FF50&gt; = &lt;fastapi.applications.FastAPI object at 0x0000023835C1D190&gt;.state</failure></testcase><testcase classname="tests.test_minimal_metrics" name="test_websocket_manager_accepts_registry" time="0.004"><failure message="ImportError: cannot import name 'WebSocketClientManager' from 'backend.api.main' (C:\Users\Marsel\intra\algotrading_platform\backend\api\main.py)">tests\test_minimal_metrics.py:64: in test_websocket_manager_accepts_registry
+    from backend.api.main import WebSocketClientManager
+E   ImportError: cannot import name 'WebSocketClientManager' from 'backend.api.main' (C:\Users\Marsel\intra\algotrading_platform\backend\api\main.py)</failure></testcase><testcase classname="tests.test_minimal_metrics" name="test_prometheus_import_minimal" time="0.002" /><testcase classname="tests.test_minimal_metrics" name="test_parallel_registry_isolation" time="0.002" /><testcase classname="tests.test_mlops_integration_mocks.TestMLOpsIntegrationPaths" name="test_model_manager_import_handling" time="0.005"><failure message="assert None is not None&#10; +  where None = &lt;backend.models.ensemble_model.EnsembleModel object at 0x0000023835CF38F0&gt;.model_manager">tests\test_mlops_integration_mocks.py:127: in test_model_manager_import_handling
+    assert ensemble.model_manager is not None
+E   assert None is not None
+E    +  where None = &lt;backend.models.ensemble_model.EnsembleModel object at 0x0000023835CF38F0&gt;.model_manager</failure></testcase><testcase classname="tests.test_mlops_integration_mocks.TestMLOpsIntegrationPaths" name="test_model_manager_import_error_handling" time="0.003" /><testcase classname="tests.test_mlops_integration_mocks.TestMLOpsIntegrationPaths" name="test_feature_validation_during_prediction" time="0.004"><failure message="AttributeError: &lt;module 'backend.models.ensemble_model' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\models\\ensemble_model.py'&gt; does not have the attribute 'validate_features'">tests\test_mlops_integration_mocks.py:146: in test_feature_validation_during_prediction
+    with patch('backend.models.ensemble_model.validate_features', return_value=True):
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1458: in __enter__
+    original, local = self.get_original()
+                      ^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1431: in get_original
+    raise AttributeError(
+E   AttributeError: &lt;module 'backend.models.ensemble_model' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\models\\ensemble_model.py'&gt; does not have the attribute 'validate_features'</failure></testcase></testsuite></testsuites>

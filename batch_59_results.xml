@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="5" failures="0" skipped="0" tests="6" time="1.866" timestamp="2025-08-29T00:10:43.483098-07:00" hostname="BOOK-FVJOEO3Q00"><testcase classname="tests.security.test_jwt_and_cors" name="test_simple_jwt_functionality" time="0.003" /><testcase classname="tests.security.test_jwt_and_cors.TestJWTAndCORS" name="test_valid_jwt_token_authentication" time="0.002"><error message="failed on setup with &quot;AttributeError: property 'JWTError' of 'JwtVerifier' object has no deleter&quot;">..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1567: in __enter__
+    setattr(self.target, self.attribute, new_attr)
+E   AttributeError: property 'JWTError' of 'JwtVerifier' object has no setter
+
+During handling of the above exception, another exception occurred:
+tests\security\test_jwt_and_cors.py:35: in client
+    with patch.object(jwt_verifier, 'encode', fake_verifier.encode), \
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1580: in __enter__
+    if not self.__exit__(*sys.exc_info()):
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1588: in __exit__
+    delattr(self.target, self.attribute)
+E   AttributeError: property 'JWTError' of 'JwtVerifier' object has no deleter</error></testcase><testcase classname="tests.security.test_jwt_and_cors.TestJWTAndCORS" name="test_expired_jwt_token_rejected" time="0.002"><error message="failed on setup with &quot;AttributeError: property 'JWTError' of 'JwtVerifier' object has no deleter&quot;">..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1567: in __enter__
+    setattr(self.target, self.attribute, new_attr)
+E   AttributeError: property 'JWTError' of 'JwtVerifier' object has no setter
+
+During handling of the above exception, another exception occurred:
+tests\security\test_jwt_and_cors.py:35: in client
+    with patch.object(jwt_verifier, 'encode', fake_verifier.encode), \
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1580: in __enter__
+    if not self.__exit__(*sys.exc_info()):
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1588: in __exit__
+    delattr(self.target, self.attribute)
+E   AttributeError: property 'JWTError' of 'JwtVerifier' object has no deleter</error></testcase><testcase classname="tests.security.test_jwt_and_cors.TestJWTAndCORS" name="test_wrong_audience_rejected" time="0.002"><error message="failed on setup with &quot;AttributeError: property 'JWTError' of 'JwtVerifier' object has no deleter&quot;">..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1567: in __enter__
+    setattr(self.target, self.attribute, new_attr)
+E   AttributeError: property 'JWTError' of 'JwtVerifier' object has no setter
+
+During handling of the above exception, another exception occurred:
+tests\security\test_jwt_and_cors.py:35: in client
+    with patch.object(jwt_verifier, 'encode', fake_verifier.encode), \
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1580: in __enter__
+    if not self.__exit__(*sys.exc_info()):
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1588: in __exit__
+    delattr(self.target, self.attribute)
+E   AttributeError: property 'JWTError' of 'JwtVerifier' object has no deleter</error></testcase><testcase classname="tests.security.test_jwt_and_cors.TestJWTAndCORS" name="test_wrong_issuer_rejected" time="0.001"><error message="failed on setup with &quot;AttributeError: property 'JWTError' of 'JwtVerifier' object has no deleter&quot;">..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1567: in __enter__
+    setattr(self.target, self.attribute, new_attr)
+E   AttributeError: property 'JWTError' of 'JwtVerifier' object has no setter
+
+During handling of the above exception, another exception occurred:
+tests\security\test_jwt_and_cors.py:35: in client
+    with patch.object(jwt_verifier, 'encode', fake_verifier.encode), \
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1580: in __enter__
+    if not self.__exit__(*sys.exc_info()):
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1588: in __exit__
+    delattr(self.target, self.attribute)
+E   AttributeError: property 'JWTError' of 'JwtVerifier' object has no deleter</error></testcase><testcase classname="tests.security.test_jwt_and_cors.TestJWTAndCORS" name="test_malformed_jwt_token_rejected" time="0.002"><error message="failed on setup with &quot;AttributeError: property 'JWTError' of 'JwtVerifier' object has no deleter&quot;">..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1567: in __enter__
+    setattr(self.target, self.attribute, new_attr)
+E   AttributeError: property 'JWTError' of 'JwtVerifier' object has no setter
+
+During handling of the above exception, another exception occurred:
+tests\security\test_jwt_and_cors.py:35: in client
+    with patch.object(jwt_verifier, 'encode', fake_verifier.encode), \
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1580: in __enter__
+    if not self.__exit__(*sys.exc_info()):
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1588: in __exit__
+    delattr(self.target, self.attribute)
+E   AttributeError: property 'JWTError' of 'JwtVerifier' object has no deleter</error></testcase></testsuite></testsuites>

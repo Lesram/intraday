@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="5" skipped="0" tests="5" time="2.261" timestamp="2025-08-29T00:02:43.001816-07:00" hostname="BOOK-FVJOEO3Q00"><testcase classname="tests.api.test_positions.TestPositions" name="test_get_positions_without_auth_returns_403" time="0.384"><failure message="assert 404 == 403&#10; +  where 404 = &lt;Response [404 Not Found]&gt;.status_code&#10; +  and   403 = status.HTTP_403_FORBIDDEN">tests\api\test_positions.py:156: in test_get_positions_without_auth_returns_403
+    assert response.status_code == status.HTTP_403_FORBIDDEN
+E   assert 404 == 403
+E    +  where 404 = &lt;Response [404 Not Found]&gt;.status_code
+E    +  and   403 = status.HTTP_403_FORBIDDEN</failure></testcase><testcase classname="tests.api.test_positions.TestPositions" name="test_get_positions_with_invalid_token_returns_401" time="0.106"><failure message="assert 404 == 401&#10; +  where 404 = &lt;Response [404 Not Found]&gt;.status_code&#10; +  and   401 = status.HTTP_401_UNAUTHORIZED">tests\api\test_positions.py:168: in test_get_positions_with_invalid_token_returns_401
+    assert response.status_code == status.HTTP_401_UNAUTHORIZED
+E   assert 404 == 401
+E    +  where 404 = &lt;Response [404 Not Found]&gt;.status_code
+E    +  and   401 = status.HTTP_401_UNAUTHORIZED</failure></testcase><testcase classname="tests.api.test_positions.TestPositions" name="test_get_positions_with_valid_auth_returns_positions" time="0.198"><failure message="assert 404 == 200&#10; +  where 404 = &lt;Response [404 Not Found]&gt;.status_code&#10; +  and   200 = status.HTTP_200_OK">tests\api\test_positions.py:180: in test_get_positions_with_valid_auth_returns_positions
+    assert response.status_code == status.HTTP_200_OK
+E   assert 404 == 200
+E    +  where 404 = &lt;Response [404 Not Found]&gt;.status_code
+E    +  and   200 = status.HTTP_200_OK</failure></testcase><testcase classname="tests.api.test_positions.TestPositions" name="test_get_positions_empty_portfolio_returns_empty_list" time="0.081"><failure message="assert 404 == 200&#10; +  where 404 = &lt;Response [404 Not Found]&gt;.status_code&#10; +  and   200 = status.HTTP_200_OK">tests\api\test_positions.py:209: in test_get_positions_empty_portfolio_returns_empty_list
+    assert response.status_code == status.HTTP_200_OK
+E   assert 404 == 200
+E    +  where 404 = &lt;Response [404 Not Found]&gt;.status_code
+E    +  and   200 = status.HTTP_200_OK</failure></testcase><testcase classname="tests.api.test_positions.TestPositions" name="test_get_positions_response_schema" time="0.109"><failure message="assert 404 == 200&#10; +  where 404 = &lt;Response [404 Not Found]&gt;.status_code&#10; +  and   200 = status.HTTP_200_OK">tests\api\test_positions.py:221: in test_get_positions_response_schema
+    assert response.status_code == status.HTTP_200_OK
+E   assert 404 == 200
+E    +  where 404 = &lt;Response [404 Not Found]&gt;.status_code
+E    +  and   200 = status.HTTP_200_OK</failure></testcase></testsuite></testsuites>

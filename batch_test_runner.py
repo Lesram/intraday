@@ -41,8 +41,9 @@ def run_test_batch(test_files, batch_size=3, timeout=60):
             print(f"   • {test_file}")
         
         # Run this batch
+        pytest_light_path = os.path.join(os.path.dirname(__file__), "pytest_light.py")
         cmd = [
-            sys.executable, "pytest_light.py"
+            sys.executable, pytest_light_path
         ] + batch + [
             "-v", "--tb=short", f"--timeout={timeout}", 
             "--maxfail=5", f"--junit-xml=batch_{batch_num}_results.xml"

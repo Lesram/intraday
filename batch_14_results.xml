@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="2" failures="3" skipped="0" tests="22" time="2.499" timestamp="2025-08-28T23:56:39.823902-07:00" hostname="BOOK-FVJOEO3Q00"><testcase classname="tests.test_market_data_phase7b1_final.TestProcessingMethodsCoveragePhase7B1" name="test_process_string_data_empty_string" time="0.003" /><testcase classname="tests.test_market_data_phase7b1_final.TestProcessingMethodsCoveragePhase7B1" name="test_process_string_data_json_parsing" time="0.005" /><testcase classname="tests.test_market_data_phase7b1_final.TestProcessingMethodsCoveragePhase7B1" name="test_process_string_data_csv_like" time="0.002" /><testcase classname="tests.test_market_data_phase7b1_final.TestProcessingMethodsCoveragePhase7B1" name="test_process_string_data_plain_string" time="0.002" /><testcase classname="tests.test_market_data_phase7b1_final.TestProcessingMethodsCoveragePhase7B1" name="test_process_string_data_exception_handling" time="0.001" /><testcase classname="tests.test_market_data_phase7b1_final.TestProcessingMethodsCoveragePhase7B1" name="test_process_dict_data_field_processing" time="0.002" /><testcase classname="tests.test_market_data_phase7b1_final.TestProcessingMethodsCoveragePhase7B1" name="test_process_list_data_implementation" time="0.001" /><testcase classname="tests.test_market_data_phase7b1_final.TestProcessingMethodsCoveragePhase7B1" name="test_iterable_data_processing" time="0.002" /><testcase classname="tests.test_market_data_phase7b1_final.TestProcessingMethodsCoveragePhase7B1" name="test_comprehensive_data_validation" time="0.001" /><testcase classname="tests.test_market_data_phase7b1_final.TestProcessingMethodsCoveragePhase7B1" name="test_error_count_incrementation" time="0.001" /><testcase classname="tests.test_market_data_phase7b1_final.TestAdvancedScenariosCoveragePhase7B1" name="test_processor_state_management" time="0.001" /><testcase classname="tests.test_market_data_phase7b1_final.TestAdvancedScenariosCoveragePhase7B1" name="test_edge_case_data_formats" time="0.001" /><testcase classname="tests.test_market_data_phase7b1_final.TestAdvancedScenariosCoveragePhase7B1" name="test_concurrent_processing_safety" time="0.002" /><testcase classname="tests.test_metrics_unification" name="test_metrics_registry_isolation" time="0.002" /><testcase classname="tests.test_metrics_unification" name="test_app_has_metrics_registry" time="0.006" /><testcase classname="tests.test_metrics_unification" name="test_websocket_manager_has_metrics" time="0.003" /><testcase classname="tests.test_metrics_unification" name="test_metrics_endpoint_isolation" time="0.025"><error message="failed on setup with &quot;TypeError: 'tuple' object is not callable&quot;">..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\pytest_asyncio\plugin.py:683: in pytest_fixture_setup
+    return (yield)
+            ^^^^^
+tests\conftest.py:885: in metrics_test_client
+    with TestClient(app_with_metrics) as client:
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\testclient.py:694: in __enter__
+    portal.call(self.wait_startup)
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\anyio\from_thread.py:290: in call
+    return cast(T_Retval, self.start_task_soon(func, *args).result())
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\concurrent\futures\_base.py:456: in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\concurrent\futures\_base.py:401: in __get_result
+    raise self._exception
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\anyio\from_thread.py:221: in _call_func
+    retval = await retval_or_awaitable
+             ^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\testclient.py:723: in wait_startup
+    message = await receive()
+              ^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\testclient.py:720: in receive
+    self.task.result()
+..\..\AppData\Local\Programs\Python\Python312\Lib\concurrent\futures\_base.py:449: in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\concurrent\futures\_base.py:401: in __get_result
+    raise self._exception
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\anyio\from_thread.py:221: in _call_func
+    retval = await retval_or_awaitable
+             ^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\testclient.py:710: in lifespan
+    await self.app(scope, self.stream_receive.receive, self.stream_send.send)
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\testclient.py:76: in __call__
+    instance = self.app(scope)
+               ^^^^^^^^^^^^^^^
+E   TypeError: 'tuple' object is not callable</error></testcase><testcase classname="tests.test_metrics_unification" name="test_http_middleware_metrics" time="0.008"><error message="failed on setup with &quot;TypeError: 'tuple' object is not callable&quot;">..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\pytest_asyncio\plugin.py:683: in pytest_fixture_setup
+    return (yield)
+            ^^^^^
+tests\conftest.py:885: in metrics_test_client
+    with TestClient(app_with_metrics) as client:
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\testclient.py:694: in __enter__
+    portal.call(self.wait_startup)
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\anyio\from_thread.py:290: in call
+    return cast(T_Retval, self.start_task_soon(func, *args).result())
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\concurrent\futures\_base.py:449: in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\concurrent\futures\_base.py:401: in __get_result
+    raise self._exception
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\anyio\from_thread.py:221: in _call_func
+    retval = await retval_or_awaitable
+             ^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\testclient.py:723: in wait_startup
+    message = await receive()
+              ^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\testclient.py:720: in receive
+    self.task.result()
+..\..\AppData\Local\Programs\Python\Python312\Lib\concurrent\futures\_base.py:449: in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\concurrent\futures\_base.py:401: in __get_result
+    raise self._exception
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\anyio\from_thread.py:221: in _call_func
+    retval = await retval_or_awaitable
+             ^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\testclient.py:710: in lifespan
+    await self.app(scope, self.stream_receive.receive, self.stream_send.send)
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\testclient.py:76: in __call__
+    instance = self.app(scope)
+               ^^^^^^^^^^^^^^^
+E   TypeError: 'tuple' object is not callable</error></testcase><testcase classname="tests.test_metrics_unification" name="test_parallel_test_isolation" time="0.558"><failure message="AttributeError: 'State' object has no attribute 'metrics'">..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\datastructures.py:686: in __getattr__
+    return self._state[key]
+           ^^^^^^^^^^^^^^^^
+E   KeyError: 'metrics'
+
+During handling of the above exception, another exception occurred:
+tests\test_metrics_unification.py:91: in test_parallel_test_isolation
+    assert app1.state.metrics.registry is registry1
+           ^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\datastructures.py:689: in __getattr__
+    raise AttributeError(message.format(self.__class__.__name__, key))
+E   AttributeError: 'State' object has no attribute 'metrics'</failure></testcase><testcase classname="tests.test_metrics_unification" name="test_websocket_metrics_integration" time="0.003"><failure message="ImportError: cannot import name 'WebSocketClientManager' from 'backend.api.main' (C:\Users\Marsel\intra\algotrading_platform\backend\api\main.py)">tests\test_metrics_unification.py:121: in test_websocket_metrics_integration
+    from backend.api.main import WebSocketClientManager
+E   ImportError: cannot import name 'WebSocketClientManager' from 'backend.api.main' (C:\Users\Marsel\intra\algotrading_platform\backend\api\main.py)</failure></testcase><testcase classname="tests.test_middleware_isolation.TestMiddlewareIsolation" name="test_app_with_metrics_fixture" time="0.002" /><testcase classname="tests.test_middleware_isolation.TestMiddlewareIsolation" name="test_client_with_metrics_fixture" time="0.003"><failure message="assert False&#10; +  where False = isinstance(&lt;starlette.testclient.TestClient object at 0x0000028271E40C80&gt;, TestClient)">tests\test_middleware_isolation.py:35: in test_client_with_metrics_fixture
+    assert isinstance(client, TestClient)
+E   assert False
+E    +  where False = isinstance(&lt;starlette.testclient.TestClient object at 0x0000028271E40C80&gt;, TestClient)</failure></testcase></testsuite></testsuites>

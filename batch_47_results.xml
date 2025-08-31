@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="5" skipped="1" tests="6" time="3.664" timestamp="2025-08-29T00:07:30.636336-07:00" hostname="BOOK-FVJOEO3Q00"><testcase classname="tests.integration.test_e2e_golden_path.TestE2EGoldenPath" name="test_e2e_golden_path_complete_flow" time="0.258"><failure message="assert 401 == 200&#10; +  where 401 = &lt;Response [401 Unauthorized]&gt;.status_code">tests\integration\test_e2e_golden_path.py:64: in test_e2e_golden_path_complete_flow
+    assert auth_response.status_code == 200
+E   assert 401 == 200
+E    +  where 401 = &lt;Response [401 Unauthorized]&gt;.status_code</failure></testcase><testcase classname="tests.integration.test_e2e_golden_path.TestE2EGoldenPath" name="test_e2e_risk_rejection_flow" time="1.506"><skipped type="pytest.skip" message="Temporarily skipped - endpoints need to be updated for new architecture">C:\Users\Marsel\intra\algotrading_platform\tests\integration\test_e2e_golden_path.py:118: Temporarily skipped - endpoints need to be updated for new architecture</skipped></testcase><testcase classname="tests.integration.test_e2e_golden_path.TestE2EGoldenPath" name="test_e2e_authentication_failure_flow" time="0.099"><failure message="assert 0.0 &gt;= 1">tests\integration\test_e2e_golden_path.py:211: in test_e2e_authentication_failure_flow
+    assert auth_failures &gt;= 1
+E   assert 0.0 &gt;= 1</failure></testcase><testcase classname="tests.integration.test_e2e_golden_path.TestE2EGoldenPath" name="test_e2e_feature_validation_errors" time="0.210"><failure message="KeyError: 'access_token'">tests\integration\test_e2e_golden_path.py:221: in test_e2e_feature_validation_errors
+    headers = {"Authorization": f"Bearer {auth_response.json()['access_token']}"}
+                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   KeyError: 'access_token'</failure></testcase><testcase classname="tests.integration.test_e2e_golden_path.TestE2EGoldenPath" name="test_e2e_websocket_integration" time="0.099"><failure message="starlette.websockets.WebSocketDisconnect">tests\integration\test_e2e_golden_path.py:252: in test_e2e_websocket_integration
+    with client.websocket_connect("/api/v1/ws/market-data") as websocket:
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\testclient.py:121: in __enter__
+    self._raise_on_close(message)
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\testclient.py:150: in _raise_on_close
+    raise WebSocketDisconnect(code=message.get("code", 1000), reason=message.get("reason", ""))
+E   starlette.websockets.WebSocketDisconnect</failure></testcase><testcase classname="tests.integration.test_e2e_golden_path.TestE2EGoldenPath" name="test_e2e_async_background_processing" time="0.090"><failure message="assert 0.0 &gt;= 4">tests\integration\test_e2e_golden_path.py:324: in test_e2e_async_background_processing
+    assert outbox_processed &gt;= 4  # Successful processes
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   assert 0.0 &gt;= 4</failure></testcase></testsuite></testsuites>

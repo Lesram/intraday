@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="20" time="2.160" timestamp="2025-08-28T23:54:26.716713-07:00" hostname="BOOK-FVJOEO3Q00"><testcase classname="tests.test_coverage_boost" name="test_config_basic_functionality" time="0.004" /><testcase classname="tests.test_coverage_boost" name="test_risk_types_side_enum" time="0.002" /><testcase classname="tests.test_coverage_boost" name="test_trading_signal_creation" time="0.002" /><testcase classname="tests.test_coverage_boost" name="test_trading_signal_validation" time="0.002" /><testcase classname="tests.test_coverage_boost" name="test_fake_jwt_system" time="0.005" /><testcase classname="tests.test_coverage_boost" name="test_imports_work" time="0.023" /><testcase classname="tests.test_critical_fixes.TestCriticalFixes" name="test_websocket_receive_loop_non_blocking" time="0.011" /><testcase classname="tests.test_critical_fixes.TestCriticalFixes" name="test_background_task_cancellation" time="0.114" /><testcase classname="tests.test_critical_fixes.TestCriticalFixes" name="test_websocket_metrics_tracking" time="0.026" /><testcase classname="tests.test_critical_fixes.TestCriticalFixes" name="test_heartbeat_timeout_tracking" time="0.009" /><testcase classname="tests.test_critical_fixes.TestCriticalFixes" name="test_subscription_management" time="0.010" /><testcase classname="tests.test_critical_fixes.TestCriticalFixes" name="test_websocket_endpoint_integration" time="0.035"><failure message="TypeError: object Mock can't be used in 'await' expression">tests\test_critical_fixes.py:274: in test_websocket_endpoint_integration
+    with TestClient(app) as client:
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\testclient.py:694: in __enter__
+    portal.call(self.wait_startup)
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\anyio\from_thread.py:290: in call
+    return cast(T_Retval, self.start_task_soon(func, *args).result())
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\concurrent\futures\_base.py:449: in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\concurrent\futures\_base.py:401: in __get_result
+    raise self._exception
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\anyio\from_thread.py:221: in _call_func
+    retval = await retval_or_awaitable
+             ^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\testclient.py:723: in wait_startup
+    message = await receive()
+              ^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\testclient.py:720: in receive
+    self.task.result()
+..\..\AppData\Local\Programs\Python\Python312\Lib\concurrent\futures\_base.py:449: in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\concurrent\futures\_base.py:401: in __get_result
+    raise self._exception
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\anyio\from_thread.py:221: in _call_func
+    retval = await retval_or_awaitable
+             ^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\testclient.py:710: in lifespan
+    await self.app(scope, self.stream_receive.receive, self.stream_send.send)
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\testclient.py:77: in __call__
+    await instance(receive, send)
+E   TypeError: object Mock can't be used in 'await' expression</failure></testcase><testcase classname="tests.test_ensemble_model_additional_coverage.TestAttributeErrorHandling" name="test_lstm_sequence_creation_basic" time="0.023" /><testcase classname="tests.test_ensemble_model_additional_coverage.TestSimpleReturnPaths" name="test_lstm_train_returns_false_without_libraries" time="0.006" /><testcase classname="tests.test_ensemble_model_additional_coverage.TestSimpleReturnPaths" name="test_ensemble_train_early_return_without_libraries" time="0.012" /><testcase classname="tests.test_ensemble_model_additional_coverage.TestDataFrameOperations" name="test_target_shift_and_alignment" time="0.009" /><testcase classname="tests.test_ensemble_model_additional_coverage.TestEdgeCaseHandling" name="test_lstm_sequence_creation_edge_cases" time="0.002" /><testcase classname="tests.test_ensemble_model_additional_coverage.TestEdgeCaseHandling" name="test_empty_dataframe_handling" time="0.002" /><testcase classname="tests.test_ensemble_model_additional_coverage.TestModelStateValidation" name="test_lstm_model_initialization_state" time="0.002" /><testcase classname="tests.test_ensemble_model_additional_coverage.TestModelStateValidation" name="test_ensemble_model_initialization_state" time="0.001" /></testsuite></testsuites>

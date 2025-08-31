@@ -1,0 +1,593 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="5" skipped="0" tests="51" time="14.159" timestamp="2025-08-29T00:17:36.423482-07:00" hostname="BOOK-FVJOEO3Q00"><testcase classname="tests.unit.test_security_hardening.TestSecuritySettings" name="test_security_settings_default_values" time="0.004" /><testcase classname="tests.unit.test_security_hardening.TestSecuritySettings" name="test_security_settings_valid_config" time="0.002" /><testcase classname="tests.unit.test_security_hardening.TestSecuritySettings" name="test_cors_origins_validation_wildcard_dev" time="0.004" /><testcase classname="tests.unit.test_security_hardening.TestSecuritySettings" name="test_cors_origins_validation_wildcard_production" time="0.006" /><testcase classname="tests.unit.test_security_hardening.TestSecuritySettings" name="test_cors_origins_validation_invalid_format" time="0.003" /><testcase classname="tests.unit.test_security_hardening.TestSecuritySettings" name="test_cors_origins_validation_valid_formats" time="0.003" /><testcase classname="tests.unit.test_security_hardening.TestSecuritySettings" name="test_trusted_hosts_validation_empty" time="0.004" /><testcase classname="tests.unit.test_security_hardening.TestSecuritySettings" name="test_rate_limit_validation_negative" time="0.003" /><testcase classname="tests.unit.test_security_hardening.TestSecuritySettings" name="test_rate_limit_validation_too_high" time="0.002" /><testcase classname="tests.unit.test_security_hardening.TestSecuritySettings" name="test_security_settings_environment_variables" time="0.005"><failure message="pydantic_settings.exceptions.SettingsError: error parsing value for field &quot;cors_allow_origins&quot; from source &quot;EnvSettingsSource&quot;">..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\pydantic_settings\sources\base.py:490: in __call__
+    field_value = self.prepare_field_value(field_name, field, field_value, value_is_complex)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\pydantic_settings\sources\providers\env.py:120: in prepare_field_value
+    raise e
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\pydantic_settings\sources\providers\env.py:117: in prepare_field_value
+    value = self.decode_complex_value(field_name, field, value)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\pydantic_settings\sources\base.py:186: in decode_complex_value
+    return json.loads(value)
+           ^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\json\__init__.py:346: in loads
+    return _default_decoder.decode(s)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\json\decoder.py:337: in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\json\decoder.py:355: in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+E   json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+
+The above exception was the direct cause of the following exception:
+tests\unit\test_security_hardening.py:117: in test_security_settings_environment_variables
+    settings = SecuritySettings(
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\pydantic_settings\main.py:189: in __init__
+    **__pydantic_self__._settings_build_values(
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\pydantic_settings\main.py:424: in _settings_build_values
+    source_state = source()
+                   ^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\pydantic_settings\sources\base.py:492: in __call__
+    raise SettingsError(
+E   pydantic_settings.exceptions.SettingsError: error parsing value for field "cors_allow_origins" from source "EnvSettingsSource"</failure></testcase><testcase classname="tests.unit.test_security_hardening.TestSimpleRateLimiter" name="test_rate_limiter_initialization" time="0.002" /><testcase classname="tests.unit.test_security_hardening.TestSimpleRateLimiter" name="test_rate_limiter_allows_requests_within_limit" time="0.002" /><testcase classname="tests.unit.test_security_hardening.TestSimpleRateLimiter" name="test_rate_limiter_blocks_burst_exceeded" time="0.003" /><testcase classname="tests.unit.test_security_hardening.TestSimpleRateLimiter" name="test_rate_limiter_different_ips" time="0.003" /><testcase classname="tests.unit.test_security_hardening.TestSimpleRateLimiter" name="test_rate_limiter_cleanup_old_requests" time="0.002" /><testcase classname="tests.unit.test_security_hardening.TestSimpleRateLimiter" name="test_rate_limiter_reset_info" time="0.002" /><testcase classname="tests.unit.test_security_hardening.TestRateLimitMiddleware" name="test_middleware_initialization" time="0.003" /><testcase classname="tests.unit.test_security_hardening.TestRateLimitMiddleware" name="test_middleware_disabled" time="0.066" /><testcase classname="tests.unit.test_security_hardening.TestRateLimitMiddleware" name="test_middleware_health_checks_bypassed" time="0.073"><failure message="UnboundLocalError: cannot access local variable 'JSONResponse' where it is not associated with a value">+ Exception Group Traceback (most recent call last):
+  |   File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\_utils.py", line 77, in collapse_excgroups
+  |     yield
+  |   File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\middleware\base.py", line 183, in __call__
+  |     async with anyio.create_task_group() as task_group:
+  |   File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\anyio\_backends\_asyncio.py", line 767, in __aexit__
+  |     raise BaseExceptionGroup(
+  | ExceptionGroup: unhandled errors in a TaskGroup (1 sub-exception)
+  +-+---------------- 1 ----------------
+    | Traceback (most recent call last):
+    |   File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\_pytest\runner.py", line 344, in from_call
+    |     result: TResult | None = func()
+    |                              ^^^^^^
+    |   File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\_pytest\runner.py", line 246, in &lt;lambda&gt;
+    |     lambda: runtest_hook(item=item, **kwds), when=when, reraise=reraise
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\pluggy\_hooks.py", line 512, in __call__
+    |     return self._hookexec(self.name, self._hookimpls.copy(), kwargs, firstresult)
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\pluggy\_manager.py", line 120, in _hookexec
+    |     return self._inner_hookexec(hook_name, methods, kwargs, firstresult)
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\pluggy\_callers.py", line 167, in _multicall
+    |     raise exception
+    |   File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\pluggy\_callers.py", line 139, in _multicall
+    |     teardown.throw(exception)
+    |   File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\_pytest\logging.py", line 850, in pytest_runtest_call
+    |     yield
+    |   File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\pluggy\_callers.py", line 139, in _multicall
+    |     teardown.throw(exception)
+    |   File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\_pytest\capture.py", line 900, in pytest_runtest_call
+    |     return (yield)
+    |             ^^^^^
+    |   File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\pluggy\_callers.py", line 139, in _multicall
+    |     teardown.throw(exception)
+    |   File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\pluggy\_callers.py", line 53, in run_old_style_hookwrapper
+    |     return result.get_result()
+    |            ^^^^^^^^^^^^^^^^^^^
+    |   File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\pluggy\_result.py", line 103, in get_result
+    |     raise exc.with_traceback(tb)
+    |   File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\pluggy\_callers.py", line 38, in run_old_style_hookwrapper
+    |     res = yield
+    |           ^^^^^
+    |   File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\pluggy\_callers.py", line 139, in _multicall
+    |     teardown.throw(exception)
+    |   File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\pluggy\_callers.py", line 53, in run_old_style_hookwrapper
+    |     return result.get_result()
+    |            ^^^^^^^^^^^^^^^^^^^
+    |   File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\pluggy\_result.py", line 103, in get_result
+    |     raise exc.with_traceback(tb)
+    |   File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\pluggy\_callers.py", line 38, in run_old_style_hookwrapper
+    |     res = yield
+    |           ^^^^^
+    |   File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\pluggy\_callers.py", line 139, in _multicall
+    |     teardown.throw(exception)
+    |   File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\_pytest\skipping.py", line 263, in pytest_runtest_call
+    |     return (yield)
+    |             ^^^^^
+    |   File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\pluggy\_callers.py", line 121, in _multicall
+    |     res = hook_impl.function(*args)
+    |           ^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\_pytest\runner.py", line 178, in pytest_runtest_call
+    |     item.runtest()
+    |   File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\_pytest\python.py", line 1671, in runtest
+    |     self.ihook.pytest_pyfunc_call(pyfuncitem=self)
+    |   File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\pluggy\_hooks.py", line 512, in __call__
+    |     return self._hookexec(self.name, self._hookimpls.copy(), kwargs, firstresult)
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\pluggy\_manager.py", line 120, in _hookexec
+    |     return self._inner_hookexec(hook_name, methods, kwargs, firstresult)
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\pluggy\_callers.py", line 167, in _multicall
+    |     raise exception
+    |   File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\pluggy\_callers.py", line 139, in _multicall
+    |     teardown.throw(exception)
+    |   File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\pluggy\_callers.py", line 53, in run_old_style_hookwrapper
+    |     return result.get_result()
+    |            ^^^^^^^^^^^^^^^^^^^
+    |   File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\pluggy\_result.py", line 103, in get_result
+    |     raise exc.with_traceback(tb)
+    |   File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\pluggy\_callers.py", line 38, in run_old_style_hookwrapper
+    |     res = yield
+    |           ^^^^^
+    |   File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\pluggy\_callers.py", line 121, in _multicall
+    |     res = hook_impl.function(*args)
+    |           ^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\_pytest\python.py", line 157, in pytest_pyfunc_call
+    |     result = testfunction(**testargs)
+    |              ^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "C:\Users\Marsel\intra\algotrading_platform\tests\unit\test_security_hardening.py", line 271, in test_middleware_health_checks_bypassed
+    |     client.get("/test")
+    |   File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\testclient.py", line 479, in get
+    |     return super().get(
+    |            ^^^^^^^^^^^^
+    |   File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py", line 1053, in get
+    |     return self.request(
+    |            ^^^^^^^^^^^^^
+    |   File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\testclient.py", line 451, in request
+    |     return super().request(
+    |            ^^^^^^^^^^^^^^^^
+    |   File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py", line 825, in request
+    |     return self.send(request, auth=auth, follow_redirects=follow_redirects)
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py", line 914, in send
+    |     response = self._send_handling_auth(
+    |                ^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py", line 942, in _send_handling_auth
+    |     response = self._send_handling_redirects(
+    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py", line 979, in _send_handling_redirects
+    |     response = self._send_single_request(request)
+    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py", line 1014, in _send_single_request
+    |     response = transport.handle_request(request)
+    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\testclient.py", line 354, in handle_request
+    |     raise exc
+    |   File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\testclient.py", line 351, in handle_request
+    |     portal.call(self.app, scope, receive, send)
+    |   File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\anyio\from_thread.py", line 290, in call
+    |     return cast(T_Retval, self.start_task_soon(func, *args).result())
+    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\concurrent\futures\_base.py", line 449, in result
+    |     return self.__get_result()
+    |            ^^^^^^^^^^^^^^^^^^^
+    |   File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\concurrent\futures\_base.py", line 401, in __get_result
+    |     raise self._exception
+    |   File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\anyio\from_thread.py", line 221, in _call_func
+    |     retval = await retval_or_awaitable
+    |              ^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\fastapi\applications.py", line 1054, in __call__
+    |     await super().__call__(scope, receive, send)
+    |   File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\applications.py", line 113, in __call__
+    |     await self.middleware_stack(scope, receive, send)
+    |   File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\middleware\errors.py", line 186, in __call__
+    |     raise exc
+    |   File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\middleware\errors.py", line 164, in __call__
+    |     await self.app(scope, receive, _send)
+    |   File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\middleware\base.py", line 182, in __call__
+    |     with recv_stream, send_stream, collapse_excgroups():
+    |   File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\contextlib.py", line 158, in __exit__
+    |     self.gen.throw(value)
+    |   File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\_utils.py", line 83, in collapse_excgroups
+    |     raise exc
+    |   File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\middleware\base.py", line 184, in __call__
+    |     response = await self.dispatch_func(request, call_next)
+    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "C:\Users\Marsel\intra\algotrading_platform\backend\infra\security_hardening.py", line 223, in dispatch
+    |     return JSONResponse(
+    |            ^^^^^^^^^^^^
+    | UnboundLocalError: cannot access local variable 'JSONResponse' where it is not associated with a value
+    +------------------------------------
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\Marsel\intra\algotrading_platform\tests\unit\test_security_hardening.py", line 271, in test_middleware_health_checks_bypassed
+    client.get("/test")
+  File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\testclient.py", line 479, in get
+    return super().get(
+           ^^^^^^^^^^^^
+  File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py", line 1053, in get
+    return self.request(
+           ^^^^^^^^^^^^^
+  File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\testclient.py", line 451, in request
+    return super().request(
+           ^^^^^^^^^^^^^^^^
+  File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py", line 825, in request
+    return self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py", line 914, in send
+    response = self._send_handling_auth(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py", line 942, in _send_handling_auth
+    response = self._send_handling_redirects(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py", line 979, in _send_handling_redirects
+    response = self._send_single_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py", line 1014, in _send_single_request
+    response = transport.handle_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\testclient.py", line 354, in handle_request
+    raise exc
+  File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\testclient.py", line 351, in handle_request
+    portal.call(self.app, scope, receive, send)
+  File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\anyio\from_thread.py", line 290, in call
+    return cast(T_Retval, self.start_task_soon(func, *args).result())
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\concurrent\futures\_base.py", line 449, in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\concurrent\futures\_base.py", line 401, in __get_result
+    raise self._exception
+  File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\anyio\from_thread.py", line 221, in _call_func
+    retval = await retval_or_awaitable
+             ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\fastapi\applications.py", line 1054, in __call__
+    await super().__call__(scope, receive, send)
+  File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\applications.py", line 113, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\middleware\errors.py", line 186, in __call__
+    raise exc
+  File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\middleware\errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\middleware\base.py", line 182, in __call__
+    with recv_stream, send_stream, collapse_excgroups():
+  File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\contextlib.py", line 158, in __exit__
+    self.gen.throw(value)
+  File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\_utils.py", line 83, in collapse_excgroups
+    raise exc
+  File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\middleware\base.py", line 184, in __call__
+    response = await self.dispatch_func(request, call_next)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Marsel\intra\algotrading_platform\backend\infra\security_hardening.py", line 223, in dispatch
+    return JSONResponse(
+           ^^^^^^^^^^^^
+UnboundLocalError: cannot access local variable 'JSONResponse' where it is not associated with a value
+
+During handling of the above exception, another exception occurred:
+tests\unit\test_security_hardening.py:271: in test_middleware_health_checks_bypassed
+    client.get("/test")
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\testclient.py:479: in get
+    return super().get(
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py:1053: in get
+    return self.request(
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\testclient.py:451: in request
+    return super().request(
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py:825: in request
+    return self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py:914: in send
+    response = self._send_handling_auth(
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py:942: in _send_handling_auth
+    response = self._send_handling_redirects(
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py:979: in _send_handling_redirects
+    response = self._send_single_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py:1014: in _send_single_request
+    response = transport.handle_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\testclient.py:354: in handle_request
+    raise exc
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\testclient.py:351: in handle_request
+    portal.call(self.app, scope, receive, send)
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\anyio\from_thread.py:290: in call
+    return cast(T_Retval, self.start_task_soon(func, *args).result())
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\concurrent\futures\_base.py:449: in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\concurrent\futures\_base.py:401: in __get_result
+    raise self._exception
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\anyio\from_thread.py:221: in _call_func
+    retval = await retval_or_awaitable
+             ^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\fastapi\applications.py:1054: in __call__
+    await super().__call__(scope, receive, send)
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\applications.py:113: in __call__
+    await self.middleware_stack(scope, receive, send)
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\middleware\errors.py:186: in __call__
+    raise exc
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\middleware\errors.py:164: in __call__
+    await self.app(scope, receive, _send)
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\middleware\base.py:182: in __call__
+    with recv_stream, send_stream, collapse_excgroups():
+..\..\AppData\Local\Programs\Python\Python312\Lib\contextlib.py:158: in __exit__
+    self.gen.throw(value)
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\_utils.py:83: in collapse_excgroups
+    raise exc
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\middleware\base.py:184: in __call__
+    response = await self.dispatch_func(request, call_next)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend\infra\security_hardening.py:223: in dispatch
+    return JSONResponse(
+           ^^^^^^^^^^^^
+E   UnboundLocalError: cannot access local variable 'JSONResponse' where it is not associated with a value</failure></testcase><testcase classname="tests.unit.test_security_hardening.TestRateLimitMiddleware" name="test_middleware_rate_limit_headers" time="0.010" /><testcase classname="tests.unit.test_security_hardening.TestRateLimitMiddleware" name="test_middleware_rate_limit_exceeded_response" time="0.022"><failure message="UnboundLocalError: cannot access local variable 'JSONResponse' where it is not associated with a value">+ Exception Group Traceback (most recent call last):
+  |   File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\_utils.py", line 77, in collapse_excgroups
+  |     yield
+  |   File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\middleware\base.py", line 183, in __call__
+  |     async with anyio.create_task_group() as task_group:
+  |   File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\anyio\_backends\_asyncio.py", line 767, in __aexit__
+  |     raise BaseExceptionGroup(
+  | ExceptionGroup: unhandled errors in a TaskGroup (1 sub-exception)
+  +-+---------------- 1 ----------------
+    | Traceback (most recent call last):
+    |   File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\_pytest\runner.py", line 344, in from_call
+    |     result: TResult | None = func()
+    |                              ^^^^^^
+    |   File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\_pytest\runner.py", line 246, in &lt;lambda&gt;
+    |     lambda: runtest_hook(item=item, **kwds), when=when, reraise=reraise
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\pluggy\_hooks.py", line 512, in __call__
+    |     return self._hookexec(self.name, self._hookimpls.copy(), kwargs, firstresult)
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\pluggy\_manager.py", line 120, in _hookexec
+    |     return self._inner_hookexec(hook_name, methods, kwargs, firstresult)
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\pluggy\_callers.py", line 167, in _multicall
+    |     raise exception
+    |   File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\pluggy\_callers.py", line 139, in _multicall
+    |     teardown.throw(exception)
+    |   File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\_pytest\logging.py", line 850, in pytest_runtest_call
+    |     yield
+    |   File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\pluggy\_callers.py", line 139, in _multicall
+    |     teardown.throw(exception)
+    |   File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\_pytest\capture.py", line 900, in pytest_runtest_call
+    |     return (yield)
+    |             ^^^^^
+    |   File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\pluggy\_callers.py", line 139, in _multicall
+    |     teardown.throw(exception)
+    |   File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\pluggy\_callers.py", line 53, in run_old_style_hookwrapper
+    |     return result.get_result()
+    |            ^^^^^^^^^^^^^^^^^^^
+    |   File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\pluggy\_result.py", line 103, in get_result
+    |     raise exc.with_traceback(tb)
+    |   File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\pluggy\_callers.py", line 38, in run_old_style_hookwrapper
+    |     res = yield
+    |           ^^^^^
+    |   File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\pluggy\_callers.py", line 139, in _multicall
+    |     teardown.throw(exception)
+    |   File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\pluggy\_callers.py", line 53, in run_old_style_hookwrapper
+    |     return result.get_result()
+    |            ^^^^^^^^^^^^^^^^^^^
+    |   File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\pluggy\_result.py", line 103, in get_result
+    |     raise exc.with_traceback(tb)
+    |   File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\pluggy\_callers.py", line 38, in run_old_style_hookwrapper
+    |     res = yield
+    |           ^^^^^
+    |   File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\pluggy\_callers.py", line 139, in _multicall
+    |     teardown.throw(exception)
+    |   File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\_pytest\skipping.py", line 263, in pytest_runtest_call
+    |     return (yield)
+    |             ^^^^^
+    |   File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\pluggy\_callers.py", line 121, in _multicall
+    |     res = hook_impl.function(*args)
+    |           ^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\_pytest\runner.py", line 178, in pytest_runtest_call
+    |     item.runtest()
+    |   File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\_pytest\python.py", line 1671, in runtest
+    |     self.ihook.pytest_pyfunc_call(pyfuncitem=self)
+    |   File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\pluggy\_hooks.py", line 512, in __call__
+    |     return self._hookexec(self.name, self._hookimpls.copy(), kwargs, firstresult)
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\pluggy\_manager.py", line 120, in _hookexec
+    |     return self._inner_hookexec(hook_name, methods, kwargs, firstresult)
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\pluggy\_callers.py", line 167, in _multicall
+    |     raise exception
+    |   File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\pluggy\_callers.py", line 139, in _multicall
+    |     teardown.throw(exception)
+    |   File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\pluggy\_callers.py", line 53, in run_old_style_hookwrapper
+    |     return result.get_result()
+    |            ^^^^^^^^^^^^^^^^^^^
+    |   File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\pluggy\_result.py", line 103, in get_result
+    |     raise exc.with_traceback(tb)
+    |   File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\pluggy\_callers.py", line 38, in run_old_style_hookwrapper
+    |     res = yield
+    |           ^^^^^
+    |   File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\pluggy\_callers.py", line 121, in _multicall
+    |     res = hook_impl.function(*args)
+    |           ^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\_pytest\python.py", line 157, in pytest_pyfunc_call
+    |     result = testfunction(**testargs)
+    |              ^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "C:\Users\Marsel\intra\algotrading_platform\tests\unit\test_security_hardening.py", line 317, in test_middleware_rate_limit_exceeded_response
+    |     client.get("/test")
+    |   File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\testclient.py", line 479, in get
+    |     return super().get(
+    |            ^^^^^^^^^^^^
+    |   File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py", line 1053, in get
+    |     return self.request(
+    |            ^^^^^^^^^^^^^
+    |   File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\testclient.py", line 451, in request
+    |     return super().request(
+    |            ^^^^^^^^^^^^^^^^
+    |   File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py", line 825, in request
+    |     return self.send(request, auth=auth, follow_redirects=follow_redirects)
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py", line 914, in send
+    |     response = self._send_handling_auth(
+    |                ^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py", line 942, in _send_handling_auth
+    |     response = self._send_handling_redirects(
+    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py", line 979, in _send_handling_redirects
+    |     response = self._send_single_request(request)
+    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py", line 1014, in _send_single_request
+    |     response = transport.handle_request(request)
+    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\testclient.py", line 354, in handle_request
+    |     raise exc
+    |   File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\testclient.py", line 351, in handle_request
+    |     portal.call(self.app, scope, receive, send)
+    |   File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\anyio\from_thread.py", line 290, in call
+    |     return cast(T_Retval, self.start_task_soon(func, *args).result())
+    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\concurrent\futures\_base.py", line 449, in result
+    |     return self.__get_result()
+    |            ^^^^^^^^^^^^^^^^^^^
+    |   File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\concurrent\futures\_base.py", line 401, in __get_result
+    |     raise self._exception
+    |   File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\anyio\from_thread.py", line 221, in _call_func
+    |     retval = await retval_or_awaitable
+    |              ^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\fastapi\applications.py", line 1054, in __call__
+    |     await super().__call__(scope, receive, send)
+    |   File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\applications.py", line 113, in __call__
+    |     await self.middleware_stack(scope, receive, send)
+    |   File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\middleware\errors.py", line 186, in __call__
+    |     raise exc
+    |   File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\middleware\errors.py", line 164, in __call__
+    |     await self.app(scope, receive, _send)
+    |   File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\middleware\base.py", line 182, in __call__
+    |     with recv_stream, send_stream, collapse_excgroups():
+    |   File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\contextlib.py", line 158, in __exit__
+    |     self.gen.throw(value)
+    |   File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\_utils.py", line 83, in collapse_excgroups
+    |     raise exc
+    |   File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\middleware\base.py", line 184, in __call__
+    |     response = await self.dispatch_func(request, call_next)
+    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "C:\Users\Marsel\intra\algotrading_platform\backend\infra\security_hardening.py", line 223, in dispatch
+    |     return JSONResponse(
+    |            ^^^^^^^^^^^^
+    | UnboundLocalError: cannot access local variable 'JSONResponse' where it is not associated with a value
+    +------------------------------------
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\Marsel\intra\algotrading_platform\tests\unit\test_security_hardening.py", line 317, in test_middleware_rate_limit_exceeded_response
+    client.get("/test")
+  File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\testclient.py", line 479, in get
+    return super().get(
+           ^^^^^^^^^^^^
+  File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py", line 1053, in get
+    return self.request(
+           ^^^^^^^^^^^^^
+  File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\testclient.py", line 451, in request
+    return super().request(
+           ^^^^^^^^^^^^^^^^
+  File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py", line 825, in request
+    return self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py", line 914, in send
+    response = self._send_handling_auth(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py", line 942, in _send_handling_auth
+    response = self._send_handling_redirects(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py", line 979, in _send_handling_redirects
+    response = self._send_single_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py", line 1014, in _send_single_request
+    response = transport.handle_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\testclient.py", line 354, in handle_request
+    raise exc
+  File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\testclient.py", line 351, in handle_request
+    portal.call(self.app, scope, receive, send)
+  File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\anyio\from_thread.py", line 290, in call
+    return cast(T_Retval, self.start_task_soon(func, *args).result())
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\concurrent\futures\_base.py", line 449, in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\concurrent\futures\_base.py", line 401, in __get_result
+    raise self._exception
+  File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\anyio\from_thread.py", line 221, in _call_func
+    retval = await retval_or_awaitable
+             ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\fastapi\applications.py", line 1054, in __call__
+    await super().__call__(scope, receive, send)
+  File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\applications.py", line 113, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\middleware\errors.py", line 186, in __call__
+    raise exc
+  File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\middleware\errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\middleware\base.py", line 182, in __call__
+    with recv_stream, send_stream, collapse_excgroups():
+  File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\contextlib.py", line 158, in __exit__
+    self.gen.throw(value)
+  File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\_utils.py", line 83, in collapse_excgroups
+    raise exc
+  File "C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\middleware\base.py", line 184, in __call__
+    response = await self.dispatch_func(request, call_next)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Marsel\intra\algotrading_platform\backend\infra\security_hardening.py", line 223, in dispatch
+    return JSONResponse(
+           ^^^^^^^^^^^^
+UnboundLocalError: cannot access local variable 'JSONResponse' where it is not associated with a value
+
+During handling of the above exception, another exception occurred:
+tests\unit\test_security_hardening.py:317: in test_middleware_rate_limit_exceeded_response
+    client.get("/test")
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\testclient.py:479: in get
+    return super().get(
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py:1053: in get
+    return self.request(
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\testclient.py:451: in request
+    return super().request(
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py:825: in request
+    return self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py:914: in send
+    response = self._send_handling_auth(
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py:942: in _send_handling_auth
+    response = self._send_handling_redirects(
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py:979: in _send_handling_redirects
+    response = self._send_single_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py:1014: in _send_single_request
+    response = transport.handle_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\testclient.py:354: in handle_request
+    raise exc
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\testclient.py:351: in handle_request
+    portal.call(self.app, scope, receive, send)
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\anyio\from_thread.py:290: in call
+    return cast(T_Retval, self.start_task_soon(func, *args).result())
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\concurrent\futures\_base.py:449: in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\concurrent\futures\_base.py:401: in __get_result
+    raise self._exception
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\anyio\from_thread.py:221: in _call_func
+    retval = await retval_or_awaitable
+             ^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\fastapi\applications.py:1054: in __call__
+    await super().__call__(scope, receive, send)
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\applications.py:113: in __call__
+    await self.middleware_stack(scope, receive, send)
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\middleware\errors.py:186: in __call__
+    raise exc
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\middleware\errors.py:164: in __call__
+    await self.app(scope, receive, _send)
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\middleware\base.py:182: in __call__
+    with recv_stream, send_stream, collapse_excgroups():
+..\..\AppData\Local\Programs\Python\Python312\Lib\contextlib.py:158: in __exit__
+    self.gen.throw(value)
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\_utils.py:83: in collapse_excgroups
+    raise exc
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\middleware\base.py:184: in __call__
+    response = await self.dispatch_func(request, call_next)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend\infra\security_hardening.py:223: in dispatch
+    return JSONResponse(
+           ^^^^^^^^^^^^
+E   UnboundLocalError: cannot access local variable 'JSONResponse' where it is not associated with a value</failure></testcase><testcase classname="tests.unit.test_security_hardening.TestSecurityHeadersMiddleware" name="test_security_headers_enabled" time="0.009" /><testcase classname="tests.unit.test_security_hardening.TestSecurityHeadersMiddleware" name="test_security_headers_disabled" time="0.010" /><testcase classname="tests.unit.test_security_hardening.TestSecurityHeadersMiddleware" name="test_security_headers_https_hsts" time="0.008" /><testcase classname="tests.unit.test_security_hardening.TestJWTValidator" name="test_jwt_validator_initialization" time="0.003" /><testcase classname="tests.unit.test_security_hardening.TestJWTValidator" name="test_validate_request_context_https_required" time="0.005" /><testcase classname="tests.unit.test_security_hardening.TestJWTValidator" name="test_validate_request_context_localhost_allowed" time="0.005" /><testcase classname="tests.unit.test_security_hardening.TestJWTValidator" name="test_validate_request_context_https_ok" time="0.003" /><testcase classname="tests.unit.test_security_hardening.TestJWTValidator" name="test_get_enhanced_jwt_verification_options" time="0.003" /><testcase classname="tests.unit.test_security_hardening.TestJWTValidator" name="test_get_jwt_verification_options_minimal" time="0.002" /><testcase classname="tests.unit.test_security_hardening.TestSecurityIntegration" name="test_configure_security_middleware_full" time="0.011" /><testcase classname="tests.unit.test_security_hardening.TestSecurityIntegration" name="test_configure_security_middleware_minimal" time="0.009" /><testcase classname="tests.unit.test_security_hardening.TestSecurityEdgeCases" name="test_rate_limiter_with_unknown_client" time="0.002" /><testcase classname="tests.unit.test_security_hardening.TestSecurityEdgeCases" name="test_rate_limiter_concurrent_access" time="0.001" /><testcase classname="tests.unit.test_security_hardening.TestSecurityEdgeCases" name="test_security_settings_edge_cases" time="0.002" /><testcase classname="tests.unit.test_security_hardening.TestSecurityEdgeCases" name="test_middleware_exception_handling" time="0.007" /><testcase classname="tests.unit.test_security_jwt_failures.TestJWTTokenFailureModes" name="test_verify_expired_token" time="0.022" /><testcase classname="tests.unit.test_security_jwt_failures.TestJWTTokenFailureModes" name="test_verify_malformed_token" time="0.002" /><testcase classname="tests.unit.test_security_jwt_failures.TestJWTTokenFailureModes" name="test_verify_token_wrong_issuer" time="0.003" /><testcase classname="tests.unit.test_security_jwt_failures.TestJWTTokenFailureModes" name="test_verify_token_wrong_audience" time="0.002" /><testcase classname="tests.unit.test_security_jwt_failures.TestJWTTokenFailureModes" name="test_verify_token_wrong_signature" time="0.002" /><testcase classname="tests.unit.test_security_jwt_failures.TestJWTTokenFailureModes" name="test_verify_token_missing_subject" time="0.003"><failure message="AssertionError: assert 'missing subject' in 'invalid token'&#10; +  where 'invalid token' = &lt;built-in method lower of str object at 0x00000197FF4461F0&gt;()&#10; +    where &lt;built-in method lower of str object at 0x00000197FF4461F0&gt; = 'Invalid token'.lower&#10; +      where 'Invalid token' = HTTPException(status_code=401, detail='Invalid token').detail&#10; +        where HTTPException(status_code=401, detail='Invalid token') = &lt;ExceptionInfo HTTPException(status_code=401, detail='Invalid token') tblen=3&gt;.value">tests\unit\test_security_jwt_failures.py:173: in test_verify_token_missing_subject
+    assert "missing subject" in exc_info.value.detail.lower()
+E   AssertionError: assert 'missing subject' in 'invalid token'
+E    +  where 'invalid token' = &lt;built-in method lower of str object at 0x00000197FF4461F0&gt;()
+E    +    where &lt;built-in method lower of str object at 0x00000197FF4461F0&gt; = 'Invalid token'.lower
+E    +      where 'Invalid token' = HTTPException(status_code=401, detail='Invalid token').detail
+E    +        where HTTPException(status_code=401, detail='Invalid token') = &lt;ExceptionInfo HTTPException(status_code=401, detail='Invalid token') tblen=3&gt;.value</failure></testcase><testcase classname="tests.unit.test_security_jwt_failures.TestJWTTokenFailureModes" name="test_verify_token_unsupported_algorithm" time="0.002" /><testcase classname="tests.unit.test_security_jwt_failures.TestJWTTokenFailureModes" name="test_create_token_invalid_parameters" time="0.002" /><testcase classname="tests.unit.test_security_jwt_failures.TestPasswordHashVerification" name="test_hash_password_basic" time="0.661" /><testcase classname="tests.unit.test_security_jwt_failures.TestPasswordHashVerification" name="test_verify_password_correct" time="1.352" /><testcase classname="tests.unit.test_security_jwt_failures.TestPasswordHashVerification" name="test_verify_password_incorrect" time="1.339" /><testcase classname="tests.unit.test_security_jwt_failures.TestPasswordHashVerification" name="test_verify_password_empty_strings" time="1.302" /><testcase classname="tests.unit.test_security_jwt_failures.TestPasswordHashVerification" name="test_verify_password_special_characters" time="1.945" /><testcase classname="tests.unit.test_security_jwt_failures.TestPasswordHashVerification" name="test_verify_password_unicode_characters" time="1.951" /><testcase classname="tests.unit.test_security_jwt_failures.TestPasswordHashVerification" name="test_verify_password_very_long_password" time="1.970"><failure message="AssertionError: assert True is False&#10; +  where True = verify_password('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', '$2b$12$Zjm7Uj5TTbPfSwYakDNfLeSHWoZ26Z4h0GV/ZxKfEcOT04QYwZd7e')">tests\unit\test_security_jwt_failures.py:287: in test_verify_password_very_long_password
+    assert verify_password(long_password[:-1], hashed) is False
+E   AssertionError: assert True is False
+E    +  where True = verify_password('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', '$2b$12$Zjm7Uj5TTbPfSwYakDNfLeSHWoZ26Z4h0GV/ZxKfEcOT04QYwZd7e')</failure></testcase></testsuite></testsuites>

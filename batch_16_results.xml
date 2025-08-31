@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="5" skipped="0" tests="5" time="2.089" timestamp="2025-08-28T23:57:07.935907-07:00" hostname="BOOK-FVJOEO3Q00"><testcase classname="tests.test_mlops_real_integration.TestMLOpsFeatureFlags" name="test_mlops_available_flag_coverage" time="0.006"><failure message="AttributeError: &lt;module 'backend.models.ensemble_model' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\models\\ensemble_model.py'&gt; does not have the attribute 'get_structured_logger'">tests\test_mlops_real_integration.py:33: in test_mlops_available_flag_coverage
+    with patch('backend.models.ensemble_model.get_structured_logger') as mock_logger:
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1458: in __enter__
+    original, local = self.get_original()
+                      ^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1431: in get_original
+    raise AttributeError(
+E   AttributeError: &lt;module 'backend.models.ensemble_model' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\models\\ensemble_model.py'&gt; does not have the attribute 'get_structured_logger'</failure></testcase><testcase classname="tests.test_mlops_real_integration.TestMLOpsFeatureFlags" name="test_mlops_unavailable_flag_coverage" time="0.002"><failure message="AttributeError: &lt;module 'backend.models.ensemble_model' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\models\\ensemble_model.py'&gt; does not have the attribute 'get_structured_logger'">tests\test_mlops_real_integration.py:46: in test_mlops_unavailable_flag_coverage
+    with patch('backend.models.ensemble_model.get_structured_logger', side_effect=ImportError):
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1458: in __enter__
+    original, local = self.get_original()
+                      ^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1431: in get_original
+    raise AttributeError(
+E   AttributeError: &lt;module 'backend.models.ensemble_model' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\models\\ensemble_model.py'&gt; does not have the attribute 'get_structured_logger'</failure></testcase><testcase classname="tests.test_mlops_real_integration.TestMLOpsFeatureFlags" name="test_feature_pipeline_available_true" time="0.002"><failure message="AttributeError: &lt;module 'backend.models.ensemble_model' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\models\\ensemble_model.py'&gt; does not have the attribute 'validate_features'">tests\test_mlops_real_integration.py:57: in test_feature_pipeline_available_true
+    with patch('backend.models.ensemble_model.validate_features') as mock_validate:
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1458: in __enter__
+    original, local = self.get_original()
+                      ^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1431: in get_original
+    raise AttributeError(
+E   AttributeError: &lt;module 'backend.models.ensemble_model' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\models\\ensemble_model.py'&gt; does not have the attribute 'validate_features'</failure></testcase><testcase classname="tests.test_mlops_real_integration.TestMLOpsFeatureFlags" name="test_feature_pipeline_unavailable" time="0.002"><failure message="AttributeError: &lt;module 'backend.models.ensemble_model' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\models\\ensemble_model.py'&gt; does not have the attribute 'validate_features'">tests\test_mlops_real_integration.py:69: in test_feature_pipeline_unavailable
+    with patch('backend.models.ensemble_model.validate_features', side_effect=ImportError):
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1458: in __enter__
+    original, local = self.get_original()
+                      ^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1431: in get_original
+    raise AttributeError(
+E   AttributeError: &lt;module 'backend.models.ensemble_model' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\models\\ensemble_model.py'&gt; does not have the attribute 'validate_features'</failure></testcase><testcase classname="tests.test_mlops_real_integration.TestMLOpsLoggingPaths" name="test_mlops_logger_warning_path" time="0.003"><failure message="AttributeError: &lt;module 'backend.models.ensemble_model' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\models\\ensemble_model.py'&gt; does not have the attribute 'validate_features'">tests\test_mlops_real_integration.py:87: in test_mlops_logger_warning_path
+    with patch('backend.models.ensemble_model.validate_features', return_value=False):
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1458: in __enter__
+    original, local = self.get_original()
+                      ^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1431: in get_original
+    raise AttributeError(
+E   AttributeError: &lt;module 'backend.models.ensemble_model' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\models\\ensemble_model.py'&gt; does not have the attribute 'validate_features'</failure></testcase></testsuite></testsuites>

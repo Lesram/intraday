@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="5" failures="0" skipped="0" tests="5" time="1.932" timestamp="2025-08-29T00:07:46.318633-07:00" hostname="BOOK-FVJOEO3Q00"><testcase classname="tests.integration.test_order_lifecycle_e2e.TestOrderLifecycleE2E" name="test_complete_order_submission_flow" time="0.049"><error message="failed on setup with &quot;TypeError: 'Mock' object does not support item assignment&quot;">tests\integration\test_order_lifecycle_e2e.py:53: in ephemeral_app
+    app.dependency_overrides[get_database_session] = get_test_session
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   TypeError: 'Mock' object does not support item assignment</error></testcase><testcase classname="tests.integration.test_order_lifecycle_e2e.TestOrderLifecycleE2E" name="test_idempotency_prevents_duplicate_orders" time="0.010"><error message="failed on setup with &quot;TypeError: 'Mock' object does not support item assignment&quot;">tests\integration\test_order_lifecycle_e2e.py:53: in ephemeral_app
+    app.dependency_overrides[get_database_session] = get_test_session
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   TypeError: 'Mock' object does not support item assignment</error></testcase><testcase classname="tests.integration.test_order_lifecycle_e2e.TestOrderLifecycleE2E" name="test_outbox_pattern_ensures_at_least_once_delivery" time="0.008"><error message="failed on setup with &quot;TypeError: 'Mock' object does not support item assignment&quot;">tests\integration\test_order_lifecycle_e2e.py:53: in ephemeral_app
+    app.dependency_overrides[get_database_session] = get_test_session
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   TypeError: 'Mock' object does not support item assignment</error></testcase><testcase classname="tests.integration.test_order_lifecycle_e2e.TestOrderLifecycleE2E" name="test_audit_trail_records_all_events" time="0.009"><error message="failed on setup with &quot;TypeError: 'Mock' object does not support item assignment&quot;">tests\integration\test_order_lifecycle_e2e.py:53: in ephemeral_app
+    app.dependency_overrides[get_database_session] = get_test_session
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   TypeError: 'Mock' object does not support item assignment</error></testcase><testcase classname="tests.integration.test_order_lifecycle_e2e.TestOrderLifecycleE2E" name="test_metrics_tracking_for_order_flow" time="0.009"><error message="failed on setup with &quot;TypeError: 'Mock' object does not support item assignment&quot;">tests\integration\test_order_lifecycle_e2e.py:53: in ephemeral_app
+    app.dependency_overrides[get_database_session] = get_test_session
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   TypeError: 'Mock' object does not support item assignment</error></testcase></testsuite></testsuites>
