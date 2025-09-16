@@ -15,7 +15,8 @@ class Side(Enum):
     """Order side enumeration"""
 
     BUY = "buy"
-    SELL = "sell"
+    SELL = "sell" 
+    FLAT = "flat"
 
 
 @dataclass(frozen=True)

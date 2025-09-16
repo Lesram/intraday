@@ -1,0 +1,15 @@
+[
+  {
+    "timestamp": "2025-08-28T21:02:59.745568",
+    "elapsed_minutes": 0.0,
+    "status": "INITIALIZING",
+    "tests_completed": 0,
+    "tests_passed": 0,
+    "tests_failed": 0,
+    "tests_errors": 0,
+    "current_pass_rate": 0.0,
+    "estimated_completion": "Unknown",
+    "current_module": "Unknown",
+    "completion_percentage": 0
+  }
+]

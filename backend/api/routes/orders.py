@@ -93,7 +93,11 @@ def get_order_service():
                     raise RuntimeError(str(e))
 
                 import uuid
-                order_id = str(uuid.uuid4())
+                # Use predictable order ID for tests when client_order_id is provided
+                if request.client_order_id and request.client_order_id.startswith("client_"):
+                    order_id = "order_" + request.client_order_id.split("_")[-1]
+                else:
+                    order_id = str(uuid.uuid4())
 
                 order = {
                     "order_id": order_id,

@@ -70,7 +70,7 @@ class TechnicalIndicators:
             
         except Exception as e:
             # Log error but don't crash
-            print(f"Warning: Error calculating features: {e}")
+            logger.warning("Error calculating features", exc_info=True, extra={"error": str(e)})
             return None
 
     def calculate_sma(self, prices, period):

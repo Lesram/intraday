@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="5" skipped="0" tests="19" time="0.843" timestamp="2025-09-14T20:53:42.625248-07:00" hostname="BOOK-FVJOEO3Q00"><testcase classname="tests.unit.test_noop_direct.TestNoopModelManagerDirect" name="test_noop_manager_initialization" time="0.003" /><testcase classname="tests.unit.test_noop_direct.TestNoopModelManagerDirect" name="test_predict_method_returns_dummy_data" time="0.002" /><testcase classname="tests.unit.test_noop_direct.TestNoopModelManagerDirect" name="test_predict_with_args_kwargs" time="0.002" /><testcase classname="tests.unit.test_noop_direct.TestNoopModelManagerDirect" name="test_train_method_returns_dummy_results" time="0.002" /><testcase classname="tests.unit.test_noop_direct.TestNoopModelManagerDirect" name="test_train_with_args_kwargs" time="0.002" /><testcase classname="tests.unit.test_noop_direct.TestNoopModelManagerDirect" name="test_save_method_returns_true" time="0.002" /><testcase classname="tests.unit.test_noop_direct.TestNoopModelManagerDirect" name="test_save_with_args_kwargs" time="0.002" /><testcase classname="tests.unit.test_noop_direct.TestNoopModelManagerDirect" name="test_load_method_returns_true" time="0.003" /><testcase classname="tests.unit.test_noop_direct.TestNoopModelManagerDirect" name="test_load_with_args_kwargs" time="0.002" /><testcase classname="tests.unit.test_noop_direct.TestNoopModelManagerDirect" name="test_get_metrics_returns_dummy_metrics" time="0.002" /><testcase classname="tests.unit.test_noop_direct.TestNoopModelManagerDirect" name="test_factory_function_returns_noop_manager" time="0.002" /><testcase classname="tests.unit.test_noop_direct.TestNoopModelManagerDirect" name="test_factory_function_creates_new_instances" time="0.002" /><testcase classname="tests.unit.test_noop_direct.TestNoopModelManagerDirect" name="test_manager_methods_are_independent" time="0.002" /><testcase classname="tests.unit.test_no_lookahead_monotone.TestMonotoneLookaheadDetection" name="test_monotone_series_clean_features" time="0.006" /><testcase classname="tests.unit.test_no_lookahead_monotone.TestMonotoneLookaheadDetection" name="test_monotone_series_detects_lookahead" time="0.003"><failure message="Failed: DID NOT RAISE &lt;class 'backend.features.types.LookaheadLeakError'&gt;">tests\unit\test_no_lookahead_monotone.py:75: in test_monotone_series_detects_lookahead
+    with pytest.raises(
+E   Failed: DID NOT RAISE &lt;class 'backend.features.types.LookaheadLeakError'&gt;</failure></testcase><testcase classname="tests.unit.test_no_lookahead_monotone.TestMonotoneLookaheadDetection" name="test_monotone_detection_specific_columns" time="0.005"><failure message="Failed: DID NOT RAISE &lt;class 'backend.features.types.LookaheadLeakError'&gt;">tests\unit\test_no_lookahead_monotone.py:109: in test_monotone_detection_specific_columns
+    with pytest.raises(LookaheadLeakError):
+E   Failed: DID NOT RAISE &lt;class 'backend.features.types.LookaheadLeakError'&gt;</failure></testcase><testcase classname="tests.unit.test_no_lookahead_monotone.TestMonotoneLookaheadDetection" name="test_corrected_features_pass_test" time="0.004"><failure message="Failed: DID NOT RAISE &lt;class 'backend.features.types.LookaheadLeakError'&gt;">tests\unit\test_no_lookahead_monotone.py:144: in test_corrected_features_pass_test
+    with pytest.raises(LookaheadLeakError):
+E   Failed: DID NOT RAISE &lt;class 'backend.features.types.LookaheadLeakError'&gt;</failure></testcase><testcase classname="tests.unit.test_no_lookahead_monotone.TestRealWorldLookaheadScenarios" name="test_technical_indicators_properly_lagged" time="0.007"><failure message="ValueError: other must be a DataFrame or Series">tests\unit\test_no_lookahead_monotone.py:187: in test_technical_indicators_properly_lagged
+    guard_no_lookahead(features, price, threshold=0.7)
+backend\features\validators.py:131: in guard_no_lookahead
+    future_corr_rolling = feature_series.rolling(window_size).corr(
+venv\Lib\site-packages\pandas\core\window\rolling.py:2861: in corr
+    return super().corr(
+venv\Lib\site-packages\pandas\core\window\rolling.py:1850: in corr
+    return self._apply_pairwise(
+venv\Lib\site-packages\pandas\core\window\rolling.py:556: in _apply_pairwise
+    raise ValueError("other must be a DataFrame or Series")
+E   ValueError: other must be a DataFrame or Series</failure></testcase><testcase classname="tests.unit.test_no_lookahead_monotone.TestRealWorldLookaheadScenarios" name="test_volume_indicators_no_lookahead" time="0.005"><failure message="ValueError: other must be a DataFrame or Series">tests\unit\test_no_lookahead_monotone.py:226: in test_volume_indicators_no_lookahead
+    guard_no_lookahead(features, price, threshold=0.6)
+backend\features\validators.py:131: in guard_no_lookahead
+    future_corr_rolling = feature_series.rolling(window_size).corr(
+venv\Lib\site-packages\pandas\core\window\rolling.py:2861: in corr
+    return super().corr(
+venv\Lib\site-packages\pandas\core\window\rolling.py:1850: in corr
+    return self._apply_pairwise(
+venv\Lib\site-packages\pandas\core\window\rolling.py:556: in _apply_pairwise
+    raise ValueError("other must be a DataFrame or Series")
+E   ValueError: other must be a DataFrame or Series</failure></testcase></testsuite></testsuites>

@@ -1,21 +1,21 @@
-<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="5" skipped="0" tests="5" time="2.261" timestamp="2025-08-29T00:02:43.001816-07:00" hostname="BOOK-FVJOEO3Q00"><testcase classname="tests.api.test_positions.TestPositions" name="test_get_positions_without_auth_returns_403" time="0.384"><failure message="assert 404 == 403&#10; +  where 404 = &lt;Response [404 Not Found]&gt;.status_code&#10; +  and   403 = status.HTTP_403_FORBIDDEN">tests\api\test_positions.py:156: in test_get_positions_without_auth_returns_403
-    assert response.status_code == status.HTTP_403_FORBIDDEN
-E   assert 404 == 403
-E    +  where 404 = &lt;Response [404 Not Found]&gt;.status_code
-E    +  and   403 = status.HTTP_403_FORBIDDEN</failure></testcase><testcase classname="tests.api.test_positions.TestPositions" name="test_get_positions_with_invalid_token_returns_401" time="0.106"><failure message="assert 404 == 401&#10; +  where 404 = &lt;Response [404 Not Found]&gt;.status_code&#10; +  and   401 = status.HTTP_401_UNAUTHORIZED">tests\api\test_positions.py:168: in test_get_positions_with_invalid_token_returns_401
-    assert response.status_code == status.HTTP_401_UNAUTHORIZED
-E   assert 404 == 401
-E    +  where 404 = &lt;Response [404 Not Found]&gt;.status_code
-E    +  and   401 = status.HTTP_401_UNAUTHORIZED</failure></testcase><testcase classname="tests.api.test_positions.TestPositions" name="test_get_positions_with_valid_auth_returns_positions" time="0.198"><failure message="assert 404 == 200&#10; +  where 404 = &lt;Response [404 Not Found]&gt;.status_code&#10; +  and   200 = status.HTTP_200_OK">tests\api\test_positions.py:180: in test_get_positions_with_valid_auth_returns_positions
-    assert response.status_code == status.HTTP_200_OK
-E   assert 404 == 200
-E    +  where 404 = &lt;Response [404 Not Found]&gt;.status_code
-E    +  and   200 = status.HTTP_200_OK</failure></testcase><testcase classname="tests.api.test_positions.TestPositions" name="test_get_positions_empty_portfolio_returns_empty_list" time="0.081"><failure message="assert 404 == 200&#10; +  where 404 = &lt;Response [404 Not Found]&gt;.status_code&#10; +  and   200 = status.HTTP_200_OK">tests\api\test_positions.py:209: in test_get_positions_empty_portfolio_returns_empty_list
-    assert response.status_code == status.HTTP_200_OK
-E   assert 404 == 200
-E    +  where 404 = &lt;Response [404 Not Found]&gt;.status_code
-E    +  and   200 = status.HTTP_200_OK</failure></testcase><testcase classname="tests.api.test_positions.TestPositions" name="test_get_positions_response_schema" time="0.109"><failure message="assert 404 == 200&#10; +  where 404 = &lt;Response [404 Not Found]&gt;.status_code&#10; +  and   200 = status.HTTP_200_OK">tests\api\test_positions.py:221: in test_get_positions_response_schema
-    assert response.status_code == status.HTTP_200_OK
-E   assert 404 == 200
-E    +  where 404 = &lt;Response [404 Not Found]&gt;.status_code
-E    +  and   200 = status.HTTP_200_OK</failure></testcase></testsuite></testsuites>
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="2" skipped="0" tests="12" time="5.297" timestamp="2025-09-14T20:39:17.327894-07:00" hostname="BOOK-FVJOEO3Q00"><testcase classname="tests.api.test_main_openapi" name="test_openapi_and_docs" time="0.147" /><testcase classname="tests.api.test_main_routes_registered.TestMainRoutesRegistered" name="test_main_module_imports_without_error" time="0.001" /><testcase classname="tests.api.test_main_routes_registered.TestMainRoutesRegistered" name="test_core_routes_registered_on_import" time="4.171" /><testcase classname="tests.api.test_main_routes_registered.TestMainRoutesRegistered" name="test_auth_routes_registered" time="0.068" /><testcase classname="tests.api.test_main_routes_registered.TestMainRoutesRegistered" name="test_protected_routes_registered" time="0.046"><failure message="AssertionError: Protected route /positions not registered&#10;assert 404 != 404&#10; +  where 404 = &lt;Response [404 Not Found]&gt;.status_code">tests\api\test_main_routes_registered.py:80: in test_protected_routes_registered
+    assert response.status_code != 404, f"Protected route {route} not registered"
+E   AssertionError: Protected route /positions not registered
+E   assert 404 != 404
+E    +  where 404 = &lt;Response [404 Not Found]&gt;.status_code</failure></testcase><testcase classname="tests.api.test_main_routes_registered.TestMainRoutesRegistered" name="test_api_documentation_routes" time="0.119" /><testcase classname="tests.api.test_main_routes_registered.TestMainRoutesRegistered" name="test_websocket_endpoint_registered" time="0.054" /><testcase classname="tests.api.test_main_routes_registered.TestMainRoutesRegistered" name="test_cors_middleware_configured" time="0.123" /><testcase classname="tests.api.test_main_routes_registered.TestMainRoutesRegistered" name="test_app_state_initialization" time="0.036" /><testcase classname="tests.api.test_main_routes_registered.TestMainRoutesRegistered" name="test_error_handlers_registered" time="0.046" /><testcase classname="tests.api.test_main_routes_registered.TestMainRoutesRegistered" name="test_configuration_loading" time="0.001"><failure message="AttributeError: &lt;module 'backend.api.main' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\api\\main.py'&gt; does not have the attribute 'get_settings'">..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1387: in patched
+    with self.decoration_helper(patched,
+..\..\AppData\Local\Programs\Python\Python312\Lib\contextlib.py:137: in __enter__
+    return next(self.gen)
+           ^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1369: in decoration_helper
+    arg = exit_stack.enter_context(patching)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\contextlib.py:526: in enter_context
+    result = _enter(cm)
+             ^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1458: in __enter__
+    original, local = self.get_original()
+                      ^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1431: in get_original
+    raise AttributeError(
+E   AttributeError: &lt;module 'backend.api.main' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\api\\main.py'&gt; does not have the attribute 'get_settings'</failure></testcase><testcase classname="tests.api.test_main_routes_registered.TestMainRoutesRegistered" name="test_route_prefix_consistency" time="0.045" /></testsuite></testsuites>

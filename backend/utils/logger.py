@@ -233,11 +233,42 @@ def get_structured_logger(name: str) -> structlog.BoundLogger:
 audit_logger = AuditLogger()
 
 
+class PerformanceContext:
+    """Context manager for timing operations.
+    
+    Phase 1.3 Fix: Add context manager support for PerformanceLogger.
+    """
+    
+    def __init__(self, logger: 'PerformanceLogger', operation: str):
+        self.logger = logger
+        self.operation = operation
+        self.start_time = None
+        
+    def __enter__(self):
+        import time
+        self.start_time = time.time()
+        return self
+        
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if self.start_time is not None:
+            import time
+            latency_ms = (time.time() - self.start_time) * 1000
+            self.logger.log_latency(self.operation, latency_ms)
+
+
 class PerformanceLogger:
     """Logger for performance metrics and monitoring."""
 
     def __init__(self):
         self.logger = get_structured_logger("performance")
+
+    def __call__(self, operation: str):
+        """Make PerformanceLogger callable to create context manager for timing.
+        
+        Phase 1.3 Fix: Add missing __call__ method for TypeError resolution.
+        Following roadmap: Fix function signature mismatches.
+        """
+        return PerformanceContext(self, operation)
 
     def log_latency(
         self, operation: str, latency_ms: float, context: dict | None = None

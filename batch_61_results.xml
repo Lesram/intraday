@@ -1,26 +1,6 @@
-<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="5" failures="0" skipped="0" tests="5" time="1.695" timestamp="2025-08-29T00:11:09.923439-07:00" hostname="BOOK-FVJOEO3Q00"><testcase classname="tests.services.test_order_service_enhanced.TestOrderServiceIdempotency" name="test_idempotent_order_creation_same_client_key" time="0.004"><error message="failed on setup with &quot;AttributeError: Mock object has no attribute 'update_status'&quot;">tests\services\test_order_service_enhanced.py:35: in mock_orders_repo
-    repo.update_status.return_value = mock_order
-    ^^^^^^^^^^^^^^^^^^
-..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:658: in __getattr__
-    raise AttributeError("Mock object has no attribute %r" % name)
-E   AttributeError: Mock object has no attribute 'update_status'</error></testcase><testcase classname="tests.services.test_order_service_enhanced.TestOrderServiceIdempotency" name="test_different_client_keys_create_separate_orders" time="0.004"><error message="failed on setup with &quot;AttributeError: Mock object has no attribute 'update_status'&quot;">tests\services\test_order_service_enhanced.py:35: in mock_orders_repo
-    repo.update_status.return_value = mock_order
-    ^^^^^^^^^^^^^^^^^^
-..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:658: in __getattr__
-    raise AttributeError("Mock object has no attribute %r" % name)
-E   AttributeError: Mock object has no attribute 'update_status'</error></testcase><testcase classname="tests.services.test_order_service_enhanced.TestOrderServiceRetryLogic" name="test_retry_with_429_rate_limit" time="0.004"><error message="failed on setup with &quot;AttributeError: Mock object has no attribute 'update_status'&quot;">tests\services\test_order_service_enhanced.py:35: in mock_orders_repo
-    repo.update_status.return_value = mock_order
-    ^^^^^^^^^^^^^^^^^^
-..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:658: in __getattr__
-    raise AttributeError("Mock object has no attribute %r" % name)
-E   AttributeError: Mock object has no attribute 'update_status'</error></testcase><testcase classname="tests.services.test_order_service_enhanced.TestOrderServiceRetryLogic" name="test_retry_jitter_prevents_thundering_herd" time="0.003"><error message="failed on setup with &quot;AttributeError: Mock object has no attribute 'update_status'&quot;">tests\services\test_order_service_enhanced.py:35: in mock_orders_repo
-    repo.update_status.return_value = mock_order
-    ^^^^^^^^^^^^^^^^^^
-..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:658: in __getattr__
-    raise AttributeError("Mock object has no attribute %r" % name)
-E   AttributeError: Mock object has no attribute 'update_status'</error></testcase><testcase classname="tests.services.test_order_service_enhanced.TestOrderServiceCircuitBreaker" name="test_circuit_breaker_open_state" time="0.003"><error message="failed on setup with &quot;AttributeError: Mock object has no attribute 'update_status'&quot;">tests\services\test_order_service_enhanced.py:35: in mock_orders_repo
-    repo.update_status.return_value = mock_order
-    ^^^^^^^^^^^^^^^^^^
-..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:658: in __getattr__
-    raise AttributeError("Mock object has no attribute %r" % name)
-E   AttributeError: Mock object has no attribute 'update_status'</error></testcase></testsuite></testsuites>
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="3" tests="10" time="0.342" timestamp="2025-09-14T20:43:14.385773-07:00" hostname="BOOK-FVJOEO3Q00"><testcase classname="tests.mlops.test_ensemble_model" name="test_ensemble_model_smoke" time="0.001" /><testcase classname="tests.mlops.test_mlops_simple" name="test_basic_imports" time="0.000" /><testcase classname="tests.mlops.test_mlops_simple" name="test_mlops_config_validation" time="0.001" /><testcase classname="tests.mlops.test_mlops_simple" name="test_schema_helpers" time="0.004" /><testcase classname="tests.mlops.test_mlops_simple" name="test_model_registry_basic" time="0.003"><failure message="TypeError: unsupported operand type(s) for /: 'WindowsPath' and 'dict'">tests\mlops\test_mlops_simple.py:113: in test_model_registry_basic
+    model_version = registry.register_model(
+backend\mlops\model_manager.py:796: in register_model
+    model_path = self.base_path / model_id / version
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   TypeError: unsupported operand type(s) for /: 'WindowsPath' and 'dict'</failure></testcase><testcase classname="tests.mlops.test_mlops_simple" name="test_drift_detector_basic" time="0.004" /><testcase classname="tests.mlops.test_mlops_simple" name="test_ensemble_model_basic" time="0.004" /><testcase classname="tests.mlops.test_model_manager_basic" name="test_model_manager_import" time="0.002"><skipped type="pytest.skip" message="model_manager import failed: attempted relative import beyond top-level package">C:\Users\Marsel\intra\algotrading_platform\tests\mlops\test_model_manager_basic.py:17: model_manager import failed: attempted relative import beyond top-level package</skipped></testcase><testcase classname="tests.mlops.test_model_manager_basic" name="test_model_manager_basic_functionality" time="0.002"><skipped type="pytest.skip" message="model_manager functionality test failed: attempted relative import beyond top-level package">C:\Users\Marsel\intra\algotrading_platform\tests\mlops\test_model_manager_basic.py:28: model_manager functionality test failed: attempted relative import beyond top-level package</skipped></testcase><testcase classname="tests.mlops.test_model_manager_basic" name="test_model_manager_classes" time="0.001"><skipped type="pytest.skip" message="model_manager classes test failed: attempted relative import beyond top-level package">C:\Users\Marsel\intra\algotrading_platform\tests\mlops\test_model_manager_basic.py:37: model_manager classes test failed: attempted relative import beyond top-level package</skipped></testcase></testsuite></testsuites>

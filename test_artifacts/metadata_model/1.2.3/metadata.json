@@ -1,7 +1,7 @@
 {
   "model_id": "metadata_model",
   "version": "1.2.3",
-  "created_at": "2025-08-25T00:05:48.021480+00:00",
+  "created_at": "2025-09-15T03:43:23.212442+00:00",
   "train_window": {},
   "feature_names": [
     "feature1",
@@ -22,7 +22,7 @@
     }
   },
   "metrics": {},
-  "artifact_hash": "14418936c5159e1722301fe42f0322dde390cf230a74135ec99046f1afc79d96",
+  "artifact_hash": "4bef215d4c6a647c3f68f4fcd44891934f592a3fd2626be46be4461634b827e6",
   "training_samples": 3,
   "features_count": 2
 }

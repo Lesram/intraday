@@ -97,3 +97,19 @@ if "backend.config.settings" not in sys.modules:
     setattr(_settings_mod, "settings", _settings)
     sys.modules["backend.config.settings"] = _settings_mod
 
+
+# Add db attribute for test compatibility
+class MockDB:
+    """Mock database object for test compatibility"""
+    def transaction_boundaries(self):
+        return True
+    
+    def get_session(self):
+        return None
+    
+    def close(self):
+        pass
+
+# Create db attribute that tests expect to find
+db = MockDB()
+

@@ -1,18 +1,506 @@
-<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="5" skipped="1" tests="6" time="3.664" timestamp="2025-08-29T00:07:30.636336-07:00" hostname="BOOK-FVJOEO3Q00"><testcase classname="tests.integration.test_e2e_golden_path.TestE2EGoldenPath" name="test_e2e_golden_path_complete_flow" time="0.258"><failure message="assert 401 == 200&#10; +  where 401 = &lt;Response [401 Unauthorized]&gt;.status_code">tests\integration\test_e2e_golden_path.py:64: in test_e2e_golden_path_complete_flow
-    assert auth_response.status_code == 200
-E   assert 401 == 200
-E    +  where 401 = &lt;Response [401 Unauthorized]&gt;.status_code</failure></testcase><testcase classname="tests.integration.test_e2e_golden_path.TestE2EGoldenPath" name="test_e2e_risk_rejection_flow" time="1.506"><skipped type="pytest.skip" message="Temporarily skipped - endpoints need to be updated for new architecture">C:\Users\Marsel\intra\algotrading_platform\tests\integration\test_e2e_golden_path.py:118: Temporarily skipped - endpoints need to be updated for new architecture</skipped></testcase><testcase classname="tests.integration.test_e2e_golden_path.TestE2EGoldenPath" name="test_e2e_authentication_failure_flow" time="0.099"><failure message="assert 0.0 &gt;= 1">tests\integration\test_e2e_golden_path.py:211: in test_e2e_authentication_failure_flow
-    assert auth_failures &gt;= 1
-E   assert 0.0 &gt;= 1</failure></testcase><testcase classname="tests.integration.test_e2e_golden_path.TestE2EGoldenPath" name="test_e2e_feature_validation_errors" time="0.210"><failure message="KeyError: 'access_token'">tests\integration\test_e2e_golden_path.py:221: in test_e2e_feature_validation_errors
-    headers = {"Authorization": f"Bearer {auth_response.json()['access_token']}"}
-                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-E   KeyError: 'access_token'</failure></testcase><testcase classname="tests.integration.test_e2e_golden_path.TestE2EGoldenPath" name="test_e2e_websocket_integration" time="0.099"><failure message="starlette.websockets.WebSocketDisconnect">tests\integration\test_e2e_golden_path.py:252: in test_e2e_websocket_integration
-    with client.websocket_connect("/api/v1/ws/market-data") as websocket:
-..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\testclient.py:121: in __enter__
-    self._raise_on_close(message)
-..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\testclient.py:150: in _raise_on_close
-    raise WebSocketDisconnect(code=message.get("code", 1000), reason=message.get("reason", ""))
-E   starlette.websockets.WebSocketDisconnect</failure></testcase><testcase classname="tests.integration.test_e2e_golden_path.TestE2EGoldenPath" name="test_e2e_async_background_processing" time="0.090"><failure message="assert 0.0 &gt;= 4">tests\integration\test_e2e_golden_path.py:324: in test_e2e_async_background_processing
-    assert outbox_processed &gt;= 4  # Successful processes
-    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-E   assert 0.0 &gt;= 4</failure></testcase></testsuite></testsuites>
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="5" failures="0" skipped="0" tests="8" time="1.485" timestamp="2025-09-14T20:42:06.549717-07:00" hostname="BOOK-FVJOEO3Q00"><testcase classname="tests.infra.test_b24_infrastructure" name="test_outbox_configuration" time="0.001" /><testcase classname="tests.infra.test_b24_infrastructure" name="test_backoff_calculator" time="0.001" /><testcase classname="tests.infra.test_b24_infrastructure" name="test_imports" time="0.026" /><testcase classname="tests.infra.test_b24_outbox_comprehensive.TestOutboxRepo" name="test_enqueue_outbox_event" time="0.024"><error message="failed on setup with &quot;sqlalchemy.exc.OperationalError: (sqlite3.OperationalError) index ix_audit_logs_ts already exists&#10;[SQL: CREATE INDEX ix_audit_logs_ts ON audit_logs (ts)]&#10;(Background on this error at: https://sqlalche.me/e/20/e3q8)&quot;">venv\Lib\site-packages\sqlalchemy\engine\base.py:1961: in _exec_single_context
+    self.dialect.do_execute(
+venv\Lib\site-packages\sqlalchemy\engine\default.py:944: in do_execute
+    cursor.execute(statement, parameters)
+venv\Lib\site-packages\sqlalchemy\dialects\sqlite\aiosqlite.py:177: in execute
+    self._adapt_connection._handle_exception(error)
+venv\Lib\site-packages\sqlalchemy\dialects\sqlite\aiosqlite.py:337: in _handle_exception
+    raise error
+venv\Lib\site-packages\sqlalchemy\dialects\sqlite\aiosqlite.py:159: in execute
+    self.await_(_cursor.execute(operation, parameters))
+venv\Lib\site-packages\sqlalchemy\util\_concurrency_py3k.py:132: in await_only
+    return current.parent.switch(awaitable)  # type: ignore[no-any-return,attr-defined] # noqa: E501
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\sqlalchemy\util\_concurrency_py3k.py:196: in greenlet_spawn
+    value = await result
+            ^^^^^^^^^^^^
+venv\Lib\site-packages\aiosqlite\cursor.py:40: in execute
+    await self._execute(self._cursor.execute, sql, parameters)
+venv\Lib\site-packages\aiosqlite\cursor.py:32: in _execute
+    return await self._conn._execute(fn, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\aiosqlite\core.py:122: in _execute
+    return await future
+           ^^^^^^^^^^^^
+venv\Lib\site-packages\aiosqlite\core.py:105: in run
+    result = function()
+             ^^^^^^^^^^
+E   sqlite3.OperationalError: index ix_audit_logs_ts already exists
+
+The above exception was the direct cause of the following exception:
+tests\infra\test_b24_outbox_comprehensive.py:33: in db_session
+    await conn.run_sync(Base.metadata.create_all)
+venv\Lib\site-packages\sqlalchemy\ext\asyncio\engine.py:887: in run_sync
+    return await greenlet_spawn(
+venv\Lib\site-packages\sqlalchemy\util\_concurrency_py3k.py:201: in greenlet_spawn
+    result = context.throw(*sys.exc_info())
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\sqlalchemy\sql\schema.py:5924: in create_all
+    bind._run_ddl_visitor(
+venv\Lib\site-packages\sqlalchemy\engine\base.py:2453: in _run_ddl_visitor
+    ).traverse_single(element)
+      ^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\sqlalchemy\sql\visitors.py:661: in traverse_single
+    return meth(obj, **kw)
+           ^^^^^^^^^^^^^^^
+venv\Lib\site-packages\sqlalchemy\sql\ddl.py:984: in visit_metadata
+    self.traverse_single(
+venv\Lib\site-packages\sqlalchemy\sql\visitors.py:661: in traverse_single
+    return meth(obj, **kw)
+           ^^^^^^^^^^^^^^^
+venv\Lib\site-packages\sqlalchemy\sql\ddl.py:1026: in visit_table
+    self.traverse_single(index, create_ok=True)
+venv\Lib\site-packages\sqlalchemy\sql\visitors.py:661: in traverse_single
+    return meth(obj, **kw)
+           ^^^^^^^^^^^^^^^
+venv\Lib\site-packages\sqlalchemy\sql\ddl.py:1063: in visit_index
+    CreateIndex(index)._invoke_with(self.connection)
+venv\Lib\site-packages\sqlalchemy\sql\ddl.py:321: in _invoke_with
+    return bind.execute(self)
+           ^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\sqlalchemy\engine\base.py:1413: in execute
+    return meth(
+venv\Lib\site-packages\sqlalchemy\sql\ddl.py:187: in _execute_on_connection
+    return connection._execute_ddl(
+venv\Lib\site-packages\sqlalchemy\engine\base.py:1524: in _execute_ddl
+    ret = self._execute_context(
+venv\Lib\site-packages\sqlalchemy\engine\base.py:1840: in _execute_context
+    return self._exec_single_context(
+venv\Lib\site-packages\sqlalchemy\engine\base.py:1980: in _exec_single_context
+    self._handle_dbapi_exception(
+venv\Lib\site-packages\sqlalchemy\engine\base.py:2349: in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+venv\Lib\site-packages\sqlalchemy\engine\base.py:1961: in _exec_single_context
+    self.dialect.do_execute(
+venv\Lib\site-packages\sqlalchemy\engine\default.py:944: in do_execute
+    cursor.execute(statement, parameters)
+venv\Lib\site-packages\sqlalchemy\dialects\sqlite\aiosqlite.py:177: in execute
+    self._adapt_connection._handle_exception(error)
+venv\Lib\site-packages\sqlalchemy\dialects\sqlite\aiosqlite.py:337: in _handle_exception
+    raise error
+venv\Lib\site-packages\sqlalchemy\dialects\sqlite\aiosqlite.py:159: in execute
+    self.await_(_cursor.execute(operation, parameters))
+venv\Lib\site-packages\sqlalchemy\util\_concurrency_py3k.py:132: in await_only
+    return current.parent.switch(awaitable)  # type: ignore[no-any-return,attr-defined] # noqa: E501
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\sqlalchemy\util\_concurrency_py3k.py:196: in greenlet_spawn
+    value = await result
+            ^^^^^^^^^^^^
+venv\Lib\site-packages\aiosqlite\cursor.py:40: in execute
+    await self._execute(self._cursor.execute, sql, parameters)
+venv\Lib\site-packages\aiosqlite\cursor.py:32: in _execute
+    return await self._conn._execute(fn, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\aiosqlite\core.py:122: in _execute
+    return await future
+           ^^^^^^^^^^^^
+venv\Lib\site-packages\aiosqlite\core.py:105: in run
+    result = function()
+             ^^^^^^^^^^
+E   sqlalchemy.exc.OperationalError: (sqlite3.OperationalError) index ix_audit_logs_ts already exists
+E   [SQL: CREATE INDEX ix_audit_logs_ts ON audit_logs (ts)]
+E   (Background on this error at: https://sqlalche.me/e/20/e3q8)</error></testcase><testcase classname="tests.infra.test_b24_outbox_comprehensive.TestOutboxRepo" name="test_claim_batch" time="0.011"><error message="failed on setup with &quot;sqlalchemy.exc.OperationalError: (sqlite3.OperationalError) index ix_audit_logs_ts already exists&#10;[SQL: CREATE INDEX ix_audit_logs_ts ON audit_logs (ts)]&#10;(Background on this error at: https://sqlalche.me/e/20/e3q8)&quot;">venv\Lib\site-packages\sqlalchemy\engine\base.py:1961: in _exec_single_context
+    self.dialect.do_execute(
+venv\Lib\site-packages\sqlalchemy\engine\default.py:944: in do_execute
+    cursor.execute(statement, parameters)
+venv\Lib\site-packages\sqlalchemy\dialects\sqlite\aiosqlite.py:177: in execute
+    self._adapt_connection._handle_exception(error)
+venv\Lib\site-packages\sqlalchemy\dialects\sqlite\aiosqlite.py:337: in _handle_exception
+    raise error
+venv\Lib\site-packages\sqlalchemy\dialects\sqlite\aiosqlite.py:159: in execute
+    self.await_(_cursor.execute(operation, parameters))
+venv\Lib\site-packages\sqlalchemy\util\_concurrency_py3k.py:132: in await_only
+    return current.parent.switch(awaitable)  # type: ignore[no-any-return,attr-defined] # noqa: E501
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\sqlalchemy\util\_concurrency_py3k.py:196: in greenlet_spawn
+    value = await result
+            ^^^^^^^^^^^^
+venv\Lib\site-packages\aiosqlite\cursor.py:40: in execute
+    await self._execute(self._cursor.execute, sql, parameters)
+venv\Lib\site-packages\aiosqlite\cursor.py:32: in _execute
+    return await self._conn._execute(fn, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\aiosqlite\core.py:122: in _execute
+    return await future
+           ^^^^^^^^^^^^
+venv\Lib\site-packages\aiosqlite\core.py:105: in run
+    result = function()
+             ^^^^^^^^^^
+E   sqlite3.OperationalError: index ix_audit_logs_ts already exists
+
+The above exception was the direct cause of the following exception:
+tests\infra\test_b24_outbox_comprehensive.py:33: in db_session
+    await conn.run_sync(Base.metadata.create_all)
+venv\Lib\site-packages\sqlalchemy\ext\asyncio\engine.py:887: in run_sync
+    return await greenlet_spawn(
+venv\Lib\site-packages\sqlalchemy\util\_concurrency_py3k.py:201: in greenlet_spawn
+    result = context.throw(*sys.exc_info())
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\sqlalchemy\sql\schema.py:5924: in create_all
+    bind._run_ddl_visitor(
+venv\Lib\site-packages\sqlalchemy\engine\base.py:2453: in _run_ddl_visitor
+    ).traverse_single(element)
+      ^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\sqlalchemy\sql\visitors.py:661: in traverse_single
+    return meth(obj, **kw)
+           ^^^^^^^^^^^^^^^
+venv\Lib\site-packages\sqlalchemy\sql\ddl.py:984: in visit_metadata
+    self.traverse_single(
+venv\Lib\site-packages\sqlalchemy\sql\visitors.py:661: in traverse_single
+    return meth(obj, **kw)
+           ^^^^^^^^^^^^^^^
+venv\Lib\site-packages\sqlalchemy\sql\ddl.py:1026: in visit_table
+    self.traverse_single(index, create_ok=True)
+venv\Lib\site-packages\sqlalchemy\sql\visitors.py:661: in traverse_single
+    return meth(obj, **kw)
+           ^^^^^^^^^^^^^^^
+venv\Lib\site-packages\sqlalchemy\sql\ddl.py:1063: in visit_index
+    CreateIndex(index)._invoke_with(self.connection)
+venv\Lib\site-packages\sqlalchemy\sql\ddl.py:321: in _invoke_with
+    return bind.execute(self)
+           ^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\sqlalchemy\engine\base.py:1413: in execute
+    return meth(
+venv\Lib\site-packages\sqlalchemy\sql\ddl.py:187: in _execute_on_connection
+    return connection._execute_ddl(
+venv\Lib\site-packages\sqlalchemy\engine\base.py:1524: in _execute_ddl
+    ret = self._execute_context(
+venv\Lib\site-packages\sqlalchemy\engine\base.py:1840: in _execute_context
+    return self._exec_single_context(
+venv\Lib\site-packages\sqlalchemy\engine\base.py:1980: in _exec_single_context
+    self._handle_dbapi_exception(
+venv\Lib\site-packages\sqlalchemy\engine\base.py:2349: in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+venv\Lib\site-packages\sqlalchemy\engine\base.py:1961: in _exec_single_context
+    self.dialect.do_execute(
+venv\Lib\site-packages\sqlalchemy\engine\default.py:944: in do_execute
+    cursor.execute(statement, parameters)
+venv\Lib\site-packages\sqlalchemy\dialects\sqlite\aiosqlite.py:177: in execute
+    self._adapt_connection._handle_exception(error)
+venv\Lib\site-packages\sqlalchemy\dialects\sqlite\aiosqlite.py:337: in _handle_exception
+    raise error
+venv\Lib\site-packages\sqlalchemy\dialects\sqlite\aiosqlite.py:159: in execute
+    self.await_(_cursor.execute(operation, parameters))
+venv\Lib\site-packages\sqlalchemy\util\_concurrency_py3k.py:132: in await_only
+    return current.parent.switch(awaitable)  # type: ignore[no-any-return,attr-defined] # noqa: E501
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\sqlalchemy\util\_concurrency_py3k.py:196: in greenlet_spawn
+    value = await result
+            ^^^^^^^^^^^^
+venv\Lib\site-packages\aiosqlite\cursor.py:40: in execute
+    await self._execute(self._cursor.execute, sql, parameters)
+venv\Lib\site-packages\aiosqlite\cursor.py:32: in _execute
+    return await self._conn._execute(fn, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\aiosqlite\core.py:122: in _execute
+    return await future
+           ^^^^^^^^^^^^
+venv\Lib\site-packages\aiosqlite\core.py:105: in run
+    result = function()
+             ^^^^^^^^^^
+E   sqlalchemy.exc.OperationalError: (sqlite3.OperationalError) index ix_audit_logs_ts already exists
+E   [SQL: CREATE INDEX ix_audit_logs_ts ON audit_logs (ts)]
+E   (Background on this error at: https://sqlalche.me/e/20/e3q8)</error></testcase><testcase classname="tests.infra.test_b24_outbox_comprehensive.TestOutboxRepo" name="test_mark_sent" time="0.012"><error message="failed on setup with &quot;sqlalchemy.exc.OperationalError: (sqlite3.OperationalError) index ix_audit_logs_ts already exists&#10;[SQL: CREATE INDEX ix_audit_logs_ts ON audit_logs (ts)]&#10;(Background on this error at: https://sqlalche.me/e/20/e3q8)&quot;">venv\Lib\site-packages\sqlalchemy\engine\base.py:1961: in _exec_single_context
+    self.dialect.do_execute(
+venv\Lib\site-packages\sqlalchemy\engine\default.py:944: in do_execute
+    cursor.execute(statement, parameters)
+venv\Lib\site-packages\sqlalchemy\dialects\sqlite\aiosqlite.py:177: in execute
+    self._adapt_connection._handle_exception(error)
+venv\Lib\site-packages\sqlalchemy\dialects\sqlite\aiosqlite.py:337: in _handle_exception
+    raise error
+venv\Lib\site-packages\sqlalchemy\dialects\sqlite\aiosqlite.py:159: in execute
+    self.await_(_cursor.execute(operation, parameters))
+venv\Lib\site-packages\sqlalchemy\util\_concurrency_py3k.py:132: in await_only
+    return current.parent.switch(awaitable)  # type: ignore[no-any-return,attr-defined] # noqa: E501
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\sqlalchemy\util\_concurrency_py3k.py:196: in greenlet_spawn
+    value = await result
+            ^^^^^^^^^^^^
+venv\Lib\site-packages\aiosqlite\cursor.py:40: in execute
+    await self._execute(self._cursor.execute, sql, parameters)
+venv\Lib\site-packages\aiosqlite\cursor.py:32: in _execute
+    return await self._conn._execute(fn, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\aiosqlite\core.py:122: in _execute
+    return await future
+           ^^^^^^^^^^^^
+venv\Lib\site-packages\aiosqlite\core.py:105: in run
+    result = function()
+             ^^^^^^^^^^
+E   sqlite3.OperationalError: index ix_audit_logs_ts already exists
+
+The above exception was the direct cause of the following exception:
+tests\infra\test_b24_outbox_comprehensive.py:33: in db_session
+    await conn.run_sync(Base.metadata.create_all)
+venv\Lib\site-packages\sqlalchemy\ext\asyncio\engine.py:887: in run_sync
+    return await greenlet_spawn(
+venv\Lib\site-packages\sqlalchemy\util\_concurrency_py3k.py:201: in greenlet_spawn
+    result = context.throw(*sys.exc_info())
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\sqlalchemy\sql\schema.py:5924: in create_all
+    bind._run_ddl_visitor(
+venv\Lib\site-packages\sqlalchemy\engine\base.py:2453: in _run_ddl_visitor
+    ).traverse_single(element)
+      ^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\sqlalchemy\sql\visitors.py:661: in traverse_single
+    return meth(obj, **kw)
+           ^^^^^^^^^^^^^^^
+venv\Lib\site-packages\sqlalchemy\sql\ddl.py:984: in visit_metadata
+    self.traverse_single(
+venv\Lib\site-packages\sqlalchemy\sql\visitors.py:661: in traverse_single
+    return meth(obj, **kw)
+           ^^^^^^^^^^^^^^^
+venv\Lib\site-packages\sqlalchemy\sql\ddl.py:1026: in visit_table
+    self.traverse_single(index, create_ok=True)
+venv\Lib\site-packages\sqlalchemy\sql\visitors.py:661: in traverse_single
+    return meth(obj, **kw)
+           ^^^^^^^^^^^^^^^
+venv\Lib\site-packages\sqlalchemy\sql\ddl.py:1063: in visit_index
+    CreateIndex(index)._invoke_with(self.connection)
+venv\Lib\site-packages\sqlalchemy\sql\ddl.py:321: in _invoke_with
+    return bind.execute(self)
+           ^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\sqlalchemy\engine\base.py:1413: in execute
+    return meth(
+venv\Lib\site-packages\sqlalchemy\sql\ddl.py:187: in _execute_on_connection
+    return connection._execute_ddl(
+venv\Lib\site-packages\sqlalchemy\engine\base.py:1524: in _execute_ddl
+    ret = self._execute_context(
+venv\Lib\site-packages\sqlalchemy\engine\base.py:1840: in _execute_context
+    return self._exec_single_context(
+venv\Lib\site-packages\sqlalchemy\engine\base.py:1980: in _exec_single_context
+    self._handle_dbapi_exception(
+venv\Lib\site-packages\sqlalchemy\engine\base.py:2349: in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+venv\Lib\site-packages\sqlalchemy\engine\base.py:1961: in _exec_single_context
+    self.dialect.do_execute(
+venv\Lib\site-packages\sqlalchemy\engine\default.py:944: in do_execute
+    cursor.execute(statement, parameters)
+venv\Lib\site-packages\sqlalchemy\dialects\sqlite\aiosqlite.py:177: in execute
+    self._adapt_connection._handle_exception(error)
+venv\Lib\site-packages\sqlalchemy\dialects\sqlite\aiosqlite.py:337: in _handle_exception
+    raise error
+venv\Lib\site-packages\sqlalchemy\dialects\sqlite\aiosqlite.py:159: in execute
+    self.await_(_cursor.execute(operation, parameters))
+venv\Lib\site-packages\sqlalchemy\util\_concurrency_py3k.py:132: in await_only
+    return current.parent.switch(awaitable)  # type: ignore[no-any-return,attr-defined] # noqa: E501
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\sqlalchemy\util\_concurrency_py3k.py:196: in greenlet_spawn
+    value = await result
+            ^^^^^^^^^^^^
+venv\Lib\site-packages\aiosqlite\cursor.py:40: in execute
+    await self._execute(self._cursor.execute, sql, parameters)
+venv\Lib\site-packages\aiosqlite\cursor.py:32: in _execute
+    return await self._conn._execute(fn, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\aiosqlite\core.py:122: in _execute
+    return await future
+           ^^^^^^^^^^^^
+venv\Lib\site-packages\aiosqlite\core.py:105: in run
+    result = function()
+             ^^^^^^^^^^
+E   sqlalchemy.exc.OperationalError: (sqlite3.OperationalError) index ix_audit_logs_ts already exists
+E   [SQL: CREATE INDEX ix_audit_logs_ts ON audit_logs (ts)]
+E   (Background on this error at: https://sqlalche.me/e/20/e3q8)</error></testcase><testcase classname="tests.infra.test_b24_outbox_comprehensive.TestOutboxRepo" name="test_mark_retry" time="0.013"><error message="failed on setup with &quot;sqlalchemy.exc.OperationalError: (sqlite3.OperationalError) index ix_audit_logs_ts already exists&#10;[SQL: CREATE INDEX ix_audit_logs_ts ON audit_logs (ts)]&#10;(Background on this error at: https://sqlalche.me/e/20/e3q8)&quot;">venv\Lib\site-packages\sqlalchemy\engine\base.py:1961: in _exec_single_context
+    self.dialect.do_execute(
+venv\Lib\site-packages\sqlalchemy\engine\default.py:944: in do_execute
+    cursor.execute(statement, parameters)
+venv\Lib\site-packages\sqlalchemy\dialects\sqlite\aiosqlite.py:177: in execute
+    self._adapt_connection._handle_exception(error)
+venv\Lib\site-packages\sqlalchemy\dialects\sqlite\aiosqlite.py:337: in _handle_exception
+    raise error
+venv\Lib\site-packages\sqlalchemy\dialects\sqlite\aiosqlite.py:159: in execute
+    self.await_(_cursor.execute(operation, parameters))
+venv\Lib\site-packages\sqlalchemy\util\_concurrency_py3k.py:132: in await_only
+    return current.parent.switch(awaitable)  # type: ignore[no-any-return,attr-defined] # noqa: E501
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\sqlalchemy\util\_concurrency_py3k.py:196: in greenlet_spawn
+    value = await result
+            ^^^^^^^^^^^^
+venv\Lib\site-packages\aiosqlite\cursor.py:40: in execute
+    await self._execute(self._cursor.execute, sql, parameters)
+venv\Lib\site-packages\aiosqlite\cursor.py:32: in _execute
+    return await self._conn._execute(fn, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\aiosqlite\core.py:122: in _execute
+    return await future
+           ^^^^^^^^^^^^
+venv\Lib\site-packages\aiosqlite\core.py:105: in run
+    result = function()
+             ^^^^^^^^^^
+E   sqlite3.OperationalError: index ix_audit_logs_ts already exists
+
+The above exception was the direct cause of the following exception:
+tests\infra\test_b24_outbox_comprehensive.py:33: in db_session
+    await conn.run_sync(Base.metadata.create_all)
+venv\Lib\site-packages\sqlalchemy\ext\asyncio\engine.py:887: in run_sync
+    return await greenlet_spawn(
+venv\Lib\site-packages\sqlalchemy\util\_concurrency_py3k.py:201: in greenlet_spawn
+    result = context.throw(*sys.exc_info())
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\sqlalchemy\sql\schema.py:5924: in create_all
+    bind._run_ddl_visitor(
+venv\Lib\site-packages\sqlalchemy\engine\base.py:2453: in _run_ddl_visitor
+    ).traverse_single(element)
+      ^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\sqlalchemy\sql\visitors.py:661: in traverse_single
+    return meth(obj, **kw)
+           ^^^^^^^^^^^^^^^
+venv\Lib\site-packages\sqlalchemy\sql\ddl.py:984: in visit_metadata
+    self.traverse_single(
+venv\Lib\site-packages\sqlalchemy\sql\visitors.py:661: in traverse_single
+    return meth(obj, **kw)
+           ^^^^^^^^^^^^^^^
+venv\Lib\site-packages\sqlalchemy\sql\ddl.py:1026: in visit_table
+    self.traverse_single(index, create_ok=True)
+venv\Lib\site-packages\sqlalchemy\sql\visitors.py:661: in traverse_single
+    return meth(obj, **kw)
+           ^^^^^^^^^^^^^^^
+venv\Lib\site-packages\sqlalchemy\sql\ddl.py:1063: in visit_index
+    CreateIndex(index)._invoke_with(self.connection)
+venv\Lib\site-packages\sqlalchemy\sql\ddl.py:321: in _invoke_with
+    return bind.execute(self)
+           ^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\sqlalchemy\engine\base.py:1413: in execute
+    return meth(
+venv\Lib\site-packages\sqlalchemy\sql\ddl.py:187: in _execute_on_connection
+    return connection._execute_ddl(
+venv\Lib\site-packages\sqlalchemy\engine\base.py:1524: in _execute_ddl
+    ret = self._execute_context(
+venv\Lib\site-packages\sqlalchemy\engine\base.py:1840: in _execute_context
+    return self._exec_single_context(
+venv\Lib\site-packages\sqlalchemy\engine\base.py:1980: in _exec_single_context
+    self._handle_dbapi_exception(
+venv\Lib\site-packages\sqlalchemy\engine\base.py:2349: in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+venv\Lib\site-packages\sqlalchemy\engine\base.py:1961: in _exec_single_context
+    self.dialect.do_execute(
+venv\Lib\site-packages\sqlalchemy\engine\default.py:944: in do_execute
+    cursor.execute(statement, parameters)
+venv\Lib\site-packages\sqlalchemy\dialects\sqlite\aiosqlite.py:177: in execute
+    self._adapt_connection._handle_exception(error)
+venv\Lib\site-packages\sqlalchemy\dialects\sqlite\aiosqlite.py:337: in _handle_exception
+    raise error
+venv\Lib\site-packages\sqlalchemy\dialects\sqlite\aiosqlite.py:159: in execute
+    self.await_(_cursor.execute(operation, parameters))
+venv\Lib\site-packages\sqlalchemy\util\_concurrency_py3k.py:132: in await_only
+    return current.parent.switch(awaitable)  # type: ignore[no-any-return,attr-defined] # noqa: E501
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\sqlalchemy\util\_concurrency_py3k.py:196: in greenlet_spawn
+    value = await result
+            ^^^^^^^^^^^^
+venv\Lib\site-packages\aiosqlite\cursor.py:40: in execute
+    await self._execute(self._cursor.execute, sql, parameters)
+venv\Lib\site-packages\aiosqlite\cursor.py:32: in _execute
+    return await self._conn._execute(fn, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\aiosqlite\core.py:122: in _execute
+    return await future
+           ^^^^^^^^^^^^
+venv\Lib\site-packages\aiosqlite\core.py:105: in run
+    result = function()
+             ^^^^^^^^^^
+E   sqlalchemy.exc.OperationalError: (sqlite3.OperationalError) index ix_audit_logs_ts already exists
+E   [SQL: CREATE INDEX ix_audit_logs_ts ON audit_logs (ts)]
+E   (Background on this error at: https://sqlalche.me/e/20/e3q8)</error></testcase><testcase classname="tests.infra.test_b24_outbox_comprehensive.TestOutboxRepo" name="test_mark_failed" time="0.012"><error message="failed on setup with &quot;sqlalchemy.exc.OperationalError: (sqlite3.OperationalError) index ix_audit_logs_ts already exists&#10;[SQL: CREATE INDEX ix_audit_logs_ts ON audit_logs (ts)]&#10;(Background on this error at: https://sqlalche.me/e/20/e3q8)&quot;">venv\Lib\site-packages\sqlalchemy\engine\base.py:1961: in _exec_single_context
+    self.dialect.do_execute(
+venv\Lib\site-packages\sqlalchemy\engine\default.py:944: in do_execute
+    cursor.execute(statement, parameters)
+venv\Lib\site-packages\sqlalchemy\dialects\sqlite\aiosqlite.py:177: in execute
+    self._adapt_connection._handle_exception(error)
+venv\Lib\site-packages\sqlalchemy\dialects\sqlite\aiosqlite.py:337: in _handle_exception
+    raise error
+venv\Lib\site-packages\sqlalchemy\dialects\sqlite\aiosqlite.py:159: in execute
+    self.await_(_cursor.execute(operation, parameters))
+venv\Lib\site-packages\sqlalchemy\util\_concurrency_py3k.py:132: in await_only
+    return current.parent.switch(awaitable)  # type: ignore[no-any-return,attr-defined] # noqa: E501
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\sqlalchemy\util\_concurrency_py3k.py:196: in greenlet_spawn
+    value = await result
+            ^^^^^^^^^^^^
+venv\Lib\site-packages\aiosqlite\cursor.py:40: in execute
+    await self._execute(self._cursor.execute, sql, parameters)
+venv\Lib\site-packages\aiosqlite\cursor.py:32: in _execute
+    return await self._conn._execute(fn, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\aiosqlite\core.py:122: in _execute
+    return await future
+           ^^^^^^^^^^^^
+venv\Lib\site-packages\aiosqlite\core.py:105: in run
+    result = function()
+             ^^^^^^^^^^
+E   sqlite3.OperationalError: index ix_audit_logs_ts already exists
+
+The above exception was the direct cause of the following exception:
+tests\infra\test_b24_outbox_comprehensive.py:33: in db_session
+    await conn.run_sync(Base.metadata.create_all)
+venv\Lib\site-packages\sqlalchemy\ext\asyncio\engine.py:887: in run_sync
+    return await greenlet_spawn(
+venv\Lib\site-packages\sqlalchemy\util\_concurrency_py3k.py:201: in greenlet_spawn
+    result = context.throw(*sys.exc_info())
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\sqlalchemy\sql\schema.py:5924: in create_all
+    bind._run_ddl_visitor(
+venv\Lib\site-packages\sqlalchemy\engine\base.py:2453: in _run_ddl_visitor
+    ).traverse_single(element)
+      ^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\sqlalchemy\sql\visitors.py:661: in traverse_single
+    return meth(obj, **kw)
+           ^^^^^^^^^^^^^^^
+venv\Lib\site-packages\sqlalchemy\sql\ddl.py:984: in visit_metadata
+    self.traverse_single(
+venv\Lib\site-packages\sqlalchemy\sql\visitors.py:661: in traverse_single
+    return meth(obj, **kw)
+           ^^^^^^^^^^^^^^^
+venv\Lib\site-packages\sqlalchemy\sql\ddl.py:1026: in visit_table
+    self.traverse_single(index, create_ok=True)
+venv\Lib\site-packages\sqlalchemy\sql\visitors.py:661: in traverse_single
+    return meth(obj, **kw)
+           ^^^^^^^^^^^^^^^
+venv\Lib\site-packages\sqlalchemy\sql\ddl.py:1063: in visit_index
+    CreateIndex(index)._invoke_with(self.connection)
+venv\Lib\site-packages\sqlalchemy\sql\ddl.py:321: in _invoke_with
+    return bind.execute(self)
+           ^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\sqlalchemy\engine\base.py:1413: in execute
+    return meth(
+venv\Lib\site-packages\sqlalchemy\sql\ddl.py:187: in _execute_on_connection
+    return connection._execute_ddl(
+venv\Lib\site-packages\sqlalchemy\engine\base.py:1524: in _execute_ddl
+    ret = self._execute_context(
+venv\Lib\site-packages\sqlalchemy\engine\base.py:1840: in _execute_context
+    return self._exec_single_context(
+venv\Lib\site-packages\sqlalchemy\engine\base.py:1980: in _exec_single_context
+    self._handle_dbapi_exception(
+venv\Lib\site-packages\sqlalchemy\engine\base.py:2349: in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+venv\Lib\site-packages\sqlalchemy\engine\base.py:1961: in _exec_single_context
+    self.dialect.do_execute(
+venv\Lib\site-packages\sqlalchemy\engine\default.py:944: in do_execute
+    cursor.execute(statement, parameters)
+venv\Lib\site-packages\sqlalchemy\dialects\sqlite\aiosqlite.py:177: in execute
+    self._adapt_connection._handle_exception(error)
+venv\Lib\site-packages\sqlalchemy\dialects\sqlite\aiosqlite.py:337: in _handle_exception
+    raise error
+venv\Lib\site-packages\sqlalchemy\dialects\sqlite\aiosqlite.py:159: in execute
+    self.await_(_cursor.execute(operation, parameters))
+venv\Lib\site-packages\sqlalchemy\util\_concurrency_py3k.py:132: in await_only
+    return current.parent.switch(awaitable)  # type: ignore[no-any-return,attr-defined] # noqa: E501
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\sqlalchemy\util\_concurrency_py3k.py:196: in greenlet_spawn
+    value = await result
+            ^^^^^^^^^^^^
+venv\Lib\site-packages\aiosqlite\cursor.py:40: in execute
+    await self._execute(self._cursor.execute, sql, parameters)
+venv\Lib\site-packages\aiosqlite\cursor.py:32: in _execute
+    return await self._conn._execute(fn, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\aiosqlite\core.py:122: in _execute
+    return await future
+           ^^^^^^^^^^^^
+venv\Lib\site-packages\aiosqlite\core.py:105: in run
+    result = function()
+             ^^^^^^^^^^
+E   sqlalchemy.exc.OperationalError: (sqlite3.OperationalError) index ix_audit_logs_ts already exists
+E   [SQL: CREATE INDEX ix_audit_logs_ts ON audit_logs (ts)]
+E   (Background on this error at: https://sqlalche.me/e/20/e3q8)</error></testcase></testsuite></testsuites>

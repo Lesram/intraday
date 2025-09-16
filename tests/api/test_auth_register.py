@@ -74,10 +74,16 @@ class TestAuthRegister:
             
             payload = {
                 "email": "test@example.com",
-                "password": "password123"
+                "password": "SecurePassword123!"
             }
             
             response = test_client.post("/auth/register", json=payload)
+            
+            # Debug response
+            if response.status_code != status.HTTP_201_CREATED:
+                print(f"Response status: {response.status_code}")
+                print(f"Response body: {response.text}")
+                print(f"Response headers: {response.headers}")
             
             # Should return 201 Created
             assert response.status_code == status.HTTP_201_CREATED

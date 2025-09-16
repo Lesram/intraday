@@ -1,7 +1,7 @@
 {
   "model_id": "concurrent_2",
   "version": "1.2.0",
-  "created_at": "2025-08-25T00:05:48.003592+00:00",
+  "created_at": "2025-09-15T03:43:23.200075+00:00",
   "train_window": {},
   "feature_names": [
     "feature1",
@@ -22,7 +22,7 @@
     }
   },
   "metrics": {},
-  "artifact_hash": "75735dc16a19cc57ef43476211547115cdc682db19acb8078640a2d991435728",
+  "artifact_hash": "1a7e3f186cff36a6211fbeeffd2c3a812dcb729c807360ea657ec799d731685c",
   "training_samples": 3,
   "features_count": 2
 }

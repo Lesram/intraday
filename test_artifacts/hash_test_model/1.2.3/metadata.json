@@ -1,7 +1,7 @@
 {
   "model_id": "hash_test_model",
   "version": "1.2.3",
-  "created_at": "2025-08-25T00:05:47.889375+00:00",
+  "created_at": "2025-09-15T03:43:23.114450+00:00",
   "train_window": {},
   "feature_names": [
     "feature1",
@@ -22,7 +22,7 @@
     }
   },
   "metrics": {},
-  "artifact_hash": "e8e2c3bf3fb286ed7debc1e0ef8748250a967c517e7e66afecd0b435756aff23",
+  "artifact_hash": "4c618f89a90528e7a5f23d2ac4e2de9755285db21de14394f0c7e3bd8c289894",
   "training_samples": 3,
   "features_count": 2
 }

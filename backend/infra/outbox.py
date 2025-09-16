@@ -5,7 +5,7 @@ Enhanced with OpenTelemetry tracing, structured logging, and Prometheus metrics.
 """
 
 import asyncio
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 import logging
 import random
 import time
@@ -109,7 +109,7 @@ class OutboxRepo:
             payload=payload,
             status="pending",
             attempts=0,
-            next_attempt_at=datetime.utcnow(),
+            next_attempt_at=datetime.now(UTC),
         )
 
         session.add(event)
@@ -147,7 +147,7 @@ class OutboxRepo:
             select(OutboxEvent)
             .where(
                 OutboxEvent.status == "pending",
-                OutboxEvent.next_attempt_at <= datetime.utcnow(),
+                OutboxEvent.next_attempt_at <= datetime.now(UTC),
             )
             .order_by(OutboxEvent.created_at.asc())
             .limit(limit)
@@ -172,7 +172,7 @@ class OutboxRepo:
         stmt = (
             update(OutboxEvent)
             .where(OutboxEvent.id == event_id)
-            .values(status="sent", sent_at=datetime.utcnow(), last_error=None)
+            .values(status="sent", sent_at=datetime.now(UTC), last_error=None)
         )
 
         await session.execute(stmt)
@@ -264,6 +264,66 @@ class OutboxRepo:
 
         return stats
 
+    async def add_order_submit_event(self, order_id: str | uuid.UUID, **kwargs) -> str:
+        """Add order submit event to outbox."""
+        event_id = await self.enqueue(
+            topic="order.submitted",
+            payload={"order_id": str(order_id), **kwargs}
+        )
+        return str(event_id)
+
+    async def add_order_retry_event(self, order_id: str | uuid.UUID, **kwargs) -> str:
+        """Add order retry event to outbox."""
+        event_id = await self.enqueue(
+            topic="order.retry",
+            payload={"order_id": str(order_id), **kwargs}
+        )
+        return str(event_id)
+
+    async def add_order_event(self, order_id: str | uuid.UUID, event_type: str, **kwargs) -> str:
+        """Add general order event to outbox."""
+        event_id = await self.enqueue(
+            topic=f"order.{event_type}",
+            payload={"order_id": str(order_id), "event_type": event_type, **kwargs}
+        )
+        return str(event_id)
+
+    async def add_retry_event(self, entity_id: str | uuid.UUID, entity_type: str = "order", **kwargs) -> str:
+        """Add retry event to outbox."""
+        event_id = await self.enqueue(
+            topic=f"{entity_type}.retry",
+            payload={"entity_id": str(entity_id), "entity_type": entity_type, **kwargs}
+        )
+        return str(event_id)
+
+    async def add_dlq_event(self, entity_id: str | uuid.UUID, error_message: str = None, **kwargs) -> str:
+        """Add dead letter queue event to outbox."""
+        event_id = await self.enqueue(
+            topic="dlq.failed",
+            payload={"entity_id": str(entity_id), "error_message": error_message, **kwargs}
+        )
+        return str(event_id)
+
+    async def get_dlq_items(self, limit: int = 100, **kwargs) -> list:
+        """Get DLQ items for retry."""
+        # This is a simplified version - in real implementation would filter by DLQ topic
+        stmt = (
+            select(OutboxEvent)
+            .where(OutboxEvent.topic == "dlq.failed")
+            .order_by(OutboxEvent.created_at.desc())
+            .limit(limit)
+        )
+        result = await self.session.execute(stmt)
+        return list(result.scalars().all())
+
+    async def mark_dlq_processed(self, event_id: str | uuid.UUID, **kwargs) -> bool:
+        """Mark DLQ item as processed."""
+        try:
+            await self.mark_sent(uuid.UUID(str(event_id)))
+            return True
+        except Exception:
+            return False
+
 
 class BackoffCalculator:
     """Calculates exponential backoff with jitter."""
@@ -302,7 +362,7 @@ class BackoffCalculator:
     def next_attempt_time(self, attempts: int) -> datetime:
         """Calculate next attempt timestamp."""
         delay_ms = self.calculate_delay(attempts)
-        return datetime.utcnow() + timedelta(milliseconds=delay_ms)
+        return datetime.now(UTC) + timedelta(milliseconds=delay_ms)
 
 
 class OutboxDispatcher:

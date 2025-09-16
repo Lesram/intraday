@@ -1,59 +1,10 @@
-<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="5" skipped="0" tests="15" time="2.553" timestamp="2025-08-29T00:15:48.690044-07:00" hostname="BOOK-FVJOEO3Q00"><testcase classname="tests.unit.test_features_validators_errors.TestOHLCVValidationErrors" name="test_validate_ohlcv_missing_columns" time="0.005" /><testcase classname="tests.unit.test_features_validators_errors.TestOHLCVValidationErrors" name="test_validate_ohlcv_wrong_dtypes" time="0.005"><failure message="TypeError: '&lt;' not supported between instances of 'float' and 'str'">tests\unit\test_features_validators_errors.py:54: in test_validate_ohlcv_wrong_dtypes
-    validate_ohlcv(df)
-backend\features\validators.py:58: in validate_ohlcv
-    | (df["high"] &lt; df["open"])
-       ^^^^^^^^^^^^^^^^^^^^^^^
-..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\pandas\core\ops\common.py:76: in new_method
-    return method(self, other)
-           ^^^^^^^^^^^^^^^^^^^
-..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\pandas\core\arraylike.py:48: in __lt__
-    return self._cmp_method(other, operator.lt)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\pandas\core\series.py:6119: in _cmp_method
-    res_values = ops.comparison_op(lvalues, rvalues, op)
-                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\pandas\core\ops\array_ops.py:347: in comparison_op
-    res_values = _na_arithmetic_op(lvalues, rvalues, op, is_cmp=True)
-                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\pandas\core\ops\array_ops.py:218: in _na_arithmetic_op
-    result = func(left, right)
-             ^^^^^^^^^^^^^^^^^
-..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\pandas\core\computation\expressions.py:242: in evaluate
-    return _evaluate(op, op_str, a, b)  # type: ignore[misc]
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\pandas\core\computation\expressions.py:73: in _evaluate_standard
-    return op(a, b)
-           ^^^^^^^^
-E   TypeError: '&lt;' not supported between instances of 'float' and 'str'</failure></testcase><testcase classname="tests.unit.test_features_validators_errors.TestOHLCVValidationErrors" name="test_validate_ohlcv_negative_volume" time="0.003" /><testcase classname="tests.unit.test_features_validators_errors.TestOHLCVValidationErrors" name="test_validate_ohlcv_invalid_ohlc_relationships" time="0.004" /><testcase classname="tests.unit.test_features_validators_errors.TestOHLCVValidationErrors" name="test_validate_ohlcv_high_less_than_low" time="0.003" /><testcase classname="tests.unit.test_features_validators_errors.TestOHLCVValidationErrors" name="test_validate_ohlcv_non_monotonic_timestamps" time="0.005" /><testcase classname="tests.unit.test_features_validators_errors.TestOHLCVValidationErrors" name="test_validate_ohlcv_timezone_naive_timestamps" time="0.004" /><testcase classname="tests.unit.test_features_validators_errors.TestOHLCVValidationErrors" name="test_validate_ohlcv_nan_values" time="0.003" /><testcase classname="tests.unit.test_features_validators_errors.TestOHLCVValidationErrors" name="test_validate_ohlcv_infinite_values" time="0.004"><failure message="Failed: DID NOT RAISE &lt;class 'ValueError'&gt;">tests\unit\test_features_validators_errors.py:179: in test_validate_ohlcv_infinite_values
-    with pytest.raises(ValueError):
-E   Failed: DID NOT RAISE &lt;class 'ValueError'&gt;</failure></testcase><testcase classname="tests.unit.test_features_validators_errors.TestOHLCVValidationErrors" name="test_validate_ohlcv_zero_volume" time="0.003" /><testcase classname="tests.unit.test_features_validators_errors.TestLookaheadDetectionEdgeCases" name="test_guard_no_lookahead_insufficient_data" time="0.003" /><testcase classname="tests.unit.test_features_validators_errors.TestLookaheadDetectionEdgeCases" name="test_guard_no_lookahead_detects_future_leak" time="0.009"><failure message="ValueError: other must be a DataFrame or Series">tests\unit\test_features_validators_errors.py:231: in test_guard_no_lookahead_detects_future_leak
-    guard_no_lookahead(features, price, threshold=0.6)
-backend\features\validators.py:131: in guard_no_lookahead
-    future_corr_rolling = feature_series.rolling(window_size).corr(
-..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\pandas\core\window\rolling.py:2861: in corr
-    return super().corr(
-..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\pandas\core\window\rolling.py:1850: in corr
-    return self._apply_pairwise(
-..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\pandas\core\window\rolling.py:556: in _apply_pairwise
-    raise ValueError("other must be a DataFrame or Series")
-E   ValueError: other must be a DataFrame or Series</failure></testcase><testcase classname="tests.unit.test_features_validators_errors.TestLookaheadDetectionEdgeCases" name="test_guard_no_lookahead_clean_features" time="0.013"><failure message="ValueError: other must be a DataFrame or Series">tests\unit\test_features_validators_errors.py:253: in test_guard_no_lookahead_clean_features
-    guard_no_lookahead(features, price, threshold=0.7)
-backend\features\validators.py:131: in guard_no_lookahead
-    future_corr_rolling = feature_series.rolling(window_size).corr(
-..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\pandas\core\window\rolling.py:2861: in corr
-    return super().corr(
-..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\pandas\core\window\rolling.py:1850: in corr
-    return self._apply_pairwise(
-..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\pandas\core\window\rolling.py:556: in _apply_pairwise
-    raise ValueError("other must be a DataFrame or Series")
-E   ValueError: other must be a DataFrame or Series</failure></testcase><testcase classname="tests.unit.test_features_validators_errors.TestLookaheadDetectionEdgeCases" name="test_guard_no_lookahead_all_nan_features" time="0.005" /><testcase classname="tests.unit.test_features_validators_errors.TestLookaheadDetectionEdgeCases" name="test_guard_no_lookahead_constant_features" time="0.009"><failure message="ValueError: other must be a DataFrame or Series">tests\unit\test_features_validators_errors.py:280: in test_guard_no_lookahead_constant_features
-    guard_no_lookahead(features, price, threshold=0.7)
-backend\features\validators.py:131: in guard_no_lookahead
-    future_corr_rolling = feature_series.rolling(window_size).corr(
-..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\pandas\core\window\rolling.py:2861: in corr
-    return super().corr(
-..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\pandas\core\window\rolling.py:1850: in corr
-    return self._apply_pairwise(
-..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\pandas\core\window\rolling.py:556: in _apply_pairwise
-    raise ValueError("other must be a DataFrame or Series")
-E   ValueError: other must be a DataFrame or Series</failure></testcase></testsuite></testsuites>
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="9" time="0.410" timestamp="2025-09-14T20:45:16.946905-07:00" hostname="BOOK-FVJOEO3Q00"><testcase classname="tests.phase5.test_last_mile_background_tasks" name="test_async_task_cancellation" time="0.123" /><testcase classname="tests.phase5.test_last_mile_background_tasks" name="test_background_thread_errors" time="0.001" /><testcase classname="tests.phase5.test_last_mile_background_tasks" name="test_timeout_scenarios" time="0.001"><failure message="AttributeError: module 'signal' has no attribute 'alarm'">tests\phase5\test_last_mile_background_tasks.py:74: in test_timeout_scenarios
+    signal.signal(signal.SIGALRM, timeout_handler)
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'signal' has no attribute 'SIGALRM'. Did you mean: 'SIGABRT'?
+
+During handling of the above exception, another exception occurred:
+tests\phase5\test_last_mile_background_tasks.py:81: in test_timeout_scenarios
+    signal.alarm(0)
+    ^^^^^^^^^^^^
+E   AttributeError: module 'signal' has no attribute 'alarm'</failure></testcase><testcase classname="tests.phase5.test_last_mile_cleanup_teardown" name="test_resource_cleanup" time="0.001" /><testcase classname="tests.phase5.test_last_mile_cleanup_teardown" name="test_context_manager_cleanup" time="0.000" /><testcase classname="tests.phase5.test_last_mile_cleanup_teardown" name="test_finally_blocks" time="0.000" /><testcase classname="tests.phase5.test_last_mile_defensive_code" name="test_input_validation" time="0.000" /><testcase classname="tests.phase5.test_last_mile_defensive_code" name="test_null_checks" time="0.000" /><testcase classname="tests.phase5.test_last_mile_defensive_code" name="test_bounds_checking" time="0.000" /></testsuite></testsuites>

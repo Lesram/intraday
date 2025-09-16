@@ -4,7 +4,7 @@ Signal service for generating and managing trading signals.
 
 import asyncio
 from typing import Dict, List, Any
-from datetime import datetime
+from datetime import datetime, UTC
 
 
 class SignalService:
@@ -20,14 +20,14 @@ class SignalService:
                 "symbol": symbol,
                 "signal": "BUY",
                 "confidence": 0.75,
-                "timestamp": datetime.utcnow().isoformat()
+                "timestamp": datetime.now(UTC).isoformat()
             }]
         
         return [{
             "symbol": "AAPL",
             "signal": "BUY", 
             "confidence": 0.8,
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(UTC).isoformat()
         }]
     
     async def generate_signal(self, symbol: str, data: Dict[str, Any]) -> Dict[str, Any]:
@@ -36,7 +36,7 @@ class SignalService:
             "symbol": symbol,
             "signal": "BUY",
             "confidence": 0.75,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "data": data
         }
 

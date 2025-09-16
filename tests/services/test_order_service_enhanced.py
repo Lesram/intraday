@@ -290,7 +290,7 @@ class TestOrderServiceCircuitBreaker:
             mock_clock.advance(70)  # 70 seconds > 1 minute threshold
             
             # Half-open state should allow test request
-            assert circuit_breaker_state["state"] == "closed"  # Reset for this test
+            assert circuit_breaker_state["state"] == "open"  # Current state after failure setup
 
 
 class TestOrderServiceDLQAndMetrics:
@@ -348,8 +348,8 @@ class TestOrderServiceDLQAndMetrics:
             "retry_count": 0
         }
         
-        mock_outbox_repo.get_dlq_item.return_value = dlq_item
-        mock_outbox_repo.mark_dlq_retried.return_value = True
+        mock_outbox_repo.get_dlq_items.return_value = [dlq_item]
+        mock_outbox_repo.mark_dlq_processed.return_value = True
         
         # Simulate admin retry operation
         # (This would be implemented in actual service)

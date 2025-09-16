@@ -10,8 +10,20 @@ def pytest_sessionstart(session):
     except Exception: pass
     session._baseline_threads = _non_daemon_ids()
     try:
-        loop = asyncio.get_event_loop()
-        session._baseline_tasks = set(asyncio.all_tasks(loop))
+        # Fix for Python 3.12+ deprecation warning - use get_running_loop() with fallback
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            # No running loop, create a new one if needed
+            try:
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+            except Exception:
+                loop = None
+        if loop:
+            session._baseline_tasks = set(asyncio.all_tasks(loop))
+        else:
+            session._baseline_tasks = set()
     except RuntimeError:
         session._baseline_tasks = set()
 
@@ -32,7 +44,11 @@ def pytest_sessionfinish(session, exitstatus):
         if not alive: break
         time.sleep(0.05)
     try:
-        loop = asyncio.get_event_loop()
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
         current=set(asyncio.all_tasks(loop))
         new=[t for t in current - getattr(session,"_baseline_tasks",set()) if not t.done() and not t.cancelled()]
         for t in new:

@@ -137,7 +137,17 @@ def format_validation_errors(errors: List[Dict[str, Any]]) -> List[Dict[str, Any
             "type": error.get("type", "unknown")
         }
         if "input" in error:
-            formatted_error["input"] = error["input"]
+            input_value = error["input"]
+            # Handle bytes objects that can't be JSON serialized
+            if isinstance(input_value, bytes):
+                try:
+                    # Try to decode as UTF-8 string
+                    formatted_error["input"] = input_value.decode('utf-8')
+                except UnicodeDecodeError:
+                    # If not valid UTF-8, represent as hex string
+                    formatted_error["input"] = f"<bytes: {input_value.hex()}>"
+            else:
+                formatted_error["input"] = input_value
         formatted_errors.append(formatted_error)
     
     return formatted_errors

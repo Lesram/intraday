@@ -57,10 +57,14 @@ def align_features_target(
             def __init__(self, data, index):
                 self.data = data
                 self.index = index
+                self.dtype = 'bool'  # Add dtype attribute for compatibility
             def equals(self, other_index):
                 return True  # Always return true in stub mode
             def __len__(self):
                 return len(self.data) if hasattr(self.data, '__len__') else 0
+            def sum(self):
+                """Return sum of boolean values."""
+                return sum(self.data)
         index_mask = StubSeries(valid_mask, common_index)
 
     return FeatureFrame(X=features_aligned, y=target, index_mask=index_mask)

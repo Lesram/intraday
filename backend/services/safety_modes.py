@@ -854,7 +854,7 @@ class SafetyModeManager:
                 "error": "Unknown mode"
             }
 
-    def activate_kill_switch(
+    def activate_kill_switch_legacy(
         self, 
         scope: str | None = None, 
         reason: str | None = None, 
@@ -881,7 +881,7 @@ class SafetyModeManager:
         self._kill_switches[name] = kill_switch
         return True
 
-    def deactivate_kill_switch(self, reason: str | None = None) -> bool:
+    def deactivate_all_kill_switches(self, reason: str | None = None) -> bool:
         """Deactivate all kill switches (legacy interface for tests)."""
         for ks in self._kill_switches.values():
             ks.active = False

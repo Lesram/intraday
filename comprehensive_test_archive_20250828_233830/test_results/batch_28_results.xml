@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="5" failures="0" skipped="0" tests="7" time="0.827" timestamp="2025-08-28T23:17:09.857105-07:00" hostname="BOOK-FVJOEO3Q00"><testcase classname="tests.infra.test_resilience_outbox_smoke" name="test_retry_decorator_smoke" time="0.003" /><testcase classname="tests.infra.test_resilience_outbox_smoke" name="test_outbox_smoke" time="0.001" /><testcase classname="tests.integration.test_api_startup_shutdown.TestAPIStartupShutdown" name="test_app_startup_sequence" time="0.028"><error message="failed on setup with &quot;TypeError: 'Mock' object does not support item assignment&quot;">tests\integration\test_api_startup_shutdown.py:49: in ephemeral_app
+    app.dependency_overrides[get_database_session] = get_test_session
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   TypeError: 'Mock' object does not support item assignment</error></testcase><testcase classname="tests.integration.test_api_startup_shutdown.TestAPIStartupShutdown" name="test_readiness_probe_checks_dependencies" time="0.005"><error message="failed on setup with &quot;TypeError: 'Mock' object does not support item assignment&quot;">tests\integration\test_api_startup_shutdown.py:49: in ephemeral_app
+    app.dependency_overrides[get_database_session] = get_test_session
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   TypeError: 'Mock' object does not support item assignment</error></testcase><testcase classname="tests.integration.test_api_startup_shutdown.TestAPIStartupShutdown" name="test_readiness_probe_fails_on_unhealthy_broker" time="0.005"><error message="failed on setup with &quot;TypeError: 'Mock' object does not support item assignment&quot;">tests\integration\test_api_startup_shutdown.py:49: in ephemeral_app
+    app.dependency_overrides[get_database_session] = get_test_session
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   TypeError: 'Mock' object does not support item assignment</error></testcase><testcase classname="tests.integration.test_api_startup_shutdown.TestAPIStartupShutdown" name="test_liveness_probe_basic_functionality" time="0.004"><error message="failed on setup with &quot;TypeError: 'Mock' object does not support item assignment&quot;">tests\integration\test_api_startup_shutdown.py:49: in ephemeral_app
+    app.dependency_overrides[get_database_session] = get_test_session
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   TypeError: 'Mock' object does not support item assignment</error></testcase><testcase classname="tests.integration.test_api_startup_shutdown.TestAPIStartupShutdown" name="test_graceful_shutdown_with_background_tasks" time="0.004"><error message="failed on setup with &quot;TypeError: 'Mock' object does not support item assignment&quot;">tests\integration\test_api_startup_shutdown.py:49: in ephemeral_app
+    app.dependency_overrides[get_database_session] = get_test_session
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   TypeError: 'Mock' object does not support item assignment</error></testcase></testsuite></testsuites>

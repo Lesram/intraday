@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="5" skipped="0" tests="12" time="0.662" timestamp="2025-08-28T23:18:17.423176-07:00" hostname="BOOK-FVJOEO3Q00"><testcase classname="tests.security.test_jwt_simple" name="test_simple_jwt_collection" time="0.001" /><testcase classname="tests.security.test_jwt_simple" name="test_fake_jwt_import" time="0.002" /><testcase classname="tests.security.test_jwt_simple" name="test_jwt_verifier_lazy_loading" time="0.001" /><testcase classname="tests.security.test_jwt_simple" name="test_security_config_loading" time="0.001" /><testcase classname="tests.security.test_jwt_simple" name="test_security_hardening_imports" time="0.000" /><testcase classname="tests.security.test_jwt_simple" name="test_create_access_token_functionality" time="0.001" /><testcase classname="tests.security.test_security_functions" name="test_security_create_access_token_with_mock" time="0.008"><failure message="AssertionError: assert 'eyJhbGciOiJI...IwQMb8X-FmOso' == 'mocked.jwt.token'&#10;  &#10;  - mocked.jwt.token&#10;  + eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0X3VzZXIiLCJyb2xlcyI6WyJ0cmFkZXIiXSwiaXNzIjoiYWxnb3RyYWRpbmctcGxhdGZvcm0iLCJhdWQiOiJhbGdvdHJhZGluZy11c2VycyIsImV4cCI6MTc1NjQ1MDA5NywiaWF0IjoxNzU2NDQ4Mjk3LCJqdGkiOiJQeEh4S25mZk5OZjhwVW92dTJndFpRIn0.iN2ExRhdEXCfCbl41hVTH4Tr5wqrlzIwQMb8X-FmOso">tests\security\test_security_functions.py:22: in test_security_create_access_token_with_mock
+    assert result == "mocked.jwt.token"
+E   AssertionError: assert 'eyJhbGciOiJI...IwQMb8X-FmOso' == 'mocked.jwt.token'
+E     
+E     - mocked.jwt.token
+E     + eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0X3VzZXIiLCJyb2xlcyI6WyJ0cmFkZXIiXSwiaXNzIjoiYWxnb3RyYWRpbmctcGxhdGZvcm0iLCJhdWQiOiJhbGdvdHJhZGluZy11c2VycyIsImV4cCI6MTc1NjQ1MDA5NywiaWF0IjoxNzU2NDQ4Mjk3LCJqdGkiOiJQeEh4S25mZk5OZjhwVW92dTJndFpRIn0.iN2ExRhdEXCfCbl41hVTH4Tr5wqrlzIwQMb8X-FmOso</failure></testcase><testcase classname="tests.security.test_security_functions" name="test_verify_token_function" time="0.003"><failure message="fastapi.exceptions.HTTPException: 401: Invalid token">..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\jose\jws.py:189: in _load
+    header = json.loads(header_data.decode("utf-8"))
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   UnicodeDecodeError: 'utf-8' codec can't decode byte 0xa9 in position 1: invalid start byte
+
+During handling of the above exception, another exception occurred:
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\jose\jwt.py:159: in decode
+    payload = jws.verify(token, key, algorithms, verify=verify_signature)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\jose\jws.py:74: in verify
+    header, payload, signing_input, signature = _load(token)
+                                                ^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\jose\jws.py:191: in _load
+    raise JWSError("Invalid header string: %s" % e)
+E   jose.exceptions.JWSError: Invalid header string: 'utf-8' codec can't decode byte 0xa9 in position 1: invalid start byte
+
+During handling of the above exception, another exception occurred:
+backend\infra\security.py:61: in verify_jwt
+    verified_payload = jwt.decode(
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\jose\jwt.py:161: in decode
+    raise JWTError(e)
+E   jose.exceptions.JWTError: Invalid header string: 'utf-8' codec can't decode byte 0xa9 in position 1: invalid start byte
+
+During handling of the above exception, another exception occurred:
+tests\security\test_security_functions.py:45: in test_verify_token_function
+    result = verify_token("fake.jwt.token")
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend\infra\security.py:273: in verify_token
+    payload = verify_jwt(
+backend\infra\security.py:109: in verify_jwt
+    raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+E   fastapi.exceptions.HTTPException: 401: Invalid token</failure></testcase><testcase classname="tests.security.test_security_functions" name="test_token_validation_scenarios" time="0.001"><failure message="fastapi.exceptions.HTTPException: 401: Invalid token">..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\jose\jws.py:181: in _load
+    header_segment, claims_segment = signing_input.split(b".", 1)
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   ValueError: not enough values to unpack (expected 2, got 1)
+
+During handling of the above exception, another exception occurred:
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\jose\jwt.py:159: in decode
+    payload = jws.verify(token, key, algorithms, verify=verify_signature)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\jose\jws.py:74: in verify
+    header, payload, signing_input, signature = _load(token)
+                                                ^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\jose\jws.py:184: in _load
+    raise JWSError("Not enough segments")
+E   jose.exceptions.JWSError: Not enough segments
+
+During handling of the above exception, another exception occurred:
+backend\infra\security.py:61: in verify_jwt
+    verified_payload = jwt.decode(
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\jose\jwt.py:161: in decode
+    raise JWTError(e)
+E   jose.exceptions.JWTError: Not enough segments
+
+During handling of the above exception, another exception occurred:
+tests\security\test_security_functions.py:71: in test_token_validation_scenarios
+    result = verify_token("valid.token")
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend\infra\security.py:273: in verify_token
+    payload = verify_jwt(
+backend\infra\security.py:109: in verify_jwt
+    raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+E   fastapi.exceptions.HTTPException: 401: Invalid token</failure></testcase><testcase classname="tests.security.test_security_functions" name="test_security_middleware_functions" time="0.001" /><testcase classname="tests.security.test_security_functions" name="test_token_expiration_handling" time="0.001"><failure message="AssertionError: assert 'eyJhbGciOiJI...ha8VMig3kVHDk' == 'token_with_exp'&#10;  &#10;  - token_with_exp&#10;  + eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0X3VzZXIiLCJyb2xlcyI6WyJhZG1pbiJdLCJpc3MiOiJhbGdvdHJhZGluZy1wbGF0Zm9ybSIsImF1ZCI6ImFsZ290cmFkaW5nLXVzZXJzIiwiZXhwIjoxNzU2NDUwMDk4LCJpYXQiOjE3NTY0NDgyOTgsImp0aSI6IjQtc3RfVzV2b2d6eE5pY3Voa3N5S3cifQ.qZH5JOHZXJ1WrH2z6mmHmtcnwFqqtFha8VMig3kVHDk">tests\security\test_security_functions.py:106: in test_token_expiration_handling
+    assert result == "token_with_exp"
+E   AssertionError: assert 'eyJhbGciOiJI...ha8VMig3kVHDk' == 'token_with_exp'
+E     
+E     - token_with_exp
+E     + eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0X3VzZXIiLCJyb2xlcyI6WyJhZG1pbiJdLCJpc3MiOiJhbGdvdHJhZGluZy1wbGF0Zm9ybSIsImF1ZCI6ImFsZ290cmFkaW5nLXVzZXJzIiwiZXhwIjoxNzU2NDUwMDk4LCJpYXQiOjE3NTY0NDgyOTgsImp0aSI6IjQtc3RfVzV2b2d6eE5pY3Voa3N5S3cifQ.qZH5JOHZXJ1WrH2z6mmHmtcnwFqqtFha8VMig3kVHDk</failure></testcase><testcase classname="tests.security.test_security_functions" name="test_security_configuration_integration" time="0.001"><failure message="AssertionError: assert 'eyJhbGciOiJI...TqdotLN2RZDNk' == 'config_test_token'&#10;  &#10;  - config_test_token&#10;  + eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJjb25maWdfdGVzdCIsInJvbGVzIjpbInVzZXIiXSwiaXNzIjoiYWxnb3RyYWRpbmctcGxhdGZvcm0iLCJhdWQiOiJhbGdvdHJhZGluZy11c2VycyIsImV4cCI6MTc1NjQ1MDA5OCwiaWF0IjoxNzU2NDQ4Mjk4LCJqdGkiOiJSN0xvdEpadDFHY0JXNWZmQVVkNmFnIn0.nlhm0LlW-gykw1CzvUkyHbslJSEs05TqdotLN2RZDNk">tests\security\test_security_functions.py:120: in test_security_configuration_integration
+    assert result == "config_test_token"
+E   AssertionError: assert 'eyJhbGciOiJI...TqdotLN2RZDNk' == 'config_test_token'
+E     
+E     - config_test_token
+E     + eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJjb25maWdfdGVzdCIsInJvbGVzIjpbInVzZXIiXSwiaXNzIjoiYWxnb3RyYWRpbmctcGxhdGZvcm0iLCJhdWQiOiJhbGdvdHJhZGluZy11c2VycyIsImV4cCI6MTc1NjQ1MDA5OCwiaWF0IjoxNzU2NDQ4Mjk4LCJqdGkiOiJSN0xvdEpadDFHY0JXNWZmQVVkNmFnIn0.nlhm0LlW-gykw1CzvUkyHbslJSEs05TqdotLN2RZDNk</failure></testcase></testsuite></testsuites>

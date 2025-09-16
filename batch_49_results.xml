@@ -1,18 +1,83 @@
-<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="5" skipped="0" tests="18" time="1.373" timestamp="2025-08-29T00:07:59.891201-07:00" hostname="BOOK-FVJOEO3Q00"><testcase classname="tests.integration.test_safety_modes.TestTradingModes" name="test_initial_mode_is_safe" time="0.005" /><testcase classname="tests.integration.test_safety_modes.TestTradingModes" name="test_mode_transitions" time="0.005" /><testcase classname="tests.integration.test_safety_modes.TestTradingModes" name="test_mode_risk_levels" time="0.001" /><testcase classname="tests.integration.test_safety_modes.TestTradingModes" name="test_mode_execution_permissions" time="0.002" /><testcase classname="tests.integration.test_safety_modes.TestTradingModes" name="test_mode_configurations" time="0.003" /><testcase classname="tests.integration.test_safety_modes.TestFeatureFlags" name="test_create_global_feature_flag" time="0.002" /><testcase classname="tests.integration.test_safety_modes.TestFeatureFlags" name="test_symbol_specific_feature_flag" time="0.002" /><testcase classname="tests.integration.test_safety_modes.TestFeatureFlags" name="test_rollout_percentage" time="0.002" /><testcase classname="tests.integration.test_safety_modes.TestFeatureFlags" name="test_expired_feature_flag" time="0.002" /><testcase classname="tests.integration.test_safety_modes.TestFeatureFlags" name="test_nonexistent_feature_flag_defaults_enabled" time="0.001" /><testcase classname="tests.integration.test_safety_modes.TestKillSwitches" name="test_global_kill_switch" time="0.002"><failure message="assert None is not None">tests\integration\test_safety_modes.py:226: in test_global_kill_switch
-    assert blocking_switch is not None
-E   assert None is not None</failure></testcase><testcase classname="tests.integration.test_safety_modes.TestKillSwitches" name="test_symbol_kill_switch" time="0.002" /><testcase classname="tests.integration.test_safety_modes.TestKillSwitches" name="test_kill_switch_deactivation" time="0.002"><failure message="AssertionError: assert None is not None&#10; +  where None = is_blocked_by_kill_switch({'symbol': 'AAPL'})&#10; +    where is_blocked_by_kill_switch = &lt;backend.services.safety_modes.SafetyModeManager object at 0x0000020B52F762D0&gt;.is_blocked_by_kill_switch">tests\integration\test_safety_modes.py:264: in test_kill_switch_deactivation
-    assert safety_manager.is_blocked_by_kill_switch(context) is not None
-E   AssertionError: assert None is not None
-E    +  where None = is_blocked_by_kill_switch({'symbol': 'AAPL'})
-E    +    where is_blocked_by_kill_switch = &lt;backend.services.safety_modes.SafetyModeManager object at 0x0000020B52F762D0&gt;.is_blocked_by_kill_switch</failure></testcase><testcase classname="tests.integration.test_safety_modes.TestKillSwitches" name="test_auto_reset_kill_switch" time="0.002" /><testcase classname="tests.integration.test_safety_modes.TestKillSwitches" name="test_list_active_kill_switches" time="0.002"><failure message="AssertionError: assert 1 == 2&#10; +  where 1 = len([KillSwitch(name='test_kill_switch_2247659226656', active=True, scope=&lt;KillSwitchScope.SYMBOL: 'symbol'&gt;, target='AAPL...test', activated_at=datetime.datetime(2025, 8, 29, 7, 8, 1, 184181, tzinfo=datetime.timezone.utc), auto_reset_at=None)])">tests\integration\test_safety_modes.py:308: in test_list_active_kill_switches
-    assert len(active) == 2
-E   AssertionError: assert 1 == 2
-E    +  where 1 = len([KillSwitch(name='test_kill_switch_2247659226656', active=True, scope=&lt;KillSwitchScope.SYMBOL: 'symbol'&gt;, target='AAPL...test', activated_at=datetime.datetime(2025, 8, 29, 7, 8, 1, 184181, tzinfo=datetime.timezone.utc), auto_reset_at=None)])</failure></testcase><testcase classname="tests.integration.test_safety_modes.TestOrderExecution" name="test_shadow_mode_execution" time="0.004" /><testcase classname="tests.integration.test_safety_modes.TestOrderExecution" name="test_dry_run_mode_execution" time="0.005"><failure message="AssertionError: assert False is True&#10; +  where False = TradeExecutionResult(order_id='order123', mode=&lt;TradingMode.DRY_RUN: 'dry_run'&gt;, executed=False, blocked_by='Order val...', simulation_result=None, real_result=None, execution_time_ms=0.0, divergence_detected=False, divergence_details=None).executed">tests\integration\test_safety_modes.py:355: in test_dry_run_mode_execution
-    assert result.executed is True
-E   AssertionError: assert False is True
-E    +  where False = TradeExecutionResult(order_id='order123', mode=&lt;TradingMode.DRY_RUN: 'dry_run'&gt;, executed=False, blocked_by='Order val...', simulation_result=None, real_result=None, execution_time_ms=0.0, divergence_detected=False, divergence_details=None).executed</failure></testcase><testcase classname="tests.integration.test_safety_modes.TestOrderExecution" name="test_live_mode_execution" time="0.008"><failure message="AssertionError: assert 'mock_12345' == 'real_12345'&#10;  &#10;  - real_12345&#10;  + mock_12345">tests\integration\test_safety_modes.py:383: in test_live_mode_execution
-    assert result.real_result["execution_id"] == "real_12345"
-E   AssertionError: assert 'mock_12345' == 'real_12345'
-E     
-E     - real_12345
-E     + mock_12345</failure></testcase></testsuite></testsuites>
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="5" skipped="0" tests="5" time="0.566" timestamp="2025-09-14T20:42:16.154164-07:00" hostname="BOOK-FVJOEO3Q00"><testcase classname="tests.integration.test_api_startup_shutdown.TestAPIStartupShutdown" name="test_app_startup_sequence" time="0.017"><failure message="TypeError: object Mock can't be used in 'await' expression">tests\integration\test_api_startup_shutdown.py:103: in test_app_startup_sequence
+    response = await client.get("/health")
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\httpx\_client.py:1768: in get
+    return await self.request(
+venv\Lib\site-packages\httpx\_client.py:1540: in request
+    return await self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\httpx\_client.py:1629: in send
+    response = await self._send_handling_auth(
+venv\Lib\site-packages\httpx\_client.py:1657: in _send_handling_auth
+    response = await self._send_handling_redirects(
+venv\Lib\site-packages\httpx\_client.py:1694: in _send_handling_redirects
+    response = await self._send_single_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\httpx\_client.py:1730: in _send_single_request
+    response = await transport.handle_async_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\httpx\_transports\asgi.py:170: in handle_async_request
+    await self.app(scope, receive, send)
+E   TypeError: object Mock can't be used in 'await' expression</failure></testcase><testcase classname="tests.integration.test_api_startup_shutdown.TestAPIStartupShutdown" name="test_readiness_probe_checks_dependencies" time="0.007"><failure message="TypeError: object Mock can't be used in 'await' expression">tests\integration\test_api_startup_shutdown.py:124: in test_readiness_probe_checks_dependencies
+    response = await client.get("/readyz")
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\httpx\_client.py:1768: in get
+    return await self.request(
+venv\Lib\site-packages\httpx\_client.py:1540: in request
+    return await self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\httpx\_client.py:1629: in send
+    response = await self._send_handling_auth(
+venv\Lib\site-packages\httpx\_client.py:1657: in _send_handling_auth
+    response = await self._send_handling_redirects(
+venv\Lib\site-packages\httpx\_client.py:1694: in _send_handling_redirects
+    response = await self._send_single_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\httpx\_client.py:1730: in _send_single_request
+    response = await transport.handle_async_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\httpx\_transports\asgi.py:170: in handle_async_request
+    await self.app(scope, receive, send)
+E   TypeError: object Mock can't be used in 'await' expression</failure></testcase><testcase classname="tests.integration.test_api_startup_shutdown.TestAPIStartupShutdown" name="test_readiness_probe_fails_on_unhealthy_broker" time="0.019"><failure message="TypeError: object Mock can't be used in 'await' expression">tests\integration\test_api_startup_shutdown.py:148: in test_readiness_probe_fails_on_unhealthy_broker
+    response = await client.get("/readyz")
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\httpx\_client.py:1768: in get
+    return await self.request(
+venv\Lib\site-packages\httpx\_client.py:1540: in request
+    return await self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\httpx\_client.py:1629: in send
+    response = await self._send_handling_auth(
+venv\Lib\site-packages\httpx\_client.py:1657: in _send_handling_auth
+    response = await self._send_handling_redirects(
+venv\Lib\site-packages\httpx\_client.py:1694: in _send_handling_redirects
+    response = await self._send_single_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\httpx\_client.py:1730: in _send_single_request
+    response = await transport.handle_async_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\httpx\_transports\asgi.py:170: in handle_async_request
+    await self.app(scope, receive, send)
+E   TypeError: object Mock can't be used in 'await' expression</failure></testcase><testcase classname="tests.integration.test_api_startup_shutdown.TestAPIStartupShutdown" name="test_liveness_probe_basic_functionality" time="0.003"><failure message="TypeError: object Mock can't be used in 'await' expression">tests\integration\test_api_startup_shutdown.py:171: in test_liveness_probe_basic_functionality
+    response = await client.get("/healthz")
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\httpx\_client.py:1768: in get
+    return await self.request(
+venv\Lib\site-packages\httpx\_client.py:1540: in request
+    return await self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\httpx\_client.py:1629: in send
+    response = await self._send_handling_auth(
+venv\Lib\site-packages\httpx\_client.py:1657: in _send_handling_auth
+    response = await self._send_handling_redirects(
+venv\Lib\site-packages\httpx\_client.py:1694: in _send_handling_redirects
+    response = await self._send_single_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\httpx\_client.py:1730: in _send_single_request
+    response = await transport.handle_async_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\httpx\_transports\asgi.py:170: in handle_async_request
+    await self.app(scope, receive, send)
+E   TypeError: object Mock can't be used in 'await' expression</failure></testcase><testcase classname="tests.integration.test_api_startup_shutdown.TestAPIStartupShutdown" name="test_graceful_shutdown_with_background_tasks" time="0.004"><failure message="TypeError: 'Mock' object does not support the asynchronous context manager protocol">tests\integration\test_api_startup_shutdown.py:198: in test_graceful_shutdown_with_background_tasks
+    async with ephemeral_app.router.lifespan_context(ephemeral_app):
+E   TypeError: 'Mock' object does not support the asynchronous context manager protocol</failure></testcase></testsuite></testsuites>

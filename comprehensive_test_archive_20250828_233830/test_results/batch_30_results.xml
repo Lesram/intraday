@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="3" skipped="3" tests="15" time="2.564" timestamp="2025-08-28T23:17:23.358343-07:00" hostname="BOOK-FVJOEO3Q00"><testcase classname="tests.integration.test_trading_workflow.TestTradingWorkflowIntegration" name="test_complete_trading_workflow" time="0.008" /><testcase classname="tests.integration.test_trading_workflow.TestTradingWorkflowIntegration" name="test_risk_management_integration" time="0.002"><failure message="Failed: Risk management integration failed: module 'backend.services' has no attribute 'risk_service'">tests\integration\test_trading_workflow.py:84: in test_risk_management_integration
+    with patch('backend.services.risk_service.RiskService') as mock_risk:
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1442: in __enter__
+    self.target = self.getter()
+                  ^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\pkgutil.py:528: in resolve_name
+    result = getattr(result, p)
+             ^^^^^^^^^^^^^^^^^^
+E   AttributeError: module 'backend.services' has no attribute 'risk_service'. Did you mean: 'order_service'?
+
+During handling of the above exception, another exception occurred:
+tests\integration\test_trading_workflow.py:103: in test_risk_management_integration
+    pytest.fail(f"Risk management integration failed: {e}")
+E   Failed: Risk management integration failed: module 'backend.services' has no attribute 'risk_service'</failure></testcase><testcase classname="tests.integration.test_trading_workflow.TestTradingWorkflowIntegration" name="test_multi_strategy_coordination" time="0.003"><failure message="Failed: Multi-strategy coordination failed: module 'backend.strategies' has no attribute 'strategy_manager'">tests\integration\test_trading_workflow.py:109: in test_multi_strategy_coordination
+    with patch('backend.strategies.strategy_manager.StrategyManager') as mock_manager:
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1442: in __enter__
+    self.target = self.getter()
+                  ^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\pkgutil.py:528: in resolve_name
+    result = getattr(result, p)
+             ^^^^^^^^^^^^^^^^^^
+E   AttributeError: module 'backend.strategies' has no attribute 'strategy_manager'
+
+During handling of the above exception, another exception occurred:
+tests\integration\test_trading_workflow.py:133: in test_multi_strategy_coordination
+    pytest.fail(f"Multi-strategy coordination failed: {e}")
+E   Failed: Multi-strategy coordination failed: module 'backend.strategies' has no attribute 'strategy_manager'</failure></testcase><testcase classname="tests.integration.test_ws_backpressure_integration.TestWebSocketBackpressure" name="test_fast_and_slow_client_backpressure" time="1.482" /><testcase classname="tests.integration.test_ws_backpressure_integration.TestWebSocketBackpressure" name="test_slow_consumer_message_dropping_policy" time="0.005" /><testcase classname="tests.integration.test_ws_backpressure_integration.TestWebSocketBackpressure" name="test_websocket_connection_recovery_after_backpressure" time="0.299" /><testcase classname="tests.integration.test_ws_backpressure_integration.TestWebSocketBackpressure" name="test_multiple_slow_clients_isolation" time="0.007" /><testcase classname="tests.integration.test_ws_backpressure_integration.TestWebSocketBackpressure" name="test_websocket_metrics_during_backpressure" time="0.007"><failure message="assert 26 &lt;= 25">tests\integration\test_ws_backpressure_integration.py:313: in test_websocket_metrics_during_backpressure
+    assert metrics["ws_queue_size_current"]["client_1"] &lt;= 25  # Capped due to drops
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   assert 26 &lt;= 25</failure></testcase><testcase classname="tests.integration.test_ws_backpressure_integration.TestWebSocketBackpressure" name="test_websocket_graceful_disconnection_under_load" time="0.006" /><testcase classname="tests.integration.test_ws_backpressure_integration.TestWebSocketBackpressure" name="test_websocket_connection_limit_enforcement" time="0.006" /><testcase classname="tests.integration.test_ws_backpressure_integration.TestWebSocketBackpressure" name="test_websocket_load_balancing_across_connections" time="0.005" /><testcase classname="tests.mlops.test_ensemble_model" name="test_ensemble_model_smoke" time="0.001" /><testcase classname="tests.mlops.test_model_manager_basic" name="test_model_manager_import" time="0.005"><skipped type="pytest.skip" message="model_manager import failed: attempted relative import beyond top-level package">C:\Users\Marsel\intra\algotrading_platform\tests\mlops\test_model_manager_basic.py:17: model_manager import failed: attempted relative import beyond top-level package</skipped></testcase><testcase classname="tests.mlops.test_model_manager_basic" name="test_model_manager_basic_functionality" time="0.005"><skipped type="pytest.skip" message="model_manager functionality test failed: attempted relative import beyond top-level package">C:\Users\Marsel\intra\algotrading_platform\tests\mlops\test_model_manager_basic.py:28: model_manager functionality test failed: attempted relative import beyond top-level package</skipped></testcase><testcase classname="tests.mlops.test_model_manager_basic" name="test_model_manager_classes" time="0.007"><skipped type="pytest.skip" message="model_manager classes test failed: attempted relative import beyond top-level package">C:\Users\Marsel\intra\algotrading_platform\tests\mlops\test_model_manager_basic.py:37: model_manager classes test failed: attempted relative import beyond top-level package</skipped></testcase></testsuite></testsuites>

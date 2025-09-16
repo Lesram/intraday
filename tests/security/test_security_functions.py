@@ -36,9 +36,9 @@ def test_verify_token_function():
             "roles": ["trader"],
             "iss": "test_issuer",
             "aud": "test_audience",
-            "iat": datetime.now(UTC).timestamp(),
+            "iat": int(datetime.now(UTC).timestamp()),
             "jti": "test_token_id",
-            "exp": (datetime.now(UTC) + timedelta(hours=1)).timestamp()
+            "exp": int((datetime.now(UTC) + timedelta(hours=1)).timestamp())
         }
         
         # Test token verification
@@ -63,9 +63,9 @@ def test_token_validation_scenarios():
             "roles": ["admin"],
             "iss": "test_issuer",
             "aud": "test_audience",
-            "iat": datetime.now(UTC).timestamp(),
+            "iat": int(datetime.now(UTC).timestamp()),
             "jti": "test_id",
-            "exp": (datetime.now(UTC) + timedelta(hours=1)).timestamp()
+            "exp": int((datetime.now(UTC) + timedelta(hours=1)).timestamp())
         }
         mock_verifier.decode.return_value = complete_payload
         result = verify_token("valid.token")

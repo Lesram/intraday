@@ -52,6 +52,9 @@ except ImportError:
             self.threshold = threshold
             
         async def analyze(self, data: pd.DataFrame) -> Dict:
+            # Handle insufficient data
+            if len(data) < self.lookback_period:
+                return {'signal': 'hold', 'strength': 0.0, 'reason': 'insufficient_data'}
             return {'signal': 'buy', 'strength': 0.75, 'mean': 100.0, 'current': 95.0}
     
     class MomentumStrategy(BaseStrategy):

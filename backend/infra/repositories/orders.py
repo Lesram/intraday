@@ -3,7 +3,7 @@ Orders repository - handles order lifecycle and idempotency.
 Implements async CRUD operations with proper error handling.
 """
 
-from datetime import datetime
+from datetime import datetime, UTC
 from decimal import Decimal
 import logging
 from typing import Any
@@ -91,7 +91,7 @@ class OrdersRepo:
             order_type=order_type,
             tif=tif,
             status="accepted",
-            submitted_at=datetime.utcnow(),
+            submitted_at=datetime.now(UTC),
             attributes=attributes or {},
         )
 
@@ -154,7 +154,7 @@ class OrdersRepo:
         stmt = (
             update(Order)
             .where(Order.id == order_id)
-            .values(status=status, updated_at=datetime.utcnow())
+            .values(status=status, updated_at=datetime.now(UTC))
             .returning(Order.id)
         )
 
@@ -166,6 +166,50 @@ class OrdersRepo:
 
         logger.info(
             "Order status updated", extra={"order_id": str(order_id), "status": status}
+        )
+
+    async def update_status(self, order_id: uuid.UUID, status: str) -> Order | None:
+        """
+        Update order status and return the updated order.
+        Alias for set_status that returns the order instead of None.
+
+        Args:
+            order_id: Order ID
+            status: New status
+
+        Returns:
+            Updated order or None if not found
+
+        Raises:
+            OrderNotFoundError: If order not found
+        """
+        await self.set_status(order_id, status)
+        return await self.get_by_id(order_id)
+
+    async def create_order(self, order_data: dict[str, Any]) -> Order:
+        """
+        Create a new order.
+        Alias for upsert_by_idempotency that matches test expectations.
+
+        Args:
+            order_data: Order data dictionary
+
+        Returns:
+            Created order
+        """
+        # Extract client_key or generate one
+        client_key = order_data.get("client_key", str(uuid.uuid4()))
+        
+        # Convert dict to Order model fields
+        return await self.upsert_by_idempotency(
+            client_key=client_key,
+            symbol=order_data.get("symbol"),
+            order_type=order_data.get("order_type", "market"),
+            side=order_data.get("side"),
+            quantity=order_data.get("quantity"),
+            price=order_data.get("price"),
+            time_in_force=order_data.get("time_in_force", "gtc"),
+            extended_hours=order_data.get("extended_hours", False)
         )
 
     async def attach_broker_result(
@@ -189,7 +233,7 @@ class OrdersRepo:
             OrderNotFoundError: If order not found
         """
         # Build update values
-        values = {"updated_at": datetime.utcnow()}
+        values = {"updated_at": datetime.now(UTC)}
 
         if broker_order_id is not None:
             values["broker_order_id"] = broker_order_id

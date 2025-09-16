@@ -1,15 +1,66 @@
-<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="10" time="5.730" timestamp="2025-08-29T00:06:48.700001-07:00" hostname="BOOK-FVJOEO3Q00"><testcase classname="tests.fuzz.test_chaos.TestMalformedDataHandling" name="test_malformed_market_data_resilience" time="0.009" /><testcase classname="tests.fuzz.test_chaos.TestMalformedDataHandling" name="test_adversarial_order_handling" time="0.106" /><testcase classname="tests.fuzz.test_chaos.TestMalformedDataHandling" name="test_hypothesis_market_data_fuzzing" time="2.219"><failure message="hypothesis.errors.FailedHealthCheck: Input generation is slow: Hypothesis only generated 2 valid inputs after 1.22 seconds.&#10;&#10;           count | fraction |    slowest draws (seconds)&#10;  volume |    2  |    100%  |      --      --      --      --   1.214&#10;  symbol |    2  |      0%  |      --      --      --      --      -- &#10;  price  |    2  |      0%  |      --      --      --      --      -- &#10;&#10;This could be for a few reasons:&#10;1. This strategy could be generating too much data per input. Try decreasing the amount of data generated, for example by decreasing the minimum size of collection strategies like st.lists().&#10;2. Some other expensive computation could be running during input generation. For example, if @st.composite or st.data() is interspersed with an expensive computation, HealthCheck.too_slow is likely to trigger. If this computation is unrelated to input generation, move it elsewhere. Otherwise, try making it more efficient, or disable this health check if that is not possible.&#10;&#10;If you expect input generation to take this long, you can disable this health check with @settings(suppress_health_check=[HealthCheck.too_slow]). See https://hypothesis.readthedocs.io/en/latest/reference/api.html#hypothesis.HealthCheck for details.">tests\fuzz\test_chaos.py:238: in test_hypothesis_market_data_fuzzing
-    @given(
-            
-E   hypothesis.errors.FailedHealthCheck: Input generation is slow: Hypothesis only generated 2 valid inputs after 1.22 seconds.
-E   
-E              count | fraction |    slowest draws (seconds)
-E     volume |    2  |    100%  |      --      --      --      --   1.214
-E     symbol |    2  |      0%  |      --      --      --      --      -- 
-E     price  |    2  |      0%  |      --      --      --      --      -- 
-E   
-E   This could be for a few reasons:
-E   1. This strategy could be generating too much data per input. Try decreasing the amount of data generated, for example by decreasing the minimum size of collection strategies like st.lists().
-E   2. Some other expensive computation could be running during input generation. For example, if @st.composite or st.data() is interspersed with an expensive computation, HealthCheck.too_slow is likely to trigger. If this computation is unrelated to input generation, move it elsewhere. Otherwise, try making it more efficient, or disable this health check if that is not possible.
-E   
-E   If you expect input generation to take this long, you can disable this health check with @settings(suppress_health_check=[HealthCheck.too_slow]). See https://hypothesis.readthedocs.io/en/latest/reference/api.html#hypothesis.HealthCheck for details.</failure></testcase><testcase classname="tests.fuzz.test_chaos.TestEdgeCasesAndBoundaryConditions" name="test_extreme_market_conditions" time="0.026" /><testcase classname="tests.fuzz.test_chaos.TestEdgeCasesAndBoundaryConditions" name="test_boundary_value_analysis" time="0.007" /><testcase classname="tests.fuzz.test_chaos.TestChaosEngineering" name="test_random_component_failures" time="0.006" /><testcase classname="tests.fuzz.test_chaos.TestChaosEngineering" name="test_memory_pressure_simulation" time="1.385" /><testcase classname="tests.fuzz.test_chaos.TestChaosEngineering" name="test_network_instability_simulation" time="0.805" /><testcase classname="tests.helpers.test_db" name="test_database" time="0.003" /><testcase classname="tests.helpers.test_db" name="test_session" time="0.002" /></testsuite></testsuites>
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="5" skipped="1" tests="24" time="29.650" timestamp="2025-09-14T20:41:23.135155-07:00" hostname="BOOK-FVJOEO3Q00"><testcase classname="tests.db.test_repositories_sqlite_enhanced.TestOrdersRepositoryCRUD" name="test_create_order_success" time="1.514" /><testcase classname="tests.db.test_repositories_sqlite_enhanced.TestOrdersRepositoryCRUD" name="test_get_order_by_id" time="1.507" /><testcase classname="tests.db.test_repositories_sqlite_enhanced.TestOrdersRepositoryCRUD" name="test_get_nonexistent_order" time="1.507" /><testcase classname="tests.db.test_repositories_sqlite_enhanced.TestOrdersRepositoryCRUD" name="test_update_order_status" time="1.522" /><testcase classname="tests.db.test_repositories_sqlite_enhanced.TestOrdersRepositoryCRUD" name="test_get_orders_by_account" time="1.514" /><testcase classname="tests.db.test_repositories_sqlite_enhanced.TestPositionsRepositoryCRUD" name="test_upsert_new_position" time="1.506" /><testcase classname="tests.db.test_repositories_sqlite_enhanced.TestPositionsRepositoryCRUD" name="test_upsert_existing_position_update" time="1.549" /><testcase classname="tests.db.test_repositories_sqlite_enhanced.TestPositionsRepositoryCRUD" name="test_get_position" time="1.515" /><testcase classname="tests.db.test_repositories_sqlite_enhanced.TestPositionsRepositoryCRUD" name="test_get_all_positions_for_account" time="1.514" /><testcase classname="tests.db.test_repositories_sqlite_enhanced.TestTradesRepositoryCRUD" name="test_create_trade" time="1.523" /><testcase classname="tests.db.test_repositories_sqlite_enhanced.TestTradesRepositoryCRUD" name="test_get_trades_by_order" time="1.516" /><testcase classname="tests.db.test_repositories_sqlite_enhanced.TestDatabaseConstraints" name="test_unique_client_key_violation" time="1.522" /><testcase classname="tests.db.test_repositories_sqlite_enhanced.TestDatabaseConstraints" name="test_foreign_key_constraint" time="1.513" /><testcase classname="tests.db.test_repositories_sqlite_enhanced.TestDatabaseConstraints" name="test_position_primary_key_constraint" time="1.527" /><testcase classname="tests.db.test_repositories_sqlite_enhanced.TestTransactionRollback" name="test_transaction_rollback_on_error" time="1.501"><skipped type="pytest.skip" message="Transaction rollback test needs repository-level transaction support">C:\Users\Marsel\intra\algotrading_platform\tests\db\test_repositories_sqlite_enhanced.py:599: Transaction rollback test needs repository-level transaction support</skipped></testcase><testcase classname="tests.db.test_repositories_sqlite_enhanced.TestTransactionRollback" name="test_successful_transaction_commit" time="1.516" /><testcase classname="tests.db.test_repositories_sqlite_enhanced.TestTransactionRollback" name="test_concurrent_transaction_isolation" time="1.516" /><testcase classname="tests.db.test_repositories_sqlite_enhanced.TestRepositoryPerformance" name="test_bulk_order_insertion_performance" time="1.639" /><testcase classname="tests.db.test_repositories_sqlite_enhanced.TestRepositoryPerformance" name="test_complex_queries_performance" time="1.582" /><testcase classname="tests.dependencies.test_cross_module_dependencies.TestCrossModuleDependencies" name="test_service_to_service_communication" time="0.006"><failure message="Failed: Service communication failed: module 'backend.services' has no attribute 'service_registry'">tests\dependencies\test_cross_module_dependencies.py:21: in test_service_to_service_communication
+    with patch('backend.services.service_registry.ServiceRegistry') as mock_registry:
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1442: in __enter__
+    self.target = self.getter()
+                  ^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\pkgutil.py:528: in resolve_name
+    result = getattr(result, p)
+             ^^^^^^^^^^^^^^^^^^
+E   AttributeError: module 'backend.services' has no attribute 'service_registry'
+
+During handling of the above exception, another exception occurred:
+tests\dependencies\test_cross_module_dependencies.py:40: in test_service_to_service_communication
+    pytest.fail(f"Service communication failed: {e}")
+E   Failed: Service communication failed: module 'backend.services' has no attribute 'service_registry'</failure></testcase><testcase classname="tests.dependencies.test_cross_module_dependencies.TestCrossModuleDependencies" name="test_database_transaction_boundaries" time="0.001"><failure message="Failed: Database transaction boundaries failed: 'MockDB' object has no attribute 'transaction_manager'">tests\dependencies\test_cross_module_dependencies.py:46: in test_database_transaction_boundaries
+    with patch('backend.db.transaction_manager.TransactionManager') as mock_tx:
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1442: in __enter__
+    self.target = self.getter()
+                  ^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\pkgutil.py:528: in resolve_name
+    result = getattr(result, p)
+             ^^^^^^^^^^^^^^^^^^
+E   AttributeError: 'MockDB' object has no attribute 'transaction_manager'. Did you mean: 'transaction_boundaries'?
+
+During handling of the above exception, another exception occurred:
+tests\dependencies\test_cross_module_dependencies.py:75: in test_database_transaction_boundaries
+    pytest.fail(f"Database transaction boundaries failed: {e}")
+E   Failed: Database transaction boundaries failed: 'MockDB' object has no attribute 'transaction_manager'</failure></testcase><testcase classname="tests.dependencies.test_cross_module_dependencies.TestCrossModuleDependencies" name="test_async_operation_coordination" time="0.001"><failure message="Failed: Async operation coordination failed: module 'backend.services' has no attribute 'async_coordinator'">tests\dependencies\test_cross_module_dependencies.py:81: in test_async_operation_coordination
+    with patch('backend.services.async_coordinator.AsyncCoordinator') as mock_coord:
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1442: in __enter__
+    self.target = self.getter()
+                  ^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\pkgutil.py:528: in resolve_name
+    result = getattr(result, p)
+             ^^^^^^^^^^^^^^^^^^
+E   AttributeError: module 'backend.services' has no attribute 'async_coordinator'
+
+During handling of the above exception, another exception occurred:
+tests\dependencies\test_cross_module_dependencies.py:101: in test_async_operation_coordination
+    pytest.fail(f"Async operation coordination failed: {e}")
+E   Failed: Async operation coordination failed: module 'backend.services' has no attribute 'async_coordinator'</failure></testcase><testcase classname="tests.dependencies.test_cross_module_dependencies.TestCrossModuleDependencies" name="test_state_synchronization" time="0.001"><failure message="Failed: State synchronization failed: module 'backend.services' has no attribute 'state_manager'">tests\dependencies\test_cross_module_dependencies.py:107: in test_state_synchronization
+    with patch('backend.services.state_manager.StateManager') as mock_state:
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1442: in __enter__
+    self.target = self.getter()
+                  ^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\pkgutil.py:528: in resolve_name
+    result = getattr(result, p)
+             ^^^^^^^^^^^^^^^^^^
+E   AttributeError: module 'backend.services' has no attribute 'state_manager'
+
+During handling of the above exception, another exception occurred:
+tests\dependencies\test_cross_module_dependencies.py:129: in test_state_synchronization
+    pytest.fail(f"State synchronization failed: {e}")
+E   Failed: State synchronization failed: module 'backend.services' has no attribute 'state_manager'</failure></testcase><testcase classname="tests.dependencies.test_cross_module_dependencies.TestCrossModuleDependencies" name="test_resource_management" time="0.001"><failure message="Failed: Resource management failed: module 'backend.services' has no attribute 'resource_manager'">tests\dependencies\test_cross_module_dependencies.py:135: in test_resource_management
+    with patch('backend.services.resource_manager.ResourceManager') as mock_rm:
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1442: in __enter__
+    self.target = self.getter()
+                  ^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\pkgutil.py:528: in resolve_name
+    result = getattr(result, p)
+             ^^^^^^^^^^^^^^^^^^
+E   AttributeError: module 'backend.services' has no attribute 'resource_manager'
+
+During handling of the above exception, another exception occurred:
+tests\dependencies\test_cross_module_dependencies.py:155: in test_resource_management
+    pytest.fail(f"Resource management failed: {e}")
+E   Failed: Resource management failed: module 'backend.services' has no attribute 'resource_manager'</failure></testcase></testsuite></testsuites>

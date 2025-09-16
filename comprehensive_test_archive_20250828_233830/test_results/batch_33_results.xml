@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="5" skipped="0" tests="9" time="0.739" timestamp="2025-08-28T23:17:45.320331-07:00" hostname="BOOK-FVJOEO3Q00"><testcase classname="tests.models.test_order_integrity_comprehensive.TestOrderIntegrityModule" name="test_order_integrity_import" time="0.009" /><testcase classname="tests.models.test_order_integrity_comprehensive.TestOrderIntegrityModule" name="test_order_validation_classes" time="0.001" /><testcase classname="tests.models.test_order_integrity_comprehensive.TestOrderIntegrityModule" name="test_order_integrity_functions" time="0.001" /><testcase classname="tests.models.test_order_integrity_comprehensive.TestOrderIntegrityModule" name="test_order_integrity_error_handling" time="0.001" /><testcase classname="tests.perf.test_feature_perf.TestFeatureComputePerformance" name="test_feature_computation_performance[1000]" time="0.005"><failure message="ValueError: Invalid OHLC relationships detected (high &lt; low, etc.)">tests\perf\test_feature_perf.py:61: in test_feature_computation_performance
+    features_df = await compute_all_features(ohlcv_data)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend\features\feature_engineering.py:1160: in compute_all_features
+    validate_ohlcv(df)
+backend\features\validators.py:64: in validate_ohlcv
+    raise ValueError("Invalid OHLC relationships detected (high &lt; low, etc.)")
+E   ValueError: Invalid OHLC relationships detected (high &lt; low, etc.)</failure></testcase><testcase classname="tests.perf.test_feature_perf.TestFeatureComputePerformance" name="test_feature_computation_performance[5000]" time="0.004"><failure message="ValueError: Invalid OHLC relationships detected (high &lt; low, etc.)">tests\perf\test_feature_perf.py:61: in test_feature_computation_performance
+    features_df = await compute_all_features(ohlcv_data)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend\features\feature_engineering.py:1160: in compute_all_features
+    validate_ohlcv(df)
+backend\features\validators.py:64: in validate_ohlcv
+    raise ValueError("Invalid OHLC relationships detected (high &lt; low, etc.)")
+E   ValueError: Invalid OHLC relationships detected (high &lt; low, etc.)</failure></testcase><testcase classname="tests.perf.test_feature_perf.TestFeatureComputePerformance" name="test_feature_computation_performance[10000]" time="0.005"><failure message="ValueError: Invalid OHLC relationships detected (high &lt; low, etc.)">tests\perf\test_feature_perf.py:61: in test_feature_computation_performance
+    features_df = await compute_all_features(ohlcv_data)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend\features\feature_engineering.py:1160: in compute_all_features
+    validate_ohlcv(df)
+backend\features\validators.py:64: in validate_ohlcv
+    raise ValueError("Invalid OHLC relationships detected (high &lt; low, etc.)")
+E   ValueError: Invalid OHLC relationships detected (high &lt; low, etc.)</failure></testcase><testcase classname="tests.perf.test_feature_perf.TestFeatureComputePerformance" name="test_feature_frame_build_performance[1000]" time="0.011"><failure message="ValueError: Invalid OHLC relationships detected (high &lt; low, etc.)">tests\perf\test_feature_perf.py:100: in test_feature_frame_build_performance
+    features_df = await compute_all_features(ohlcv_data)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend\features\feature_engineering.py:1160: in compute_all_features
+    validate_ohlcv(df)
+backend\features\validators.py:64: in validate_ohlcv
+    raise ValueError("Invalid OHLC relationships detected (high &lt; low, etc.)")
+E   ValueError: Invalid OHLC relationships detected (high &lt; low, etc.)</failure></testcase><testcase classname="tests.perf.test_feature_perf.TestFeatureComputePerformance" name="test_feature_frame_build_performance[5000]" time="0.006"><failure message="ValueError: Invalid OHLC relationships detected (high &lt; low, etc.)">tests\perf\test_feature_perf.py:100: in test_feature_frame_build_performance
+    features_df = await compute_all_features(ohlcv_data)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend\features\feature_engineering.py:1160: in compute_all_features
+    validate_ohlcv(df)
+backend\features\validators.py:64: in validate_ohlcv
+    raise ValueError("Invalid OHLC relationships detected (high &lt; low, etc.)")
+E   ValueError: Invalid OHLC relationships detected (high &lt; low, etc.)</failure></testcase></testsuite></testsuites>

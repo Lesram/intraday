@@ -1,0 +1,196 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="5" skipped="0" tests="58" time="4.208" timestamp="2025-08-28T23:20:49.952134-07:00" hostname="BOOK-FVJOEO3Q00"><testcase classname="tests.unit.test_alpaca_client_integration.TestAlpacaClientIntegration" name="test_client_initialization_success" time="0.004" /><testcase classname="tests.unit.test_alpaca_client_integration.TestAlpacaClientIntegration" name="test_get_historical_data_stock" time="0.004" /><testcase classname="tests.unit.test_alpaca_client_integration.TestAlpacaClientIntegration" name="test_get_historical_data_crypto" time="0.003" /><testcase classname="tests.unit.test_alpaca_client_integration.TestAlpacaClientIntegration" name="test_get_historical_data_invalid_timeframe" time="0.004" /><testcase classname="tests.unit.test_alpaca_client_integration.TestAlpacaClientIntegration" name="test_get_historical_data_invalid_symbol" time="0.002" /><testcase classname="tests.unit.test_alpaca_client_integration.TestAlpacaClientIntegration" name="test_submit_market_order" time="0.005" /><testcase classname="tests.unit.test_alpaca_client_integration.TestAlpacaClientIntegration" name="test_submit_limit_order" time="0.004" /><testcase classname="tests.unit.test_alpaca_client_integration.TestAlpacaClientIntegration" name="test_submit_limit_order_no_price_error" time="0.004" /><testcase classname="tests.unit.test_alpaca_client_integration.TestAlpacaClientIntegration" name="test_submit_order_invalid_type_error" time="0.075" /><testcase classname="tests.unit.test_alpaca_client_integration.TestAlpacaClientIntegration" name="test_cancel_order" time="0.003" /><testcase classname="tests.unit.test_alpaca_client_integration.TestAlpacaClientIntegration" name="test_get_account_status" time="0.002" /><testcase classname="tests.unit.test_alpaca_client_integration.TestAlpacaClientIntegration" name="test_get_recent_orders" time="0.003" /><testcase classname="tests.unit.test_alpaca_client_integration.TestAlpacaClientIntegration" name="test_get_current_price_stock" time="0.003" /><testcase classname="tests.unit.test_alpaca_client_integration.TestAlpacaClientIntegration" name="test_get_current_price_crypto" time="0.002" /><testcase classname="tests.unit.test_alpaca_client_integration.TestAlpacaClientIntegration" name="test_get_current_price_not_found" time="0.004" /><testcase classname="tests.unit.test_alpaca_client_integration.TestAlpacaClientIntegration" name="test_rate_limiting" time="0.404" /><testcase classname="tests.unit.test_alpaca_client_integration.TestAlpacaClientIntegration" name="test_add_data_callback" time="0.006" /><testcase classname="tests.unit.test_alpaca_client_integration.TestAlpacaClientIntegration" name="test_disconnect" time="0.003" /><testcase classname="tests.unit.test_alpaca_client_integration.TestAlpacaClientIntegration" name="test_destructor_cleanup" time="0.003" /><testcase classname="tests.unit.test_alpaca_client_integration.TestAlpacaClientDataStructures" name="test_market_data_creation" time="0.001" /><testcase classname="tests.unit.test_alpaca_client_integration.TestAlpacaClientDataStructures" name="test_order_result_creation" time="0.001" /><testcase classname="tests.unit.test_alpaca_client_targeted.TestAlpacaClientInitialization" name="test_init_without_alpaca_available" time="0.001" /><testcase classname="tests.unit.test_alpaca_client_targeted.TestAlpacaClientInitialization" name="test_init_paper_trading" time="0.006" /><testcase classname="tests.unit.test_alpaca_client_targeted.TestAlpacaClientInitialization" name="test_init_live_trading" time="0.034" /><testcase classname="tests.unit.test_alpaca_client_targeted.TestAlpacaClientInitialization" name="test_init_connection_failure_test_mode" time="0.003" /><testcase classname="tests.unit.test_alpaca_client_targeted.TestAlpacaClientHistoricalData" name="test_get_historical_data_stock_success" time="0.004" /><testcase classname="tests.unit.test_alpaca_client_targeted.TestAlpacaClientHistoricalData" name="test_get_historical_data_crypto_success" time="0.004" /><testcase classname="tests.unit.test_alpaca_client_targeted.TestAlpacaClientHistoricalData" name="test_get_historical_data_invalid_symbol" time="0.003" /><testcase classname="tests.unit.test_alpaca_client_targeted.TestAlpacaClientHistoricalData" name="test_get_historical_data_invalid_timeframe" time="0.004" /><testcase classname="tests.unit.test_alpaca_client_targeted.TestAlpacaClientHistoricalData" name="test_get_historical_data_default_dates" time="0.004" /><testcase classname="tests.unit.test_alpaca_client_targeted.TestAlpacaClientHistoricalData" name="test_get_historical_data_empty_result" time="0.003" /><testcase classname="tests.unit.test_alpaca_client_targeted.TestAlpacaClientTrading" name="test_submit_market_order_buy" time="0.003" /><testcase classname="tests.unit.test_alpaca_client_targeted.TestAlpacaClientTrading" name="test_submit_market_order_sell" time="0.003" /><testcase classname="tests.unit.test_alpaca_client_targeted.TestAlpacaClientTrading" name="test_submit_limit_order_success" time="0.003" /><testcase classname="tests.unit.test_alpaca_client_targeted.TestAlpacaClientTrading" name="test_submit_limit_order_no_price" time="0.002" /><testcase classname="tests.unit.test_alpaca_client_targeted.TestAlpacaClientTrading" name="test_submit_order_invalid_symbol" time="0.003" /><testcase classname="tests.unit.test_alpaca_client_targeted.TestAlpacaClientTrading" name="test_submit_order_invalid_type" time="0.005" /><testcase classname="tests.unit.test_alpaca_client_targeted.TestAlpacaClientTrading" name="test_cancel_order_success" time="0.003" /><testcase classname="tests.unit.test_alpaca_client_targeted.TestAlpacaClientTrading" name="test_cancel_order_failure" time="0.003" /><testcase classname="tests.unit.test_alpaca_client_targeted.TestAlpacaClientAccountManagement" name="test_get_account_status_success" time="0.002" /><testcase classname="tests.unit.test_alpaca_client_targeted.TestAlpacaClientAccountManagement" name="test_get_recent_orders_success" time="0.003" /><testcase classname="tests.unit.test_alpaca_client_targeted.TestAlpacaClientPricing" name="test_get_current_price_stock_success" time="0.002" /><testcase classname="tests.unit.test_alpaca_client_targeted.TestAlpacaClientPricing" name="test_get_current_price_crypto_success" time="0.003" /><testcase classname="tests.unit.test_alpaca_client_targeted.TestAlpacaClientPricing" name="test_get_current_price_not_found" time="0.002" /><testcase classname="tests.unit.test_alpaca_client_targeted.TestAlpacaClientStreaming" name="test_connect_data_stream_stocks" time="0.118" /><testcase classname="tests.unit.test_alpaca_client_targeted.TestAlpacaClientStreaming" name="test_connect_data_stream_crypto" time="0.129" /><testcase classname="tests.unit.test_alpaca_client_targeted.TestAlpacaClientStreaming" name="test_add_data_callback" time="0.002" /><testcase classname="tests.unit.test_alpaca_client_targeted.TestAlpacaClientStreaming" name="test_disconnect" time="0.003" /><testcase classname="tests.unit.test_alpaca_client_targeted.TestAlpacaClientUtilities" name="test_rate_limiting" time="0.412" /><testcase classname="tests.unit.test_alpaca_client_targeted.TestAlpacaClientUtilities" name="test_destructor_cleanup" time="0.010" /><testcase classname="tests.unit.test_alpaca_client_targeted.TestAlpacaDataClasses" name="test_market_data_creation" time="0.006" /><testcase classname="tests.unit.test_alpaca_client_targeted.TestAlpacaDataClasses" name="test_order_result_creation" time="0.003" /><testcase classname="tests.unit.test_alpaca_client_targeted.TestAlpacaClientObservability" name="test_observability_imports" time="0.002" /><testcase classname="tests.unit.test_api_coverage.TestAPIEndpointsCoverage" name="test_health_check_endpoint" time="0.034"><failure message="TypeError: object Mock can't be used in 'await' expression">tests\unit\test_api_coverage.py:24: in test_health_check_endpoint
+    response = client.get("/health")
+               ^^^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\testclient.py:479: in get
+    return super().get(
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py:1053: in get
+    return self.request(
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\testclient.py:451: in request
+    return super().request(
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py:825: in request
+    return self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py:914: in send
+    response = self._send_handling_auth(
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py:942: in _send_handling_auth
+    response = self._send_handling_redirects(
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py:979: in _send_handling_redirects
+    response = self._send_single_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py:1014: in _send_single_request
+    response = transport.handle_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\testclient.py:354: in handle_request
+    raise exc
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\testclient.py:351: in handle_request
+    portal.call(self.app, scope, receive, send)
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\anyio\from_thread.py:290: in call
+    return cast(T_Retval, self.start_task_soon(func, *args).result())
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\concurrent\futures\_base.py:449: in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\concurrent\futures\_base.py:401: in __get_result
+    raise self._exception
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\anyio\from_thread.py:221: in _call_func
+    retval = await retval_or_awaitable
+             ^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\testclient.py:77: in __call__
+    await instance(receive, send)
+E   TypeError: object Mock can't be used in 'await' expression</failure></testcase><testcase classname="tests.unit.test_api_coverage.TestAPIEndpointsCoverage" name="test_metrics_endpoint" time="0.009"><failure message="TypeError: object Mock can't be used in 'await' expression">tests\unit\test_api_coverage.py:32: in test_metrics_endpoint
+    response = client.get("/metrics")
+               ^^^^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\testclient.py:479: in get
+    return super().get(
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py:1053: in get
+    return self.request(
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\testclient.py:451: in request
+    return super().request(
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py:825: in request
+    return self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py:914: in send
+    response = self._send_handling_auth(
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py:942: in _send_handling_auth
+    response = self._send_handling_redirects(
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py:979: in _send_handling_redirects
+    response = self._send_single_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py:1014: in _send_single_request
+    response = transport.handle_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\testclient.py:354: in handle_request
+    raise exc
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\testclient.py:351: in handle_request
+    portal.call(self.app, scope, receive, send)
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\anyio\from_thread.py:290: in call
+    return cast(T_Retval, self.start_task_soon(func, *args).result())
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\concurrent\futures\_base.py:449: in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\concurrent\futures\_base.py:401: in __get_result
+    raise self._exception
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\anyio\from_thread.py:221: in _call_func
+    retval = await retval_or_awaitable
+             ^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\testclient.py:77: in __call__
+    await instance(receive, send)
+E   TypeError: object Mock can't be used in 'await' expression</failure></testcase><testcase classname="tests.unit.test_api_coverage.TestAPIEndpointsCoverage" name="test_openapi_schema_endpoint" time="0.008"><failure message="TypeError: object Mock can't be used in 'await' expression">tests\unit\test_api_coverage.py:39: in test_openapi_schema_endpoint
+    response = client.get("/openapi.json")
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\testclient.py:479: in get
+    return super().get(
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py:1053: in get
+    return self.request(
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\testclient.py:451: in request
+    return super().request(
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py:825: in request
+    return self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py:914: in send
+    response = self._send_handling_auth(
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py:942: in _send_handling_auth
+    response = self._send_handling_redirects(
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py:979: in _send_handling_redirects
+    response = self._send_single_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py:1014: in _send_single_request
+    response = transport.handle_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\testclient.py:354: in handle_request
+    raise exc
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\testclient.py:351: in handle_request
+    portal.call(self.app, scope, receive, send)
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\anyio\from_thread.py:290: in call
+    return cast(T_Retval, self.start_task_soon(func, *args).result())
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\concurrent\futures\_base.py:449: in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\concurrent\futures\_base.py:401: in __get_result
+    raise self._exception
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\anyio\from_thread.py:221: in _call_func
+    retval = await retval_or_awaitable
+             ^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\testclient.py:77: in __call__
+    await instance(receive, send)
+E   TypeError: object Mock can't be used in 'await' expression</failure></testcase><testcase classname="tests.unit.test_api_coverage.TestAPIEndpointsCoverage" name="test_docs_endpoint" time="0.007"><failure message="TypeError: object Mock can't be used in 'await' expression">tests\unit\test_api_coverage.py:48: in test_docs_endpoint
+    response = client.get("/docs")
+               ^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\testclient.py:479: in get
+    return super().get(
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py:1053: in get
+    return self.request(
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\testclient.py:451: in request
+    return super().request(
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py:825: in request
+    return self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py:914: in send
+    response = self._send_handling_auth(
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py:942: in _send_handling_auth
+    response = self._send_handling_redirects(
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py:979: in _send_handling_redirects
+    response = self._send_single_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py:1014: in _send_single_request
+    response = transport.handle_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\testclient.py:354: in handle_request
+    raise exc
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\testclient.py:351: in handle_request
+    portal.call(self.app, scope, receive, send)
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\anyio\from_thread.py:290: in call
+    return cast(T_Retval, self.start_task_soon(func, *args).result())
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\concurrent\futures\_base.py:449: in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\concurrent\futures\_base.py:401: in __get_result
+    raise self._exception
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\anyio\from_thread.py:221: in _call_func
+    retval = await retval_or_awaitable
+             ^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\testclient.py:77: in __call__
+    await instance(receive, send)
+E   TypeError: object Mock can't be used in 'await' expression</failure></testcase><testcase classname="tests.unit.test_api_coverage.TestAPIEndpointsCoverage" name="test_root_endpoint" time="0.009"><failure message="TypeError: object Mock can't be used in 'await' expression">tests\unit\test_api_coverage.py:55: in test_root_endpoint
+    response = client.get("/")
+               ^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\testclient.py:479: in get
+    return super().get(
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py:1053: in get
+    return self.request(
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\testclient.py:451: in request
+    return super().request(
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py:825: in request
+    return self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py:914: in send
+    response = self._send_handling_auth(
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py:942: in _send_handling_auth
+    response = self._send_handling_redirects(
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py:979: in _send_handling_redirects
+    response = self._send_single_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py:1014: in _send_single_request
+    response = transport.handle_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\testclient.py:354: in handle_request
+    raise exc
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\testclient.py:351: in handle_request
+    portal.call(self.app, scope, receive, send)
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\anyio\from_thread.py:290: in call
+    return cast(T_Retval, self.start_task_soon(func, *args).result())
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\concurrent\futures\_base.py:456: in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\concurrent\futures\_base.py:401: in __get_result
+    raise self._exception
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\anyio\from_thread.py:221: in _call_func
+    retval = await retval_or_awaitable
+             ^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\testclient.py:77: in __call__
+    await instance(receive, send)
+E   TypeError: object Mock can't be used in 'await' expression</failure></testcase></testsuite></testsuites>

@@ -1,28 +1,16 @@
-<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="5" skipped="0" tests="6" time="1.919" timestamp="2025-08-28T23:55:41.394640-07:00" hostname="BOOK-FVJOEO3Q00"><testcase classname="tests.test_ensemble_model_phase7b4_mlops_integration.TestMLOpsModelRegistryIntegration" name="test_model_registry_registration" time="0.006"><failure message="AttributeError: 'InMemoryModelRegistry' object has no attribute 'get'">tests\test_ensemble_model_phase7b4_mlops_integration.py:59: in test_model_registry_registration
-    retrieved = registry.get("test_ensemble", "1.0.0")
-                ^^^^^^^^^^^^
-E   AttributeError: 'InMemoryModelRegistry' object has no attribute 'get'</failure></testcase><testcase classname="tests.test_ensemble_model_phase7b4_mlops_integration.TestMLOpsModelRegistryIntegration" name="test_model_version_tracking" time="0.002"><failure message="AttributeError: 'InMemoryModelRegistry' object has no attribute 'get'">tests\test_ensemble_model_phase7b4_mlops_integration.py:79: in test_model_version_tracking
-    latest_model, latest_version = registry.get("ensemble_model", "1.2.0")
-                                   ^^^^^^^^^^^^
-E   AttributeError: 'InMemoryModelRegistry' object has no attribute 'get'</failure></testcase><testcase classname="tests.test_ensemble_model_phase7b4_mlops_integration.TestMLOpsModelManagerIntegration" name="test_model_storage_integration" time="0.007" /><testcase classname="tests.test_ensemble_model_phase7b4_mlops_integration.TestMLOpsModelManagerIntegration" name="test_training_telemetry_integration" time="0.014"><failure message="AttributeError: &lt;module 'backend.models.ensemble_model' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\models\\ensemble_model.py'&gt; does not have the attribute 'create_features'">tests\test_ensemble_model_phase7b4_mlops_integration.py:165: in test_training_telemetry_integration
-    with patch('backend.models.ensemble_model.create_features') as mock_features:
-..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1458: in __enter__
-    original, local = self.get_original()
-                      ^^^^^^^^^^^^^^^^^^^
-..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1431: in get_original
-    raise AttributeError(
-E   AttributeError: &lt;module 'backend.models.ensemble_model' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\models\\ensemble_model.py'&gt; does not have the attribute 'create_features'</failure></testcase><testcase classname="tests.test_ensemble_model_phase7b4_mlops_integration.TestMLOpsModelManagerIntegration" name="test_inference_telemetry_integration" time="0.004"><failure message="AttributeError: &lt;module 'backend.models.ensemble_model' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\models\\ensemble_model.py'&gt; does not have the attribute 'validate_feature_alignment'">tests\test_ensemble_model_phase7b4_mlops_integration.py:199: in test_inference_telemetry_integration
-    with patch('backend.models.ensemble_model.validate_feature_alignment') as mock_validate:
-..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1458: in __enter__
-    original, local = self.get_original()
-                      ^^^^^^^^^^^^^^^^^^^
-..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1431: in get_original
-    raise AttributeError(
-E   AttributeError: &lt;module 'backend.models.ensemble_model' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\models\\ensemble_model.py'&gt; does not have the attribute 'validate_feature_alignment'</failure></testcase><testcase classname="tests.test_ensemble_model_phase7b4_mlops_integration.TestMLOpsFeaturePipelineIntegration" name="test_feature_validation_integration" time="0.002"><failure message="AttributeError: &lt;module 'backend.models.ensemble_model' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\models\\ensemble_model.py'&gt; does not have the attribute 'validate_feature_alignment'">tests\test_ensemble_model_phase7b4_mlops_integration.py:241: in test_feature_validation_integration
-    with patch('backend.models.ensemble_model.validate_feature_alignment') as mock_validate:
-..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1458: in __enter__
-    original, local = self.get_original()
-                      ^^^^^^^^^^^^^^^^^^^
-..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1431: in get_original
-    raise AttributeError(
-E   AttributeError: &lt;module 'backend.models.ensemble_model' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\models\\ensemble_model.py'&gt; does not have the attribute 'validate_feature_alignment'</failure></testcase></testsuite></testsuites>
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="5" skipped="0" tests="5" time="0.708" timestamp="2025-09-15T17:24:59.074444-07:00" hostname="BOOK-FVJOEO3Q00"><testcase classname="tests.unit.test_orders.TestOrderStateMachine" name="test_new_order_creation" time="0.001"><failure message="AttributeError: 'OrderStateMachine' object has no attribute 'create_order'">tests\unit\test_orders.py:46: in test_new_order_creation
+    order = order_state_machine.create_order(sample_order)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   AttributeError: 'OrderStateMachine' object has no attribute 'create_order'</failure></testcase><testcase classname="tests.unit.test_orders.TestOrderStateMachine" name="test_valid_state_transitions" time="0.001"><failure message="AttributeError: 'OrderStateMachine' object has no attribute 'create_order'">tests\unit\test_orders.py:57: in test_valid_state_transitions
+    order = order_state_machine.create_order(sample_order)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   AttributeError: 'OrderStateMachine' object has no attribute 'create_order'</failure></testcase><testcase classname="tests.unit.test_orders.TestOrderStateMachine" name="test_invalid_state_transitions" time="0.001"><failure message="AttributeError: 'OrderStateMachine' object has no attribute 'create_order'">tests\unit\test_orders.py:93: in test_invalid_state_transitions
+    order = order_state_machine.create_order(sample_order)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   AttributeError: 'OrderStateMachine' object has no attribute 'create_order'</failure></testcase><testcase classname="tests.unit.test_orders.TestOrderStateMachine" name="test_order_cancellation" time="0.001"><failure message="AttributeError: 'OrderStateMachine' object has no attribute 'create_order'">tests\unit\test_orders.py:115: in test_order_cancellation
+    order = order_state_machine.create_order(sample_order)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   AttributeError: 'OrderStateMachine' object has no attribute 'create_order'</failure></testcase><testcase classname="tests.unit.test_orders.TestOrderStateMachine" name="test_order_rejection" time="0.001"><failure message="AttributeError: 'OrderStateMachine' object has no attribute 'create_order'">tests\unit\test_orders.py:137: in test_order_rejection
+    order = order_state_machine.create_order(sample_order)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   AttributeError: 'OrderStateMachine' object has no attribute 'create_order'</failure></testcase></testsuite></testsuites>

@@ -1,20 +1,34 @@
-<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="5" skipped="0" tests="10" time="2.854" timestamp="2025-08-29T00:16:53.894779-07:00" hostname="BOOK-FVJOEO3Q00"><testcase classname="tests.unit.test_order_service_failures.TestOrderServiceIdempotency" name="test_submit_order_new_idempotency_key" time="0.024"><failure message="AssertionError: Expected 'add_order_submit_event' to have been called once. Called 0 times.">tests\unit\test_order_service_failures.py:51: in test_submit_order_new_idempotency_key
-    mock_outbox_repo.add_order_submit_event.assert_called_once()
-..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:923: in assert_called_once
-    raise AssertionError(msg)
-E   AssertionError: Expected 'add_order_submit_event' to have been called once. Called 0 times.</failure></testcase><testcase classname="tests.unit.test_order_service_failures.TestOrderServiceIdempotency" name="test_submit_order_duplicate_idempotency_key" time="0.008"><failure message="AssertionError: Expected 'add_order_submit_event' to have been called once. Called 0 times.">tests\unit\test_order_service_failures.py:89: in test_submit_order_duplicate_idempotency_key
-    mock_outbox_repo.add_order_submit_event.assert_called_once()  # Still called by service logic
-    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:923: in assert_called_once
-    raise AssertionError(msg)
-E   AssertionError: Expected 'add_order_submit_event' to have been called once. Called 0 times.</failure></testcase><testcase classname="tests.unit.test_order_service_failures.TestOrderServiceIdempotency" name="test_submit_order_concurrent_duplicate_keys" time="0.008" /><testcase classname="tests.unit.test_order_service_failures.TestOrderServiceIdempotency" name="test_idempotency_key_validation" time="0.008" /><testcase classname="tests.unit.test_order_service_failures.TestOrderServiceFailureHandling" name="test_orders_repo_database_failure" time="0.010" /><testcase classname="tests.unit.test_order_service_failures.TestOrderServiceFailureHandling" name="test_outbox_repo_failure_after_order_creation" time="0.007"><failure message="Failed: DID NOT RAISE &lt;class 'Exception'&gt;">tests\unit\test_order_service_failures.py:233: in test_outbox_repo_failure_after_order_creation
-    with pytest.raises(Exception, match="Outbox service unavailable"):
-E   Failed: DID NOT RAISE &lt;class 'Exception'&gt;</failure></testcase><testcase classname="tests.unit.test_order_service_failures.TestOrderServiceFailureHandling" name="test_order_validation_failures" time="0.007" /><testcase classname="tests.unit.test_order_service_failures.TestOrderServiceFailureHandling" name="test_order_service_timeout_handling" time="1.011" /><testcase classname="tests.unit.test_order_service_failures.TestOrderServiceBrokerIntegration" name="test_outbox_event_payload_structure" time="0.009"><failure message="AssertionError: Expected 'add_order_submit_event' to have been called once. Called 0 times.">tests\unit\test_order_service_failures.py:361: in test_outbox_event_payload_structure
-    mock_outbox_repo.add_order_submit_event.assert_called_once()
-..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:923: in assert_called_once
-    raise AssertionError(msg)
-E   AssertionError: Expected 'add_order_submit_event' to have been called once. Called 0 times.</failure></testcase><testcase classname="tests.unit.test_order_service_failures.TestOrderServiceBrokerIntegration" name="test_broker_retry_on_failure" time="0.008"><failure message="AssertionError: Expected 'add_order_submit_event' to have been called once. Called 0 times.">tests\unit\test_order_service_failures.py:407: in test_broker_retry_on_failure
-    mock_outbox_repo.add_order_submit_event.assert_called_once()
-..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:923: in assert_called_once
-    raise AssertionError(msg)
-E   AssertionError: Expected 'add_order_submit_event' to have been called once. Called 0 times.</failure></testcase></testsuite></testsuites>
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="5" skipped="0" tests="5" time="0.714" timestamp="2025-09-14T20:48:56.751609-07:00" hostname="BOOK-FVJOEO3Q00"><testcase classname="tests.risk.test_risk_gate_order_flow.TestRiskGateOrderFlowIntegration" name="test_risk_gate_allows_valid_order" time="0.005"><failure message="AttributeError: &lt;backend.risk.risk_manager.AsyncRiskManager object at 0x0000025F1644D700&gt; does not have the attribute '_is_market_open'">tests\risk\test_risk_gate_order_flow.py:94: in test_risk_gate_allows_valid_order
+    with patch.object(risk_manager, '_is_market_open', return_value=True):
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1458: in __enter__
+    original, local = self.get_original()
+                      ^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1431: in get_original
+    raise AttributeError(
+E   AttributeError: &lt;backend.risk.risk_manager.AsyncRiskManager object at 0x0000025F1644D700&gt; does not have the attribute '_is_market_open'</failure></testcase><testcase classname="tests.risk.test_risk_gate_order_flow.TestRiskGateOrderFlowIntegration" name="test_risk_gate_blocks_oversized_order" time="0.004"><failure message="AttributeError: &lt;backend.risk.risk_manager.AsyncRiskManager object at 0x0000025F164E59D0&gt; does not have the attribute '_is_market_open'">tests\risk\test_risk_gate_order_flow.py:136: in test_risk_gate_blocks_oversized_order
+    with patch.object(risk_manager, '_is_market_open', return_value=True):
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1458: in __enter__
+    original, local = self.get_original()
+                      ^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1431: in get_original
+    raise AttributeError(
+E   AttributeError: &lt;backend.risk.risk_manager.AsyncRiskManager object at 0x0000025F164E59D0&gt; does not have the attribute '_is_market_open'</failure></testcase><testcase classname="tests.risk.test_risk_gate_order_flow.TestRiskGateOrderFlowIntegration" name="test_risk_gate_handles_concurrent_orders" time="0.004"><failure message="AttributeError: &lt;backend.risk.risk_manager.AsyncRiskManager object at 0x0000025F165BB470&gt; does not have the attribute '_is_market_open'">tests\risk\test_risk_gate_order_flow.py:183: in test_risk_gate_handles_concurrent_orders
+    with patch.object(risk_manager, '_is_market_open', return_value=True):
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1458: in __enter__
+    original, local = self.get_original()
+                      ^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1431: in get_original
+    raise AttributeError(
+E   AttributeError: &lt;backend.risk.risk_manager.AsyncRiskManager object at 0x0000025F165BB470&gt; does not have the attribute '_is_market_open'</failure></testcase><testcase classname="tests.risk.test_risk_gate_order_flow.TestRiskGateOrderFlowIntegration" name="test_risk_gate_with_portfolio_service_failure" time="0.005"><failure message="AssertionError: assert 'kelly_size_exceeded' == 'pos_cap'&#10;  &#10;  - pos_cap&#10;  + kelly_size_exceeded">tests\risk\test_risk_gate_order_flow.py:224: in test_risk_gate_with_portfolio_service_failure
+    assert decision.reason == "pos_cap"
+E   AssertionError: assert 'kelly_size_exceeded' == 'pos_cap'
+E     
+E     - pos_cap
+E     + kelly_size_exceeded</failure></testcase><testcase classname="tests.risk.test_risk_gate_order_flow.TestRiskGateOrderFlowIntegration" name="test_risk_gate_metrics_recording" time="0.003"><failure message="AttributeError: &lt;backend.risk.risk_manager.AsyncRiskManager object at 0x0000025F1652B050&gt; does not have the attribute '_is_market_open'">tests\risk\test_risk_gate_order_flow.py:252: in test_risk_gate_metrics_recording
+    with patch.object(risk_manager, '_is_market_open', return_value=True):
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1458: in __enter__
+    original, local = self.get_original()
+                      ^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1431: in get_original
+    raise AttributeError(
+E   AttributeError: &lt;backend.risk.risk_manager.AsyncRiskManager object at 0x0000025F1652B050&gt; does not have the attribute '_is_market_open'</failure></testcase></testsuite></testsuites>

@@ -3,7 +3,7 @@
     {
       "model_id": "model_a",
       "version": "1.0.0",
-      "created_at": "2025-08-24T17:05:48.045793",
+      "created_at": "2025-09-14T20:43:23.237026",
       "status": "trained",
       "metrics": {},
       "training_data_hash": "2bee24c6bcac6f32fd736188f8cf6daa",
@@ -16,14 +16,14 @@
         "feature2": "int64"
       },
       "train_window": {},
-      "artifact_hash": "e84738f77cd5dde4d6ff7b3ce2c5dbf4ec722744d0e7b008e19fff566d8ad311",
+      "artifact_hash": "6f907fe4c9c2e2e29a4730102855e83a78c884260eb7b364e07138fa98a5346a",
       "model_path": "test_artifacts\\model_a\\1.0.0\\model.bin",
       "metadata": {
         "training_samples": 3,
         "features_count": 2,
         "model_id": "model_a",
         "version": "1.0.0",
-        "created_at": "2025-08-25T00:05:48.043788+00:00",
+        "created_at": "2025-09-15T03:43:23.235005+00:00",
         "train_window": {},
         "feature_names": [
           "feature1",
@@ -44,7 +44,7 @@
           }
         },
         "metrics": {},
-        "artifact_hash": "e84738f77cd5dde4d6ff7b3ce2c5dbf4ec722744d0e7b008e19fff566d8ad311"
+        "artifact_hash": "6f907fe4c9c2e2e29a4730102855e83a78c884260eb7b364e07138fa98a5346a"
       }
     }
   ],
@@ -52,7 +52,7 @@
     {
       "model_id": "model_b",
       "version": "2.0.0",
-      "created_at": "2025-08-24T17:05:48.061587",
+      "created_at": "2025-09-14T20:43:23.244037",
       "status": "trained",
       "metrics": {},
       "training_data_hash": "2bee24c6bcac6f32fd736188f8cf6daa",
@@ -65,14 +65,14 @@
         "feature2": "int64"
       },
       "train_window": {},
-      "artifact_hash": "a41a7e702ae64b6145ed9387f7d43178e5242eac09cf9f7007eabd90e2e31756",
+      "artifact_hash": "37d651abff86513187e54acdfad69fc8cc0e606345ed2e2824ec091478ea7345",
       "model_path": "test_artifacts\\model_b\\2.0.0\\model.bin",
       "metadata": {
         "training_samples": 3,
         "features_count": 2,
         "model_id": "model_b",
         "version": "2.0.0",
-        "created_at": "2025-08-25T00:05:48.059315+00:00",
+        "created_at": "2025-09-15T03:43:23.244037+00:00",
         "train_window": {},
         "feature_names": [
           "feature1",
@@ -93,7 +93,7 @@
           }
         },
         "metrics": {},
-        "artifact_hash": "a41a7e702ae64b6145ed9387f7d43178e5242eac09cf9f7007eabd90e2e31756"
+        "artifact_hash": "37d651abff86513187e54acdfad69fc8cc0e606345ed2e2824ec091478ea7345"
       }
     }
   ]

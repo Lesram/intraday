@@ -1,12 +1,61 @@
-<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="5" skipped="0" tests="37" time="1.931" timestamp="2025-08-29T00:17:22.435460-07:00" hostname="BOOK-FVJOEO3Q00"><testcase classname="tests.unit.test_risk_manager_current.TestRiskMathUtils" name="test_kelly_fraction_calculation" time="0.003" /><testcase classname="tests.unit.test_risk_manager_current.TestRiskMathUtils" name="test_ewma_volatility_calculation" time="0.002" /><testcase classname="tests.unit.test_risk_manager_current.TestRiskMathUtils" name="test_parametric_var_calculation" time="0.002" /><testcase classname="tests.unit.test_risk_manager_current.TestRiskMathUtils" name="test_historical_cvar_calculation" time="0.002" /><testcase classname="tests.unit.test_risk_manager_current.TestAsyncRiskManager" name="test_initialization" time="0.002" /><testcase classname="tests.unit.test_risk_manager_current.TestAsyncRiskManager" name="test_default_limits" time="0.003" /><testcase classname="tests.unit.test_risk_manager_current.TestAsyncRiskManager" name="test_simple_order_approval" time="0.007" /><testcase classname="tests.unit.test_risk_manager_current.TestAsyncRiskManager" name="test_large_position_blocking" time="0.006" /><testcase classname="tests.unit.test_risk_manager_current.TestAsyncRiskManager" name="test_circuit_breaker_state" time="0.005" /><testcase classname="tests.unit.test_risk_manager_current.TestAsyncRiskManager" name="test_halted_symbol_state" time="0.004" /><testcase classname="tests.unit.test_risk_manager_current.TestAsyncRiskManager" name="test_portfolio_state_integration" time="0.005" /><testcase classname="tests.unit.test_risk_manager_current.TestAsyncRiskManager" name="test_decision_tracking" time="0.005" /><testcase classname="tests.unit.test_risk_manager_current.TestRiskDecisionTypes" name="test_allow_decision_creation" time="0.001" /><testcase classname="tests.unit.test_risk_manager_current.TestRiskDecisionTypes" name="test_block_decision_creation" time="0.002" /><testcase classname="tests.unit.test_risk_manager_current.TestOrderSpec" name="test_valid_order_spec" time="0.001" /><testcase classname="tests.unit.test_risk_manager_current.TestOrderSpec" name="test_order_validation_negative_qty" time="0.002" /><testcase classname="tests.unit.test_risk_manager_current.TestOrderSpec" name="test_order_validation_negative_notional" time="0.001" /><testcase classname="tests.unit.test_risk_manager_current.TestOrderSpec" name="test_order_validation_invalid_price" time="0.002" /><testcase classname="tests.unit.test_risk_manager_current.TestPortfolioState" name="test_portfolio_state_creation" time="0.002" /><testcase classname="tests.unit.test_risk_manager_current.TestPortfolioState" name="test_gross_notional_calculation" time="0.001" /><testcase classname="tests.unit.test_risk_manager_current.TestPortfolioState" name="test_net_notional_calculation" time="0.001" /><testcase classname="tests.unit.test_risk_manager_math_edges.TestKellyFractionEdgeCases" name="test_kelly_with_zero_variance" time="0.001" /><testcase classname="tests.unit.test_risk_manager_math_edges.TestKellyFractionEdgeCases" name="test_kelly_with_negative_variance" time="0.001" /><testcase classname="tests.unit.test_risk_manager_math_edges.TestKellyFractionEdgeCases" name="test_kelly_with_very_small_variance" time="0.002" /><testcase classname="tests.unit.test_risk_manager_math_edges.TestKellyFractionEdgeCases" name="test_kelly_with_extreme_values" time="0.001" /><testcase classname="tests.unit.test_risk_manager_math_edges.TestKellyFractionEdgeCases" name="test_kelly_with_negative_expected_return" time="0.001" /><testcase classname="tests.unit.test_risk_manager_math_edges.TestKellyFractionEdgeCases" name="test_kelly_numerical_precision" time="0.001" /><testcase classname="tests.unit.test_risk_manager_math_edges.TestKellyFractionEdgeCases" name="test_kelly_boundary_conditions" time="0.001" /><testcase classname="tests.unit.test_risk_manager_math_edges.TestParametricVaREdgeCases" name="test_var_with_insufficient_samples" time="0.003"><failure message="assert -0.0033680934494812916 == 5000.0">tests\unit\test_risk_manager_math_edges.py:90: in test_var_with_insufficient_samples
-    assert var == expected_fallback
-E   assert -0.0033680934494812916 == 5000.0</failure></testcase><testcase classname="tests.unit.test_risk_manager_math_edges.TestParametricVaREdgeCases" name="test_var_with_all_positive_returns" time="0.002"><failure message="assert -0.01 &gt; 0">tests\unit\test_risk_manager_math_edges.py:99: in test_var_with_all_positive_returns
-    assert var &gt; 0  # Should still return positive VaR
-    ^^^^^^^^^^^^^^
-E   assert -0.01 &gt; 0</failure></testcase><testcase classname="tests.unit.test_risk_manager_math_edges.TestParametricVaREdgeCases" name="test_var_with_all_negative_returns" time="0.002" /><testcase classname="tests.unit.test_risk_manager_math_edges.TestParametricVaREdgeCases" name="test_var_with_extreme_outliers" time="0.002" /><testcase classname="tests.unit.test_risk_manager_math_edges.TestParametricVaREdgeCases" name="test_var_confidence_levels" time="0.002" /><testcase classname="tests.unit.test_risk_manager_math_edges.TestParametricVaREdgeCases" name="test_var_with_zero_portfolio_value" time="0.002" /><testcase classname="tests.unit.test_risk_manager_math_edges.TestParametricVaREdgeCases" name="test_var_with_nan_returns" time="0.002"><failure message="assert -0.006634391524078255 == 5000.0">tests\unit\test_risk_manager_math_edges.py:158: in test_var_with_nan_returns
-    assert var == expected_fallback
-E   assert -0.006634391524078255 == 5000.0</failure></testcase><testcase classname="tests.unit.test_risk_manager_math_edges.TestParametricVaREdgeCases" name="test_var_with_infinite_returns" time="0.002"><failure message="assert -0.00791110313533144 &gt; 0">tests\unit\test_risk_manager_math_edges.py:168: in test_var_with_infinite_returns
-    assert var &gt; 0
-E   assert -0.00791110313533144 &gt; 0</failure></testcase><testcase classname="tests.unit.test_risk_manager_math_edges.TestHistoricalCVaREdgeCases" name="test_cvar_with_no_tail_observations" time="0.002"><failure message="assert -0.01 == 7000.000000000001">tests\unit\test_risk_manager_math_edges.py:183: in test_cvar_with_no_tail_observations
-    assert cvar == expected_fallback
-E   assert -0.01 == 7000.000000000001</failure></testcase></testsuite></testsuites>
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="5" failures="0" skipped="0" tests="6" time="0.732" timestamp="2025-09-14T20:49:09.134682-07:00" hostname="BOOK-FVJOEO3Q00"><testcase classname="tests.security.test_jwt_and_cors" name="test_simple_jwt_functionality" time="0.001" /><testcase classname="tests.security.test_jwt_and_cors.TestJWTAndCORS" name="test_valid_jwt_token_authentication" time="0.001"><error message="failed on setup with &quot;AttributeError: property 'JWTError' of 'JwtVerifier' object has no deleter&quot;">..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1567: in __enter__
+    setattr(self.target, self.attribute, new_attr)
+E   AttributeError: property 'JWTError' of 'JwtVerifier' object has no setter
+
+During handling of the above exception, another exception occurred:
+tests\security\test_jwt_and_cors.py:35: in client
+    with patch.object(jwt_verifier, 'encode', fake_verifier.encode), \
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1580: in __enter__
+    if not self.__exit__(*sys.exc_info()):
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1588: in __exit__
+    delattr(self.target, self.attribute)
+E   AttributeError: property 'JWTError' of 'JwtVerifier' object has no deleter</error></testcase><testcase classname="tests.security.test_jwt_and_cors.TestJWTAndCORS" name="test_expired_jwt_token_rejected" time="0.001"><error message="failed on setup with &quot;AttributeError: property 'JWTError' of 'JwtVerifier' object has no deleter&quot;">..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1567: in __enter__
+    setattr(self.target, self.attribute, new_attr)
+E   AttributeError: property 'JWTError' of 'JwtVerifier' object has no setter
+
+During handling of the above exception, another exception occurred:
+tests\security\test_jwt_and_cors.py:35: in client
+    with patch.object(jwt_verifier, 'encode', fake_verifier.encode), \
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1580: in __enter__
+    if not self.__exit__(*sys.exc_info()):
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1588: in __exit__
+    delattr(self.target, self.attribute)
+E   AttributeError: property 'JWTError' of 'JwtVerifier' object has no deleter</error></testcase><testcase classname="tests.security.test_jwt_and_cors.TestJWTAndCORS" name="test_wrong_audience_rejected" time="0.001"><error message="failed on setup with &quot;AttributeError: property 'JWTError' of 'JwtVerifier' object has no deleter&quot;">..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1567: in __enter__
+    setattr(self.target, self.attribute, new_attr)
+E   AttributeError: property 'JWTError' of 'JwtVerifier' object has no setter
+
+During handling of the above exception, another exception occurred:
+tests\security\test_jwt_and_cors.py:35: in client
+    with patch.object(jwt_verifier, 'encode', fake_verifier.encode), \
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1580: in __enter__
+    if not self.__exit__(*sys.exc_info()):
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1588: in __exit__
+    delattr(self.target, self.attribute)
+E   AttributeError: property 'JWTError' of 'JwtVerifier' object has no deleter</error></testcase><testcase classname="tests.security.test_jwt_and_cors.TestJWTAndCORS" name="test_wrong_issuer_rejected" time="0.001"><error message="failed on setup with &quot;AttributeError: property 'JWTError' of 'JwtVerifier' object has no deleter&quot;">..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1567: in __enter__
+    setattr(self.target, self.attribute, new_attr)
+E   AttributeError: property 'JWTError' of 'JwtVerifier' object has no setter
+
+During handling of the above exception, another exception occurred:
+tests\security\test_jwt_and_cors.py:35: in client
+    with patch.object(jwt_verifier, 'encode', fake_verifier.encode), \
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1580: in __enter__
+    if not self.__exit__(*sys.exc_info()):
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1588: in __exit__
+    delattr(self.target, self.attribute)
+E   AttributeError: property 'JWTError' of 'JwtVerifier' object has no deleter</error></testcase><testcase classname="tests.security.test_jwt_and_cors.TestJWTAndCORS" name="test_malformed_jwt_token_rejected" time="0.001"><error message="failed on setup with &quot;AttributeError: property 'JWTError' of 'JwtVerifier' object has no deleter&quot;">..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1567: in __enter__
+    setattr(self.target, self.attribute, new_attr)
+E   AttributeError: property 'JWTError' of 'JwtVerifier' object has no setter
+
+During handling of the above exception, another exception occurred:
+tests\security\test_jwt_and_cors.py:35: in client
+    with patch.object(jwt_verifier, 'encode', fake_verifier.encode), \
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1580: in __enter__
+    if not self.__exit__(*sys.exc_info()):
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1588: in __exit__
+    delattr(self.target, self.attribute)
+E   AttributeError: property 'JWTError' of 'JwtVerifier' object has no deleter</error></testcase></testsuite></testsuites>

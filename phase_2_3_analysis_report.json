@@ -1,0 +1,17 @@
+{
+  "AssertionError": {
+    "count": 0,
+    "examples": [],
+    "detailed": []
+  },
+  "ImportError": {
+    "count": 0,
+    "examples": [],
+    "detailed": []
+  },
+  "AttributeError": {
+    "count": 0,
+    "examples": [],
+    "detailed": []
+  }
+}

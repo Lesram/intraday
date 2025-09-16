@@ -137,11 +137,13 @@ class StrategyEngine:
                 if plan:
                     plans.append(plan)
             except Exception as e:
+                import traceback
                 logger.error(
                     f"Failed to build plan for {symbol}",
                     extra={
                         "symbol": symbol,
                         "error": str(e),
+                        "traceback": traceback.format_exc(),
                         "signals_count": len(symbol_signals),
                     },
                 )
@@ -336,11 +338,11 @@ class StrategyEngine:
 
         # Determine side
         if qty > 0:
-            side = "long"
+            side = Side.BUY
         elif qty < 0:
-            side = "short"
+            side = Side.SELL
         else:
-            side = "flat"
+            side = Side.FLAT
 
         return qty, notional, side
 
@@ -352,7 +354,7 @@ class StrategyEngine:
 
         Updates risk_allowed and risk_reason based on RiskManager.before_order().
         """
-        if plan.qty == 0 or plan.side == "flat":
+        if plan.qty == 0 or plan.side == Side.FLAT:
             # No risk check needed for flat positions
             return plan
 

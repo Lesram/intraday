@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="5" failures="0" skipped="0" tests="5" time="0.947" timestamp="2025-08-28T23:18:23.662398-07:00" hostname="BOOK-FVJOEO3Q00"><testcase classname="tests.services.test_order_service_enhanced.TestOrderServiceIdempotency" name="test_idempotent_order_creation_same_client_key" time="0.002"><error message="failed on setup with &quot;AttributeError: Mock object has no attribute 'update_status'&quot;">tests\services\test_order_service_enhanced.py:35: in mock_orders_repo
+    repo.update_status.return_value = mock_order
+    ^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:658: in __getattr__
+    raise AttributeError("Mock object has no attribute %r" % name)
+E   AttributeError: Mock object has no attribute 'update_status'</error></testcase><testcase classname="tests.services.test_order_service_enhanced.TestOrderServiceIdempotency" name="test_different_client_keys_create_separate_orders" time="0.002"><error message="failed on setup with &quot;AttributeError: Mock object has no attribute 'update_status'&quot;">tests\services\test_order_service_enhanced.py:35: in mock_orders_repo
+    repo.update_status.return_value = mock_order
+    ^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:658: in __getattr__
+    raise AttributeError("Mock object has no attribute %r" % name)
+E   AttributeError: Mock object has no attribute 'update_status'</error></testcase><testcase classname="tests.services.test_order_service_enhanced.TestOrderServiceRetryLogic" name="test_retry_with_429_rate_limit" time="0.002"><error message="failed on setup with &quot;AttributeError: Mock object has no attribute 'update_status'&quot;">tests\services\test_order_service_enhanced.py:35: in mock_orders_repo
+    repo.update_status.return_value = mock_order
+    ^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:658: in __getattr__
+    raise AttributeError("Mock object has no attribute %r" % name)
+E   AttributeError: Mock object has no attribute 'update_status'</error></testcase><testcase classname="tests.services.test_order_service_enhanced.TestOrderServiceRetryLogic" name="test_retry_jitter_prevents_thundering_herd" time="0.001"><error message="failed on setup with &quot;AttributeError: Mock object has no attribute 'update_status'&quot;">tests\services\test_order_service_enhanced.py:35: in mock_orders_repo
+    repo.update_status.return_value = mock_order
+    ^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:658: in __getattr__
+    raise AttributeError("Mock object has no attribute %r" % name)
+E   AttributeError: Mock object has no attribute 'update_status'</error></testcase><testcase classname="tests.services.test_order_service_enhanced.TestOrderServiceCircuitBreaker" name="test_circuit_breaker_open_state" time="0.002"><error message="failed on setup with &quot;AttributeError: Mock object has no attribute 'update_status'&quot;">tests\services\test_order_service_enhanced.py:35: in mock_orders_repo
+    repo.update_status.return_value = mock_order
+    ^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:658: in __getattr__
+    raise AttributeError("Mock object has no attribute %r" % name)
+E   AttributeError: Mock object has no attribute 'update_status'</error></testcase></testsuite></testsuites>

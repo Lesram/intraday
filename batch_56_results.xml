@@ -1,14 +1,22 @@
-<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="5" skipped="0" tests="8" time="16.208" timestamp="2025-08-29T00:09:49.673650-07:00" hostname="BOOK-FVJOEO3Q00"><testcase classname="tests.performance.test_benchmarks.TestLatencyBenchmarks" name="test_feature_calculation_latency" time="2.049"><failure message="AssertionError: Memory usage too high: 168.4MB&#10;assert 168.37890625 &lt; 100">tests\performance\test_benchmarks.py:126: in test_feature_calculation_latency
-    assert (
-E   AssertionError: Memory usage too high: 168.4MB
-E   assert 168.37890625 &lt; 100</failure></testcase><testcase classname="tests.performance.test_benchmarks.TestLatencyBenchmarks" name="test_risk_check_latency" time="0.181"><failure message="TypeError: AsyncRiskManager.check_order_risk() got an unexpected keyword argument 'order'">tests\performance\test_benchmarks.py:154: in test_risk_check_latency
-    risk_result = risk_manager.check_order_risk(
-E   TypeError: AsyncRiskManager.check_order_risk() got an unexpected keyword argument 'order'</failure></testcase><testcase classname="tests.performance.test_benchmarks.TestLatencyBenchmarks" name="test_order_processing_latency" time="0.115" /><testcase classname="tests.performance.test_benchmarks.TestThroughputBenchmarks" name="test_market_data_throughput" time="0.007"><failure message="ImportError: cannot import name 'MarketDataManager' from 'backend.data.market_data' (C:\Users\Marsel\intra\algotrading_platform\backend\data\market_data.py)">tests\performance\test_benchmarks.py:276: in test_market_data_throughput
-    from backend.data.market_data import MarketDataManager
-E   ImportError: cannot import name 'MarketDataManager' from 'backend.data.market_data' (C:\Users\Marsel\intra\algotrading_platform\backend\data\market_data.py)</failure></testcase><testcase classname="tests.performance.test_benchmarks.TestThroughputBenchmarks" name="test_concurrent_strategy_execution" time="0.006"><failure message="TypeError: StrategyEngine.__init__() missing 2 required positional arguments: 'risk_manager' and 'positions_service'">tests\performance\test_benchmarks.py:367: in test_concurrent_strategy_execution
-    strategy_engine = StrategyEngine()
-                      ^^^^^^^^^^^^^^^^
-E   TypeError: StrategyEngine.__init__() missing 2 required positional arguments: 'risk_manager' and 'positions_service'</failure></testcase><testcase classname="tests.performance.test_benchmarks.TestMemoryPerformance" name="test_memory_usage_under_load" time="1.345" /><testcase classname="tests.performance.test_benchmarks.TestMemoryPerformance" name="test_garbage_collection_impact" time="0.515" /><testcase classname="tests.performance.test_benchmarks.TestResourceUtilization" name="test_cpu_utilization_efficiency" time="10.008"><failure message="AssertionError: CPU usage too high: 91.4%&#10;assert 91.42846580406655 &lt; 80">tests\performance\test_benchmarks.py:609: in test_cpu_utilization_efficiency
-    assert avg_cpu &lt; 80, f"CPU usage too high: {avg_cpu:.1f}%"
-E   AssertionError: CPU usage too high: 91.4%
-E   assert 91.42846580406655 &lt; 80</failure></testcase></testsuite></testsuites>
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="2" skipped="0" tests="14" time="1.459" timestamp="2025-09-14T20:42:49.070731-07:00" hostname="BOOK-FVJOEO3Q00"><testcase classname="tests.integration.test_pipeline.TestTradingPipelineIntegration" name="test_full_pipeline_single_symbol" time="0.108" /><testcase classname="tests.integration.test_pipeline.TestTradingPipelineIntegration" name="test_pipeline_multi_symbol_batch" time="0.366" /><testcase classname="tests.integration.test_pipeline.TestTradingPipelineIntegration" name="test_pipeline_with_risk_rejection" time="0.114" /><testcase classname="tests.integration.test_pipeline.TestTradingPipelineIntegration" name="test_pipeline_error_handling" time="0.057" /><testcase classname="tests.integration.test_pipeline.TestMarketDataIntegration" name="test_real_time_data_processing" time="0.068" /><testcase classname="tests.integration.test_pipeline.TestMarketDataIntegration" name="test_historical_data_validation" time="0.001"><failure message="json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)">tests\integration\test_pipeline.py:404: in test_historical_data_validation
+    historical_data = fixture_data_loader("AAPL_daily.csv")
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\conftest.py:497: in _load_fixture
+    return json.load(f)
+           ^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\json\__init__.py:293: in load
+    return loads(fp.read(),
+..\..\AppData\Local\Programs\Python\Python312\Lib\json\__init__.py:346: in loads
+    return _default_decoder.decode(s)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\json\decoder.py:337: in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\json\decoder.py:355: in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+E   json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)</failure></testcase><testcase classname="tests.integration.test_pipeline.TestMarketDataIntegration" name="test_data_aggregation_pipeline" time="0.118" /><testcase classname="tests.integration.test_pipeline.TestSignalGenerationIntegration" name="test_multi_strategy_signal_combination" time="0.082" /><testcase classname="tests.integration.test_pipeline.TestSignalGenerationIntegration" name="test_signal_filtering_and_ranking" time="0.001" /><testcase classname="tests.integration.test_pipeline.TestSignalGenerationIntegration" name="test_signal_to_order_conversion" time="0.001"><failure message="TypeError: object Mock can't be used in 'await' expression">tests\integration\test_pipeline.py:779: in test_signal_to_order_conversion
+    order_result = await convert_signal_to_order(signal, portfolio_state)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\integration\test_pipeline.py:763: in convert_signal_to_order
+    risk_result = await mock_risk_manager.evaluate_trade_risk(
+E   TypeError: object Mock can't be used in 'await' expression</failure></testcase><testcase classname="tests.integration.test_prompt_4" name="test_prompt_4a" time="0.002" /><testcase classname="tests.integration.test_prompt_4" name="test_prompt_4b" time="0.000" /><testcase classname="tests.integration.test_prompt_4_comprehensive" name="test_integration" time="0.001" /><testcase classname="tests.integration.test_prompt_4_comprehensive" name="test_edge_cases" time="0.001" /></testsuite></testsuites>

@@ -1,26 +1,9 @@
-<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="5" skipped="0" tests="8" time="1.883" timestamp="2025-08-29T00:15:21.136093-07:00" hostname="BOOK-FVJOEO3Q00"><testcase classname="tests.unit.test_ensemble_models_coverage.TestEnsembleModelCoverage" name="test_model_prediction_dataclass" time="0.003"><failure message="TypeError: ModelPrediction.__init__() got an unexpected keyword argument 'value'">tests\unit\test_ensemble_models_coverage.py:58: in test_model_prediction_dataclass
-    prediction = ModelPrediction(
-E   TypeError: ModelPrediction.__init__() got an unexpected keyword argument 'value'</failure></testcase><testcase classname="tests.unit.test_ensemble_models_coverage.TestEnsembleModelCoverage" name="test_model_performance_dataclass" time="0.002"><failure message="TypeError: ModelPerformance.__init__() got an unexpected keyword argument 'precision'">tests\unit\test_ensemble_models_coverage.py:71: in test_model_performance_dataclass
-    performance = ModelPerformance(
-E   TypeError: ModelPerformance.__init__() got an unexpected keyword argument 'precision'</failure></testcase><testcase classname="tests.unit.test_ensemble_models_coverage.TestEnsembleModelCoverage" name="test_schema_mismatch_error" time="0.001" /><testcase classname="tests.unit.test_ensemble_models_coverage.TestEnsembleModelCoverage" name="test_lstm_model_initialization" time="0.003"><failure message="AttributeError: &lt;module 'tensorflow.keras.models' from '&lt;mocked:tensorflow.keras.models&gt;'&gt; does not have the attribute 'Sequential'">tests\unit\test_ensemble_models_coverage.py:92: in test_lstm_model_initialization
-    with patch('tensorflow.keras.models.Sequential') as mock_sequential:
-..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1458: in __enter__
-    original, local = self.get_original()
-                      ^^^^^^^^^^^^^^^^^^^
-..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1431: in get_original
-    raise AttributeError(
-E   AttributeError: &lt;module 'tensorflow.keras.models' from '&lt;mocked:tensorflow.keras.models&gt;'&gt; does not have the attribute 'Sequential'</failure></testcase><testcase classname="tests.unit.test_ensemble_models_coverage.TestEnsembleModelCoverage" name="test_lstm_model_build" time="0.002"><failure message="AttributeError: &lt;module 'tensorflow.keras.models' from '&lt;mocked:tensorflow.keras.models&gt;'&gt; does not have the attribute 'Sequential'">tests\unit\test_ensemble_models_coverage.py:110: in test_lstm_model_build
-    with patch('tensorflow.keras.models.Sequential') as mock_sequential:
-..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1458: in __enter__
-    original, local = self.get_original()
-                      ^^^^^^^^^^^^^^^^^^^
-..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1431: in get_original
-    raise AttributeError(
-E   AttributeError: &lt;module 'tensorflow.keras.models' from '&lt;mocked:tensorflow.keras.models&gt;'&gt; does not have the attribute 'Sequential'</failure></testcase><testcase classname="tests.unit.test_ensemble_models_coverage.TestEnsembleModelCoverage" name="test_lstm_model_build_unavailable" time="0.002" /><testcase classname="tests.unit.test_ensemble_models_coverage.TestEnsembleModelCoverage" name="test_lstm_prepare_sequences" time="0.005" /><testcase classname="tests.unit.test_ensemble_models_coverage.TestEnsembleModelCoverage" name="test_lstm_train" time="0.007"><failure message="AttributeError: &lt;module 'tensorflow.keras.models' from '&lt;mocked:tensorflow.keras.models&gt;'&gt; does not have the attribute 'Sequential'">tests\unit\test_ensemble_models_coverage.py:142: in test_lstm_train
-    with patch('tensorflow.keras.models.Sequential') as mock_sequential:
-..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1458: in __enter__
-    original, local = self.get_original()
-                      ^^^^^^^^^^^^^^^^^^^
-..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1431: in get_original
-    raise AttributeError(
-E   AttributeError: &lt;module 'tensorflow.keras.models' from '&lt;mocked:tensorflow.keras.models&gt;'&gt; does not have the attribute 'Sequential'</failure></testcase></testsuite></testsuites>
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="1" failures="0" skipped="0" tests="1" time="0.374" timestamp="2025-09-14T20:45:08.858711-07:00" hostname="BOOK-FVJOEO3Q00"><testcase classname="" name="tests.phase4.test_phase4_2_error_path_validation" time="0.000"><error message="collection failure">ImportError while importing test module 'C:\Users\Marsel\intra\algotrading_platform\tests\phase4\test_phase4_2_error_path_validation.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+..\..\AppData\Local\Programs\Python\Python312\Lib\importlib\__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\phase4\test_phase4_2_error_path_validation.py:12: in &lt;module&gt;
+    from unittest.mock import Mock, patch, MagicMock, side_effect
+E   ImportError: cannot import name 'side_effect' from 'unittest.mock' (C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py)</error></testcase></testsuite></testsuites>

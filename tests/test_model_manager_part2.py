@@ -10,7 +10,11 @@ Tests for main ModelManager class functionality including:
 import pytest
 import pandas as pd
 import numpy as np
-import json    def test_predict_model_not_found(self, model_manager, sample_features_dict):
+import json
+
+
+class TestModelManagerPredictions:
+    def test_predict_model_not_found(self, model_manager, sample_features_dict):
         """Test prediction behavior when model is not found."""
         # Test getting non-existent model prediction
         try:

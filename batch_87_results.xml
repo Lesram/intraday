@@ -1,81 +1,28 @@
-<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="5" skipped="0" tests="26" time="1.964" timestamp="2025-08-29T00:18:03.048203-07:00" hostname="BOOK-FVJOEO3Q00"><testcase classname="tests.unit.test_signal_service_direct.TestSignalServiceDirect" name="test_signal_service_initialization" time="0.005" /><testcase classname="tests.unit.test_signal_service_direct.TestSignalServiceDirect" name="test_get_signals_with_symbol" time="0.007" /><testcase classname="tests.unit.test_signal_service_direct.TestSignalServiceDirect" name="test_get_signals_without_symbol" time="0.006" /><testcase classname="tests.unit.test_signal_service_direct.TestSignalServiceDirect" name="test_get_signals_with_none_symbol" time="0.006" /><testcase classname="tests.unit.test_signal_service_direct.TestSignalServiceDirect" name="test_get_signals_with_empty_string_symbol" time="0.006" /><testcase classname="tests.unit.test_signal_service_direct.TestSignalServiceDirect" name="test_generate_signal_with_data" time="0.007" /><testcase classname="tests.unit.test_signal_service_direct.TestSignalServiceDirect" name="test_generate_signal_with_empty_data" time="0.008" /><testcase classname="tests.unit.test_signal_service_direct.TestSignalServiceDirect" name="test_generate_signal_with_complex_data" time="0.008" /><testcase classname="tests.unit.test_signal_service_direct.TestSignalServiceDirect" name="test_signals_attribute_persistence" time="0.004" /><testcase classname="tests.unit.test_signal_service_direct.TestSignalServiceDirect" name="test_global_signal_service_instance" time="0.004" /><testcase classname="tests.unit.test_signal_service_direct.TestSignalServiceDirect" name="test_get_signal_service_function" time="0.006" /><testcase classname="tests.unit.test_signal_service_direct.TestSignalServiceDirect" name="test_get_signals_shim_function" time="0.004" /><testcase classname="tests.unit.test_signal_service_direct.TestSignalServiceDirect" name="test_get_signals_shim_function_with_args" time="0.003" /><testcase classname="tests.unit.test_signal_service_direct.TestSignalServiceDirect" name="test_multiple_concurrent_get_signals_calls" time="0.007" /><testcase classname="tests.unit.test_signal_service_direct.TestSignalServiceDirect" name="test_multiple_concurrent_generate_signal_calls" time="0.007" /><testcase classname="tests.unit.test_signal_service_direct.TestSignalServiceDirect" name="test_timestamp_consistency" time="0.007" /><testcase classname="tests.unit.test_signal_service_direct.TestSignalServiceDirect" name="test_service_state_isolation" time="0.006" /><testcase classname="tests.unit.test_signal_service_direct.TestSignalServiceDirect" name="test_type_annotations_exist" time="0.005" /><testcase classname="tests.unit.test_signal_service_direct.TestSignalServiceDirect" name="test_signal_format_consistency" time="0.006" /><testcase classname="tests.unit.test_sqlite_repository" name="test_session" time="0.002" /><testcase classname="tests.unit.test_sqlite_repository.TestDatabaseConnection" name="test_session_creation" time="0.046"><failure message="TypeError: cannot unpack non-iterable async_sessionmaker object">tests\unit\test_sqlite_repository.py:20: in test_session_creation
-    async with test_session() as session:
-..\..\AppData\Local\Programs\Python\Python312\Lib\contextlib.py:210: in __aenter__
-    return await anext(self.gen)
-           ^^^^^^^^^^^^^^^^^^^^^
-tests\helpers\test_db.py:90: in test_session
-    async with test_database() as (engine, sessionmaker):
-..\..\AppData\Local\Programs\Python\Python312\Lib\contextlib.py:210: in __aenter__
-    return await anext(self.gen)
-           ^^^^^^^^^^^^^^^^^^^^^
-tests\helpers\test_db.py:74: in test_database
-    engine, sessionmaker = await db.initialize()
-                           ^^^^^^^^^^^^^^^^^^^^^
-tests\helpers\test_db.py:37: in initialize
-    self.engine, self.sessionmaker = init_db(database_url=db_url)
-    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-E   TypeError: cannot unpack non-iterable async_sessionmaker object</failure></testcase><testcase classname="tests.unit.test_sqlite_repository.TestDatabaseConnection" name="test_multiple_sessions_isolated" time="0.007"><failure message="TypeError: cannot unpack non-iterable async_sessionmaker object">tests\unit\test_sqlite_repository.py:33: in test_multiple_sessions_isolated
-    async with test_session() as session1:
-..\..\AppData\Local\Programs\Python\Python312\Lib\contextlib.py:210: in __aenter__
-    return await anext(self.gen)
-           ^^^^^^^^^^^^^^^^^^^^^
-tests\helpers\test_db.py:90: in test_session
-    async with test_database() as (engine, sessionmaker):
-..\..\AppData\Local\Programs\Python\Python312\Lib\contextlib.py:210: in __aenter__
-    return await anext(self.gen)
-           ^^^^^^^^^^^^^^^^^^^^^
-tests\helpers\test_db.py:74: in test_database
-    engine, sessionmaker = await db.initialize()
-                           ^^^^^^^^^^^^^^^^^^^^^
-tests\helpers\test_db.py:37: in initialize
-    self.engine, self.sessionmaker = init_db(database_url=db_url)
-    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-E   TypeError: cannot unpack non-iterable async_sessionmaker object</failure></testcase><testcase classname="tests.unit.test_sqlite_repository.TestUsersRepository" name="test_users_repo_initialization" time="0.007"><failure message="TypeError: cannot unpack non-iterable async_sessionmaker object">tests\unit\test_sqlite_repository.py:55: in test_users_repo_initialization
-    async with test_session() as session:
-..\..\AppData\Local\Programs\Python\Python312\Lib\contextlib.py:210: in __aenter__
-    return await anext(self.gen)
-           ^^^^^^^^^^^^^^^^^^^^^
-tests\helpers\test_db.py:90: in test_session
-    async with test_database() as (engine, sessionmaker):
-..\..\AppData\Local\Programs\Python\Python312\Lib\contextlib.py:210: in __aenter__
-    return await anext(self.gen)
-           ^^^^^^^^^^^^^^^^^^^^^
-tests\helpers\test_db.py:74: in test_database
-    engine, sessionmaker = await db.initialize()
-                           ^^^^^^^^^^^^^^^^^^^^^
-tests\helpers\test_db.py:37: in initialize
-    self.engine, self.sessionmaker = init_db(database_url=db_url)
-    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-E   TypeError: cannot unpack non-iterable async_sessionmaker object</failure></testcase><testcase classname="tests.unit.test_sqlite_repository.TestUsersRepository" name="test_user_repository_initialization" time="0.004" /><testcase classname="tests.unit.test_sqlite_repository.TestPositionsRepository" name="test_positions_repo_initialization" time="0.008"><failure message="TypeError: cannot unpack non-iterable async_sessionmaker object">tests\unit\test_sqlite_repository.py:75: in test_positions_repo_initialization
-    async with test_session() as session:
-..\..\AppData\Local\Programs\Python\Python312\Lib\contextlib.py:210: in __aenter__
-    return await anext(self.gen)
-           ^^^^^^^^^^^^^^^^^^^^^
-tests\helpers\test_db.py:90: in test_session
-    async with test_database() as (engine, sessionmaker):
-..\..\AppData\Local\Programs\Python\Python312\Lib\contextlib.py:210: in __aenter__
-    return await anext(self.gen)
-           ^^^^^^^^^^^^^^^^^^^^^
-tests\helpers\test_db.py:74: in test_database
-    engine, sessionmaker = await db.initialize()
-                           ^^^^^^^^^^^^^^^^^^^^^
-tests\helpers\test_db.py:37: in initialize
-    self.engine, self.sessionmaker = init_db(database_url=db_url)
-    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-E   TypeError: cannot unpack non-iterable async_sessionmaker object</failure></testcase><testcase classname="tests.unit.test_sqlite_repository.TestPositionsRepository" name="test_position_upsert_structure" time="0.007"><failure message="TypeError: cannot unpack non-iterable async_sessionmaker object">tests\unit\test_sqlite_repository.py:82: in test_position_upsert_structure
-    async with test_session() as session:
-..\..\AppData\Local\Programs\Python\Python312\Lib\contextlib.py:210: in __aenter__
-    return await anext(self.gen)
-           ^^^^^^^^^^^^^^^^^^^^^
-tests\helpers\test_db.py:90: in test_session
-    async with test_database() as (engine, sessionmaker):
-..\..\AppData\Local\Programs\Python\Python312\Lib\contextlib.py:210: in __aenter__
-    return await anext(self.gen)
-           ^^^^^^^^^^^^^^^^^^^^^
-tests\helpers\test_db.py:74: in test_database
-    engine, sessionmaker = await db.initialize()
-                           ^^^^^^^^^^^^^^^^^^^^^
-tests\helpers\test_db.py:37: in initialize
-    self.engine, self.sessionmaker = init_db(database_url=db_url)
-    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-E   TypeError: cannot unpack non-iterable async_sessionmaker object</failure></testcase></testsuite></testsuites>
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="5" skipped="0" tests="15" time="0.694" timestamp="2025-09-14T20:49:21.601368-07:00" hostname="BOOK-FVJOEO3Q00"><testcase classname="tests.services.test_order_service_behavioral.TestOrderServiceBasicBehavior" name="test_order_service_creation" time="0.003" /><testcase classname="tests.services.test_order_service_behavioral.TestOrderServiceBasicBehavior" name="test_order_service_with_strategy_engine" time="0.002" /><testcase classname="tests.services.test_order_service_behavioral.TestOrderServiceBasicBehavior" name="test_order_service_attributes_coverage" time="0.008" /><testcase classname="tests.services.test_order_service_behavioral.TestOrderServiceMethodCoverage" name="test_submit_symbol_order_parameters" time="0.003" /><testcase classname="tests.services.test_order_service_behavioral.TestOrderServiceMethodCoverage" name="test_strategy_signals_processing_exists" time="0.002" /><testcase classname="tests.services.test_order_service_behavioral.TestOrderServiceIntegrationPoints" name="test_repository_attributes" time="0.002" /><testcase classname="tests.services.test_order_service_behavioral.TestOrderServiceIntegrationPoints" name="test_strategy_engine_integration" time="0.003" /><testcase classname="tests.services.test_order_service_behavioral.TestOrderServiceErrorHandling" name="test_invalid_parameter_handling" time="0.003"><failure message="AssertionError: assert &lt;AsyncMock id='1209246325584'&gt; is None&#10; +  where &lt;AsyncMock id='1209246325584'&gt; = &lt;backend.services.order_service.OrderService object at 0x000001198CD4BBC0&gt;.orders_repo">tests\services\test_order_service_behavioral.py:134: in test_invalid_parameter_handling
+    assert service_with_none.orders_repo is None
+E   AssertionError: assert &lt;AsyncMock id='1209246325584'&gt; is None
+E    +  where &lt;AsyncMock id='1209246325584'&gt; = &lt;backend.services.order_service.OrderService object at 0x000001198CD4BBC0&gt;.orders_repo</failure></testcase><testcase classname="tests.services.test_order_service_behavioral.TestOrderServiceErrorHandling" name="test_service_state_consistency" time="0.001" /><testcase classname="tests.services.test_order_service_behavioral.TestOrderServiceStringRepresentation" name="test_service_str_representation" time="0.001" /><testcase classname="tests.services.test_order_service_behavioral.TestOrderServiceStringRepresentation" name="test_service_type_checking" time="0.001" /><testcase classname="tests.services.test_order_service_contract.TestOrderServiceContract" name="test_idempotency_same_client_order_id_single_external_call" time="0.002"><failure message="AssertionError: assert 0 == 1&#10; +  where 0 = &lt;MagicMock name='mock.submit_order' id='1209249290368'&gt;.call_count&#10; +    where &lt;MagicMock name='mock.submit_order' id='1209249290368'&gt; = &lt;MagicMock id='1209249178368'&gt;.submit_order&#10; +      where &lt;MagicMock id='1209249178368'&gt; = &lt;backend.services.order_service.OrderService object at 0x000001198CDE2270&gt;.broker_client">tests\services\test_order_service_contract.py:55: in test_idempotency_same_client_order_id_single_external_call
+    assert order_service.broker_client.submit_order.call_count == 1
+E   AssertionError: assert 0 == 1
+E    +  where 0 = &lt;MagicMock name='mock.submit_order' id='1209249290368'&gt;.call_count
+E    +    where &lt;MagicMock name='mock.submit_order' id='1209249290368'&gt; = &lt;MagicMock id='1209249178368'&gt;.submit_order
+E    +      where &lt;MagicMock id='1209249178368'&gt; = &lt;backend.services.order_service.OrderService object at 0x000001198CDE2270&gt;.broker_client</failure></testcase><testcase classname="tests.services.test_order_service_contract.TestOrderServiceContract" name="test_retry_on_429_with_jitter" time="0.002"><failure message="AssertionError: assert 0 == 3&#10; +  where 0 = &lt;MagicMock name='mock.submit_order' id='1209249320496'&gt;.call_count&#10; +    where &lt;MagicMock name='mock.submit_order' id='1209249320496'&gt; = &lt;MagicMock id='1209249711264'&gt;.submit_order&#10; +      where &lt;MagicMock id='1209249711264'&gt; = &lt;backend.services.order_service.OrderService object at 0x000001198CE64410&gt;.broker_client">tests\services\test_order_service_contract.py:92: in test_retry_on_429_with_jitter
+    assert order_service.broker_client.submit_order.call_count == 3
+E   AssertionError: assert 0 == 3
+E    +  where 0 = &lt;MagicMock name='mock.submit_order' id='1209249320496'&gt;.call_count
+E    +    where &lt;MagicMock name='mock.submit_order' id='1209249320496'&gt; = &lt;MagicMock id='1209249711264'&gt;.submit_order
+E    +      where &lt;MagicMock id='1209249711264'&gt; = &lt;backend.services.order_service.OrderService object at 0x000001198CE64410&gt;.broker_client</failure></testcase><testcase classname="tests.services.test_order_service_contract.TestOrderServiceContract" name="test_circuit_breaker_opens_after_n_failures" time="0.002"><failure message="AttributeError: &lt;module 'backend.services.order_service' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\services\\order_service.py'&gt; does not have the attribute 'CircuitBreaker'">tests\services\test_order_service_contract.py:121: in test_circuit_breaker_opens_after_n_failures
+    with patch('backend.services.order_service.CircuitBreaker', return_value=circuit_breaker):
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1458: in __enter__
+    original, local = self.get_original()
+                      ^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1431: in get_original
+    raise AttributeError(
+E   AttributeError: &lt;module 'backend.services.order_service' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\services\\order_service.py'&gt; does not have the attribute 'CircuitBreaker'</failure></testcase><testcase classname="tests.services.test_order_service_contract.TestOrderServiceContract" name="test_dead_letter_queue_on_final_failure" time="0.002"><failure message="AttributeError: &lt;module 'backend.services.order_service' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\services\\order_service.py'&gt; does not have the attribute 'DLQHandler'">tests\services\test_order_service_contract.py:151: in test_dead_letter_queue_on_final_failure
+    with patch('backend.services.order_service.DLQHandler', return_value=dlq_handler):
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1458: in __enter__
+    original, local = self.get_original()
+                      ^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1431: in get_original
+    raise AttributeError(
+E   AttributeError: &lt;module 'backend.services.order_service' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\services\\order_service.py'&gt; does not have the attribute 'DLQHandler'</failure></testcase></testsuite></testsuites>

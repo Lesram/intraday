@@ -245,3 +245,7 @@ async def get_session_context() -> AsyncGenerator[AsyncSession, None]:
             raise
         finally:
             await session.close()
+
+
+# Alias for tests that expect get_db_session
+get_db_session = get_session_context

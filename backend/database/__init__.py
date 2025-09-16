@@ -29,3 +29,29 @@ async def init_database(database_url: str) -> DatabaseManager:
 
 async def get_database() -> Any:  # pragma: no cover
 	return None
+
+
+# Import and expose submodules for proper package structure
+try:
+	from . import connection
+	from . import models
+	from . import repositories
+	# Expose key functions at package level
+	from .connection import get_database_session, connection as connection_func
+	from .models import MockModel, create_mock_model, Order, Position, Trade, User
+except ImportError:  # pragma: no cover
+	# Fallback if modules can't be imported
+	connection = None  # type: ignore
+	models = None  # type: ignore  
+	repositories = None  # type: ignore
+	get_database_session = None  # type: ignore
+	connection_func = None  # type: ignore
+	MockModel = None  # type: ignore
+	create_mock_model = None  # type: ignore
+	Order = None  # type: ignore
+	Position = None  # type: ignore
+	Trade = None  # type: ignore
+	User = None  # type: ignore
+
+# Define SessionLocal here to avoid circular imports
+SessionLocal = None  # type: ignore[assignment]

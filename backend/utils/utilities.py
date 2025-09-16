@@ -1,6 +1,74 @@
 ﻿"""
 Utility functions expected by tests and application components.
 """
+
+import asyncio
+import decimal
+import functools
+import re
+import threading
+from datetime import datetime, timedelta
+from typing import List, Any
+
+async def async_retry(func, max_attempts=3, base_delay=1.0, max_delay=60.0, backoff_factor=2.0, jitter=True):
+    """
+    Retry function with exponential backoff, jitter, and timeout protection.
+    
+    Args:
+        func: Function to retry (sync or async)
+        max_attempts: Maximum retry attempts
+        base_delay: Initial delay in seconds
+        max_delay: Maximum delay cap in seconds
+        backoff_factor: Exponential backoff multiplier
+        jitter: Add random jitter to prevent thundering herd
+        
+    Returns:
+        Function result if successful
+        
+    Raises:
+        Last exception if all attempts fail
+    """
+    import random
+    
+    last_exception = None
+    
+    for attempt in range(max_attempts):
+        try:
+            if asyncio.iscoroutinefunction(func):
+                return await func()
+            else:
+                return func()
+        except Exception as e:
+            last_exception = e
+            
+            if attempt == max_attempts - 1:
+                # Last attempt failed, re-raise the exception
+                raise last_exception
+            
+            # Calculate delay with exponential backoff
+            delay = min(base_delay * (backoff_factor ** attempt), max_delay)
+            
+            # Add jitter to prevent thundering herd effect
+            if jitter:
+                delay = delay * (0.5 + random.random() * 0.5)
+            
+            await asyncio.sleep(delay)
+            last_exception = e
+            
+            if attempt == max_attempts - 1:
+                # Last attempt failed, re-raise the exception
+                raise last_exception
+            
+            # Calculate delay with exponential backoff
+            delay = min(base_delay * (backoff_factor ** attempt), max_delay)
+            
+            # Add jitter to prevent thundering herd effect
+            if jitter:
+                delay = delay * (0.5 + random.random() * 0.5)
+            
+            await asyncio.sleep(delay)
+
+
 from datetime import datetime, timedelta, UTC
 import decimal
 import re

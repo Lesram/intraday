@@ -1,7 +1,7 @@
 {
   "model_id": "momentum_v1",
   "version": "1.2.3",
-  "created_at": "2025-08-25T00:05:47.770579+00:00",
+  "created_at": "2025-09-15T03:43:23.025530+00:00",
   "train_window": {},
   "feature_names": [
     "feature1",
@@ -22,7 +22,7 @@
     }
   },
   "metrics": {},
-  "artifact_hash": "f6b3303cf7779374b397ba14e44ce764737f6553bdf92452f372719791eac21a",
+  "artifact_hash": "bb00b93ba68677b2336d57d708edc9fbf80b9dd0528e035644d140a19d0fcb07",
   "training_samples": 3,
   "features_count": 2
 }

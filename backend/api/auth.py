@@ -92,50 +92,54 @@ async def login(
                 # If body isn't JSON or can't be parsed, continue with current values
                 pass
 
+        # Validate that required credentials are provided
+        if not username or not password:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Username and password are required"
+            )
+
         # Authenticate user with proper JWT tokens
         if username and password:
-            from backend.infra.security import create_access_token
+            from backend.infra.security import create_access_token, verify_password
             
-            # Determine user roles based on username (for testing)
-            if username == "admin":
-                roles = ["admin", "trader"]
-            elif username == "trader":
-                roles = ["trader"]  
-            elif username == "viewer":
-                roles = ["read-only"]
-            elif username == "testuser":
-                roles = ["user"]
-            else:
-                roles = ["user"]
-            
-            # For testing, accept specific username/password combinations
-            valid_credentials = {
-                "admin": "admin123",
-                "trader": "trader123", 
-                "viewer": "viewer123",
-                # Test credentials for automated testing
-                "testuser": "testpass",
-                "test": "test123"
-            }
-            
-            # Check credentials
-            if username in valid_credentials and password == valid_credentials[username]:
-                # Create JWT token
-                access_token = create_access_token(username, roles)
-                expires_in = 3600  # 1 hour in seconds
-                
-                return LoginResponse(
-                    access_token=access_token,
-                    token_type="bearer",
-                    expires_in=expires_in,
-                    user_id=username,
-                    user=UserInfo(username=username, roles=roles)
-                )
-            else:
+            # Authenticate against user repository
+            user = user_repo.get_user_by_username(username)
+            if not user:
+                # User not found - use constant time to prevent username enumeration
+                # Use fast dummy operation for testing (avoid bcrypt delay)
+                import hashlib
+                hashlib.md5(b"dummy_password").hexdigest()  # Fast constant time operation
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,
                     detail="Invalid username or password"
                 )
+            
+            # Verify password using secure hash comparison
+            if not verify_password(password, user.hashed_password):
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Invalid username or password"
+                )
+            
+            # Check if user is active
+            if not user.is_active:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Account is disabled"
+                )
+            
+            # Create JWT token with user's actual roles
+            access_token = create_access_token(username, user.roles)
+            expires_in = 3600  # 1 hour in seconds
+            
+            return LoginResponse(
+                access_token=access_token,
+                token_type="bearer",
+                expires_in=expires_in,
+                user_id=username,
+                user=UserInfo(username=username, roles=user.roles)
+            )
         else:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -257,11 +261,33 @@ async def register(request: UserRegistrationRequest, repo=Depends(get_user_repo)
                     detail="Email already registered"
                 )
         
-        # Validate password strength
-        if not re.search(r"[A-Za-z]", request.password) or not re.search(r"\d", request.password):
+        # Validate password strength with comprehensive requirements
+        password_errors = []
+        
+        if len(request.password) < 8:
+            password_errors.append("Password must be at least 8 characters long")
+        
+        if not re.search(r"[A-Z]", request.password):
+            password_errors.append("Password must contain at least one uppercase letter")
+        
+        if not re.search(r"[a-z]", request.password):
+            password_errors.append("Password must contain at least one lowercase letter")
+        
+        if not re.search(r"\d", request.password):
+            password_errors.append("Password must contain at least one number")
+        
+        if not re.search(r"[!@#$%^&*(),.?\":{}|<>]", request.password):
+            password_errors.append("Password must contain at least one special character")
+        
+        # Check for common weak passwords
+        common_passwords = ["password", "123456", "password123", "admin", "qwerty"]
+        if request.password.lower() in common_passwords:
+            password_errors.append("Password is too common and easily guessable")
+        
+        if password_errors:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail="Password must contain at least one letter and one number"
+                detail="Password validation failed: " + "; ".join(password_errors)
             )
         
         # Create new user

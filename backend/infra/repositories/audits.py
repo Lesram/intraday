@@ -3,7 +3,7 @@ Audits repository - tracks system audit logs and compliance.
 Implements async CRUD operations with proper error handling.
 """
 
-from datetime import datetime
+from datetime import datetime, UTC, timedelta
 import logging
 from typing import Any
 import uuid
@@ -568,7 +568,7 @@ class AuditsRepo:
         """
         from datetime import timedelta
 
-        cutoff_date = datetime.utcnow() - timedelta(days=older_than_days)
+        cutoff_date = datetime.now(UTC) - timedelta(days=older_than_days)
 
         # For safety, we'll just count for now rather than actually delete
         # In production, you might want to move to archive table first

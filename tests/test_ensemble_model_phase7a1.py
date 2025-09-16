@@ -435,15 +435,16 @@ class TestErrorHandling:
         """Test recovery from training failures"""
         ensemble = EnsembleModel()
         
-        # Mock training failures - the training method doesn't catch exceptions,
-        # so we test that the exception propagates as expected
+        # Mock training failures - the training method catches exceptions and returns False
         with patch.object(ensemble.models["lstm"], "train", new_callable=AsyncMock, side_effect=Exception("Training failed")):
-            with pytest.raises(Exception, match="Training failed"):
-                results = await ensemble.train_models(
-                    price_data=sample_price_data,
-                    features=sample_features,
-                    target_column="close"
-                )
+            results = await ensemble.train_models(
+                price_data=sample_price_data,
+                features=sample_features,
+                target_column="close"
+            )
+            
+            # Should return False for failed training, not raise exception
+            assert results["lstm"] is False
 
 
 class TestPerformanceTracking:

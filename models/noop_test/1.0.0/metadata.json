@@ -1,7 +1,7 @@
 {
   "model_id": "noop_test",
   "version": "1.0.0",
-  "created_at": "2025-08-26T22:17:11.833752+00:00",
+  "created_at": "2025-09-15T03:37:08.241075+00:00",
   "train_window": {},
   "feature_names": [
     "feature1",

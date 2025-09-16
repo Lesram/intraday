@@ -1,21 +1,36 @@
-<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="2" skipped="0" tests="12" time="7.785" timestamp="2025-08-29T00:02:22.738621-07:00" hostname="BOOK-FVJOEO3Q00"><testcase classname="tests.api.test_main_openapi" name="test_openapi_and_docs" time="0.422" /><testcase classname="tests.api.test_main_routes_registered.TestMainRoutesRegistered" name="test_main_module_imports_without_error" time="0.006" /><testcase classname="tests.api.test_main_routes_registered.TestMainRoutesRegistered" name="test_core_routes_registered_on_import" time="4.462" /><testcase classname="tests.api.test_main_routes_registered.TestMainRoutesRegistered" name="test_auth_routes_registered" time="0.142" /><testcase classname="tests.api.test_main_routes_registered.TestMainRoutesRegistered" name="test_protected_routes_registered" time="0.125"><failure message="AssertionError: Protected route /positions not registered&#10;assert 404 != 404&#10; +  where 404 = &lt;Response [404 Not Found]&gt;.status_code">tests\api\test_main_routes_registered.py:80: in test_protected_routes_registered
-    assert response.status_code != 404, f"Protected route {route} not registered"
-E   AssertionError: Protected route /positions not registered
-E   assert 404 != 404
-E    +  where 404 = &lt;Response [404 Not Found]&gt;.status_code</failure></testcase><testcase classname="tests.api.test_main_routes_registered.TestMainRoutesRegistered" name="test_api_documentation_routes" time="0.202" /><testcase classname="tests.api.test_main_routes_registered.TestMainRoutesRegistered" name="test_websocket_endpoint_registered" time="0.092" /><testcase classname="tests.api.test_main_routes_registered.TestMainRoutesRegistered" name="test_cors_middleware_configured" time="0.099" /><testcase classname="tests.api.test_main_routes_registered.TestMainRoutesRegistered" name="test_app_state_initialization" time="0.090" /><testcase classname="tests.api.test_main_routes_registered.TestMainRoutesRegistered" name="test_error_handlers_registered" time="0.114" /><testcase classname="tests.api.test_main_routes_registered.TestMainRoutesRegistered" name="test_configuration_loading" time="0.003"><failure message="AttributeError: &lt;module 'backend.api.main' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\api\\main.py'&gt; does not have the attribute 'get_settings'">..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1387: in patched
-    with self.decoration_helper(patched,
-..\..\AppData\Local\Programs\Python\Python312\Lib\contextlib.py:137: in __enter__
-    return next(self.gen)
-           ^^^^^^^^^^^^^^
-..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1369: in decoration_helper
-    arg = exit_stack.enter_context(patching)
-          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-..\..\AppData\Local\Programs\Python\Python312\Lib\contextlib.py:526: in enter_context
-    result = _enter(cm)
-             ^^^^^^^^^^
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="4" failures="1" skipped="0" tests="5" time="0.454" timestamp="2025-09-14T20:39:13.025454-07:00" hostname="BOOK-FVJOEO3Q00"><testcase classname="tests.api.test_main_coverage_focused.TestMainAPIBasicCoverage" name="test_prometheus_metrics_endpoint_available" time="0.002"><error message="failed on setup with &quot;AttributeError: &lt;module 'backend.api.main' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\api\\main.py'&gt; does not have the attribute 'WebSocketClientManager'&quot;">tests\api\test_main_coverage_focused.py:29: in test_client
+    with patch('backend.api.main.WebSocketClientManager'), \
 ..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1458: in __enter__
     original, local = self.get_original()
                       ^^^^^^^^^^^^^^^^^^^
 ..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1431: in get_original
     raise AttributeError(
-E   AttributeError: &lt;module 'backend.api.main' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\api\\main.py'&gt; does not have the attribute 'get_settings'</failure></testcase><testcase classname="tests.api.test_main_routes_registered.TestMainRoutesRegistered" name="test_route_prefix_consistency" time="0.086" /></testsuite></testsuites>
+E   AttributeError: &lt;module 'backend.api.main' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\api\\main.py'&gt; does not have the attribute 'WebSocketClientManager'</error></testcase><testcase classname="tests.api.test_main_coverage_focused.TestMainAPIBasicCoverage" name="test_prometheus_metrics_endpoint_unavailable" time="0.001"><failure message="AttributeError: &lt;module 'backend.api.main' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\api\\main.py'&gt; does not have the attribute 'PROMETHEUS_AVAILABLE'">tests\api\test_main_coverage_focused.py:50: in test_prometheus_metrics_endpoint_unavailable
+    with patch('backend.api.main.PROMETHEUS_AVAILABLE', False), \
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1458: in __enter__
+    original, local = self.get_original()
+                      ^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1431: in get_original
+    raise AttributeError(
+E   AttributeError: &lt;module 'backend.api.main' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\api\\main.py'&gt; does not have the attribute 'PROMETHEUS_AVAILABLE'</failure></testcase><testcase classname="tests.api.test_main_coverage_focused.TestMainAPIBasicCoverage" name="test_health_endpoint_basic" time="0.001"><error message="failed on setup with &quot;AttributeError: &lt;module 'backend.api.main' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\api\\main.py'&gt; does not have the attribute 'WebSocketClientManager'&quot;">tests\api\test_main_coverage_focused.py:29: in test_client
+    with patch('backend.api.main.WebSocketClientManager'), \
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1458: in __enter__
+    original, local = self.get_original()
+                      ^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1431: in get_original
+    raise AttributeError(
+E   AttributeError: &lt;module 'backend.api.main' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\api\\main.py'&gt; does not have the attribute 'WebSocketClientManager'</error></testcase><testcase classname="tests.api.test_main_coverage_focused.TestMainAPIBasicCoverage" name="test_basic_endpoints_exist" time="0.001"><error message="failed on setup with &quot;AttributeError: &lt;module 'backend.api.main' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\api\\main.py'&gt; does not have the attribute 'WebSocketClientManager'&quot;">tests\api\test_main_coverage_focused.py:29: in test_client
+    with patch('backend.api.main.WebSocketClientManager'), \
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1458: in __enter__
+    original, local = self.get_original()
+                      ^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1431: in get_original
+    raise AttributeError(
+E   AttributeError: &lt;module 'backend.api.main' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\api\\main.py'&gt; does not have the attribute 'WebSocketClientManager'</error></testcase><testcase classname="tests.api.test_main_coverage_focused.TestMainAPIBasicCoverage" name="test_protected_endpoints_require_auth" time="0.001"><error message="failed on setup with &quot;AttributeError: &lt;module 'backend.api.main' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\api\\main.py'&gt; does not have the attribute 'WebSocketClientManager'&quot;">tests\api\test_main_coverage_focused.py:29: in test_client
+    with patch('backend.api.main.WebSocketClientManager'), \
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1458: in __enter__
+    original, local = self.get_original()
+                      ^^^^^^^^^^^^^^^^^^^
+..\..\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1431: in get_original
+    raise AttributeError(
+E   AttributeError: &lt;module 'backend.api.main' from 'C:\\Users\\Marsel\\intra\\algotrading_platform\\backend\\api\\main.py'&gt; does not have the attribute 'WebSocketClientManager'</error></testcase></testsuite></testsuites>

@@ -3,7 +3,7 @@ Executions repository - tracks order fills and trades.
 Implements async CRUD operations with proper error handling.
 """
 
-from datetime import datetime
+from datetime import datetime, UTC
 from decimal import Decimal
 import logging
 from typing import Any
@@ -74,7 +74,7 @@ class ExecutionsRepo:
             qty=qty,
             price=price,
             execution_id=execution_id,
-            timestamp=timestamp or datetime.utcnow(),
+            timestamp=timestamp or datetime.now(UTC),
             attributes=attributes or {},
         )
 

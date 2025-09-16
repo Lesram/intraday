@@ -4,7 +4,7 @@ Provides structured data containers for risk decisions, order specs, and portfol
 """
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, UTC
 from decimal import Decimal
 from enum import Enum
 from typing import Any, Literal, Optional
@@ -232,6 +232,21 @@ class RiskDecision:
     risk_score: float | None = None
     timestamp: datetime | None = None
 
+    @property
+    def approved(self) -> bool:
+        """Backward compatibility property for tests."""
+        return self.allowed
+
+    @property
+    def symbol_exposure(self) -> float:
+        """Get symbol exposure from adjustments for test compatibility."""
+        return self.adjustments.get("symbol_exposure", 0.0)
+
+    @property
+    def sector_exposure(self) -> float:
+        """Get sector exposure from adjustments for test compatibility."""
+        return self.adjustments.get("sector_exposure", 0.0)
+
     @classmethod
     def allow(
         cls,
@@ -246,7 +261,7 @@ class RiskDecision:
             reason=reason,
             adjustments=adjustments or {},
             limits=limits or {},
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(UTC),
             **kwargs,
         )
 
@@ -264,6 +279,6 @@ class RiskDecision:
             reason=reason,
             adjustments=adjustments or {},
             limits=limits or {},
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(UTC),
             **kwargs,
         )

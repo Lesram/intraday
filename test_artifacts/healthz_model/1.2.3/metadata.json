@@ -1,7 +1,7 @@
 {
   "model_id": "healthz_model",
   "version": "1.2.3",
-  "created_at": "2025-08-25T00:05:47.899872+00:00",
+  "created_at": "2025-09-15T03:43:23.127543+00:00",
   "train_window": {},
   "feature_names": [
     "feature1",
@@ -22,7 +22,7 @@
     }
   },
   "metrics": {},
-  "artifact_hash": "72aaa501f23329d1f30ceaf43453864cce78944c31792a200035ea9b1b656804",
+  "artifact_hash": "19c7486aaa55d8c77a795c24fdc418fb00a5106827b4d53e4ef4c20d4da196ff",
   "training_samples": 3,
   "features_count": 2
 }

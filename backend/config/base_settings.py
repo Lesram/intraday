@@ -9,12 +9,27 @@ import os
 
 from pydantic import ConfigDict, Field, field_validator, model_validator
 from pydantic_settings import BaseSettings
+from backend.utils.logger import get_structured_logger
+
+# Load .env file for environment variables
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    # dotenv not available, environment variables should be set manually
+    pass
 
 
 class AppConfig(BaseSettings):
     """Application configuration section."""
 
-    model_config = ConfigDict(env_prefix="APP_", case_sensitive=False)
+    model_config = ConfigDict(
+        env_prefix="APP_", 
+        case_sensitive=False,
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore"  # Allow extra fields to be ignored
+    )
 
     environment: str = Field(
         default="development", description="Application environment"
@@ -60,7 +75,13 @@ class AppConfig(BaseSettings):
 class SecurityConfig(BaseSettings):
     """Security configuration section."""
 
-    model_config = ConfigDict(env_prefix="SECURITY_", case_sensitive=False)
+    model_config = ConfigDict(
+        env_prefix="SECURITY_", 
+        case_sensitive=False,
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore"  # Allow extra fields to be ignored
+    )
 
     jwt_secret_key: str = Field(
         default="your-super-secret-jwt-key-change-this-in-production",
@@ -102,7 +123,13 @@ class SecurityConfig(BaseSettings):
 class AlpacaConfig(BaseSettings):
     """Alpaca API configuration section."""
 
-    model_config = ConfigDict(env_prefix="ALPACA_", case_sensitive=False)
+    model_config = ConfigDict(
+        env_prefix="ALPACA_", 
+        case_sensitive=False,
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore"  # Allow extra fields to be ignored
+    )
 
     api_key: str = Field(default="", description="Alpaca API key")
     secret_key: str = Field(default="", description="Alpaca secret key")
@@ -133,7 +160,13 @@ class AlpacaConfig(BaseSettings):
 class DataConfig(BaseSettings):
     """Data sources configuration section."""
 
-    model_config = ConfigDict(env_prefix="DATA_", case_sensitive=False)
+    model_config = ConfigDict(
+        env_prefix="DATA_", 
+        case_sensitive=False,
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore"  # Allow extra fields to be ignored
+    )
 
     # Database configuration
     database_url: str = Field(
@@ -194,11 +227,24 @@ class DataConfig(BaseSettings):
             raise ValueError("Redis port must be between 1 and 65535")
         return v
 
+    @field_validator("default_symbols", "subreddit_list", mode="before")
+    @classmethod
+    def validate_json_list(cls, v):
+        """Convert JSON string to list if needed."""
+        if isinstance(v, str):
+            try:
+                import json
+                return json.loads(v)
+            except json.JSONDecodeError:
+                # If it's not valid JSON, treat as comma-separated
+                return [item.strip() for item in v.split(",") if item.strip()]
+        return v
+
 
 class WebsocketConfig(BaseSettings):
     """WebSocket configuration section."""
 
-    model_config = ConfigDict(env_prefix="WEBSOCKET_", case_sensitive=False)
+    model_config = ConfigDict(env_prefix="WEBSOCKET_", case_sensitive=False, extra="ignore")
 
     rate_limit_per_minute: int = Field(
         default=60, description="WebSocket rate limit per minute"
@@ -233,7 +279,7 @@ class WebsocketConfig(BaseSettings):
 class MetricsConfig(BaseSettings):
     """Metrics and monitoring configuration section."""
 
-    model_config = ConfigDict(env_prefix="METRICS_", case_sensitive=False)
+    model_config = ConfigDict(env_prefix="METRICS_", case_sensitive=False, extra="ignore")
 
     prometheus_port: int = Field(default=9090, description="Prometheus metrics port")
     log_level: str = Field(default="INFO", description="Logging level")
@@ -261,7 +307,7 @@ class MetricsConfig(BaseSettings):
 class DatabaseConfig(BaseSettings):
     """Database-specific configuration section."""
 
-    model_config = ConfigDict(env_prefix="DB_", case_sensitive=False)
+    model_config = ConfigDict(env_prefix="DB_", case_sensitive=False, extra="ignore")
 
     pool_size: int = Field(default=10, description="Database connection pool size")
     max_overflow: int = Field(
@@ -283,7 +329,7 @@ class DatabaseConfig(BaseSettings):
 class TradingConfig(BaseSettings):
     """Trading strategy and risk management configuration."""
 
-    model_config = ConfigDict(env_prefix="TRADING_", case_sensitive=False)
+    model_config = ConfigDict(env_prefix="TRADING_", case_sensitive=False, extra="ignore")
 
     # Risk Management Configuration
     max_daily_loss_pct: float = Field(
@@ -383,7 +429,7 @@ class TradingConfig(BaseSettings):
     @field_validator("feature_mode")
     @classmethod
     def validate_feature_mode(cls, v):
-        allowed_modes = ["full", "realtime_light"]
+        allowed_modes = ["basic", "advanced", "full", "realtime_light"]
         if v not in allowed_modes:
             raise ValueError(f"Feature mode must be one of {allowed_modes}")
         return v
@@ -392,7 +438,7 @@ class TradingConfig(BaseSettings):
 class OutboxConfig(BaseSettings):
     """Outbox and idempotency configuration."""
 
-    model_config = ConfigDict(env_prefix="OUTBOX_", case_sensitive=False)
+    model_config = ConfigDict(env_prefix="OUTBOX_", case_sensitive=False, extra="ignore")
 
     enabled: bool = Field(default=True, description="Enable outbox pattern")
     poll_interval_ms: int = Field(
@@ -443,7 +489,7 @@ class OutboxConfig(BaseSettings):
 class ObservabilityConfig(BaseSettings):
     """Observability configuration for OpenTelemetry, Prometheus, and logging."""
 
-    model_config = ConfigDict(env_prefix="OBS_", case_sensitive=False)
+    model_config = ConfigDict(env_prefix="OBS_", case_sensitive=False, extra="ignore")
 
     # General observability settings
     enabled: bool = Field(default=True, description="Enable observability features")
@@ -551,7 +597,7 @@ class ObservabilityConfig(BaseSettings):
 class MLOpsConfig(BaseSettings):
     """MLOps configuration for model registry, drift detection, and inference telemetry."""
 
-    model_config = ConfigDict(env_prefix="MLOPS_", case_sensitive=False)
+    model_config = ConfigDict(env_prefix="MLOPS_", case_sensitive=False, extra="ignore")
 
     # Model registry settings
     registry_root: str = Field(
@@ -900,8 +946,8 @@ class LegacySettings:
         elif name == "jwt_access_token_expire_minutes":
             return self._settings.security.jwt_expire_minutes
 
-        # Try to find in nested settings
-        for section_name in [
+        # Check if name matches a section name directly
+        section_names = [
             "app",
             "security",
             "alpaca",
@@ -910,7 +956,16 @@ class LegacySettings:
             "metrics",
             "database",
             "trading",
-        ]:
+            "outbox",
+            "observability",
+            "mlops"
+        ]
+        
+        if name in section_names:
+            return getattr(self._settings, name)
+
+        # Try to find in nested settings
+        for section_name in section_names:
             section = getattr(self._settings, section_name)
             if hasattr(section, name):
                 return getattr(section, name)
@@ -928,5 +983,6 @@ if os.getenv("SKIP_VALIDATION") != "true":
     try:
         validate_required_settings()
     except ValueError as e:
-        print(f"Configuration Warning: {e}")
-        print("Please set the required environment variables or create a .env file.")
+        logger = get_structured_logger(__name__)
+        logger.warning("Configuration validation failed", extra={"error": str(e)})
+        logger.info("Please set required environment variables or create a .env file")

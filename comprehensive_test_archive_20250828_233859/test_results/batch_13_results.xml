@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="5" skipped="0" tests="7" time="0.906" timestamp="2025-08-28T23:12:42.226595-07:00" hostname="BOOK-FVJOEO3Q00"><testcase classname="tests.test_outbox_resilience_coverage.TestOutboxEventCreation" name="test_create_outbox_event_basic" time="0.007"><failure message="TypeError: 'event_type' is an invalid keyword argument for OutboxEvent">tests\test_outbox_resilience_coverage.py:51: in test_create_outbox_event_basic
+    event = outbox.OutboxEvent(
+&lt;string&gt;:4: in __init__
+    ???
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\sqlalchemy\orm\state.py:571: in _initialize_instance
+    with util.safe_reraise():
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\sqlalchemy\util\langhelpers.py:146: in __exit__
+    raise exc_value.with_traceback(exc_tb)
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\sqlalchemy\orm\state.py:569: in _initialize_instance
+    manager.original_init(*mixed[1:], **kwargs)
+..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\sqlalchemy\orm\decl_base.py:2175: in _declarative_constructor
+    raise TypeError(
+E   TypeError: 'event_type' is an invalid keyword argument for OutboxEvent</failure></testcase><testcase classname="tests.test_outbox_resilience_coverage.TestOutboxEventCreation" name="test_create_outbox_event_with_validation" time="0.001" /><testcase classname="tests.test_outbox_resilience_coverage.TestOutboxEventCreation" name="test_event_serialization" time="0.001" /><testcase classname="tests.test_outbox_resilience_coverage.TestOutboxProcessor" name="test_outbox_processor_initialization" time="0.003"><failure message="TypeError: OutboxProcessor.__init__() got an unexpected keyword argument 'database'">tests\test_outbox_resilience_coverage.py:127: in test_outbox_processor_initialization
+    processor = outbox.OutboxProcessor(database=mock_database)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   TypeError: OutboxProcessor.__init__() got an unexpected keyword argument 'database'</failure></testcase><testcase classname="tests.test_outbox_resilience_coverage.TestOutboxProcessor" name="test_process_pending_events" time="0.003"><failure message="TypeError: OutboxProcessor.__init__() got an unexpected keyword argument 'database'">tests\test_outbox_resilience_coverage.py:143: in test_process_pending_events
+    processor = outbox.OutboxProcessor(database=mock_database)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   TypeError: OutboxProcessor.__init__() got an unexpected keyword argument 'database'</failure></testcase><testcase classname="tests.test_outbox_resilience_coverage.TestOutboxProcessor" name="test_event_dispatching" time="0.002"><failure message="TypeError: OutboxProcessor.__init__() got an unexpected keyword argument 'database'">tests\test_outbox_resilience_coverage.py:170: in test_event_dispatching
+    processor = outbox.OutboxProcessor(database=mock_database)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   TypeError: OutboxProcessor.__init__() got an unexpected keyword argument 'database'</failure></testcase><testcase classname="tests.test_outbox_resilience_coverage.TestOutboxProcessor" name="test_retry_failed_events" time="0.002"><failure message="TypeError: OutboxProcessor.__init__() got an unexpected keyword argument 'database'">tests\test_outbox_resilience_coverage.py:201: in test_retry_failed_events
+    processor = outbox.OutboxProcessor(database=mock_database)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   TypeError: OutboxProcessor.__init__() got an unexpected keyword argument 'database'</failure></testcase></testsuite></testsuites>
