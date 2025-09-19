@@ -34,7 +34,7 @@ class ModelManager:
         
     def get_active_model(self) -> Any:
         """Get the currently active model."""
-        if self.active_model and self.active_model in self.models:
+        if self.active_model is not None and self.active_model in self.models:
             return self.models[self.active_model]
         return Mock()
         

@@ -162,7 +162,7 @@ class StrategyEngine:
 
         # Calculate current exposure
         current_position = position_map.get(symbol)
-        account_value = getattr(self.settings, "account_value", 100000)  # Default 100k
+        account_value = getattr(self.settings.trading, "account_value", 100000)  # Default 100k
 
         if current_position and account_value > 0:
             # Assume position has qty, price attributes

@@ -345,6 +345,9 @@ class TradingConfig(BaseSettings):
         default=10000.0, description="Maximum position size in dollars"
     )
     max_leverage: float = Field(default=2.0, description="Maximum leverage")
+    account_value: float = Field(
+        default=100000.0, description="Account value for position sizing"
+    )
 
     # Trading hours
     trading_hours_start: str = Field(

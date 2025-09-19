@@ -31,16 +31,24 @@ class EnsembleModel:
     def predict(self, X: Union[pd.DataFrame, np.ndarray]) -> np.ndarray:
         """Make predictions."""
         if isinstance(X, pd.DataFrame):
+            if len(X) == 0:
+                return np.array([])
             return np.array([1 if i % 2 == 0 else 0 for i in range(len(X))])
         else:
-            return np.array([1, 0] * (len(X) // 2))
+            if len(X) == 0:
+                return np.array([])
+            return np.array([1 if i % 2 == 0 else 0 for i in range(len(X))])
             
     def predict_proba(self, X: Union[pd.DataFrame, np.ndarray]) -> np.ndarray:
         """Predict probabilities."""
         if isinstance(X, pd.DataFrame):
+            if len(X) == 0:
+                return np.array([]).reshape(0, 2)
             return np.array([[0.3, 0.7] if i % 2 == 0 else [0.6, 0.4] for i in range(len(X))])
         else:
-            return np.array([[0.3, 0.7], [0.6, 0.4]] * (len(X) // 2))
+            if len(X) == 0:
+                return np.array([]).reshape(0, 2)
+            return np.array([[0.3, 0.7] if i % 2 == 0 else [0.6, 0.4] for i in range(len(X))])
             
     def get_feature_importance(self) -> Dict[str, float]:
         """Get feature importance."""

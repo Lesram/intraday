@@ -49,7 +49,7 @@ class OrderStatusResponse(BaseModel):
     side: str
     qty: float
     filled_qty: float = 0.0
-    avg_fill_price: float = None
+    avg_fill_price: float | None = None
     submitted_at: str
     updated_at: str
 

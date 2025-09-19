@@ -842,7 +842,7 @@ class ModelRegistry:
             elif hasattr(model_obj, 'version'):
                 version = model_obj.version
             else:
-                version = f"v{len(self.models[model_id]) + 1}"
+                version = f"v{len(self.models[model_id]) + 1}.0"
 
         # Calculate training data hash
         try:
@@ -1150,6 +1150,8 @@ class ModelRegistry:
                 error_msg,
                 expected_schema=expected_dtypes,
                 received_schema=received_dtypes,
+                missing_columns=sorted(list(missing_features)),
+                extra_columns=sorted(list(extra_features)),
             )
 
         # Reorder columns to match expected order if needed
@@ -1694,6 +1696,7 @@ class DriftDetector:
 
         if avg_drift > 1.5:  # Overall drift threshold
             return DriftDetection(
+                model_id=model_id,  # Required first parameter
                 drift_type=DriftType.DATA_DRIFT,
                 severity=min(1.0, avg_drift / 3.0),
                 detected_at=datetime.now(),

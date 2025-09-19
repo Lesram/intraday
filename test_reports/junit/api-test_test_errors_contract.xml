@@ -1,1 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="0" skipped="0" tests="1" time="0.061" timestamp="2025-08-22T23:49:23.945353-07:00" hostname="BOOK-FVJOEO3Q00"><testcase classname="tests.api.test_errors_contract" name="test_error_schema_contracts" time="0.014" /></testsuite></testsuites>

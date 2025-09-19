@@ -16,7 +16,7 @@ class _SessionMaker:
 
 class DatabaseManager:
 	def __init__(self, session_maker: Callable[..., Any] | None = None) -> None:
-		self.session_maker = session_maker or _SessionMaker()
+		self.session_maker = session_maker if callable(session_maker) else _SessionMaker()
 
 	async def close(self) -> None:  # pragma: no cover
 		return None

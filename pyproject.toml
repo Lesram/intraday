@@ -65,16 +65,11 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
-    "pytest>=7.0.0",
-    "pytest-asyncio>=0.21.0",
-    "pytest-cov>=4.1.0",
-    "pytest-xdist>=3.3.0",
     "ruff>=0.1.0",
     "mypy>=1.5.0",
     "bandit[toml]>=1.7.0",
     "safety>=2.3.0",
     "pip-audit>=2.6.0",
-    "coverage>=7.0.0",
     "types-python-dateutil",
     "types-requests",
     "types-redis",
@@ -260,41 +255,3 @@ severity = "HIGH"
 
 [tool.bandit.assert_used]
 skips = ["**/test_*.py", "**/tests/*.py"]
-
-# Coverage Configuration
-[tool.coverage.run]
-source = ["backend"]
-omit = [
-    "*/tests/*",
-    "*/test_*.py",
-    "*/conftest.py",
-    "*/venv/*",
-    "*/.venv/*",
-    "*/alembic/versions/*",
-    "*/scripts/*",
-]
-parallel = true
-branch = true
-
-[tool.coverage.report]
-exclude_lines = [
-    "pragma: no cover",
-    "def __repr__",
-    "if self.debug:",
-    "if settings.DEBUG",
-    "raise AssertionError",
-    "raise NotImplementedError",
-    "if 0:",
-    "if __name__ == .__main__.:",
-    "class .*\\bProtocol\\):",
-    "@(abc\\.)?abstractmethod",
-    "TYPE_CHECKING",
-]
-ignore_errors = true
-precision = 2
-
-[tool.coverage.html]
-directory = "htmlcov"
-
-# Pytest Configuration
-## pytest configuration moved to repo root pytest.ini to avoid conflicts

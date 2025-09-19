@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="1" failures="0" skipped="0" tests="1" time="0.308" timestamp="2025-09-14T20:45:12.935434-07:00" hostname="BOOK-FVJOEO3Q00"><testcase classname="" name="tests.phase4.test_phase4_4_mock_error_simulation" time="0.000"><error message="collection failure">ImportError while importing test module 'C:\Users\Marsel\intra\algotrading_platform\tests\phase4\test_phase4_4_mock_error_simulation.py'.
-Hint: make sure your test modules/packages have valid Python names.
-Traceback:
-..\..\AppData\Local\Programs\Python\Python312\Lib\importlib\__init__.py:90: in import_module
-    return _bootstrap._gcd_import(name[level:], package, level)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-tests\phase4\test_phase4_4_mock_error_simulation.py:11: in &lt;module&gt;
-    from unittest.mock import Mock, patch, MagicMock, side_effect
-E   ImportError: cannot import name 'side_effect' from 'unittest.mock' (C:\Users\Marsel\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py)</error></testcase></testsuite></testsuites>

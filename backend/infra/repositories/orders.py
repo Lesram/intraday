@@ -204,12 +204,11 @@ class OrdersRepo:
         return await self.upsert_by_idempotency(
             client_key=client_key,
             symbol=order_data.get("symbol"),
-            order_type=order_data.get("order_type", "market"),
             side=order_data.get("side"),
-            quantity=order_data.get("quantity"),
-            price=order_data.get("price"),
-            time_in_force=order_data.get("time_in_force", "gtc"),
-            extended_hours=order_data.get("extended_hours", False)
+            qty=order_data.get("quantity", Decimal("0")),
+            order_type=order_data.get("order_type", "market"),
+            tif=order_data.get("time_in_force", "gtc"),
+            attributes=order_data.get("attributes", {})
         )
 
     async def attach_broker_result(
