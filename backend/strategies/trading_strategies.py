@@ -429,8 +429,8 @@ class RebalancingStrategy(BaseStrategy):
         current_price = price_data["close"].iloc[-1]
 
         # Get current portfolio allocation
-        portfolio_value = self.risk_manager.get_portfolio_value()
-        current_positions = self.risk_manager.get_positions()
+        portfolio_value = await self.risk_manager.get_portfolio_value()
+        current_positions = await self.risk_manager.get_positions()
 
         # Calculate current weight
         current_value = current_positions.get(symbol, {}).get("market_value", 0)

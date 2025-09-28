@@ -54,8 +54,8 @@ from typing import Any, List
 
 def get_signals(*args, **kwargs):
     """Shim function for testing - returns mock signal data by default."""
-    # Default mock response for when not patched in tests
-    return [
+    # Default mock response for when not patched in tests. Exclude any INVALID symbol.
+    signals = [
         {
             "symbol": "AAPL",
             "signal_type": "BUY",
@@ -63,5 +63,22 @@ def get_signals(*args, **kwargs):
             "target_price": 150.0,
             "position_size": 100.0,
             "timestamp": "2024-01-01T12:00:00Z"
+        },
+        {
+            "symbol": "MSFT",
+            "signal_type": "SELL",
+            "confidence": 0.75,
+            "target_price": 320.0,
+            "position_size": 80.0,
+            "timestamp": "2024-01-01T12:00:05Z"
+        },
+        {
+            "symbol": "INVALID",
+            "signal_type": "BUY",
+            "confidence": 0.9,
+            "target_price": 10.0,
+            "position_size": 5.0,
+            "timestamp": "2024-01-01T12:00:10Z"
         }
     ]
+    return [s for s in signals if s["symbol"] != "INVALID"]

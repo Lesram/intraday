@@ -11,7 +11,7 @@ from fastapi import HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import JSONResponse
-from pydantic import Field, validator
+from pydantic import Field, field_validator, ConfigDict
 from pydantic_settings import BaseSettings
 from starlette.middleware.base import BaseHTTPMiddleware
 
@@ -19,9 +19,10 @@ from starlette.middleware.base import BaseHTTPMiddleware
 class SecuritySettings(BaseSettings):
     """Enhanced security settings with strict validation."""
 
-    class Config:
-        env_prefix = "SECURITY_"
-        case_sensitive = False
+    model_config = ConfigDict(
+        env_prefix="SECURITY_",
+        case_sensitive=False
+    )
 
     # CORS Configuration - Strict by default
     cors_allow_origins: list[str] = Field(
@@ -80,7 +81,8 @@ class SecuritySettings(BaseSettings):
         description="HSTS max age in seconds",
     )
 
-    @validator("cors_allow_origins")
+    @field_validator("cors_allow_origins")
+    @classmethod
     def validate_cors_origins(cls, v):
         """Validate CORS origins - must be explicit."""
         if not v:
@@ -104,14 +106,16 @@ class SecuritySettings(BaseSettings):
 
         return v
 
-    @validator("trusted_hosts")
+    @field_validator("trusted_hosts")
+    @classmethod
     def validate_trusted_hosts(cls, v):
         """Validate trusted hosts."""
         if not v:
             raise ValueError("At least one trusted host must be configured")
         return v
 
-    @validator("rate_limit_requests_per_minute")
+    @field_validator("rate_limit_requests_per_minute")
+    @classmethod
     def validate_rate_limit(cls, v):
         """Validate rate limit settings."""
         if v <= 0:

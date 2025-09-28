@@ -99,52 +99,50 @@ async def login(
                 detail="Username and password are required"
             )
 
+        # At this point, username and password are guaranteed (422 raised otherwise)
         # Authenticate user with proper JWT tokens
-        if username and password:
-            from backend.infra.security import create_access_token, verify_password
-            
-            # Authenticate against user repository
-            user = user_repo.get_user_by_username(username)
-            if not user:
-                # User not found - use constant time to prevent username enumeration
-                # Use fast dummy operation for testing (avoid bcrypt delay)
-                import hashlib
-                hashlib.md5(b"dummy_password").hexdigest()  # Fast constant time operation
-                raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="Invalid username or password"
-                )
-            
-            # Verify password using secure hash comparison
-            if not verify_password(password, user.hashed_password):
-                raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="Invalid username or password"
-                )
-            
-            # Check if user is active
-            if not user.is_active:
-                raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="Account is disabled"
-                )
-            
-            # Create JWT token with user's actual roles
-            access_token = create_access_token(username, user.roles)
-            expires_in = 3600  # 1 hour in seconds
-            
-            return LoginResponse(
-                access_token=access_token,
-                token_type="bearer",
-                expires_in=expires_in,
-                user_id=username,
-                user=UserInfo(username=username, roles=user.roles)
-            )
-        else:
+        from backend.infra.security import create_access_token, verify_password
+        
+        # Authenticate against user repository
+        user = user_repo.get_user_by_username(username)
+        if not user:
+            # User not found - use constant time to prevent username enumeration
+            # Use fast dummy operation for testing (avoid bcrypt delay)
+            import hashlib
+            hashlib.md5(b"dummy_password").hexdigest()  # Fast constant time operation
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid username or password"
             )
+        
+        # Verify password using secure hash comparison
+        if not verify_password(password, user.hashed_password):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid username or password"
+            )
+        
+        # Check if user is active
+        if not user.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Account is disabled"
+            )
+        
+        # Create JWT token with user's actual roles
+        access_token = create_access_token(username, user.roles)
+        expires_in = 3600  # 1 hour in seconds
+        
+        return LoginResponse(
+            access_token=access_token,
+            token_type="bearer",
+            expires_in=expires_in,
+            user_id=username,
+            user=UserInfo(username=username, roles=user.roles)
+        )
+        # Note: The unreachable else branch that raised a 401 for missing credentials
+        # has been removed. Missing credentials are already handled above with a 422,
+        # so this additional branch was never executed and only reduced test coverage.
     except HTTPException:
         raise
     except Exception as e:

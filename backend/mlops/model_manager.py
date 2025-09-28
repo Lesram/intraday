@@ -1,8 +1,10 @@
 """
-MLOps Model Registry and Drift Detection System (Branch 2.6)
-On-disk model registry with feature schema lock, PSI drift detection, and inference telemetry.
-Integrates with existing observability infrastructure from Branch 2.5.
+DEPRECATED: Use backend.ml.model_manager instead.
+This module is kept for backwards compatibility.
 """
+
+# Re-export everything from the canonical location
+from ..ml.model_manager import *
 
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta

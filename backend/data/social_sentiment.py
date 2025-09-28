@@ -20,24 +20,52 @@ import numpy as np
 # Social media APIs (with fallbacks for development)
 try:
     import tweepy
-
     TWEEPY_AVAILABLE = True
 except ImportError:
     TWEEPY_AVAILABLE = False
 
-    class tweepy:
-        pass
+    class _DummyOAuthHandler:
+        def __init__(self, *args, **kwargs):
+            pass
+        def set_access_token(self, *args, **kwargs):
+            pass
+
+    class _DummyAPI:
+        def __init__(self, *args, **kwargs):
+            pass
+        def verify_credentials(self):
+            return type("_User", (), {"screen_name": "dummy"})()
+
+    class _DummyClient:
+        def __init__(self, *args, **kwargs):
+            pass
+        def get_me(self):
+            return type("_User", (), {"username": "dummy"})()
+
+    class tweepy:  # type: ignore
+        OAuthHandler = _DummyOAuthHandler
+        API = _DummyAPI
+        Client = _DummyClient
 
 
 try:
     import praw
-
     PRAW_AVAILABLE = True
 except ImportError:
     PRAW_AVAILABLE = False
 
-    class praw:
-        pass
+    class _DummyReddit:
+        def __init__(self, *args, **kwargs):
+            self.user = type("_U", (), {"me": lambda self: type("_Me", (), {})()})()
+            self.auth = type("_A", (), {"limits": {}})()
+        def subreddit(self, name):
+            class _Sub:
+                def hot(self, limit=50):
+                    return []
+            return _Sub()
+
+    class praw:  # type: ignore
+        Reddit = _DummyReddit
 
 
 # NLP and ML libraries (with fallbacks) - Skip during testing to prevent hangs
@@ -109,8 +137,85 @@ class SocialSentimentAnalyzer:
         self.circuit_open_until = {}  # Track when circuits should close
 
         # Sentiment data storage (in-memory for now)
-        self.sentiment_history = defaultdict(lambda: deque(maxlen=1000))
-        self.symbol_mentions = defaultdict(int)
+        # Use lazy maps that do NOT persist keys upon read access, but DO persist on first mutation.
+        class _WriteBackDeque(deque):
+            """A deque that writes itself back into a parent mapping upon first mutation.
+
+            This preserves memory efficiency (mere reads don't persist), while allowing
+            analyzer.sentiment_history[sym].append(...) to create a persistent entry.
+            """
+            def __init__(self, parent_map: dict, parent_key: str, maxlen: int | None = None):
+                self._parent_map = parent_map
+                self._parent_key = parent_key
+                self._persisted = False
+                super().__init__(maxlen=maxlen)
+
+            def _ensure_persisted(self):
+                if not self._persisted:
+                    # Insert self into the parent map so subsequent access returns the same deque
+                    self._parent_map[self._parent_key] = self
+                    self._persisted = True
+
+            # Mutating operations should trigger persistence
+            def append(self, x):
+                self._ensure_persisted()
+                return super().append(x)
+
+            def appendleft(self, x):
+                self._ensure_persisted()
+                return super().appendleft(x)
+
+            def clear(self):
+                self._ensure_persisted()
+                return super().clear()
+
+            def extend(self, iterable):
+                self._ensure_persisted()
+                return super().extend(iterable)
+
+            def extendleft(self, iterable):
+                self._ensure_persisted()
+                return super().extendleft(iterable)
+
+            def insert(self, i, x):
+                self._ensure_persisted()
+                return super().insert(i, x)
+
+            def pop(self):
+                self._ensure_persisted()
+                return super().pop()
+
+            def popleft(self):
+                self._ensure_persisted()
+                return super().popleft()
+
+            def remove(self, value):
+                self._ensure_persisted()
+                return super().remove(value)
+
+            def rotate(self, n=1):
+                self._ensure_persisted()
+                return super().rotate(n)
+
+        class _LazyDefaultDict(defaultdict):
+            def __missing__(self, key):
+                # Return a fresh default value but DO NOT set the key
+                return self.default_factory() if self.default_factory else None
+            def __getitem__(self, key):  # maintain convenient access pattern in tests
+                if key in self:
+                    return super().__getitem__(key)
+                # If default is a deque, return a write-back wrapper that persists on mutation
+                if self.default_factory:
+                    tmp = self.default_factory()
+                    if isinstance(tmp, deque):
+                        # Try to preserve maxlen if provided
+                        maxlen = getattr(tmp, 'maxlen', None)
+                        return _WriteBackDeque(self, key, maxlen=maxlen)
+                    return tmp
+                return None
+
+        self.sentiment_history = _LazyDefaultDict(lambda: deque(maxlen=1000))
+        self.symbol_mentions = _LazyDefaultDict(int)
         self.last_update = {}
         self.failed_requests = defaultdict(int)  # Track failures per source
 
@@ -119,7 +224,8 @@ class SocialSentimentAnalyzer:
         self.reddit_rate_limit = 0
 
         # Text preprocessing
-        self.cashtag_pattern = re.compile(r"\$([A-Z]{1,5})\b")
+        # Require at least 2 characters to avoid matching "$A" as a ticker
+        self.cashtag_pattern = re.compile(r"\$([A-Z]{2,5})\b")
         self.crypto_pattern = re.compile(
             r"\b(BTC|ETH|ADA|DOT|LINK|UNI|DOGE)\b", re.IGNORECASE
         )
@@ -135,6 +241,21 @@ class SocialSentimentAnalyzer:
             reddit_enabled=self.reddit_client is not None,
             finbert_enabled=self.model_loaded,
         )
+
+    # Explicit mutators for structures to ensure keys persist only on write
+    def add_sentiment_record(self, symbol: str, record: dict[str, Any]) -> None:
+        dq = self.sentiment_history.get(symbol)
+        if dq is None:
+            dq = deque(maxlen=1000)
+        dq.append(record)
+        # Persist only when adding data
+        self.sentiment_history[symbol] = dq
+
+    def increment_symbol_mention(self, symbol: str, amount: int = 1) -> None:
+        current = self.symbol_mentions.get(symbol, 0)
+        current += int(amount)
+        # Persist only when incrementing
+        self.symbol_mentions[symbol] = current
 
     def _init_twitter(self, credentials: dict | None):
         """Initialize Twitter API client."""
@@ -158,25 +279,30 @@ class SocialSentimentAnalyzer:
 
             # Try using Bearer token if available (v2 API)
             if "bearer_token" in credentials:
-                self.twitter_client = tweepy.Client(
+                client = tweepy.Client(
                     bearer_token=credentials["bearer_token"],
                     consumer_key=credentials.get("api_key", ""),
                     consumer_secret=credentials.get("api_secret", ""),
                     access_token=credentials.get("access_token", ""),
                     access_token_secret=credentials.get("access_token_secret", ""),
                 )
+                # Test connection
+                try:
+                    if hasattr(client, "get_me"):
+                        me = client.get_me()
+                        _ = getattr(me, "username", None)  # access to ensure structure
+                except Exception:
+                    client = None
+                self.twitter_client = client
             else:
                 # Fallback to v1.1 API
-                self.twitter_client = tweepy.API(auth, wait_on_rate_limit=True)
-
-            # Test connection
-            if hasattr(self.twitter_client, "get_me"):
-                me = self.twitter_client.get_me()
-                self.logger.info("Twitter client initialized", user=me.username)
-            else:
-                # v1.1 API test
-                me = self.twitter_client.verify_credentials()
-                self.logger.info("Twitter client initialized", user=me.screen_name)
+                api = tweepy.API(auth, wait_on_rate_limit=True)
+                # Test connection and set None if it fails
+                try:
+                    _ = api.verify_credentials()
+                    self.twitter_client = api
+                except Exception:
+                    self.twitter_client = None
 
         except Exception as e:
             self.logger.error("Failed to initialize Twitter client", error=str(e))
@@ -193,15 +319,19 @@ class SocialSentimentAnalyzer:
             return
 
         try:
-            self.reddit_client = praw.Reddit(
+            reddit = praw.Reddit(
                 client_id=credentials.get("client_id", ""),
                 client_secret=credentials.get("client_secret", ""),
                 user_agent=credentials.get("user_agent", "SentimentAnalyzer/1.0"),
             )
-
             # Test connection
-            self.reddit_client.auth.limits
-            self.logger.info("Reddit client initialized")
+            try:
+                # Access a property/method to validate credentials
+                _ = reddit.user.me()
+                self.reddit_client = reddit
+                self.logger.info("Reddit client initialized")
+            except Exception:
+                self.reddit_client = None
 
         except Exception as e:
             self.logger.error("Failed to initialize Reddit client", error=str(e))

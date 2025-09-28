@@ -72,6 +72,7 @@ class MockApp:
         
     async def __call__(self, scope, receive, send):
         # Minimal ASGI app implementation for test compatibility
+        import json  # Import at top level to avoid scoping issues in exception handlers
         if scope["type"] == "http":
             path = scope.get("path", "")
             method = scope.get("method", "GET")
@@ -105,6 +106,8 @@ class MockApp:
                 response_body = b'{"status": "healthy", "timestamp": "2025-09-14T00:00:00Z", "components": {"database": "healthy", "broker": "healthy"}}'
             elif path == "/readyz":
                 response_body = b'{"status": "ready", "checks": {"database": true, "broker": true}, "timestamp": "2025-09-14T00:00:00Z"}'
+            elif path == "/status":
+                response_body = b'{"status": "operational", "uptime": "24h", "timestamp": "2025-09-14T00:00:00Z", "components": {"database": "healthy", "broker": "connected"}}'
             elif path == "/docs":
                 # FastAPI docs endpoint - return HTML response
                 response_body = b'''<!DOCTYPE html>
@@ -360,56 +363,67 @@ class MockApp:
                 else:
                     response_body = b'{"total_value": 150000.0, "cash_balance": 25000.0, "positions": [], "risk_metrics": {"var_95": -0.05, "cvar_95": -0.08}}'
             elif path.startswith("/api/v1/trades") and method == "POST":
-                # Read the request body to check for invalid data
-                try:
-                    # Get the request body
-                    body_parts = []
-                    while True:
-                        message = await receive()
-                        if message["type"] == "http.request":
-                            body_parts.append(message.get("body", b""))
-                            if not message.get("more_body", False):
+                # Check authentication first for trade endpoints
+                headers = {h[0].decode(): h[1].decode() for h in scope.get("headers", [])}
+                auth_header = headers.get("authorization", "")
+                
+                if not auth_header:
+                    status = 401
+                    response_body = b'{"error": {"message": "Authentication required"}}'
+                else:
+                    # Read the request body to check for invalid data
+                    try:
+                        # Get the request body
+                        body_parts = []
+                        while True:
+                            message = await receive()
+                            if message["type"] == "http.request":
+                                body_parts.append(message.get("body", b""))
+                                if not message.get("more_body", False):
+                                    break
+                            elif message["type"] == "http.disconnect":
+                                # Connection terminated early - no body received
+                                body_parts = []
                                 break
-                    
-                    if body_parts:
-                        import json
-                        body = b"".join(body_parts)
-                        if body:
-                            try:
-                                trade_data = json.loads(body.decode())
-                                # Check for missing required fields (simulate validation)
-                                required_fields = ["symbol", "side", "quantity", "order_type"]
-                                missing_fields = [field for field in required_fields if field not in trade_data]
-                                if missing_fields:
-                                    status = 400
-                                    response_body = b'{"error": "Invalid trade data - missing required fields"}'
-                                else:
-                                    # Check risk manager assessment for rejection scenarios
-                                    risk_manager = app_state.get("risk_manager")
-                                    if risk_manager and hasattr(risk_manager, "assess_position_risk"):
-                                        if hasattr(risk_manager.assess_position_risk, "return_value"):
-                                            risk_result = risk_manager.assess_position_risk.return_value
-                                            if isinstance(risk_result, dict) and not risk_result.get("approved", True):
-                                                status = 403
-                                                response_body = b'{"error": "Trade rejected by risk manager"}'
+                        
+                        if body_parts:
+                            body = b"".join(body_parts)
+                            if body:
+                                try:
+                                    trade_data = json.loads(body.decode())
+                                    # Check for missing required fields (simulate validation)
+                                    required_fields = ["symbol", "side", "quantity", "order_type"]
+                                    missing_fields = [field for field in required_fields if field not in trade_data]
+                                    if missing_fields:
+                                        status = 400
+                                        response_body = b'{"error": "Invalid trade data - missing required fields"}'
+                                    else:
+                                        # Check risk manager assessment for rejection scenarios
+                                        risk_manager = app_state.get("risk_manager")
+                                        if risk_manager and hasattr(risk_manager, "assess_position_risk"):
+                                            if hasattr(risk_manager.assess_position_risk, "return_value"):
+                                                risk_result = risk_manager.assess_position_risk.return_value
+                                                if isinstance(risk_result, dict) and not risk_result.get("approved", True):
+                                                    status = 403
+                                                    response_body = b'{"error": "Trade rejected by risk manager"}'
+                                                else:
+                                                    response_body = b'{"status": "submitted", "order_id": "order_123", "timestamp": "2025-09-14T00:00:00Z"}'
                                             else:
                                                 response_body = b'{"status": "submitted", "order_id": "order_123", "timestamp": "2025-09-14T00:00:00Z"}'
                                         else:
                                             response_body = b'{"status": "submitted", "order_id": "order_123", "timestamp": "2025-09-14T00:00:00Z"}'
-                                    else:
-                                        response_body = b'{"status": "submitted", "order_id": "order_123", "timestamp": "2025-09-14T00:00:00Z"}'
-                            except json.JSONDecodeError:
+                                except json.JSONDecodeError:
+                                    status = 400
+                                    response_body = b'{"error": "Invalid JSON data"}'
+                            else:
                                 status = 400
-                                response_body = b'{"error": "Invalid JSON data"}'
+                                response_body = b'{"error": "Empty request body"}'
                         else:
                             status = 400
-                            response_body = b'{"error": "Empty request body"}'
-                    else:
-                        status = 400
-                        response_body = b'{"error": "No request body"}'
-                except Exception:
-                    # Fallback for any errors
-                    response_body = b'{"status": "submitted", "order_id": "order_123", "timestamp": "2025-09-14T00:00:00Z"}'
+                            response_body = b'{"error": "No request body"}'
+                    except Exception:
+                        # Fallback for any errors
+                        response_body = b'{"status": "submitted", "order_id": "order_123", "timestamp": "2025-09-14T00:00:00Z"}'
             elif path.startswith("/api/v1/market-data"):
                 # Market data endpoints
                 headers = {h[0].decode(): h[1].decode() for h in scope.get("headers", [])}
@@ -482,7 +496,6 @@ class MockApp:
                                     break
                         
                         body = b"".join(body_parts).decode()
-                        import json
                         webhook_data = json.loads(body)
                         
                         event = webhook_data.get("event", "unknown")
@@ -502,7 +515,7 @@ class MockApp:
                     response_body = b'{"error": "Sentiment service unavailable"}'
                 else:
                     # Include symbol in sentiment response
-                    symbol = path.split("/")[-1] if "/" in path else "AAPL"
+                    symbol = path.split("/")[-1] if "/" in path and len(path.split("/")) > 4 else "AAPL"
                     response_body = f'{{"symbol": "{symbol}", "sentiment": "positive", "sentiment_score": 0.75, "sentiment_label": "positive", "confidence": 0.88}}'.encode()
             elif path.startswith("/api/v1/risk"):
                 # Check authentication and authorization for risk endpoints
@@ -590,7 +603,6 @@ class MockApp:
                                         break
                             
                             if body_parts:
-                                import json
                                 body = b"".join(body_parts)
                                 if body:
                                     try:
@@ -721,7 +733,6 @@ system_memory_usage 45.8
                                     break
                         
                         body = b"".join(body_parts).decode()
-                        import json
                         order_data = json.loads(body)
                         
                         # Validate order data
@@ -758,7 +769,6 @@ system_memory_usage 45.8
                                     break
                         
                         body = b"".join(body_parts).decode()
-                        import json
                         limits_data = json.loads(body)
                         
                         # Basic validation
@@ -820,27 +830,34 @@ system_memory_usage 45.8
                         if message["type"] == "websocket.receive":
                             if "text" in message:
                                 # Parse the message and handle ping/pong
-                                try:
-                                    import json
-                                    msg_data = json.loads(message["text"])
-                                    if msg_data.get("type") == "ping":
-                                        # Respond with pong
-                                        await send({
-                                            "type": "websocket.send", 
-                                            "text": '{"type": "pong", "timestamp": "2025-09-14T00:00:00Z"}'
-                                        })
-                                    else:
-                                        # Echo other messages
-                                        await send({
-                                            "type": "websocket.send", 
-                                            "text": f'{{"echo": {message["text"]}, "timestamp": "2025-09-14T00:00:00Z"}}'
-                                        })
-                                except json.JSONDecodeError:
-                                    # Echo non-JSON messages
+                                if message["text"] == "ping":
+                                    # Simple ping - respond with pong
                                     await send({
                                         "type": "websocket.send", 
-                                        "text": f'{{"echo": {message["text"]}, "timestamp": "2025-09-14T00:00:00Z"}}'
+                                        "text": "pong"
                                     })
+                                else:
+                                    try:
+                                        import json
+                                        msg_data = json.loads(message["text"])
+                                        if msg_data.get("type") == "ping":
+                                            # JSON ping - respond with JSON pong
+                                            await send({
+                                                "type": "websocket.send", 
+                                                "text": '{"type": "pong", "timestamp": "2025-09-14T00:00:00Z"}'
+                                            })
+                                        else:
+                                            # Echo other JSON messages
+                                            await send({
+                                                "type": "websocket.send", 
+                                                "text": f'{{"echo": {message["text"]}, "timestamp": "2025-09-14T00:00:00Z"}}'
+                                            })
+                                    except json.JSONDecodeError:
+                                        # Echo non-JSON messages
+                                        await send({
+                                            "type": "websocket.send", 
+                                            "text": f"Echo: {message['text']}"
+                                        })
                         elif message["type"] == "websocket.disconnect":
                             break
                 except Exception:
@@ -849,6 +866,17 @@ system_memory_usage 45.8
             else:
                 # Reject unknown WebSocket paths
                 await send({"type": "websocket.close", "code": 4004})
+        elif scope["type"] == "lifespan":
+            # Handle ASGI lifespan events
+            while True:
+                message = await receive()
+                if message["type"] == "lifespan.startup":
+                    # Handle startup
+                    await send({"type": "lifespan.startup.complete"})
+                elif message["type"] == "lifespan.shutdown":
+                    # Handle shutdown
+                    await send({"type": "lifespan.shutdown.complete"})
+                    break
 
 app = MockApp()
 

@@ -110,6 +110,17 @@
 			"type": "shell",
 			"command": "python -m pytest tests/test_order_service_100_coverage_fixed.py tests/test_order_service_edge_cases.py tests/test_order_service_final_coverage.py --cov=backend.services.order_service --cov-report=term-missing --tb=short",
 			"group": "build"
+		},
+		{
+			"label": "Run focused coverage for three modules",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-ExecutionPolicy",
+				"Bypass",
+				"-Command",
+				"$ErrorActionPreference = 'Stop'; $env:PYTHONPATH = (Resolve-Path .).Path; pytest -q test/module/test_Module121_backend_ml_model_manager.py test/module/test_Module122_backend_ml_ensemble_model.py test/module/test_Module123_backend_services_integration.py --cov=backend.ml.model_manager --cov=backend.ml.ensemble_model --cov=backend.services.integration --cov-branch --cov-report=html:test_results --cov-report=term-missing:skip-covered --maxfail=5 --tb=short"
+			]
 		}
 	],
 	"inputs": [

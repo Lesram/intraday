@@ -4,7 +4,7 @@ API v1 Portfolio endpoints.
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from decimal import Decimal
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, field_serializer
 from typing import List, Any
 
 from backend.infra.security import (
@@ -18,14 +18,17 @@ router = APIRouter(prefix="/portfolio", tags=["portfolio"])
 
 
 class PositionResponse(BaseModel):
+    model_config = ConfigDict()
+    
     symbol: str
     qty: Decimal
     avg_price: Decimal
     market_value: Decimal
     unrealized_pnl: Decimal
 
-    class Config:
-        json_encoders = {Decimal: str}
+    @field_serializer('qty', 'avg_price', 'market_value', 'unrealized_pnl')
+    def serialize_decimal(self, value: Decimal) -> str:
+        return str(value)
 
 # Minimal shim to satisfy tests that patch this symbol (legacy import target)
 def get_portfolio_service():  # pragma: no cover - test patch target only

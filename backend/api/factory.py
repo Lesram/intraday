@@ -154,11 +154,11 @@ def create_app(settings=None, *, registry=None, ws_queue_max: int|None=None, **k
     DISABLE_ML = os.environ.get("DISABLE_ML", "0") == "1"
     if DISABLE_ML:
         # Use No-Op model manager with InMemoryModelRegistry for Light Mode
-        from backend.mlops.model_manager import _NoOpModelManager
+        from backend.ml.model_manager import _NoOpModelManager
         app.state.model_manager = _NoOpModelManager()
     else:
         # Use full model manager for production
-        from backend.mlops.model_manager import get_model_manager
+        from backend.ml.model_manager import get_model_manager
         app.state.model_manager = get_model_manager()
 
     @asynccontextmanager

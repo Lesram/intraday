@@ -61,7 +61,7 @@ def get_signal_service():
     from backend.services.signal_service import get_signals
     return type('SignalService', (), {
         'get_signals': get_signals,
-        'get_symbol_signals': lambda symbol: {"symbol": symbol, "signals": []}
+        'get_symbol_signals': lambda self, symbol: {"symbol": symbol, "signals": []}
     })()
 
 # Mock Dependencies
@@ -267,8 +267,8 @@ async def get_advanced_signals(
     try:
         symbol_list = [s.strip() for s in symbols.split(",")]
         enhanced_signals = {}
-        features_data = {} if include_features else None
-        risk_data = {} if include_risk_metrics else None
+        features_data = {} if include_features else {}
+        risk_data = {} if include_risk_metrics else {}
 
         for symbol in symbol_list:
             try:
@@ -297,11 +297,11 @@ async def get_advanced_signals(
                     }
 
                     # Add features if requested
-                    if include_features and features_data is not None:
+                    if include_features:
                         features_data[symbol] = features
 
                     # Add risk metrics if requested
-                    if include_risk_metrics and risk_data is not None:
+                    if include_risk_metrics:
                         risk_metrics = risk_manager.assess_signal_risk(
                             symbol, signal.signal_type.value
                         )

@@ -74,7 +74,7 @@ async def set_limits(
             detail="Insufficient permissions"
         )
     
-    return mgr.set_limits(payload.dict())
+    return mgr.set_limits(payload.model_dump())
 
 # Legacy routes for backward compatibility
 @router.get("/metrics/legacy")

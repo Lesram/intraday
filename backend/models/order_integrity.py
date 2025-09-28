@@ -20,7 +20,7 @@ from typing import Any
 import uuid
 
 from prometheus_client import Counter, Histogram
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, validator, ConfigDict
 from sqlalchemy import Column, DateTime, Index, String
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.ext.declarative import declarative_base
@@ -235,8 +235,7 @@ class OrderSnapshot:
 class OrderEventSchema(BaseModel):
     """Pydantic schema for order events with versioning."""
 
-    class Config:
-        extra = "forbid"  # Reject unknown fields
+    model_config = ConfigDict(extra="forbid")  # Reject unknown fields
 
     schema_version: str = Field(default="1.0", description="Event schema version")
     event_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
@@ -508,7 +507,7 @@ class AuditLogger:
         """Log event to append-only audit trail."""
 
         # Calculate data hash for integrity
-        event_dict = event.dict()
+        event_dict = event.model_dump()
         data_json = json.dumps(event_dict, sort_keys=True, default=str)
         data_hash = hashlib.sha256(data_json.encode()).hexdigest()
 

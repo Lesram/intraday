@@ -203,15 +203,32 @@ class Signal(Base):
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
 
-    # Signal details
+    # Core signal identification
     symbol: Mapped[str] = mapped_column(String(20), nullable=False, index=True)
-    strategy: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
-    ts: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, index=True
+    model_name: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
+    
+    # Signal characteristics
+    signal_type: Mapped[str] = mapped_column(String(20), nullable=False, index=True)  # 'buy', 'sell', 'hold'
+    direction: Mapped[str] = mapped_column(String(10), nullable=False)  # 'long', 'short', 'neutral'
+    strength: Mapped[Decimal] = mapped_column(DECIMAL(5, 4), nullable=False)  # 0.0000 to 1.0000
+    confidence: Mapped[Decimal] = mapped_column(DECIMAL(5, 4), nullable=False)  # 0.0000 to 1.0000
+    
+    # Optional price targets
+    target_price: Mapped[Decimal | None] = mapped_column(DECIMAL(18, 6), nullable=True)
+    stop_loss: Mapped[Decimal | None] = mapped_column(DECIMAL(18, 6), nullable=True)
+    
+    # Expiry for signal validity
+    expiry: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
+    
+    # Additional metadata
+    attributes: Mapped[dict[str, Any]] = mapped_column(
+        get_json_type(), nullable=False, default=dict, server_default=sa.text("'{}'")
     )
 
-    # Flexible payload for signal data
-    payload: Mapped[dict[str, Any]] = mapped_column(get_json_type(), nullable=False)
+    # Legacy fields for backward compatibility
+    strategy: Mapped[str | None] = mapped_column(String(100), nullable=True, index=True)
+    ts: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
+    payload: Mapped[dict[str, Any] | None] = mapped_column(get_json_type(), nullable=True)
 
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(
@@ -219,11 +236,22 @@ class Signal(Base):
         nullable=False,
         server_default=sa.text("CURRENT_TIMESTAMP"),
     )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=sa.text("CURRENT_TIMESTAMP"),
+        onupdate=sa.text("CURRENT_TIMESTAMP"),
+    )
 
-    # Indexes
+    # Indexes for performance
     __table_args__ = (
         Index("ix_signals_symbol_ts", "symbol", "ts"),
         Index("ix_signals_strategy_ts", "strategy", "ts"),
+        Index("ix_signals_symbol_model", "symbol", "model_name"),
+        Index("ix_signals_signal_type_direction", "signal_type", "direction"),
+        Index("ix_signals_confidence_strength", "confidence", "strength"),
+        Index("ix_signals_expiry", "expiry"),
+        Index("ix_signals_created_at", "created_at"),
     )
 
 

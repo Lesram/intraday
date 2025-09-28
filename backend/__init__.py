@@ -45,14 +45,15 @@ if 'backend.database.connection' not in sys.modules or 'backend.database.models'
         if hasattr(_database_module, 'Base'):
             models_module.Base = _database_module.Base
         else:
-            # Create declarative_base if missing
+            # Create declarative_base if missing - prefer SQLAlchemy 2.0+ syntax
             try:
-                from sqlalchemy.ext.declarative import declarative_base
+                # Try SQLAlchemy 2.0+ first (recommended)
+                from sqlalchemy.orm import declarative_base
                 models_module.Base = declarative_base()
             except ImportError:
-                # Fallback for newer SQLAlchemy
+                # Fallback for older SQLAlchemy versions
                 try:
-                    from sqlalchemy.orm import declarative_base
+                    from sqlalchemy.ext.declarative import declarative_base
                     models_module.Base = declarative_base()
                 except ImportError:
                     models_module.Base = None

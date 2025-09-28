@@ -22,6 +22,7 @@ from ..config import get_settings
 from ..infra.metrics import get_metrics_registry
 from ..utils.logger import get_structured_logger
 from .types import OrderSpec, PortfolioState, RiskDecision, RiskLimits
+from ..strategies.types import Side
 
 # Numerical stability constants
 EPS = 1e-12
@@ -92,10 +93,25 @@ class RiskMathUtils:
             return 0.1
 
         weights = np.power(lambda_param, np.arange(len(returns))[::-1])
-        weights /= weights.sum()
+        try:
+            weight_sum = np.sum(weights)
+            if weight_sum <= 0:
+                return 0.1
+            weights = weights / weight_sum
 
-        mean_return = np.average(returns, weights=weights)
-        variance = np.average((returns - mean_return) ** 2, weights=weights)
+            mean_return = np.sum(returns * weights)
+            variance = np.sum(((returns - mean_return) ** 2) * weights)
+        except (TypeError, ValueError, AttributeError):
+            # Fallback calculation if NumPy operations fail
+            n = len(returns)
+            weights = [lambda_param ** (n - 1 - i) for i in range(n)]
+            weight_sum = sum(weights)
+            if weight_sum <= 0:
+                return 0.1
+            weights = [w / weight_sum for w in weights]
+            
+            mean_return = sum(r * w for r, w in zip(returns, weights))
+            variance = sum(((r - mean_return) ** 2) * w for r, w in zip(returns, weights))
 
         # Annualize (assuming daily returns)
         return max(np.sqrt(variance * 252), EPS)
@@ -180,7 +196,9 @@ class AsyncRiskManager:
                     max_position_per_symbol = int(risk_limits.max_symbol_exposure)
                 if hasattr(risk_limits, "max_position_value"):
                     max_single_position_value = int(risk_limits.max_position_value)
-                if hasattr(risk_limits, "max_portfolio_var"):
+                if hasattr(risk_limits, "circuit_breaker_pct"):
+                    max_portfolio_var = float(risk_limits.circuit_breaker_pct)
+                elif hasattr(risk_limits, "max_portfolio_var"):
                     max_portfolio_var = float(risk_limits.max_portfolio_var)
             except (AttributeError, TypeError, ValueError):
                 # If legacy risk_limits doesn't have expected attributes, continue with defaults
@@ -270,7 +288,7 @@ class AsyncRiskManager:
 
         # 1. Position limits check
         current_pos = current_state.positions.get(order.symbol, Decimal("0"))
-        order_qty = order.qty if order.side == "buy" else -order.qty
+        order_qty = order.qty if order.side == Side.BUY else -order.qty
         new_position = current_pos + order_qty
 
         if abs(new_position) > self.max_position_per_symbol:
@@ -724,9 +742,10 @@ class AsyncRiskManager:
         """Calculate Value at Risk for portfolio."""
         try:
             # Simplified VaR calculation for test compatibility
+            positions = await self.get_positions()
             portfolio_value = sum(
                 pos.get("market_value", 0)
-                for pos in getattr(self, "positions", {}).values()
+                for pos in positions.values()
             )
             # Basic VaR approximation: 2% of portfolio value at 95% confidence
             var_rate = 0.02 if confidence_level >= 0.95 else 0.015

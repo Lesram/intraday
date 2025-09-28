@@ -160,7 +160,7 @@ async def liveness_probe():
                 # In tests, model manager is stored in app.state
                 import contextvars
                 # Get the model manager from wherever it's available
-                from backend.mlops.model_manager import get_model_manager
+                from backend.ml.model_manager import get_model_manager
                 model_manager = get_model_manager()
             except:
                 pass

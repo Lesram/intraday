@@ -27,6 +27,8 @@ def get_model_service():
 # Response Models
 class ModelTrainingRequest(BaseModel):
     """Model training request."""
+    model_config = {"protected_namespaces": ()}
+    
     model_type: str = Field(..., pattern="^(ensemble|regression|classification|lstm)$", description="Type of model to train")
     retrain: bool = Field(default=True, description="Whether to retrain the model")
     features: list = Field(default_factory=lambda: ["technical", "sentiment"], description="Features to use")
@@ -122,7 +124,7 @@ async def train_models(
     Requires admin privileges.
     """
     try:
-        result = await model_manager.start_training(model_config.dict())
+        result = await model_manager.start_training(model_config.model_dump())
         
         logger.info(f"Model training started: {result['training_id']}")
         return ModelTrainingResponse(**result)
