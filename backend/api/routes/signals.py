@@ -268,17 +268,6 @@ async def get_all_signals(
 ):
     """Get deterministic trading signals for multiple symbols with async batch processing"""
     try:
-        # Check if test-only hooks should trigger errors
-        settings = get_settings()
-        if getattr(settings, 'TESTING', False):
-            try:
-                from backend.services.signal_service import get_signals as _get_signals
-                # Allow tests to monkey-patch this and raise exceptions
-                _ = _get_signals(symbols=symbols)
-            except Exception as e:
-                logger.error(f"Signal service error: {e}")
-                raise HTTPException(status_code=500, detail="Internal Server Error")
-
         # Parse symbol list
         symbol_list = [s.strip().upper() for s in symbols.split(",") if s.strip()]
         
