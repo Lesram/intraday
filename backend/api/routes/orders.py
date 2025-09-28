@@ -12,13 +12,15 @@ from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.infra.security import get_current_user
-from backend.utils.logger import get_logger
+from backend.utils.logger import get_logger, log_event, StandardEventLogger
 from backend.infra.db import get_sessionmaker
 from backend.infra.outbox import OutboxRepo
+from backend.api.errors import RiskError, risk_error
 from backend.infra.repositories.orders import OrdersRepo
 from backend.services.order_service import OrderService
 
 logger = get_logger(__name__)
+event_logger = StandardEventLogger(__name__)
 
 router = APIRouter(prefix="/orders", tags=["Trading", "Protected", "Outbox"])
 
@@ -391,36 +393,26 @@ async def submit_order(
             warnings = risk_check.get("warnings", [])
             risk_details = risk_check.get("details", {})
             
-            # Log structured RISK_BLOCKED event
-            logger.warning("RISK_BLOCKED", extra={
-                "symbol": symbol,
-                "side": side,
-                "qty": qty,
-                "user_id": user_id,
-                "risk_score": risk_check.get("risk_score", 1.0),
-                "issues": issues,
-                "warnings": warnings,
-                "max_position_value": risk_details.get("trade_value", 0),
-                "max_symbol_exposure": risk_details.get("symbol_concentration", 0),
-                "circuit_breaker_pct": risk_details.get("drawdown_pct", 0),
-                "portfolio_value": risk_details.get("portfolio_value", 0),
-                "session_pnl": risk_details.get("session_pnl", 0)
-            })
+            # Log structured RISK_BLOCKED event using standardized logger
+            event_logger.risk_blocked(
+                symbol=symbol,
+                side=side,
+                qty=qty,
+                user_id=user_id,
+                risk_score=risk_check.get("risk_score", 1.0),
+                issues=issues,
+                warnings=warnings,
+                details=risk_details,
+                endpoint="submit_order"
+            )
             
-            raise HTTPException(
-                status_code=422,
-                detail={
-                    "error": {
-                        "code": "RISK_LIMIT",
-                        "message": "Order blocked by risk management",
-                        "details": {
-                            "issues": issues,
-                            "warnings": warnings,
-                            "risk_score": risk_check.get("risk_score", 1.0),
-                            "risk_metrics": risk_details
-                        }
-                    }
-                }
+            # Use standardized risk error
+            raise risk_error(
+                message="Order blocked by risk management",
+                issues=issues,
+                warnings=warnings,
+                risk_score=risk_check.get("risk_score", 1.0),
+                context=risk_details
             )
 
         # Prepare order data for OrderService
@@ -444,16 +436,17 @@ async def submit_order(
         # Submit order through real OrderService
         result = await order_service.submit_order_async(order_data)
         
-        # Log structured event
-        logger.info("ORDER_SUBMIT", extra={
-            "order_id": result.get("order_id"),
-            "symbol": symbol,
-            "side": side,
-            "qty": qty,
-            "user_id": user_id,
-            "idempotency_key": idempotency_key,
-            "status": result.get("status")
-        })
+        # Log structured event using standardized logger
+        event_logger.order_submitted(
+            order_id=result.get("order_id"),
+            symbol=symbol,
+            side=side,
+            qty=qty,
+            user_id=user_id,
+            idempotency_key=idempotency_key,
+            status=result.get("status"),
+            endpoint="submit_order"
+        )
 
         # Convert to response format
         return OrderSubmissionResponse(
@@ -540,7 +533,11 @@ async def cancel_order(
                 detail=f"Order not found: {order_id}",
             )
 
-        logger.info(f"Order cancelled successfully: {order_id}")
+        event_logger.order_cancelled(
+            order_id=order_id, 
+            endpoint="cancel_order",
+            user_id=getattr(current_user, 'id', None)
+        )
         return {
             "order_id": order_id,
             "status": "cancelled",

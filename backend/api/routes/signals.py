@@ -14,11 +14,12 @@ from fastapi import APIRouter, HTTPException, Depends, Request
 from pydantic import BaseModel, Field
 
 from backend.infra.security import get_current_user
-from backend.utils.logger import get_logger
+from backend.utils.logger import get_logger, log_event, get_event_logger
 from backend.strategies.basic import BasicStrategy
 from backend.config import get_settings
 
 logger = get_logger(__name__)
+event_logger = get_event_logger("signals")
 
 router = APIRouter(prefix="/signals", tags=["Trading Signals"])
 
@@ -222,15 +223,15 @@ async def get_trading_signal(
         strategy = get_basic_strategy()
         decision = strategy.decide(close_prices=close_prices)
 
-        # Log structured event
-        logger.info(
-            "SIGNAL_DECIDED",
-            extra={
-                "symbol": symbol,
-                "action": decision["action"],
-                "confidence": decision["confidence"],
-                "user_id": getattr(current_user, 'id', None)
-            }
+        # Log structured event using standardized logger
+        event_logger.signal_decided(
+            symbol=symbol,
+            action=decision["action"],
+            confidence=decision["confidence"],
+            user_id=getattr(current_user, 'id', None),
+            strategy="basic_rsi_sma",
+            reason=decision["reason"],
+            endpoint="single_symbol"
         )
 
         return SignalResponse(
@@ -324,16 +325,16 @@ async def get_all_signals(
                     "reason": decision["reason"]
                 }
                 
-                # Log each signal decision
-                logger.info(
-                    "SIGNAL_DECIDED",
-                    extra={
-                        "symbol": symbol,
-                        "action": decision["action"],
-                        "confidence": decision["confidence"],
-                        "user_id": getattr(current_user, 'id', None),
-                        "batch": True
-                    }
+                # Log each signal decision using standardized logger
+                event_logger.signal_decided(
+                    symbol=symbol,
+                    action=decision["action"],
+                    confidence=decision["confidence"],
+                    user_id=getattr(current_user, 'id', None),
+                    strategy="basic_rsi_sma",
+                    reason=decision["reason"],
+                    endpoint="batch_symbols",
+                    batch=True
                 )
                 
             except Exception as e:
@@ -413,17 +414,17 @@ async def get_batch_signals(
                     "current_price": close_prices[-1] if close_prices else None
                 }
                 
-                # Log each signal decision
-                logger.info(
-                    "SIGNAL_DECIDED",
-                    extra={
-                        "symbol": symbol,
-                        "action": decision["action"],
-                        "confidence": decision["confidence"],
-                        "user_id": getattr(current_user, 'id', None),
-                        "lookback": request.lookback,
-                        "batch": True
-                    }
+                # Log each signal decision using standardized logger
+                event_logger.signal_decided(
+                    symbol=symbol,
+                    action=decision["action"],
+                    confidence=decision["confidence"],
+                    user_id=getattr(current_user, 'id', None),
+                    strategy="basic_rsi_sma",
+                    reason=decision["reason"],
+                    lookback=request.lookback,
+                    endpoint="batch_advanced",
+                    batch=True
                 )
                 
             except Exception as e:

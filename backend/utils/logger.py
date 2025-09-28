@@ -317,3 +317,143 @@ class PerformanceLogger:
 
 # Global performance logger
 performance_logger = PerformanceLogger()
+
+
+def log_event(event: str, logger_instance=None, **fields):
+    """
+    Standardized event logging function for consistent structured logging across all routes.
+    
+    Args:
+        event: Event type (e.g., SIGNAL_DECIDED, ORDER_SUBMIT, RISK_BLOCKED)
+        logger_instance: Optional logger instance (uses structured logger if None)
+        **fields: Additional structured fields to include in log
+        
+    Standard fields automatically added:
+    - timestamp: ISO format timestamp
+    - trace_id: If available from context
+    - event_type: The event name
+    """
+    import uuid
+    from typing import Optional
+    
+    if logger_instance is None:
+        logger_instance = get_structured_logger("events")
+    
+    # Build structured event data
+    event_data = {
+        "event_type": event,
+        "timestamp": datetime.now(UTC).isoformat(),
+        **fields
+    }
+    
+    # Add trace_id if available (for distributed tracing)
+    trace_id = fields.get("trace_id")
+    if not trace_id:
+        # Generate a simple trace ID if none provided
+        event_data["trace_id"] = str(uuid.uuid4())[:8]
+    
+    # Map event types to appropriate log levels
+    critical_events = {"SYSTEM_FAILURE", "SECURITY_BREACH", "DATA_CORRUPTION"}
+    warning_events = {"RISK_BLOCKED", "ORDER_REJECTED", "LIMIT_EXCEEDED", "CIRCUIT_BREAKER"}
+    info_events = {
+        "SIGNAL_DECIDED", "ORDER_SUBMIT", "ORDER_STATUS", "ORDER_CANCEL", 
+        "SIGNAL_CREATED", "POSITION_UPDATE", "STRATEGY_EXECUTION"
+    }
+    
+    if event in critical_events:
+        logger_instance.error(f"Critical event: {event}", **event_data)
+    elif event in warning_events:
+        logger_instance.warning(f"Warning event: {event}", **event_data)
+    elif event in info_events:
+        logger_instance.info(f"Event: {event}", **event_data)
+    else:
+        # Default to info level for unknown events
+        logger_instance.info(f"Event: {event}", **event_data)
+
+
+class StandardEventLogger:
+    """
+    Standardized event logger for consistent logging patterns across the application.
+    Provides typed methods for common event categories.
+    """
+    
+    def __init__(self, logger_name: str):
+        self.logger = get_structured_logger(logger_name)
+        self.service_name = logger_name
+    
+    def signal_decided(self, symbol: str, action: str, confidence: float, **kwargs):
+        """Log a trading signal decision event."""
+        log_event(
+            "SIGNAL_DECIDED",
+            self.logger,
+            symbol=symbol,
+            action=action,
+            confidence=confidence,
+            service=self.service_name,
+            **kwargs
+        )
+    
+    def order_submit(self, order_id: str, symbol: str, side: str, qty: float, **kwargs):
+        """Log an order submission event."""
+        log_event(
+            "ORDER_SUBMIT", 
+            self.logger,
+            order_id=order_id,
+            symbol=symbol,
+            side=side,
+            qty=qty,
+            service=self.service_name,
+            **kwargs
+        )
+    
+    def order_status(self, order_id: str, status: str, **kwargs):
+        """Log an order status change event."""
+        log_event(
+            "ORDER_STATUS",
+            self.logger,
+            order_id=order_id,
+            status=status,
+            service=self.service_name,
+            **kwargs
+        )
+    
+    def order_cancel(self, order_id: str, reason: str = None, **kwargs):
+        """Log an order cancellation event."""
+        log_event(
+            "ORDER_CANCEL",
+            self.logger,
+            order_id=order_id,
+            reason=reason,
+            service=self.service_name,
+            **kwargs
+        )
+    
+    def risk_blocked(self, symbol: str, side: str, qty: float, issues: list, **kwargs):
+        """Log a risk management block event."""
+        log_event(
+            "RISK_BLOCKED",
+            self.logger,
+            symbol=symbol,
+            side=side,
+            qty=qty,
+            issues=issues,
+            service=self.service_name,
+            **kwargs
+        )
+    
+    def position_update(self, symbol: str, position_type: str, **kwargs):
+        """Log a position update event."""
+        log_event(
+            "POSITION_UPDATE",
+            self.logger,
+            symbol=symbol,
+            position_type=position_type,
+            service=self.service_name,
+            **kwargs
+        )
+
+
+# Convenience function to get a standard event logger
+def get_event_logger(name: str) -> StandardEventLogger:
+    """Get a standardized event logger for a service/module."""
+    return StandardEventLogger(name)

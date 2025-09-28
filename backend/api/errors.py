@@ -1,15 +1,99 @@
 """
 Error handling for FastAPI application.
-Provides standardized error response envelopes.
+Provides standardized error response envelopes and business logic errors.
 """
 
 import logging
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
-from pydantic import ValidationError
+from pydantic import ValidationError, BaseModel, Field
+
+from backend.utils.logger import StandardEventLogger
+
+event_logger = StandardEventLogger(__name__)
+
+
+# Standardized Error Classes
+class ErrorCodes:
+    """Standard error codes used across the application."""
+    
+    # Authentication & Authorization
+    UNAUTHORIZED = "UNAUTHORIZED"
+    FORBIDDEN = "FORBIDDEN" 
+    TOKEN_EXPIRED = "TOKEN_EXPIRED"
+    INVALID_CREDENTIALS = "INVALID_CREDENTIALS"
+    
+    # Validation
+    VALIDATION_ERROR = "VALIDATION_ERROR"
+    INVALID_INPUT = "INVALID_INPUT"
+    MISSING_FIELD = "MISSING_FIELD"
+    INVALID_FORMAT = "INVALID_FORMAT"
+    
+    # Business Logic
+    INSUFFICIENT_FUNDS = "INSUFFICIENT_FUNDS"
+    RISK_LIMIT_EXCEEDED = "RISK_LIMIT_EXCEEDED"
+    ORDER_NOT_FOUND = "ORDER_NOT_FOUND"
+    DUPLICATE_ORDER = "DUPLICATE_ORDER"
+    MARKET_CLOSED = "MARKET_CLOSED"
+    INVALID_SYMBOL = "INVALID_SYMBOL"
+    
+    # System
+    INTERNAL_ERROR = "INTERNAL_ERROR"
+    SERVICE_UNAVAILABLE = "SERVICE_UNAVAILABLE"
+    DATABASE_ERROR = "DATABASE_ERROR"
+    TIMEOUT_ERROR = "TIMEOUT_ERROR"
+    RATE_LIMITED = "RATE_LIMITED"
+
+
+class APIError(Exception):
+    """
+    Base API error with standardized format.
+    Use this for raising errors that should be returned to clients.
+    """
+    
+    def __init__(
+        self, 
+        code: str,
+        message: str,
+        status_code: int = status.HTTP_400_BAD_REQUEST,
+        field: Optional[str] = None,
+        context: Optional[Dict[str, Any]] = None
+    ):
+        self.code = code
+        self.message = message 
+        self.status_code = status_code
+        self.field = field
+        self.context = context or {}
+        super().__init__(self.message)
+
+
+class RiskError(APIError):
+    """Risk management error with detailed context."""
+    
+    def __init__(
+        self, 
+        message: str, 
+        issues: List[str] = None,
+        warnings: List[str] = None,
+        risk_score: float = None,
+        context: Optional[Dict[str, Any]] = None
+    ):
+        risk_context = context or {}
+        risk_context.update({
+            "issues": issues or [],
+            "warnings": warnings or [],
+            "risk_score": risk_score
+        })
+        
+        super().__init__(
+            code=ErrorCodes.RISK_LIMIT_EXCEEDED,
+            message=message,
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            context=risk_context
+        )
 
 
 def install_error_handlers(app: FastAPI) -> None:
@@ -48,6 +132,22 @@ def install_error_handlers(app: FastAPI) -> None:
                 content={"detail": exc.errors()},
             )
     
+    @app.exception_handler(APIError)
+    async def api_error_handler(request: Request, exc: APIError) -> JSONResponse:
+        """Handle APIError instances with standardized format."""
+        # Log the API error
+        event_logger.api_error_occurred(
+            error_code=exc.code,
+            error_message=exc.message,
+            status_code=exc.status_code,
+            path=str(request.url.path),
+            user_id=getattr(request.state, 'user_id', None),
+            field=exc.field,
+            context=exc.context
+        )
+        
+        return create_api_error_response(exc, request)
+
     @app.exception_handler(HTTPException)
     async def http_exception_handler(
         request: Request, exc: HTTPException
@@ -119,6 +219,45 @@ def create_error_response(
     )
 
 
+def create_api_error_response(error: APIError, request: Request) -> JSONResponse:
+    """
+    Create standardized error response for APIError instances.
+    
+    Args:
+        error: APIError instance
+        request: FastAPI request object
+        
+    Returns:
+        JSONResponse with enhanced standardized error format
+    """
+    from datetime import datetime
+    
+    error_content = {
+        "detail": error.message,  # Top-level detail for compatibility
+        "error": {
+            "code": error.code,
+            "message": error.message,
+            "type": type(error).__name__,
+        }
+    }
+    
+    # Add optional fields if present
+    if error.field:
+        error_content["error"]["field"] = error.field
+    
+    if error.context:
+        error_content["error"]["context"] = error.context
+        
+    # Add request metadata
+    error_content["error"]["timestamp"] = datetime.now().isoformat()
+    error_content["error"]["path"] = str(request.url.path)
+    
+    return JSONResponse(
+        status_code=error.status_code,
+        content=error_content
+    )
+
+
 def format_validation_errors(errors: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """
     Format Pydantic validation errors into a consistent structure.
@@ -172,3 +311,66 @@ def http_422():
 @router.get("/http-500")
 def http_500(): 
     raise HTTPException(500, detail="Server error")
+
+
+# Helper functions for common error creation
+def risk_error(
+    message: str, 
+    issues: List[str] = None,
+    warnings: List[str] = None, 
+    risk_score: float = None,
+    context: Dict[str, Any] = None
+) -> RiskError:
+    """Create risk management error."""
+    return RiskError(
+        message=message,
+        issues=issues,
+        warnings=warnings,
+        risk_score=risk_score,
+        context=context
+    )
+
+
+def validation_error(field: str, message: str, context: Dict[str, Any] = None) -> APIError:
+    """Create validation error."""
+    return APIError(
+        code=ErrorCodes.VALIDATION_ERROR,
+        message=message,
+        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        field=field,
+        context=context
+    )
+
+
+def business_error(code: str, message: str, context: Dict[str, Any] = None) -> APIError:
+    """Create business logic error.""" 
+    return APIError(
+        code=code,
+        message=message,
+        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        context=context
+    )
+
+
+def not_found_error(resource: str, identifier: str = None) -> APIError:
+    """Create not found error."""
+    message = f"{resource} not found"
+    if identifier:
+        message += f": {identifier}"
+        
+    return APIError(
+        code="NOT_FOUND", 
+        message=message,
+        status_code=status.HTTP_404_NOT_FOUND,
+        context={"resource": resource, "identifier": identifier}
+    )
+
+
+def internal_error(message: str = "Internal server error", context: Dict[str, Any] = None) -> APIError:
+    """Create internal server error."""
+    return APIError(
+        code=ErrorCodes.INTERNAL_ERROR,
+        message=message,
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        context=context
+    )
