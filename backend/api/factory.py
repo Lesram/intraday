@@ -339,11 +339,25 @@ def create_app(settings=None, *, registry=None, ws_queue_max: int|None=None, **k
         except Exception as e:
             return Response(content=f"# Metrics generation failed: {str(e)}\n", media_type="text/plain")
 
-    # Create unified API v1 router
-    from fastapi import APIRouter
-    api_v1_router = APIRouter(prefix="/api/v1", tags=["API v1"])
+    # ============================================================================
+    # CENTRALIZED ROUTER ARCHITECTURE
+    # ============================================================================
+    # api_router = APIRouter(prefix="/api/v1") 
+    # └── public routes (health, metrics) - no auth required
+    # └── protected = APIRouter(dependencies=[Depends(get_authenticated_user)])
+    #     └── feature routers (signals, orders, portfolio, risk) - auth required
+    # ============================================================================
     
-    # Import all routers
+    from fastapi import APIRouter, Depends
+    from backend.infra.security import get_authenticated_user
+    
+    # Main API v1 router with centralized prefix
+    api_router = APIRouter(prefix="/api/v1", tags=["API v1"])
+    
+    # Protected router - all routes require authentication
+    protected = APIRouter(dependencies=[Depends(get_authenticated_user)])
+    
+    # Import all routers (removing individual prefixes since we centralize here)
     from backend.api.auth import router as auth_router
     from backend.api.errors import router as errors_router
     from backend.api.portfolio import router as portfolio_router
@@ -355,31 +369,40 @@ def create_app(settings=None, *, registry=None, ws_queue_max: int|None=None, **k
     from backend.api.routes.system import router as system_router
     from backend.api.routes.trades import router as trades_router
     
-    # Include all routers under unified v1 prefix
-    api_v1_router.include_router(auth_router, tags=["Authentication"])
-    api_v1_router.include_router(portfolio_router, tags=["Portfolio"]) 
-    api_v1_router.include_router(risk_router, tags=["Risk Management"])
-    api_v1_router.include_router(orders_router, tags=["Orders"])
-    api_v1_router.include_router(trades_router, tags=["Trades"])
-    api_v1_router.include_router(signals_router, tags=["Signals"])
-    api_v1_router.include_router(models_router, tags=["Models"])
-    api_v1_router.include_router(system_router, tags=["System"])
-    api_v1_router.include_router(strategy_router, tags=["Strategy"])
+    # ============================================================================
+    # PUBLIC ROUTES (no authentication required)
+    # ============================================================================
+    # Add public system routes directly to api_router (health, metrics, etc.)
+    api_router.include_router(system_router, tags=["System - Public"])
+    api_router.include_router(auth_router, tags=["Authentication - Public"])
     
-    # Add direct positions endpoint for test compatibility
-    from fastapi import Depends, Request
-
-    from backend.infra.security import get_authenticated_user
+    # ============================================================================  
+    # PROTECTED ROUTES (authentication required)
+    # ============================================================================
+    # Mount all feature routers onto protected router - they inherit auth dependency
+    protected.include_router(portfolio_router, tags=["Portfolio - Protected"])
+    protected.include_router(risk_router, tags=["Risk Management - Protected"])
+    protected.include_router(orders_router, tags=["Orders - Protected"])
+    protected.include_router(trades_router, tags=["Trades - Protected"])
+    protected.include_router(signals_router, tags=["Signals - Protected"])
+    protected.include_router(models_router, tags=["Models - Protected"])
+    protected.include_router(strategy_router, tags=["Strategy - Protected"])
     
-    @api_v1_router.get("/positions")
+    # Mount protected router into main api_router
+    api_router.include_router(protected)
+    
+    # Add direct positions endpoint for test compatibility (protected)
+    from fastapi import Request
+    
+    @protected.get("/positions")
     async def get_positions_direct(request: Request, user=Depends(get_authenticated_user)):
         """Direct positions endpoint for test compatibility."""
         # Use the same logic as the portfolio positions endpoint
         from backend.api.portfolio import get_positions as portfolio_get_positions
         return await portfolio_get_positions(request, user)
     
-    # Add trades/history endpoint directly to api_v1_router
-    @api_v1_router.get("/trades/history")
+    # Add trades/history endpoint directly to protected router
+    @protected.get("/trades/history")
     async def get_trades_history(
         request: Request,
         user: dict = Depends(get_authenticated_user)
@@ -392,9 +415,13 @@ def create_app(settings=None, *, registry=None, ws_queue_max: int|None=None, **k
             "page_size": 50
         }
     
-    # Include the unified router and errors router
-    app.include_router(api_v1_router)
-    app.include_router(errors_router)  # Keep test error routes at root
+    # ============================================================================
+    # MOUNT ROUTERS
+    # ============================================================================
+    # Include the main API router with all public and protected routes
+    app.include_router(api_router)
+    # Keep test error routes at root level for backward compatibility
+    app.include_router(errors_router)
     
     # Temporary compatibility: include auth at root level for existing tests
     app.include_router(auth_router, tags=["Authentication - Legacy"])

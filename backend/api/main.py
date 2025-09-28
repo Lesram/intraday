@@ -879,7 +879,9 @@ system_memory_usage 45.8
                     await send({"type": "lifespan.shutdown.complete"})
                     break
 
-app = MockApp()
+# Create the real FastAPI app instead of the mock
+from .factory import create_app
+app = create_app()
 
 def health_check(request) -> dict[str, str]:
     """Health check endpoint stub."""
