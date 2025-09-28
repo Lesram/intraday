@@ -22,6 +22,8 @@ from backend.config import get_settings
 from backend.services.order_service import OrderService
 from backend.infra.repositories.orders import OrdersRepo
 from backend.infra.outbox import OutboxRepo
+from backend.api.schemas.signals import SignalResponse as SchemaSignalResponse, SignalRequest as SchemaSignalRequest
+from backend.api.schemas.signals import SignalResponse as SchemaSignalResponse, SignalRequest as SchemaSignalRequest
 
 logger = get_logger(__name__)
 event_logger = get_event_logger("signals")
@@ -44,9 +46,10 @@ class BatchSignalsRequest(BaseModel):
     lookback: int = Field(default=200, ge=50, le=1000, description="Historical data lookback period")
 
 
-# Response Models
-class SignalResponse(BaseModel):
-    """Trading signal response."""
+# Response Models - Use schema version for new endpoints
+# Keep legacy SignalResponse for backward compatibility
+class LegacySignalResponse(BaseModel):
+    """Legacy trading signal response for backward compatibility."""
     symbol: str
     signal_type: str
     confidence: float = Field(..., ge=0.0, le=1.0)
@@ -54,6 +57,12 @@ class SignalResponse(BaseModel):
     position_size: float = None
     timestamp: str
     metadata: Dict[str, Any] = {}
+
+# Use the new schema version as primary SignalResponse
+SignalResponse = SchemaSignalResponse
+
+# Use the new schema version as primary SignalResponse
+SignalResponse = SchemaSignalResponse
 
 
 class MultiSignalsResponse(BaseModel):
@@ -298,21 +307,8 @@ async def get_trading_signal(
             endpoint="single_symbol"
         )
 
-        return SignalResponse(
-            symbol=symbol,
-            signal_type=decision["action"].upper(),
-            confidence=decision["confidence"],
-            target_price=close_prices[-1] * (1 + decision["tp_pct"] / 100) if decision["action"] == "buy" else close_prices[-1] * (1 - decision["tp_pct"] / 100),
-            position_size=decision["confidence"] * 100,  # Scale position by confidence
-            timestamp=datetime.now().isoformat(),
-            metadata={
-                "source": "basic_strategy",
-                "reason": decision["reason"],
-                "tp_pct": decision["tp_pct"],
-                "sl_pct": decision["sl_pct"],
-                "processing_time_ms": (time.time() - start_time) * 1000
-            }
-        )
+        # Use from_decision for consistency and compatibility
+        return SignalResponse.from_decision(symbol, decision)
 
     except HTTPException:
         raise
@@ -406,7 +402,7 @@ async def get_all_signals(
 
 @router.post(
     "/batch",
-    response_model=MultiSignalsResponse,
+    response_model=Dict[str, SignalResponse],
     tags=["Trading Signals", "Protected"],
 )
 async def get_batch_signals(
@@ -455,17 +451,11 @@ async def get_batch_signals(
                     signals_map[symbol] = {"error": "no_data_available"}
                     continue
                 
-                # Generate signal
+                # Generate signal and create SignalResponse
                 decision = strategy.decide(close_prices=close_prices)
                 
-                signals_map[symbol] = {
-                    "action": decision["action"],
-                    "confidence": decision["confidence"],
-                    "tp_pct": decision["tp_pct"],
-                    "sl_pct": decision["sl_pct"],
-                    "reason": decision["reason"],
-                    "current_price": close_prices[-1] if close_prices else None
-                }
+                # Create SignalResponse using from_decision method
+                signals_map[symbol] = SignalResponse.from_decision(symbol, decision)
                 
                 # Log each signal decision using standardized logger
                 event_logger.signal_decided(
@@ -482,21 +472,26 @@ async def get_batch_signals(
                 
             except Exception as e:
                 logger.error(f"Error processing signal for {symbol}: {e}")
-                signals_map[symbol] = {"error": str(e)}
+                # For errors, create a hold signal with low confidence
+                error_decision = {
+                    "action": "hold",
+                    "confidence": 0.0,
+                    "tp_pct": 0.0,
+                    "sl_pct": 0.0,
+                    "reason": f"Error: {str(e)}"
+                }
+                signals_map[symbol] = SignalResponse.from_decision(symbol, error_decision)
 
-        return MultiSignalsResponse(
-            signals=signals_map,
-            timestamp=datetime.now().isoformat()
-        )
+        return signals_map
 
     except Exception as e:
         logger.exception(f"Error in get_batch_signals: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/")
+@router.post("/", response_model=SignalResponse)
 async def create_signal(
-    signal_request: SignalRequest,
+    signal_request: SchemaSignalRequest,
     current_user=Depends(get_authenticated_user)
 ):
     """Create a new trading signal."""
@@ -510,23 +505,22 @@ async def create_signal(
             extra={
                 "signal_id": signal_id,
                 "symbol": signal_request.symbol,
-                "signal_strength": signal_request.signal_strength,
+                "confidence": signal_request.confidence,
                 "user_id": getattr(current_user, 'id', None)
             }
         )
         
-        # In a real implementation, this would:
-        # 1. Validate the signal
-        # 2. Store it in the database
-        # 3. Potentially trigger automated trading
-        
-        return {
-            "signal_id": signal_id,
-            "status": "accepted",
-            "symbol": signal_request.symbol,
-            "signal_strength": signal_request.signal_strength,
-            "processed_at": datetime.now().isoformat(),
+        # Convert signal_request to decision format and return SignalResponse
+        decision_dict = {
+            "action": signal_request.signal_type.lower(),  # Convert BUY/SELL/HOLD to lowercase
+            "confidence": signal_request.confidence,
+            "tp_pct": 0.02,  # Default 2% take profit
+            "sl_pct": 0.01,  # Default 1% stop loss
+            "timestamp": signal_request.timestamp or datetime.utcnow().isoformat(),
+            "reason": f"User submitted signal {signal_id}"
         }
+        
+        return SignalResponse.from_decision(signal_request.symbol, decision_dict)
         
     except Exception as e:
         logger.error(f"Error creating signal: {e}")
