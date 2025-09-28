@@ -335,6 +335,11 @@ class AppSettings:
     environment: Any = EnvironmentEnum.DEVELOPMENT
     debug: bool = True
     testing: bool = False
+    
+    # Broker configuration toggles
+    use_mock_data: bool = True
+    use_mock_broker: bool = True
+    alpaca_paper: bool = True
 
     database: DatabaseSettings = field(default_factory=DatabaseSettings)
     trading: TradingSettings = field(default_factory=TradingSettings)
@@ -351,6 +356,20 @@ class AppSettings:
     updated_at: datetime = field(default_factory=datetime.now)
 
     def __post_init__(self):
+        # Set environment-specific broker defaults
+        env_name = os.getenv("APP_ENVIRONMENT", "development").lower()
+        if env_name == "development":
+            # dev: USE_MOCK_DATA=True, USE_MOCK_BROKER=True
+            object.__setattr__(self, 'use_mock_data', True)
+            object.__setattr__(self, 'use_mock_broker', True)
+            object.__setattr__(self, 'alpaca_paper', True)
+        elif env_name == "staging":
+            # staging: USE_MOCK_DATA=False, USE_MOCK_BROKER=True, ALPACA_PAPER=True
+            object.__setattr__(self, 'use_mock_data', False)
+            object.__setattr__(self, 'use_mock_broker', True)
+            object.__setattr__(self, 'alpaca_paper', True)
+        # For production, use explicit settings or defaults
+        
         if self.environment == EnvironmentEnum.PRODUCTION:
             if self.debug:
                 raise SettingsError("Debug mode should be disabled in production")
@@ -370,6 +389,22 @@ class AppSettings:
     @dev_mode.setter
     def dev_mode(self, value: bool):  # type: ignore[override]
         object.__setattr__(self, 'debug', bool(value))
+
+    # Broker configuration convenience properties (uppercase for compatibility)
+    @property
+    def USE_MOCK_DATA(self) -> bool:  # noqa: N802 (legacy naming)
+        """Use mock market data instead of real API calls."""
+        return self.use_mock_data
+
+    @property 
+    def USE_MOCK_BROKER(self) -> bool:  # noqa: N802 (legacy naming)
+        """Use mock broker instead of real Alpaca API."""
+        return self.use_mock_broker
+
+    @property
+    def ALPACA_PAPER(self) -> bool:  # noqa: N802 (legacy naming)
+        """Use Alpaca paper trading environment."""
+        return self.alpaca_paper
 
     def update_timestamp(self):
         self.updated_at = datetime.now()

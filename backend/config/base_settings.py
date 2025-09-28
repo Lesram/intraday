@@ -140,7 +140,32 @@ class AlpacaConfig(BaseSettings):
         default="wss://stream.data.alpaca.markets/v2/iex",
         description="Alpaca WebSocket URL",
     )
-    paper_trading: bool = Field(default=True, description="Enable paper trading")
+    paper: bool = Field(default=True, description="Use Alpaca paper trading environment")
+    use_mock_broker: bool = Field(default=True, description="Use mock broker instead of real Alpaca API")
+
+    @field_validator("use_mock_broker")
+    @classmethod
+    def set_mock_broker_defaults(cls, v):
+        """Set environment-specific defaults for mock broker usage."""
+        env = os.getenv("APP_ENVIRONMENT", "development").lower()
+        if env == "development":
+            return True  # dev: USE_MOCK_BROKER=True
+        elif env == "staging":
+            return True  # staging: USE_MOCK_BROKER=True (paper trading)
+        else:  # production
+            return v  # Use explicit setting
+
+    @field_validator("paper")
+    @classmethod
+    def set_paper_defaults(cls, v):
+        """Set environment-specific defaults for paper trading."""
+        env = os.getenv("APP_ENVIRONMENT", "development").lower()
+        if env == "development":
+            return True  # dev: paper trading by default
+        elif env == "staging":
+            return True  # staging: ALPACA_PAPER=True
+        else:  # production
+            return v  # Use explicit setting
 
     @field_validator("api_key", "secret_key")
     @classmethod
@@ -193,6 +218,23 @@ class DataConfig(BaseSettings):
     twitter_bearer_token: str = Field(
         default="", description="Twitter API bearer token"
     )
+
+    # Mock/testing settings
+    use_mock_data: bool = Field(
+        default=True, description="Use mock market data instead of real API calls"
+    )
+
+    @field_validator("use_mock_data")
+    @classmethod
+    def set_mock_data_defaults(cls, v):
+        """Set environment-specific defaults for mock data usage."""
+        env = os.getenv("APP_ENVIRONMENT", "development").lower()
+        if env == "development":
+            return True  # dev: USE_MOCK_DATA=True
+        elif env == "staging":
+            return False  # staging: USE_MOCK_DATA=False
+        else:  # production
+            return v  # Use explicit setting or default
 
     # Data feed settings
     default_symbols: list[str] = Field(
@@ -828,6 +870,22 @@ class Settings(BaseSettings):
     def DATABASE_URL(self) -> None:  # type: ignore[misc]
         # No-op deleter for unittest.mock.patch cleanup compatibility
         pass
+
+    # --- Broker configuration convenience properties ---
+    @property
+    def USE_MOCK_DATA(self) -> bool:  # noqa: N802 (legacy naming)
+        """Use mock market data instead of real API calls."""
+        return self.data.use_mock_data
+
+    @property 
+    def USE_MOCK_BROKER(self) -> bool:  # noqa: N802 (legacy naming)
+        """Use mock broker instead of real Alpaca API."""
+        return self.alpaca.use_mock_broker
+
+    @property
+    def ALPACA_PAPER(self) -> bool:  # noqa: N802 (legacy naming)
+        """Use Alpaca paper trading environment."""
+        return self.alpaca.paper
 
 
 @lru_cache(maxsize=1)

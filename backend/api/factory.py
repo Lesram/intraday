@@ -123,7 +123,42 @@ def create_app(settings=None, *, registry=None, ws_queue_max: int|None=None, **k
     
     app = FastAPI(title="Intraday Trading Platform", version="1.0.0")
     app.state.task_registry = TaskRegistry()
-    app.state.db_sessionmaker = get_db_sessionmaker()
+    
+    # Store settings in app.state for dependency injection
+    if settings is None:
+        from backend.config import get_settings
+        settings = get_settings()
+    app.state.settings = settings
+    
+    # Mark this as a platform app for error handling
+    app.state.is_platform_app = True
+    
+    # Initialize database if database URL is present
+    database_url = None
+    if hasattr(settings, 'database') and hasattr(settings.database, 'url'):
+        database_url = settings.database.url
+    else:
+        database_url = os.getenv('DATABASE_URL')
+    
+    if database_url:
+        try:
+            from backend.infra.db import init_db, get_sessionmaker
+            # Initialize database tables
+            init_db()
+            # Create sessionmaker for dependency injection
+            sessionmaker = get_sessionmaker()
+            app.state.sessionmaker = sessionmaker
+            app.state.db_sessionmaker = get_db_sessionmaker()  # For backward compatibility
+        except Exception as e:
+            logger = get_structured_logger(__name__)
+            logger.warning(f"Failed to initialize database: {e}")
+            # Fallback to compatibility wrapper
+            app.state.db_sessionmaker = get_db_sessionmaker()
+            app.state.sessionmaker = None
+    else:
+        # No database URL provided - use compatibility wrappers
+        app.state.db_sessionmaker = get_db_sessionmaker()
+        app.state.sessionmaker = None
     
     # Add convenience method for test compatibility
     def register_task(task: asyncio.Task) -> asyncio.Task:
@@ -242,10 +277,14 @@ def create_app(settings=None, *, registry=None, ws_queue_max: int|None=None, **k
             all_healthy = False
             problems["database"] = f"Database error: {str(e)}"
         
-        # Check broker
+        # Check broker (skip Alpaca connectivity if using mock data)
         try:
-            broker_healthy = await broker_health_check()
+            # Check if we should validate Alpaca connectivity
+            should_check_alpaca = not app.state.settings.USE_MOCK_DATA
+            broker_healthy = await broker_health_check(check_alpaca=should_check_alpaca)
             checks["broker"] = broker_healthy
+            if should_check_alpaca:
+                checks["alpaca_connectivity"] = broker_healthy
             if not broker_healthy:
                 all_healthy = False
                 problems["broker"] = "Message broker unavailable"
