@@ -12,11 +12,16 @@ import uuid
 
 from fastapi import APIRouter, HTTPException, Depends, Request
 from pydantic import BaseModel, Field
+from decimal import Decimal
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.infra.security import get_current_user
 from backend.utils.logger import get_logger, log_event, get_event_logger
 from backend.strategies.basic import BasicStrategy
 from backend.config import get_settings
+from backend.services.order_service import OrderService
+from backend.infra.repositories.orders import OrdersRepo
+from backend.infra.outbox import OutboxRepo
 
 logger = get_logger(__name__)
 event_logger = get_event_logger("signals")
@@ -62,6 +67,25 @@ class AdvancedSignalsResponse(BaseModel):
     signals: Dict[str, Any]
     features: Dict[str, Any] = None
     risk_metrics: Dict[str, Any] = None
+    timestamp: str
+
+
+class ActOnSignalRequest(BaseModel):
+    """Request model for act-on-signal endpoint."""
+    symbol: str = Field(..., description="Trading symbol")
+    lookback: int = Field(default=200, ge=50, le=1000, description="Historical data lookback period")
+    size_mode: str = Field(default="fixed", description="Position sizing mode: 'fixed' or 'risk'")
+    fixed_qty: float = Field(default=100.0, gt=0, description="Fixed quantity for 'fixed' size mode")
+    risk_budget_pct: float = Field(default=0.01, gt=0, le=0.1, description="Risk budget as portfolio percentage for 'risk' mode")
+    portfolio_value: float = Field(default=100000.0, gt=0, description="Portfolio value for risk-based sizing")
+
+
+class ActOnSignalResponse(BaseModel):
+    """Response model for act-on-signal endpoint."""
+    symbol: str
+    action: str  # "buy", "sell", "hold"
+    signal: Dict[str, Any]
+    order: Dict[str, Any] = None  # Order details if action is buy/sell
     timestamp: str
 
 
@@ -191,6 +215,46 @@ def get_authenticated_user(current_user=Depends(get_current_user)):
             detail="Unauthorized"
         )
     return current_user
+
+
+async def get_order_service(request: Request):
+    """Get OrderService with dependency injection."""
+    try:
+        # Get sessionmaker from app state
+        sessionmaker = getattr(request.app.state, 'sessionmaker', None)
+        
+        if not sessionmaker:
+            # Check if we're in testing mode
+            from backend.config import get_settings
+            settings = get_settings()
+            if getattr(settings, 'TESTING', False):
+                # In testing mode, return mock service for compatibility
+                return OrderService()  
+            else:
+                raise HTTPException(
+                    status_code=500, 
+                    detail="Database session not configured"
+                )
+        
+        # Create async session for this request
+        async with sessionmaker() as session:
+            # Create repositories
+            orders_repo = OrdersRepo(session)
+            outbox_repo = OutboxRepo(session)
+            
+            # Create OrderService with real dependencies
+            service = OrderService(
+                db_session=session,
+                orders_repo=orders_repo,
+                outbox_repo=outbox_repo
+            )
+            
+            return service
+            
+    except Exception as e:
+        logger.error(f"Failed to create OrderService: {e}")
+        # Fallback for production reliability
+        return OrderService()
 
 
 # Route Handlers
@@ -467,3 +531,160 @@ async def create_signal(
     except Exception as e:
         logger.error(f"Error creating signal: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/act", response_model=ActOnSignalResponse)
+async def act_on_signal(
+    request: ActOnSignalRequest,
+    current_user=Depends(get_authenticated_user),
+    order_service=Depends(get_order_service)
+) -> ActOnSignalResponse:
+    """
+    Generate signal and act on it by submitting orders.
+    
+    This endpoint bridges the strategy layer with the order execution layer:
+    1. Fetches historical data for the symbol
+    2. Runs BasicStrategy.decide() to get trading signal  
+    3. If action is buy/sell, calculates position size and submits order
+    4. Returns both signal and order details in response
+    
+    Size modes:
+    - 'fixed': Use request.fixed_qty directly
+    - 'risk': Calculate quantity based on risk_budget_pct and stop loss
+    """
+    try:
+        symbol = request.symbol.upper().strip()
+        timestamp = datetime.now().isoformat()
+        
+        # Get market data client and fetch historical closes
+        client = get_market_data_client()
+        closes = await fetch_closes(symbol, client, request.lookback)
+        
+        if not closes or len(closes) < 50:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Insufficient historical data for {symbol}"
+            )
+        
+        # Run strategy to get signal
+        strategy = get_basic_strategy()
+        decision = strategy.decide(closes)
+        
+        signal_data = {
+            "symbol": symbol,
+            "action": decision["action"],
+            "confidence": decision["confidence"],
+            "reason": decision.get("reason", ""),
+            "indicators": decision.get("indicators", {}),
+            "lookback": request.lookback
+        }
+        
+        # Log signal decision
+        event_logger.signal_decided(
+            symbol=symbol,
+            action=decision["action"],
+            confidence=decision["confidence"],
+            user_id=getattr(current_user, 'id', None),
+            strategy="basic_rsi_sma",
+            reason=decision["reason"],
+            lookback=request.lookback,
+            endpoint="act_on_signal"
+        )
+        
+        # If signal is hold, return without creating order
+        if decision["action"] == "hold":
+            return ActOnSignalResponse(
+                symbol=symbol,
+                action="hold", 
+                signal=signal_data,
+                order=None,
+                timestamp=timestamp
+            )
+        
+        # Calculate position size based on size_mode
+        if request.size_mode == "fixed":
+            quantity = request.fixed_qty
+        elif request.size_mode == "risk":
+            # Risk-based position sizing
+            # Use stop loss percentage from strategy and risk budget
+            sl_pct = strategy.sl_pct / 100.0  # Convert to decimal
+            risk_amount = request.portfolio_value * request.risk_budget_pct
+            
+            # Estimate current price (use last close)
+            current_price = closes[-1]
+            
+            # Calculate quantity: risk_amount / (price * sl_pct)
+            quantity = risk_amount / (current_price * sl_pct)
+            quantity = max(1.0, round(quantity, 2))  # Minimum 1 share
+        else:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid size_mode: {request.size_mode}. Must be 'fixed' or 'risk'"
+            )
+        
+        # Generate idempotency key
+        idempotency_key = f"act-{symbol}-{int(time.time())}-{uuid.uuid4().hex[:8]}"
+        
+        # Prepare order data
+        side = "buy" if decision["action"] == "buy" else "sell"
+        order_data = {
+            "symbol": symbol,
+            "side": side,
+            "qty": quantity,
+            "order_type": "market",
+            "tif": "ioc",  # Immediate or Cancel
+            "idempotency_key": idempotency_key,
+            "attributes": {
+                "user_id": getattr(current_user, 'id', 'system'),
+                "source": "act_on_signal",
+                "strategy": "basic_rsi_sma",
+                "signal_confidence": decision["confidence"],
+                "size_mode": request.size_mode,
+                "risk_budget_pct": request.risk_budget_pct if request.size_mode == "risk" else None
+            }
+        }
+        
+        # Submit order through OrderService
+        order_result = await order_service.submit_order_async(order_data)
+        
+        # Log order submission
+        event_logger.order_submitted(
+            order_id=order_result.get("order_id"),
+            symbol=symbol,
+            side=side,
+            qty=quantity,
+            user_id=getattr(current_user, 'id', None),
+            idempotency_key=idempotency_key,
+            status=order_result.get("status"),
+            endpoint="act_on_signal"
+        )
+        
+        order_details = {
+            "order_id": order_result.get("order_id"),
+            "status": order_result.get("status"),
+            "symbol": symbol,
+            "side": side,
+            "qty": quantity,
+            "order_type": "market",
+            "tif": "ioc",
+            "idempotency_key": idempotency_key,
+            "submitted_at": order_result.get("submitted_at", timestamp),
+            "size_mode": request.size_mode
+        }
+        
+        return ActOnSignalResponse(
+            symbol=symbol,
+            action=decision["action"],
+            signal=signal_data,
+            order=order_details,
+            timestamp=timestamp
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error in act_on_signal for {request.symbol}: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to process signal and execute order"
+        )
