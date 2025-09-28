@@ -4,7 +4,7 @@ Provides deterministic RSI + SMA cross strategy implementation.
 """
 
 import logging
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any, Optional, Sequence
 from dataclasses import dataclass
 
 from backend.features.technical_indicators import TechnicalIndicators
@@ -63,30 +63,44 @@ class BasicStrategy:
         
         self.indicators = TechnicalIndicators()
         
-    def decide(self, *, close_prices: List[float]) -> Dict[str, Any]:
+    def decide(
+        self, 
+        *,
+        close_prices: Sequence[float] | None = None,
+        closes: Sequence[float] | None = None,
+    ) -> Dict[str, Any]:
         """
         Generate trading decision based on price history.
         
+        Accepts either `close_prices` or `closes` parameter for compatibility.
+        Uses whichever is provided (not None). Raises ValueError if both are None.
+        
         Args:
-            close_prices: List of historical close prices (most recent last)
+            close_prices: List of historical close prices (most recent last) 
+            closes: Alternative name for close_prices (backward compatibility)
             
         Returns:
             Dict with keys: action, confidence, tp_pct, sl_pct, reason
         """
         try:
-            if not close_prices or len(close_prices) < max(self.sma_slow + 1, 15):
-                return self._no_decision("insufficient_data", len(close_prices) if close_prices else 0)
+            # Choose the series - use whichever is provided
+            series = close_prices or closes
+            if series is None:
+                raise ValueError("Either close_prices or closes must be provided")
+                
+            if not series or len(series) < max(self.sma_slow + 1, 15):
+                return self._no_decision("insufficient_data", len(series) if series else 0)
             
-            # Calculate RSI
-            rsi_result = self.indicators.calculate_rsi(close_prices)
+            # Calculate RSI using the chosen series
+            rsi_result = self.indicators.calculate_rsi(series)
             if not rsi_result or rsi_result.value is None:
                 return self._no_decision("rsi_calculation_failed", 0)
                 
             rsi = rsi_result.value
             
             # Calculate SMAs for trend confirmation
-            sma_fast_result = self.indicators.calculate_sma(close_prices, self.sma_fast)
-            sma_slow_result = self.indicators.calculate_sma(close_prices, self.sma_slow)
+            sma_fast_result = self.indicators.calculate_sma(series, self.sma_fast)
+            sma_slow_result = self.indicators.calculate_sma(series, self.sma_slow)
             
             sma_fast = sma_fast_result.value if sma_fast_result else None
             sma_slow = sma_slow_result.value if sma_slow_result else None
@@ -102,7 +116,7 @@ class BasicStrategy:
             # Primary decision based on RSI
             if rsi < self.rsi_buy:
                 # RSI oversold - potential buy
-                confidence = self._calculate_confidence(rsi, self.rsi_buy, "buy")
+                confidence = self._confidence_from_rsi_threshold(rsi, self.rsi_buy, self.rsi_sell)
                 
                 # Boost confidence if trend is bullish
                 if trend_bias == "bullish":
@@ -120,7 +134,7 @@ class BasicStrategy:
                 
             elif rsi > self.rsi_sell:
                 # RSI overbought - potential sell
-                confidence = self._calculate_confidence(rsi, self.rsi_sell, "sell")
+                confidence = self._confidence_from_rsi_threshold(rsi, self.rsi_buy, self.rsi_sell)
                 
                 # Boost confidence if trend is bearish
                 if trend_bias == "bearish":
@@ -179,14 +193,31 @@ class BasicStrategy:
         Returns:
             Confidence value between 0.0 and 1.0
         """
-        if action == "buy":
-            # Lower RSI = higher confidence for buy
-            distance = threshold - rsi
-            max_distance = threshold  # Distance from 0 to threshold
-        else:  # sell
-            # Higher RSI = higher confidence for sell
-            distance = rsi - threshold
-            max_distance = 100 - threshold  # Distance from threshold to 100
+        return self._confidence_from_rsi_threshold(rsi, self.rsi_buy, self.rsi_sell)
+    
+    def _confidence_from_rsi_threshold(self, rsi: float, buy_thr: float, sell_thr: float) -> float:
+        """
+        Unit-testable helper to calculate confidence from RSI and thresholds.
+        
+        Args:
+            rsi: Current RSI value (0-100)
+            buy_thr: Buy threshold (typically 30-40)
+            sell_thr: Sell threshold (typically 60-70)
+            
+        Returns:
+            Confidence value between 0.3 and 1.0
+        """
+        if rsi <= buy_thr:
+            # RSI oversold - buy signal strength
+            distance = buy_thr - rsi
+            max_distance = buy_thr  # Distance from 0 to buy_thr
+        elif rsi >= sell_thr:
+            # RSI overbought - sell signal strength  
+            distance = rsi - sell_thr
+            max_distance = 100 - sell_thr  # Distance from sell_thr to 100
+        else:
+            # RSI neutral - low confidence
+            return 0.3
             
         # Normalize distance to confidence (0.3 to 1.0 range)
         raw_confidence = distance / max_distance

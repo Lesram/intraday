@@ -562,7 +562,7 @@ async def act_on_signal(
         
         # Run strategy to get signal
         strategy = get_basic_strategy()
-        decision = strategy.decide(closes)
+        decision = strategy.decide(closes=closes)
         
         signal_data = {
             "symbol": symbol,
