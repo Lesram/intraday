@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Request
 from pydantic import BaseModel, Field, ValidationError
 from typing import Any, Dict
 from backend.infra.security import get_current_user, get_authenticated_user, get_user_attribute  # tests override this
+from backend.risk.position_limits import PositionLimits
 
 router = APIRouter(prefix="/risk", tags=["risk"])
 
@@ -14,10 +15,19 @@ def get_risk_manager(request: Request):
         mgr = DefaultRiskManager()
     return mgr
 
+# Legacy payload for backward compatibility
 class RiskLimitsPayload(BaseModel):
     max_position_value: float = Field(..., gt=0)
-    max_symbol_exposure: float = Field(..., ge=0, le=1.0)
+    max_symbol_exposure: float = Field(..., ge=0, le=1.0)  
     circuit_breaker_pct: float = Field(..., gt=0, le=0.5)
+    
+    def to_position_limits(self) -> PositionLimits:
+        """Convert to PositionLimits model with proper field mapping."""
+        return PositionLimits(
+            max_position_size=self.max_position_value,  # Map max_position_value -> max_position_size
+            max_symbol_concentration=self.max_symbol_exposure,  # Map max_symbol_exposure -> max_symbol_concentration
+            circuit_breaker_pct=self.circuit_breaker_pct  # Direct mapping
+        )
 
 def get_risk_service():
     """Get risk service - mock implementation for testing"""
@@ -74,7 +84,50 @@ async def set_limits(
             detail="Insufficient permissions"
         )
     
-    return mgr.set_limits(payload.model_dump())
+    # Convert to PositionLimits for normalization and validation
+    position_limits = payload.to_position_limits()
+    
+    # Set limits using the validated model
+    result = mgr.set_limits(position_limits.to_dict())
+    
+    # Return normalized values with test-friendly indicator
+    return {
+        "status": "updated",
+        "normalized": True,
+        "limits": {
+            "max_position_value": float(position_limits.max_position_size),
+            "max_symbol_exposure": float(position_limits.max_symbol_concentration), 
+            "circuit_breaker_pct": float(position_limits.circuit_breaker_pct)
+        }
+    }
+
+@router.put("/limits/v2")
+async def set_limits_v2(
+    limits: PositionLimits,
+    mgr=Depends(get_risk_manager),
+    user: Any = Depends(get_authenticated_user)
+):
+    """
+    Set risk limits using PositionLimits schema directly.
+    Accepts circuit_breaker_pct or circuit_breaker aliases and normalizes percent/fraction values.
+    """
+    # Check if user has admin privileges
+    user_roles = get_user_attribute(user, "roles", [])
+    if "admin" not in user_roles:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Insufficient permissions"
+        )
+    
+    # Set limits using the validated and normalized model
+    result = mgr.set_limits(limits.to_dict())
+    
+    # Return the full normalized PositionLimits
+    return {
+        "status": "updated",
+        "normalized": True,
+        "limits": limits.model_dump()
+    }
 
 # Legacy routes for backward compatibility
 @router.get("/metrics/legacy")
@@ -119,5 +172,17 @@ async def update_limits_legacy(payload: RiskLimitsPayload, user: Dict[str, Any] 
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Admin or risk manager privileges required",
         )
-    # payload already validated by Pydantic (422 on invalid)
-    return {"status": "updated", "limits": payload.model_dump()}
+    
+    # Convert to PositionLimits for normalization and validation
+    position_limits = payload.to_position_limits()
+    
+    # Return normalized values with test-friendly indicator
+    return {
+        "status": "updated", 
+        "normalized": True,
+        "limits": {
+            "max_position_value": float(position_limits.max_position_size),
+            "max_symbol_exposure": float(position_limits.max_symbol_concentration),
+            "circuit_breaker_pct": float(position_limits.circuit_breaker_pct)
+        }
+    }
