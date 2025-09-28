@@ -8,7 +8,7 @@ import os
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 
 from backend.api.portfolio import router as api_v1_portfolio_router
 from backend.utils.logger import get_structured_logger
@@ -498,6 +498,40 @@ def create_app(settings=None, *, registry=None, ws_queue_max: int|None=None, **k
                 pass
 
         return response
+    
+    # ============================================================================
+    # OPENAPI CONFIGURATION WITH BEARER AUTHENTICATION
+    # ============================================================================
+    def custom_openapi():
+        """Custom OpenAPI schema with JWT Bearer authentication"""
+        if app.openapi_schema:
+            return app.openapi_schema
+            
+        from fastapi.openapi.utils import get_openapi
+        
+        openapi_schema = get_openapi(
+            title="Intraday Trading Platform",
+            version="1.0.0",
+            description="Advanced algorithmic trading platform with ML-powered signals and risk management",
+            routes=app.routes,
+        )
+        
+        # Add Bearer authentication security scheme
+        openapi_schema["components"]["securitySchemes"] = {
+            "HTTPBearer": {
+                "type": "http",
+                "scheme": "bearer",
+                "bearerFormat": "JWT"
+            }
+        }
+        
+        # Set global security requirement for all endpoints
+        openapi_schema["security"] = [{"HTTPBearer": []}]
+        
+        app.openapi_schema = openapi_schema
+        return app.openapi_schema
+    
+    app.openapi = custom_openapi
     
     return app
 

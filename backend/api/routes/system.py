@@ -23,9 +23,9 @@ logger = get_logger(__name__)
 router = APIRouter(prefix="/system", tags=["System"])
 
 
-@router.get("/status")
+@router.get("/status", openapi_extra={"security": []})
 async def system_status():
-    """System status endpoint."""
+    """System status endpoint - no authentication required"""
     return {
         "service": "intraday-trading",
         "status": "operational",
@@ -34,9 +34,9 @@ async def system_status():
     }
 
 
-@router.get("/", tags=["System"])
+@router.get("/", tags=["System"], openapi_extra={"security": []})
 async def root():
-    """Root endpoint - API information and health status"""
+    """Root endpoint - API information and health status (no auth required)"""
     return {
         "service": "Algorithmic Trading Platform API",
         "version": "1.0.0",
@@ -50,9 +50,9 @@ async def root():
     }
 
 
-@router.get("/metrics")
+@router.get("/metrics", openapi_extra={"security": []})
 async def get_metrics(request: Request):
-    """Prometheus metrics endpoint with comprehensive observability metrics"""
+    """Prometheus metrics endpoint - no authentication required"""
     try:
         # Get metrics registry from app state, or create a temporary one to emit empty metrics
         registry = getattr(request.app.state, "metrics_registry", None) or CollectorRegistry()
@@ -89,9 +89,9 @@ async def get_metrics(request: Request):
         return Response(content=f"# Metrics generation error: {e}\n", media_type="text/plain")
 
 
-@router.get("/health")
+@router.get("/health", openapi_extra={"security": []})
 async def health_check(request: Request):
-    """Basic health check endpoint"""
+    """Basic health check endpoint - no authentication required"""
     # Compute uptime and ensure it's always present
     import time as _t
     start_time = getattr(request.app.state, "start_time", None)

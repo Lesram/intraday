@@ -1,0 +1,3099 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Intraday Trading Platform",
+    "description": "Advanced algorithmic trading platform with ML-powered signals and risk management",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/": {
+      "get": {
+        "summary": "Root",
+        "description": "Root API information endpoint.",
+        "operationId": "root__get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "summary": "Health Check",
+        "operationId": "health_check_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/readyz": {
+      "get": {
+        "summary": "Readiness Check",
+        "description": "Readiness check endpoint with proper status codes and structured response.\nReturns 200 when healthy, 503 when unhealthy with detailed checks map.",
+        "operationId": "readiness_check_readyz_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/livez": {
+      "get": {
+        "summary": "Liveness Check",
+        "operationId": "liveness_check_livez_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/healthz": {
+      "get": {
+        "summary": "Healthz Check",
+        "description": "Kubernetes-style health check alias.",
+        "operationId": "healthz_check_healthz_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/metrics": {
+      "get": {
+        "summary": "Metrics",
+        "description": "Prometheus metrics endpoint.",
+        "operationId": "metrics_metrics_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/system/status": {
+      "get": {
+        "tags": [
+          "API v1",
+          "System - Public",
+          "System"
+        ],
+        "summary": "System Status",
+        "description": "System status endpoint - no authentication required",
+        "operationId": "system_status_api_v1_system_status_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": []
+      }
+    },
+    "/api/v1/system/": {
+      "get": {
+        "tags": [
+          "API v1",
+          "System - Public",
+          "System",
+          "System"
+        ],
+        "summary": "Root",
+        "description": "Root endpoint - API information and health status (no auth required)",
+        "operationId": "root_api_v1_system__get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": []
+      }
+    },
+    "/api/v1/system/metrics": {
+      "get": {
+        "tags": [
+          "API v1",
+          "System - Public",
+          "System"
+        ],
+        "summary": "Get Metrics",
+        "description": "Prometheus metrics endpoint - no authentication required",
+        "operationId": "get_metrics_api_v1_system_metrics_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": []
+      }
+    },
+    "/api/v1/system/health": {
+      "get": {
+        "tags": [
+          "API v1",
+          "System - Public",
+          "System"
+        ],
+        "summary": "Health Check",
+        "description": "Basic health check endpoint - no authentication required",
+        "operationId": "health_check_api_v1_system_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": []
+      },
+      "post": {
+        "tags": [
+          "API v1",
+          "System - Public",
+          "System"
+        ],
+        "summary": "Health Check Not Allowed",
+        "description": "Handler for POST requests to /health - returns 405 Method Not Allowed",
+        "operationId": "health_check_not_allowed_api_v1_system_health_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/system/healthz": {
+      "get": {
+        "tags": [
+          "API v1",
+          "System - Public",
+          "System",
+          "System Health"
+        ],
+        "summary": "Liveness Probe",
+        "description": "Kubernetes liveness probe - checks if process is alive and responsive.\n\nThis endpoint does NOT check dependencies (DB, broker) - only process health.\nReturns 200 if the process is alive and the event loop is responsive.\nUsed by Kubernetes to determine if pod should be restarted.",
+        "operationId": "liveness_probe_api_v1_system_healthz_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/system/test/runtime-error": {
+      "get": {
+        "tags": [
+          "API v1",
+          "System - Public",
+          "System"
+        ],
+        "summary": "Test Runtime Error",
+        "description": "Test endpoint that forces a RuntimeError for testing error handling",
+        "operationId": "test_runtime_error_api_v1_system_test_runtime_error_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/login": {
+      "post": {
+        "tags": [
+          "API v1",
+          "Authentication - Public",
+          "authentication",
+          "authentication"
+        ],
+        "summary": "Login",
+        "description": "Authenticate user and return access token.\n\nArgs:\n    username: Username for authentication\n    password: Password for authentication\n    \nReturns:\n    LoginResponse containing access token and user information\n    \nRaises:\n    HTTPException: 401 for invalid credentials",
+        "operationId": "login_api_v1_auth_login_post",
+        "requestBody": {
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_login_api_v1_auth_login_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/register": {
+      "post": {
+        "tags": [
+          "API v1",
+          "Authentication - Public",
+          "authentication"
+        ],
+        "summary": "Register",
+        "description": "Register a new user account.\n\nArgs:\n    request: UserRegistrationRequest containing email and password\n    repo: User repository dependency\n    \nReturns:\n    UserRegistrationResponse containing user_id and email of created user\n    \nRaises:\n    HTTPException: 409 if email already exists, 422 for validation errors",
+        "operationId": "register_api_v1_auth_register_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserRegistrationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserRegistrationResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/token/validate": {
+      "post": {
+        "tags": [
+          "API v1",
+          "Authentication - Public",
+          "authentication"
+        ],
+        "summary": "Validate Token",
+        "description": "Validate JWT token from Authorization header.",
+        "operationId": "validate_token_api_v1_auth_token_validate_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/me": {
+      "get": {
+        "tags": [
+          "API v1",
+          "Authentication - Public",
+          "authentication"
+        ],
+        "summary": "Get Current User Info",
+        "description": "Get current user information from JWT token.",
+        "operationId": "get_current_user_info_api_v1_auth_me_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/auth/token": {
+      "post": {
+        "tags": [
+          "API v1",
+          "Authentication - Public",
+          "authentication"
+        ],
+        "summary": "Get Token",
+        "description": "Simple token endpoint that returns exactly the format specified in Prompt 3.\n\nReturns:\n    Simple token response with access_token, token_type, and expires_in",
+        "operationId": "get_token_api_v1_auth_token_post",
+        "requestBody": {
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_get_token_api_v1_auth_token_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/portfolio/positions": {
+      "get": {
+        "tags": [
+          "API v1",
+          "Portfolio - Protected",
+          "portfolio"
+        ],
+        "summary": "Get Positions",
+        "operationId": "get_positions_api_v1_portfolio_positions_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Get Positions Api V1 Portfolio Positions Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/portfolio/performance": {
+      "get": {
+        "tags": [
+          "API v1",
+          "Portfolio - Protected",
+          "portfolio"
+        ],
+        "summary": "Get Performance",
+        "description": "Get portfolio performance metrics.",
+        "operationId": "get_performance_api_v1_portfolio_performance_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Get Performance Api V1 Portfolio Performance Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/risk/metrics": {
+      "get": {
+        "tags": [
+          "API v1",
+          "Risk Management - Protected",
+          "risk"
+        ],
+        "summary": "Risk Metrics",
+        "description": "Get risk metrics from the risk manager - requires authentication",
+        "operationId": "risk_metrics_api_v1_risk_metrics_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/risk/limits": {
+      "put": {
+        "tags": [
+          "API v1",
+          "Risk Management - Protected",
+          "risk"
+        ],
+        "summary": "Set Limits",
+        "description": "Set risk limits via the risk manager - requires authentication",
+        "operationId": "set_limits_api_v1_risk_limits_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RiskLimitsPayload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/risk/limits/v2": {
+      "put": {
+        "tags": [
+          "API v1",
+          "Risk Management - Protected",
+          "risk"
+        ],
+        "summary": "Set Limits V2",
+        "description": "Set risk limits using PositionLimits schema directly.\nAccepts circuit_breaker_pct or circuit_breaker aliases and normalizes percent/fraction values.",
+        "operationId": "set_limits_v2_api_v1_risk_limits_v2_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PositionLimits"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/risk/metrics/legacy": {
+      "get": {
+        "tags": [
+          "API v1",
+          "Risk Management - Protected",
+          "risk"
+        ],
+        "summary": "Get Risk Metrics Legacy",
+        "operationId": "get_risk_metrics_legacy_api_v1_risk_metrics_legacy_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Get Risk Metrics Legacy Api V1 Risk Metrics Legacy Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/risk/limits/legacy": {
+      "put": {
+        "tags": [
+          "API v1",
+          "Risk Management - Protected",
+          "risk"
+        ],
+        "summary": "Update Limits Legacy",
+        "operationId": "update_limits_legacy_api_v1_risk_limits_legacy_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RiskLimitsPayload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Update Limits Legacy Api V1 Risk Limits Legacy Put"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/orders/": {
+      "post": {
+        "tags": [
+          "API v1",
+          "Orders - Protected",
+          "Trading",
+          "Protected",
+          "Outbox",
+          "Trading",
+          "Protected",
+          "Outbox"
+        ],
+        "summary": "Submit Order",
+        "description": "Submit an order with real OrderService, idempotency protection, and outbox pattern.\n\nFeatures:\n- Real repository-backed order creation\n- Transactional outbox for reliable broker communication\n- Idempotency protection via client_order_id or Idempotency-Key header\n- Risk management validation\n- Structured logging",
+        "operationId": "submit_order_api_v1_orders__post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderSubmissionResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/orders/submit": {
+      "post": {
+        "tags": [
+          "API v1",
+          "Orders - Protected",
+          "Trading",
+          "Protected",
+          "Outbox",
+          "Trading",
+          "Protected",
+          "Outbox"
+        ],
+        "summary": "Submit Order Submit",
+        "operationId": "submit_order_submit_api_v1_orders_submit_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderSubmissionResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/orders/{order_id}": {
+      "get": {
+        "tags": [
+          "API v1",
+          "Orders - Protected",
+          "Trading",
+          "Protected",
+          "Outbox",
+          "Trading",
+          "Protected",
+          "Outbox"
+        ],
+        "summary": "Get Order Status",
+        "description": "Get current order status and details.",
+        "operationId": "get_order_status_api_v1_orders__order_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "order_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Order Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderStatusResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/orders/{order_id}/cancel": {
+      "post": {
+        "tags": [
+          "API v1",
+          "Orders - Protected",
+          "Trading",
+          "Protected",
+          "Outbox",
+          "Trading",
+          "Protected",
+          "Outbox"
+        ],
+        "summary": "Cancel Order",
+        "description": "Cancel an existing order.",
+        "operationId": "cancel_order_api_v1_orders__order_id__cancel_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "order_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Order Id"
+            }
+          },
+          {
+            "name": "idempotency_key",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "title": "Idempotency Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/orders/{order_id}/audit": {
+      "get": {
+        "tags": [
+          "API v1",
+          "Orders - Protected",
+          "Trading",
+          "Protected",
+          "Outbox",
+          "Trading",
+          "Audit"
+        ],
+        "summary": "Get Order Audit Trail",
+        "description": "Get audit trail for an order.\n\nIn production, this would query actual audit logs from the database.\nFor now, returns basic entries to satisfy API contract.",
+        "operationId": "get_order_audit_trail_api_v1_orders__order_id__audit_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "order_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Order Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/trades/history": {
+      "get": {
+        "tags": [
+          "API v1",
+          "Trades - Protected",
+          "trades"
+        ],
+        "summary": "Get Trade History",
+        "description": "Get trading history for the current user.",
+        "operationId": "get_trade_history_api_v1_trades_history_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "symbol",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "Filter by symbol",
+              "title": "Symbol"
+            },
+            "description": "Filter by symbol"
+          },
+          {
+            "name": "start_date",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time",
+              "description": "Start date filter",
+              "title": "Start Date"
+            },
+            "description": "Start date filter"
+          },
+          {
+            "name": "end_date",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time",
+              "description": "End date filter",
+              "title": "End Date"
+            },
+            "description": "End date filter"
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Page number",
+              "default": 1,
+              "title": "Page"
+            },
+            "description": "Page number"
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 1000,
+              "minimum": 1,
+              "description": "Page size",
+              "default": 100,
+              "title": "Page Size"
+            },
+            "description": "Page size"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TradeHistoryResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/trades/history/{trade_id}": {
+      "get": {
+        "tags": [
+          "API v1",
+          "Trades - Protected",
+          "trades"
+        ],
+        "summary": "Get Trade Detail",
+        "description": "Get details for a specific trade.",
+        "operationId": "get_trade_detail_api_v1_trades_history__trade_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "trade_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Trade Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TradeHistory"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/trades/stats": {
+      "get": {
+        "tags": [
+          "API v1",
+          "Trades - Protected",
+          "trades"
+        ],
+        "summary": "Get Trading Stats",
+        "description": "Get trading statistics for the current user.",
+        "operationId": "get_trading_stats_api_v1_trades_stats_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "start_date",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time",
+              "description": "Start date for stats",
+              "title": "Start Date"
+            },
+            "description": "Start date for stats"
+          },
+          {
+            "name": "end_date",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time",
+              "description": "End date for stats",
+              "title": "End Date"
+            },
+            "description": "End date for stats"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Get Trading Stats Api V1 Trades Stats Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/trades/execute": {
+      "post": {
+        "tags": [
+          "API v1",
+          "Trades - Protected",
+          "trades"
+        ],
+        "summary": "Execute Trade",
+        "description": "Execute a trade order.\n\n**DEPRECATED**: This endpoint is deprecated. \nUse `/api/v1/orders/submit` for new order submissions instead.\nThis endpoint will be removed in a future version.",
+        "operationId": "execute_trade_api_v1_trades_execute_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TradeExecutionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/trades/": {
+      "post": {
+        "tags": [
+          "API v1",
+          "Trades - Protected",
+          "trades"
+        ],
+        "summary": "Create Trade",
+        "description": "Create a new trade with idempotency support.\n\nReturns 201 with an order_id if an idempotency key is present, else 200 to indicate existing order.",
+        "operationId": "create_trade_api_v1_trades__post",
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/signals/{symbol}": {
+      "get": {
+        "tags": [
+          "API v1",
+          "Signals - Protected",
+          "Trading Signals",
+          "Trading Signals"
+        ],
+        "summary": "Get Trading Signal",
+        "description": "Get deterministic trading signal for a specific symbol",
+        "operationId": "get_trading_signal_api_v1_signals__symbol__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "symbol",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Symbol"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SignalResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/signals/": {
+      "get": {
+        "tags": [
+          "API v1",
+          "Signals - Protected",
+          "Trading Signals",
+          "Trading Signals"
+        ],
+        "summary": "Get All Signals",
+        "description": "Get deterministic trading signals for multiple symbols with async batch processing",
+        "operationId": "get_all_signals_api_v1_signals__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "symbols",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "AAPL,GOOGL,MSFT,TSLA,NVDA",
+              "title": "Symbols"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MultiSignalsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "API v1",
+          "Signals - Protected",
+          "Trading Signals"
+        ],
+        "summary": "Create Signal",
+        "description": "Create a new trading signal.",
+        "operationId": "create_signal_api_v1_signals__post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SignalRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SignalResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/signals/batch": {
+      "post": {
+        "tags": [
+          "API v1",
+          "Signals - Protected",
+          "Trading Signals",
+          "Trading Signals",
+          "Protected"
+        ],
+        "summary": "Get Batch Signals",
+        "description": "Get deterministic trading signals for multiple symbols with configurable lookback.\nSupports async batch processing for improved performance.",
+        "operationId": "get_batch_signals_api_v1_signals_batch_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BatchSignalsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "$ref": "#/components/schemas/SignalResponse"
+                  },
+                  "type": "object",
+                  "title": "Response Get Batch Signals Api V1 Signals Batch Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/signals/act": {
+      "post": {
+        "tags": [
+          "API v1",
+          "Signals - Protected",
+          "Trading Signals"
+        ],
+        "summary": "Act On Signal",
+        "description": "Generate signal and act on it by submitting orders.\n\nThis endpoint bridges the strategy layer with the order execution layer:\n1. Fetches historical data for the symbol\n2. Runs BasicStrategy.decide() to get trading signal  \n3. If action is buy/sell, calculates position size and submits order\n4. Returns both signal and order details in response\n\nSize modes:\n- 'fixed': Use request.fixed_qty directly\n- 'risk': Calculate quantity based on risk_budget_pct and stop loss",
+        "operationId": "act_on_signal_api_v1_signals_act_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ActOnSignalRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActOnSignalResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/models/train": {
+      "post": {
+        "tags": [
+          "API v1",
+          "Models - Protected",
+          "ML Models",
+          "Protected",
+          "ML Models",
+          "Protected"
+        ],
+        "summary": "Train Models",
+        "description": "Train ML models with specified configuration.\nRequires admin privileges.",
+        "operationId": "train_models_api_v1_models_train_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ModelTrainingRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/models/status": {
+      "get": {
+        "tags": [
+          "API v1",
+          "Models - Protected",
+          "ML Models",
+          "Protected",
+          "ML Models",
+          "Protected"
+        ],
+        "summary": "Get Model Status",
+        "description": "Get current model status and training information.\nRequires trader or admin privileges.",
+        "operationId": "get_model_status_api_v1_models_status_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/strategy/status": {
+      "get": {
+        "tags": [
+          "API v1",
+          "Strategy - Protected",
+          "Strategy"
+        ],
+        "summary": "Get Strategy Status",
+        "description": "Get strategy system status.",
+        "operationId": "get_strategy_status_api_v1_strategy_status_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/strategy/features/ingest": {
+      "post": {
+        "tags": [
+          "API v1",
+          "Strategy - Protected",
+          "Strategy"
+        ],
+        "summary": "Ingest Features",
+        "description": "Ingest feature batch for strategy processing.",
+        "operationId": "ingest_features_api_v1_strategy_features_ingest_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FeatureBatch"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/strategy/signals/batch": {
+      "post": {
+        "tags": [
+          "API v1",
+          "Strategy - Protected",
+          "Strategy"
+        ],
+        "summary": "Process Signal Batch",
+        "description": "Process a batch of signals for strategy execution.",
+        "operationId": "process_signal_batch_api_v1_strategy_signals_batch_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SignalBatch"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/strategy/signals/submit": {
+      "post": {
+        "tags": [
+          "API v1",
+          "Strategy - Protected",
+          "Strategy"
+        ],
+        "summary": "Submit Strategy Signal",
+        "description": "Submit a single signal for strategy processing.",
+        "operationId": "submit_strategy_signal_api_v1_strategy_signals_submit_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/test/http-401": {
+      "get": {
+        "tags": [
+          "test-errors"
+        ],
+        "summary": "Http 401",
+        "operationId": "http_401_test_http_401_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/test/http-403": {
+      "get": {
+        "tags": [
+          "test-errors"
+        ],
+        "summary": "Http 403",
+        "operationId": "http_403_test_http_403_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/test/http-422": {
+      "get": {
+        "tags": [
+          "test-errors"
+        ],
+        "summary": "Http 422",
+        "operationId": "http_422_test_http_422_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/test/http-500": {
+      "get": {
+        "tags": [
+          "test-errors"
+        ],
+        "summary": "Http 500",
+        "operationId": "http_500_test_http_500_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "tags": [
+          "Authentication - Legacy",
+          "authentication",
+          "authentication"
+        ],
+        "summary": "Login",
+        "description": "Authenticate user and return access token.\n\nArgs:\n    username: Username for authentication\n    password: Password for authentication\n    \nReturns:\n    LoginResponse containing access token and user information\n    \nRaises:\n    HTTPException: 401 for invalid credentials",
+        "operationId": "login_auth_login_post",
+        "requestBody": {
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_login_auth_login_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/register": {
+      "post": {
+        "tags": [
+          "Authentication - Legacy",
+          "authentication"
+        ],
+        "summary": "Register",
+        "description": "Register a new user account.\n\nArgs:\n    request: UserRegistrationRequest containing email and password\n    repo: User repository dependency\n    \nReturns:\n    UserRegistrationResponse containing user_id and email of created user\n    \nRaises:\n    HTTPException: 409 if email already exists, 422 for validation errors",
+        "operationId": "register_auth_register_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserRegistrationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserRegistrationResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/token/validate": {
+      "post": {
+        "tags": [
+          "Authentication - Legacy",
+          "authentication"
+        ],
+        "summary": "Validate Token",
+        "description": "Validate JWT token from Authorization header.",
+        "operationId": "validate_token_auth_token_validate_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/me": {
+      "get": {
+        "tags": [
+          "Authentication - Legacy",
+          "authentication"
+        ],
+        "summary": "Get Current User Info",
+        "description": "Get current user information from JWT token.",
+        "operationId": "get_current_user_info_auth_me_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/auth/token": {
+      "post": {
+        "tags": [
+          "Authentication - Legacy",
+          "authentication"
+        ],
+        "summary": "Get Token",
+        "description": "Simple token endpoint that returns exactly the format specified in Prompt 3.\n\nReturns:\n    Simple token response with access_token, token_type, and expires_in",
+        "operationId": "get_token_auth_token_post",
+        "requestBody": {
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_get_token_auth_token_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ActOnSignalRequest": {
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "title": "Symbol",
+            "description": "Trading symbol"
+          },
+          "lookback": {
+            "type": "integer",
+            "maximum": 1000.0,
+            "minimum": 50.0,
+            "title": "Lookback",
+            "description": "Historical data lookback period",
+            "default": 200
+          },
+          "size_mode": {
+            "type": "string",
+            "title": "Size Mode",
+            "description": "Position sizing mode: 'fixed' or 'risk'",
+            "default": "fixed"
+          },
+          "fixed_qty": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Fixed Qty",
+            "description": "Fixed quantity for 'fixed' size mode",
+            "default": 100.0
+          },
+          "risk_budget_pct": {
+            "type": "number",
+            "maximum": 0.1,
+            "exclusiveMinimum": 0.0,
+            "title": "Risk Budget Pct",
+            "description": "Risk budget as portfolio percentage for 'risk' mode",
+            "default": 0.01
+          },
+          "portfolio_value": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Portfolio Value",
+            "description": "Portfolio value for risk-based sizing",
+            "default": 100000.0
+          }
+        },
+        "type": "object",
+        "required": [
+          "symbol"
+        ],
+        "title": "ActOnSignalRequest",
+        "description": "Request model for act-on-signal endpoint."
+      },
+      "ActOnSignalResponse": {
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "action": {
+            "type": "string",
+            "title": "Action"
+          },
+          "signal": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Signal"
+          },
+          "order": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Order"
+          },
+          "timestamp": {
+            "type": "string",
+            "title": "Timestamp"
+          }
+        },
+        "type": "object",
+        "required": [
+          "symbol",
+          "action",
+          "signal",
+          "timestamp"
+        ],
+        "title": "ActOnSignalResponse",
+        "description": "Response model for act-on-signal endpoint."
+      },
+      "AuditEntry": {
+        "properties": {
+          "timestamp": {
+            "type": "string",
+            "title": "Timestamp"
+          },
+          "event_type": {
+            "type": "string",
+            "title": "Event Type"
+          },
+          "order_id": {
+            "type": "string",
+            "title": "Order Id"
+          },
+          "details": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Details"
+          }
+        },
+        "type": "object",
+        "required": [
+          "timestamp",
+          "event_type",
+          "order_id"
+        ],
+        "title": "AuditEntry",
+        "description": "Audit trail entry."
+      },
+      "AuditResponse": {
+        "properties": {
+          "entries": {
+            "items": {
+              "$ref": "#/components/schemas/AuditEntry"
+            },
+            "type": "array",
+            "title": "Entries"
+          }
+        },
+        "type": "object",
+        "required": [
+          "entries"
+        ],
+        "title": "AuditResponse",
+        "description": "Audit trail response."
+      },
+      "BatchSignalsRequest": {
+        "properties": {
+          "symbols": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Symbols",
+            "description": "List of trading symbols"
+          },
+          "lookback": {
+            "type": "integer",
+            "maximum": 1000.0,
+            "minimum": 50.0,
+            "title": "Lookback",
+            "description": "Historical data lookback period",
+            "default": 200
+          }
+        },
+        "type": "object",
+        "required": [
+          "symbols"
+        ],
+        "title": "BatchSignalsRequest",
+        "description": "Batch signals request for multiple symbols."
+      },
+      "Body_get_token_api_v1_auth_token_post": {
+        "properties": {
+          "username": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Username"
+          },
+          "password": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Password"
+          }
+        },
+        "type": "object",
+        "title": "Body_get_token_api_v1_auth_token_post"
+      },
+      "Body_get_token_auth_token_post": {
+        "properties": {
+          "username": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Username"
+          },
+          "password": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Password"
+          }
+        },
+        "type": "object",
+        "title": "Body_get_token_auth_token_post"
+      },
+      "Body_login_api_v1_auth_login_post": {
+        "properties": {
+          "username": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Username"
+          },
+          "password": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Password"
+          }
+        },
+        "type": "object",
+        "title": "Body_login_api_v1_auth_login_post"
+      },
+      "Body_login_auth_login_post": {
+        "properties": {
+          "username": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Username"
+          },
+          "password": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Password"
+          }
+        },
+        "type": "object",
+        "title": "Body_login_auth_login_post"
+      },
+      "FeatureBatch": {
+        "properties": {
+          "features": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Features",
+            "description": "List of feature vectors"
+          },
+          "timestamp": {
+            "type": "string",
+            "title": "Timestamp"
+          },
+          "metadata": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Metadata"
+          }
+        },
+        "type": "object",
+        "required": [
+          "features"
+        ],
+        "title": "FeatureBatch",
+        "description": "Feature batch for strategy processing."
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "LoginResponse": {
+        "properties": {
+          "access_token": {
+            "type": "string",
+            "title": "Access Token"
+          },
+          "token_type": {
+            "type": "string",
+            "title": "Token Type"
+          },
+          "expires_in": {
+            "type": "integer",
+            "title": "Expires In"
+          },
+          "user_id": {
+            "type": "string",
+            "title": "User Id"
+          },
+          "user": {
+            "$ref": "#/components/schemas/UserInfo"
+          }
+        },
+        "type": "object",
+        "required": [
+          "access_token",
+          "token_type",
+          "expires_in",
+          "user_id",
+          "user"
+        ],
+        "title": "LoginResponse",
+        "description": "Login response payload."
+      },
+      "ModelTrainingRequest": {
+        "properties": {
+          "model_type": {
+            "type": "string",
+            "pattern": "^(ensemble|regression|classification|lstm)$",
+            "title": "Model Type",
+            "description": "Type of model to train"
+          },
+          "retrain": {
+            "type": "boolean",
+            "title": "Retrain",
+            "description": "Whether to retrain the model",
+            "default": true
+          },
+          "features": {
+            "items": {},
+            "type": "array",
+            "title": "Features",
+            "description": "Features to use"
+          }
+        },
+        "type": "object",
+        "required": [
+          "model_type"
+        ],
+        "title": "ModelTrainingRequest",
+        "description": "Model training request."
+      },
+      "MultiSignalsResponse": {
+        "properties": {
+          "signals": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Signals"
+          },
+          "timestamp": {
+            "type": "string",
+            "title": "Timestamp"
+          }
+        },
+        "type": "object",
+        "required": [
+          "signals",
+          "timestamp"
+        ],
+        "title": "MultiSignalsResponse",
+        "description": "Multiple signals response."
+      },
+      "OrderStatusResponse": {
+        "properties": {
+          "order_id": {
+            "type": "string",
+            "title": "Order Id"
+          },
+          "client_order_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Client Order Id"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "side": {
+            "type": "string",
+            "title": "Side"
+          },
+          "qty": {
+            "type": "number",
+            "title": "Qty"
+          },
+          "filled_qty": {
+            "type": "number",
+            "title": "Filled Qty",
+            "default": 0.0
+          },
+          "avg_fill_price": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avg Fill Price"
+          },
+          "submitted_at": {
+            "type": "string",
+            "title": "Submitted At"
+          },
+          "updated_at": {
+            "type": "string",
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "order_id",
+          "status",
+          "symbol",
+          "side",
+          "qty",
+          "submitted_at",
+          "updated_at"
+        ],
+        "title": "OrderStatusResponse",
+        "description": "Order status response."
+      },
+      "OrderSubmissionResponse": {
+        "properties": {
+          "order_id": {
+            "type": "string",
+            "title": "Order Id"
+          },
+          "client_order_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Client Order Id"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "side": {
+            "type": "string",
+            "title": "Side"
+          },
+          "qty": {
+            "type": "number",
+            "title": "Qty"
+          },
+          "submitted_at": {
+            "type": "string",
+            "title": "Submitted At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "order_id",
+          "status",
+          "symbol",
+          "side",
+          "qty",
+          "submitted_at"
+        ],
+        "title": "OrderSubmissionResponse",
+        "description": "Order submission response."
+      },
+      "PositionLimits": {
+        "properties": {
+          "max_position_value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Max Position Value",
+            "description": "Maximum position size in dollars",
+            "default": "1000000"
+          },
+          "max_position_count": {
+            "type": "integer",
+            "title": "Max Position Count",
+            "description": "Maximum number of positions",
+            "default": 100
+          },
+          "max_sector_concentration": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Max Sector Concentration",
+            "description": "Maximum sector concentration as fraction (0.25 = 25%)",
+            "default": "0.25"
+          },
+          "max_symbol_concentration": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Max Symbol Concentration",
+            "description": "Maximum symbol concentration as fraction (0.10 = 10%)",
+            "default": "0.10"
+          },
+          "max_daily_loss": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Max Daily Loss",
+            "description": "Maximum daily loss in dollars",
+            "default": "50000"
+          },
+          "max_drawdown": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Max Drawdown",
+            "description": "Maximum drawdown as fraction (0.15 = 15%)",
+            "default": "0.15"
+          },
+          "circuit_breaker": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Circuit Breaker",
+            "description": "Circuit breaker threshold as fraction (0.05 = 5%)",
+            "default": "0.05"
+          },
+          "min_position_size": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Min Position Size",
+            "description": "Minimum position size in dollars",
+            "default": "1000"
+          },
+          "position_size_step": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Position Size Step",
+            "description": "Position size increment in dollars",
+            "default": "100"
+          },
+          "max_leverage": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Max Leverage",
+            "description": "Maximum leverage ratio",
+            "default": "4.0"
+          },
+          "maintenance_margin": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Maintenance Margin",
+            "description": "Maintenance margin as fraction (0.25 = 25%)",
+            "default": "0.25"
+          },
+          "allowed_symbols": {
+            "anyOf": [
+              {
+                "items": {},
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Allowed Symbols",
+            "description": "List of allowed trading symbols (empty = all allowed)"
+          },
+          "restricted_symbols": {
+            "anyOf": [
+              {
+                "items": {},
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Restricted Symbols",
+            "description": "List of restricted trading symbols"
+          }
+        },
+        "type": "object",
+        "title": "PositionLimits",
+        "description": "Position limits configuration for risk management.\n\nSupports backward compatibility for various field names and formats:\n- circuit_breaker_pct / circuit_breaker aliases \n- Percent (0-100) or fraction (0-1) formats for percentages\n- max_position_value as alias for max_position_size"
+      },
+      "RiskLimitsPayload": {
+        "properties": {
+          "max_position_value": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Max Position Value"
+          },
+          "max_symbol_exposure": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Max Symbol Exposure"
+          },
+          "circuit_breaker_pct": {
+            "type": "number",
+            "maximum": 0.5,
+            "exclusiveMinimum": 0.0,
+            "title": "Circuit Breaker Pct"
+          }
+        },
+        "type": "object",
+        "required": [
+          "max_position_value",
+          "max_symbol_exposure",
+          "circuit_breaker_pct"
+        ],
+        "title": "RiskLimitsPayload"
+      },
+      "SignalBatch": {
+        "properties": {
+          "signals": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Signals",
+            "description": "List of signals"
+          },
+          "strategy_id": {
+            "type": "string",
+            "title": "Strategy Id",
+            "description": "Strategy identifier"
+          },
+          "metadata": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Metadata"
+          }
+        },
+        "type": "object",
+        "required": [
+          "signals",
+          "strategy_id"
+        ],
+        "title": "SignalBatch",
+        "description": "Signal batch for strategy processing."
+      },
+      "SignalRequest": {
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "signal_type": {
+            "type": "string",
+            "enum": [
+              "BUY",
+              "SELL",
+              "HOLD"
+            ],
+            "title": "Signal Type"
+          },
+          "confidence": {
+            "type": "number",
+            "title": "Confidence"
+          },
+          "price": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price"
+          },
+          "timestamp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp"
+          }
+        },
+        "type": "object",
+        "required": [
+          "symbol",
+          "signal_type",
+          "confidence"
+        ],
+        "title": "SignalRequest",
+        "description": "Request model for submitting signals."
+      },
+      "SignalResponse": {
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "action": {
+            "type": "string",
+            "enum": [
+              "buy",
+              "sell",
+              "hold"
+            ],
+            "title": "Action"
+          },
+          "signal_strength": {
+            "type": "number",
+            "title": "Signal Strength"
+          },
+          "confidence": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confidence"
+          },
+          "tp_pct": {
+            "type": "number",
+            "title": "Tp Pct"
+          },
+          "sl_pct": {
+            "type": "number",
+            "title": "Sl Pct"
+          },
+          "generated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Generated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "symbol",
+          "action",
+          "signal_strength",
+          "tp_pct",
+          "sl_pct",
+          "generated_at"
+        ],
+        "title": "SignalResponse",
+        "description": "Signal response model with backward/forward compatibility.\n\nSupports both 'confidence' (legacy) and 'signal_strength' (canonical).\nIf only one is provided, the other is automatically mirrored during validation."
+      },
+      "TradeExecutionRequest": {
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "quantity": {
+            "type": "number",
+            "title": "Quantity"
+          },
+          "side": {
+            "type": "string",
+            "title": "Side"
+          },
+          "order_type": {
+            "type": "string",
+            "title": "Order Type",
+            "default": "market"
+          }
+        },
+        "type": "object",
+        "required": [
+          "symbol",
+          "quantity",
+          "side"
+        ],
+        "title": "TradeExecutionRequest",
+        "description": "Trade execution request model."
+      },
+      "TradeHistory": {
+        "properties": {
+          "trade_id": {
+            "type": "string",
+            "title": "Trade Id"
+          },
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "quantity": {
+            "type": "number",
+            "title": "Quantity"
+          },
+          "price": {
+            "type": "number",
+            "title": "Price"
+          },
+          "side": {
+            "type": "string",
+            "title": "Side"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Timestamp"
+          },
+          "order_type": {
+            "type": "string",
+            "title": "Order Type",
+            "default": "market"
+          },
+          "fees": {
+            "type": "number",
+            "title": "Fees",
+            "default": 0.0
+          },
+          "pnl": {
+            "type": "number",
+            "title": "Pnl",
+            "default": 0.0
+          }
+        },
+        "type": "object",
+        "required": [
+          "trade_id",
+          "symbol",
+          "quantity",
+          "price",
+          "side",
+          "timestamp"
+        ],
+        "title": "TradeHistory",
+        "description": "Trade history response model."
+      },
+      "TradeHistoryResponse": {
+        "properties": {
+          "trades": {
+            "items": {
+              "$ref": "#/components/schemas/TradeHistory"
+            },
+            "type": "array",
+            "title": "Trades"
+          },
+          "total_count": {
+            "type": "integer",
+            "title": "Total Count"
+          },
+          "page": {
+            "type": "integer",
+            "title": "Page"
+          },
+          "page_size": {
+            "type": "integer",
+            "title": "Page Size"
+          }
+        },
+        "type": "object",
+        "required": [
+          "trades",
+          "total_count",
+          "page",
+          "page_size"
+        ],
+        "title": "TradeHistoryResponse",
+        "description": "Trade history list response."
+      },
+      "UserInfo": {
+        "properties": {
+          "username": {
+            "type": "string",
+            "title": "Username"
+          },
+          "roles": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Roles"
+          }
+        },
+        "type": "object",
+        "required": [
+          "username",
+          "roles"
+        ],
+        "title": "UserInfo",
+        "description": "User information."
+      },
+      "UserRegistrationRequest": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "title": "Email"
+          },
+          "password": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 8,
+            "title": "Password"
+          }
+        },
+        "type": "object",
+        "required": [
+          "email",
+          "password"
+        ],
+        "title": "UserRegistrationRequest",
+        "description": "User registration request payload."
+      },
+      "UserRegistrationResponse": {
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "title": "User Id"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "title": "Email"
+          }
+        },
+        "type": "object",
+        "required": [
+          "user_id",
+          "email"
+        ],
+        "title": "UserRegistrationResponse",
+        "description": "User registration response payload."
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    },
+    "securitySchemes": {
+      "HTTPBearer": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    }
+  },
+  "security": [
+    {
+      "HTTPBearer": []
+    }
+  ]
+}
