@@ -5,7 +5,7 @@ Pydantic models for data validation and serialization.
 
 from datetime import datetime
 from decimal import Decimal
-from typing import Any, Optional
+from typing import Any
 
 from pydantic import BaseModel, Field, validator
 
@@ -70,8 +70,8 @@ class PortfolioSnapshot(BaseModel):
     total_value: Decimal = Field(..., ge=0, description="Total portfolio value")
     cash_balance: Decimal = Field(..., ge=0, description="Available cash balance")
     positions: list[dict[str, Any]] = Field(default_factory=list, description="Current positions")
-    daily_pnl: Optional[Decimal] = Field(None, description="Daily profit/loss")
-    total_pnl: Optional[Decimal] = Field(None, description="Total profit/loss")
+    daily_pnl: Decimal | None = Field(None, description="Daily profit/loss")
+    total_pnl: Decimal | None = Field(None, description="Total profit/loss")
     
     @validator("positions")
     def validate_positions(cls, v):
@@ -86,12 +86,12 @@ class PortfolioSnapshot(BaseModel):
 class RiskMetrics(BaseModel):
     """Risk metrics for portfolio analysis."""
     
-    var_95: Optional[float] = Field(None, description="Value at Risk (95%)")
-    var_99: Optional[float] = Field(None, description="Value at Risk (99%)")
-    sharpe_ratio: Optional[float] = Field(None, description="Sharpe ratio")
-    max_drawdown: Optional[float] = Field(None, description="Maximum drawdown")
-    volatility: Optional[float] = Field(None, ge=0, description="Portfolio volatility")
-    beta: Optional[float] = Field(None, description="Portfolio beta")
+    var_95: float | None = Field(None, description="Value at Risk (95%)")
+    var_99: float | None = Field(None, description="Value at Risk (99%)")
+    sharpe_ratio: float | None = Field(None, description="Sharpe ratio")
+    max_drawdown: float | None = Field(None, description="Maximum drawdown")
+    volatility: float | None = Field(None, ge=0, description="Portfolio volatility")
+    beta: float | None = Field(None, description="Portfolio beta")
     
     @validator("max_drawdown")
     def validate_max_drawdown(cls, v):

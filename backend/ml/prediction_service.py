@@ -3,21 +3,21 @@ Module 58: ML Prediction Service
 Comprehensive prediction service for machine learning models.
 """
 
-import os
+import hashlib
 import json
 import logging
-import hashlib
+import threading
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import Dict, Any, List, Optional, Union, Tuple
-from dataclasses import dataclass, asdict
 from enum import Enum
+from functools import wraps
+from pathlib import Path
+from typing import Any
+
 import numpy as np
 import pandas as pd
-from pathlib import Path
-from concurrent.futures import ThreadPoolExecutor, as_completed
-import threading
-from functools import wraps
 
 
 class PredictionStatus(Enum):
@@ -41,7 +41,7 @@ class PredictionType(Enum):
 class PredictionRequest:
     """Prediction request structure."""
     request_id: str
-    input_data: Union[Dict, List, np.ndarray, pd.DataFrame]
+    input_data: dict | list | np.ndarray | pd.DataFrame
     model_name: str
     model_version: str = "latest"
     prediction_type: PredictionType = PredictionType.CLASSIFICATION
@@ -49,7 +49,7 @@ class PredictionRequest:
     return_probabilities: bool = False
     cache_enabled: bool = True
     timeout: float = 30.0
-    metadata: Dict[str, Any] = None
+    metadata: dict[str, Any] = None
     
     def __post_init__(self):
         if self.metadata is None:
@@ -60,16 +60,16 @@ class PredictionRequest:
 class PredictionResult:
     """Prediction result structure."""
     request_id: str
-    predictions: Union[List, np.ndarray, float, int]
-    confidence: Optional[Union[List[float], float]] = None
-    probabilities: Optional[Union[List[List[float]], List[float]]] = None
+    predictions: list | np.ndarray | float | int
+    confidence: list[float] | float | None = None
+    probabilities: list[list[float]] | list[float] | None = None
     status: PredictionStatus = PredictionStatus.COMPLETED
     processing_time: float = 0.0
     model_name: str = ""
     model_version: str = ""
     timestamp: datetime = None
-    error_message: Optional[str] = None
-    metadata: Dict[str, Any] = None
+    error_message: str | None = None
+    metadata: dict[str, Any] = None
     
     def __post_init__(self):
         if self.timestamp is None:
@@ -82,15 +82,15 @@ class PredictionResult:
 class BatchPredictionJob:
     """Batch prediction job structure."""
     job_id: str
-    requests: List[PredictionRequest]
+    requests: list[PredictionRequest]
     status: PredictionStatus = PredictionStatus.PENDING
     progress: float = 0.0
     total_requests: int = 0
     completed_requests: int = 0
     failed_requests: int = 0
-    started_at: Optional[datetime] = None
-    completed_at: Optional[datetime] = None
-    results: List[PredictionResult] = None
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
+    results: list[PredictionResult] = None
     
     def __post_init__(self):
         if self.results is None:
@@ -153,7 +153,7 @@ class PredictionCache:
                 del self.cache[oldest_key]
                 del self.access_times[oldest_key]
     
-    def get(self, request: PredictionRequest) -> Optional[PredictionResult]:
+    def get(self, request: PredictionRequest) -> PredictionResult | None:
         """Get cached prediction result."""
         if not request.cache_enabled:
             return None
@@ -193,7 +193,7 @@ class PredictionCache:
             self.cache.clear()
             self.access_times.clear()
     
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get cache statistics."""
         with self.lock:
             now = datetime.now()
@@ -213,7 +213,7 @@ class PredictionValidator:
     """Validation for prediction inputs and outputs."""
     
     @staticmethod
-    def validate_input(input_data: Any, expected_features: List[str] = None) -> Tuple[bool, str]:
+    def validate_input(input_data: Any, expected_features: list[str] = None) -> tuple[bool, str]:
         """Validate prediction input data."""
         try:
             if input_data is None:
@@ -249,7 +249,7 @@ class PredictionValidator:
             return False, f"Validation error: {str(e)}"
     
     @staticmethod
-    def validate_prediction(prediction: Any, prediction_type: PredictionType) -> Tuple[bool, str]:
+    def validate_prediction(prediction: Any, prediction_type: PredictionType) -> tuple[bool, str]:
         """Validate prediction output."""
         try:
             if prediction is None:
@@ -403,7 +403,7 @@ class PredictionService:
                 probabilities = np.column_stack([prob_class_0, prob_class_1])
                 
                 return predictions, probabilities
-            except Exception as e:
+            except Exception:
                 # Fallback predictions
                 n_samples = 1 if np.isscalar(X) else len(X) if hasattr(X, '__len__') else 1
                 predictions = np.zeros(n_samples, dtype=int)
@@ -427,7 +427,7 @@ class PredictionService:
                 # Mock prediction based on weighted sum
                 predictions = X.mean(axis=1) * 2.5 + np.random.normal(0, 0.1, X.shape[0])
                 return predictions
-            except Exception as e:
+            except Exception:
                 # Fallback prediction
                 n_samples = 1 if np.isscalar(X) else len(X) if hasattr(X, '__len__') else 1
                 return np.full(n_samples, 1.0)
@@ -550,7 +550,7 @@ class PredictionService:
                 error_message=error_message
             )
     
-    def predict_batch(self, requests: List[PredictionRequest], 
+    def predict_batch(self, requests: list[PredictionRequest], 
                      job_id: str = None) -> BatchPredictionJob:
         """Generate batch predictions."""
         if job_id is None:
@@ -611,7 +611,7 @@ class PredictionService:
         self.logger.log_batch_job(job)
         return job
     
-    def get_batch_job_status(self, job_id: str) -> Optional[BatchPredictionJob]:
+    def get_batch_job_status(self, job_id: str) -> BatchPredictionJob | None:
         """Get batch job status."""
         with self.job_lock:
             return self.batch_jobs.get(job_id)
@@ -646,7 +646,7 @@ class PredictionService:
                 error_message=f"Prediction timed out after {timeout} seconds"
             )
     
-    def get_cache_stats(self) -> Dict[str, Any]:
+    def get_cache_stats(self) -> dict[str, Any]:
         """Get cache statistics."""
         return self.cache.get_stats()
     
@@ -654,7 +654,7 @@ class PredictionService:
         """Clear prediction cache."""
         self.cache.clear()
     
-    def get_service_stats(self) -> Dict[str, Any]:
+    def get_service_stats(self) -> dict[str, Any]:
         """Get service statistics."""
         with self.job_lock:
             active_jobs = sum(1 for job in self.batch_jobs.values() 
@@ -694,7 +694,7 @@ def create_sample_regression_data(n_samples: int = 100, n_features: int = 2) -> 
     return pd.DataFrame(data, columns=columns)
 
 
-def create_sample_prediction_requests(n_requests: int = 10) -> List[PredictionRequest]:
+def create_sample_prediction_requests(n_requests: int = 10) -> list[PredictionRequest]:
     """Create sample prediction requests."""
     requests = []
     for i in range(n_requests):

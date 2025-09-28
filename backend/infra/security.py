@@ -3,13 +3,9 @@ Security utilities for JWT authentication, password hashing, and RBAC.
 Provides FastAPI dependencies for authentication and authorization.
 """
 
-from datetime import UTC, datetime, timedelta
 import base64
-import json
 import secrets
-import time
-import hmac
-import hashlib
+from datetime import UTC, datetime, timedelta
 
 import bcrypt
 from fastapi import Depends, HTTPException, Request, status
@@ -53,7 +49,7 @@ def verify_jwt(token: str, *, secret: str, issuer: str, audience: str, alg: str 
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
     
     # Import JWT library and exceptions
-    from jose import jwt, JWTError
+    from jose import JWTError, jwt
     from jose.exceptions import ExpiredSignatureError, JWTClaimsError
     
     try:
@@ -157,7 +153,7 @@ def hash_password(password: str) -> str:
     # Log warning for long passwords but don't fail (for compatibility)
     if len(password_bytes) > 72:
         import logging
-        logging.warning(f"Password exceeds bcrypt 72-byte limit and will be truncated")
+        logging.warning("Password exceeds bcrypt 72-byte limit and will be truncated")
     
     salt = bcrypt.gensalt()
     return bcrypt.hashpw(password_bytes, salt).decode("utf-8")
@@ -307,7 +303,7 @@ def verify_token(token: str) -> UserClaims:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token format")
         else:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
-    except Exception as e:
+    except Exception:
         # Catch-all for any other errors
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

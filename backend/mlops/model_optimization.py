@@ -17,17 +17,16 @@ Created: 2025-01-01
 Version: 1.0.0
 """
 
-import json
-import time
 import hashlib
-import numpy as np
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any, Union, Callable, Tuple
-from pathlib import Path
-from dataclasses import dataclass, field
-from enum import Enum
-from abc import ABC, abstractmethod
 import logging
+from abc import ABC, abstractmethod
+from dataclasses import dataclass, field
+from datetime import datetime
+from enum import Enum
+from pathlib import Path
+from typing import Any
+
+import numpy as np
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -86,14 +85,14 @@ class OptimizationConfig:
     """Optimization configuration."""
     optimization_type: OptimizationType
     target_hardware: HardwareTarget
-    target_latency_ms: Optional[float] = None
-    target_throughput: Optional[float] = None
-    target_model_size_mb: Optional[float] = None
+    target_latency_ms: float | None = None
+    target_throughput: float | None = None
+    target_model_size_mb: float | None = None
     accuracy_threshold: float = 0.95  # Minimum acceptable accuracy
-    parameters: Dict[str, Any] = field(default_factory=dict)
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    parameters: dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
     
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             'optimization_type': self.optimization_type.value,
@@ -118,9 +117,9 @@ class ModelMetrics:
     flops: int
     parameters_count: int
     inference_time_ms: float
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
     
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             'accuracy': self.accuracy,
@@ -144,13 +143,13 @@ class OptimizationResult:
     optimization_config: OptimizationConfig
     original_metrics: ModelMetrics
     optimized_metrics: ModelMetrics
-    optimization_report: Dict[str, Any]
+    optimization_report: dict[str, Any]
     status: OptimizationStatus
     created_at: datetime = field(default_factory=datetime.now)
-    completed_at: Optional[datetime] = None
+    completed_at: datetime | None = None
     error_message: str = ""
     
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             'optimization_id': self.optimization_id,
@@ -166,7 +165,7 @@ class OptimizationResult:
             'error_message': self.error_message
         }
     
-    def get_improvement_summary(self) -> Dict[str, float]:
+    def get_improvement_summary(self) -> dict[str, float]:
         """Get optimization improvement summary."""
         return {
             'accuracy_change': self.optimized_metrics.accuracy - self.original_metrics.accuracy,
@@ -183,7 +182,7 @@ class ModelOptimizer(ABC):
     """Abstract base class for model optimizers."""
     
     @abstractmethod
-    def optimize(self, model_path: str, config: OptimizationConfig) -> Tuple[str, Dict[str, Any]]:
+    def optimize(self, model_path: str, config: OptimizationConfig) -> tuple[str, dict[str, Any]]:
         """Optimize model and return path to optimized model and optimization report."""
         pass
     
@@ -198,7 +197,7 @@ class ModelOptimizer(ABC):
         pass
     
     @abstractmethod
-    def get_supported_formats(self) -> List[str]:
+    def get_supported_formats(self) -> list[str]:
         """Get list of supported model formats."""
         pass
 
@@ -211,7 +210,7 @@ class QuantizationOptimizer(ModelOptimizer):
         self.supported_hardware = [HardwareTarget.CPU, HardwareTarget.GPU, HardwareTarget.MOBILE, HardwareTarget.EDGE]
         self.supported_formats = ["onnx", "pytorch", "tensorflow"]
     
-    def optimize(self, model_path: str, config: OptimizationConfig) -> Tuple[str, Dict[str, Any]]:
+    def optimize(self, model_path: str, config: OptimizationConfig) -> tuple[str, dict[str, Any]]:
         """Perform quantization optimization."""
         if not self.supports_optimization_type(config.optimization_type):
             raise ValueError(f"Optimization type {config.optimization_type} not supported")
@@ -247,7 +246,7 @@ class QuantizationOptimizer(ModelOptimizer):
         """Check if optimizer supports the hardware target."""
         return hardware_target in self.supported_hardware
     
-    def get_supported_formats(self) -> List[str]:
+    def get_supported_formats(self) -> list[str]:
         """Get list of supported model formats."""
         return self.supported_formats.copy()
 
@@ -260,7 +259,7 @@ class PruningOptimizer(ModelOptimizer):
         self.supported_hardware = [HardwareTarget.CPU, HardwareTarget.GPU, HardwareTarget.MOBILE]
         self.supported_formats = ["pytorch", "tensorflow"]
     
-    def optimize(self, model_path: str, config: OptimizationConfig) -> Tuple[str, Dict[str, Any]]:
+    def optimize(self, model_path: str, config: OptimizationConfig) -> tuple[str, dict[str, Any]]:
         """Perform pruning optimization."""
         if not self.supports_optimization_type(config.optimization_type):
             raise ValueError(f"Optimization type {config.optimization_type} not supported")
@@ -297,7 +296,7 @@ class PruningOptimizer(ModelOptimizer):
         """Check if optimizer supports the hardware target."""
         return hardware_target in self.supported_hardware
     
-    def get_supported_formats(self) -> List[str]:
+    def get_supported_formats(self) -> list[str]:
         """Get list of supported model formats."""
         return self.supported_formats.copy()
 
@@ -310,7 +309,7 @@ class DistillationOptimizer(ModelOptimizer):
         self.supported_hardware = [HardwareTarget.CPU, HardwareTarget.GPU, HardwareTarget.MOBILE, HardwareTarget.EDGE]
         self.supported_formats = ["pytorch", "tensorflow"]
     
-    def optimize(self, model_path: str, config: OptimizationConfig) -> Tuple[str, Dict[str, Any]]:
+    def optimize(self, model_path: str, config: OptimizationConfig) -> tuple[str, dict[str, Any]]:
         """Perform knowledge distillation optimization."""
         if not self.supports_optimization_type(config.optimization_type):
             raise ValueError(f"Optimization type {config.optimization_type} not supported")
@@ -349,7 +348,7 @@ class DistillationOptimizer(ModelOptimizer):
         """Check if optimizer supports the hardware target."""
         return hardware_target in self.supported_hardware
     
-    def get_supported_formats(self) -> List[str]:
+    def get_supported_formats(self) -> list[str]:
         """Get list of supported model formats."""
         return self.supported_formats.copy()
 
@@ -361,7 +360,7 @@ class PerformanceProfiler:
         self.profiles = {}
     
     def profile_model(self, model_path: str, hardware_target: HardwareTarget,
-                     batch_sizes: List[int] = None, num_runs: int = 100) -> ModelMetrics:
+                     batch_sizes: list[int] = None, num_runs: int = 100) -> ModelMetrics:
         """Profile model performance."""
         if batch_sizes is None:
             batch_sizes = [1, 8, 32]
@@ -406,7 +405,7 @@ class PerformanceProfiler:
         logger.info(f"Model profiling completed for {model_path} on {hardware_target.value}")
         return metrics
     
-    def compare_models(self, model_metrics: List[Tuple[str, ModelMetrics]]) -> Dict[str, Any]:
+    def compare_models(self, model_metrics: list[tuple[str, ModelMetrics]]) -> dict[str, Any]:
         """Compare multiple model metrics."""
         if len(model_metrics) < 2:
             raise ValueError("Need at least 2 models to compare")
@@ -449,7 +448,7 @@ class PerformanceProfiler:
         return comparison
     
     def get_optimization_recommendations(self, metrics: ModelMetrics, 
-                                       target_hardware: HardwareTarget) -> List[str]:
+                                       target_hardware: HardwareTarget) -> list[str]:
         """Get optimization recommendations based on model metrics."""
         recommendations = []
         
@@ -494,7 +493,7 @@ class OptimizationPipeline:
         """Add optimization stage to pipeline."""
         self.stages.append((optimizer, config))
     
-    def run_pipeline(self, model_path: str) -> List[OptimizationResult]:
+    def run_pipeline(self, model_path: str) -> list[OptimizationResult]:
         """Run the optimization pipeline."""
         current_model_path = model_path
         pipeline_results = []
@@ -552,7 +551,7 @@ class OptimizationPipeline:
         
         return pipeline_results
     
-    def get_pipeline_summary(self, results: List[OptimizationResult]) -> Dict[str, Any]:
+    def get_pipeline_summary(self, results: list[OptimizationResult]) -> dict[str, Any]:
         """Get pipeline optimization summary."""
         if not results:
             return {}
@@ -595,20 +594,20 @@ class ModelOptimizationService:
         self.storage_path = Path(storage_path)
         self.storage_path.mkdir(parents=True, exist_ok=True)
         
-        self.optimizers: Dict[OptimizationType, List[ModelOptimizer]] = {
+        self.optimizers: dict[OptimizationType, list[ModelOptimizer]] = {
             OptimizationType.QUANTIZATION: [QuantizationOptimizer()],
             OptimizationType.PRUNING: [PruningOptimizer()],
             OptimizationType.DISTILLATION: [DistillationOptimizer()],
         }
         
         self.profiler = PerformanceProfiler()
-        self.optimizations: Dict[str, OptimizationResult] = {}
-        self.pipelines: Dict[str, OptimizationPipeline] = {}
+        self.optimizations: dict[str, OptimizationResult] = {}
+        self.pipelines: dict[str, OptimizationPipeline] = {}
         
         # Optimization strategies
         self.strategies = self._load_optimization_strategies()
     
-    def _load_optimization_strategies(self) -> Dict[str, Dict[str, Any]]:
+    def _load_optimization_strategies(self) -> dict[str, dict[str, Any]]:
         """Load predefined optimization strategies."""
         return {
             'mobile_inference': {
@@ -668,7 +667,7 @@ class ModelOptimizationService:
         self.optimizers[optimization_type].append(optimizer)
         logger.info(f"Registered optimizer for {optimization_type.value}")
     
-    def get_available_optimizers(self, optimization_type: OptimizationType = None) -> Dict[str, List[str]]:
+    def get_available_optimizers(self, optimization_type: OptimizationType = None) -> dict[str, list[str]]:
         """Get available optimizers."""
         if optimization_type:
             return {
@@ -683,7 +682,7 @@ class ModelOptimizationService:
         return result
     
     def profile_model(self, model_path: str, hardware_target: HardwareTarget,
-                     batch_sizes: List[int] = None, num_runs: int = 100) -> ModelMetrics:
+                     batch_sizes: list[int] = None, num_runs: int = 100) -> ModelMetrics:
         """Profile model performance."""
         return self.profiler.profile_model(model_path, hardware_target, batch_sizes, num_runs)
     
@@ -754,7 +753,7 @@ class ModelOptimizationService:
             logger.error(f"Model optimization failed: {e}")
             return error_result
     
-    def create_optimization_pipeline(self, pipeline_id: str, configs: List[Tuple[OptimizationType, OptimizationConfig]]) -> str:
+    def create_optimization_pipeline(self, pipeline_id: str, configs: list[tuple[OptimizationType, OptimizationConfig]]) -> str:
         """Create an optimization pipeline."""
         pipeline = OptimizationPipeline()
         
@@ -770,7 +769,7 @@ class ModelOptimizationService:
         logger.info(f"Created optimization pipeline: {pipeline_id}")
         return pipeline_id
     
-    def run_optimization_pipeline(self, pipeline_id: str, model_path: str) -> List[OptimizationResult]:
+    def run_optimization_pipeline(self, pipeline_id: str, model_path: str) -> list[OptimizationResult]:
         """Run an optimization pipeline."""
         if pipeline_id not in self.pipelines:
             raise ValueError(f"Pipeline {pipeline_id} not found")
@@ -785,7 +784,7 @@ class ModelOptimizationService:
         return results
     
     def apply_optimization_strategy(self, strategy_name: str, model_path: str,
-                                  target_hardware: HardwareTarget = None) -> List[OptimizationResult]:
+                                  target_hardware: HardwareTarget = None) -> list[OptimizationResult]:
         """Apply a predefined optimization strategy."""
         if strategy_name not in self.strategies:
             raise ValueError(f"Strategy {strategy_name} not found")
@@ -811,11 +810,11 @@ class ModelOptimizationService:
         
         return self.run_optimization_pipeline(pipeline_id, model_path)
     
-    def get_optimization_result(self, optimization_id: str) -> Optional[OptimizationResult]:
+    def get_optimization_result(self, optimization_id: str) -> OptimizationResult | None:
         """Get optimization result by ID."""
         return self.optimizations.get(optimization_id)
     
-    def list_optimizations(self, model_path: str = None, status: OptimizationStatus = None) -> List[OptimizationResult]:
+    def list_optimizations(self, model_path: str = None, status: OptimizationStatus = None) -> list[OptimizationResult]:
         """List optimizations with optional filtering."""
         results = list(self.optimizations.values())
         
@@ -827,7 +826,7 @@ class ModelOptimizationService:
         
         return results
     
-    def compare_optimizations(self, optimization_ids: List[str]) -> Dict[str, Any]:
+    def compare_optimizations(self, optimization_ids: list[str]) -> dict[str, Any]:
         """Compare multiple optimization results."""
         results = []
         for opt_id in optimization_ids:
@@ -840,7 +839,7 @@ class ModelOptimizationService:
         
         return self.profiler.compare_models(results)
     
-    def get_optimization_recommendations(self, model_path: str, target_hardware: HardwareTarget) -> Dict[str, Any]:
+    def get_optimization_recommendations(self, model_path: str, target_hardware: HardwareTarget) -> dict[str, Any]:
         """Get optimization recommendations for a model."""
         # Profile model
         metrics = self.profiler.profile_model(model_path, target_hardware)
@@ -861,7 +860,7 @@ class ModelOptimizationService:
             'available_optimizers': self.get_available_optimizers()
         }
     
-    def get_optimization_statistics(self) -> Dict[str, Any]:
+    def get_optimization_statistics(self) -> dict[str, Any]:
         """Get optimization service statistics."""
         total_optimizations = len(self.optimizations)
         completed = len([o for o in self.optimizations.values() if o.status == OptimizationStatus.COMPLETED])
@@ -903,10 +902,10 @@ def create_optimization_service(storage_path: str = "./model_optimization") -> M
 
 def create_optimization_config(optimization_type: OptimizationType, 
                              target_hardware: HardwareTarget,
-                             target_latency_ms: Optional[float] = None,
-                             target_model_size_mb: Optional[float] = None,
+                             target_latency_ms: float | None = None,
+                             target_model_size_mb: float | None = None,
                              accuracy_threshold: float = 0.95,
-                             parameters: Optional[Dict[str, Any]] = None) -> OptimizationConfig:
+                             parameters: dict[str, Any] | None = None) -> OptimizationConfig:
     """Create an optimization configuration."""
     if parameters is None:
         parameters = {}

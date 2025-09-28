@@ -4,10 +4,10 @@ Provides structured data containers for risk decisions, order specs, and portfol
 """
 
 from dataclasses import dataclass
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from decimal import Decimal
 from enum import Enum
-from typing import Any, Literal, Optional
+from typing import Any
 
 # Contract-Adapter Patch F: Import Side enum for test compatibility
 from backend.strategies.types import Side
@@ -63,15 +63,15 @@ class RiskLimits:
     max_symbol_exposure: float = 1.0
     circuit_breaker_pct: float = 0.5
     # legacy/optional
-    max_portfolio_exposure: Optional[float] = None
+    max_portfolio_exposure: float | None = None
     
     # Legacy fields for backward compatibility
-    max_position_size: Optional[Decimal] = None
-    max_daily_loss: Optional[Decimal] = None
-    max_sector_concentration: Optional[float] = None
-    max_single_position: Optional[Decimal] = None
-    var_limit_95: Optional[Decimal] = None
-    var_limit_99: Optional[Decimal] = None
+    max_position_size: Decimal | None = None
+    max_daily_loss: Decimal | None = None
+    max_sector_concentration: float | None = None
+    max_single_position: Decimal | None = None
+    var_limit_95: Decimal | None = None
+    var_limit_99: Decimal | None = None
 
     def __init__(self, **kwargs: Any):
         # accept both new and legacy names

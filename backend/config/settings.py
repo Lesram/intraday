@@ -10,36 +10,44 @@ those symbols to preserve backward compatibility.
 
 from __future__ import annotations
 
+import json
+import os
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Optional
-import json
-import os
+from typing import Any
 
 # Backward-compatibility: re-export pydantic-based settings and helpers
 _HAS_RUNTIME = False
 try:
     # These may pull in optional deps via base_settings; keep wrapped
     from .base_settings import (
-        settings as _legacy_settings,
-        get_settings as _get_runtime_settings,
-        get_legacy_settings,
-        Settings as RuntimeSettings,
-        LegacySettings as RuntimeLegacySettings,
-        AppConfig,
-        SecurityConfig,
         AlpacaConfig,
-        DataConfig,
-        WebsocketConfig,
-        MetricsConfig,
+        AppConfig,
         DatabaseConfig,
-        TradingConfig,
-        OutboxConfig,
-        ObservabilityConfig,
+        DataConfig,
+        MetricsConfig,
         MLOpsConfig,
+        ObservabilityConfig,
+        OutboxConfig,
+        SecurityConfig,
+        TradingConfig,
+        WebsocketConfig,
+        get_legacy_settings,
         validate_required_settings,
+    )
+    from .base_settings import (
+        LegacySettings as RuntimeLegacySettings,
+    )
+    from .base_settings import (
+        Settings as RuntimeSettings,
+    )
+    from .base_settings import (
+        get_settings as _get_runtime_settings,
+    )
+    from .base_settings import (
+        settings as _legacy_settings,
     )
     _HAS_RUNTIME = True
 except Exception:  # pragma: no cover - optional
@@ -65,7 +73,7 @@ else:  # Runtime import of canonical Environment (also injected into builtins)
     except Exception:  # fallback to builtins or define minimal enum
         import builtins as _builtins
         if hasattr(_builtins, "Environment"):
-            EnvironmentEnum = getattr(_builtins, "Environment")  # type: ignore
+            EnvironmentEnum = _builtins.Environment  # type: ignore
         else:
             class EnvironmentEnum(Enum):  # type: ignore
                 DEVELOPMENT = "development"
@@ -73,7 +81,7 @@ else:  # Runtime import of canonical Environment (also injected into builtins)
                 STAGING = "staging"
                 PRODUCTION = "production"
             # Inject for later canonicalization when other modules import
-            setattr(_builtins, "Environment", EnvironmentEnum)
+            _builtins.Environment = EnvironmentEnum
 
 # Public alias to preserve expected symbol name
 Environment = EnvironmentEnum
@@ -109,7 +117,7 @@ class DatabaseSettings:
     echo: bool = False
     echo_pool: bool = False
     isolation_level: str = "READ_COMMITTED"
-    connect_args: Dict[str, Any] = field(default_factory=dict)
+    connect_args: dict[str, Any] = field(default_factory=dict)
 
     # Perform basic validations at construction time to match tests
     def __post_init__(self):
@@ -134,10 +142,10 @@ class TradingSettings:
     commission_rate: float = 0.001
     slippage_rate: float = 0.0005
     min_trade_amount: float = 10.0
-    trading_hours: Dict[str, str] = field(
+    trading_hours: dict[str, str] = field(
         default_factory=lambda: {"start": "09:30", "end": "16:00", "timezone": "America/New_York"}
     )
-    allowed_symbols: List[str] = field(default_factory=lambda: ["SPY", "QQQ", "IWM"])
+    allowed_symbols: list[str] = field(default_factory=lambda: ["SPY", "QQQ", "IWM"])
 
     # Basic validation
     def __post_init__(self):
@@ -160,10 +168,10 @@ class APISettings:
     workers: int = 4
     timeout: int = 30
     max_connections: int = 1000
-    cors_origins: List[str] = field(default_factory=lambda: ["http://localhost:3000"])
-    cors_methods: List[str] = field(default_factory=lambda: ["GET", "POST", "PUT", "DELETE"])
-    cors_headers: List[str] = field(default_factory=lambda: ["Content-Type", "Authorization"])
-    rate_limit: Dict[str, int] = field(default_factory=lambda: {"requests": 100, "window": 60})
+    cors_origins: list[str] = field(default_factory=lambda: ["http://localhost:3000"])
+    cors_methods: list[str] = field(default_factory=lambda: ["GET", "POST", "PUT", "DELETE"])
+    cors_headers: list[str] = field(default_factory=lambda: ["Content-Type", "Authorization"])
+    rate_limit: dict[str, int] = field(default_factory=lambda: {"requests": 100, "window": 60})
     auth_required: bool = True
     api_version: str = "v1"
     def __post_init__(self):
@@ -204,9 +212,9 @@ class SecuritySettings:
     login_lockout_minutes: int = 15
     session_timeout_minutes: int = 60
     require_https: bool = False
-    allowed_hosts: List[str] = field(default_factory=lambda: ["localhost", "127.0.0.1"])
+    allowed_hosts: list[str] = field(default_factory=lambda: ["localhost", "127.0.0.1"])
     csrf_protection: bool = True
-    content_security_policy: Dict[str, str] = field(default_factory=dict)
+    content_security_policy: dict[str, str] = field(default_factory=dict)
     rate_limiting: bool = True
     encryption_algorithm: str = "AES-256-GCM"
     def __post_init__(self):
@@ -229,7 +237,7 @@ class WebSocketSettings:
     ssl_enabled: bool = False
     ssl_cert_path: str = ""
     ssl_key_path: str = ""
-    allowed_origins: List[str] = field(default_factory=lambda: ["*"])
+    allowed_origins: list[str] = field(default_factory=lambda: ["*"])
     def __post_init__(self):
         if not 1 <= self.port <= 65535:
             raise SettingsError("WebSocket port must be between 1 and 65535")
@@ -265,7 +273,7 @@ class MonitoringSettings:
     enabled: bool = True
     metrics_port: int = 9090
     health_check_interval: int = 30
-    alert_thresholds: Dict[str, float] = field(
+    alert_thresholds: dict[str, float] = field(
         default_factory=lambda: {
             "cpu_usage": 80.0,
             "memory_usage": 85.0,
@@ -278,7 +286,7 @@ class MonitoringSettings:
     grafana_enabled: bool = True
     jaeger_enabled: bool = True
     log_aggregation: bool = True
-    custom_metrics: List[str] = field(default_factory=list)
+    custom_metrics: list[str] = field(default_factory=list)
     retention_days: int = 30
     def __post_init__(self):
         if not 1 <= self.metrics_port <= 65535:
@@ -297,7 +305,7 @@ class CacheSettings:
     key_prefix: str = "trading_platform:"
     serializer: str = "json"
     compression: bool = True
-    cache_control: Dict[str, int] = field(
+    cache_control: dict[str, int] = field(
         default_factory=lambda: {"market_data": 1, "user_data": 300, "config": 3600}
     )
     def __post_init__(self):
@@ -409,7 +417,7 @@ class AppSettings:
     def update_timestamp(self):
         self.updated_at = datetime.now()
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         def _plain(obj: Any):
             if hasattr(obj, "__dataclass_fields__"):
                 return {k: _plain(getattr(obj, k)) for k in obj.__dataclass_fields__}  # type: ignore[attr-defined]
@@ -424,7 +432,7 @@ class AppSettings:
             return obj
         return _plain(self)
 
-    def from_dict(self, data: Dict[str, Any]):
+    def from_dict(self, data: dict[str, Any]):
         for key, value in data.items():
             if not hasattr(self, key):
                 continue
@@ -439,7 +447,7 @@ class AppSettings:
                 setattr(self, key, EnvironmentEnum(value))
             elif key == "logging" and isinstance(value, dict) and "level" in value and isinstance(value["level"], str):
                 # Allow logging.level to be provided as string
-                setattr(self.logging, "level", LogLevel(value["level"]))
+                self.logging.level = LogLevel(value["level"])
             elif key == "trading" and isinstance(value, dict) and "mode" in value and isinstance(value["mode"], str):
                 # Allow trading.mode to be provided as string or member name
                 mode_str = value["mode"]
@@ -457,9 +465,9 @@ class AppSettings:
 # Inject enums into builtins for tests that may expect them globally
 try:
     import builtins as _builtins
-    setattr(_builtins, "TradingMode", TradingMode)
-    setattr(_builtins, "LogLevel", LogLevel)
-    setattr(_builtins, "Environment", EnvironmentEnum)
+    _builtins.TradingMode = TradingMode
+    _builtins.LogLevel = LogLevel
+    _builtins.Environment = EnvironmentEnum
 except Exception:
     pass
 
@@ -506,15 +514,15 @@ class SettingsValidator:
 
 class SettingsManager:
     def __init__(self):
-        self._settings: Optional[AppSettings] = None
-        self._config_file: Optional[str] = None
-        self._watchers: List[Any] = []
+        self._settings: AppSettings | None = None
+        self._config_file: str | None = None
+        self._watchers: list[Any] = []
 
-    def load(self, config_file: Optional[str] = None) -> AppSettings:
+    def load(self, config_file: str | None = None) -> AppSettings:
         if config_file:
             self._config_file = config_file
         if self._config_file and os.path.exists(self._config_file):
-            with open(self._config_file, "r", encoding="utf-8") as f:
+            with open(self._config_file, encoding="utf-8") as f:
                 data = json.load(f)
             self._settings = AppSettings()
             self._settings.from_dict(data)
@@ -522,7 +530,7 @@ class SettingsManager:
             self._settings = AppSettings()
         return self._settings
 
-    def save(self, config_file: Optional[str] = None):
+    def save(self, config_file: str | None = None):
         if not self._settings:
             raise SettingsError("No settings to save")
         file_path = config_file or self._config_file
@@ -534,7 +542,7 @@ class SettingsManager:
         with open(file_path, "w", encoding="utf-8") as f:
             json.dump(self._settings.to_dict(), f, indent=2)
 
-    def update(self, updates: Dict[str, Any]):
+    def update(self, updates: dict[str, Any]):
         if not self._settings:
             self._settings = AppSettings()
         self._settings.from_dict(updates)
@@ -550,7 +558,7 @@ class SettingsManager:
 
     def backup(self, backup_file: str):
         if self._config_file and os.path.exists(self._config_file):
-            with open(self._config_file, "r", encoding="utf-8") as src, open(backup_file, "w", encoding="utf-8") as dst:
+            with open(self._config_file, encoding="utf-8") as src, open(backup_file, "w", encoding="utf-8") as dst:
                 dst.write(src.read())
             return True
         return False
@@ -570,7 +578,7 @@ def get_settings() -> AppSettings:
     return _settings_manager.get_settings()
 
 
-def initialize_settings(config_file: Optional[str] = None) -> AppSettings:
+def initialize_settings(config_file: str | None = None) -> AppSettings:
     return _settings_manager.load(config_file)
 
 
@@ -583,7 +591,7 @@ def validate_app_settings(app_settings: AppSettings):
     SettingsValidator.validate_all(app_settings)
 
 
-def update_app_settings(updates: Dict[str, Any]):
+def update_app_settings(updates: dict[str, Any]):
     _settings_manager.update(updates)
 
 
@@ -642,8 +650,8 @@ def create_app_config(environment: Any = EnvironmentEnum.DEVELOPMENT) -> AppSett
     return app
 
 
-def load_environment_settings() -> Dict[str, Any]:
-    env: Dict[str, Any] = {}
+def load_environment_settings() -> dict[str, Any]:
+    env: dict[str, Any] = {}
     if os.getenv("DATABASE_URL"):
         env.setdefault("database", {})["url"] = os.getenv("DATABASE_URL")
     if os.getenv("API_HOST"):
@@ -694,7 +702,7 @@ def restore_app_settings(backup_file: str):
     return _settings_manager.restore(backup_file)
 
 
-def get_settings_summary() -> Dict[str, Any]:
+def get_settings_summary() -> dict[str, Any]:
     s = get_settings()
     return {
         "app_name": s.app_name,

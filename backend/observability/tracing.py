@@ -4,20 +4,19 @@ trace analysis, and performance profiling capabilities.
 """
 
 import asyncio
-from contextlib import contextmanager, asynccontextmanager
 import functools
 import logging
-import time
-from typing import Any, Dict, List, Optional, Union, TypeVar, Callable, Iterator, AsyncIterator
-from datetime import datetime, timedelta
-from dataclasses import dataclass, field
 from collections import defaultdict
+from collections.abc import AsyncIterator, Callable, Iterator
+from contextlib import asynccontextmanager, contextmanager
+from dataclasses import dataclass, field
+from datetime import datetime, timedelta
+from typing import Any, TypeVar
 
 from opentelemetry import trace
-from opentelemetry.sdk.trace import TracerProvider, ReadableSpan
+from opentelemetry.sdk.trace import ReadableSpan, TracerProvider
 from opentelemetry.sdk.trace.export import SpanExporter, SpanExportResult
-from opentelemetry.sdk.trace.sampling import ALWAYS_ON, ALWAYS_OFF, TraceIdRatioBased
-from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.sdk.trace.sampling import TraceIdRatioBased
 from opentelemetry.trace import Status, StatusCode
 
 logger = logging.getLogger(__name__)
@@ -33,7 +32,7 @@ class SpanMetrics:
     status: str
     error_count: int = 0
     child_count: int = 0
-    attributes: Dict[str, Any] = field(default_factory=dict)
+    attributes: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -45,9 +44,9 @@ class TraceAnalysis:
     span_count: int
     error_count: int
     critical_path_ms: float
-    bottlenecks: List[str] = field(default_factory=list)
-    error_spans: List[str] = field(default_factory=list)
-    performance_metrics: Dict[str, float] = field(default_factory=dict)
+    bottlenecks: list[str] = field(default_factory=list)
+    error_spans: list[str] = field(default_factory=list)
+    performance_metrics: dict[str, float] = field(default_factory=dict)
 
 
 class TraceStorage:
@@ -55,9 +54,9 @@ class TraceStorage:
     
     def __init__(self, max_traces: int = 1000):
         self.max_traces = max_traces
-        self.traces: Dict[str, List[SpanMetrics]] = {}
-        self.trace_metadata: Dict[str, Dict[str, Any]] = {}
-        self._trace_order: List[str] = []
+        self.traces: dict[str, list[SpanMetrics]] = {}
+        self.trace_metadata: dict[str, dict[str, Any]] = {}
+        self._trace_order: list[str] = []
     
     def add_span(self, trace_id: str, span_metrics: SpanMetrics) -> None:
         """Add span metrics to trace storage."""
@@ -79,11 +78,11 @@ class TraceStorage:
         self.traces[trace_id].append(span_metrics)
         self.trace_metadata[trace_id]["span_count"] += 1
     
-    def get_trace(self, trace_id: str) -> Optional[List[SpanMetrics]]:
+    def get_trace(self, trace_id: str) -> list[SpanMetrics] | None:
         """Get all spans for a trace."""
         return self.traces.get(trace_id)
     
-    def get_recent_traces(self, limit: int = 10) -> List[str]:
+    def get_recent_traces(self, limit: int = 10) -> list[str]:
         """Get most recent trace IDs."""
         return self._trace_order[-limit:] if self._trace_order else []
     
@@ -100,7 +99,7 @@ class TracingCollector(SpanExporter):
     def __init__(self, storage: TraceStorage):
         self.storage = storage
     
-    def export(self, spans: List[ReadableSpan]) -> SpanExportResult:
+    def export(self, spans: list[ReadableSpan]) -> SpanExportResult:
         """Export spans to trace storage."""
         try:
             for span in spans:
@@ -147,7 +146,7 @@ class TraceAnalyzer:
     def __init__(self, storage: TraceStorage):
         self.storage = storage
     
-    def analyze_trace(self, trace_id: str) -> Optional[TraceAnalysis]:
+    def analyze_trace(self, trace_id: str) -> TraceAnalysis | None:
         """Analyze a complete trace for performance insights."""
         spans = self.storage.get_trace(trace_id)
         if not spans:
@@ -198,7 +197,7 @@ class TraceAnalyzer:
             performance_metrics=performance_metrics
         )
     
-    def get_performance_summary(self, hours: int = 1) -> Dict[str, Any]:
+    def get_performance_summary(self, hours: int = 1) -> dict[str, Any]:
         """Get performance summary for recent traces."""
         cutoff_time = datetime.utcnow() - timedelta(hours=hours)
         
@@ -255,7 +254,7 @@ class TracingService:
         self.storage = TraceStorage()
         self.collector = TracingCollector(self.storage)
         self.analyzer = TraceAnalyzer(self.storage)
-        self._tracer: Optional[trace.Tracer] = None
+        self._tracer: trace.Tracer | None = None
         self._initialized = False
     
     def initialize(self, sampling_rate: float = 0.1) -> None:
@@ -289,7 +288,7 @@ class TracingService:
     def trace_operation(
         self,
         operation_name: str,
-        attributes: Optional[Dict[str, Union[str, int, float, bool]]] = None
+        attributes: dict[str, str | int | float | bool] | None = None
     ) -> Iterator[trace.Span]:
         """Create a traced operation span."""
         tracer = self.get_tracer()
@@ -319,7 +318,7 @@ class TracingService:
     async def trace_async_operation(
         self,
         operation_name: str,
-        attributes: Optional[Dict[str, Union[str, int, float, bool]]] = None
+        attributes: dict[str, str | int | float | bool] | None = None
     ) -> AsyncIterator[trace.Span]:
         """Create a traced async operation span."""
         tracer = self.get_tracer()
@@ -347,8 +346,8 @@ class TracingService:
     
     def trace_decorator(
         self,
-        operation_name: Optional[str] = None,
-        attributes: Optional[Dict[str, Union[str, int, float, bool]]] = None
+        operation_name: str | None = None,
+        attributes: dict[str, str | int | float | bool] | None = None
     ):
         """Decorator to trace function execution."""
         def decorator(func: F) -> F:
@@ -395,15 +394,15 @@ class TracingService:
         
         return decorator
     
-    def get_trace_analysis(self, trace_id: str) -> Optional[TraceAnalysis]:
+    def get_trace_analysis(self, trace_id: str) -> TraceAnalysis | None:
         """Get analysis for a specific trace."""
         return self.analyzer.analyze_trace(trace_id)
     
-    def get_performance_summary(self, hours: int = 1) -> Dict[str, Any]:
+    def get_performance_summary(self, hours: int = 1) -> dict[str, Any]:
         """Get performance summary for recent traces."""
         return self.analyzer.get_performance_summary(hours)
     
-    def get_active_traces(self) -> List[str]:
+    def get_active_traces(self) -> list[str]:
         """Get list of currently active trace IDs."""
         active_traces = []
         for trace_id, metadata in self.storage.trace_metadata.items():
@@ -411,7 +410,7 @@ class TracingService:
                 active_traces.append(trace_id)
         return active_traces
     
-    def get_trace_stats(self) -> Dict[str, Any]:
+    def get_trace_stats(self) -> dict[str, Any]:
         """Get general tracing statistics."""
         total_traces = len(self.storage.traces)
         active_traces = len(self.get_active_traces())
@@ -429,7 +428,7 @@ class TracingService:
 
 
 # Global tracing service instance
-_tracing_service: Optional[TracingService] = None
+_tracing_service: TracingService | None = None
 
 
 def get_tracing_service() -> TracingService:
@@ -448,22 +447,22 @@ def initialize_tracing(service_name: str = "intraday-trading", sampling_rate: fl
 
 
 # Convenience functions for common tracing operations
-def trace_operation(operation_name: str, attributes: Optional[Dict[str, Any]] = None):
+def trace_operation(operation_name: str, attributes: dict[str, Any] | None = None):
     """Context manager for tracing operations."""
     return get_tracing_service().trace_operation(operation_name, attributes)
 
 
-def trace_async_operation(operation_name: str, attributes: Optional[Dict[str, Any]] = None):
+def trace_async_operation(operation_name: str, attributes: dict[str, Any] | None = None):
     """Async context manager for tracing operations."""
     return get_tracing_service().trace_async_operation(operation_name, attributes)
 
 
-def trace_function(operation_name: Optional[str] = None, attributes: Optional[Dict[str, Any]] = None):
+def trace_function(operation_name: str | None = None, attributes: dict[str, Any] | None = None):
     """Decorator for tracing function execution."""
     return get_tracing_service().trace_decorator(operation_name, attributes)
 
 
-def get_current_trace_id() -> Optional[str]:
+def get_current_trace_id() -> str | None:
     """Get the current trace ID."""
     current_span = trace.get_current_span()
     if current_span and current_span.context:
@@ -471,14 +470,14 @@ def get_current_trace_id() -> Optional[str]:
     return None
 
 
-def add_trace_event(name: str, attributes: Optional[Dict[str, Any]] = None) -> None:
+def add_trace_event(name: str, attributes: dict[str, Any] | None = None) -> None:
     """Add an event to the current span."""
     current_span = trace.get_current_span()
     if current_span:
         current_span.add_event(name, attributes or {})
 
 
-def set_trace_attribute(key: str, value: Union[str, int, float, bool]) -> None:
+def set_trace_attribute(key: str, value: str | int | float | bool) -> None:
     """Set an attribute on the current span."""
     current_span = trace.get_current_span()
     if current_span:

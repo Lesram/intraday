@@ -6,10 +6,10 @@ Routes all execution through RiskManager.before_order() before creating orders.
 """
 
 import asyncio
+import logging
 from collections import defaultdict
 from datetime import UTC, datetime
 from decimal import ROUND_DOWN, Decimal
-import logging
 from typing import Any
 
 from ..config import get_settings

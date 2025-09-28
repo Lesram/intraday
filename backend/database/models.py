@@ -4,8 +4,8 @@ Compatibility module for tests that expect backend.database.models
 """
 
 # Mock database models for compatibility
-from typing import Any
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+
 
 class MockModel:
     """Mock database model for testing"""
@@ -22,7 +22,7 @@ class MockModel:
                 # For tests that expect name-mangled access like model.__private_attr
                 setattr(self, f'_TestDatabaseEdgeCases{k}', v)
         # Use timezone-aware UTC datetime (Python 3.12+ compatible)
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         self.created_at = now
         self.updated_at = now
 

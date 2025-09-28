@@ -7,15 +7,14 @@ Supports complex multi-stage pipelines with conditional execution and error hand
 """
 
 import asyncio
-import json
 import logging
 import time
 import uuid
-from datetime import datetime, timedelta
-from enum import Enum
-from typing import Dict, List, Optional, Union, Any, Tuple, Callable, Set
-from dataclasses import dataclass, field
 from abc import ABC, abstractmethod
+from dataclasses import dataclass, field
+from datetime import datetime
+from enum import Enum
+from typing import Any
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -74,9 +73,9 @@ class PipelineConfig:
     timeout_seconds: int = 3600
     retry_attempts: int = 3
     retry_delay: float = 30.0
-    environment: Dict[str, Any] = field(default_factory=dict)
-    notifications: Dict[str, Any] = field(default_factory=dict)
-    tags: Dict[str, str] = field(default_factory=dict)
+    environment: dict[str, Any] = field(default_factory=dict)
+    notifications: dict[str, Any] = field(default_factory=dict)
+    tags: dict[str, str] = field(default_factory=dict)
 
 
 @dataclass
@@ -85,15 +84,15 @@ class StageConfig:
     name: str
     stage_type: str
     description: str = ""
-    dependencies: List[str] = field(default_factory=list)
-    parameters: Dict[str, Any] = field(default_factory=dict)
+    dependencies: list[str] = field(default_factory=list)
+    parameters: dict[str, Any] = field(default_factory=dict)
     timeout_seconds: int = 1800
     retry_attempts: int = 2
     retry_delay: float = 10.0
     skip_on_failure: bool = False
-    condition: Optional[str] = None
-    resources: Dict[str, Any] = field(default_factory=dict)
-    artifacts: Dict[str, str] = field(default_factory=dict)
+    condition: str | None = None
+    resources: dict[str, Any] = field(default_factory=dict)
+    artifacts: dict[str, str] = field(default_factory=dict)
 
 
 @dataclass
@@ -102,13 +101,13 @@ class StageResult:
     stage_id: str
     status: StageStatus
     start_time: datetime
-    end_time: Optional[datetime] = None
+    end_time: datetime | None = None
     duration: float = 0.0
     output: Any = None
-    error: Optional[str] = None
-    metrics: Dict[str, float] = field(default_factory=dict)
-    artifacts: Dict[str, str] = field(default_factory=dict)
-    logs: List[str] = field(default_factory=list)
+    error: str | None = None
+    metrics: dict[str, float] = field(default_factory=dict)
+    artifacts: dict[str, str] = field(default_factory=dict)
+    logs: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -118,13 +117,13 @@ class PipelineResult:
     run_id: str
     status: PipelineStatus
     start_time: datetime
-    end_time: Optional[datetime] = None
+    end_time: datetime | None = None
     duration: float = 0.0
-    stage_results: Dict[str, StageResult] = field(default_factory=dict)
-    metrics: Dict[str, float] = field(default_factory=dict)
-    artifacts: Dict[str, str] = field(default_factory=dict)
-    error: Optional[str] = None
-    logs: List[str] = field(default_factory=list)
+    stage_results: dict[str, StageResult] = field(default_factory=dict)
+    metrics: dict[str, float] = field(default_factory=dict)
+    artifacts: dict[str, str] = field(default_factory=dict)
+    error: str | None = None
+    logs: list[str] = field(default_factory=list)
 
 
 class PipelineStage(ABC):
@@ -134,10 +133,10 @@ class PipelineStage(ABC):
         self.config = config
         self.stage_id = f"{config.name}_{int(time.time())}"
         self.status = StageStatus.WAITING
-        self.result: Optional[StageResult] = None
+        self.result: StageResult | None = None
     
     @abstractmethod
-    async def execute(self, context: Dict[str, Any]) -> Any:
+    async def execute(self, context: dict[str, Any]) -> Any:
         """Execute the stage."""
         pass
     
@@ -145,11 +144,11 @@ class PipelineStage(ABC):
         """Validate stage configuration."""
         return bool(self.config.name and self.config.stage_type)
     
-    def check_dependencies(self, completed_stages: Set[str]) -> bool:
+    def check_dependencies(self, completed_stages: set[str]) -> bool:
         """Check if stage dependencies are satisfied."""
         return all(dep in completed_stages for dep in self.config.dependencies)
     
-    def evaluate_condition(self, context: Dict[str, Any]) -> bool:
+    def evaluate_condition(self, context: dict[str, Any]) -> bool:
         """Evaluate stage execution condition."""
         if not self.config.condition:
             return True
@@ -165,7 +164,7 @@ class PipelineStage(ABC):
 class DataProcessingStage(PipelineStage):
     """Data processing pipeline stage."""
     
-    async def execute(self, context: Dict[str, Any]) -> Any:
+    async def execute(self, context: dict[str, Any]) -> Any:
         """Execute data processing."""
         logger.info(f"Executing data processing stage: {self.config.name}")
         
@@ -200,7 +199,7 @@ class DataProcessingStage(PipelineStage):
 class ModelTrainingStage(PipelineStage):
     """Model training pipeline stage."""
     
-    async def execute(self, context: Dict[str, Any]) -> Any:
+    async def execute(self, context: dict[str, Any]) -> Any:
         """Execute model training."""
         logger.info(f"Executing model training stage: {self.config.name}")
         
@@ -231,7 +230,7 @@ class ModelTrainingStage(PipelineStage):
 class ModelValidationStage(PipelineStage):
     """Model validation pipeline stage."""
     
-    async def execute(self, context: Dict[str, Any]) -> Any:
+    async def execute(self, context: dict[str, Any]) -> Any:
         """Execute model validation."""
         logger.info(f"Executing model validation stage: {self.config.name}")
         
@@ -260,7 +259,7 @@ class ModelValidationStage(PipelineStage):
 class DeploymentStage(PipelineStage):
     """Model deployment pipeline stage."""
     
-    async def execute(self, context: Dict[str, Any]) -> Any:
+    async def execute(self, context: dict[str, Any]) -> Any:
         """Execute model deployment."""
         logger.info(f"Executing deployment stage: {self.config.name}")
         
@@ -284,12 +283,12 @@ class PipelineExecutor:
     """Pipeline execution engine."""
     
     def __init__(self):
-        self.pipelines: Dict[str, 'Pipeline'] = {}
-        self.execution_history: List[PipelineResult] = []
-        self.active_runs: Dict[str, PipelineResult] = {}
+        self.pipelines: dict[str, Pipeline] = {}
+        self.execution_history: list[PipelineResult] = []
+        self.active_runs: dict[str, PipelineResult] = {}
     
     async def execute_pipeline(self, pipeline: 'Pipeline', 
-                             context: Optional[Dict[str, Any]] = None) -> PipelineResult:
+                             context: dict[str, Any] | None = None) -> PipelineResult:
         """Execute a pipeline."""
         run_id = f"run_{uuid.uuid4().hex[:8]}"
         start_time = datetime.now()
@@ -339,7 +338,7 @@ class PipelineExecutor:
         return result
     
     async def _execute_sequential(self, pipeline: 'Pipeline', 
-                                 context: Dict[str, Any], 
+                                 context: dict[str, Any], 
                                  result: PipelineResult):
         """Execute pipeline stages sequentially."""
         for stage in pipeline.stages:
@@ -357,7 +356,7 @@ class PipelineExecutor:
                 context[stage.config.name] = stage_result.output
     
     async def _execute_parallel(self, pipeline: 'Pipeline', 
-                               context: Dict[str, Any], 
+                               context: dict[str, Any], 
                                result: PipelineResult):
         """Execute pipeline stages in parallel."""
         # Group stages by dependency level
@@ -390,11 +389,11 @@ class PipelineExecutor:
                     context[stage.config.name] = stage_result.output
     
     async def _execute_dag(self, pipeline: 'Pipeline', 
-                          context: Dict[str, Any], 
+                          context: dict[str, Any], 
                           result: PipelineResult):
         """Execute pipeline as DAG (Directed Acyclic Graph)."""
-        completed_stages: Set[str] = set()
-        running_stages: Dict[str, asyncio.Task] = {}
+        completed_stages: set[str] = set()
+        running_stages: dict[str, asyncio.Task] = {}
         pending_stages = list(pipeline.stages)
         
         while pending_stages or running_stages:
@@ -456,7 +455,7 @@ class PipelineExecutor:
                         del running_stages[stage_id]
     
     async def _execute_stage(self, stage: PipelineStage, 
-                           context: Dict[str, Any], 
+                           context: dict[str, Any], 
                            pipeline_result: PipelineResult) -> StageResult:
         """Execute a single stage."""
         start_time = datetime.now()
@@ -486,7 +485,7 @@ class PipelineExecutor:
                     stage_result.status = StageStatus.SUCCEEDED
                     break
                     
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     error_msg = f"Stage {stage.config.name} timed out after {timeout} seconds"
                     if attempt < stage.config.retry_attempts:
                         logger.warning(f"{error_msg}, retrying...")
@@ -514,11 +513,11 @@ class PipelineExecutor:
         
         return stage_result
     
-    def _group_stages_by_dependencies(self, stages: List[PipelineStage]) -> List[List[PipelineStage]]:
+    def _group_stages_by_dependencies(self, stages: list[PipelineStage]) -> list[list[PipelineStage]]:
         """Group stages by dependency levels."""
         groups = []
         remaining_stages = list(stages)
-        completed_stages: Set[str] = set()
+        completed_stages: set[str] = set()
         
         while remaining_stages:
             current_group = []
@@ -547,7 +546,7 @@ class PipelineExecutor:
             return True
         return False
     
-    def get_pipeline_status(self, run_id: str) -> Optional[PipelineResult]:
+    def get_pipeline_status(self, run_id: str) -> PipelineResult | None:
         """Get pipeline execution status."""
         if run_id in self.active_runs:
             return self.active_runs[run_id]
@@ -558,7 +557,7 @@ class PipelineExecutor:
         
         return None
     
-    def get_execution_history(self, pipeline_id: Optional[str] = None) -> List[PipelineResult]:
+    def get_execution_history(self, pipeline_id: str | None = None) -> list[PipelineResult]:
         """Get execution history."""
         if pipeline_id:
             return [r for r in self.execution_history if r.pipeline_id == pipeline_id]
@@ -571,7 +570,7 @@ class Pipeline:
     def __init__(self, config: PipelineConfig):
         self.config = config
         self.pipeline_id = f"pipeline_{uuid.uuid4().hex[:8]}"
-        self.stages: List[PipelineStage] = []
+        self.stages: list[PipelineStage] = []
         self.created_at = datetime.now()
         self.updated_at = datetime.now()
         self.version = "1.0.0"
@@ -594,14 +593,14 @@ class Pipeline:
                 return True
         return False
     
-    def get_stage(self, stage_name: str) -> Optional[PipelineStage]:
+    def get_stage(self, stage_name: str) -> PipelineStage | None:
         """Get a stage by name."""
         for stage in self.stages:
             if stage.config.name == stage_name:
                 return stage
         return None
     
-    def validate(self) -> Tuple[bool, List[str]]:
+    def validate(self) -> tuple[bool, list[str]]:
         """Validate pipeline configuration."""
         errors = []
         
@@ -624,7 +623,7 @@ class Pipeline:
     
     def _has_circular_dependencies(self) -> bool:
         """Check for circular dependencies."""
-        def visit(stage_name: str, visited: Set[str], rec_stack: Set[str]) -> bool:
+        def visit(stage_name: str, visited: set[str], rec_stack: set[str]) -> bool:
             visited.add(stage_name)
             rec_stack.add(stage_name)
             
@@ -640,7 +639,7 @@ class Pipeline:
             rec_stack.remove(stage_name)
             return False
         
-        visited: Set[str] = set()
+        visited: set[str] = set()
         for stage in self.stages:
             if stage.config.name not in visited:
                 if visit(stage.config.name, visited, set()):
@@ -648,7 +647,7 @@ class Pipeline:
         
         return False
     
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert pipeline to dictionary."""
         return {
             'pipeline_id': self.pipeline_id,
@@ -693,8 +692,8 @@ class PipelineOrchestrator:
     
     def __init__(self):
         self.executor = PipelineExecutor()
-        self.pipeline_templates: Dict[str, Dict[str, Any]] = {}
-        self.scheduled_pipelines: Dict[str, Dict[str, Any]] = {}
+        self.pipeline_templates: dict[str, dict[str, Any]] = {}
+        self.scheduled_pipelines: dict[str, dict[str, Any]] = {}
     
     async def create_pipeline(self, config: PipelineConfig) -> Pipeline:
         """Create a new pipeline."""
@@ -703,7 +702,7 @@ class PipelineOrchestrator:
         return pipeline
     
     async def execute_pipeline(self, pipeline_id: str, 
-                             context: Optional[Dict[str, Any]] = None) -> PipelineResult:
+                             context: dict[str, Any] | None = None) -> PipelineResult:
         """Execute a pipeline by ID."""
         if pipeline_id not in self.executor.pipelines:
             raise ValueError(f"Pipeline not found: {pipeline_id}")
@@ -711,11 +710,11 @@ class PipelineOrchestrator:
         pipeline = self.executor.pipelines[pipeline_id]
         return await self.executor.execute_pipeline(pipeline, context)
     
-    def get_pipeline(self, pipeline_id: str) -> Optional[Pipeline]:
+    def get_pipeline(self, pipeline_id: str) -> Pipeline | None:
         """Get a pipeline by ID."""
         return self.executor.pipelines.get(pipeline_id)
     
-    def list_pipelines(self) -> List[Pipeline]:
+    def list_pipelines(self) -> list[Pipeline]:
         """List all pipelines."""
         return list(self.executor.pipelines.values())
     
@@ -724,16 +723,16 @@ class PipelineOrchestrator:
         self.pipeline_templates[name] = pipeline.to_dict()
         return True
     
-    def get_template(self, name: str) -> Optional[Dict[str, Any]]:
+    def get_template(self, name: str) -> dict[str, Any] | None:
         """Get a pipeline template."""
         return self.pipeline_templates.get(name)
     
-    def list_templates(self) -> List[str]:
+    def list_templates(self) -> list[str]:
         """List available templates."""
         return list(self.pipeline_templates.keys())
     
     async def create_from_template(self, template_name: str, 
-                                  config_overrides: Optional[Dict[str, Any]] = None) -> Pipeline:
+                                  config_overrides: dict[str, Any] | None = None) -> Pipeline:
         """Create a pipeline from template."""
         template = self.get_template(template_name)
         if not template:
@@ -804,7 +803,7 @@ async def create_pipeline_orchestrator() -> PipelineOrchestrator:
     return PipelineOrchestrator()
 
 
-def create_ml_pipeline_template() -> Dict[str, Any]:
+def create_ml_pipeline_template() -> dict[str, Any]:
     """Create a standard ML pipeline template."""
     return {
         'config': {

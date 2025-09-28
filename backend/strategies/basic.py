@@ -4,8 +4,9 @@ Provides deterministic RSI + SMA cross strategy implementation.
 """
 
 import logging
-from typing import Dict, List, Any, Optional, Sequence
+from collections.abc import Sequence
 from dataclasses import dataclass
+from typing import Any
 
 from backend.features.technical_indicators import TechnicalIndicators
 
@@ -68,7 +69,7 @@ class BasicStrategy:
         *,
         close_prices: Sequence[float] | None = None,
         closes: Sequence[float] | None = None,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Generate trading decision based on price history.
         
@@ -223,7 +224,7 @@ class BasicStrategy:
         raw_confidence = distance / max_distance
         return max(0.3, min(1.0, raw_confidence))
     
-    def _no_decision(self, reason: str, detail: Any) -> Dict[str, Any]:
+    def _no_decision(self, reason: str, detail: Any) -> dict[str, Any]:
         """Return a hold decision when no clear signal exists."""
         return StrategyDecision(
             action="hold",
@@ -233,7 +234,7 @@ class BasicStrategy:
             reason=f"{reason}: {detail}"
         ).__dict__
     
-    def get_parameters(self) -> Dict[str, Any]:
+    def get_parameters(self) -> dict[str, Any]:
         """Get current strategy parameters."""
         return {
             "rsi_buy": self.rsi_buy,

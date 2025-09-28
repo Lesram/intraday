@@ -6,16 +6,15 @@ versioning, and tracking machine learning models in the algotrading platform.
 Includes model metadata management, versioning, lifecycle tracking, and artifact storage.
 """
 
-import asyncio
-import json
 import hashlib
+import json
+import logging
 import shutil
-from datetime import datetime, timedelta
+from dataclasses import dataclass, field
+from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import Dict, List, Optional, Union, Any, Tuple
-from dataclasses import dataclass, field
-import logging
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -60,7 +59,7 @@ class ModelArtifact:
     size_bytes: int
     checksum: str
     created_at: datetime = field(default_factory=datetime.now)
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -74,11 +73,11 @@ class ModelVersion:
     created_by: str
     created_at: datetime = field(default_factory=datetime.now)
     updated_at: datetime = field(default_factory=datetime.now)
-    artifacts: List[ModelArtifact] = field(default_factory=list)
-    metrics: Dict[str, float] = field(default_factory=dict)
-    parameters: Dict[str, Any] = field(default_factory=dict)
-    tags: Dict[str, str] = field(default_factory=dict)
-    lineage: Dict[str, Any] = field(default_factory=dict)
+    artifacts: list[ModelArtifact] = field(default_factory=list)
+    metrics: dict[str, float] = field(default_factory=dict)
+    parameters: dict[str, Any] = field(default_factory=dict)
+    tags: dict[str, str] = field(default_factory=dict)
+    lineage: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -89,9 +88,9 @@ class ModelInfo:
     owner: str
     created_at: datetime
     updated_at: datetime
-    latest_version: Optional[str] = None
-    versions: List[str] = field(default_factory=list)
-    tags: Dict[str, str] = field(default_factory=dict)
+    latest_version: str | None = None
+    versions: list[str] = field(default_factory=list)
+    tags: dict[str, str] = field(default_factory=dict)
 
 
 class ModelRegistryStorage:
@@ -158,14 +157,14 @@ class ModelRegistryStorage:
             logger.error(f"Error saving model info: {e}")
             return False
     
-    def load_model_info(self, model_name: str) -> Optional[ModelInfo]:
+    def load_model_info(self, model_name: str) -> ModelInfo | None:
         """Load model information."""
         try:
             metadata_file = self._get_metadata_file(model_name)
             if not metadata_file.exists():
                 return None
             
-            with open(metadata_file, 'r') as f:
+            with open(metadata_file) as f:
                 data = json.load(f)
             
             return ModelInfo(
@@ -226,14 +225,14 @@ class ModelRegistryStorage:
             logger.error(f"Error saving model version: {e}")
             return False
     
-    def load_model_version(self, model_name: str, version: str) -> Optional[ModelVersion]:
+    def load_model_version(self, model_name: str, version: str) -> ModelVersion | None:
         """Load model version."""
         try:
             version_file = self._get_version_metadata_file(model_name, version)
             if not version_file.exists():
                 return None
             
-            with open(version_file, 'r') as f:
+            with open(version_file) as f:
                 data = json.load(f)
             
             # Convert artifacts back to objects
@@ -271,7 +270,7 @@ class ModelRegistryStorage:
             return None
     
     def store_artifact(self, model_name: str, version: str, 
-                      artifact_name: str, source_path: str) -> Optional[ModelArtifact]:
+                      artifact_name: str, source_path: str) -> ModelArtifact | None:
         """Store model artifact."""
         try:
             # Create artifact storage path
@@ -310,7 +309,7 @@ class ModelRegistryStorage:
             logger.error(f"Error storing artifact: {e}")
             return None
     
-    def list_models(self) -> List[str]:
+    def list_models(self) -> list[str]:
         """List all registered models."""
         try:
             models = []
@@ -322,7 +321,7 @@ class ModelRegistryStorage:
             logger.error(f"Error listing models: {e}")
             return []
     
-    def list_versions(self, model_name: str) -> List[str]:
+    def list_versions(self, model_name: str) -> list[str]:
         """List all versions for a model."""
         try:
             versions = []
@@ -346,7 +345,7 @@ class ModelValidator:
         """Add custom validation rule."""
         self.validation_rules[name] = rule_func
     
-    def validate_model_name(self, name: str) -> Tuple[bool, str]:
+    def validate_model_name(self, name: str) -> tuple[bool, str]:
         """Validate model name."""
         if not name:
             return False, "Model name cannot be empty"
@@ -359,7 +358,7 @@ class ModelValidator:
         
         return True, ""
     
-    def validate_version(self, version: str) -> Tuple[bool, str]:
+    def validate_version(self, version: str) -> tuple[bool, str]:
         """Validate model version."""
         if not version:
             return False, "Version cannot be empty"
@@ -372,7 +371,7 @@ class ModelValidator:
         
         return True, ""
     
-    def validate_model_version(self, model_version: ModelVersion) -> Tuple[bool, List[str]]:
+    def validate_model_version(self, model_version: ModelVersion) -> tuple[bool, list[str]]:
         """Validate complete model version."""
         errors = []
         
@@ -426,12 +425,12 @@ class ModelLifecycleManager:
         """Check if status transition is allowed."""
         return to_status in self.transition_rules.get(from_status, [])
     
-    def get_allowed_transitions(self, current_status: ModelStatus) -> List[ModelStatus]:
+    def get_allowed_transitions(self, current_status: ModelStatus) -> list[ModelStatus]:
         """Get allowed transitions from current status."""
         return self.transition_rules.get(current_status, [])
     
     def transition_status(self, model_version: ModelVersion, 
-                         new_status: ModelStatus) -> Tuple[bool, str]:
+                         new_status: ModelStatus) -> tuple[bool, str]:
         """Transition model status."""
         if not self.can_transition(model_version.status, new_status):
             return False, f"Cannot transition from {model_version.status.value} to {new_status.value}"
@@ -461,7 +460,7 @@ class ModelRegistry:
         }
     
     async def register_model(self, name: str, description: str, 
-                           owner: str, tags: Optional[Dict[str, str]] = None) -> ModelInfo:
+                           owner: str, tags: dict[str, str] | None = None) -> ModelInfo:
         """Register a new model."""
         try:
             # Validate model name
@@ -499,9 +498,9 @@ class ModelRegistry:
     async def create_model_version(self, model_name: str, version: str,
                                  description: str, created_by: str,
                                  stage: ModelStage = ModelStage.DEVELOPMENT,
-                                 metrics: Optional[Dict[str, float]] = None,
-                                 parameters: Optional[Dict[str, Any]] = None,
-                                 tags: Optional[Dict[str, str]] = None) -> ModelVersion:
+                                 metrics: dict[str, float] | None = None,
+                                 parameters: dict[str, Any] | None = None,
+                                 tags: dict[str, str] | None = None) -> ModelVersion:
         """Create a new model version."""
         try:
             # Check if model exists
@@ -553,8 +552,8 @@ class ModelRegistry:
     
     async def add_artifact(self, model_name: str, version: str,
                           artifact_name: str, source_path: str,
-                          artifact_type: Optional[ArtifactType] = None,
-                          metadata: Optional[Dict[str, Any]] = None) -> ModelArtifact:
+                          artifact_type: ArtifactType | None = None,
+                          metadata: dict[str, Any] | None = None) -> ModelArtifact:
         """Add artifact to model version."""
         try:
             # Load model version
@@ -617,17 +616,17 @@ class ModelRegistry:
             logger.error(f"Error transitioning status: {e}")
             raise
     
-    async def get_model_info(self, model_name: str) -> Optional[ModelInfo]:
+    async def get_model_info(self, model_name: str) -> ModelInfo | None:
         """Get model information."""
         self.metrics['queries_executed'] += 1
         return self.storage.load_model_info(model_name)
     
-    async def get_model_version(self, model_name: str, version: str) -> Optional[ModelVersion]:
+    async def get_model_version(self, model_name: str, version: str) -> ModelVersion | None:
         """Get specific model version."""
         self.metrics['queries_executed'] += 1
         return self.storage.load_model_version(model_name, version)
     
-    async def list_models(self) -> List[ModelInfo]:
+    async def list_models(self) -> list[ModelInfo]:
         """List all registered models."""
         self.metrics['queries_executed'] += 1
         models = []
@@ -637,7 +636,7 @@ class ModelRegistry:
                 models.append(model_info)
         return models
     
-    async def list_model_versions(self, model_name: str) -> List[ModelVersion]:
+    async def list_model_versions(self, model_name: str) -> list[ModelVersion]:
         """List all versions of a model."""
         self.metrics['queries_executed'] += 1
         versions = []
@@ -647,7 +646,7 @@ class ModelRegistry:
                 versions.append(model_version)
         return versions
     
-    async def search_models(self, query: str, tags: Optional[Dict[str, str]] = None) -> List[ModelInfo]:
+    async def search_models(self, query: str, tags: dict[str, str] | None = None) -> list[ModelInfo]:
         """Search models by name, description, or tags."""
         self.metrics['queries_executed'] += 1
         all_models = await self.list_models()
@@ -680,7 +679,7 @@ class ModelRegistry:
         
         return matching_models
     
-    async def get_registry_metrics(self) -> Dict[str, Any]:
+    async def get_registry_metrics(self) -> dict[str, Any]:
         """Get registry metrics."""
         return {
             **self.metrics,
@@ -717,7 +716,7 @@ class ModelRegistry:
 
 # Convenience functions
 async def register_model(name: str, description: str, owner: str, 
-                        registry: Optional[ModelRegistry] = None) -> ModelInfo:
+                        registry: ModelRegistry | None = None) -> ModelInfo:
     """Convenience function to register a model."""
     if registry is None:
         registry = ModelRegistry()
@@ -725,7 +724,7 @@ async def register_model(name: str, description: str, owner: str,
 
 
 async def create_version(model_name: str, version: str, description: str, 
-                        created_by: str, registry: Optional[ModelRegistry] = None) -> ModelVersion:
+                        created_by: str, registry: ModelRegistry | None = None) -> ModelVersion:
     """Convenience function to create a model version."""
     if registry is None:
         registry = ModelRegistry()

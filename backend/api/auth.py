@@ -3,12 +3,12 @@ Authentication API endpoints.
 Handles user registration and authentication operations.
 """
 
-from typing import Dict, Any
-from fastapi import APIRouter, HTTPException, Depends, status, Form, Request
-from pydantic import BaseModel, EmailStr, Field
-import uuid
 import logging
 import re
+import uuid
+
+from fastapi import APIRouter, Depends, Form, HTTPException, Request, status
+from pydantic import BaseModel, EmailStr, Field
 
 logger = logging.getLogger(__name__)
 
@@ -339,12 +339,8 @@ async def validate_token(request: Request):
     
     try:
         from backend.infra.security import (
-    verify_token, 
-    hash_password, 
-    verify_password,
-    get_user_id,
-    get_user_attribute
-)
+            verify_token,
+        )
         claims = verify_token(token)
         
         return {

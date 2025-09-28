@@ -3,11 +3,11 @@ Helper utilities for the Algorithmic Trading Platform.
 Contains common mathematical, financial, and utility functions.
 """
 
-from datetime import datetime
 import hashlib
-from typing import Union, Any
 import uuid
 import warnings
+from datetime import datetime
+from typing import Any
 
 # Suppress NumPy reload warning
 warnings.filterwarnings("ignore", message="The NumPy module was reloaded")
@@ -60,8 +60,8 @@ def align_for_pandas_arithmetic(other: Any, index: pd.Index) -> pd.Series:
 
 
 def calculate_returns(
-    prices: Union[pd.Series, np.ndarray], method: str = "simple"
-) -> Union[pd.Series, np.ndarray]:
+    prices: pd.Series | np.ndarray, method: str = "simple"
+) -> pd.Series | np.ndarray:
     """
     Calculate returns from price series.
 
@@ -84,7 +84,7 @@ def calculate_returns(
 
 
 def calculate_sharpe_ratio(
-    returns: Union[pd.Series, np.ndarray], risk_free_rate: float = 0.02
+    returns: pd.Series | np.ndarray, risk_free_rate: float = 0.02
 ) -> float:
     """
     Calculate Sharpe ratio.
@@ -116,7 +116,7 @@ def calculate_sharpe_ratio(
     return (annual_return - risk_free_rate) / annual_std if annual_std != 0 else 0
 
 
-def calculate_max_drawdown(equity_curve: Union[pd.Series, np.ndarray]) -> float:
+def calculate_max_drawdown(equity_curve: pd.Series | np.ndarray) -> float:
     """
     Calculate maximum drawdown from equity curve.
 
@@ -144,7 +144,7 @@ def calculate_max_drawdown(equity_curve: Union[pd.Series, np.ndarray]) -> float:
 
 
 def calculate_var(
-    returns: Union[pd.Series, np.ndarray], confidence: float = 0.95
+    returns: pd.Series | np.ndarray, confidence: float = 0.95
 ) -> float:
     """
     Calculate Value at Risk (VaR).
@@ -172,7 +172,7 @@ def calculate_var(
 
 
 def calculate_cvar(
-    returns: Union[pd.Series, np.ndarray], confidence: float = 0.95
+    returns: pd.Series | np.ndarray, confidence: float = 0.95
 ) -> float:
     """
     Calculate Conditional Value at Risk (CVaR) or Expected Shortfall.
@@ -219,8 +219,8 @@ def kelly_criterion(win_probability: float, win_loss_ratio: float) -> float:
 
 
 def normalize_data(
-    data: Union[pd.DataFrame, pd.Series, np.ndarray], method: str = "zscore"
-) -> Union[pd.DataFrame, pd.Series, np.ndarray]:
+    data: pd.DataFrame | pd.Series | np.ndarray, method: str = "zscore"
+) -> pd.DataFrame | pd.Series | np.ndarray:
     """
     Normalize data using various methods.
 
@@ -343,8 +343,8 @@ def safe_divide(numerator: float, denominator: float, default: float = 0.0) -> f
 
 
 def exponential_moving_average(
-    data: Union[pd.Series, np.ndarray], span: int
-) -> Union[pd.Series, np.ndarray]:
+    data: pd.Series | np.ndarray, span: int
+) -> pd.Series | np.ndarray:
     """Calculate exponential moving average."""
     if isinstance(data, pd.Series):
         return data.ewm(span=span).mean()
@@ -358,7 +358,7 @@ def exponential_moving_average(
 
 
 def bollinger_bands(
-    prices: Union[pd.Series, np.ndarray], period: int = 20, std_dev: float = 2.0
+    prices: pd.Series | np.ndarray, period: int = 20, std_dev: float = 2.0
 ) -> tuple:
     """
     Calculate Bollinger Bands.
@@ -386,8 +386,8 @@ def bollinger_bands(
 
 
 def rsi(
-    prices: Union[pd.Series, np.ndarray], period: int = 14
-) -> Union[pd.Series, np.ndarray]:
+    prices: pd.Series | np.ndarray, period: int = 14
+) -> pd.Series | np.ndarray:
     """
     Calculate Relative Strength Index (RSI).
 

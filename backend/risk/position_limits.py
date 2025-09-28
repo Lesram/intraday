@@ -6,8 +6,9 @@ Updated to use Pydantic for backward compatibility and field validation.
 """
 
 from decimal import Decimal
-from typing import Optional, Dict, Any, Union
-from pydantic import BaseModel, Field, model_validator, field_validator
+from typing import Any
+
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 class PositionLimits(BaseModel):
@@ -76,18 +77,18 @@ class PositionLimits(BaseModel):
     )
     
     # Additional configuration
-    allowed_symbols: Optional[list] = Field(
+    allowed_symbols: list | None = Field(
         default_factory=list,
         description="List of allowed trading symbols (empty = all allowed)"
     )
-    restricted_symbols: Optional[list] = Field(
+    restricted_symbols: list | None = Field(
         default_factory=list, 
         description="List of restricted trading symbols"
     )
     
     @field_validator('circuit_breaker_pct', mode='before')
     @classmethod
-    def normalize_circuit_breaker_pct(cls, v: Union[str, int, float, Decimal]) -> Decimal:
+    def normalize_circuit_breaker_pct(cls, v: str | int | float | Decimal) -> Decimal:
         """
         Normalize circuit breaker percentage to fraction.
         Accepts values in 0-1 (fraction) or 0-100 (percent) format.
@@ -106,7 +107,7 @@ class PositionLimits(BaseModel):
     
     @field_validator('max_sector_concentration', 'max_symbol_concentration', 'max_drawdown', 'maintenance_margin')
     @classmethod  
-    def normalize_percentage_fields(cls, v: Union[str, int, float, Decimal]) -> Decimal:
+    def normalize_percentage_fields(cls, v: str | int | float | Decimal) -> Decimal:
         """
         Normalize percentage fields to fractions.
         Accepts values in 0-1 (fraction) or 0-100 (percent) format.
@@ -163,7 +164,7 @@ class PositionLimits(BaseModel):
         symbol_limit = portfolio_value * self.max_symbol_concentration
         return min(symbol_limit, self.max_position_size)
     
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization"""
         return {
             "max_position_size": str(self.max_position_size),
@@ -182,7 +183,7 @@ class PositionLimits(BaseModel):
         }
     
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "PositionLimits":
+    def from_dict(cls, data: dict[str, Any]) -> "PositionLimits":
         """Create from dictionary"""
         return cls(
             max_position_size=Decimal(data.get("max_position_size", "1000000")),

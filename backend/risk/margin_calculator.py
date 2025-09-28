@@ -5,9 +5,8 @@ Calculates margin requirements and available margin for trading positions.
 Implements standard margin calculations for equity and options trading.
 """
 
-from decimal import Decimal
-from typing import Dict, Optional
 from dataclasses import dataclass
+from decimal import Decimal
 
 
 @dataclass
@@ -68,7 +67,7 @@ class MarginCalculator:
             excess_liquidity=self.account_equity - initial_margin
         )
     
-    def calculate_portfolio_margin(self, positions: Dict) -> MarginRequirement:
+    def calculate_portfolio_margin(self, positions: dict) -> MarginRequirement:
         """Calculate total margin requirement for all positions."""
         total_initial = Decimal('0')
         total_maintenance = Decimal('0')
@@ -102,7 +101,7 @@ class MarginCalculator:
             excess_liquidity=self.account_equity - total_initial
         )
     
-    def get_available_buying_power(self, current_positions: Optional[Dict] = None) -> Decimal:
+    def get_available_buying_power(self, current_positions: dict | None = None) -> Decimal:
         """Get available buying power for new positions."""
         if current_positions:
             portfolio_margin = self.calculate_portfolio_margin(current_positions)
@@ -110,7 +109,7 @@ class MarginCalculator:
         return self.account_equity
     
     def validate_new_position(self, symbol: str, quantity: int, price: Decimal,
-                            current_positions: Optional[Dict] = None) -> bool:
+                            current_positions: dict | None = None) -> bool:
         """Validate if new position can be opened with available margin."""
         new_margin = self.calculate_stock_margin(symbol, quantity, price)
         available_bp = self.get_available_buying_power(current_positions)

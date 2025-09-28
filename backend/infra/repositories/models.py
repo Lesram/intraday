@@ -3,10 +3,10 @@ Models repository - manages ML model registry and metadata.
 Implements async CRUD operations with proper error handling.
 """
 
-from datetime import datetime, UTC
 import logging
-from typing import Any
 import uuid
+from datetime import UTC, datetime
+from typing import Any
 
 from sqlalchemy import and_, select, update
 from sqlalchemy.exc import IntegrityError

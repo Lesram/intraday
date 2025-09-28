@@ -13,9 +13,10 @@ that import fails during early boot to avoid hard errors in integration runs.
 try:
         # Re-export everything from .settings for backward compatibility
         from .settings import *  # type: ignore  # noqa: F401,F403
+
         # Ensure Settings is explicitly available
-        from .settings import Settings, AppSettings, settings, get_settings
-except Exception as e:
+        from .settings import AppSettings, Settings, get_settings, settings
+except Exception:
         # Minimal fallback matching the old module-level shim behavior
         try:
                 from pydantic import BaseSettings as _BaseSettings  # type: ignore

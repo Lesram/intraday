@@ -3,9 +3,10 @@ Database connection utilities.
 Compatibility module for tests that expect backend.database.connection
 """
 
-from contextlib import asynccontextmanager
-from typing import AsyncIterator, Any
 import asyncio
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+from typing import Any
 
 # Define SessionLocal directly in this module to avoid circular imports
 # This can be overridden by tests or app initialization

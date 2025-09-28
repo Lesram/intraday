@@ -16,16 +16,16 @@ Created: 2025-01-01
 Version: 1.0.0
 """
 
-import json
 import hashlib
+import json
+import logging
 import shutil
 import time
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any, Union, Tuple
-from pathlib import Path
 from dataclasses import dataclass, field
+from datetime import datetime, timedelta
 from enum import Enum
-import logging
+from pathlib import Path
+from typing import Any
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -88,7 +88,7 @@ class Parameter:
     description: str = ""
     created_at: datetime = field(default_factory=datetime.now)
     
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert parameter to dictionary."""
         return {
             'name': self.name,
@@ -107,9 +107,9 @@ class Metric:
     step: int = 0
     timestamp: datetime = field(default_factory=datetime.now)
     type: MetricType = MetricType.SCALAR
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
     
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert metric to dictionary."""
         return {
             'name': self.name,
@@ -130,7 +130,7 @@ class Artifact:
     size: int = 0
     checksum: str = ""
     description: str = ""
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
     created_at: datetime = field(default_factory=datetime.now)
     
     def __post_init__(self):
@@ -151,7 +151,7 @@ class Artifact:
             logger.warning(f"Failed to calculate checksum for {self.path}: {e}")
             return ""
     
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert artifact to dictionary."""
         return {
             'name': self.name,
@@ -172,12 +172,12 @@ class ExperimentRun:
     experiment_id: str
     name: str = ""
     status: RunStatus = RunStatus.CREATED
-    start_time: Optional[datetime] = None
-    end_time: Optional[datetime] = None
-    parameters: Dict[str, Parameter] = field(default_factory=dict)
-    metrics: Dict[str, List[Metric]] = field(default_factory=dict)
-    artifacts: Dict[str, Artifact] = field(default_factory=dict)
-    tags: Dict[str, str] = field(default_factory=dict)
+    start_time: datetime | None = None
+    end_time: datetime | None = None
+    parameters: dict[str, Parameter] = field(default_factory=dict)
+    metrics: dict[str, list[Metric]] = field(default_factory=dict)
+    artifacts: dict[str, Artifact] = field(default_factory=dict)
+    tags: dict[str, str] = field(default_factory=dict)
     notes: str = ""
     source_version: str = ""
     entry_point: str = ""
@@ -186,7 +186,7 @@ class ExperimentRun:
     updated_at: datetime = field(default_factory=datetime.now)
     
     @property
-    def duration(self) -> Optional[timedelta]:
+    def duration(self) -> timedelta | None:
         """Calculate run duration."""
         if self.start_time and self.end_time:
             return self.end_time - self.start_time
@@ -238,7 +238,7 @@ class ExperimentRun:
         self.updated_at = datetime.now()
     
     def log_artifact(self, name: str, path: str, artifact_type: ArtifactType = ArtifactType.OTHER,
-                     description: str = "", metadata: Optional[Dict[str, Any]] = None):
+                     description: str = "", metadata: dict[str, Any] | None = None):
         """Log an artifact."""
         if metadata is None:
             metadata = {}
@@ -266,17 +266,17 @@ class ExperimentRun:
             return True
         return False
     
-    def get_latest_metric(self, name: str) -> Optional[Metric]:
+    def get_latest_metric(self, name: str) -> Metric | None:
         """Get the latest value of a metric."""
         if name in self.metrics and self.metrics[name]:
             return max(self.metrics[name], key=lambda m: m.step)
         return None
     
-    def get_metric_history(self, name: str) -> List[Metric]:
+    def get_metric_history(self, name: str) -> list[Metric]:
         """Get metric history."""
         return self.metrics.get(name, [])
     
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert run to dictionary."""
         return {
             'id': self.id,
@@ -306,14 +306,14 @@ class Experiment:
     name: str
     description: str = ""
     status: ExperimentStatus = ExperimentStatus.CREATED
-    tags: Dict[str, str] = field(default_factory=dict)
+    tags: dict[str, str] = field(default_factory=dict)
     artifact_location: str = ""
     lifecycle_stage: str = "active"
     created_by: str = ""
     created_at: datetime = field(default_factory=datetime.now)
     updated_at: datetime = field(default_factory=datetime.now)
     
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert experiment to dictionary."""
         return {
             'id': self.id,
@@ -335,7 +335,7 @@ class ExperimentComparator:
     def __init__(self):
         self.comparison_cache = {}
     
-    def compare_runs(self, run_ids: List[str], tracker: 'ExperimentTracker') -> Dict[str, Any]:
+    def compare_runs(self, run_ids: list[str], tracker: 'ExperimentTracker') -> dict[str, Any]:
         """Compare multiple runs."""
         runs = []
         for run_id in run_ids:
@@ -355,7 +355,7 @@ class ExperimentComparator:
         
         return comparison
     
-    def _compare_parameters(self, runs: List[ExperimentRun]) -> Dict[str, Any]:
+    def _compare_parameters(self, runs: list[ExperimentRun]) -> dict[str, Any]:
         """Compare parameters across runs."""
         all_params = set()
         for run in runs:
@@ -381,7 +381,7 @@ class ExperimentComparator:
         
         return comparison
     
-    def _compare_metrics(self, runs: List[ExperimentRun]) -> Dict[str, Any]:
+    def _compare_metrics(self, runs: list[ExperimentRun]) -> dict[str, Any]:
         """Compare metrics across runs."""
         all_metrics = set()
         for run in runs:
@@ -410,7 +410,7 @@ class ExperimentComparator:
         
         return comparison
     
-    def _generate_comparison_summary(self, runs: List[ExperimentRun]) -> Dict[str, Any]:
+    def _generate_comparison_summary(self, runs: list[ExperimentRun]) -> dict[str, Any]:
         """Generate comparison summary."""
         total_runs = len(runs)
         completed_runs = sum(1 for run in runs if run.status == RunStatus.COMPLETED)
@@ -432,7 +432,7 @@ class ExperimentComparator:
         }
     
     def find_best_run(self, experiment_id: str, metric_name: str, 
-                      tracker: 'ExperimentTracker', maximize: bool = True) -> Optional[ExperimentRun]:
+                      tracker: 'ExperimentTracker', maximize: bool = True) -> ExperimentRun | None:
         """Find best run based on a metric."""
         runs = tracker.list_runs(experiment_id)
         if not runs:
@@ -484,7 +484,7 @@ class ArtifactManager:
         return artifact.path
     
     def retrieve_artifact(self, experiment_id: str, run_id: str, 
-                         artifact_name: str) -> Optional[Artifact]:
+                         artifact_name: str) -> Artifact | None:
         """Retrieve an artifact."""
         metadata_path = self.base_path / experiment_id / run_id / f"{artifact_name}.json"
         
@@ -492,7 +492,7 @@ class ArtifactManager:
             return None
         
         try:
-            with open(metadata_path, 'r') as f:
+            with open(metadata_path) as f:
                 data = json.load(f)
             
             artifact = Artifact(
@@ -511,7 +511,7 @@ class ArtifactManager:
             logger.error(f"Failed to retrieve artifact {artifact_name}: {e}")
             return None
     
-    def list_artifacts(self, experiment_id: str, run_id: str) -> List[Artifact]:
+    def list_artifacts(self, experiment_id: str, run_id: str) -> list[Artifact]:
         """List all artifacts for a run."""
         artifact_dir = self.base_path / experiment_id / run_id
         if not artifact_dir.exists():
@@ -555,8 +555,8 @@ class ExperimentTracker:
         self.storage_path = Path(storage_path)
         self.storage_path.mkdir(parents=True, exist_ok=True)
         
-        self.experiments: Dict[str, Experiment] = {}
-        self.runs: Dict[str, ExperimentRun] = {}
+        self.experiments: dict[str, Experiment] = {}
+        self.runs: dict[str, ExperimentRun] = {}
         self.comparator = ExperimentComparator()
         self.artifact_manager = ArtifactManager(str(self.storage_path / "artifacts"))
         
@@ -584,7 +584,7 @@ class ExperimentTracker:
         """Load experiments from storage."""
         for exp_file in self.storage_path.glob("experiment_*.json"):
             try:
-                with open(exp_file, 'r') as f:
+                with open(exp_file) as f:
                     data = json.load(f)
                 
                 experiment = Experiment(
@@ -608,7 +608,7 @@ class ExperimentTracker:
         """Load runs from storage."""
         for run_file in self.storage_path.glob("run_*.json"):
             try:
-                with open(run_file, 'r') as f:
+                with open(run_file) as f:
                     data = json.load(f)
                 
                 # Reconstruct parameters
@@ -676,7 +676,7 @@ class ExperimentTracker:
                 logger.error(f"Failed to load run from {run_file}: {e}")
     
     def create_experiment(self, name: str, description: str = "", 
-                         tags: Optional[Dict[str, str]] = None,
+                         tags: dict[str, str] | None = None,
                          artifact_location: str = "", created_by: str = "") -> Experiment:
         """Create a new experiment."""
         if tags is None:
@@ -699,18 +699,18 @@ class ExperimentTracker:
         logger.info(f"Created experiment: {experiment_id}")
         return experiment
     
-    def get_experiment(self, experiment_id: str) -> Optional[Experiment]:
+    def get_experiment(self, experiment_id: str) -> Experiment | None:
         """Get an experiment by ID."""
         return self.experiments.get(experiment_id)
     
-    def get_experiment_by_name(self, name: str) -> Optional[Experiment]:
+    def get_experiment_by_name(self, name: str) -> Experiment | None:
         """Get an experiment by name."""
         for experiment in self.experiments.values():
             if experiment.name == name:
                 return experiment
         return None
     
-    def list_experiments(self, status: Optional[ExperimentStatus] = None) -> List[Experiment]:
+    def list_experiments(self, status: ExperimentStatus | None = None) -> list[Experiment]:
         """List experiments."""
         experiments = list(self.experiments.values())
         if status:
@@ -755,9 +755,9 @@ class ExperimentTracker:
         return True
     
     def create_run(self, experiment_id: str, name: str = "", 
-                  tags: Optional[Dict[str, str]] = None,
+                  tags: dict[str, str] | None = None,
                   source_version: str = "", entry_point: str = "",
-                  created_by: str = "") -> Optional[ExperimentRun]:
+                  created_by: str = "") -> ExperimentRun | None:
         """Create a new run."""
         if experiment_id not in self.experiments:
             logger.error(f"Experiment {experiment_id} not found")
@@ -784,12 +784,12 @@ class ExperimentTracker:
         logger.info(f"Created run: {run_id} for experiment: {experiment_id}")
         return run
     
-    def get_run(self, run_id: str) -> Optional[ExperimentRun]:
+    def get_run(self, run_id: str) -> ExperimentRun | None:
         """Get a run by ID."""
         return self.runs.get(run_id)
     
-    def list_runs(self, experiment_id: Optional[str] = None,
-                 status: Optional[RunStatus] = None) -> List[ExperimentRun]:
+    def list_runs(self, experiment_id: str | None = None,
+                 status: RunStatus | None = None) -> list[ExperimentRun]:
         """List runs."""
         runs = list(self.runs.values())
         
@@ -882,7 +882,7 @@ class ExperimentTracker:
     
     def log_artifact(self, run_id: str, name: str, path: str,
                     artifact_type: ArtifactType = ArtifactType.OTHER,
-                    description: str = "", metadata: Optional[Dict[str, Any]] = None) -> bool:
+                    description: str = "", metadata: dict[str, Any] | None = None) -> bool:
         """Log an artifact to a run."""
         if run_id not in self.runs:
             return False
@@ -904,7 +904,7 @@ class ExperimentTracker:
         self._save_run(run)
         return True
     
-    def search_runs(self, query: str, experiment_id: Optional[str] = None) -> List[ExperimentRun]:
+    def search_runs(self, query: str, experiment_id: str | None = None) -> list[ExperimentRun]:
         """Search runs by query."""
         runs = self.list_runs(experiment_id)
         
@@ -928,7 +928,7 @@ class ExperimentTracker:
         
         return matching_runs
     
-    def get_run_metrics_summary(self, run_id: str) -> Dict[str, Any]:
+    def get_run_metrics_summary(self, run_id: str) -> dict[str, Any]:
         """Get metrics summary for a run."""
         if run_id not in self.runs:
             return {}
@@ -959,7 +959,7 @@ class ExperimentTracker:
         
         return summary
     
-    def get_experiment_summary(self, experiment_id: str) -> Dict[str, Any]:
+    def get_experiment_summary(self, experiment_id: str) -> dict[str, Any]:
         """Get experiment summary."""
         if experiment_id not in self.experiments:
             return {}
@@ -986,7 +986,7 @@ class ExperimentTracker:
             'common_parameters': self._get_common_parameters(runs)
         }
     
-    def _get_common_metrics(self, runs: List[ExperimentRun]) -> List[str]:
+    def _get_common_metrics(self, runs: list[ExperimentRun]) -> list[str]:
         """Get metrics that appear in multiple runs."""
         metric_counts = {}
         for run in runs:
@@ -997,7 +997,7 @@ class ExperimentTracker:
         threshold = max(1, len(runs) // 2)
         return [name for name, count in metric_counts.items() if count >= threshold]
     
-    def _get_common_parameters(self, runs: List[ExperimentRun]) -> List[str]:
+    def _get_common_parameters(self, runs: list[ExperimentRun]) -> list[str]:
         """Get parameters that appear in multiple runs."""
         param_counts = {}
         for run in runs:
@@ -1016,13 +1016,13 @@ def create_experiment_tracker(storage_path: str = "./experiments") -> Experiment
 
 
 def create_experiment(tracker: ExperimentTracker, name: str, description: str = "",
-                     tags: Optional[Dict[str, str]] = None, created_by: str = "") -> Experiment:
+                     tags: dict[str, str] | None = None, created_by: str = "") -> Experiment:
     """Create a new experiment."""
     return tracker.create_experiment(name, description, tags, "", created_by)
 
 
 def create_run(tracker: ExperimentTracker, experiment_id: str, name: str = "",
-              tags: Optional[Dict[str, str]] = None, created_by: str = "") -> Optional[ExperimentRun]:
+              tags: dict[str, str] | None = None, created_by: str = "") -> ExperimentRun | None:
     """Create a new run."""
     return tracker.create_run(experiment_id, name, tags, "", "", created_by)
 

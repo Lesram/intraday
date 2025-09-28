@@ -9,15 +9,12 @@ Provides comprehensive risk and performance metrics including:
 - Portfolio risk assessment
 """
 
-import numpy as np
-from typing import List, Dict, Any, Optional, Union
-from decimal import Decimal
 import logging
+from typing import Any
 
-from .math import (
-    value_at_risk, conditional_var, parametric_var, 
-    coherent_risk_measures, _to_series
-)
+import numpy as np
+
+from .math import _to_series, coherent_risk_measures
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +28,7 @@ class RiskMetrics:
         
     def sharpe_ratio(
         self, 
-        returns: Union[List[float], np.ndarray], 
+        returns: list[float] | np.ndarray, 
         risk_free_rate: float = 0.02
     ) -> float:
         """
@@ -59,9 +56,9 @@ class RiskMetrics:
     
     def sortino_ratio(
         self, 
-        returns: Union[List[float], np.ndarray], 
+        returns: list[float] | np.ndarray, 
         risk_free_rate: float = 0.02,
-        target_return: Optional[float] = None
+        target_return: float | None = None
     ) -> float:
         """
         Calculate Sortino ratio.
@@ -95,7 +92,7 @@ class RiskMetrics:
     
     def calmar_ratio(
         self, 
-        returns: Union[List[float], np.ndarray], 
+        returns: list[float] | np.ndarray, 
         risk_free_rate: float = 0.02
     ) -> float:
         """
@@ -120,7 +117,7 @@ class RiskMetrics:
             
         return float(annual_return / abs(max_dd))
     
-    def maximum_drawdown(self, returns: Union[List[float], np.ndarray]) -> float:
+    def maximum_drawdown(self, returns: list[float] | np.ndarray) -> float:
         """
         Calculate maximum drawdown.
         
@@ -143,8 +140,8 @@ class RiskMetrics:
     
     def beta_calculation(
         self, 
-        portfolio_returns: Union[List[float], np.ndarray],
-        market_returns: Union[List[float], np.ndarray]
+        portfolio_returns: list[float] | np.ndarray,
+        market_returns: list[float] | np.ndarray
     ) -> float:
         """
         Calculate portfolio beta relative to market.
@@ -176,8 +173,8 @@ class RiskMetrics:
     
     def alpha_calculation(
         self, 
-        portfolio_returns: Union[List[float], np.ndarray],
-        market_returns: Union[List[float], np.ndarray],
+        portfolio_returns: list[float] | np.ndarray,
+        market_returns: list[float] | np.ndarray,
         risk_free_rate: float = 0.02
     ) -> float:
         """
@@ -217,7 +214,7 @@ class RiskMetrics:
         alpha = port_mean - beta * market_mean
         return float(alpha * 252)  # Annualized
     
-    def volatility_metrics(self, returns: Union[List[float], np.ndarray]) -> Dict[str, float]:
+    def volatility_metrics(self, returns: list[float] | np.ndarray) -> dict[str, float]:
         """
         Calculate comprehensive volatility metrics.
         
@@ -260,9 +257,9 @@ class RiskMetrics:
     
     def correlation_metrics(
         self, 
-        portfolio_returns: Union[List[float], np.ndarray],
-        benchmark_returns: Union[List[float], np.ndarray]
-    ) -> Dict[str, float]:
+        portfolio_returns: list[float] | np.ndarray,
+        benchmark_returns: list[float] | np.ndarray
+    ) -> dict[str, float]:
         """
         Calculate correlation metrics.
         
@@ -326,10 +323,10 @@ class RiskMetrics:
     
     def risk_adjusted_returns(
         self, 
-        returns: Union[List[float], np.ndarray],
-        benchmark_returns: Optional[Union[List[float], np.ndarray]] = None,
+        returns: list[float] | np.ndarray,
+        benchmark_returns: list[float] | np.ndarray | None = None,
         risk_free_rate: float = 0.02
-    ) -> Dict[str, float]:
+    ) -> dict[str, float]:
         """
         Calculate comprehensive risk-adjusted return metrics.
         
@@ -359,10 +356,10 @@ class RiskMetrics:
     
     def portfolio_risk_summary(
         self, 
-        returns: Union[List[float], np.ndarray],
-        positions: Optional[List[Dict[str, Any]]] = None,
-        benchmark_returns: Optional[Union[List[float], np.ndarray]] = None
-    ) -> Dict[str, Any]:
+        returns: list[float] | np.ndarray,
+        positions: list[dict[str, Any]] | None = None,
+        benchmark_returns: list[float] | np.ndarray | None = None
+    ) -> dict[str, Any]:
         """
         Generate comprehensive portfolio risk summary.
         
@@ -410,35 +407,35 @@ class RiskMetrics:
 risk_metrics = RiskMetrics()
 
 # Convenience functions for direct usage
-def sharpe_ratio(returns: Union[List[float], np.ndarray], risk_free_rate: float = 0.02) -> float:
+def sharpe_ratio(returns: list[float] | np.ndarray, risk_free_rate: float = 0.02) -> float:
     """Calculate Sharpe ratio."""
     return risk_metrics.sharpe_ratio(returns, risk_free_rate)
 
-def sortino_ratio(returns: Union[List[float], np.ndarray], risk_free_rate: float = 0.02) -> float:
+def sortino_ratio(returns: list[float] | np.ndarray, risk_free_rate: float = 0.02) -> float:
     """Calculate Sortino ratio."""
     return risk_metrics.sortino_ratio(returns, risk_free_rate)
 
-def maximum_drawdown(returns: Union[List[float], np.ndarray]) -> float:
+def maximum_drawdown(returns: list[float] | np.ndarray) -> float:
     """Calculate maximum drawdown."""
     return risk_metrics.maximum_drawdown(returns)
 
-def beta_calculation(portfolio_returns: Union[List[float], np.ndarray], market_returns: Union[List[float], np.ndarray]) -> float:
+def beta_calculation(portfolio_returns: list[float] | np.ndarray, market_returns: list[float] | np.ndarray) -> float:
     """Calculate portfolio beta."""
     return risk_metrics.beta_calculation(portfolio_returns, market_returns)
 
-def alpha_calculation(portfolio_returns: Union[List[float], np.ndarray], market_returns: Union[List[float], np.ndarray], risk_free_rate: float = 0.02) -> float:
+def alpha_calculation(portfolio_returns: list[float] | np.ndarray, market_returns: list[float] | np.ndarray, risk_free_rate: float = 0.02) -> float:
     """Calculate Jensen's alpha."""
     return risk_metrics.alpha_calculation(portfolio_returns, market_returns, risk_free_rate)
 
-def volatility_metrics(returns: Union[List[float], np.ndarray]) -> Dict[str, float]:
+def volatility_metrics(returns: list[float] | np.ndarray) -> dict[str, float]:
     """Calculate volatility metrics."""
     return risk_metrics.volatility_metrics(returns)
 
-def correlation_metrics(portfolio_returns: Union[List[float], np.ndarray], benchmark_returns: Union[List[float], np.ndarray]) -> Dict[str, float]:
+def correlation_metrics(portfolio_returns: list[float] | np.ndarray, benchmark_returns: list[float] | np.ndarray) -> dict[str, float]:
     """Calculate correlation metrics."""
     return risk_metrics.correlation_metrics(portfolio_returns, benchmark_returns)
 
-def risk_adjusted_returns(returns: Union[List[float], np.ndarray], benchmark_returns: Optional[Union[List[float], np.ndarray]] = None, risk_free_rate: float = 0.02) -> Dict[str, float]:
+def risk_adjusted_returns(returns: list[float] | np.ndarray, benchmark_returns: list[float] | np.ndarray | None = None, risk_free_rate: float = 0.02) -> dict[str, float]:
     """Calculate risk-adjusted return metrics."""
     return risk_metrics.risk_adjusted_returns(returns, benchmark_returns, risk_free_rate)
 

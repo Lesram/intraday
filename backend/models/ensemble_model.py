@@ -3,14 +3,14 @@ AI/ML Ensemble Modeling System
 Combines LSTM, XGBoost, and RandomForest for comprehensive price prediction
 """
 
-from dataclasses import dataclass
-from datetime import datetime
 import logging
 import os
+from dataclasses import dataclass
+from datetime import datetime
 from typing import Any
 
 # Infrastructure compatibility stubs
-from unittest.mock import Mock
+
 
 class StandardScaler:
     """StandardScaler stub for test compatibility."""
@@ -717,8 +717,8 @@ class EnsembleModel:
     def save(self, path: str) -> bool | dict:
         """Save lightweight ensemble configuration to a JSON file path."""
         try:
-            from pathlib import Path
             import json
+            from pathlib import Path
             data = {
                 "version": self._version,
                 "weights": self.weights,
@@ -738,7 +738,7 @@ class EnsembleModel:
         """Load lightweight ensemble configuration from a JSON file path."""
         try:
             import json
-            with open(path, "r", encoding="utf-8") as f:
+            with open(path, encoding="utf-8") as f:
                 data = json.load(f)
             # Apply loaded state loosely
             if isinstance(data, dict):
@@ -1544,7 +1544,7 @@ def train_model(features: pd.DataFrame, targets: pd.Series | None = None) -> Ens
     """Return a minimally 'trained' EnsembleModel suitable for tests."""
     model = EnsembleModel()
     # Mark as trained for test expectations; full training is out of scope here
-    setattr(model, "is_trained", True)
+    model.is_trained = True
     return model
 
 

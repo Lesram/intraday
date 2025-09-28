@@ -4,9 +4,9 @@ Handles model training, status, and management operations.
 """
 
 from datetime import datetime
-from typing import Any, Dict
+from typing import Any
 
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from backend.infra.security import get_authenticated_user
@@ -44,7 +44,7 @@ class ModelTrainingResponse(BaseModel):
 
 class ModelStatusResponse(BaseModel):
     """Model status response."""
-    models: Dict[str, Any]
+    models: dict[str, Any]
     training_status: str
     last_updated: str
 
@@ -69,7 +69,7 @@ def get_model_manager():
                 }
             }
         
-        async def start_training(self, model_config: Dict[str, Any]):
+        async def start_training(self, model_config: dict[str, Any]):
             """Start model training"""
             import uuid
             training_id = str(uuid.uuid4())

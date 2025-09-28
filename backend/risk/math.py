@@ -5,8 +5,9 @@ Provides numerically stable VaR and CVaR calculations with input coercion
 to handle various data types and edge cases gracefully.
 """
 
+from typing import Any
+
 import numpy as np
-from typing import Union, Any, Optional
 
 
 def align_for_risk_math(other: Any, length: int) -> np.ndarray:
@@ -202,8 +203,8 @@ def expected_shortfall(returns: Any, alpha: float = 0.95) -> float:
 def parametric_var(
     returns: Any, 
     alpha: float = 0.95, 
-    mean: Optional[float] = None,
-    std: Optional[float] = None
+    mean: float | None = None,
+    std: float | None = None
 ) -> float:
     """
     Calculate parametric VaR assuming normal distribution.

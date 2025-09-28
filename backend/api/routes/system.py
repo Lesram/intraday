@@ -6,13 +6,10 @@ Handles health checks, metrics, documentation, and system status endpoints.
 import asyncio
 import time
 from datetime import datetime
-from typing import Any, Dict
 
-from fastapi import APIRouter, Request, Response, HTTPException, Depends
-from prometheus_client import generate_latest, CONTENT_TYPE_LATEST, CollectorRegistry
+from fastapi import APIRouter, HTTPException, Request, Response
+from prometheus_client import CONTENT_TYPE_LATEST, CollectorRegistry, generate_latest
 
-from backend.config import get_settings
-from backend.infra.db import get_session
 from backend.utils.logger import get_logger
 
 try:
@@ -155,10 +152,8 @@ async def liveness_probe():
             # First try to get model manager from app state (for tests)
             model_manager = None
             try:
-                from fastapi import Request
                 # Check if we have access to the current request
                 # In tests, model manager is stored in app.state
-                import contextvars
                 # Get the model manager from wherever it's available
                 from backend.ml.model_manager import get_model_manager
                 model_manager = get_model_manager()

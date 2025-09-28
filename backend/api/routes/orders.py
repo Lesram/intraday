@@ -3,21 +3,20 @@ Order API routes.
 Handles order submission, status, and cancellation operations.
 """
 
-from typing import Any, Dict, AsyncGenerator
+from collections.abc import AsyncGenerator
 from datetime import datetime
-import logging
+from typing import Any
 
-from fastapi import APIRouter, HTTPException, Depends, status, Body, Request
+from fastapi import APIRouter, Body, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.infra.security import get_current_user
-from backend.utils.logger import get_logger, log_event, StandardEventLogger
-from backend.infra.db import get_sessionmaker
+from backend.api.errors import risk_error
 from backend.infra.outbox import OutboxRepo
-from backend.api.errors import RiskError, risk_error
 from backend.infra.repositories.orders import OrdersRepo
+from backend.infra.security import get_current_user
 from backend.services.order_service import OrderService
+from backend.utils.logger import StandardEventLogger, get_logger
 
 logger = get_logger(__name__)
 event_logger = StandardEventLogger(__name__)
@@ -66,7 +65,7 @@ class AuditEntry(BaseModel):
     timestamp: str
     event_type: str
     order_id: str
-    details: Dict[str, Any] = Field(default_factory=dict)
+    details: dict[str, Any] = Field(default_factory=dict)
 
 
 class AuditResponse(BaseModel):
@@ -134,9 +133,10 @@ async def get_order_service(request: Request) -> AsyncGenerator[OrderService, No
 
 async def get_risk_manager(request: Request):
     """Get risk manager with real risk limit enforcement."""
-    from backend.risk.position_limits import PositionLimits
-    from backend.infra.repositories.positions import PositionsRepo
     from decimal import Decimal
+
+    from backend.infra.repositories.positions import PositionsRepo
+    from backend.risk.position_limits import PositionLimits
     
     class ProductionRiskManager:
         def __init__(self, session: AsyncSession = None):
@@ -310,7 +310,7 @@ def require_trader(current_user=Depends(get_current_user)):
 )
 async def submit_order(
     request: Request,
-    body: Dict[str, Any] | None = Body(None),
+    body: dict[str, Any] | None = Body(None),
     current_user=Depends(require_trader),
     order_service=Depends(get_order_service),
     risk_manager=Depends(get_risk_manager),
@@ -326,7 +326,6 @@ async def submit_order(
     - Structured logging
     """
     from backend.infra.security import get_user_attribute
-    from backend.config import get_settings
     
     try:
         # Extract and validate order data
@@ -466,7 +465,7 @@ async def submit_order(
     tags=["Trading", "Protected", "Outbox"],
 )
 async def submit_order_submit(
-    body: Dict[str, Any] | None = Body(None),
+    body: dict[str, Any] | None = Body(None),
     current_user=Depends(require_trader),
     order_service=Depends(get_order_service),
     risk_manager=Depends(get_risk_manager),

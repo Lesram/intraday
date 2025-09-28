@@ -6,13 +6,15 @@ Provides comprehensive validation functionality for machine learning models and 
 import asyncio
 import logging
 import time
-from dataclasses import dataclass
-from enum import Enum
-from typing import Dict, List, Optional, Tuple, Any, Union, Callable
-import numpy as np
-from datetime import datetime, timedelta
-import json
 import warnings
+from collections.abc import Callable
+from dataclasses import dataclass
+from datetime import datetime
+from enum import Enum
+from typing import Any
+
+import numpy as np
+
 warnings.filterwarnings('ignore')
 
 # Mock sklearn imports to avoid compatibility issues
@@ -143,11 +145,11 @@ class ValidationConfig:
     test_size: float = 0.2
     validation_size: float = 0.2
     n_splits: int = 5
-    random_state: Optional[int] = 42
+    random_state: int | None = 42
     shuffle: bool = True
     stratify: bool = False
-    metrics: List[MetricType] = None
-    max_train_size: Optional[int] = None
+    metrics: list[MetricType] = None
+    max_train_size: int | None = None
     
     def __post_init__(self):
         if self.metrics is None:
@@ -158,13 +160,13 @@ class ValidationResult:
     """Validation result."""
     validation_id: str
     method: ValidationMethod
-    metrics: Dict[str, float]
-    cv_scores: Optional[Dict[str, List[float]]] = None
-    confusion_matrix: Optional[np.ndarray] = None
-    feature_importance: Optional[Dict[str, float]] = None
+    metrics: dict[str, float]
+    cv_scores: dict[str, list[float]] | None = None
+    confusion_matrix: np.ndarray | None = None
+    feature_importance: dict[str, float] | None = None
     execution_time: float = 0.0
     status: ValidationStatus = ValidationStatus.COMPLETED
-    error_message: Optional[str] = None
+    error_message: str | None = None
     timestamp: datetime = None
     
     def __post_init__(self):
@@ -176,13 +178,13 @@ class DataQualityReport:
     """Data quality assessment report."""
     total_samples: int
     total_features: int
-    missing_values: Dict[str, int]
-    outliers: Dict[str, int]
+    missing_values: dict[str, int]
+    outliers: dict[str, int]
     duplicates: int
-    data_types: Dict[str, str]
+    data_types: dict[str, str]
     quality_score: float
-    issues: List[DataQualityIssue]
-    recommendations: List[str]
+    issues: list[DataQualityIssue]
+    recommendations: list[str]
     timestamp: datetime = None
     
     def __post_init__(self):
@@ -203,7 +205,7 @@ class BacktestResult:
     profit_factor: float
     calmar_ratio: float
     sortino_ratio: float
-    trade_details: List[Dict] = None
+    trade_details: list[dict] = None
     timestamp: datetime = None
     
     def __post_init__(self):
@@ -213,12 +215,12 @@ class BacktestResult:
 @dataclass
 class ModelComparisonResult:
     """Model comparison result."""
-    models: List[str]
-    metrics: Dict[str, Dict[str, float]]
+    models: list[str]
+    metrics: dict[str, dict[str, float]]
     best_model: str
-    ranking: List[str]
-    statistical_significance: Dict[str, Dict[str, float]]
-    recommendations: List[str]
+    ranking: list[str]
+    statistical_significance: dict[str, dict[str, float]]
+    recommendations: list[str]
     timestamp: datetime = None
     
     def __post_init__(self):
@@ -377,7 +379,7 @@ class ModelValidator:
             cv_scores=cv_scores
         )
     
-    def get_validation_history(self) -> List[ValidationResult]:
+    def get_validation_history(self) -> list[ValidationResult]:
         """Get validation history."""
         return self._validation_history.copy()
 
@@ -496,7 +498,7 @@ class PerformanceMetrics:
     """Calculates performance metrics."""
     
     @staticmethod
-    def calculate_classification_metrics(y_true, y_pred) -> Dict[str, float]:
+    def calculate_classification_metrics(y_true, y_pred) -> dict[str, float]:
         """Calculate classification metrics."""
         y_true = np.array(y_true)
         y_pred = np.array(y_pred)
@@ -520,7 +522,7 @@ class PerformanceMetrics:
         }
     
     @staticmethod
-    def calculate_regression_metrics(y_true, y_pred) -> Dict[str, float]:
+    def calculate_regression_metrics(y_true, y_pred) -> dict[str, float]:
         """Calculate regression metrics."""
         y_true = np.array(y_true)
         y_pred = np.array(y_pred)
@@ -542,7 +544,7 @@ class PerformanceMetrics:
         }
     
     @staticmethod
-    def calculate_trading_metrics(returns: np.ndarray) -> Dict[str, float]:
+    def calculate_trading_metrics(returns: np.ndarray) -> dict[str, float]:
         """Calculate trading-specific metrics."""
         returns = np.array(returns)
         
@@ -673,7 +675,7 @@ class ModelComparator:
     def __init__(self):
         self.logger = logging.getLogger(__name__)
         
-    async def compare_models(self, models: Dict[str, Any], X, y, metrics: List[str] = None) -> ModelComparisonResult:
+    async def compare_models(self, models: dict[str, Any], X, y, metrics: list[str] = None) -> ModelComparisonResult:
         """Compare multiple models."""
         try:
             self.logger.info(f"Comparing {len(models)} models")
@@ -756,7 +758,7 @@ class ValidationReporter:
         self.logger = logging.getLogger(__name__)
         
     def generate_validation_report(self, validation_result: ValidationResult, 
-                                 data_quality_report: DataQualityReport = None) -> Dict[str, Any]:
+                                 data_quality_report: DataQualityReport = None) -> dict[str, Any]:
         """Generate comprehensive validation report."""
         report = {
             'validation_summary': {
@@ -788,7 +790,7 @@ class ValidationReporter:
             
         return report
     
-    def _assess_model_performance(self, validation_result: ValidationResult) -> Dict[str, str]:
+    def _assess_model_performance(self, validation_result: ValidationResult) -> dict[str, str]:
         """Assess model performance."""
         metrics = validation_result.metrics
         assessment = {}
@@ -817,7 +819,7 @@ class ValidationReporter:
                 
         return assessment
     
-    def generate_comparison_report(self, comparison_result: ModelComparisonResult) -> Dict[str, Any]:
+    def generate_comparison_report(self, comparison_result: ModelComparisonResult) -> dict[str, Any]:
         """Generate model comparison report."""
         return {
             'comparison_summary': {
@@ -837,7 +839,7 @@ class StatisticalValidator:
     def __init__(self):
         self.logger = logging.getLogger(__name__)
         
-    def normality_test(self, data) -> Dict[str, Any]:
+    def normality_test(self, data) -> dict[str, Any]:
         """Test for normality (simplified Shapiro-Wilk-like test)."""
         data = np.array(data).flatten()
         
@@ -855,7 +857,7 @@ class StatisticalValidator:
             'interpretation': 'Data appears to be normally distributed' if is_normal else 'Data does not appear to be normally distributed'
         }
     
-    def stationarity_test(self, time_series) -> Dict[str, Any]:
+    def stationarity_test(self, time_series) -> dict[str, Any]:
         """Test for stationarity (simplified ADF-like test)."""
         time_series = np.array(time_series).flatten()
         
@@ -875,7 +877,7 @@ class StatisticalValidator:
             'interpretation': 'Time series is stationary' if is_stationary else 'Time series is not stationary'
         }
     
-    def correlation_test(self, x, y) -> Dict[str, Any]:
+    def correlation_test(self, x, y) -> dict[str, Any]:
         """Test correlation between two variables."""
         x = np.array(x).flatten()
         y = np.array(y).flatten()
@@ -933,7 +935,7 @@ class ValidationService:
         self.model_validator = ModelValidator(config)
         self.logger.info(f"Validation configured with method: {config.method.value}")
         
-    async def full_validation_pipeline(self, model, X, y, config: ValidationConfig = None, **kwargs) -> Dict[str, Any]:
+    async def full_validation_pipeline(self, model, X, y, config: ValidationConfig = None, **kwargs) -> dict[str, Any]:
         """Run complete validation pipeline."""
         try:
             if config:
@@ -986,7 +988,7 @@ class ValidationService:
             self.logger.error(f"Full validation pipeline failed: {str(e)}")
             raise
     
-    async def compare_models_full(self, models: Dict[str, Any], X, y, **kwargs) -> Dict[str, Any]:
+    async def compare_models_full(self, models: dict[str, Any], X, y, **kwargs) -> dict[str, Any]:
         """Complete model comparison with validation."""
         try:
             self.logger.info(f"Starting full model comparison for {len(models)} models")

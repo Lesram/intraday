@@ -4,11 +4,11 @@ Fetches social media data and computes sentiment using FinBERT.
 """
 
 import asyncio
-from collections import defaultdict, deque
-from datetime import UTC, datetime, timedelta
 import os
 import re
 import time
+from collections import defaultdict, deque
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 # Centralized DISABLE_ML check for test mode

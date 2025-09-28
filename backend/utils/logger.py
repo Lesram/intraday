@@ -3,10 +3,10 @@ Logging configuration and utilities for the Algorithmic Trading Platform.
 Provides structured logging with audit trail capabilities.
 """
 
-from datetime import UTC, datetime
 import logging
-from pathlib import Path
 import sys
+from datetime import UTC, datetime
+from pathlib import Path
 
 import structlog
 from structlog import get_logger
@@ -334,7 +334,6 @@ def log_event(event: str, logger_instance=None, **fields):
     - event_type: The event name
     """
     import uuid
-    from typing import Optional
     
     if logger_instance is None:
         logger_instance = get_structured_logger("events")

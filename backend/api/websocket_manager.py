@@ -4,13 +4,14 @@ Enhanced with backpressure handling, metrics, and test compatibility.
 """
 
 import asyncio
-import weakref
 import json
 import logging
 import time
-from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from typing import Any, Callable
+import weakref
+from collections.abc import Callable
+from dataclasses import dataclass
+from datetime import UTC, datetime
+from typing import Any
 
 from fastapi import WebSocket, WebSocketDisconnect
 
@@ -19,7 +20,7 @@ try:
     if not hasattr(WebSocket, "ping"):
         async def _compat_ws_ping(self):  # type: ignore[no-redef]
             return None
-        setattr(WebSocket, "ping", _compat_ws_ping)
+        WebSocket.ping = _compat_ws_ping
 except Exception:
     # Best-effort; if FastAPI isn't present or attribute setting fails, ignore
     pass
@@ -148,7 +149,7 @@ class WebSocketClientManager:
             self.now = now
         else:
             # default clock
-            self.now_func = lambda: datetime.now(timezone.utc)
+            self.now_func = lambda: datetime.now(UTC)
             self.now = self.now_func
 
         self._heartbeat_task = None  # type: ignore[assignment]
@@ -513,7 +514,7 @@ class WebSocketClientManager:
 
                     queue.task_done()
                     
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     # Timeout is normal - just continue the loop to check if client still exists
                     continue
                 except WebSocketDisconnect:

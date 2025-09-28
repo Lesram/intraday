@@ -5,11 +5,10 @@ Monitors and validates asset volatility for risk management purposes.
 Implements volatility calculations and threshold-based warnings.
 """
 
-from decimal import Decimal
-from typing import Dict, List, Optional, Tuple
+import statistics
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-import statistics
+from decimal import Decimal
 
 
 @dataclass
@@ -37,9 +36,9 @@ class VolatilityChecker:
     def __init__(self, lookback_days: int = 30):
         """Initialize volatility checker with lookback period."""
         self.lookback_days = lookback_days
-        self._price_history: Dict[str, List[Tuple[datetime, Decimal]]] = {}
+        self._price_history: dict[str, list[tuple[datetime, Decimal]]] = {}
     
-    def add_price_data(self, symbol: str, price: Decimal, timestamp: Optional[datetime] = None):
+    def add_price_data(self, symbol: str, price: Decimal, timestamp: datetime | None = None):
         """Add price data point for volatility calculation."""
         if timestamp is None:
             timestamp = datetime.now()
@@ -56,7 +55,7 @@ class VolatilityChecker:
             if ts >= cutoff_date
         ]
     
-    def calculate_volatility(self, symbol: str) -> Optional[Decimal]:
+    def calculate_volatility(self, symbol: str) -> Decimal | None:
         """Calculate annualized volatility from price history."""
         if symbol not in self._price_history or len(self._price_history[symbol]) < 2:
             return None
@@ -108,7 +107,7 @@ class VolatilityChecker:
         else:
             return Decimal('95')
     
-    def get_volatility_metrics(self, symbol: str) -> Optional[VolatilityMetrics]:
+    def get_volatility_metrics(self, symbol: str) -> VolatilityMetrics | None:
         """Get comprehensive volatility metrics for a symbol."""
         current_vol = self.calculate_volatility(symbol)
         
@@ -137,7 +136,7 @@ class VolatilityChecker:
         threshold_value = self.VOLATILITY_THRESHOLDS[threshold]
         return metrics.current_volatility > threshold_value
     
-    def get_portfolio_volatility_summary(self, symbols: List[str]) -> Dict[str, VolatilityMetrics]:
+    def get_portfolio_volatility_summary(self, symbols: list[str]) -> dict[str, VolatilityMetrics]:
         """Get volatility summary for a list of symbols."""
         summary = {}
         
@@ -149,7 +148,7 @@ class VolatilityChecker:
         return summary
     
     def validate_position_volatility(self, symbol: str, position_size: Decimal, 
-                                   max_risk_level: str = 'HIGH') -> Tuple[bool, str]:
+                                   max_risk_level: str = 'HIGH') -> tuple[bool, str]:
         """Validate if position can be taken given volatility constraints."""
         metrics = self.get_volatility_metrics(symbol)
         

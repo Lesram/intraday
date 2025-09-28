@@ -6,13 +6,13 @@ Provides technical indicators, statistical features, categorical encoding, and
 feature selection/transformation functionality.
 """
 
-import pandas as pd
-import numpy as np
-from typing import List, Dict, Any, Optional, Union, Tuple
-from datetime import datetime, timedelta
 import logging
 from dataclasses import dataclass
 from enum import Enum
+from typing import Any
+
+import numpy as np
+import pandas as pd
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +31,7 @@ class FeatureConfig:
     """Configuration for feature engineering."""
     name: str
     feature_type: FeatureType
-    parameters: Dict[str, Any]
+    parameters: dict[str, Any]
     enabled: bool = True
     
     
@@ -82,7 +82,7 @@ class TechnicalIndicators:
         return rsi
     
     @staticmethod
-    def bollinger_bands(data: pd.Series, window: int = 20, std_dev: float = 2) -> Dict[str, pd.Series]:
+    def bollinger_bands(data: pd.Series, window: int = 20, std_dev: float = 2) -> dict[str, pd.Series]:
         """Bollinger Bands."""
         if window <= 0:
             raise ValueError("Window must be positive")
@@ -101,7 +101,7 @@ class TechnicalIndicators:
         }
     
     @staticmethod
-    def macd(data: pd.Series, fast: int = 12, slow: int = 26, signal: int = 9) -> Dict[str, pd.Series]:
+    def macd(data: pd.Series, fast: int = 12, slow: int = 26, signal: int = 9) -> dict[str, pd.Series]:
         """MACD Indicator."""
         if fast <= 0 or slow <= 0 or signal <= 0:
             raise ValueError("All periods must be positive")
@@ -122,7 +122,7 @@ class TechnicalIndicators:
     
     @staticmethod
     def stochastic(high: pd.Series, low: pd.Series, close: pd.Series, 
-                   k_period: int = 14, d_period: int = 3) -> Dict[str, pd.Series]:
+                   k_period: int = 14, d_period: int = 3) -> dict[str, pd.Series]:
         """Stochastic Oscillator."""
         if k_period <= 0 or d_period <= 0:
             raise ValueError("All periods must be positive")
@@ -156,7 +156,7 @@ class StatisticalFeatures:
     """Statistical feature calculations."""
     
     @staticmethod
-    def rolling_statistics(data: pd.Series, window: int) -> Dict[str, pd.Series]:
+    def rolling_statistics(data: pd.Series, window: int) -> dict[str, pd.Series]:
         """Calculate rolling statistical features."""
         if window <= 0:
             raise ValueError("Window must be positive")
@@ -175,7 +175,7 @@ class StatisticalFeatures:
         }
     
     @staticmethod
-    def price_features(data: pd.Series) -> Dict[str, pd.Series]:
+    def price_features(data: pd.Series) -> dict[str, pd.Series]:
         """Price-based statistical features."""
         return {
             'returns': data.pct_change(),
@@ -186,7 +186,7 @@ class StatisticalFeatures:
         }
     
     @staticmethod
-    def volatility_features(returns: pd.Series, windows: List[int] = [5, 10, 20, 50]) -> Dict[str, pd.Series]:
+    def volatility_features(returns: pd.Series, windows: list[int] = [5, 10, 20, 50]) -> dict[str, pd.Series]:
         """Volatility-based features."""
         features = {}
         for window in windows:
@@ -196,7 +196,7 @@ class StatisticalFeatures:
         return features
     
     @staticmethod
-    def momentum_features(data: pd.Series, periods: List[int] = [1, 5, 10, 20]) -> Dict[str, pd.Series]:
+    def momentum_features(data: pd.Series, periods: list[int] = [1, 5, 10, 20]) -> dict[str, pd.Series]:
         """Momentum-based features."""
         features = {}
         for period in periods:
@@ -213,7 +213,7 @@ class CategoricalEncoder:
         self.encodings = {}
         self.fitted = False
     
-    def fit(self, data: pd.DataFrame, categorical_columns: List[str]) -> 'CategoricalEncoder':
+    def fit(self, data: pd.DataFrame, categorical_columns: list[str]) -> 'CategoricalEncoder':
         """Fit encoder on categorical data."""
         self.encodings = {}
         
@@ -239,11 +239,11 @@ class CategoricalEncoder:
         
         return result
     
-    def fit_transform(self, data: pd.DataFrame, categorical_columns: List[str]) -> pd.DataFrame:
+    def fit_transform(self, data: pd.DataFrame, categorical_columns: list[str]) -> pd.DataFrame:
         """Fit and transform in one step."""
         return self.fit(data, categorical_columns).transform(data)
     
-    def one_hot_encode(self, data: pd.DataFrame, columns: List[str], 
+    def one_hot_encode(self, data: pd.DataFrame, columns: list[str], 
                       drop_first: bool = True, prefix_sep: str = '_') -> pd.DataFrame:
         """One-hot encode categorical columns."""
         result = data.copy()
@@ -299,7 +299,7 @@ class TemporalFeatures:
         return features
     
     @staticmethod
-    def create_lags(data: pd.Series, lags: List[int]) -> pd.DataFrame:
+    def create_lags(data: pd.Series, lags: list[int]) -> pd.DataFrame:
         """Create lagged features."""
         features = pd.DataFrame(index=data.index)
         
@@ -310,7 +310,7 @@ class TemporalFeatures:
         return features
     
     @staticmethod
-    def create_leads(data: pd.Series, leads: List[int]) -> pd.DataFrame:
+    def create_leads(data: pd.Series, leads: list[int]) -> pd.DataFrame:
         """Create lead features (future values)."""
         features = pd.DataFrame(index=data.index)
         
@@ -325,7 +325,7 @@ class FeatureSelector:
     """Feature selection utilities."""
     
     @staticmethod
-    def correlation_filter(data: pd.DataFrame, threshold: float = 0.95) -> List[str]:
+    def correlation_filter(data: pd.DataFrame, threshold: float = 0.95) -> list[str]:
         """Remove highly correlated features."""
         # Only work with numeric columns
         numeric_data = data.select_dtypes(include=[np.number])
@@ -351,7 +351,7 @@ class FeatureSelector:
             return []
     
     @staticmethod
-    def variance_filter(data: pd.DataFrame, threshold: float = 0.01) -> List[str]:
+    def variance_filter(data: pd.DataFrame, threshold: float = 0.01) -> list[str]:
         """Remove low variance features."""
         # Only work with numeric columns
         numeric_data = data.select_dtypes(include=[np.number])
@@ -372,7 +372,7 @@ class FeatureSelector:
             return []
     
     @staticmethod
-    def missing_value_filter(data: pd.DataFrame, threshold: float = 0.5) -> List[str]:
+    def missing_value_filter(data: pd.DataFrame, threshold: float = 0.5) -> list[str]:
         """Remove features with high missing value percentage."""
         try:
             to_drop = []
@@ -389,7 +389,7 @@ class FeatureSelector:
 class FeatureEngineer:
     """Main feature engineering class."""
     
-    def __init__(self, config: Optional[List[FeatureConfig]] = None):
+    def __init__(self, config: list[FeatureConfig] | None = None):
         self.config = config or []
         self.technical_indicators = TechnicalIndicators()
         self.statistical_features = StatisticalFeatures()
@@ -490,7 +490,7 @@ class FeatureEngineer:
         
         return features
     
-    def fit(self, data: pd.DataFrame, categorical_columns: Optional[List[str]] = None) -> 'FeatureEngineer':
+    def fit(self, data: pd.DataFrame, categorical_columns: list[str] | None = None) -> 'FeatureEngineer':
         """Fit the feature engineer on training data."""
         if categorical_columns:
             self.categorical_encoder.fit(data, categorical_columns)
@@ -502,7 +502,7 @@ class FeatureEngineer:
                   include_technical: bool = True,
                   include_statistical: bool = True,
                   include_temporal: bool = True,
-                  categorical_columns: Optional[List[str]] = None) -> pd.DataFrame:
+                  categorical_columns: list[str] | None = None) -> pd.DataFrame:
         """Transform data with feature engineering."""
         features = data.copy()
         
@@ -531,7 +531,7 @@ class FeatureEngineer:
             return data
     
     def fit_transform(self, data: pd.DataFrame, 
-                     categorical_columns: Optional[List[str]] = None,
+                     categorical_columns: list[str] | None = None,
                      **kwargs) -> pd.DataFrame:
         """Fit and transform in one step."""
         return self.fit(data, categorical_columns).transform(data, categorical_columns=categorical_columns, **kwargs)
@@ -572,7 +572,7 @@ class FeatureEngineer:
         
         return features
     
-    def get_feature_importance(self, data: pd.DataFrame) -> Dict[str, float]:
+    def get_feature_importance(self, data: pd.DataFrame) -> dict[str, float]:
         """Calculate basic feature importance metrics."""
         numeric_data = data.select_dtypes(include=[np.number])
         

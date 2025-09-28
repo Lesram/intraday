@@ -3,12 +3,12 @@ Database connection and session management.
 """
 
 import asyncio
-from contextlib import asynccontextmanager
-from typing import AsyncGenerator, Optional
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
-from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy import text
 import logging
+from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
+
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 logger = logging.getLogger(__name__)
 
@@ -84,7 +84,7 @@ class DatabaseManager:
             logger.info("Database connections closed")
 
 # Global database instance
-db_manager: Optional[DatabaseManager] = None
+db_manager: DatabaseManager | None = None
 
 async def get_database() -> DatabaseManager:
     """Get the global database manager."""
@@ -108,7 +108,6 @@ async def close_database():
         db_manager = None
 
 # For backwards compatibility
-from sqlalchemy import text
 
 class Database:
     """Legacy database class for compatibility."""
@@ -158,10 +157,11 @@ class MigrationError(DatabaseError):
 # ---------------------------------------------------------------------------
 # Lightweight configuration / structural primitives
 # ---------------------------------------------------------------------------
+import time as _time
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Dict, List, Tuple
-import time as _time
+from typing import Any
+
 
 class IsolationLevel(Enum):
     READ_UNCOMMITTED = "READ_UNCOMMITTED"
@@ -179,7 +179,7 @@ class DatabaseConfig:
     echo: bool = False
     echo_pool: bool = False
     isolation_level: IsolationLevel = IsolationLevel.READ_COMMITTED
-    connect_args: Dict[str, Any] = field(default_factory=dict)
+    connect_args: dict[str, Any] = field(default_factory=dict)
     autocommit: bool = False
     autoflush: bool = True
     expire_on_commit: bool = True
@@ -227,7 +227,7 @@ class MockEngine:
 class ConnectionPool:
     def __init__(self, engine: MockEngine):
         self.engine = engine
-        self._connections: List[MockConnection] = []
+        self._connections: list[MockConnection] = []
 
     def acquire(self) -> MockConnection:
         conn = self.engine.connect()
@@ -251,7 +251,7 @@ class AsyncSessionFactory(SessionFactory):
     async def __call__(self):  # pragma: no cover - trivial
         return super().__call__()
 
-Session = Dict[str, Any]  # Loose alias for tests
+Session = dict[str, Any]  # Loose alias for tests
 
 class SessionManager:
     def __init__(self, factory: SessionFactory):
@@ -274,7 +274,7 @@ class Transaction:
 
 class TransactionManager:
     def __init__(self):
-        self._log: List[Dict[str, Any]] = []
+        self._log: list[dict[str, Any]] = []
     def begin_transaction(self):
         tx = Transaction()
         tx_id = f"tx_{len(self._log)}"
@@ -363,13 +363,13 @@ def commit_transaction(tx_id: str):
 def rollback_transaction(tx_id: str):
     return _tx_manager.rollback_transaction(tx_id) if _tx_manager else False
 
-def execute_query(query: str, params: Dict | None = None):
+def execute_query(query: str, params: dict | None = None):
     # Mimic invalid detection
     if query.strip().upper().startswith("INVALID"):
         raise DatabaseError("Invalid query")
     return [{"query": query, "params": params or {}}]
 
-async def execute_async_query(query: str, params: Dict | None = None):
+async def execute_async_query(query: str, params: dict | None = None):
     await asyncio.sleep(0)  # yield control
     return execute_query(query, params)
 

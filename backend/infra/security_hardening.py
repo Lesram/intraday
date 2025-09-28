@@ -3,15 +3,15 @@ Enhanced Security Hardening - Pydantic settings, strict CORS, JWT checks, and ra
 Provides production-ready security configurations and middleware.
 """
 
-from collections import defaultdict
 import time
+from collections import defaultdict
 from typing import Any
 
 from fastapi import HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import JSONResponse
-from pydantic import Field, field_validator, ConfigDict
+from pydantic import ConfigDict, Field, field_validator
 from pydantic_settings import BaseSettings
 from starlette.middleware.base import BaseHTTPMiddleware
 
@@ -472,7 +472,8 @@ class JwtVerifier:
         """Lazy import of jose.jwt"""
         if self._jwt is None:
             try:
-                from jose import jwt as jose_jwt, JWTError
+                from jose import JWTError
+                from jose import jwt as jose_jwt
                 self._jwt = jose_jwt
                 self._jwt_error = JWTError
             except ImportError as e:

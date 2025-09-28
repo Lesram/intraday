@@ -5,7 +5,7 @@ This will be replaced with database persistence in B2.3.
 
 from pydantic import BaseModel
 
-from backend.infra.security import hash_password, verify_password
+from backend.infra.security import verify_password
 from backend.utils.logger import get_structured_logger
 
 

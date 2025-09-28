@@ -3,8 +3,8 @@ Main API module with compatibility shims for test imports.
 This file provides the necessary functions and objects that tests expect to find.
 """
 
-from typing import Dict, Any, Optional
-from unittest.mock import Mock, AsyncMock
+from typing import Any
+from unittest.mock import AsyncMock, Mock
 
 # Application state object that tests expect to exist
 app_state = {
@@ -87,7 +87,8 @@ class MockApp:
                             payload_part = token.split(".")[1]
                             # Add padding if needed
                             payload_part += "=" * (4 - len(payload_part) % 4)
-                            import base64, json
+                            import base64
+                            import json
                             decoded = base64.b64decode(payload_part)
                             return json.loads(decoded.decode())
                 except:
@@ -669,7 +670,7 @@ class MockApp:
                         response_body = b'{"models": [{"name": "ensemble_v1", "status": "active", "accuracy": 0.92}]}'
             elif path == "/metrics":
                 # Enhanced metrics endpoint for Prometheus
-                response_body = '''# HELP trades_total Total number of trades executed
+                response_body = b'''# HELP trades_total Total number of trades executed
 # TYPE trades_total counter
 trades_total 150
 
@@ -712,7 +713,7 @@ system_cpu_usage 15.2
 # HELP system_memory_usage System memory usage percentage
 # TYPE system_memory_usage gauge
 system_memory_usage 45.8
-'''.encode()
+'''
             elif path.startswith("/orders"):
                 # Legacy orders endpoint (without /api/v1/ prefix)
                 headers = {h[0].decode(): h[1].decode() for h in scope.get("headers", [])}
@@ -880,11 +881,11 @@ system_memory_usage 45.8
 
 app = MockApp()
 
-def health_check(request) -> Dict[str, str]:
+def health_check(request) -> dict[str, str]:
     """Health check endpoint stub."""
     return {"status": "healthy", "timestamp": "2025-08-27T22:00:00Z"}
 
-def get_metrics() -> Dict[str, Any]:
+def get_metrics() -> dict[str, Any]:
     """Metrics endpoint stub."""
     return {
         "trades_count": 0,
@@ -894,7 +895,7 @@ def get_metrics() -> Dict[str, Any]:
         "memory_usage": 45.8
     }
 
-def validate_order_request(order_data: Dict[str, Any]) -> Dict[str, Any]:
+def validate_order_request(order_data: dict[str, Any]) -> dict[str, Any]:
     """Order validation stub."""
     return {
         "valid": True,
@@ -902,7 +903,7 @@ def validate_order_request(order_data: Dict[str, Any]) -> Dict[str, Any]:
         "processed_order": order_data
     }
 
-def get_portfolio_status() -> Dict[str, Any]:
+def get_portfolio_status() -> dict[str, Any]:
     """Portfolio status endpoint stub."""
     return {
         "total_value": 10000.0,
@@ -912,7 +913,7 @@ def get_portfolio_status() -> Dict[str, Any]:
         "realized_pnl": 0.0
     }
 
-def calculate_portfolio_risk() -> Dict[str, Any]:
+def calculate_portfolio_risk() -> dict[str, Any]:
     """Portfolio risk calculation stub."""
     return {
         "var_95": 250.0,
@@ -923,7 +924,7 @@ def calculate_portfolio_risk() -> Dict[str, Any]:
     }
 
 # Additional stubs for test compatibility
-def submit_order(order_data: Dict[str, Any]) -> Dict[str, Any]:
+def submit_order(order_data: dict[str, Any]) -> dict[str, Any]:
     """Order submission stub."""
     return {
         "order_id": "ORD-123456",
@@ -931,7 +932,7 @@ def submit_order(order_data: Dict[str, Any]) -> Dict[str, Any]:
         "message": "Order submitted successfully"
     }
 
-def cancel_order(order_id: str) -> Dict[str, Any]:
+def cancel_order(order_id: str) -> dict[str, Any]:
     """Order cancellation stub."""
     return {
         "order_id": order_id,
@@ -943,7 +944,7 @@ def get_positions() -> list:
     """Get positions stub."""
     return []
 
-def get_orders(status: Optional[str] = None) -> list:
+def get_orders(status: str | None = None) -> list:
     """Get orders stub."""
     return []
 
@@ -960,19 +961,19 @@ async def shutdown_event():
 app.on_event = Mock()
 
 # Endpoint functions that tests expect
-def get_metrics_endpoint(request) -> Dict[str, Any]:
+def get_metrics_endpoint(request) -> dict[str, Any]:
     """Metrics endpoint stub."""
     return get_metrics()
 
-def submit_order_request(order_data: Dict[str, Any]) -> Dict[str, Any]:
+def submit_order_request(order_data: dict[str, Any]) -> dict[str, Any]:
     """Submit order request endpoint stub."""
     return submit_order(order_data)
 
-def portfolio_status_endpoint(request) -> Dict[str, Any]:
+def portfolio_status_endpoint(request) -> dict[str, Any]:
     """Portfolio status endpoint stub."""
     return get_portfolio_status()
 
-def risk_assessment_endpoint(request) -> Dict[str, Any]:
+def risk_assessment_endpoint(request) -> dict[str, Any]:
     """Risk assessment endpoint stub."""
     return calculate_portfolio_risk()
 
@@ -987,7 +988,7 @@ def trading_signals_endpoint(request) -> list:
     """Trading signals endpoint wrapper."""
     return get_trading_signals(request)
 
-def get_market_data() -> Dict[str, Any]:
+def get_market_data() -> dict[str, Any]:
     """Market data stub."""
     return {
         "AAPL": {"price": 150.00, "volume": 1000000},
@@ -1001,7 +1002,7 @@ def get_order_history() -> list:
         {"order_id": "ORD-002", "symbol": "MSFT", "status": "CANCELLED"}
     ]
 
-def calculate_performance_metrics() -> Dict[str, Any]:
+def calculate_performance_metrics() -> dict[str, Any]:
     """Performance metrics stub."""
     return {
         "total_return": 0.15,
@@ -1010,7 +1011,7 @@ def calculate_performance_metrics() -> Dict[str, Any]:
         "max_drawdown": 0.08
     }
 
-def get_strategy_status() -> Dict[str, Any]:
+def get_strategy_status() -> dict[str, Any]:
     """Strategy status stub."""
     return {
         "active_strategies": 3,
@@ -1019,7 +1020,7 @@ def get_strategy_status() -> Dict[str, Any]:
     }
 
 # Endpoint wrapper functions
-def market_data_endpoint(symbols, request) -> Dict[str, Any]:
+def market_data_endpoint(symbols, request) -> dict[str, Any]:
     """Market data endpoint wrapper."""
     return get_market_data()
 
@@ -1027,19 +1028,19 @@ def order_history_endpoint(request, limit=None) -> list:
     """Order history endpoint wrapper."""
     return get_order_history()
 
-def performance_metrics_endpoint(request) -> Dict[str, Any]:
+def performance_metrics_endpoint(request) -> dict[str, Any]:
     """Performance metrics endpoint wrapper."""
     return calculate_performance_metrics()
 
-def strategy_status_endpoint(request) -> Dict[str, Any]:
+def strategy_status_endpoint(request) -> dict[str, Any]:
     """Strategy status endpoint wrapper."""
     return get_strategy_status()
 
-def system_status_endpoint(request) -> Dict[str, Any]:
+def system_status_endpoint(request) -> dict[str, Any]:
     """System status endpoint wrapper."""
     return get_system_status()
 
-def handle_api_error(request, error) -> Dict[str, Any]:
+def handle_api_error(request, error) -> dict[str, Any]:
     """API error handler stub."""
     from datetime import datetime
     return {
@@ -1049,11 +1050,11 @@ def handle_api_error(request, error) -> Dict[str, Any]:
         "timestamp": datetime.now().isoformat()
     }
 
-def request_middleware() -> Dict[str, Any]:
+def request_middleware() -> dict[str, Any]:
     """Request middleware stub."""
     return {"middleware": "active"}
 
-def process_request_middleware(request) -> Dict[str, Any]:
+def process_request_middleware(request) -> dict[str, Any]:
     """Process request middleware stub."""
     return {"processed": True, "request_id": "REQ-123456"}
 
@@ -1061,7 +1062,7 @@ def validate_auth_token(token: str) -> bool:
     """Auth token validation stub."""
     return True
 
-def validate_authentication(request) -> Dict[str, Any]:
+def validate_authentication(request) -> dict[str, Any]:
     """Authentication validation stub."""
     return {"authenticated": True, "user_id": "test_user", "valid": True}
 
@@ -1069,7 +1070,7 @@ def check_rate_limit(request) -> bool:
     """Rate limiting check stub."""
     return True
 
-def apply_rate_limit(request) -> Dict[str, Any]:
+def apply_rate_limit(request) -> dict[str, Any]:
     """Apply rate limit stub."""
     return {"rate_limit_applied": True, "remaining_requests": 950, "allowed": True}
 
@@ -1077,19 +1078,19 @@ def log_api_request(request) -> None:
     """API request logging stub."""
     pass
 
-def handle_websocket_connection() -> Dict[str, Any]:
+def handle_websocket_connection() -> dict[str, Any]:
     """WebSocket connection handler stub."""
     return {"connected": True, "connection_id": "WS-123456"}
 
-def broadcast_market_updates() -> Dict[str, Any]:
+def broadcast_market_updates() -> dict[str, Any]:
     """Market updates broadcast stub."""
     return {"broadcast": True, "clients_notified": 10}
 
-def handle_database_transaction() -> Dict[str, Any]:
+def handle_database_transaction() -> dict[str, Any]:
     """Database transaction handler stub."""
     return {"transaction_id": "TXN-123", "status": "COMMITTED"}
 
-def get_system_status() -> Dict[str, Any]:
+def get_system_status() -> dict[str, Any]:
     """System status stub."""
     return {
         "uptime": 3600,
@@ -1101,6 +1102,7 @@ def get_system_status() -> Dict[str, Any]:
 
 # Mock lifespan context manager for test compatibility
 from unittest.mock import AsyncMock
+
 
 async def lifespan_context(app):
     """Mock lifespan context manager for FastAPI app lifecycle."""

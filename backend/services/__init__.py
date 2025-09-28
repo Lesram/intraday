@@ -13,6 +13,7 @@ moved to docs/blueprints/services/ as they are not actively used in the runtime.
 """
 
 from __future__ import annotations
+
 try:
     from . import broker_service as broker_service  # noqa: F401
 except Exception:

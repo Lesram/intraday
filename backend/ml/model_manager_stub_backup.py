@@ -3,8 +3,9 @@ Model Manager stub for ML infrastructure compatibility.
 Manages ML models and provides test compatibility.
 """
 
-from typing import Dict, Any, List, Optional
+from typing import Any
 from unittest.mock import Mock
+
 
 class ModelManager:
     """Model Manager stub class."""
@@ -38,7 +39,7 @@ class ModelManager:
             return self.models[self.active_model]
         return Mock()
         
-    def list_models(self) -> List[Dict[str, Any]]:
+    def list_models(self) -> list[dict[str, Any]]:
         """List all registered models."""
         return list(self.model_registry.values())
         
@@ -50,11 +51,11 @@ class ModelManager:
             return True
         return False
         
-    def get_model_info(self, name: str) -> Dict[str, Any]:
+    def get_model_info(self, name: str) -> dict[str, Any]:
         """Get model information."""
         return self.model_registry.get(name, {})
         
-    def train_model(self, name: str, training_data: Any) -> Dict[str, Any]:
+    def train_model(self, name: str, training_data: Any) -> dict[str, Any]:
         """Train a model."""
         return {
             "status": "completed",
@@ -64,7 +65,7 @@ class ModelManager:
             "loss": 0.23
         }
         
-    def evaluate_model(self, name: str, test_data: Any) -> Dict[str, Any]:
+    def evaluate_model(self, name: str, test_data: Any) -> dict[str, Any]:
         """Evaluate a model."""
         return {
             "accuracy": 0.85,
@@ -73,7 +74,7 @@ class ModelManager:
             "f1_score": 0.85
         }
         
-    def predict_with_model(self, name: str, input_data: Any) -> Dict[str, Any]:
+    def predict_with_model(self, name: str, input_data: Any) -> dict[str, Any]:
         """Make predictions with a model."""
         return {
             "predictions": [1, 0, 1, 1, 0],
@@ -81,7 +82,7 @@ class ModelManager:
             "model_name": name
         }
         
-    def deploy_model(self, name: str, endpoint: str = None) -> Dict[str, Any]:
+    def deploy_model(self, name: str, endpoint: str = None) -> dict[str, Any]:
         """Deploy model to production."""
         return {
             "status": "deployed",
@@ -96,7 +97,7 @@ def get_model_manager() -> ModelManager:
     """Get global model manager instance."""
     return ModelManager()
 
-def create_model_registry() -> Dict[str, Any]:
+def create_model_registry() -> dict[str, Any]:
     """Create model registry."""
     return {}
 
@@ -108,7 +109,7 @@ def save_model_to_registry(name: str, model: Any) -> bool:
     """Save model to registry."""
     return True
 
-def get_model_metrics(model_name: str) -> Dict[str, float]:
+def get_model_metrics(model_name: str) -> dict[str, float]:
     """Get model performance metrics."""
     return {
         "accuracy": 0.85,
@@ -118,7 +119,7 @@ def get_model_metrics(model_name: str) -> Dict[str, float]:
         "auc": 0.89
     }
 
-def validate_model(model: Any) -> Dict[str, Any]:
+def validate_model(model: Any) -> dict[str, Any]:
     """Validate model."""
     return {
         "valid": True,

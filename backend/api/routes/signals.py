@@ -5,25 +5,22 @@ Handles deterministic signal generation and retrieval operations.
 
 import asyncio
 import time
-import logging
-from datetime import datetime
-from typing import Any, Dict, List
 import uuid
+from datetime import datetime
+from typing import Any
 
-from fastapi import APIRouter, HTTPException, Depends, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
-from decimal import Decimal
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.infra.security import get_current_user
-from backend.utils.logger import get_logger, log_event, get_event_logger
-from backend.strategies.basic import BasicStrategy
+from backend.api.schemas.signals import SignalRequest as SchemaSignalRequest
+from backend.api.schemas.signals import SignalResponse as SchemaSignalResponse
 from backend.config import get_settings
-from backend.services.order_service import OrderService
-from backend.infra.repositories.orders import OrdersRepo
 from backend.infra.outbox import OutboxRepo
-from backend.api.schemas.signals import SignalResponse as SchemaSignalResponse, SignalRequest as SchemaSignalRequest
-from backend.api.schemas.signals import SignalResponse as SchemaSignalResponse, SignalRequest as SchemaSignalRequest
+from backend.infra.repositories.orders import OrdersRepo
+from backend.infra.security import get_current_user
+from backend.services.order_service import OrderService
+from backend.strategies.basic import BasicStrategy
+from backend.utils.logger import get_event_logger, get_logger
 
 logger = get_logger(__name__)
 event_logger = get_event_logger("signals")
@@ -36,13 +33,13 @@ class SignalRequest(BaseModel):
     symbol: str = Field(..., description="Trading symbol")
     signal_strength: float = Field(..., description="Signal strength")
     timestamp: str = Field(..., description="Signal timestamp")
-    features: Dict[str, float] = Field(default_factory=dict, description="Signal features")
-    metadata: Dict[str, Any] = Field(default_factory=dict, description="Signal metadata")
+    features: dict[str, float] = Field(default_factory=dict, description="Signal features")
+    metadata: dict[str, Any] = Field(default_factory=dict, description="Signal metadata")
 
 
 class BatchSignalsRequest(BaseModel):
     """Batch signals request for multiple symbols."""
-    symbols: List[str] = Field(..., description="List of trading symbols")
+    symbols: list[str] = Field(..., description="List of trading symbols")
     lookback: int = Field(default=200, ge=50, le=1000, description="Historical data lookback period")
 
 
@@ -56,7 +53,7 @@ class LegacySignalResponse(BaseModel):
     target_price: float = None
     position_size: float = None
     timestamp: str
-    metadata: Dict[str, Any] = {}
+    metadata: dict[str, Any] = {}
 
 # Use the new schema version as primary SignalResponse
 SignalResponse = SchemaSignalResponse
@@ -67,15 +64,15 @@ SignalResponse = SchemaSignalResponse
 
 class MultiSignalsResponse(BaseModel):
     """Multiple signals response."""
-    signals: Dict[str, Any]
+    signals: dict[str, Any]
     timestamp: str
 
 
 class AdvancedSignalsResponse(BaseModel):
     """Advanced signals with features and risk metrics."""
-    signals: Dict[str, Any]
-    features: Dict[str, Any] = None
-    risk_metrics: Dict[str, Any] = None
+    signals: dict[str, Any]
+    features: dict[str, Any] = None
+    risk_metrics: dict[str, Any] = None
     timestamp: str
 
 
@@ -93,13 +90,13 @@ class ActOnSignalResponse(BaseModel):
     """Response model for act-on-signal endpoint."""
     symbol: str
     action: str  # "buy", "sell", "hold"
-    signal: Dict[str, Any]
-    order: Dict[str, Any] = None  # Order details if action is buy/sell
+    signal: dict[str, Any]
+    order: dict[str, Any] = None  # Order details if action is buy/sell
     timestamp: str
 
 
 # Service Dependencies
-async def fetch_closes(symbol: str, client, lookback: int = 200) -> List[float]:
+async def fetch_closes(symbol: str, client, lookback: int = 200) -> list[float]:
     """
     Fetch historical close prices for a symbol.
     
@@ -159,8 +156,8 @@ def get_market_data_client():
 
 def get_mock_alpaca_client():
     """Get mock Alpaca client with deterministic (but realistic) data."""
-    import pandas as pd
     import numpy as np
+    import pandas as pd
     
     class MockAlpacaClient:
         async def get_historical_data(self, symbol: str, timeframe: str, limit: int):
@@ -348,7 +345,7 @@ async def get_all_signals(
         close_prices_results = await asyncio.gather(*close_price_tasks, return_exceptions=True)
 
         # Process signals for each symbol
-        signals_map: Dict[str, Any] = {}
+        signals_map: dict[str, Any] = {}
         
         for i, symbol in enumerate(symbol_list):
             try:
@@ -402,7 +399,7 @@ async def get_all_signals(
 
 @router.post(
     "/batch",
-    response_model=Dict[str, SignalResponse],
+    response_model=dict[str, SignalResponse],
     tags=["Trading Signals", "Protected"],
 )
 async def get_batch_signals(
@@ -436,7 +433,7 @@ async def get_batch_signals(
         close_prices_results = await asyncio.gather(*close_price_tasks, return_exceptions=True)
 
         # Process signals for each symbol
-        signals_map: Dict[str, Any] = {}
+        signals_map: dict[str, Any] = {}
         
         for i, symbol in enumerate(symbol_list):
             try:

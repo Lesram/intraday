@@ -2,8 +2,8 @@
 Risk calculation utilities.
 """
 
-from typing import Dict, Any, List
 from decimal import Decimal
+from typing import Any
 
 
 class RiskCalculator:
@@ -12,7 +12,7 @@ class RiskCalculator:
     def __init__(self):
         self.metrics = {}
     
-    def calculate_metrics(self, positions: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def calculate_metrics(self, positions: list[dict[str, Any]]) -> dict[str, Any]:
         """Calculate risk metrics for positions"""
         total_value = sum(Decimal(str(pos.get('value', 0))) for pos in positions)
         total_exposure = sum(abs(Decimal(str(pos.get('quantity', 0)))) for pos in positions)
@@ -26,12 +26,12 @@ class RiskCalculator:
             "beta": 0.9
         }
     
-    def check_position_limits(self, position: Dict[str, Any]) -> bool:
+    def check_position_limits(self, position: dict[str, Any]) -> bool:
         """Check if position is within risk limits"""
         value = abs(Decimal(str(position.get('value', 0))))
         return value < Decimal('1000000')  # 1M limit
     
-    def calculate_var(self, positions: List[Dict[str, Any]], confidence: float = 0.95) -> float:
+    def calculate_var(self, positions: list[dict[str, Any]], confidence: float = 0.95) -> float:
         """Calculate Value at Risk"""
         total_value = sum(Decimal(str(pos.get('value', 0))) for pos in positions)
         return float(total_value * Decimal(str(1 - confidence)))
@@ -46,7 +46,8 @@ def get_risk_calculator():
     return risk_calculator
 
 # Minimal default function so tests can monkey-patch by name
-from typing import Any, Dict
+from typing import Any
+
 
 def calculate_metrics(*args, **kwargs):
     """Shim function for testing - returns mock risk metrics by default."""

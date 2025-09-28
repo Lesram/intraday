@@ -3,13 +3,12 @@ Standardized metrics infrastructure with bounded label sets and centralized vali
 Provides type-safe metric factories and enforces label allow-lists for cardinality control.
 """
 
-from collections.abc import Sequence
 import logging
-from typing import Final, Union
+from collections.abc import Sequence
+from typing import Final
 
 from prometheus_client import (
     CONTENT_TYPE_LATEST,
-    REGISTRY,
     CollectorRegistry,
     Counter,
     Gauge,
@@ -210,7 +209,7 @@ class MetricsRegistry:
         self.namespace = namespace
         # Create a new registry for each instance to avoid test isolation issues
         self.registry = registry or CollectorRegistry()
-        self._metrics: dict[str, Union[Counter, Histogram, Gauge]] = {}
+        self._metrics: dict[str, Counter | Histogram | Gauge] = {}
 
         # Initialize observability contract if available
         if OBSERVABILITY_CONTRACTS_AVAILABLE:

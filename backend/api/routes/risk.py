@@ -1,7 +1,12 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Request
-from pydantic import BaseModel, Field, ValidationError
-from typing import Any, Dict
-from backend.infra.security import get_current_user, get_authenticated_user, get_user_attribute  # tests override this
+from typing import Any
+
+from fastapi import APIRouter, Depends, HTTPException, Request, status
+from pydantic import BaseModel, Field
+
+from backend.infra.security import (  # tests override this
+    get_authenticated_user,
+    get_user_attribute,
+)
 from backend.risk.position_limits import PositionLimits
 
 router = APIRouter(prefix="/risk", tags=["risk"])
@@ -131,7 +136,7 @@ async def set_limits_v2(
 
 # Legacy routes for backward compatibility
 @router.get("/metrics/legacy")
-async def get_risk_metrics_legacy(user: Dict[str, Any] = Depends(get_authenticated_user)) -> Dict[str, Any]:
+async def get_risk_metrics_legacy(user: dict[str, Any] = Depends(get_authenticated_user)) -> dict[str, Any]:
     # Protected now; check for authentication
     if user is None:
         raise HTTPException(
@@ -150,7 +155,7 @@ async def get_risk_metrics_legacy(user: Dict[str, Any] = Depends(get_authenticat
     return {"status": "ok", "metrics": {}}
 
 @router.put("/limits/legacy")
-async def update_limits_legacy(payload: RiskLimitsPayload, user: Dict[str, Any] = Depends(get_authenticated_user)) -> Dict[str, Any]:
+async def update_limits_legacy(payload: RiskLimitsPayload, user: dict[str, Any] = Depends(get_authenticated_user)) -> dict[str, Any]:
     # Check for authentication first
     if user is None:
         raise HTTPException(

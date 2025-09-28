@@ -3,8 +3,8 @@ Input validation utilities with comprehensive edge case handling.
 Provides validation functions for trading platform inputs.
 """
 
-from decimal import Decimal
 import re
+from decimal import Decimal
 from typing import Any
 
 

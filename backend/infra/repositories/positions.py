@@ -3,11 +3,11 @@ Positions repository - tracks current portfolio positions.
 Implements async CRUD operations with proper error handling.
 """
 
-from datetime import datetime, UTC
-from decimal import Decimal
 import logging
-from typing import Any
 import uuid
+from datetime import UTC, datetime
+from decimal import Decimal
+from typing import Any
 
 from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError

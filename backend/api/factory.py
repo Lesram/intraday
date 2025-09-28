@@ -6,12 +6,10 @@ Creates isolated FastAPI instances with proper dependency injection and metrics 
 import asyncio
 import os
 from contextlib import asynccontextmanager
-from datetime import datetime, UTC
-from typing import Callable
+from datetime import UTC, datetime
 
 from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from prometheus_client import CollectorRegistry
+
 from backend.api.portfolio import router as api_v1_portfolio_router
 from backend.utils.logger import get_structured_logger
 
@@ -119,7 +117,6 @@ class MockSettings:
 
 
 def create_app(settings=None, *, registry=None, ws_queue_max: int|None=None, **kwargs):
-    import os
     
     app = FastAPI(title="Intraday Trading Platform", version="1.0.0")
     app.state.task_registry = TaskRegistry()
@@ -142,7 +139,7 @@ def create_app(settings=None, *, registry=None, ws_queue_max: int|None=None, **k
     
     if database_url:
         try:
-            from backend.infra.db import init_db, get_sessionmaker
+            from backend.infra.db import get_sessionmaker, init_db
             # Initialize database tables
             init_db()
             # Create sessionmaker for dependency injection
@@ -235,7 +232,7 @@ def create_app(settings=None, *, registry=None, ws_queue_max: int|None=None, **k
 
     @app.get("/health")
     async def health_check():
-        from datetime import datetime, UTC
+        from datetime import UTC
         return {
             "status": "healthy", 
             "service": "trading-platform",
@@ -253,12 +250,12 @@ def create_app(settings=None, *, registry=None, ws_queue_max: int|None=None, **k
         Readiness check endpoint with proper status codes and structured response.
         Returns 200 when healthy, 503 when unhealthy with detailed checks map.
         """
-        import time
         import json
-        from datetime import datetime
+
         from fastapi import Response
-        from backend.infra.db import db_health_check
+
         from backend.infra.broker import broker_health_check
+        from backend.infra.db import db_health_check
         
         timestamp = datetime.now(UTC).isoformat() + "Z"
         checks = {}
@@ -323,8 +320,8 @@ def create_app(settings=None, *, registry=None, ws_queue_max: int|None=None, **k
     async def metrics():
         """Prometheus metrics endpoint."""
         try:
-            from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
             from fastapi import Response
+            from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
             
             metrics_registry = getattr(app.state, 'metrics_registry', None)
             if metrics_registry and hasattr(metrics_registry, 'registry'):
@@ -348,15 +345,15 @@ def create_app(settings=None, *, registry=None, ws_queue_max: int|None=None, **k
     
     # Import all routers
     from backend.api.auth import router as auth_router
-    from backend.api.portfolio import router as portfolio_router
-    from backend.api.routes.risk import router as risk_router
-    from backend.api.routes.orders import router as orders_router
-    from backend.api.routes.trades import router as trades_router
-    from backend.api.routes.signals import router as signals_router
-    from backend.api.routes.models import router as models_router
-    from backend.api.routes.system import router as system_router
-    from backend.api.routes.strategy import router as strategy_router
     from backend.api.errors import router as errors_router
+    from backend.api.portfolio import router as portfolio_router
+    from backend.api.routes.models import router as models_router
+    from backend.api.routes.orders import router as orders_router
+    from backend.api.routes.risk import router as risk_router
+    from backend.api.routes.signals import router as signals_router
+    from backend.api.routes.strategy import router as strategy_router
+    from backend.api.routes.system import router as system_router
+    from backend.api.routes.trades import router as trades_router
     
     # Include all routers under unified v1 prefix
     api_v1_router.include_router(auth_router, tags=["Authentication"])
@@ -370,7 +367,8 @@ def create_app(settings=None, *, registry=None, ws_queue_max: int|None=None, **k
     api_v1_router.include_router(strategy_router, tags=["Strategy"])
     
     # Add direct positions endpoint for test compatibility
-    from fastapi import Request, Depends
+    from fastapi import Depends, Request
+
     from backend.infra.security import get_authenticated_user
     
     @api_v1_router.get("/positions")
@@ -639,16 +637,17 @@ def register_middleware(app: FastAPI):
 def register_routes(app: FastAPI):
     """Register all routes for the app"""
     # Import and register all API routers
-    from backend.api.routes.system import router as system_router
-    from backend.api.routes.orders import router as orders_router
-    from backend.api.routes.signals import router as signals_router
-    from backend.api.routes.models import router as models_router
-    from backend.api.routes.risk import router as risk_router
-    from backend.api.routes.trades import router as trades_router
     from backend.api.auth import router as auth_router
+    from backend.api.errors import router as errors_router
+
     # Use the main portfolio router instead of routes.portfolio which doesn't exist
     from backend.api.portfolio import router as portfolio_router
-    from backend.api.errors import router as errors_router
+    from backend.api.routes.models import router as models_router
+    from backend.api.routes.orders import router as orders_router
+    from backend.api.routes.risk import router as risk_router
+    from backend.api.routes.signals import router as signals_router
+    from backend.api.routes.system import router as system_router
+    from backend.api.routes.trades import router as trades_router
     
     # Register system routes (no prefix)
     app.include_router(system_router)
@@ -709,13 +708,18 @@ def register_routes(app: FastAPI):
     # Auth aliases to ensure root-level endpoints exist for tests expecting /auth/*
     try:
         from fastapi import Depends, Form
+
         from backend.api.auth import (
-            register as register_function,
-            login as login_function,
-            get_user_repo,
+            LoginResponse,
             UserRegistrationRequest,
             UserRegistrationResponse,
-            LoginResponse,
+            get_user_repo,
+        )
+        from backend.api.auth import (
+            login as login_function,
+        )
+        from backend.api.auth import (
+            register as register_function,
         )
 
         auth_alias_router = APIRouter()
@@ -744,8 +748,8 @@ def register_routes(app: FastAPI):
 # FastAPI dependency for database sessions
 async def get_session(request):
     """Get AsyncSession from app state db_sessionmaker"""
+
     from backend.infra.db import get_session_from
-    from sqlalchemy.ext.asyncio import AsyncSession
     
     async with get_session_from(request.app.state) as session:
         yield session

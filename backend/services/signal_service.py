@@ -2,9 +2,8 @@
 Signal service for generating and managing trading signals.
 """
 
-import asyncio
-from typing import Dict, List, Any
-from datetime import datetime, UTC
+from datetime import UTC, datetime
+from typing import Any
 
 
 class SignalService:
@@ -13,7 +12,7 @@ class SignalService:
     def __init__(self):
         self.signals = {}
     
-    async def get_signals(self, symbol: str = None) -> List[Dict[str, Any]]:
+    async def get_signals(self, symbol: str = None) -> list[dict[str, Any]]:
         """Get trading signals"""
         if symbol:
             return [{
@@ -30,7 +29,7 @@ class SignalService:
             "timestamp": datetime.now(UTC).isoformat()
         }]
     
-    async def generate_signal(self, symbol: str, data: Dict[str, Any]) -> Dict[str, Any]:
+    async def generate_signal(self, symbol: str, data: dict[str, Any]) -> dict[str, Any]:
         """Generate a trading signal"""
         return {
             "symbol": symbol,
@@ -50,7 +49,8 @@ async def get_signal_service():
     return signal_service
 
 # Minimal default function so tests can monkey-patch by name
-from typing import Any, List
+from typing import Any
+
 
 def get_signals(*args, **kwargs):
     """Shim function for testing - returns mock signal data by default."""

@@ -6,7 +6,8 @@ Avoids real DB connections for integration tests using in-memory engines.
 
 from __future__ import annotations
 
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 
 class _SessionMaker:
@@ -68,12 +69,12 @@ async def get_database() -> Any:  # pragma: no cover
 
 # Import and expose submodules for proper package structure
 try:
-	from . import connection
-	from . import models
-	from . import repositories
+	from . import connection, models, repositories
+	from .connection import connection as connection_func
+
 	# Expose key functions at package level
-	from .connection import get_database_session, connection as connection_func
-	from .models import MockModel, create_mock_model, Order, Position, Trade, User
+	from .connection import get_database_session
+	from .models import MockModel, Order, Position, Trade, User, create_mock_model
 except ImportError:  # pragma: no cover
 	# Fallback if modules can't be imported
 	connection = None  # type: ignore

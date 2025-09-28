@@ -4,16 +4,16 @@ On-disk model registry with feature schema lock, PSI drift detection, and infere
 Integrates with existing observability infrastructure from Branch 2.5.
 """
 
-from dataclasses import dataclass, field
-from datetime import UTC, datetime, timedelta
-from enum import Enum
 import hashlib
 import json
 import logging
 import os
-from pathlib import Path
 import pickle
 import time
+from dataclasses import dataclass, field
+from datetime import UTC, datetime
+from enum import Enum
+from pathlib import Path
 from typing import Any, Protocol
 
 # Centralized DISABLE_ML check for test mode
@@ -1400,7 +1400,7 @@ class ModelRegistry:
                             df = pd.DataFrame([features])
                             result = model.predict(df)[0]
                             prediction_result = result
-                        except Exception as df_error:
+                        except Exception:
                             # Re-raise the original dict error for test compatibility
                             raise dict_error
                     except RuntimeError:

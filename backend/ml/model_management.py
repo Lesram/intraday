@@ -3,19 +3,18 @@ Module 57: ML Model Management System
 Comprehensive model lifecycle management for machine learning workflows.
 """
 
-import os
-import json
-import joblib
-import pickle
 import hashlib
+import json
 import logging
+import pickle
+from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
-from typing import Dict, Any, List, Optional, Tuple, Union
-from pathlib import Path
-from dataclasses import dataclass, asdict
 from enum import Enum
+from pathlib import Path
+from typing import Any
+
+import joblib
 import numpy as np
-import pandas as pd
 
 
 class ModelStatus(Enum):
@@ -45,12 +44,12 @@ class ModelMetadata:
     created_at: datetime
     updated_at: datetime
     description: str = ""
-    tags: List[str] = None
-    metrics: Dict[str, float] = None
-    parameters: Dict[str, Any] = None
-    file_path: Optional[str] = None
-    file_size: Optional[int] = None
-    checksum: Optional[str] = None
+    tags: list[str] = None
+    metrics: dict[str, float] = None
+    parameters: dict[str, Any] = None
+    file_path: str | None = None
+    file_size: int | None = None
+    checksum: str | None = None
     
     def __post_init__(self):
         if self.tags is None:
@@ -67,8 +66,8 @@ class ModelPerformance:
     model_name: str
     version: str
     timestamp: datetime
-    metrics: Dict[str, float]
-    dataset_info: Dict[str, Any] = None
+    metrics: dict[str, float]
+    dataset_info: dict[str, Any] = None
     
     def __post_init__(self):
         if self.dataset_info is None:
@@ -83,11 +82,11 @@ class ModelRegistry:
         self.registry_path.parent.mkdir(parents=True, exist_ok=True)
         self.models = self._load_registry()
         
-    def _load_registry(self) -> Dict[str, Dict]:
+    def _load_registry(self) -> dict[str, dict]:
         """Load model registry from file."""
         if self.registry_path.exists():
             try:
-                with open(self.registry_path, 'r') as f:
+                with open(self.registry_path) as f:
                     data = json.load(f)
                     # Convert datetime strings back to datetime objects
                     for model_data in data.values():
@@ -131,7 +130,7 @@ class ModelRegistry:
         except Exception:
             return False
     
-    def get_model_metadata(self, name: str, version: str = None) -> Optional[ModelMetadata]:
+    def get_model_metadata(self, name: str, version: str = None) -> ModelMetadata | None:
         """Get model metadata."""
         if version:
             key = f"{name}:{version}"
@@ -147,7 +146,7 @@ class ModelRegistry:
                 return ModelMetadata(**latest[1])
         return None
     
-    def list_models(self, status: ModelStatus = None) -> List[ModelMetadata]:
+    def list_models(self, status: ModelStatus = None) -> list[ModelMetadata]:
         """List all models or filter by status."""
         models = []
         for model_data in self.models.values():
@@ -197,7 +196,7 @@ class ModelStorage:
         return hash_md5.hexdigest()
     
     def save_model(self, model: Any, name: str, version: str, 
-                   format_type: ModelFormat = ModelFormat.JOBLIB) -> Tuple[bool, Optional[str], Optional[int]]:
+                   format_type: ModelFormat = ModelFormat.JOBLIB) -> tuple[bool, str | None, int | None]:
         """Save model to storage."""
         try:
             file_path = self._get_model_path(name, version, format_type)
@@ -221,7 +220,7 @@ class ModelStorage:
             return False, None, None
     
     def load_model(self, name: str, version: str, 
-                   format_type: ModelFormat = ModelFormat.JOBLIB) -> Optional[Any]:
+                   format_type: ModelFormat = ModelFormat.JOBLIB) -> Any | None:
         """Load model from storage."""
         try:
             file_path = self._get_model_path(name, version, format_type)
@@ -235,7 +234,7 @@ class ModelStorage:
                 with open(file_path, 'rb') as f:
                     return pickle.load(f)
             elif format_type == ModelFormat.JSON:
-                with open(file_path, 'r') as f:
+                with open(file_path) as f:
                     return json.load(f)
         except Exception as e:
             logging.error(f"Failed to load model: {e}")
@@ -252,7 +251,7 @@ class ModelStorage:
             pass
         return False
     
-    def list_model_files(self) -> List[Dict[str, Any]]:
+    def list_model_files(self) -> list[dict[str, Any]]:
         """List all model files in storage."""
         files = []
         for file_path in self.storage_path.glob("*"):
@@ -274,11 +273,11 @@ class PerformanceTracker:
         self.tracking_path.parent.mkdir(parents=True, exist_ok=True)
         self.performance_data = self._load_performance_data()
     
-    def _load_performance_data(self) -> List[Dict]:
+    def _load_performance_data(self) -> list[dict]:
         """Load performance data from file."""
         if self.tracking_path.exists():
             try:
-                with open(self.tracking_path, 'r') as f:
+                with open(self.tracking_path) as f:
                     data = json.load(f)
                     # Convert timestamp strings back to datetime objects
                     for entry in data:
@@ -311,7 +310,7 @@ class PerformanceTracker:
         self._save_performance_data()
     
     def get_performance_history(self, model_name: str, 
-                              days: int = 30) -> List[ModelPerformance]:
+                              days: int = 30) -> list[ModelPerformance]:
         """Get performance history for a model."""
         cutoff_date = datetime.now() - timedelta(days=days)
         history = []
@@ -323,7 +322,7 @@ class PerformanceTracker:
         
         return sorted(history, key=lambda x: x.timestamp)
     
-    def get_model_metrics_summary(self, model_name: str) -> Dict[str, Any]:
+    def get_model_metrics_summary(self, model_name: str) -> dict[str, Any]:
         """Get summary statistics for model metrics."""
         model_data = [entry for entry in self.performance_data 
                      if entry['model_name'] == model_name]
@@ -368,7 +367,7 @@ class ModelManager:
         
     def register_model(self, model: Any, name: str, version: str,
                       model_type: str = "unknown", description: str = "",
-                      tags: List[str] = None, parameters: Dict[str, Any] = None,
+                      tags: list[str] = None, parameters: dict[str, Any] = None,
                       format_type: ModelFormat = ModelFormat.JOBLIB) -> bool:
         """Register and save a new model."""
         try:
@@ -403,7 +402,7 @@ class ModelManager:
             return False
     
     def load_model(self, name: str, version: str = None, 
-                   format_type: ModelFormat = ModelFormat.JOBLIB) -> Optional[Any]:
+                   format_type: ModelFormat = ModelFormat.JOBLIB) -> Any | None:
         """Load a model from storage."""
         # Get metadata to find the correct version
         metadata = self.registry.get_model_metadata(name, version)
@@ -449,17 +448,17 @@ class ModelManager:
         # Remove from registry
         return self.registry.delete_model(name, version)
     
-    def list_models(self, status: ModelStatus = None) -> List[ModelMetadata]:
+    def list_models(self, status: ModelStatus = None) -> list[ModelMetadata]:
         """List all models."""
         return self.registry.list_models(status)
     
-    def get_model_info(self, name: str, version: str = None) -> Optional[ModelMetadata]:
+    def get_model_info(self, name: str, version: str = None) -> ModelMetadata | None:
         """Get detailed model information."""
         return self.registry.get_model_metadata(name, version)
     
     def log_model_performance(self, name: str, version: str, 
-                            metrics: Dict[str, float], 
-                            dataset_info: Dict[str, Any] = None):
+                            metrics: dict[str, float], 
+                            dataset_info: dict[str, Any] = None):
         """Log model performance metrics."""
         performance = ModelPerformance(
             model_name=name,
@@ -470,11 +469,11 @@ class ModelManager:
         )
         self.performance_tracker.log_performance(performance)
     
-    def get_model_performance_history(self, name: str, days: int = 30) -> List[ModelPerformance]:
+    def get_model_performance_history(self, name: str, days: int = 30) -> list[ModelPerformance]:
         """Get model performance history."""
         return self.performance_tracker.get_performance_history(name, days)
     
-    def get_model_metrics_summary(self, name: str) -> Dict[str, Any]:
+    def get_model_metrics_summary(self, name: str) -> dict[str, Any]:
         """Get model performance summary."""
         return self.performance_tracker.get_model_metrics_summary(name)
     
@@ -482,7 +481,7 @@ class ModelManager:
         """Clear the model cache."""
         self.active_models.clear()
     
-    def get_storage_info(self) -> Dict[str, Any]:
+    def get_storage_info(self) -> dict[str, Any]:
         """Get storage information."""
         files = self.storage.list_model_files()
         total_size = sum(f['size'] for f in files)
@@ -498,8 +497,8 @@ class ModelManager:
 # Example utility functions for common ML model types
 def create_sample_sklearn_model():
     """Create a sample sklearn model for testing."""
-    from sklearn.linear_model import LinearRegression
     from sklearn.datasets import make_regression
+    from sklearn.linear_model import LinearRegression
     
     X, y = make_regression(n_samples=100, n_features=5, noise=0.1, random_state=42)
     model = LinearRegression()

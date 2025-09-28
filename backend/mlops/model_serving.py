@@ -17,17 +17,16 @@ Created: 2025-01-01
 Version: 1.0.0
 """
 
-import json
-import time
-import asyncio
 import hashlib
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any, Union, Callable
-from pathlib import Path
-from dataclasses import dataclass, field
-from enum import Enum
 import logging
+import time
 from abc import ABC, abstractmethod
+from collections.abc import Callable
+from dataclasses import dataclass, field
+from datetime import datetime
+from enum import Enum
+from pathlib import Path
+from typing import Any
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -74,13 +73,13 @@ class HealthStatus(str, Enum):
 class PredictionRequest:
     """Prediction request representation."""
     id: str
-    inputs: Dict[str, Any]
+    inputs: dict[str, Any]
     model_name: str
     model_version: str = "latest"
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
     timestamp: datetime = field(default_factory=datetime.now)
     
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             'id': self.id,
@@ -96,17 +95,17 @@ class PredictionRequest:
 class PredictionResponse:
     """Prediction response representation."""
     request_id: str
-    predictions: Dict[str, Any]
+    predictions: dict[str, Any]
     model_name: str
     model_version: str
-    confidence: Optional[float] = None
+    confidence: float | None = None
     latency_ms: float = 0.0
     status: str = "success"
     error_message: str = ""
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
     timestamp: datetime = field(default_factory=datetime.now)
     
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             'request_id': self.request_id,
@@ -133,9 +132,9 @@ class ModelEndpoint:
     status: ModelStatus = ModelStatus.LOADING
     created_at: datetime = field(default_factory=datetime.now)
     updated_at: datetime = field(default_factory=datetime.now)
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
     
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             'name': self.name,
@@ -159,22 +158,22 @@ class ModelPredictor(ABC):
         pass
     
     @abstractmethod
-    def predict(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
+    def predict(self, inputs: dict[str, Any]) -> dict[str, Any]:
         """Make prediction."""
         pass
     
     @abstractmethod
-    def preprocess(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
+    def preprocess(self, inputs: dict[str, Any]) -> dict[str, Any]:
         """Preprocess inputs."""
         pass
     
     @abstractmethod
-    def postprocess(self, outputs: Dict[str, Any]) -> Dict[str, Any]:
+    def postprocess(self, outputs: dict[str, Any]) -> dict[str, Any]:
         """Postprocess outputs."""
         pass
     
     @abstractmethod
-    def get_model_info(self) -> Dict[str, Any]:
+    def get_model_info(self) -> dict[str, Any]:
         """Get model information."""
         pass
 
@@ -202,7 +201,7 @@ class DefaultPredictor(ModelPredictor):
             logger.error(f"Failed to load model: {e}")
             return False
     
-    def predict(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
+    def predict(self, inputs: dict[str, Any]) -> dict[str, Any]:
         """Make prediction."""
         if not self.model:
             raise ValueError("Model not loaded")
@@ -215,7 +214,7 @@ class DefaultPredictor(ModelPredictor):
         }
         return prediction
     
-    def preprocess(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
+    def preprocess(self, inputs: dict[str, Any]) -> dict[str, Any]:
         """Preprocess inputs."""
         # Simple preprocessing
         processed = {
@@ -224,7 +223,7 @@ class DefaultPredictor(ModelPredictor):
         }
         return processed
     
-    def postprocess(self, outputs: Dict[str, Any]) -> Dict[str, Any]:
+    def postprocess(self, outputs: dict[str, Any]) -> dict[str, Any]:
         """Postprocess outputs."""
         # Simple postprocessing
         processed = {
@@ -234,7 +233,7 @@ class DefaultPredictor(ModelPredictor):
         }
         return processed
     
-    def get_model_info(self) -> Dict[str, Any]:
+    def get_model_info(self) -> dict[str, Any]:
         """Get model information."""
         return self.model_info.copy()
 
@@ -247,11 +246,11 @@ class ModelVersion:
     model_path: str
     predictor_class: str = "DefaultPredictor"
     status: ModelStatus = ModelStatus.LOADING
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
     created_at: datetime = field(default_factory=datetime.now)
     updated_at: datetime = field(default_factory=datetime.now)
     
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             'model_name': self.model_name,
@@ -292,7 +291,7 @@ class HealthChecker:
             logger.error(f"Health check failed for {endpoint_name}: {e}")
             return HealthStatus.DEGRADED
     
-    def get_all_health_status(self) -> Dict[str, HealthStatus]:
+    def get_all_health_status(self) -> dict[str, HealthStatus]:
         """Get health status for all registered endpoints."""
         status = {}
         for endpoint_name in self.checks:
@@ -309,7 +308,7 @@ class PerformanceMonitor:
         self.request_history = {}
     
     def record_request(self, model_name: str, latency_ms: float, 
-                      success: bool, timestamp: Optional[datetime] = None):
+                      success: bool, timestamp: datetime | None = None):
         """Record a request for performance monitoring."""
         if timestamp is None:
             timestamp = datetime.now()
@@ -352,7 +351,7 @@ class PerformanceMonitor:
         if len(history) > self.window_size:
             history.pop(0)
     
-    def get_metrics(self, model_name: str) -> Dict[str, Any]:
+    def get_metrics(self, model_name: str) -> dict[str, Any]:
         """Get performance metrics for a model."""
         if model_name not in self.metrics:
             return {}
@@ -382,7 +381,7 @@ class PerformanceMonitor:
         
         return metrics
     
-    def get_all_metrics(self) -> Dict[str, Dict[str, Any]]:
+    def get_all_metrics(self) -> dict[str, dict[str, Any]]:
         """Get performance metrics for all models."""
         all_metrics = {}
         for model_name in self.metrics:
@@ -398,7 +397,7 @@ class ABTestManager:
         self.traffic_split = {}
     
     def create_experiment(self, experiment_name: str, model_a: str, model_b: str,
-                         traffic_split: float = 0.5, metadata: Optional[Dict[str, Any]] = None):
+                         traffic_split: float = 0.5, metadata: dict[str, Any] | None = None):
         """Create A/B testing experiment."""
         if metadata is None:
             metadata = {}
@@ -457,7 +456,7 @@ class ABTestManager:
             metrics['successes'] += 1
         metrics['total_latency'] += latency_ms
     
-    def get_experiment_results(self, experiment_name: str) -> Dict[str, Any]:
+    def get_experiment_results(self, experiment_name: str) -> dict[str, Any]:
         """Get A/B test experiment results."""
         if experiment_name not in self.experiments:
             return {}
@@ -500,9 +499,9 @@ class ModelServingEngine:
         self.storage_path = Path(storage_path)
         self.storage_path.mkdir(parents=True, exist_ok=True)
         
-        self.models: Dict[str, ModelVersion] = {}
-        self.endpoints: Dict[str, ModelEndpoint] = {}
-        self.predictors: Dict[str, ModelPredictor] = {}
+        self.models: dict[str, ModelVersion] = {}
+        self.endpoints: dict[str, ModelEndpoint] = {}
+        self.predictors: dict[str, ModelPredictor] = {}
         self.health_checker = HealthChecker()
         self.performance_monitor = PerformanceMonitor()
         self.ab_test_manager = ABTestManager()
@@ -513,7 +512,7 @@ class ModelServingEngine:
     
     def register_model(self, model_name: str, version: str, model_path: str,
                       predictor_class: str = "DefaultPredictor", 
-                      metadata: Optional[Dict[str, Any]] = None) -> bool:
+                      metadata: dict[str, Any] | None = None) -> bool:
         """Register a model version."""
         if metadata is None:
             metadata = {}
@@ -550,7 +549,7 @@ class ModelServingEngine:
     
     def create_endpoint(self, endpoint_name: str, model_name: str, model_version: str,
                        serving_mode: ServingMode = ServingMode.REALTIME,
-                       metadata: Optional[Dict[str, Any]] = None) -> bool:
+                       metadata: dict[str, Any] | None = None) -> bool:
         """Create a serving endpoint."""
         if metadata is None:
             metadata = {}
@@ -678,7 +677,7 @@ class ModelServingEngine:
             logger.error(f"Prediction failed: {e}")
             return error_response
     
-    def batch_predict(self, requests: List[PredictionRequest]) -> List[PredictionResponse]:
+    def batch_predict(self, requests: list[PredictionRequest]) -> list[PredictionResponse]:
         """Process batch predictions."""
         responses = []
         for request in requests:
@@ -699,7 +698,7 @@ class ModelServingEngine:
         if len(self.request_log) > 10000:
             self.request_log = self.request_log[-5000:]  # Keep last 5000 entries
     
-    def get_model_info(self, model_name: str, model_version: str = "latest") -> Dict[str, Any]:
+    def get_model_info(self, model_name: str, model_version: str = "latest") -> dict[str, Any]:
         """Get model information."""
         if model_version == "latest":
             # Find latest version
@@ -730,11 +729,11 @@ class ModelServingEngine:
         
         return model_info
     
-    def list_models(self) -> List[Dict[str, Any]]:
+    def list_models(self) -> list[dict[str, Any]]:
         """List all registered models."""
         return [model.to_dict() for model in self.models.values()]
     
-    def list_endpoints(self) -> List[Dict[str, Any]]:
+    def list_endpoints(self) -> list[dict[str, Any]]:
         """List all endpoints."""
         return [endpoint.to_dict() for endpoint in self.endpoints.values()]
     
@@ -742,11 +741,11 @@ class ModelServingEngine:
         """Get endpoint health status."""
         return self.health_checker.check_health(endpoint_name)
     
-    def get_all_health_status(self) -> Dict[str, HealthStatus]:
+    def get_all_health_status(self) -> dict[str, HealthStatus]:
         """Get health status for all endpoints."""
         return self.health_checker.get_all_health_status()
     
-    def get_performance_metrics(self, model_name: str = None) -> Dict[str, Any]:
+    def get_performance_metrics(self, model_name: str = None) -> dict[str, Any]:
         """Get performance metrics."""
         if model_name:
             return self.performance_monitor.get_metrics(model_name)
@@ -754,11 +753,11 @@ class ModelServingEngine:
             return self.performance_monitor.get_all_metrics()
     
     def create_ab_experiment(self, experiment_name: str, model_a: str, model_b: str,
-                           traffic_split: float = 0.5, metadata: Optional[Dict[str, Any]] = None):
+                           traffic_split: float = 0.5, metadata: dict[str, Any] | None = None):
         """Create A/B testing experiment."""
         self.ab_test_manager.create_experiment(experiment_name, model_a, model_b, traffic_split, metadata)
     
-    def get_ab_experiment_results(self, experiment_name: str) -> Dict[str, Any]:
+    def get_ab_experiment_results(self, experiment_name: str) -> dict[str, Any]:
         """Get A/B testing experiment results."""
         return self.ab_test_manager.get_experiment_results(experiment_name)
     
@@ -767,7 +766,7 @@ class ModelServingEngine:
         return self.ab_test_manager.stop_experiment(experiment_name)
     
     def get_request_logs(self, limit: int = 100, 
-                        model_name: Optional[str] = None) -> List[Dict[str, Any]]:
+                        model_name: str | None = None) -> list[dict[str, Any]]:
         """Get request logs."""
         logs = self.request_log[-limit:] if limit > 0 else self.request_log
         
@@ -817,7 +816,7 @@ class ModelServingEngine:
             return True
         return False
     
-    def get_serving_stats(self) -> Dict[str, Any]:
+    def get_serving_stats(self) -> dict[str, Any]:
         """Get overall serving statistics."""
         total_models = len(self.models)
         active_models = sum(1 for model in self.models.values() if model.status == ModelStatus.READY)
@@ -841,9 +840,9 @@ def create_serving_engine(storage_path: str = "./model_serving") -> ModelServing
     return ModelServingEngine(storage_path)
 
 
-def create_prediction_request(request_id: str, inputs: Dict[str, Any], 
+def create_prediction_request(request_id: str, inputs: dict[str, Any], 
                             model_name: str, model_version: str = "latest",
-                            metadata: Optional[Dict[str, Any]] = None) -> PredictionRequest:
+                            metadata: dict[str, Any] | None = None) -> PredictionRequest:
     """Create a prediction request."""
     if metadata is None:
         metadata = {}
@@ -859,7 +858,7 @@ def create_prediction_request(request_id: str, inputs: Dict[str, Any],
 
 def create_model_endpoint(name: str, model_name: str, model_version: str,
                          serving_mode: ServingMode = ServingMode.REALTIME,
-                         metadata: Optional[Dict[str, Any]] = None) -> ModelEndpoint:
+                         metadata: dict[str, Any] | None = None) -> ModelEndpoint:
     """Create a model endpoint configuration."""
     if metadata is None:
         metadata = {}

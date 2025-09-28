@@ -5,12 +5,12 @@ Enhanced with OpenTelemetry tracing, structured logging, and Prometheus metrics.
 """
 
 import asyncio
-from datetime import datetime, timedelta, UTC
 import logging
 import random
 import time
-from typing import Any, Optional
 import uuid
+from datetime import UTC, datetime, timedelta
+from typing import Any
 
 from prometheus_client import Counter, Gauge, Histogram
 from sqlalchemy import select, update
@@ -21,7 +21,6 @@ from backend.infra.logging import get_logger as get_structured_logger
 # B2.5 - Observability imports
 from backend.infra.observability import (
     record_database_operation,
-    record_outbox_metrics,
     trace_span,
 )
 

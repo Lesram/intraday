@@ -3,10 +3,10 @@ Audits repository - tracks system audit logs and compliance.
 Implements async CRUD operations with proper error handling.
 """
 
-from datetime import datetime, UTC, timedelta
 import logging
-from typing import Any
 import uuid
+from datetime import UTC, datetime, timedelta
+from typing import Any
 
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.exc import IntegrityError
@@ -565,7 +565,6 @@ class AuditsRepo:
         Returns:
             Number of old logs found
         """
-        from datetime import timedelta
 
         cutoff_date = datetime.now(UTC) - timedelta(days=older_than_days)
 

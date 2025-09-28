@@ -6,18 +6,15 @@ model performance, data drift, concept drift, and operational metrics in product
 Includes real-time monitoring, alerting, and automated responses.
 """
 
-import asyncio
-import json
 import logging
 import math
-import time
 import statistics
+from collections import defaultdict, deque
+from collections.abc import Callable
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Dict, List, Optional, Union, Any, Tuple, Callable
-from dataclasses import dataclass, field
-from collections import defaultdict, deque
-import logging
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -64,32 +61,32 @@ class MonitoringMetric:
     name: str
     value: float
     timestamp: datetime = field(default_factory=datetime.now)
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
 class PerformanceMetrics:
     """Model performance metrics."""
-    accuracy: Optional[float] = None
-    precision: Optional[float] = None
-    recall: Optional[float] = None
-    f1_score: Optional[float] = None
-    auc_roc: Optional[float] = None
-    mae: Optional[float] = None  # Mean Absolute Error
-    mse: Optional[float] = None  # Mean Squared Error
-    rmse: Optional[float] = None  # Root Mean Squared Error
-    custom_metrics: Dict[str, float] = field(default_factory=dict)
+    accuracy: float | None = None
+    precision: float | None = None
+    recall: float | None = None
+    f1_score: float | None = None
+    auc_roc: float | None = None
+    mae: float | None = None  # Mean Absolute Error
+    mse: float | None = None  # Mean Squared Error
+    rmse: float | None = None  # Root Mean Squared Error
+    custom_metrics: dict[str, float] = field(default_factory=dict)
 
 
 @dataclass
 class DriftMetrics:
     """Data/concept drift metrics."""
     drift_score: float
-    p_value: Optional[float] = None
+    p_value: float | None = None
     threshold: float = 0.05
     is_drift: bool = field(init=False)
     method: DriftDetectionMethod = DriftDetectionMethod.STATISTICAL
-    features_drift: Dict[str, float] = field(default_factory=dict)
+    features_drift: dict[str, float] = field(default_factory=dict)
     
     def __post_init__(self):
         if self.p_value is not None:
@@ -125,7 +122,7 @@ class MonitoringAlert:
     timestamp: datetime = field(default_factory=datetime.now)
     acknowledged: bool = False
     resolved: bool = False
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -140,14 +137,14 @@ class MonitoringRule:
     window_size: int = 100  # Number of samples to consider
     min_samples: int = 10  # Minimum samples before triggering
     cooldown_period: int = 300  # Seconds between alerts
-    last_triggered: Optional[datetime] = None
+    last_triggered: datetime | None = None
 
 
 class StatisticalDriftDetector:
     """Statistical drift detection methods."""
     
     @staticmethod
-    def ks_test(reference_data: List[float], current_data: List[float]) -> Tuple[float, float]:
+    def ks_test(reference_data: list[float], current_data: list[float]) -> tuple[float, float]:
         """Kolmogorov-Smirnov test for drift detection."""
         try:
             from scipy import stats
@@ -159,7 +156,7 @@ class StatisticalDriftDetector:
             return StatisticalDriftDetector._simple_ks_test(reference_data, current_data)
     
     @staticmethod
-    def _simple_ks_test(reference_data: List[float], current_data: List[float]) -> Tuple[float, float]:
+    def _simple_ks_test(reference_data: list[float], current_data: list[float]) -> tuple[float, float]:
         """Simple KS test implementation."""
         # Handle empty data
         if not reference_data or not current_data:
@@ -186,7 +183,7 @@ class StatisticalDriftDetector:
         return max_diff, min(p_value, 1.0)
     
     @staticmethod
-    def psi_test(reference_data: List[float], current_data: List[float], 
+    def psi_test(reference_data: list[float], current_data: list[float], 
                  bins: int = 10) -> float:
         """Population Stability Index (PSI) test."""
         if not reference_data or not current_data:
@@ -196,7 +193,7 @@ class StatisticalDriftDetector:
         return StatisticalDriftDetector._simple_psi(reference_data, current_data, bins)
     
     @staticmethod
-    def _simple_psi(reference_data: List[float], current_data: List[float], bins: int) -> float:
+    def _simple_psi(reference_data: list[float], current_data: list[float], bins: int) -> float:
         """Simple PSI implementation without numpy."""
         if not reference_data or not current_data:
             return 0.0
@@ -274,8 +271,8 @@ class DataQualityChecker:
         """Add custom quality rule."""
         self.quality_rules[name] = rule_func
     
-    def check_data_quality(self, data: List[Dict[str, Any]], 
-                          schema: Optional[Dict[str, str]] = None) -> DataQualityMetrics:
+    def check_data_quality(self, data: list[dict[str, Any]], 
+                          schema: dict[str, str] | None = None) -> DataQualityMetrics:
         """Check data quality metrics."""
         if not data:
             return DataQualityMetrics(
@@ -381,7 +378,7 @@ class PerformanceMonitor:
         self.timestamps_window = deque(maxlen=window_size)
     
     def add_prediction(self, prediction: Any, ground_truth: Any = None, 
-                      timestamp: Optional[datetime] = None):
+                      timestamp: datetime | None = None):
         """Add prediction for monitoring."""
         if timestamp is None:
             timestamp = datetime.now()
@@ -396,13 +393,13 @@ class PerformanceMonitor:
             return PerformanceMetrics()
         
         # Filter out None ground truth values
-        valid_pairs = [(p, gt) for p, gt in zip(self.predictions_window, self.ground_truth_window) 
+        valid_pairs = [(p, gt) for p, gt in zip(self.predictions_window, self.ground_truth_window, strict=False) 
                       if gt is not None]
         
         if not valid_pairs:
             return PerformanceMetrics()
         
-        predictions, ground_truths = zip(*valid_pairs)
+        predictions, ground_truths = zip(*valid_pairs, strict=False)
         
         if task_type == "classification":
             return self._calculate_classification_metrics(predictions, ground_truths)
@@ -411,20 +408,20 @@ class PerformanceMonitor:
         else:
             return PerformanceMetrics()
     
-    def _calculate_classification_metrics(self, predictions: List, ground_truths: List) -> PerformanceMetrics:
+    def _calculate_classification_metrics(self, predictions: list, ground_truths: list) -> PerformanceMetrics:
         """Calculate classification metrics."""
         if not predictions or not ground_truths:
             return PerformanceMetrics()
         
         # Simple accuracy calculation
-        correct = sum(1 for p, gt in zip(predictions, ground_truths) if p == gt)
+        correct = sum(1 for p, gt in zip(predictions, ground_truths, strict=False) if p == gt)
         accuracy = correct / len(predictions)
         
         # Calculate precision, recall, f1 for binary classification
         if all(isinstance(x, (int, bool)) or x in [0, 1] for x in ground_truths):
-            tp = sum(1 for p, gt in zip(predictions, ground_truths) if p == 1 and gt == 1)
-            fp = sum(1 for p, gt in zip(predictions, ground_truths) if p == 1 and gt == 0)
-            fn = sum(1 for p, gt in zip(predictions, ground_truths) if p == 0 and gt == 1)
+            tp = sum(1 for p, gt in zip(predictions, ground_truths, strict=False) if p == 1 and gt == 1)
+            fp = sum(1 for p, gt in zip(predictions, ground_truths, strict=False) if p == 1 and gt == 0)
+            fn = sum(1 for p, gt in zip(predictions, ground_truths, strict=False) if p == 0 and gt == 1)
             
             precision = tp / (tp + fp) if (tp + fp) > 0 else 0.0
             recall = tp / (tp + fn) if (tp + fn) > 0 else 0.0
@@ -439,7 +436,7 @@ class PerformanceMonitor:
         
         return PerformanceMetrics(accuracy=accuracy)
     
-    def _calculate_regression_metrics(self, predictions: List, ground_truths: List) -> PerformanceMetrics:
+    def _calculate_regression_metrics(self, predictions: list, ground_truths: list) -> PerformanceMetrics:
         """Calculate regression metrics."""
         if not predictions or not ground_truths:
             return PerformanceMetrics()
@@ -453,8 +450,8 @@ class PerformanceMonitor:
                 return PerformanceMetrics()
             
             # Calculate metrics
-            errors = [abs(p - gt) for p, gt in zip(pred_nums, gt_nums)]
-            squared_errors = [(p - gt) ** 2 for p, gt in zip(pred_nums, gt_nums)]
+            errors = [abs(p - gt) for p, gt in zip(pred_nums, gt_nums, strict=False)]
+            squared_errors = [(p - gt) ** 2 for p, gt in zip(pred_nums, gt_nums, strict=False)]
             
             mae = statistics.mean(errors)
             mse = statistics.mean(squared_errors)
@@ -492,7 +489,7 @@ class ModelMonitor:
         # Metrics history
         self.metrics_history = defaultdict(list)
     
-    def set_reference_data(self, feature_data: Dict[str, List[float]]):
+    def set_reference_data(self, feature_data: dict[str, list[float]]):
         """Set reference data for drift detection."""
         self.reference_data = feature_data.copy()
         logger.info(f"Reference data set for {len(feature_data)} features")
@@ -512,20 +509,20 @@ class ModelMonitor:
         """Add alert callback function."""
         self.alert_callbacks.append(callback)
     
-    def enable_monitoring(self, monitoring_types: List[MonitoringType]):
+    def enable_monitoring(self, monitoring_types: list[MonitoringType]):
         """Enable specific monitoring types."""
         self.monitoring_types.update(monitoring_types)
         logger.info(f"Enabled monitoring types: {[mt.value for mt in monitoring_types]}")
     
-    def disable_monitoring(self, monitoring_types: List[MonitoringType]):
+    def disable_monitoring(self, monitoring_types: list[MonitoringType]):
         """Disable specific monitoring types."""
         for mt in monitoring_types:
             self.monitoring_types.discard(mt)
         logger.info(f"Disabled monitoring types: {[mt.value for mt in monitoring_types]}")
     
-    async def monitor_prediction(self, features: Dict[str, float], 
+    async def monitor_prediction(self, features: dict[str, float], 
                                prediction: Any, ground_truth: Any = None,
-                               timestamp: Optional[datetime] = None) -> Dict[str, Any]:
+                               timestamp: datetime | None = None) -> dict[str, Any]:
         """Monitor a single prediction."""
         if self.status != MonitoringStatus.ACTIVE:
             return {}
@@ -564,8 +561,8 @@ class ModelMonitor:
         
         return monitoring_results
     
-    async def monitor_batch(self, batch_data: List[Dict[str, Any]], 
-                          task_type: str = "classification") -> Dict[str, Any]:
+    async def monitor_batch(self, batch_data: list[dict[str, Any]], 
+                          task_type: str = "classification") -> dict[str, Any]:
         """Monitor a batch of predictions."""
         if self.status != MonitoringStatus.ACTIVE:
             return {}
@@ -593,8 +590,8 @@ class ModelMonitor:
         
         return monitoring_results
     
-    async def _check_data_drift(self, features: Dict[str, float], 
-                              timestamp: datetime) -> Dict[str, DriftMetrics]:
+    async def _check_data_drift(self, features: dict[str, float], 
+                              timestamp: datetime) -> dict[str, DriftMetrics]:
         """Check for data drift."""
         drift_results = {}
         
@@ -623,8 +620,8 @@ class ModelMonitor:
         
         return drift_results
     
-    async def _check_feature_drift(self, features: Dict[str, float], 
-                                 timestamp: datetime) -> Dict[str, float]:
+    async def _check_feature_drift(self, features: dict[str, float], 
+                                 timestamp: datetime) -> dict[str, float]:
         """Check for feature-level drift."""
         feature_drift = {}
         
@@ -642,8 +639,8 @@ class ModelMonitor:
         
         return feature_drift
     
-    async def _check_batch_drift(self, batch_data: List[Dict[str, Any]], 
-                               timestamp: datetime) -> Dict[str, DriftMetrics]:
+    async def _check_batch_drift(self, batch_data: list[dict[str, Any]], 
+                               timestamp: datetime) -> dict[str, DriftMetrics]:
         """Check drift for batch data."""
         batch_drift = {}
         
@@ -696,7 +693,7 @@ class ModelMonitor:
         
         self.current_metrics[metric_name] = metric
     
-    async def _check_monitoring_rules(self, monitoring_results: Dict[str, Any], 
+    async def _check_monitoring_rules(self, monitoring_results: dict[str, Any], 
                                     timestamp: datetime):
         """Check monitoring rules and generate alerts."""
         for rule_id, rule in self.monitoring_rules.items():
@@ -736,7 +733,7 @@ class ModelMonitor:
                 
                 logger.warning(f"Alert generated: {alert.message}")
     
-    def _extract_metric_value(self, metric_name: str, monitoring_results: Dict[str, Any]) -> Optional[float]:
+    def _extract_metric_value(self, metric_name: str, monitoring_results: dict[str, Any]) -> float | None:
         """Extract metric value from monitoring results."""
         # Try direct metric lookup first
         if metric_name in self.current_metrics:
@@ -792,7 +789,7 @@ class ModelMonitor:
             timestamp=timestamp
         )
     
-    def get_monitoring_summary(self) -> Dict[str, Any]:
+    def get_monitoring_summary(self) -> dict[str, Any]:
         """Get monitoring summary."""
         return {
             'model_name': self.model_name,
@@ -806,7 +803,7 @@ class ModelMonitor:
                           if self.current_metrics else None
         }
     
-    def get_recent_alerts(self, hours: int = 24) -> List[MonitoringAlert]:
+    def get_recent_alerts(self, hours: int = 24) -> list[MonitoringAlert]:
         """Get recent alerts."""
         cutoff_time = datetime.now() - timedelta(hours=hours)
         return [alert for alert in self.alerts if alert.timestamp >= cutoff_time]

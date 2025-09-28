@@ -8,7 +8,8 @@ import functools
 import re
 import threading
 from datetime import datetime, timedelta
-from typing import List, Any
+from typing import Any
+
 
 async def async_retry(func, max_attempts=3, base_delay=1.0, max_delay=60.0, backoff_factor=2.0, jitter=True):
     """
@@ -69,14 +70,10 @@ async def async_retry(func, max_attempts=3, base_delay=1.0, max_delay=60.0, back
             await asyncio.sleep(delay)
 
 
-from datetime import datetime, timedelta, UTC
-import decimal
-import re
 import time
-import functools
-import threading
-import asyncio
-from typing import Iterator, Any, Callable, TypeVar, Union
+from collections.abc import Callable
+from datetime import UTC
+from typing import TypeVar
 
 F = TypeVar('F', bound=Callable[..., Any])
 
@@ -129,7 +126,7 @@ def chunks(iterable, size):
     """Split iterable into chunks."""
     it = iter(iterable)
     while True:
-        batch = list([x for _, x in zip(range(size), it)])
+        batch = list([x for _, x in zip(range(size), it, strict=False)])
         if not batch:
             break
         yield batch
@@ -258,11 +255,11 @@ def time_ago(date_obj: datetime) -> str:
 # guarantee consistent semantics and import success.
 # ------------------------------------------------------------
 
-import os
-import json
 import hashlib
-import uuid
+import json
+import os
 import time as _time
+import uuid
 from pathlib import Path
 
 
@@ -337,7 +334,7 @@ def unflatten_dict(d: dict, sep: str = '.') -> dict:
     return result
 
 
-def chunk_list(lst: List[Any], chunk_size: int):
+def chunk_list(lst: list[Any], chunk_size: int):
     for i in range(0, len(lst), chunk_size):
         yield lst[i:i + chunk_size]
 
@@ -394,7 +391,7 @@ def create_directory(path: str) -> None:
 
 
 def read_file(filepath: str) -> str:  # noqa: A001 - test expects this name
-    with open(filepath, 'r', encoding='utf-8') as f:
+    with open(filepath, encoding='utf-8') as f:
         return f.read()
 
 
@@ -447,7 +444,7 @@ def to_camel_case(text: str) -> str:
     return components[0] + ''.join(x.capitalize() for x in components[1:])
 
 
-def remove_duplicates(lst: List[Any]) -> List[Any]:
+def remove_duplicates(lst: list[Any]) -> list[Any]:
     seen = set()
     result = []
     for item in lst:
@@ -484,8 +481,8 @@ def is_empty(value: Any) -> bool:
     return False
 
 
-def merge_lists(*lists: List[Any]) -> List[Any]:
-    result: List[Any] = []
+def merge_lists(*lists: list[Any]) -> list[Any]:
+    result: list[Any] = []
     for lst in lists:
         result.extend(lst)
     return result

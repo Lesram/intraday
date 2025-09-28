@@ -18,15 +18,14 @@ Created: 2025-01-01
 Version: 1.0.0
 """
 
-import json
-import time
 import hashlib
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any, Union, Callable
-from pathlib import Path
-from dataclasses import dataclass, field
-from enum import Enum
 import logging
+from collections.abc import Callable
+from dataclasses import dataclass, field
+from datetime import datetime, timedelta
+from enum import Enum
+from pathlib import Path
+from typing import Any
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -101,13 +100,13 @@ class User:
     username: str
     email: str
     role: GovernanceRole
-    permissions: List[str] = field(default_factory=list)
+    permissions: list[str] = field(default_factory=list)
     is_active: bool = True
     created_at: datetime = field(default_factory=datetime.now)
-    last_login: Optional[datetime] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    last_login: datetime | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
     
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             'user_id': self.user_id,
@@ -130,14 +129,14 @@ class AuditLogEntry:
     action_type: ActionType
     resource_type: ResourceType
     resource_id: str
-    details: Dict[str, Any]
+    details: dict[str, Any]
     timestamp: datetime = field(default_factory=datetime.now)
     ip_address: str = ""
     user_agent: str = ""
     success: bool = True
     error_message: str = ""
     
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             'entry_id': self.entry_id,
@@ -160,15 +159,15 @@ class CompliancePolicy:
     policy_id: str
     name: str
     description: str
-    requirements: List[str]
-    resource_types: List[ResourceType]
+    requirements: list[str]
+    resource_types: list[ResourceType]
     is_active: bool = True
     created_at: datetime = field(default_factory=datetime.now)
     updated_at: datetime = field(default_factory=datetime.now)
     created_by: str = ""
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
     
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             'policy_id': self.policy_id,
@@ -192,13 +191,13 @@ class ComplianceCheck:
     resource_type: ResourceType
     resource_id: str
     status: ComplianceStatus
-    findings: List[str]
-    recommendations: List[str]
+    findings: list[str]
+    recommendations: list[str]
     checked_at: datetime = field(default_factory=datetime.now)
     checked_by: str = ""
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
     
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             'check_id': self.check_id,
@@ -227,10 +226,10 @@ class ApprovalRequest:
     reason: str = ""
     reviewer_comments: str = ""
     created_at: datetime = field(default_factory=datetime.now)
-    reviewed_at: Optional[datetime] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    reviewed_at: datetime | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
     
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             'request_id': self.request_id,
@@ -255,14 +254,14 @@ class RiskAssessment:
     resource_type: ResourceType
     resource_id: str
     risk_level: RiskLevel
-    risk_factors: List[str]
-    mitigation_strategies: List[str]
+    risk_factors: list[str]
+    mitigation_strategies: list[str]
     assessed_by: str
     assessed_at: datetime = field(default_factory=datetime.now)
-    expires_at: Optional[datetime] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    expires_at: datetime | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
     
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             'assessment_id': self.assessment_id,
@@ -336,7 +335,7 @@ class AccessControl:
         permission = f"{action_type.value}_{resource_type.value}"
         return self.has_permission(user, permission)
     
-    def get_user_permissions(self, user: User) -> List[str]:
+    def get_user_permissions(self, user: User) -> list[str]:
         """Get all permissions for a user."""
         role_perms = self.role_permissions.get(user.role, [])
         all_perms = set(role_perms + user.permissions)
@@ -347,16 +346,16 @@ class ComplianceEngine:
     """Compliance checking engine."""
     
     def __init__(self):
-        self.policies: Dict[str, CompliancePolicy] = {}
-        self.checks: Dict[str, ComplianceCheck] = {}
-        self.custom_checkers: Dict[str, Callable] = {}
+        self.policies: dict[str, CompliancePolicy] = {}
+        self.checks: dict[str, ComplianceCheck] = {}
+        self.custom_checkers: dict[str, Callable] = {}
     
     def add_policy(self, policy: CompliancePolicy):
         """Add a compliance policy."""
         self.policies[policy.policy_id] = policy
         logger.info(f"Added compliance policy: {policy.name}")
     
-    def update_policy(self, policy_id: str, updates: Dict[str, Any]) -> bool:
+    def update_policy(self, policy_id: str, updates: dict[str, Any]) -> bool:
         """Update a compliance policy."""
         if policy_id not in self.policies:
             return False
@@ -374,7 +373,7 @@ class ComplianceEngine:
         self.custom_checkers[policy_id] = checker_func
     
     def check_compliance(self, resource_type: ResourceType, resource_id: str,
-                        resource_data: Dict[str, Any], checked_by: str = "") -> List[ComplianceCheck]:
+                        resource_data: dict[str, Any], checked_by: str = "") -> list[ComplianceCheck]:
         """Check compliance for a resource."""
         results = []
         
@@ -421,8 +420,8 @@ class ComplianceEngine:
         
         return results
     
-    def _default_compliance_check(self, resource_data: Dict[str, Any], 
-                                 policy: CompliancePolicy) -> tuple[List[str], List[str], ComplianceStatus]:
+    def _default_compliance_check(self, resource_data: dict[str, Any], 
+                                 policy: CompliancePolicy) -> tuple[list[str], list[str], ComplianceStatus]:
         """Default compliance checking logic."""
         findings = []
         recommendations = []
@@ -457,7 +456,7 @@ class ComplianceEngine:
         
         return findings, recommendations, status
     
-    def get_compliance_summary(self, resource_type: ResourceType = None) -> Dict[str, Any]:
+    def get_compliance_summary(self, resource_type: ResourceType = None) -> dict[str, Any]:
         """Get compliance summary."""
         checks = list(self.checks.values())
         
@@ -486,8 +485,8 @@ class WorkflowManager:
     """Approval workflow manager."""
     
     def __init__(self):
-        self.approval_requests: Dict[str, ApprovalRequest] = {}
-        self.workflow_rules: Dict[str, Dict[str, Any]] = {}
+        self.approval_requests: dict[str, ApprovalRequest] = {}
+        self.workflow_rules: dict[str, dict[str, Any]] = {}
     
     def add_workflow_rule(self, resource_type: ResourceType, action_type: ActionType,
                          approval_required: bool, approver_role: GovernanceRole):
@@ -550,7 +549,7 @@ class WorkflowManager:
         logger.info(f"Rejected request: {request_id} by {approver}")
         return True
     
-    def get_pending_requests(self, approver: str = None) -> List[ApprovalRequest]:
+    def get_pending_requests(self, approver: str = None) -> list[ApprovalRequest]:
         """Get pending approval requests."""
         requests = [r for r in self.approval_requests.values() if r.status == ApprovalStatus.PENDING]
         
@@ -564,11 +563,11 @@ class AuditLogger:
     """Audit logging system."""
     
     def __init__(self):
-        self.logs: List[AuditLogEntry] = []
+        self.logs: list[AuditLogEntry] = []
         self.retention_days = 365 * 7  # 7 years default
     
     def log_action(self, user_id: str, action_type: ActionType, resource_type: ResourceType,
-                  resource_id: str, details: Dict[str, Any], success: bool = True,
+                  resource_id: str, details: dict[str, Any], success: bool = True,
                   error_message: str = "", ip_address: str = "", user_agent: str = ""):
         """Log an action."""
         entry_id = hashlib.md5(f"{user_id}_{action_type.value}_{resource_id}_{datetime.now()}".encode()).hexdigest()[:16]
@@ -598,7 +597,7 @@ class AuditLogger:
     
     def search_logs(self, user_id: str = None, action_type: ActionType = None,
                    resource_type: ResourceType = None, start_date: datetime = None,
-                   end_date: datetime = None, limit: int = 100) -> List[AuditLogEntry]:
+                   end_date: datetime = None, limit: int = 100) -> list[AuditLogEntry]:
         """Search audit logs."""
         results = self.logs.copy()
         
@@ -621,7 +620,7 @@ class AuditLogger:
         results.sort(key=lambda x: x.timestamp, reverse=True)
         return results[:limit]
     
-    def get_audit_summary(self, days: int = 30) -> Dict[str, Any]:
+    def get_audit_summary(self, days: int = 30) -> dict[str, Any]:
         """Get audit summary for the last N days."""
         cutoff_date = datetime.now() - timedelta(days=days)
         recent_logs = [log for log in self.logs if log.timestamp >= cutoff_date]
@@ -666,12 +665,12 @@ class MLOpsGovernanceService:
         self.storage_path = Path(storage_path)
         self.storage_path.mkdir(parents=True, exist_ok=True)
         
-        self.users: Dict[str, User] = {}
+        self.users: dict[str, User] = {}
         self.access_control = AccessControl()
         self.compliance_engine = ComplianceEngine()
         self.workflow_manager = WorkflowManager()
         self.audit_logger = AuditLogger()
-        self.risk_assessments: Dict[str, RiskAssessment] = {}
+        self.risk_assessments: dict[str, RiskAssessment] = {}
         
         # Initialize default policies and workflows
         self._initialize_default_policies()
@@ -726,7 +725,7 @@ class MLOpsGovernanceService:
         )
     
     def create_user(self, user_id: str, username: str, email: str, role: GovernanceRole,
-                   permissions: List[str] = None, metadata: Dict[str, Any] = None) -> User:
+                   permissions: list[str] = None, metadata: dict[str, Any] = None) -> User:
         """Create a new user."""
         if permissions is None:
             permissions = []
@@ -756,7 +755,7 @@ class MLOpsGovernanceService:
         logger.info(f"Created user: {username} ({role.value})")
         return user
     
-    def authenticate_user(self, user_id: str) -> Optional[User]:
+    def authenticate_user(self, user_id: str) -> User | None:
         """Authenticate and get user."""
         user = self.users.get(user_id)
         if user and user.is_active:
@@ -774,7 +773,7 @@ class MLOpsGovernanceService:
     
     def request_action_approval(self, user_id: str, resource_type: ResourceType,
                               resource_id: str, action_type: ActionType,
-                              reason: str = "") -> Optional[ApprovalRequest]:
+                              reason: str = "") -> ApprovalRequest | None:
         """Request approval for an action."""
         user = self.users.get(user_id)
         if not user:
@@ -855,7 +854,7 @@ class MLOpsGovernanceService:
         return success
     
     def check_resource_compliance(self, user_id: str, resource_type: ResourceType,
-                                resource_id: str, resource_data: Dict[str, Any]) -> List[ComplianceCheck]:
+                                resource_id: str, resource_data: dict[str, Any]) -> list[ComplianceCheck]:
         """Check compliance for a resource."""
         user = self.users.get(user_id)
         if not user:
@@ -881,7 +880,7 @@ class MLOpsGovernanceService:
     
     def create_risk_assessment(self, user_id: str, resource_type: ResourceType,
                              resource_id: str, risk_level: RiskLevel,
-                             risk_factors: List[str], mitigation_strategies: List[str],
+                             risk_factors: list[str], mitigation_strategies: list[str],
                              expires_in_days: int = 365) -> RiskAssessment:
         """Create risk assessment."""
         assessment_id = hashlib.md5(f"risk_{resource_type.value}_{resource_id}_{datetime.now()}".encode()).hexdigest()[:16]
@@ -916,7 +915,7 @@ class MLOpsGovernanceService:
         logger.info(f"Created risk assessment: {assessment_id} for {resource_id}")
         return assessment
     
-    def get_governance_dashboard(self, user_id: str) -> Dict[str, Any]:
+    def get_governance_dashboard(self, user_id: str) -> dict[str, Any]:
         """Get governance dashboard data."""
         user = self.users.get(user_id)
         if not user:
@@ -947,7 +946,7 @@ class MLOpsGovernanceService:
             'permissions': self.access_control.get_user_permissions(user)
         }
     
-    def _get_risk_summary(self) -> Dict[str, Any]:
+    def _get_risk_summary(self) -> dict[str, Any]:
         """Get risk assessment summary."""
         assessments = list(self.risk_assessments.values())
         
@@ -969,7 +968,7 @@ class MLOpsGovernanceService:
             'expired_assessments': expired_count
         }
     
-    def _get_user_activity(self, user_id: str, days: int = 7) -> Dict[str, Any]:
+    def _get_user_activity(self, user_id: str, days: int = 7) -> dict[str, Any]:
         """Get user activity summary."""
         user_logs = self.audit_logger.search_logs(
             user_id=user_id,
@@ -993,7 +992,7 @@ class MLOpsGovernanceService:
         }
     
     def export_compliance_report(self, user_id: str, resource_type: ResourceType = None,
-                               start_date: datetime = None, end_date: datetime = None) -> Dict[str, Any]:
+                               start_date: datetime = None, end_date: datetime = None) -> dict[str, Any]:
         """Export compliance report."""
         user = self.users.get(user_id)
         if not user or not self.access_control.has_permission(user, "export_reports"):
@@ -1036,7 +1035,7 @@ class MLOpsGovernanceService:
             'summary': self.compliance_engine.get_compliance_summary(resource_type)
         }
     
-    def get_service_statistics(self) -> Dict[str, Any]:
+    def get_service_statistics(self) -> dict[str, Any]:
         """Get governance service statistics."""
         return {
             'total_users': len(self.users),
@@ -1059,7 +1058,7 @@ def create_governance_service(storage_path: str = "./governance") -> MLOpsGovern
 
 
 def create_user(user_id: str, username: str, email: str, role: GovernanceRole,
-               permissions: List[str] = None, metadata: Dict[str, Any] = None) -> User:
+               permissions: list[str] = None, metadata: dict[str, Any] = None) -> User:
     """Create a user instance."""
     if permissions is None:
         permissions = []

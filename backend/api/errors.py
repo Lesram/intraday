@@ -4,12 +4,11 @@ Provides standardized error response envelopes and business logic errors.
 """
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
-from pydantic import ValidationError, BaseModel, Field
 
 from backend.utils.logger import StandardEventLogger
 
@@ -59,8 +58,8 @@ class APIError(Exception):
         code: str,
         message: str,
         status_code: int = status.HTTP_400_BAD_REQUEST,
-        field: Optional[str] = None,
-        context: Optional[Dict[str, Any]] = None
+        field: str | None = None,
+        context: dict[str, Any] | None = None
     ):
         self.code = code
         self.message = message 
@@ -76,10 +75,10 @@ class RiskError(APIError):
     def __init__(
         self, 
         message: str, 
-        issues: List[str] = None,
-        warnings: List[str] = None,
+        issues: list[str] = None,
+        warnings: list[str] = None,
         risk_score: float = None,
-        context: Optional[Dict[str, Any]] = None
+        context: dict[str, Any] | None = None
     ):
         risk_context = context or {}
         risk_context.update({
@@ -258,7 +257,7 @@ def create_api_error_response(error: APIError, request: Request) -> JSONResponse
     )
 
 
-def format_validation_errors(errors: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+def format_validation_errors(errors: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """
     Format Pydantic validation errors into a consistent structure.
     
@@ -316,10 +315,10 @@ def http_500():
 # Helper functions for common error creation
 def risk_error(
     message: str, 
-    issues: List[str] = None,
-    warnings: List[str] = None, 
+    issues: list[str] = None,
+    warnings: list[str] = None, 
     risk_score: float = None,
-    context: Dict[str, Any] = None
+    context: dict[str, Any] = None
 ) -> RiskError:
     """Create risk management error."""
     return RiskError(
@@ -331,7 +330,7 @@ def risk_error(
     )
 
 
-def validation_error(field: str, message: str, context: Dict[str, Any] = None) -> APIError:
+def validation_error(field: str, message: str, context: dict[str, Any] = None) -> APIError:
     """Create validation error."""
     return APIError(
         code=ErrorCodes.VALIDATION_ERROR,
@@ -342,7 +341,7 @@ def validation_error(field: str, message: str, context: Dict[str, Any] = None) -
     )
 
 
-def business_error(code: str, message: str, context: Dict[str, Any] = None) -> APIError:
+def business_error(code: str, message: str, context: dict[str, Any] = None) -> APIError:
     """Create business logic error.""" 
     return APIError(
         code=code,
@@ -366,7 +365,7 @@ def not_found_error(resource: str, identifier: str = None) -> APIError:
     )
 
 
-def internal_error(message: str = "Internal server error", context: Dict[str, Any] = None) -> APIError:
+def internal_error(message: str = "Internal server error", context: dict[str, Any] = None) -> APIError:
     """Create internal server error."""
     return APIError(
         code=ErrorCodes.INTERNAL_ERROR,

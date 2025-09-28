@@ -6,17 +6,12 @@ ML features, versioning, serving, lineage tracking, and real-time feature comput
 Supports both batch and streaming feature serving with advanced caching and transformation.
 """
 
-import asyncio
-import json
 import logging
-import time
-import uuid
-import hashlib
+from abc import ABC, abstractmethod
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Dict, List, Optional, Union, Any, Tuple, Callable, Set
-from dataclasses import dataclass, field
-from abc import ABC, abstractmethod
+from typing import Any
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -70,10 +65,10 @@ class FeatureDefinition:
     description: str = ""
     entity: str = ""
     source: str = ""
-    transformation: Optional[TransformationType] = None
-    transformation_params: Dict[str, Any] = field(default_factory=dict)
-    validation_rules: Dict[str, Any] = field(default_factory=dict)
-    tags: Dict[str, str] = field(default_factory=dict)
+    transformation: TransformationType | None = None
+    transformation_params: dict[str, Any] = field(default_factory=dict)
+    validation_rules: dict[str, Any] = field(default_factory=dict)
+    tags: dict[str, str] = field(default_factory=dict)
     owner: str = ""
     created_at: datetime = field(default_factory=datetime.now)
     updated_at: datetime = field(default_factory=datetime.now)
@@ -86,14 +81,14 @@ class FeatureGroup:
     """Feature group definition."""
     name: str
     description: str = ""
-    features: List[str] = field(default_factory=list)
+    features: list[str] = field(default_factory=list)
     entity_key: str = ""
     source_table: str = ""
     event_timestamp_column: str = ""
     created_timestamp_column: str = ""
-    ttl: Optional[int] = None  # Time to live in seconds
+    ttl: int | None = None  # Time to live in seconds
     serving_mode: ServingMode = ServingMode.BATCH
-    tags: Dict[str, str] = field(default_factory=dict)
+    tags: dict[str, str] = field(default_factory=dict)
     owner: str = ""
     created_at: datetime = field(default_factory=datetime.now)
     updated_at: datetime = field(default_factory=datetime.now)
@@ -109,28 +104,28 @@ class FeatureValue:
     timestamp: datetime
     entity_id: str
     version: str = "1.0.0"
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
 class FeatureVector:
     """Feature vector containing multiple features."""
     entity_id: str
-    features: Dict[str, Any]
+    features: dict[str, Any]
     timestamp: datetime
     feature_group: str = ""
     version: str = "1.0.0"
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
 class FeatureLineage:
     """Feature lineage tracking."""
     feature_name: str
-    source_features: List[str] = field(default_factory=list)
-    transformations: List[str] = field(default_factory=list)
-    datasets: List[str] = field(default_factory=list)
-    models: List[str] = field(default_factory=list)
+    source_features: list[str] = field(default_factory=list)
+    transformations: list[str] = field(default_factory=list)
+    datasets: list[str] = field(default_factory=list)
+    models: list[str] = field(default_factory=list)
     created_at: datetime = field(default_factory=datetime.now)
     created_by: str = ""
 
@@ -139,12 +134,12 @@ class FeatureTransformer(ABC):
     """Abstract base class for feature transformations."""
     
     @abstractmethod
-    def transform(self, value: Any, params: Dict[str, Any] = None) -> Any:
+    def transform(self, value: Any, params: dict[str, Any] = None) -> Any:
         """Transform a feature value."""
         pass
     
     @abstractmethod
-    def inverse_transform(self, value: Any, params: Dict[str, Any] = None) -> Any:
+    def inverse_transform(self, value: Any, params: dict[str, Any] = None) -> Any:
         """Inverse transform a feature value."""
         pass
 
@@ -152,11 +147,11 @@ class FeatureTransformer(ABC):
 class IdentityTransformer(FeatureTransformer):
     """Identity transformation (no change)."""
     
-    def transform(self, value: Any, params: Dict[str, Any] = None) -> Any:
+    def transform(self, value: Any, params: dict[str, Any] = None) -> Any:
         """Return value unchanged."""
         return value
     
-    def inverse_transform(self, value: Any, params: Dict[str, Any] = None) -> Any:
+    def inverse_transform(self, value: Any, params: dict[str, Any] = None) -> Any:
         """Return value unchanged."""
         return value
 
@@ -164,7 +159,7 @@ class IdentityTransformer(FeatureTransformer):
 class NormalizeTransformer(FeatureTransformer):
     """Min-max normalization transformer."""
     
-    def transform(self, value: Any, params: Dict[str, Any] = None) -> Any:
+    def transform(self, value: Any, params: dict[str, Any] = None) -> Any:
         """Normalize value to [0, 1] range."""
         if params is None:
             params = {}
@@ -180,7 +175,7 @@ class NormalizeTransformer(FeatureTransformer):
         
         return (value - min_val) / (max_val - min_val)
     
-    def inverse_transform(self, value: Any, params: Dict[str, Any] = None) -> Any:
+    def inverse_transform(self, value: Any, params: dict[str, Any] = None) -> Any:
         """Denormalize value from [0, 1] range."""
         if params is None:
             params = {}
@@ -197,7 +192,7 @@ class NormalizeTransformer(FeatureTransformer):
 class StandardizeTransformer(FeatureTransformer):
     """Z-score standardization transformer."""
     
-    def transform(self, value: Any, params: Dict[str, Any] = None) -> Any:
+    def transform(self, value: Any, params: dict[str, Any] = None) -> Any:
         """Standardize value using z-score."""
         if params is None:
             params = {}
@@ -213,7 +208,7 @@ class StandardizeTransformer(FeatureTransformer):
         
         return (value - mean) / std
     
-    def inverse_transform(self, value: Any, params: Dict[str, Any] = None) -> Any:
+    def inverse_transform(self, value: Any, params: dict[str, Any] = None) -> Any:
         """Inverse standardize value."""
         if params is None:
             params = {}
@@ -230,7 +225,7 @@ class StandardizeTransformer(FeatureTransformer):
 class OneHotTransformer(FeatureTransformer):
     """One-hot encoding transformer."""
     
-    def transform(self, value: Any, params: Dict[str, Any] = None) -> Any:
+    def transform(self, value: Any, params: dict[str, Any] = None) -> Any:
         """One-hot encode categorical value."""
         if params is None:
             params = {}
@@ -245,7 +240,7 @@ class OneHotTransformer(FeatureTransformer):
         
         return result
     
-    def inverse_transform(self, value: Any, params: Dict[str, Any] = None) -> Any:
+    def inverse_transform(self, value: Any, params: dict[str, Any] = None) -> Any:
         """Inverse one-hot encoding."""
         if not isinstance(value, dict):
             return value
@@ -270,7 +265,7 @@ class FeatureValidator:
         }
     
     def validate_feature(self, feature_def: FeatureDefinition, 
-                        value: Any) -> Tuple[bool, List[str]]:
+                        value: Any) -> tuple[bool, list[str]]:
         """Validate a feature value against its definition."""
         errors = []
         
@@ -307,7 +302,7 @@ class FeatureValidator:
         
         return True
     
-    def _validate_range(self, value: Any, params: Dict[str, Any]) -> bool:
+    def _validate_range(self, value: Any, params: dict[str, Any]) -> bool:
         """Validate value is within specified range."""
         if not isinstance(value, (int, float)):
             return True
@@ -322,19 +317,19 @@ class FeatureValidator:
         
         return True
     
-    def _validate_enum(self, value: Any, params: Dict[str, Any]) -> bool:
+    def _validate_enum(self, value: Any, params: dict[str, Any]) -> bool:
         """Validate value is in allowed enum values."""
         allowed_values = params.get('values', [])
         return value in allowed_values
     
-    def _validate_null(self, value: Any, params: Dict[str, Any]) -> bool:
+    def _validate_null(self, value: Any, params: dict[str, Any]) -> bool:
         """Validate null constraints."""
         allow_null = params.get('allow_null', True)
         if not allow_null and value is None:
             return False
         return True
     
-    def _validate_pattern(self, value: Any, params: Dict[str, Any]) -> bool:
+    def _validate_pattern(self, value: Any, params: dict[str, Any]) -> bool:
         """Validate value matches pattern."""
         if not isinstance(value, str):
             return True
@@ -351,10 +346,10 @@ class FeatureCache:
     """Feature caching service."""
     
     def __init__(self, ttl_seconds: int = 3600):
-        self.cache: Dict[str, Tuple[Any, datetime]] = {}
+        self.cache: dict[str, tuple[Any, datetime]] = {}
         self.ttl_seconds = ttl_seconds
     
-    def get(self, key: str) -> Optional[Any]:
+    def get(self, key: str) -> Any | None:
         """Get cached feature value."""
         if key in self.cache:
             value, timestamp = self.cache[key]
@@ -379,7 +374,7 @@ class FeatureCache:
         """Clear entire cache."""
         self.cache.clear()
     
-    def get_cache_stats(self) -> Dict[str, Any]:
+    def get_cache_stats(self) -> dict[str, Any]:
         """Get cache statistics."""
         now = datetime.now()
         valid_entries = 0
@@ -403,10 +398,10 @@ class FeatureStore:
     """Main feature store service."""
     
     def __init__(self):
-        self.features: Dict[str, FeatureDefinition] = {}
-        self.feature_groups: Dict[str, FeatureGroup] = {}
-        self.feature_values: Dict[str, List[FeatureValue]] = {}
-        self.transformers: Dict[TransformationType, FeatureTransformer] = {
+        self.features: dict[str, FeatureDefinition] = {}
+        self.feature_groups: dict[str, FeatureGroup] = {}
+        self.feature_values: dict[str, list[FeatureValue]] = {}
+        self.transformers: dict[TransformationType, FeatureTransformer] = {
             TransformationType.IDENTITY: IdentityTransformer(),
             TransformationType.NORMALIZE: NormalizeTransformer(),
             TransformationType.STANDARDIZE: StandardizeTransformer(),
@@ -414,7 +409,7 @@ class FeatureStore:
         }
         self.validator = FeatureValidator()
         self.cache = FeatureCache()
-        self.lineage: Dict[str, FeatureLineage] = {}
+        self.lineage: dict[str, FeatureLineage] = {}
     
     def register_feature(self, feature_def: FeatureDefinition) -> bool:
         """Register a new feature definition."""
@@ -548,7 +543,7 @@ class FeatureStore:
             return False
     
     def get_feature_value(self, feature_name: str, entity_id: str, 
-                         timestamp: Optional[datetime] = None) -> Optional[FeatureValue]:
+                         timestamp: datetime | None = None) -> FeatureValue | None:
         """Get latest feature value for entity."""
         try:
             # Check cache first
@@ -589,8 +584,8 @@ class FeatureStore:
             logger.error(f"Failed to get feature value: {e}")
             return None
     
-    def get_feature_vector(self, feature_names: List[str], entity_id: str,
-                          timestamp: Optional[datetime] = None) -> Optional[FeatureVector]:
+    def get_feature_vector(self, feature_names: list[str], entity_id: str,
+                          timestamp: datetime | None = None) -> FeatureVector | None:
         """Get feature vector for entity."""
         try:
             features = {}
@@ -615,8 +610,8 @@ class FeatureStore:
             logger.error(f"Failed to get feature vector: {e}")
             return None
     
-    def get_feature_group_data(self, group_name: str, entity_ids: List[str],
-                              timestamp: Optional[datetime] = None) -> List[FeatureVector]:
+    def get_feature_group_data(self, group_name: str, entity_ids: list[str],
+                              timestamp: datetime | None = None) -> list[FeatureVector]:
         """Get feature group data for multiple entities."""
         try:
             if group_name not in self.feature_groups:
@@ -638,7 +633,7 @@ class FeatureStore:
             logger.error(f"Failed to get feature group data: {e}")
             return []
     
-    def search_features(self, query: str, tags: Optional[Dict[str, str]] = None) -> List[FeatureDefinition]:
+    def search_features(self, query: str, tags: dict[str, str] | None = None) -> list[FeatureDefinition]:
         """Search features by name, description, or tags."""
         results = []
         query_lower = query.lower()
@@ -662,15 +657,15 @@ class FeatureStore:
         
         return results
     
-    def get_feature_lineage(self, feature_name: str) -> Optional[FeatureLineage]:
+    def get_feature_lineage(self, feature_name: str) -> FeatureLineage | None:
         """Get feature lineage information."""
         return self.lineage.get(feature_name)
     
     def update_feature_lineage(self, feature_name: str, 
-                              source_features: Optional[List[str]] = None,
-                              transformations: Optional[List[str]] = None,
-                              datasets: Optional[List[str]] = None,
-                              models: Optional[List[str]] = None) -> bool:
+                              source_features: list[str] | None = None,
+                              transformations: list[str] | None = None,
+                              datasets: list[str] | None = None,
+                              models: list[str] | None = None) -> bool:
         """Update feature lineage information."""
         try:
             if feature_name not in self.lineage:
@@ -693,7 +688,7 @@ class FeatureStore:
             logger.error(f"Failed to update feature lineage: {e}")
             return False
     
-    def get_feature_statistics(self, feature_name: str) -> Dict[str, Any]:
+    def get_feature_statistics(self, feature_name: str) -> dict[str, Any]:
         """Get feature statistics."""
         try:
             if feature_name not in self.feature_values:
@@ -727,13 +722,13 @@ class FeatureStore:
             logger.error(f"Failed to get feature statistics: {e}")
             return {}
     
-    def list_features(self, status: Optional[FeatureStatus] = None) -> List[FeatureDefinition]:
+    def list_features(self, status: FeatureStatus | None = None) -> list[FeatureDefinition]:
         """List all features, optionally filtered by status."""
         if status:
             return [f for f in self.features.values() if f.status == status]
         return list(self.features.values())
     
-    def list_feature_groups(self, status: Optional[FeatureStatus] = None) -> List[FeatureGroup]:
+    def list_feature_groups(self, status: FeatureStatus | None = None) -> list[FeatureGroup]:
         """List all feature groups, optionally filtered by status."""
         if status:
             return [g for g in self.feature_groups.values() if g.status == status]
@@ -763,7 +758,7 @@ class FeatureStore:
             logger.error(f"Failed to delete feature {feature_name}: {e}")
             return False
     
-    def get_serving_stats(self) -> Dict[str, Any]:
+    def get_serving_stats(self) -> dict[str, Any]:
         """Get feature serving statistics."""
         cache_stats = self.cache.get_cache_stats()
         
@@ -793,7 +788,7 @@ def create_feature_definition(name: str, feature_type: FeatureType,
     )
 
 
-def create_feature_group(name: str, features: List[str], entity_key: str,
+def create_feature_group(name: str, features: list[str], entity_key: str,
                         **kwargs) -> FeatureGroup:
     """Create a feature group with defaults."""
     return FeatureGroup(

@@ -9,12 +9,9 @@ from typing import TYPE_CHECKING, Any, Optional
 from uuid import uuid4
 
 if TYPE_CHECKING:
-    from ..strategies.engine import StrategyEngine
     from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..infra.outbox import OutboxRepo
-from ..infra.repositories.orders import OrdersRepo
-from ..strategies.types import TradingSignal
 
 logger = logging.getLogger(__name__)
 
@@ -162,8 +159,8 @@ class OrderService:
         and strategy engine executions.
         """
         try:
-            from decimal import Decimal
             import random
+            from decimal import Decimal
 
             # Retry logic for 429 rate limiting
             for attempt in range(MAX_RETRIES + 1):
@@ -500,7 +497,7 @@ class OrderService:
         self, 
         order_data: dict[str, Any], 
         session: Optional['AsyncSession'] = None,
-        outbox_repo: Optional[OutboxRepo] = None
+        outbox_repo: OutboxRepo | None = None
     ) -> dict[str, Any]:
         """
         Real async order submission with repository idempotency and outbox pattern.
@@ -514,6 +511,7 @@ class OrderService:
             Dictionary with order submission result
         """
         from decimal import Decimal
+
         from ..config import get_settings
         
         # Use provided session or fall back to instance session

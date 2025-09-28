@@ -79,7 +79,9 @@ except Exception:
 
 # Compatibility shims for test imports expecting "backend.config.settings"
 # without forcing a disruptive file move/rename.
-import sys, types
+import sys
+import types
+
 try:
     from .config import settings as _settings  # your existing settings object in backend/config.py
 except Exception:  # pragma: no cover - keep import tolerant in weird envs
@@ -95,7 +97,7 @@ if "backend.config" not in sys.modules:
 if "backend.config.settings" not in sys.modules:
     _settings_mod = types.ModuleType("backend.config.settings")
     # Expose a variable named `settings` to satisfy "from ... import settings"
-    setattr(_settings_mod, "settings", _settings)
+    _settings_mod.settings = _settings
     sys.modules["backend.config.settings"] = _settings_mod
 
 

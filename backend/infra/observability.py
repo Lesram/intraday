@@ -4,12 +4,12 @@ and standardized latency instrumentation decorators.
 """
 
 import asyncio
-from collections.abc import Callable
-from contextlib import contextmanager
 import functools
 import logging
 import time
-from typing import Any, TypeVar, Union
+from collections.abc import Callable
+from contextlib import contextmanager
+from typing import Any, TypeVar
 
 from opentelemetry import metrics as otel_metrics
 from opentelemetry import trace
@@ -247,7 +247,7 @@ def get_meter() -> otel_metrics.Meter:
 
 @contextmanager
 def trace_span(
-    name: str, attributes: dict[str, Union[str, int, float, bool]] | None = None
+    name: str, attributes: dict[str, str | int | float | bool] | None = None
 ):
     """
     Context manager for creating traced spans with automatic error handling.

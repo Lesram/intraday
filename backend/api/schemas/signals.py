@@ -4,9 +4,9 @@ Provides backward/forward compatibility between confidence and signal_strength f
 """
 
 from datetime import datetime
-from typing import Optional, Dict, Any, Literal
+from typing import Any, Literal
+
 from pydantic import BaseModel, field_validator, model_validator
-from pydantic_core import ValidationError
 
 
 class SignalResponse(BaseModel):
@@ -20,14 +20,14 @@ class SignalResponse(BaseModel):
     symbol: str
     action: Literal["buy", "sell", "hold"]  # Canonical action values
     signal_strength: float  # Canonical field [0.0, 1.0] 
-    confidence: Optional[float] = None  # Legacy compatibility field [0.0, 1.0]
+    confidence: float | None = None  # Legacy compatibility field [0.0, 1.0]
     tp_pct: float  # Take profit percentage
     sl_pct: float  # Stop loss percentage  
     generated_at: datetime
     
     @field_validator('signal_strength', 'confidence')
     @classmethod
-    def validate_strength_range(cls, v: Optional[float]) -> Optional[float]:
+    def validate_strength_range(cls, v: float | None) -> float | None:
         """Ensure strength values are in valid range [0.0, 1.0]"""
         if v is not None and not (0.0 <= v <= 1.0):
             raise ValueError("Signal strength and confidence must be between 0.0 and 1.0")
@@ -64,7 +64,7 @@ class SignalResponse(BaseModel):
         return self
     
     @classmethod
-    def from_decision(cls, symbol: str, decision_dict: Dict[str, Any]) -> 'SignalResponse':
+    def from_decision(cls, symbol: str, decision_dict: dict[str, Any]) -> 'SignalResponse':
         """
         Create SignalResponse from BasicStrategy.decide() output.
         
@@ -124,8 +124,8 @@ class SignalRequest(BaseModel):
     symbol: str
     signal_type: Literal["BUY", "SELL", "HOLD"]  # Legacy uppercase format
     confidence: float
-    price: Optional[float] = None
-    timestamp: Optional[str] = None
+    price: float | None = None
+    timestamp: str | None = None
     
     @field_validator('confidence')
     @classmethod

@@ -4,11 +4,12 @@ Uses pydantic-settings BaseSettings pattern with nested configuration sections.
 Compatible with Pydantic V2.
 """
 
-from functools import lru_cache
 import os
+from functools import lru_cache
 
 from pydantic import ConfigDict, Field, field_validator, model_validator
 from pydantic_settings import BaseSettings
+
 from backend.utils.logger import get_structured_logger
 
 # Load .env file for environment variables
@@ -1054,11 +1055,12 @@ if os.getenv("SKIP_VALIDATION") != "true":
 # This is additive and does not interfere with the pydantic-based Settings above.
 # ---------------------------------------------------------------------------
 
+import json as _json
+from collections.abc import Callable as _Callable
+from datetime import datetime
 from enum import Enum
 from pathlib import Path as _Path
-from typing import Any as _Any, Dict as _Dict, List as _List, Callable as _Callable
-import json as _json
-from datetime import datetime
+from typing import Any as _Any
 
 
 class ValidationError(Exception):
@@ -1077,15 +1079,15 @@ try:  # pragma: no cover - compatibility shim for tests
 
     # Canonical ValidationError
     if hasattr(_builtins, "__CONFIG_VALIDATION_ERROR__"):
-        ValidationError = getattr(_builtins, "__CONFIG_VALIDATION_ERROR__")  # type: ignore[assignment]
+        ValidationError = _builtins.__CONFIG_VALIDATION_ERROR__  # type: ignore[assignment]
     else:
-        setattr(_builtins, "__CONFIG_VALIDATION_ERROR__", ValidationError)
+        _builtins.__CONFIG_VALIDATION_ERROR__ = ValidationError
 
     # Canonical Environment enum – prefer existing canonical if present
     if hasattr(_builtins, "__CONFIG_ENV_ENUM__"):
-        Environment = getattr(_builtins, "__CONFIG_ENV_ENUM__")  # type: ignore[assignment]
+        Environment = _builtins.__CONFIG_ENV_ENUM__  # type: ignore[assignment]
     else:
-        setattr(_builtins, "__CONFIG_ENV_ENUM__", Environment)
+        _builtins.__CONFIG_ENV_ENUM__ = Environment
     _builtins.Environment = Environment  # type: ignore[attr-defined]
 except Exception:  # pragma: no cover - ignore if builtins unavailable
     pass
@@ -1094,15 +1096,15 @@ except Exception:  # pragma: no cover - ignore if builtins unavailable
 class _CompatBaseSettings:
     """Lightweight settings object for tests: supports get/set/update/validate."""
 
-    def __init__(self, config_data: _Dict[str, _Any] | None = None, environment: Environment = Environment.DEVELOPMENT):
+    def __init__(self, config_data: dict[str, _Any] | None = None, environment: Environment = Environment.DEVELOPMENT):
         self.environment = environment
-        self.config_data: _Dict[str, _Any] = config_data.copy() if config_data else {}
+        self.config_data: dict[str, _Any] = config_data.copy() if config_data else {}
         self.defaults = self._get_defaults()
-        self.validators: _Dict[str, _Callable[[_Any], None]] = {}
+        self.validators: dict[str, _Callable[[_Any], None]] = {}
         self.created_at = datetime.now()
         self.modified_at = datetime.now()
 
-    def _get_defaults(self) -> _Dict[str, _Any]:
+    def _get_defaults(self) -> dict[str, _Any]:
         return {
             "debug": True,
             "log_level": "INFO",
@@ -1127,12 +1129,12 @@ class _CompatBaseSettings:
         self.config_data[key] = value
         self.modified_at = datetime.now()
 
-    def update(self, updates: _Dict[str, _Any]) -> None:
+    def update(self, updates: dict[str, _Any]) -> None:
         for k, v in updates.items():
             self.set(k, v)
 
     def validate(self) -> None:
-        errors: _List[str] = []
+        errors: list[str] = []
         for key, validator in self.validators.items():
             try:
                 value = self.get(key)
@@ -1143,12 +1145,12 @@ class _CompatBaseSettings:
         if errors:
             raise ValidationError(f"Configuration validation failed: {', '.join(errors)}")
 
-    def to_dict(self) -> _Dict[str, _Any]:
+    def to_dict(self) -> dict[str, _Any]:
         result = self.defaults.copy()
         result.update(self.config_data)
         return result
 
-    def from_dict(self, data: _Dict[str, _Any]) -> None:
+    def from_dict(self, data: dict[str, _Any]) -> None:
         self.config_data = data.copy()
         self.modified_at = datetime.now()
 
@@ -1162,9 +1164,9 @@ class _CompatBaseSettings:
 # Ensure a single canonical BaseSettings class across the test run
 try:  # pragma: no cover - ensure class identity stability
     if hasattr(_builtins, "__BASE_SETTINGS_COMPAT__"):
-        _CompatBaseSettings = getattr(_builtins, "__BASE_SETTINGS_COMPAT__")  # type: ignore[assignment]
+        _CompatBaseSettings = _builtins.__BASE_SETTINGS_COMPAT__  # type: ignore[assignment]
     else:
-        setattr(_builtins, "__BASE_SETTINGS_COMPAT__", _CompatBaseSettings)
+        _builtins.__BASE_SETTINGS_COMPAT__ = _CompatBaseSettings
 except Exception:
     pass
 
@@ -1185,7 +1187,7 @@ class ConfigManager:
         if not file_path.exists():
             self.create_default_config(file_path)
         try:
-            with open(file_path, "r", encoding="utf-8") as f:
+            with open(file_path, encoding="utf-8") as f:
                 data = _json.load(f)
             self.settings.from_dict(data)
             return True
@@ -1219,7 +1221,7 @@ class ConfigManager:
         backup_path = self.backup_dir / backup_name
         return self.load(backup_path)
 
-    def get_backups(self) -> _List[str]:
+    def get_backups(self) -> list[str]:
         if not self.backup_dir.exists():
             return []
         return [p.name for p in self.backup_dir.glob("*.json")]
@@ -1230,8 +1232,8 @@ class EnvironmentConfig:
 
     def __init__(self):
         self.current_environment: Environment = Environment.DEVELOPMENT
-        self.environment_configs: _Dict[Environment, _Dict[str, _Any]] = {}
-        self.environment_variables: _Dict[str, str] = {}
+        self.environment_configs: dict[Environment, dict[str, _Any]] = {}
+        self.environment_variables: dict[str, str] = {}
 
     def set_environment(self, environment: Environment | str) -> None:
         if isinstance(environment, str):
@@ -1241,12 +1243,12 @@ class EnvironmentConfig:
     def get_environment(self) -> Environment:
         return self.current_environment
 
-    def load_environment_config(self, environment: Environment | str, config: _Dict[str, _Any]) -> None:
+    def load_environment_config(self, environment: Environment | str, config: dict[str, _Any]) -> None:
         if isinstance(environment, str):
             environment = Environment(environment)
         self.environment_configs[environment] = config.copy()
 
-    def get_environment_config(self, environment: Environment | None = None) -> _Dict[str, _Any]:
+    def get_environment_config(self, environment: Environment | None = None) -> dict[str, _Any]:
         env = environment or self.current_environment
         return self.environment_configs.get(env, {}).copy()
 
@@ -1282,14 +1284,14 @@ def load_config(config_file: str | None = None, environment: Environment | None 
     return manager.settings
 
 
-def validate_config(config_data: _Dict[str, _Any]) -> bool:
+def validate_config(config_data: dict[str, _Any]) -> bool:
     s = _CompatBaseSettings(config_data)
     s.validate()
     return True
 
 
-def merge_configs(*configs) -> _Dict[str, _Any]:
-    result: _Dict[str, _Any] = {}
+def merge_configs(*configs) -> dict[str, _Any]:
+    result: dict[str, _Any] = {}
     for cfg in configs:
         if isinstance(cfg, _CompatBaseSettings):
             # Only merge explicitly provided config_data to avoid overriding
@@ -1327,9 +1329,9 @@ def save_config(settings_obj: _CompatBaseSettings, config_file: str) -> bool:
     return manager.save(config_file)
 
 
-def load_from_file(config_file: str) -> _Dict[str, _Any]:
+def load_from_file(config_file: str) -> dict[str, _Any]:
     try:
-        with open(config_file, "r", encoding="utf-8") as f:
+        with open(config_file, encoding="utf-8") as f:
             return _json.load(f)
     except Exception:
         return {}
@@ -1371,7 +1373,7 @@ def backup_config(config_file: str, backup_file: str | None = None) -> str | boo
     if backup_file is None:
         backup_file = f"{config_file}.backup.{datetime.now().strftime('%Y%m%d_%H%M%S')}"
     if os.path.exists(config_file):
-        with open(config_file, "r", encoding="utf-8") as src, open(backup_file, "w", encoding="utf-8") as dst:
+        with open(config_file, encoding="utf-8") as src, open(backup_file, "w", encoding="utf-8") as dst:
             dst.write(src.read())
         return backup_file
     return False
@@ -1379,18 +1381,18 @@ def backup_config(config_file: str, backup_file: str | None = None) -> str | boo
 
 def restore_config(backup_file: str, config_file: str) -> bool:
     if os.path.exists(backup_file):
-        with open(backup_file, "r", encoding="utf-8") as src, open(config_file, "w", encoding="utf-8") as dst:
+        with open(backup_file, encoding="utf-8") as src, open(config_file, "w", encoding="utf-8") as dst:
             dst.write(src.read())
         return True
     return False
 
 
-def get_all_settings(settings_obj: _CompatBaseSettings | None = None) -> _Dict[str, _Any]:
+def get_all_settings(settings_obj: _CompatBaseSettings | None = None) -> dict[str, _Any]:
     s = settings_obj or _get_global_settings()
     return s.to_dict()
 
 
-def update_settings(updates: _Dict[str, _Any], settings_obj: _CompatBaseSettings | None = None) -> None:
+def update_settings(updates: dict[str, _Any], settings_obj: _CompatBaseSettings | None = None) -> None:
     s = settings_obj or _get_global_settings()
     s.update(updates)
 
@@ -1424,13 +1426,13 @@ class ConfigValidator:
 
 class SettingsLoader:
     def __init__(self):
-        self.sources: _List[_Callable[[], _Dict[str, _Any]]] = []
+        self.sources: list[_Callable[[], dict[str, _Any]]] = []
 
-    def add_source(self, source: _Callable[[], _Dict[str, _Any]]):
+    def add_source(self, source: _Callable[[], dict[str, _Any]]):
         self.sources.append(source)
 
-    def load_all(self) -> _Dict[str, _Any]:
-        config: _Dict[str, _Any] = {}
+    def load_all(self) -> dict[str, _Any]:
+        config: dict[str, _Any] = {}
         for source in self.sources:
             try:
                 data = source()
@@ -1440,15 +1442,15 @@ class SettingsLoader:
                 print(f"Failed to load from source: {e}")
         return config
 
-    def load_from_file(self, filepath: str) -> _Dict[str, _Any]:
+    def load_from_file(self, filepath: str) -> dict[str, _Any]:
         try:
-            with open(filepath, "r", encoding="utf-8") as f:
+            with open(filepath, encoding="utf-8") as f:
                 if filepath.endswith(".json"):
                     return _json.load(f)
                 if filepath.endswith((".yaml", ".yml")):
                     # very simple YAML: key: value per line (no nesting)
                     content = f.read()
-                    data: _Dict[str, _Any] = {}
+                    data: dict[str, _Any] = {}
                     for line in content.splitlines():
                         line = line.strip()
                         if not line or line.startswith("#") or ":" not in line:
@@ -1460,8 +1462,8 @@ class SettingsLoader:
         except Exception:
             return {}
 
-    def load_from_env(self) -> _Dict[str, _Any]:
-        config: _Dict[str, _Any] = {}
+    def load_from_env(self) -> dict[str, _Any]:
+        config: dict[str, _Any] = {}
         env_mappings = {
             "DEBUG": "debug",
             "LOG_LEVEL": "log_level",
@@ -1513,7 +1515,7 @@ class EnvironmentManager:
 
 class SecretManager:
     def __init__(self):
-        self.secrets: _Dict[str, _Any] = {}
+        self.secrets: dict[str, _Any] = {}
 
     def set_secret(self, key: str, value: _Any) -> None:
         self.secrets[key] = value
@@ -1534,8 +1536,8 @@ class SecretManager:
 
 class ConfigCache:
     def __init__(self, ttl: int = 300):
-        self.cache: _Dict[str, _Any] = {}
-        self.timestamps: _Dict[str, datetime] = {}
+        self.cache: dict[str, _Any] = {}
+        self.timestamps: dict[str, datetime] = {}
         self.ttl = ttl
 
     def get(self, key: str, default: _Any = None) -> _Any:
@@ -1565,7 +1567,7 @@ class ConfigCache:
 class ConfigWatcher:
     def __init__(self, config_file: str | _Path):
         self.config_file: _Path = _Path(config_file)
-        self.callbacks: _List[_Callable[[], None]] = []
+        self.callbacks: list[_Callable[[], None]] = []
         self._last_mtime: float | None = None
 
     def add_callback(self, callback: _Callable[[], None]) -> None:

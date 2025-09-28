@@ -4,10 +4,10 @@ Provides engine, session management, health checks, and FastAPI dependencies.
 Enhanced with comprehensive observability including tracing and metrics.
 """
 
-from collections.abc import AsyncGenerator
-from contextlib import asynccontextmanager
 import logging
 import time
+from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
 
 from fastapi import Request
 from sqlalchemy import text

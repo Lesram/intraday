@@ -3,19 +3,21 @@ Trading Strategies Framework
 Implements various algorithmic trading strategies with unified interface
 """
 
+import logging
+
+# Avoid importing heavy ML dependencies (TensorFlow) at module import time unless explicitly enabled.
+import os as _os  # local alias to avoid polluting namespace
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
-import logging
 from typing import Any
 
 import numpy as np
 import pandas as pd
 
 from ..config import get_settings
-# Avoid importing heavy ML dependencies (TensorFlow) at module import time unless explicitly enabled.
-import os as _os  # local alias to avoid polluting namespace
+
 if _os.getenv("ENABLE_ML_MODELS", "").lower() in ("1", "true", "yes"):
     try:  # pragma: no cover - import guard for optional ML environments
         from ..models.ensemble_model import EnsembleModel  # type: ignore

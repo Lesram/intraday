@@ -2,17 +2,16 @@
 API v1 Portfolio endpoints.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
 from decimal import Decimal
+from typing import Any
+
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, ConfigDict, field_serializer
-from typing import List, Any
 
-from backend.infra.security import (
-    get_authenticated_user,
-    get_current_user,  # kept for compatibility in tests/utilities
-)
 from backend.infra.repositories import get_portfolio_repo
-
+from backend.infra.security import (
+    get_authenticated_user,  # kept for compatibility in tests/utilities
+)
 
 router = APIRouter(prefix="/portfolio", tags=["portfolio"])
 
@@ -46,7 +45,7 @@ async def get_positions(
         func = get_positions_summary
         # Only call if it's been monkeypatched to a Mock/MagicMock/AsyncMock
         try:
-            from unittest.mock import Mock, MagicMock, AsyncMock
+            from unittest.mock import AsyncMock, MagicMock, Mock
             if isinstance(func, (Mock, MagicMock, AsyncMock)):
                 result = func()
                 # Ensure result is JSON-safe and not a Mock with circular references
@@ -68,7 +67,7 @@ async def get_positions(
         # This prevents RecursionError during JSON serialization of HTTPException
         return []
     # Determine user_id using normalized extraction
-    from backend.infra.security import get_user_id, get_user_attribute
+    from backend.infra.security import get_user_attribute, get_user_id
     user_id = get_user_id(user) or get_user_attribute(user, "user_id")
 
     positions = []
@@ -85,7 +84,7 @@ async def get_positions(
     safe_positions = []
     for p in positions:
         try:
-            from unittest.mock import Mock, MagicMock, AsyncMock
+            from unittest.mock import AsyncMock, MagicMock, Mock
             if isinstance(p, (Mock, MagicMock, AsyncMock)):
                 # Skip Mock objects to avoid circular references
                 continue

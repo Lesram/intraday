@@ -4,12 +4,11 @@ Comprehensive data processing pipeline for machine learning in trading applicati
 Handles data cleaning, preprocessing, feature engineering, and transformations.
 """
 
-import pandas as pd
-import numpy as np
-from typing import Dict, List, Optional, Tuple, Any, Union
 import logging
-from datetime import datetime, timedelta
-import warnings
+from typing import Any
+
+import numpy as np
+import pandas as pd
 
 logger = logging.getLogger(__name__)
 
@@ -137,7 +136,7 @@ class SimpleImputer:
 class DataProcessor:
     """Main data processor for ML pipelines."""
     
-    def __init__(self, config: Optional[Dict] = None):
+    def __init__(self, config: dict | None = None):
         """Initialize data processor with configuration."""
         self.config = config or {}
         self.scaler = None
@@ -299,7 +298,7 @@ class DataProcessor:
             normalized[col] = scaled_values[:, i]
         return normalized
         
-    def validate_data(self, data: pd.DataFrame) -> Dict[str, Any]:
+    def validate_data(self, data: pd.DataFrame) -> dict[str, Any]:
         """Validate data quality and return metrics."""
         if data is None:
             return {"valid": False, "error": "Data is None"}
@@ -353,7 +352,7 @@ class DataProcessor:
             
         return validation_result
         
-    def transform_data(self, data: pd.DataFrame, transformations: List[str]) -> pd.DataFrame:
+    def transform_data(self, data: pd.DataFrame, transformations: list[str]) -> pd.DataFrame:
         """Apply data transformations."""
         if data is None or data.empty:
             raise ValueError("Data cannot be None or empty")
@@ -389,7 +388,7 @@ class DataProcessor:
 class DataPipeline:
     """End-to-end data processing pipeline."""
     
-    def __init__(self, steps: Optional[List[str]] = None):
+    def __init__(self, steps: list[str] | None = None):
         """Initialize pipeline with processing steps."""
         self.steps = steps or ['clean', 'preprocess', 'engineer_features']
         self.processor = DataProcessor()
@@ -463,7 +462,7 @@ def create_sample_data(n_rows: int = 100, start_date: str = '2023-01-01') -> pd.
     return data
 
 
-def batch_process_data(data_batches: List[pd.DataFrame], pipeline: DataPipeline) -> List[pd.DataFrame]:
+def batch_process_data(data_batches: list[pd.DataFrame], pipeline: DataPipeline) -> list[pd.DataFrame]:
     """Process multiple data batches using the same pipeline."""
     if not data_batches:
         return []

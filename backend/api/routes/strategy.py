@@ -4,7 +4,8 @@ Handles strategy management, feature ingestion, and signal batch operations.
 """
 
 from datetime import datetime
-from typing import Any, Dict, List
+from typing import Any
+
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
@@ -17,16 +18,16 @@ router = APIRouter(prefix="/strategy", tags=["Strategy"])
 
 class FeatureBatch(BaseModel):
     """Feature batch for strategy processing."""
-    features: List[Dict[str, Any]] = Field(..., description="List of feature vectors")
+    features: list[dict[str, Any]] = Field(..., description="List of feature vectors")
     timestamp: str = Field(default_factory=lambda: datetime.now().isoformat())
-    metadata: Dict[str, Any] = Field(default_factory=dict)
+    metadata: dict[str, Any] = Field(default_factory=dict)
 
 
 class SignalBatch(BaseModel):
     """Signal batch for strategy processing."""
-    signals: List[Dict[str, Any]] = Field(..., description="List of signals")
+    signals: list[dict[str, Any]] = Field(..., description="List of signals")
     strategy_id: str = Field(..., description="Strategy identifier")
-    metadata: Dict[str, Any] = Field(default_factory=dict)
+    metadata: dict[str, Any] = Field(default_factory=dict)
 
 
 @router.get("/status")

@@ -4,36 +4,46 @@ Comprehensive ML training functionality with hyperparameter tuning, cross-valida
 """
 
 import logging
-import time
-import json
-import traceback
-from datetime import datetime, timedelta
-from typing import Dict, List, Tuple, Any, Optional, Union, Callable
-from dataclasses import dataclass, asdict
-from enum import Enum
-from concurrent.futures import ThreadPoolExecutor, as_completed
-import threading
 import os
 import pickle
+import threading
+import time
+import traceback
+from dataclasses import dataclass
+from datetime import datetime
+from enum import Enum
+from typing import Any
+
 import numpy as np
 import pandas as pd
 
 # Try to import sklearn, use mocks if not available
 try:
-    from sklearn.model_selection import (
-        train_test_split, cross_val_score, GridSearchCV, RandomizedSearchCV,
-        StratifiedKFold, KFold, TimeSeriesSplit
-    )
-    from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
-    from sklearn.linear_model import LogisticRegression, LinearRegression
-    from sklearn.svm import SVC, SVR
-    from sklearn.metrics import (
-        accuracy_score, precision_score, recall_score, f1_score,
-        mean_squared_error, mean_absolute_error, r2_score,
-        classification_report, confusion_matrix
-    )
-    from sklearn.preprocessing import StandardScaler, LabelEncoder
     from sklearn.base import BaseEstimator
+    from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
+    from sklearn.linear_model import LinearRegression, LogisticRegression
+    from sklearn.metrics import (
+        accuracy_score,
+        classification_report,
+        confusion_matrix,
+        f1_score,
+        mean_absolute_error,
+        mean_squared_error,
+        precision_score,
+        r2_score,
+        recall_score,
+    )
+    from sklearn.model_selection import (
+        GridSearchCV,
+        KFold,
+        RandomizedSearchCV,
+        StratifiedKFold,
+        TimeSeriesSplit,
+        cross_val_score,
+        train_test_split,
+    )
+    from sklearn.preprocessing import LabelEncoder, StandardScaler
+    from sklearn.svm import SVC, SVR
     SKLEARN_AVAILABLE = True
 except ImportError:
     # Mock sklearn classes and functions for testing
@@ -259,14 +269,14 @@ class TrainingRequest:
     model_type: str
     training_data: pd.DataFrame
     target_column: str
-    features: Optional[List[str]] = None
+    features: list[str] | None = None
     validation_strategy: str = "k_fold"
     test_size: float = 0.2
     random_state: int = 42
-    hyperparameters: Optional[Dict[str, Any]] = None
+    hyperparameters: dict[str, Any] | None = None
     tune_hyperparameters: bool = False
-    tuning_params: Optional[Dict[str, Any]] = None
-    metadata: Optional[Dict[str, Any]] = None
+    tuning_params: dict[str, Any] | None = None
+    metadata: dict[str, Any] | None = None
 
 
 @dataclass
@@ -274,16 +284,16 @@ class TrainingResult:
     """Training result data structure."""
     job_id: str
     status: str
-    model: Optional[BaseEstimator]
-    scores: Dict[str, float]
+    model: BaseEstimator | None
+    scores: dict[str, float]
     training_time: float
-    validation_scores: Optional[Dict[str, List[float]]] = None
-    best_parameters: Optional[Dict[str, Any]] = None
-    feature_importance: Optional[Dict[str, float]] = None
-    model_path: Optional[str] = None
-    error_message: Optional[str] = None
+    validation_scores: dict[str, list[float]] | None = None
+    best_parameters: dict[str, Any] | None = None
+    feature_importance: dict[str, float] | None = None
+    model_path: str | None = None
+    error_message: str | None = None
     created_at: datetime = None
-    completed_at: Optional[datetime] = None
+    completed_at: datetime | None = None
 
     def __post_init__(self):
         if self.created_at is None:
@@ -296,11 +306,11 @@ class TrainingJob:
     job_id: str
     request: TrainingRequest
     status: str = TrainingStatus.PENDING.value
-    result: Optional[TrainingResult] = None
+    result: TrainingResult | None = None
     created_at: datetime = None
-    started_at: Optional[datetime] = None
-    completed_at: Optional[datetime] = None
-    error_message: Optional[str] = None
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
+    error_message: str | None = None
 
     def __post_init__(self):
         if self.created_at is None:
@@ -331,7 +341,7 @@ class TrainingMonitor:
             self.metrics[job_id]['progress'] = progress
             self.logger.debug(f"Training job {job_id} progress: {progress:.2%}")
     
-    def log_training_step(self, job_id: str, step: str, details: Dict[str, Any]):
+    def log_training_step(self, job_id: str, step: str, details: dict[str, Any]):
         """Log a training step."""
         self.logger.info(f"Training job {job_id} - {step}: {details}")
     
@@ -344,7 +354,7 @@ class TrainingMonitor:
             self.metrics[job_id]['duration'] = end_time - self.metrics[job_id]['start_time']
             self.logger.info(f"Finished monitoring training job {job_id} with status {status}")
     
-    def get_metrics(self, job_id: str) -> Dict[str, Any]:
+    def get_metrics(self, job_id: str) -> dict[str, Any]:
         """Get training metrics."""
         return self.metrics.get(job_id, {})
 
@@ -384,11 +394,11 @@ class HyperparameterTuner:
         model: BaseEstimator,
         X_train: pd.DataFrame,
         y_train: pd.Series,
-        param_grid: Optional[Dict[str, Any]] = None,
+        param_grid: dict[str, Any] | None = None,
         cv: int = 5,
         search_type: str = 'grid',
         n_iter: int = 10
-    ) -> Tuple[BaseEstimator, Dict[str, Any]]:
+    ) -> tuple[BaseEstimator, dict[str, Any]]:
         """Tune hyperparameters using grid search or random search."""
         
         # Use default param grid if none provided
@@ -449,8 +459,8 @@ class CrossValidator:
         y: pd.Series,
         strategy: str = "k_fold",
         n_splits: int = 5,
-        scoring: Optional[List[str]] = None
-    ) -> Dict[str, List[float]]:
+        scoring: list[str] | None = None
+    ) -> dict[str, list[float]]:
         """Perform cross-validation."""
         
         cv_strategy = self.get_cv_strategy(strategy, n_splits)
@@ -486,7 +496,7 @@ class ModelEvaluator:
         model: BaseEstimator,
         X_test: pd.DataFrame,
         y_test: pd.Series
-    ) -> Dict[str, float]:
+    ) -> dict[str, float]:
         """Evaluate classification model."""
         try:
             y_pred = model.predict(X_test)
@@ -510,7 +520,7 @@ class ModelEvaluator:
         model: BaseEstimator,
         X_test: pd.DataFrame,
         y_test: pd.Series
-    ) -> Dict[str, float]:
+    ) -> dict[str, float]:
         """Evaluate regression model."""
         try:
             y_pred = model.predict(X_test)
@@ -529,15 +539,15 @@ class ModelEvaluator:
             self.logger.error(f"Regression evaluation failed: {str(e)}")
             return {}
     
-    def get_feature_importance(self, model: BaseEstimator, feature_names: List[str]) -> Dict[str, float]:
+    def get_feature_importance(self, model: BaseEstimator, feature_names: list[str]) -> dict[str, float]:
         """Get feature importance from model."""
         try:
             if hasattr(model, 'feature_importances_'):
                 importance = model.feature_importances_
-                return dict(zip(feature_names, importance.tolist()))
+                return dict(zip(feature_names, importance.tolist(), strict=False))
             elif hasattr(model, 'coef_'):
                 importance = np.abs(model.coef_).flatten()
-                return dict(zip(feature_names, importance.tolist()))
+                return dict(zip(feature_names, importance.tolist(), strict=False))
             else:
                 return {}
         except Exception as e:
@@ -571,7 +581,7 @@ class TrainingService:
             'SVR': SVR
         }
     
-    def create_model(self, model_type: str, hyperparameters: Optional[Dict[str, Any]] = None) -> BaseEstimator:
+    def create_model(self, model_type: str, hyperparameters: dict[str, Any] | None = None) -> BaseEstimator:
         """Create a model instance."""
         if model_type not in self.available_models:
             raise ValueError(f"Unsupported model type: {model_type}")
@@ -758,7 +768,7 @@ class TrainingService:
             
             return result
     
-    def get_job_status(self, job_id: str) -> Dict[str, Any]:
+    def get_job_status(self, job_id: str) -> dict[str, Any]:
         """Get training job status."""
         if job_id not in self.jobs:
             return {"error": f"Job {job_id} not found"}
@@ -776,7 +786,7 @@ class TrainingService:
             "error_message": job.error_message
         }
     
-    def list_jobs(self) -> List[Dict[str, Any]]:
+    def list_jobs(self) -> list[dict[str, Any]]:
         """List all training jobs."""
         return [self.get_job_status(job_id) for job_id in self.jobs.keys()]
     
@@ -794,7 +804,7 @@ class TrainingService:
         
         return False
     
-    def load_model(self, job_id: str) -> Optional[BaseEstimator]:
+    def load_model(self, job_id: str) -> BaseEstimator | None:
         """Load a trained model."""
         if job_id not in self.jobs:
             return None
@@ -809,7 +819,7 @@ class TrainingService:
         
         return None
     
-    def get_training_statistics(self) -> Dict[str, Any]:
+    def get_training_statistics(self) -> dict[str, Any]:
         """Get training service statistics."""
         total_jobs = len(self.jobs)
         status_counts = {}
@@ -826,7 +836,7 @@ class TrainingService:
 
 
 # Utility functions
-def generate_sample_data(n_samples: int = 1000, task_type: str = "classification") -> Tuple[pd.DataFrame, str]:
+def generate_sample_data(n_samples: int = 1000, task_type: str = "classification") -> tuple[pd.DataFrame, str]:
     """Generate sample training data."""
     np.random.seed(42)
     
@@ -849,7 +859,7 @@ def generate_sample_data(n_samples: int = 1000, task_type: str = "classification
         return df, 'target'
 
 
-def create_training_request_from_dict(config: Dict[str, Any]) -> TrainingRequest:
+def create_training_request_from_dict(config: dict[str, Any]) -> TrainingRequest:
     """Create training request from dictionary."""
     return TrainingRequest(**config)
 

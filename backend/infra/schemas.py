@@ -3,10 +3,10 @@ SQLAlchemy 2.0 models for the trading platform.
 All models use async patterns and include proper indexes for performance.
 """
 
+import uuid
 from datetime import datetime
 from decimal import Decimal
 from typing import Any
-import uuid
 
 import sqlalchemy as sa
 from sqlalchemy import (
@@ -16,7 +16,6 @@ from sqlalchemy import (
     Enum,
     ForeignKey,
     Index,
-    JSON,
     String,
     Text,
     UniqueConstraint,

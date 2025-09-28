@@ -6,16 +6,15 @@ Provides comprehensive deployment functionality for machine learning models in p
 import asyncio
 import logging
 import time
-import json
-import hashlib
-import os
-from dataclasses import dataclass, field
-from enum import Enum
-from typing import Dict, List, Optional, Tuple, Any, Union, Callable
-import numpy as np
-from datetime import datetime, timedelta
-from pathlib import Path
 import warnings
+from collections.abc import Callable
+from dataclasses import dataclass, field
+from datetime import datetime, timedelta
+from enum import Enum
+from typing import Any
+
+import numpy as np
+
 warnings.filterwarnings('ignore')
 
 # Mock container/orchestration imports
@@ -187,8 +186,8 @@ class DeploymentConfig:
     canary_percentage: float = 10.0
     rollback_threshold: float = 95.0
     auto_rollback: bool = True
-    environment_variables: Dict[str, str] = field(default_factory=dict)
-    labels: Dict[str, str] = field(default_factory=dict)
+    environment_variables: dict[str, str] = field(default_factory=dict)
+    labels: dict[str, str] = field(default_factory=dict)
 
 @dataclass
 class DeploymentResult:
@@ -198,11 +197,11 @@ class DeploymentResult:
     status: DeploymentStatus
     message: str
     start_time: datetime
-    end_time: Optional[datetime] = None
-    rollback_version: Optional[str] = None
+    end_time: datetime | None = None
+    rollback_version: str | None = None
     health_status: HealthStatus = HealthStatus.UNKNOWN
-    metrics: Dict[str, Any] = field(default_factory=dict)
-    logs: List[str] = field(default_factory=list)
+    metrics: dict[str, Any] = field(default_factory=dict)
+    logs: list[str] = field(default_factory=list)
 
 @dataclass
 class HealthCheckResult:
@@ -213,7 +212,7 @@ class HealthCheckResult:
     status_code: int
     message: str
     timestamp: datetime
-    metrics: Dict[str, Any] = field(default_factory=dict)
+    metrics: dict[str, Any] = field(default_factory=dict)
 
 @dataclass
 class RollbackConfig:
@@ -235,7 +234,7 @@ class ModelEndpoint:
     status: ModelVersionStatus
     health_status: HealthStatus
     created_time: datetime
-    last_health_check: Optional[datetime] = None
+    last_health_check: datetime | None = None
     request_count: int = 0
     error_count: int = 0
     avg_response_time: float = 0.0
@@ -439,11 +438,11 @@ class DeploymentOrchestrator:
             self.logger.error(f"Rollback failed: {str(e)}")
             raise
     
-    def get_deployment_status(self, deployment_id: str) -> Optional[DeploymentResult]:
+    def get_deployment_status(self, deployment_id: str) -> DeploymentResult | None:
         """Get deployment status."""
         return self.active_deployments.get(deployment_id)
     
-    def list_active_deployments(self) -> List[DeploymentResult]:
+    def list_active_deployments(self) -> list[DeploymentResult]:
         """List all active deployments."""
         return list(self.active_deployments.values())
 
@@ -501,7 +500,7 @@ class HealthChecker:
                 timestamp=datetime.now()
             )
     
-    async def continuous_health_monitoring(self, endpoints: List[str], interval: int = 30) -> None:
+    async def continuous_health_monitoring(self, endpoints: list[str], interval: int = 30) -> None:
         """Continuously monitor endpoint health."""
         self.logger.info(f"Starting continuous health monitoring for {len(endpoints)} endpoints")
         
@@ -514,7 +513,7 @@ class HealthChecker:
             
             await asyncio.sleep(interval)
     
-    def get_health_summary(self, endpoint: str, hours: int = 24) -> Dict[str, Any]:
+    def get_health_summary(self, endpoint: str, hours: int = 24) -> dict[str, Any]:
         """Get health summary for an endpoint."""
         cutoff_time = datetime.now() - timedelta(hours=hours)
         recent_checks = [
@@ -554,7 +553,7 @@ class ModelVersionManager:
         self.endpoints[endpoint.name] = endpoint
         self.logger.info(f"Registered endpoint {endpoint.name} for model version {endpoint.model_version}")
     
-    def update_traffic_split(self, traffic_config: Dict[str, float]) -> None:
+    def update_traffic_split(self, traffic_config: dict[str, float]) -> None:
         """Update traffic split between model versions."""
         total_percentage = sum(traffic_config.values())
         if abs(total_percentage - 100.0) > 0.1:
@@ -597,14 +596,14 @@ class ModelVersionManager:
             
             self.logger.info(f"Deprecated endpoint {endpoint_name}")
     
-    def get_active_endpoints(self) -> List[ModelEndpoint]:
+    def get_active_endpoints(self) -> list[ModelEndpoint]:
         """Get all active model endpoints."""
         return [
             endpoint for endpoint in self.endpoints.values()
             if endpoint.status == ModelVersionStatus.ACTIVE
         ]
     
-    def get_endpoint_metrics(self, endpoint_name: str) -> Dict[str, Any]:
+    def get_endpoint_metrics(self, endpoint_name: str) -> dict[str, Any]:
         """Get metrics for a specific endpoint."""
         if endpoint_name not in self.endpoints:
             return {'error': 'Endpoint not found'}
@@ -675,7 +674,7 @@ class DeploymentMonitor:
         for alert in alerts:
             self.logger.warning(f"ALERT for {metrics.deployment_id}: {alert}")
     
-    def get_metrics_summary(self, deployment_id: str, hours: int = 24) -> Dict[str, Any]:
+    def get_metrics_summary(self, deployment_id: str, hours: int = 24) -> dict[str, Any]:
         """Get metrics summary for a deployment."""
         cutoff_time = datetime.now() - timedelta(hours=hours)
         recent_metrics = [
@@ -879,7 +878,7 @@ class MLOpsDeploymentService:
         )
         return await self.orchestrator.rollback_deployment(deployment_id, rollback_config)
     
-    def get_deployment_dashboard(self) -> Dict[str, Any]:
+    def get_deployment_dashboard(self) -> dict[str, Any]:
         """Get comprehensive deployment dashboard data."""
         active_deployments = self.orchestrator.list_active_deployments()
         active_endpoints = self.version_manager.get_active_endpoints()

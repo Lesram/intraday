@@ -20,9 +20,9 @@ import numpy as np
 
 from ..config import get_settings
 from ..infra.metrics import get_metrics_registry
+from ..strategies.types import Side
 from ..utils.logger import get_structured_logger
 from .types import OrderSpec, PortfolioState, RiskDecision, RiskLimits
-from ..strategies.types import Side
 
 # Numerical stability constants
 EPS = 1e-12
@@ -110,8 +110,8 @@ class RiskMathUtils:
                 return 0.1
             weights = [w / weight_sum for w in weights]
             
-            mean_return = sum(r * w for r, w in zip(returns, weights))
-            variance = sum(((r - mean_return) ** 2) * w for r, w in zip(returns, weights))
+            mean_return = sum(r * w for r, w in zip(returns, weights, strict=False))
+            variance = sum(((r - mean_return) ** 2) * w for r, w in zip(returns, weights, strict=False))
 
         # Annualize (assuming daily returns)
         return max(np.sqrt(variance * 252), EPS)
@@ -541,7 +541,7 @@ class AsyncRiskManager:
         - check_cash_balance(required_cash: float, portfolio_state) -> dict (legacy)
         - check_cash_balance(order_spec: OrderSpec, portfolio_state) -> RiskDecision (new)
         """
-        from .types import RiskDecision, OrderSpec
+        from .types import OrderSpec, RiskDecision
         
         # Check if first parameter is OrderSpec (new interface)
         if isinstance(order_spec_or_required_cash, OrderSpec):

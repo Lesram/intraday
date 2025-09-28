@@ -5,10 +5,10 @@ Enhanced with comprehensive observability including tracing and metrics.
 """
 
 import asyncio
+import time
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
-import time
 from typing import Any
 
 import pandas as pd
