@@ -64,8 +64,13 @@ def init_db(database_url: str | None = None) -> async_sessionmaker[AsyncSession]
 
     # Use provided URL or fallback to settings
     if database_url is None:
-        # Use data.database_url from the nested config
-        database_url = settings.data.database_url
+        # Try different settings structures for compatibility
+        if hasattr(settings, 'database') and hasattr(settings.database, 'url'):
+            database_url = settings.database.url
+        elif hasattr(settings, 'data') and hasattr(settings.data, 'database_url'):
+            database_url = settings.data.database_url
+        else:
+            database_url = "sqlite:///./trading_platform.db"
 
     # Convert sqlite URL to async postgres if needed for production
     if database_url.startswith("sqlite"):

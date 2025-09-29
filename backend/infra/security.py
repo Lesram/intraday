@@ -4,6 +4,7 @@ Provides FastAPI dependencies for authentication and authorization.
 """
 
 import base64
+import os
 import secrets
 from datetime import UTC, datetime, timedelta
 
@@ -14,7 +15,12 @@ from passlib.context import CryptContext
 from pydantic import BaseModel
 
 from backend.config import get_settings
-from backend.infra.security_hardening import jwt_verifier
+
+# JWT Configuration Constants
+JWT_ALGORITHM = "HS256"
+JWT_ISSUER = "algotrading-platform"
+JWT_AUDIENCE = "algotrading-api"  
+JWT_CLOCK_SKEW = 60  # seconds
 
 
 def _b64url(data: bytes) -> bytes:
@@ -184,14 +190,12 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
         return False
 
 
-def create_access_token(
-    subject: str, roles: list[str], expires_minutes: int | None = None
-) -> str:
+def create_access_token(sub: str, roles: list[str], expires_minutes: int | None = None) -> str:
     """
-    Create a JWT access token with user claims.
+    Create a JWT access token with normalized claims.
 
     Args:
-        subject: Username or user identifier
+        sub: Subject (username or user identifier) - required
         roles: List of user roles for RBAC
         expires_minutes: Token expiration in minutes (default from config)
 
@@ -199,49 +203,135 @@ def create_access_token(
         Encoded JWT token string
 
     Raises:
-        ValueError: If token creation fails
+        ValueError: If token creation fails or required secret is missing
     """
     settings = get_settings()
 
+    # Get JWT secret and validate
+    secret = getattr(settings.security, 'jwt_secret_key', None) or os.environ.get('SECURITY_JWT_SECRET')
+    if not secret:
+        raise ValueError("JWT secret key is required but not configured (SECURITY_JWT_SECRET)")
+
     if expires_minutes is None:
-        expires_minutes = settings.security.jwt_expire_minutes
+        expires_minutes = getattr(settings.security, 'jwt_expire_minutes', 60)
 
     # Type validation for expires_minutes
     if not isinstance(expires_minutes, (int, float)):
         raise ValueError("expires_minutes must be a number")
 
     # Validate subject
-    if not subject:
+    if not sub:
         raise ValueError("subject cannot be empty")
+
+    # Import jose here to avoid startup dependency issues
+    from jose import jwt
 
     now = datetime.now(UTC)
     expire = now + timedelta(minutes=expires_minutes)
 
-    claims = UserClaims(
-        sub=subject,
-        roles=roles,
-        iss=settings.security.jwt_issuer,
-        aud=settings.security.jwt_audience,
-        exp=int(expire.timestamp()),
-        iat=int(now.timestamp()),
-        jti=secrets.token_urlsafe(16),  # Unique token ID
-    )
+    # Normalized JWT claims
+    claims = {
+        "sub": sub,
+        "roles": roles,
+        "iss": JWT_ISSUER,
+        "aud": JWT_AUDIENCE,
+        "exp": int(expire.timestamp()),
+        "iat": int(now.timestamp()),
+        "jti": secrets.token_urlsafe(16),  # Unique token ID
+    }
 
     try:
-        # Use jwt_verifier.encode method to enable mocking in tests
-        encoded_jwt = jwt_verifier.encode(
-            claims.model_dump(),
-            settings.security.jwt_secret_key,
-            algorithm=settings.security.jwt_algorithm,
-        )
+        encoded_jwt = jwt.encode(claims, secret, algorithm=JWT_ALGORITHM)
         return encoded_jwt
     except Exception as e:
         raise ValueError(f"Failed to create access token: {str(e)}")
 
 
+def decode_token(token: str) -> dict:
+    """
+    Decode and verify a JWT token with normalized options.
+
+    Args:
+        token: JWT token string to verify
+
+    Returns:
+        Decoded claims dictionary
+
+    Raises:
+        HTTPException: If token is invalid, expired, or malformed
+    """
+    settings = get_settings()
+
+    # Get JWT secret
+    secret = getattr(settings.security, 'jwt_secret_key', None) or os.environ.get('SECURITY_JWT_SECRET')
+    if not secret:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="JWT secret not configured")
+
+    try:
+        # Special-case support for simple test token strings in development
+        env = getattr(settings.app, "environment", "").lower()
+        if token == "valid_token" and (getattr(settings.app, "debug", False) or env in {"test", "development"}):
+            return {
+                "sub": "test_user",
+                "roles": ["trader"],
+                "iss": JWT_ISSUER,
+                "aud": JWT_AUDIENCE,
+                "exp": int(datetime.now(UTC).timestamp()) + 3600,
+                "iat": int(datetime.now(UTC).timestamp()),
+                "jti": "test-token",
+            }
+
+        # Import jose here to avoid startup dependency issues
+        from jose import jwt
+        from jose.exceptions import ExpiredSignatureError, JWTClaimsError, JWTError
+
+        # Decode with normalized options
+        payload = jwt.decode(
+            token,
+            secret,
+            algorithms=[JWT_ALGORITHM],
+            options={
+                "verify_signature": True,
+                "verify_exp": True,
+                "verify_iss": True,
+                "verify_aud": True,
+                "require_exp": True,
+                "require_iss": True,
+                "require_aud": True,
+            },
+            issuer=JWT_ISSUER,
+            audience=JWT_AUDIENCE,
+            leeway=JWT_CLOCK_SKEW,
+        )
+
+        # Validate required claims
+        if not payload.get("sub"):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="invalid_token"
+            )
+
+        return payload
+
+    except ExpiredSignatureError:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="invalid_token")
+    except JWTClaimsError as e:
+        # Handle claims errors (audience, issuer, etc.)
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="invalid_token")
+    except JWTError:
+        # Handle other JWT errors
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="invalid_token")
+    except Exception:
+        # Catch-all for any other errors
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="invalid_token"
+        )
+
+
 def verify_token(token: str) -> UserClaims:
     """
-    Verify and decode a JWT token with strict validation.
+    Verify and decode a JWT token into UserClaims (backward compatibility).
 
     Args:
         token: JWT token string to verify
@@ -252,63 +342,8 @@ def verify_token(token: str) -> UserClaims:
     Raises:
         HTTPException: If token is invalid, expired, or malformed
     """
-    settings = get_settings()
-
-    try:
-        # Special-case support for simple test token strings in development
-        env = getattr(settings.app, "environment", "").lower()
-        if token == "valid_token" and (getattr(settings.app, "debug", False) or env in {"test", "development"}):
-            claims = {
-                "sub": "test_user",
-                "roles": ["trader"],
-                "iss": settings.security.jwt_issuer,
-                "aud": settings.security.jwt_audience,
-                "exp": int(datetime.now(UTC).timestamp()) + 3600,
-                "iat": int(datetime.now(UTC).timestamp()),
-                "jti": "test-token",
-            }
-            return UserClaims(**claims)
-        
-        # Use jwt_verifier for decoding to enable mocking in tests
-        payload = jwt_verifier.decode(token)
-
-        # Validate required claims
-        if not payload.get("sub"):
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid token: missing subject",
-            )
-
-        return UserClaims(**payload)
-
-    except jwt_verifier.JWTError as e:
-        # Handle JWT verification errors
-        error_str = str(e).lower()
-        if "expired" in error_str:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token expired")
-        elif "signature" in error_str:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid signature")
-        elif "audience" in error_str or "aud" in error_str:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Wrong audience")
-        elif "issuer" in error_str or "iss" in error_str:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Wrong issuer")
-        else:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
-    except HTTPException:
-        # Re-raise HTTPExceptions as-is
-        raise
-    except ValueError as e:
-        # Handle Pydantic validation errors
-        if "validation error" in str(e).lower():
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token format")
-        else:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
-    except Exception:
-        # Catch-all for any other errors
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Could not validate credentials",
-        )
+    payload = decode_token(token)
+    return UserClaims(**payload)
 
 
 def verify_api_key(api_key: str) -> bool:
@@ -338,6 +373,7 @@ async def get_current_user(
 ) -> AuthenticatedUser | None:
     """
     FastAPI dependency to extract current user from JWT token or API key.
+    Supports both JWT Bearer tokens and X-API-Key for staging environments.
 
     Args:
         request: FastAPI request object
@@ -351,24 +387,7 @@ async def get_current_user(
     """
     settings = get_settings()
 
-    # In dev mode, allow bypass (tolerate configs without dev_mode)
-    if getattr(settings.app, "dev_mode", False):
-        # Check for dev bypass header
-        if request.headers.get("X-Dev-Bypass") == "true":
-            return AuthenticatedUser(
-                username="dev-user", roles=["admin", "trader"], token_id="dev-bypass"
-            )
-
-    # Try API key authentication first (X-API-Key header)
-    api_key = request.headers.get("X-API-Key")
-    if api_key and verify_api_key(api_key):
-        return AuthenticatedUser(
-            username="api-client",
-            roles=["trader", "api"],  # API keys get trader permissions
-            token_id="api-key",
-        )
-
-    # Try JWT authentication
+    # First, check Authorization: Bearer <JWT>
     if credentials and credentials.credentials:
         try:
             claims = verify_token(credentials.credentials)
@@ -379,8 +398,31 @@ async def get_current_user(
             # Re-raise specific JWT errors (expired, invalid signature, etc.)
             if any(term in str(e.detail).lower() for term in ["expired", "signature", "invalid token"]):
                 raise
-            # Invalid JWT token - continue to return None for other errors
+            # Invalid JWT token - continue to try other auth methods
             pass
+
+    # If no JWT, check X-API-Key for staging environments  
+    api_key = request.headers.get("X-API-Key")
+    if api_key:
+        # Check staging API key (only in dev/staging environments)
+        app_env = getattr(settings.app, "environment", "").lower()
+        staging_key = os.environ.get("STAGING_API_KEY")
+        
+        if staging_key and app_env in {"dev", "development", "staging"}:
+            if secrets.compare_digest(api_key, staging_key):
+                return AuthenticatedUser(
+                    username="staging-admin",
+                    roles=["admin"],
+                    token_id="staging-api-key",
+                )
+        
+        # Fallback to regular API key verification
+        if verify_api_key(api_key):
+            return AuthenticatedUser(
+                username="api-client",
+                roles=["trader", "api"],  # API keys get trader permissions
+                token_id="api-key",
+            )
 
     return None
 

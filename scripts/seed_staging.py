@@ -33,6 +33,16 @@ async def create_admin_user(session):
     try:
         from backend.infra.schemas import Base
         from backend.infra.schemas import Order, Signal, Position, AuditLog
+        from backend.infra.security import hash_password
+        
+        # Hash the password using bcrypt
+        password = "admin123"
+        password_hash = hash_password(password)
+        
+        logger.info(f"Creating admin user with credentials:")
+        logger.info(f"  Username: admin")
+        logger.info(f"  Password: {password}")
+        logger.info(f"  Hash: {password_hash}")
         
         # Note: We don't have a User model in our current schemas,
         # but we can create an audit log entry for the admin creation
@@ -44,10 +54,11 @@ async def create_admin_user(session):
             entity="admin",
             entity_id="admin@staging.local",
             payload={
+                "username": "admin",
                 "email": "admin@staging.local", 
                 "role": "admin",
                 "created_for": "staging_environment",
-                "password_hash": "bcrypt:admin123",  # In real system, this would be properly hashed
+                "password_hash": password_hash,  # Properly hashed password
                 "permissions": ["read", "write", "admin", "trading"]
             }
         )

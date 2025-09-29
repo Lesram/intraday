@@ -134,10 +134,13 @@ def create_app(settings=None, *, registry=None, ws_queue_max: int|None=None, **k
     
     # Initialize database if database URL is present
     database_url = None
+    # Try different settings structures for compatibility
     if hasattr(settings, 'database') and hasattr(settings.database, 'url'):
         database_url = settings.database.url
+    elif hasattr(settings, 'data') and hasattr(settings.data, 'database_url'):
+        database_url = settings.data.database_url
     else:
-        database_url = os.getenv('DATABASE_URL')
+        database_url = os.getenv('DATABASE_URL', 'sqlite:///./trading_platform.db')
     
     if database_url:
         try:
@@ -199,6 +202,7 @@ def create_app(settings=None, *, registry=None, ws_queue_max: int|None=None, **k
     async def lifespan(app):
         baseline = set(asyncio.all_tasks())
         outbox_worker = None
+        logger = get_structured_logger(__name__)
         
         try:
             # ============================================================================
@@ -207,15 +211,11 @@ def create_app(settings=None, *, registry=None, ws_queue_max: int|None=None, **k
             # Start outbox worker if database is configured
             if hasattr(app.state, 'sessionmaker') and app.state.sessionmaker:
                 try:
-                    from backend.infra.outbox import OutboxRepo
                     from backend.infra.outbox_worker import start_outbox_worker
                     
-                    # Create outbox repository with session from sessionmaker
-                    async with app.state.sessionmaker() as session:
-                        outbox_repo = OutboxRepo(session)
-                    
                     # Start outbox worker for background order processing
-                    outbox_worker = await start_outbox_worker(outbox_repo)
+                    # Pass the sessionmaker, not an OutboxRepo instance
+                    outbox_worker = await start_outbox_worker(app.state.sessionmaker)
                     app.state.outbox_worker = outbox_worker
                     
                     logger.info("Outbox worker started successfully")
@@ -506,22 +506,58 @@ def create_app(settings=None, *, registry=None, ws_queue_max: int|None=None, **k
     # Add CORS middleware with proper origin validation from settings
     from fastapi.middleware.cors import CORSMiddleware
     
-    # Get CORS origins from settings, with fallback to safe defaults
+    # Get CORS origins from settings, with fallback to comprehensive UI defaults
     cors_origins = []
     if hasattr(settings, 'api') and hasattr(settings.api, 'cors_origins'):
         cors_origins = settings.api.cors_origins
     elif hasattr(settings, 'app') and hasattr(settings.app, 'cors_origins'):
         cors_origins = settings.app.cors_origins
     else:
-        # Fallback for development
-        cors_origins = ["http://localhost:3000", "http://127.0.0.1:3000"]
+        # Comprehensive fallback for UI development and staging
+        cors_origins = [
+            # Local development
+            "http://localhost:3000",
+            "http://127.0.0.1:3000",
+            "https://localhost:3000",
+            "https://127.0.0.1:3000",
+            # Vite dev server common ports
+            "http://localhost:5173",
+            "http://127.0.0.1:5173",
+            "https://localhost:5173", 
+            "https://127.0.0.1:5173",
+            # Next.js dev server
+            "http://localhost:3001",
+            "http://127.0.0.1:3001",
+            # Add staging UI origin (update as needed)
+            # "https://staging-ui.trading-platform.com"
+        ]
     
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=cors_origins,  # Only allow specified origins
-        allow_credentials=False,     # Disable credentials for security
-        allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-        allow_headers=["Authorization", "Content-Type", "Accept"],
+        allow_origins=cors_origins,
+        allow_credentials=True,      # Enable credentials for JWT auth
+        allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+        allow_headers=[
+            "Authorization", 
+            "Content-Type", 
+            "Accept",
+            "Accept-Language",
+            "Accept-Encoding", 
+            "Origin",
+            "DNT",
+            "User-Agent",
+            "X-Requested-With",
+            "If-Modified-Since",
+            "Cache-Control",
+            "Range"
+        ],
+        expose_headers=[
+            "Content-Length",
+            "Content-Range", 
+            "X-Total-Count",
+            "X-Rate-Limit-Remaining",
+            "X-Rate-Limit-Reset"
+        ]
     )
     
     # Add Prometheus metrics middleware
@@ -772,6 +808,7 @@ def register_routes(app: FastAPI):
     # Import and register all API routers
     from backend.api.auth import router as auth_router
     from backend.api.errors import router as errors_router
+    from backend.api.routes.auth import router as new_auth_router  # New normalized auth router
 
     # Use the main portfolio router instead of routes.portfolio which doesn't exist
     from backend.api.portfolio import router as portfolio_router
@@ -786,7 +823,8 @@ def register_routes(app: FastAPI):
     app.include_router(system_router)
     
     # Register feature-specific routers
-    app.include_router(auth_router)
+    app.include_router(new_auth_router, prefix="/api/v1")  # New normalized auth endpoints
+    app.include_router(auth_router)  # Legacy auth router
     app.include_router(portfolio_router)  # Router already has /portfolio prefix
     app.include_router(api_v1_portfolio_router)  # Deterministic include for /api/v1/positions
     app.include_router(orders_router)
