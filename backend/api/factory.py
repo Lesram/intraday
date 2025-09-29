@@ -809,6 +809,7 @@ def register_routes(app: FastAPI):
     from backend.api.auth import router as auth_router
     from backend.api.errors import router as errors_router
     from backend.api.routes.auth import router as new_auth_router  # New normalized auth router
+    from backend.api.routes.positions import router as positions_router  # New positions endpoint
 
     # Use the main portfolio router instead of routes.portfolio which doesn't exist
     from backend.api.portfolio import router as portfolio_router
@@ -824,6 +825,7 @@ def register_routes(app: FastAPI):
     
     # Register feature-specific routers
     app.include_router(new_auth_router, prefix="/api/v1")  # New normalized auth endpoints
+    app.include_router(positions_router, prefix="/api/v1")  # New positions endpoint
     app.include_router(auth_router)  # Legacy auth router
     app.include_router(portfolio_router)  # Router already has /portfolio prefix
     app.include_router(api_v1_portfolio_router)  # Deterministic include for /api/v1/positions
