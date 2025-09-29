@@ -11,6 +11,8 @@ from datetime import UTC, datetime, timedelta
 import bcrypt
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from jose import jwt
+from jose.exceptions import ExpiredSignatureError, JWTClaimsError, JWTError
 from passlib.context import CryptContext
 from pydantic import BaseModel
 
@@ -54,9 +56,7 @@ def verify_jwt(token: str, *, secret: str, issuer: str, audience: str, alg: str 
     if not token or "." not in token:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
     
-    # Import JWT library and exceptions
-    from jose import JWTError, jwt
-    from jose.exceptions import ExpiredSignatureError, JWTClaimsError
+    # JWT verification using imported libraries
     
     try:
         # Strict verification with all options
@@ -282,8 +282,7 @@ def decode_token(token: str) -> dict:
             }
 
         # Import jose here to avoid startup dependency issues
-        from jose import jwt
-        from jose.exceptions import ExpiredSignatureError, JWTClaimsError, JWTError
+        # JWT operations using imported libraries
 
         # Decode with normalized options
         payload = jwt.decode(
