@@ -132,7 +132,7 @@ def create_app(settings=None, *, registry=None, ws_queue_max: int|None=None, **k
     # Mark this as a platform app for error handling
     app.state.is_platform_app = True
     
-    # Initialize database if database URL is present
+    # Store database URL for startup initialization
     database_url = None
     # Try different settings structures for compatibility
     if hasattr(settings, 'database') and hasattr(settings.database, 'url'):
@@ -142,25 +142,7 @@ def create_app(settings=None, *, registry=None, ws_queue_max: int|None=None, **k
     else:
         database_url = os.getenv('DATABASE_URL', 'sqlite:///./trading_platform.db')
     
-    if database_url:
-        try:
-            from backend.infra.db import get_sessionmaker, init_db
-            # Initialize database tables
-            init_db()
-            # Create sessionmaker for dependency injection
-            sessionmaker = get_sessionmaker()
-            app.state.sessionmaker = sessionmaker
-            app.state.db_sessionmaker = get_db_sessionmaker()  # For backward compatibility
-        except Exception as e:
-            logger = get_structured_logger(__name__)
-            logger.warning(f"Failed to initialize database: {e}")
-            # Fallback to compatibility wrapper
-            app.state.db_sessionmaker = get_db_sessionmaker()
-            app.state.sessionmaker = None
-    else:
-        # No database URL provided - use compatibility wrappers
-        app.state.db_sessionmaker = get_db_sessionmaker()
-        app.state.sessionmaker = None
+    app.state.database_url = database_url
     
     # Add convenience method for test compatibility
     def register_task(task: asyncio.Task) -> asyncio.Task:
@@ -206,6 +188,32 @@ def create_app(settings=None, *, registry=None, ws_queue_max: int|None=None, **k
         
         try:
             # ============================================================================
+            # DATABASE STARTUP
+            # ============================================================================
+            # Initialize database if database URL is configured
+            if hasattr(app.state, 'database_url') and app.state.database_url:
+                try:
+                    from backend.infra.db import init_db, get_sessionmaker
+                    
+                    # Initialize database engine and sessionmaker
+                    engine, sessionmaker = init_db(app.state.database_url)
+                    app.state.sessionmaker = sessionmaker
+                    app.state.db_sessionmaker = sessionmaker  # For backward compatibility
+                    
+                    logger.info("Database initialized successfully")
+                    
+                except Exception as e:
+                    logger.warning("Failed to initialize database, continuing without database",
+                                 error=str(e),
+                                 error_type=type(e).__name__)
+                    app.state.sessionmaker = None
+                    app.state.db_sessionmaker = None
+            else:
+                logger.info("No database configured")
+                app.state.sessionmaker = None
+                app.state.db_sessionmaker = None
+
+            # ============================================================================
             # OUTBOX WORKER STARTUP
             # ============================================================================
             # Start outbox worker if database is configured
@@ -245,6 +253,19 @@ def create_app(settings=None, *, registry=None, ws_queue_max: int|None=None, **k
                     logger.error("Error stopping outbox worker",
                                error=str(e),
                                error_type=type(e).__name__)
+
+            # ============================================================================
+            # DATABASE SHUTDOWN
+            # ============================================================================
+            # Dispose database engine
+            try:
+                from backend.infra.db import dispose_engine
+                await dispose_engine()
+                logger.info("Database engine disposed successfully")
+            except Exception as e:
+                logger.error("Error disposing database engine",
+                           error=str(e),
+                           error_type=type(e).__name__)
             
             # Cleanup application tasks
             reg = list(app.state.task_registry.tasks())

@@ -134,9 +134,9 @@ class OutboxWorker:
         Returns:
             List of pending events, oldest first
         """
-        try:
-            # Create session and outbox repo for this operation
-            async with self.sessionmaker() as session:
+        # Create fresh session per iteration with explicit exception handling
+        async with self.sessionmaker() as session:
+            try:
                 from backend.infra.outbox import OutboxRepo
                 outbox_repo = OutboxRepo(session)
                 events = await outbox_repo.claim_batch(limit=10)
@@ -158,8 +158,14 @@ class OutboxWorker:
                 # Commit the claimed events
                 await session.commit()
                 return event_dicts
-            
-        except Exception as e:
+            except Exception as e:
+                await session.rollback()
+                logger.error("Failed to get pending events",
+                            error=str(e),
+                            error_type=type(e).__name__)
+                return []
+            finally:
+                await session.close()
             logger.error("Failed to get pending events",
                         error=str(e),
                         error_type=type(e).__name__)
@@ -373,17 +379,23 @@ class OutboxWorker:
             event_id: Event ID
             result: Processing result
         """
-        try:
-            import uuid
-            event_uuid = uuid.UUID(event_id)
-            
-            async with self.sessionmaker() as session:
+        import uuid
+        event_uuid = uuid.UUID(event_id)
+        
+        async with self.sessionmaker() as session:
+            try:
                 from backend.infra.outbox import OutboxRepo
                 outbox_repo = OutboxRepo(session)
                 await outbox_repo.mark_sent(event_id=event_uuid)
                 await session.commit()
-            
-        except Exception as e:
+            except Exception as e:
+                await session.rollback()
+                logger.error("Failed to mark event as succeeded",
+                            event_id=event_id,
+                            error=str(e))
+                raise
+            finally:
+                await session.close()
             logger.error("Failed to mark event as succeeded",
                         event_id=event_id,
                         error=str(e))
@@ -420,12 +432,12 @@ class OutboxWorker:
             
             next_retry_at = datetime.utcnow() + timedelta(seconds=total_delay)
             
-            try:
-                import uuid
-                event_uuid = uuid.UUID(event_id)
-                error_message = error_result.get("error", "Unknown error")
-                
-                async with self.sessionmaker() as session:
+            import uuid
+            event_uuid = uuid.UUID(event_id)
+            error_message = error_result.get("error", "Unknown error")
+            
+            async with self.sessionmaker() as session:
+                try:
                     from backend.infra.outbox import OutboxRepo
                     outbox_repo = OutboxRepo(session)
                     await outbox_repo.mark_retry(
@@ -435,14 +447,20 @@ class OutboxWorker:
                         error_message=error_message
                     )
                     await session.commit()
-                
-                logger.info("Event scheduled for retry",
-                           event_id=event_id,
-                           retry_count=next_retry,
-                           backoff_delay=backoff_delay,
-                           next_retry_at=next_retry_at.isoformat())
-                
-            except Exception as e:
+                    
+                    logger.info("Event scheduled for retry",
+                               event_id=event_id,
+                               retry_count=next_retry,
+                               backoff_delay=backoff_delay,
+                               next_retry_at=next_retry_at.isoformat())
+                except Exception as e:
+                    await session.rollback()
+                    logger.error("Failed to schedule retry",
+                                event_id=event_id,
+                                error=str(e))
+                    raise
+                finally:
+                    await session.close()
                 logger.error("Failed to schedule retry",
                             event_id=event_id,
                             error=str(e))
@@ -464,27 +482,36 @@ class OutboxWorker:
             attempts = event.get("retry_count", 0)
             
             async with self.sessionmaker() as session:
-                from backend.infra.outbox import OutboxRepo
-                outbox_repo = OutboxRepo(session)
-                await outbox_repo.mark_failed(
-                    event_id=event_uuid,
-                    attempts=attempts,
-                    error_message=error_message
-                )
-                
-                # Optionally, create a DLQ entry for manual inspection
-                dlq_payload = {
-                    "original_event": event,
-                    "final_error": error_result,
-                    "failed_at": datetime.utcnow().isoformat(),
-                    "retry_count": attempts
-                }
-                
-                await outbox_repo.enqueue(
-                    topic="dlq.failed_event",
-                    payload=dlq_payload
-                )
-                await session.commit()
+                try:
+                    from backend.infra.outbox import OutboxRepo
+                    outbox_repo = OutboxRepo(session)
+                    await outbox_repo.mark_failed(
+                        event_id=event_uuid,
+                        attempts=attempts,
+                        error_message=error_message
+                    )
+                    
+                    # Optionally, create a DLQ entry for manual inspection
+                    dlq_payload = {
+                        "original_event": event,
+                        "final_error": error_result,
+                        "failed_at": datetime.utcnow().isoformat(),
+                        "retry_count": attempts
+                    }
+                    
+                    await outbox_repo.enqueue(
+                        topic="dlq.failed_event",
+                        payload=dlq_payload
+                    )
+                    await session.commit()
+                except Exception as e:
+                    await session.rollback()
+                    logger.error("Failed to move event to DLQ",
+                                event_id=event_id,
+                                error=str(e))
+                    raise
+                finally:
+                    await session.close()
             
         except Exception as e:
             logger.error("Failed to move event to DLQ",

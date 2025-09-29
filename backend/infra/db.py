@@ -17,6 +17,7 @@ from sqlalchemy.ext.asyncio import (
     async_sessionmaker,
     create_async_engine,
 )
+from sqlalchemy.pool import NullPool
 
 from backend.infra.logging import get_logger as get_structured_logger
 
@@ -28,8 +29,46 @@ from ..config import get_settings
 logger = logging.getLogger(__name__)
 
 # Global variables for engine and sessionmaker
-_engine: AsyncEngine | None = None
 _sessionmaker: async_sessionmaker[AsyncSession] | None = None
+_engine = None
+
+
+def build_engine(dsn: str):
+    global _engine
+    kw = dict(pool_pre_ping=True)
+    if dsn.startswith("sqlite+"):
+        kw["poolclass"] = NullPool
+    else:
+        kw.update(pool_size=5, max_overflow=5, pool_recycle=1800)
+    _engine = create_async_engine(dsn, echo=False, **kw)
+    return _engine
+
+
+def build_sessionmaker(engine):
+    return async_sessionmaker(engine, expire_on_commit=False)
+
+
+def init_db(dsn: str):
+    global _sessionmaker
+    engine = build_engine(dsn)
+    _sessionmaker = build_sessionmaker(engine)
+    return engine, _sessionmaker
+
+
+async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
+    assert _sessionmaker is not None, "DB not initialized"
+    session = _sessionmaker()
+    try:
+        yield session
+    except Exception:
+        await session.rollback()
+        raise
+    finally:
+        await session.close()
+
+
+async def dispose_engine():
+    await _engine.dispose()
 
 
 def get_engine() -> AsyncEngine:
@@ -47,71 +86,6 @@ def get_sessionmaker() -> async_sessionmaker[AsyncSession]:
         )
     return _sessionmaker
 
-
-def init_db(database_url: str | None = None) -> async_sessionmaker[AsyncSession]:
-    """
-    Initialize database engine and sessionmaker from settings or provided URL.
-
-    Args:
-        database_url: Optional database URL override. If not provided, uses settings.
-
-    Returns:
-        async_sessionmaker with expire_on_commit=False
-    """
-    global _engine, _sessionmaker
-
-    settings = get_settings()
-
-    # Use provided URL or fallback to settings
-    if database_url is None:
-        # Try different settings structures for compatibility
-        if hasattr(settings, 'database') and hasattr(settings.database, 'url'):
-            database_url = settings.database.url
-        elif hasattr(settings, 'data') and hasattr(settings.data, 'database_url'):
-            database_url = settings.data.database_url
-        else:
-            database_url = "sqlite:///./trading_platform.db"
-
-    # Convert sqlite URL to async postgres if needed for production
-    if database_url.startswith("sqlite"):
-        logger.warning(
-            "SQLite detected. For production, use PostgreSQL with asyncpg driver."
-        )
-        # For SQLite, use aiosqlite
-        if not database_url.startswith("sqlite+aiosqlite"):
-            database_url = database_url.replace("sqlite:", "sqlite+aiosqlite:")
-
-    # Create async engine with connection pool settings
-    _engine = create_async_engine(
-        database_url,
-        pool_size=settings.database.pool_size,
-        max_overflow=settings.database.max_overflow,
-        pool_timeout=settings.database.pool_timeout,
-        echo=settings.database.echo,
-        # Important for async operations
-        future=True,
-    )
-
-    # Create sessionmaker with expire_on_commit=False
-    _sessionmaker = async_sessionmaker(
-        _engine,
-        class_=AsyncSession,
-        expire_on_commit=False,
-    )
-
-    logger.info(
-        "Database initialized",
-        extra={
-            "database_url": (
-                database_url.split("@")[-1] if "@" in database_url else database_url
-            ),  # Hide credentials
-            "pool_size": settings.database.pool_size,
-            "max_overflow": settings.database.max_overflow,
-            "echo": settings.database.echo,
-        },
-    )
-
-    return _sessionmaker
 
 
 @asynccontextmanager
@@ -250,7 +224,3 @@ async def get_session_context() -> AsyncGenerator[AsyncSession, None]:
             raise
         finally:
             await session.close()
-
-
-# Alias for tests that expect get_db_session
-get_db_session = get_session_context

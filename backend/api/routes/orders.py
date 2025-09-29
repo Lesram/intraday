@@ -77,61 +77,10 @@ class AuditResponse(BaseModel):
 
 
 # Service Dependencies
-async def get_db_session(request: Request) -> AsyncGenerator[AsyncSession, None]:
-    """Get database session from app state."""
-    sessionmaker = request.app.state.sessionmaker
-    if not sessionmaker:
-        raise HTTPException(
-            status_code=500, 
-            detail="Database not configured"
-        )
-    
-    async with sessionmaker() as session:
-        yield session
+# Use canonical db session dependency from infra.db
+from backend.infra.db import get_db_session
 
-
-async def get_order_service(request: Request) -> AsyncGenerator[OrderService, None]:
-    """
-    Get OrderService with dependency-injected repositories.
-    Creates a new service instance per request with proper session and repository setup.
-    """
-    try:
-        # Get sessionmaker from app state
-        sessionmaker = getattr(request.app.state, 'sessionmaker', None)
-        
-        if not sessionmaker:
-            # Check if we're in testing mode
-            from backend.config import get_settings
-            settings = get_settings()
-            if getattr(settings, 'TESTING', False):
-                # In testing mode, return mock service for compatibility
-                yield OrderService()  
-                return
-            else:
-                raise HTTPException(
-                    status_code=500, 
-                    detail="Database session not configured"
-                )
-        
-        # Create async session for this request
-        async with sessionmaker() as session:
-            # Create repositories
-            orders_repo = OrdersRepo(session)
-            outbox_repo = OutboxRepo(session)
-            
-            # Create OrderService with real dependencies
-            service = OrderService(
-                db_session=session,
-                orders_repo=orders_repo,
-                outbox_repo=outbox_repo
-            )
-            
-            yield service
-            
-    except Exception as e:
-        logger.error(f"Failed to create OrderService: {e}")
-        # Fallback for production reliability - return service with default configuration
-        yield OrderService()
+# OrderService dependency removed - create services inside handlers with session dependency
 
 
 async def get_risk_manager(request: Request):
@@ -315,7 +264,7 @@ async def submit_order(
     request: Request,
     body: dict[str, Any] | None = Body(None),
     current_user=Depends(require_trader),
-    order_service=Depends(get_order_service),
+    db: AsyncSession = Depends(get_db_session),
     risk_manager=Depends(get_risk_manager),
 ):
     """
@@ -425,6 +374,15 @@ async def submit_order(
             }
         }
 
+        # Create OrderService with session and repositories
+        orders_repo = OrdersRepo(db)
+        outbox_repo = OutboxRepo(db)
+        order_service = OrderService(
+            db_session=db,
+            orders_repo=orders_repo,
+            outbox_repo=outbox_repo
+        )
+        
         # Submit order through real OrderService
         result = await order_service.submit_order_async(order_data)
         
@@ -474,12 +432,13 @@ async def submit_order(
     tags=["Trading", "Protected", "Outbox"],
 )
 async def submit_order_submit(
+    request: Request,
     body: dict[str, Any] | None = Body(None),
     current_user=Depends(require_trader),
-    order_service=Depends(get_order_service),
+    db: AsyncSession = Depends(get_db_session),
     risk_manager=Depends(get_risk_manager),
 ):
-    return await submit_order(body, current_user, order_service, risk_manager)
+    return await submit_order(request, body, current_user, db, risk_manager)
 
 
 @router.get(
@@ -490,10 +449,19 @@ async def submit_order_submit(
 async def get_order_status(
     order_id: str,
     current_user=Depends(require_trader),
-    order_service=Depends(get_order_service),
+    db: AsyncSession = Depends(get_db_session),
 ):
     """Get current order status and details."""
     try:
+        # Create OrderService with session and repositories
+        orders_repo = OrdersRepo(db)
+        outbox_repo = OutboxRepo(db)
+        order_service = OrderService(
+            db_session=db,
+            orders_repo=orders_repo,
+            outbox_repo=outbox_repo
+        )
+        
         order_status = await order_service.get_order_status(order_id)
 
         if not order_status:
@@ -519,10 +487,19 @@ async def cancel_order(
     order_id: str,
     idempotency_key: str = None,
     current_user=Depends(require_trader),
-    order_service=Depends(get_order_service),
+    db: AsyncSession = Depends(get_db_session),
 ):
     """Cancel an existing order."""
     try:
+        # Create OrderService with session and repositories
+        orders_repo = OrdersRepo(db)
+        outbox_repo = OutboxRepo(db)
+        order_service = OrderService(
+            db_session=db,
+            orders_repo=orders_repo,
+            outbox_repo=outbox_repo
+        )
+        
         result = await order_service.cancel_order(order_id)
         
         if not result:
