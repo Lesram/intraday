@@ -452,6 +452,30 @@ def create_app(settings=None, *, registry=None, ws_queue_max: int|None=None, **k
         **ws_manager_kwargs
     )
     
+    # ============================================================================
+    # CORS MIDDLEWARE CONFIGURATION
+    # ============================================================================
+    # Add CORS middleware with proper origin validation from settings
+    from fastapi.middleware.cors import CORSMiddleware
+    
+    # Get CORS origins from settings, with fallback to safe defaults
+    cors_origins = []
+    if hasattr(settings, 'api') and hasattr(settings.api, 'cors_origins'):
+        cors_origins = settings.api.cors_origins
+    elif hasattr(settings, 'app') and hasattr(settings.app, 'cors_origins'):
+        cors_origins = settings.app.cors_origins
+    else:
+        # Fallback for development
+        cors_origins = ["http://localhost:3000", "http://127.0.0.1:3000"]
+    
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=cors_origins,  # Only allow specified origins
+        allow_credentials=False,     # Disable credentials for security
+        allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        allow_headers=["Authorization", "Content-Type", "Accept"],
+    )
+    
     # Add Prometheus metrics middleware
     import time
     

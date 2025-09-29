@@ -663,6 +663,10 @@ def load_environment_settings() -> dict[str, Any]:
             pass
     if os.getenv("SECRET_KEY"):
         env.setdefault("security", {})["secret_key"] = os.getenv("SECRET_KEY")
+    if os.getenv("APP_CORS_ORIGINS"):
+        cors_origins_str = os.getenv("APP_CORS_ORIGINS", "")
+        cors_origins = [origin.strip() for origin in cors_origins_str.split(",") if origin.strip()]
+        env.setdefault("api", {})["cors_origins"] = cors_origins
     return env
 
 

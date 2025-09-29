@@ -57,6 +57,18 @@ class AppConfig(BaseSettings):
             raise ValueError(f"Environment must be one of {allowed_envs}")
         return v
 
+    @field_validator("cors_origins", mode="before")
+    @classmethod
+    def parse_cors_origins(cls, v):
+        """Parse CORS origins from environment variable or list"""
+        if isinstance(v, str):
+            # Handle comma-separated string from environment variable
+            return [origin.strip() for origin in v.split(",") if origin.strip()]
+        elif isinstance(v, list):
+            return v
+        else:
+            return ["http://localhost:3000", "http://127.0.0.1:3000"]
+
     @field_validator("port")
     @classmethod
     def validate_port(cls, v):

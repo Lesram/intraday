@@ -883,6 +883,51 @@ system_memory_usage 45.8
 from .factory import create_app
 app = create_app()
 
+# ============================================================================
+# OPENAPI SECURITY SCHEME CONFIGURATION
+# ============================================================================
+from fastapi.openapi.utils import get_openapi
+
+app.openapi_schema = None
+
+def custom_openapi():
+    """
+    Custom OpenAPI schema with Bearer authentication security scheme.
+    
+    Configures JWT Bearer token authentication as the global security requirement
+    for all protected endpoints. Public routes can override this by setting
+    openapi_extra={"security": []} in their route decorators.
+    """
+    if app.openapi_schema:
+        return app.openapi_schema
+        
+    # Generate base OpenAPI schema
+    schema = get_openapi(
+        title="Algotrading Platform API",
+        version="1.0.0", 
+        description="Algorithmic Trading Platform with real-time signals, risk management, and order execution",
+        routes=app.routes
+    )
+    
+    # Add Bearer authentication security scheme
+    schema.setdefault("components", {}).setdefault("securitySchemes", {})["BearerAuth"] = {
+        "type": "http",
+        "scheme": "bearer", 
+        "bearerFormat": "JWT",
+        "description": "JWT Bearer token for API authentication. Use format: Bearer <your_jwt_token>"
+    }
+    
+    # Set BearerAuth as global security requirement
+    # Individual routes can override this with openapi_extra={"security": []}
+    schema["security"] = [{"BearerAuth": []}]
+    
+    # Cache the schema
+    app.openapi_schema = schema
+    return schema
+
+# Apply the custom OpenAPI function
+app.openapi = custom_openapi
+
 def health_check(request) -> dict[str, str]:
     """Health check endpoint stub."""
     return {"status": "healthy", "timestamp": "2025-08-27T22:00:00Z"}
