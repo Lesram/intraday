@@ -259,7 +259,7 @@ def create_app(settings=None, *, registry=None, ws_queue_max: int|None=None, **k
                 except: pass
     app.router.lifespan_context = lifespan
 
-    # Basic health endpoints
+    # Basic health endpoints - optimized for performance
     @app.get("/")
     async def root():
         """Root API information endpoint."""
@@ -278,91 +278,35 @@ def create_app(settings=None, *, registry=None, ws_queue_max: int|None=None, **k
             }
         }
 
+    # Import optimized health endpoints
+    from backend.api.routes.health import create_health_endpoints
+    health_check_fn, liveness_check_fn, readiness_check_fn = create_health_endpoints()
+
     @app.get("/health")
     async def health_check():
-        from datetime import UTC
-        return {
-            "status": "healthy", 
-            "service": "trading-platform",
-            "timestamp": datetime.now(UTC).isoformat(),
-            "components": {
-                "database": "healthy",
-                "api": "healthy",
-                "redis": "healthy"
-            }
-        }
+        """Trivial health check - <5ms response time, no I/O operations."""
+        return await health_check_fn()
     
     @app.get("/readyz")
-    async def readiness_check():
+    async def readiness_check(request: Request = None):
         """
-        Readiness check endpoint with proper status codes and structured response.
-        Returns 200 when healthy, 503 when unhealthy with detailed checks map.
+        Readiness check with micro-caching and strict timeouts.
+        - Cache TTL: 2 seconds
+        - DB timeout: 100ms
+        - Broker timeout: 200ms
+        - Returns 503 if not ready
         """
-        import json
-
-        from fastapi import Response
-
-        from backend.infra.broker import broker_health_check
-        from backend.infra.db import db_health_check
-        
-        timestamp = datetime.now(UTC).isoformat() + "Z"
-        checks = {}
-        problems = {}
-        all_healthy = True
-        
-        # Check database
-        try:
-            db_healthy = await db_health_check()
-            checks["database"] = db_healthy
-            if not db_healthy:
-                all_healthy = False
-                problems["database"] = "Database connection failed"
-        except Exception as e:
-            checks["database"] = False
-            all_healthy = False
-            problems["database"] = f"Database error: {str(e)}"
-        
-        # Check broker (skip Alpaca connectivity if using mock data)
-        try:
-            # Check if we should validate Alpaca connectivity
-            should_check_alpaca = not app.state.settings.USE_MOCK_DATA
-            broker_healthy = await broker_health_check(check_alpaca=should_check_alpaca)
-            checks["broker"] = broker_healthy
-            if should_check_alpaca:
-                checks["alpaca_connectivity"] = broker_healthy
-            if not broker_healthy:
-                all_healthy = False
-                problems["broker"] = "Message broker unavailable"
-        except Exception as e:
-            checks["broker"] = False
-            all_healthy = False
-            problems["broker"] = f"Broker error: {str(e)}"
-        
-        # Prepare response
-        result = {
-            "status": "ready" if all_healthy else "not ready",
-            "checks": checks,
-            "problems": problems,
-            "timestamp": timestamp
-        }
-        
-        if not all_healthy:
-            return Response(
-                content=json.dumps(result),
-                status_code=503,
-                media_type="application/json"
-            )
-            
-        return result
+        return await readiness_check_fn(request)
     
     @app.get("/livez")
     async def liveness_check():
-        return {"status": "alive", "service": "trading-platform"}
+        """Liveness check - same as health for Kubernetes."""
+        return await liveness_check_fn()
 
     @app.get("/healthz")
     async def healthz_check():
-        """Kubernetes-style health check alias."""
-        return {"status": "alive", "service": "trading-platform"}
+        """Kubernetes-style health check alias - trivial check."""
+        return await liveness_check_fn()
 
     @app.get("/metrics")
     async def metrics():

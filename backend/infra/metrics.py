@@ -91,6 +91,9 @@ LABEL_ALLOWLIST: Final[dict[str, tuple[str, ...]]] = {
     # Database metrics
     "db_health_checks_total": ("result",),
     "db_query_duration_seconds": ("operation",),
+    # Readiness check metrics
+    "readyz_db_ms": (),
+    "readyz_broker_ms": (),
     # WebSocket metrics
     "websocket_connections_total": ("client_type",),
     "websocket_messages_total": ("message_type", "direction"),
@@ -637,6 +640,32 @@ class MetricsRegistry:
                 "duplicate_count": len(duplicates),
                 "observability_contracts_enabled": False,
             }
+
+    def record_readyz_db_time(self, time_ms: float) -> None:
+        """
+        Record database response time for readiness checks.
+        
+        Args:
+            time_ms: Database response time in milliseconds
+        """
+        try:
+            gauge = self.create_gauge("readyz_db_ms", "Database response time for readiness checks (ms)")
+            gauge.set(time_ms)
+        except Exception as e:
+            logger.warning(f"Failed to record readyz_db_ms metric: {e}")
+
+    def record_readyz_broker_time(self, time_ms: float) -> None:
+        """
+        Record broker response time for readiness checks.
+        
+        Args:
+            time_ms: Broker response time in milliseconds
+        """
+        try:
+            gauge = self.create_gauge("readyz_broker_ms", "Broker response time for readiness checks (ms)")
+            gauge.set(time_ms)
+        except Exception as e:
+            logger.warning(f"Failed to record readyz_broker_ms metric: {e}")
 
 
 def normalize_route(path: str) -> str:
