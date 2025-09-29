@@ -383,15 +383,15 @@ def create_app(settings=None, *, registry=None, ws_queue_max: int|None=None, **k
     # Mount protected router into main api_router
     api_router.include_router(protected)
     
-    # Add direct positions endpoint for test compatibility (protected)
-    from fastapi import Request
-    
-    @protected.get("/positions")
-    async def get_positions_direct(request: Request, user=Depends(get_authenticated_user)):
-        """Direct positions endpoint for test compatibility."""
-        # Use the same logic as the portfolio positions endpoint
+    # Add /positions endpoint as requested (redirects to portfolio positions)
+    @api_router.get("/positions")
+    async def get_positions_alias(
+        request: Request,
+        current_user=Depends(get_authenticated_user)
+    ):
+        """Positions endpoint alias - redirects to portfolio positions logic."""
         from backend.api.portfolio import get_positions as portfolio_get_positions
-        return await portfolio_get_positions(request, user)
+        return await portfolio_get_positions(request, current_user)
     
     # Add trades/history endpoint directly to protected router
     @protected.get("/trades/history")

@@ -50,6 +50,7 @@ class TestRouteRegistry:
         # Portfolio (protected)
         "/api/v1/portfolio/positions",
         "/api/v1/portfolio/performance",
+        "/api/v1/positions",  # New positions endpoint
         
         # Trades (protected)
         "/api/v1/trades/",
