@@ -269,8 +269,9 @@ def decode_token(token: str) -> dict:
 
     try:
         # Special-case support for simple test token strings in development
-        env = getattr(settings.app, "environment", "").lower()
-        if token == "valid_token" and (getattr(settings.app, "debug", False) or env in {"test", "development"}):
+        env = getattr(settings.app, "environment", "")
+        env_str = env.value.lower() if hasattr(env, 'value') else str(env).lower()
+        if token == "valid_token" and (getattr(settings.app, "debug", False) or env_str in {"test", "development"}):
             return {
                 "sub": "test_user",
                 "roles": ["trader"],
@@ -300,7 +301,6 @@ def decode_token(token: str) -> dict:
             },
             issuer=JWT_ISSUER,
             audience=JWT_AUDIENCE,
-            leeway=JWT_CLOCK_SKEW,
         )
 
         # Validate required claims
