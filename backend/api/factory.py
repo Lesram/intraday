@@ -13,6 +13,8 @@ from fastapi import FastAPI, Request
 from backend.api.portfolio import router as api_v1_portfolio_router
 from backend.utils.logger import get_structured_logger
 
+logger = get_structured_logger(__name__)
+
 
 class TaskRegistry:
     """Registry for tracking background tasks for guaranteed shutdown cleanup."""
@@ -196,9 +198,55 @@ def create_app(settings=None, *, registry=None, ws_queue_max: int|None=None, **k
     @asynccontextmanager
     async def lifespan(app):
         baseline = set(asyncio.all_tasks())
+        outbox_worker = None
+        
         try:
+            # ============================================================================
+            # OUTBOX WORKER STARTUP
+            # ============================================================================
+            # Start outbox worker if database is configured
+            if hasattr(app.state, 'sessionmaker') and app.state.sessionmaker:
+                try:
+                    from backend.infra.outbox import OutboxRepo
+                    from backend.infra.outbox_worker import start_outbox_worker
+                    
+                    # Create outbox repository with session from sessionmaker
+                    async with app.state.sessionmaker() as session:
+                        outbox_repo = OutboxRepo(session)
+                    
+                    # Start outbox worker for background order processing
+                    outbox_worker = await start_outbox_worker(outbox_repo)
+                    app.state.outbox_worker = outbox_worker
+                    
+                    logger.info("Outbox worker started successfully")
+                    
+                except Exception as e:
+                    logger.warning("Failed to start outbox worker, continuing without background processing",
+                                 error=str(e),
+                                 error_type=type(e).__name__)
+                    app.state.outbox_worker = None
+            else:
+                logger.info("No database configured, skipping outbox worker startup")
+                app.state.outbox_worker = None
+            
             yield
+            
         finally:
+            # ============================================================================
+            # OUTBOX WORKER SHUTDOWN
+            # ============================================================================
+            # Stop outbox worker gracefully
+            if outbox_worker:
+                try:
+                    logger.info("Stopping outbox worker...")
+                    await outbox_worker.stop()
+                    logger.info("Outbox worker stopped successfully")
+                except Exception as e:
+                    logger.error("Error stopping outbox worker",
+                               error=str(e),
+                               error_type=type(e).__name__)
+            
+            # Cleanup application tasks
             reg = list(app.state.task_registry.tasks())
             new = [t for t in asyncio.all_tasks() if t not in baseline]
             to_cancel = [t for t in set(reg+new) if not t.done() and not t.cancelled()]
