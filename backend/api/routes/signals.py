@@ -109,26 +109,33 @@ async def fetch_closes(symbol: str, client, lookback: int = 200) -> list[float]:
         List of close prices (oldest to newest)
     """
     try:
-        # Get historical data
-        price_data = await client.get_historical_data(
-            symbol, timeframe="1Day", limit=lookback
-        )
-        
-        if hasattr(price_data, 'empty') and price_data.empty:
-            logger.warning(f"No price data available for {symbol}")
-            return []
-        
-        # Extract close prices as list
-        if hasattr(price_data, 'close'):
-            close_prices = price_data['close'].tolist()
-        elif isinstance(price_data, dict) and 'close' in price_data:
-            close_prices = price_data['close']
+        # Check if this is the real Alpaca data client
+        if hasattr(client, 'get_historical_closes'):
+            # Use Alpaca data client method directly
+            close_prices = await client.get_historical_closes(symbol, lookback=lookback, timeframe="1Day")
+            logger.info(f"Fetched {len(close_prices)} close prices for {symbol} from Alpaca")
+            return close_prices
         else:
-            logger.warning(f"Unexpected price data format for {symbol}")
-            return []
+            # Use legacy mock client interface
+            price_data = await client.get_historical_data(
+                symbol, timeframe="1Day", limit=lookback
+            )
             
-        logger.info(f"Fetched {len(close_prices)} close prices for {symbol}")
-        return close_prices
+            if hasattr(price_data, 'empty') and price_data.empty:
+                logger.warning(f"No price data available for {symbol}")
+                return []
+            
+            # Extract close prices as list
+            if hasattr(price_data, 'close'):
+                close_prices = price_data['close'].tolist()
+            elif isinstance(price_data, dict) and 'close' in price_data:
+                close_prices = price_data['close']
+            else:
+                logger.warning(f"Unexpected price data format for {symbol}")
+                return []
+                
+            logger.info(f"Fetched {len(close_prices)} close prices for {symbol} from mock")
+            return close_prices
         
     except Exception as e:
         logger.error(f"Error fetching close prices for {symbol}: {e}")
@@ -145,12 +152,12 @@ def get_market_data_client():
     if use_mock:
         return get_mock_alpaca_client()
     else:
-        # In production, use real Alpaca client
+        # Use real Alpaca data client
         try:
-            from backend.data.alpaca_client import AlpacaClient
-            return AlpacaClient()
-        except ImportError:
-            logger.warning("AlpacaClient not available, falling back to mock")
+            from backend.integrations.alpaca_data import get_alpaca_data_client
+            return get_alpaca_data_client()
+        except ImportError as e:
+            logger.warning(f"AlpacaDataClient not available, falling back to mock: {e}")
             return get_mock_alpaca_client()
 
 
