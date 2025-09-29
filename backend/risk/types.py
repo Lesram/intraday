@@ -55,6 +55,18 @@ class RiskLevel(Enum):
     EXTREME = "extreme"
 
 
+class RiskReasonCode(Enum):
+    """Risk reason codes for structured error reporting."""
+    
+    SYMBOL_CONCENTRATION_EXCEEDED = "SYMBOL_CONCENTRATION_EXCEEDED"
+    PORTFOLIO_LIMIT_EXCEEDED = "PORTFOLIO_LIMIT_EXCEEDED"
+    CIRCUIT_BREAKER_TRIPPED = "CIRCUIT_BREAKER_TRIPPED"
+    POSITION_SIZE_EXCEEDED = "POSITION_SIZE_EXCEEDED"
+    DAILY_LOSS_EXCEEDED = "DAILY_LOSS_EXCEEDED"
+    DRAWDOWN_EXCEEDED = "DRAWDOWN_EXCEEDED"
+    LEVERAGE_EXCEEDED = "LEVERAGE_EXCEEDED"
+
+
 @dataclass
 class RiskLimits:
     """Risk limits configuration with legacy compatibility."""
@@ -62,6 +74,8 @@ class RiskLimits:
     max_position_value: float = 0.0
     max_symbol_exposure: float = 1.0
     circuit_breaker_pct: float = 0.5
+    # Admin override capability
+    allow_admin_override: bool = False
     # legacy/optional
     max_portfolio_exposure: float | None = None
     
@@ -86,6 +100,7 @@ class RiskLimits:
             self.max_symbol_exposure = 1.0
             
         self.circuit_breaker_pct = float(kwargs.get("circuit_breaker_pct", 0.5))
+        self.allow_admin_override = bool(kwargs.get("allow_admin_override", False))
         self.max_portfolio_exposure = kwargs.get("max_portfolio_exposure", None)
         
         # Legacy field compatibility

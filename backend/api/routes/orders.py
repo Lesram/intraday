@@ -15,6 +15,7 @@ from backend.api.errors import risk_error
 from backend.infra.outbox import OutboxRepo
 from backend.infra.repositories.orders import OrdersRepo
 from backend.infra.security import get_current_user
+from backend.risk.types import OrderSpec, Side
 from backend.services.order_service import OrderService
 from backend.utils.logger import StandardEventLogger, get_logger
 
@@ -33,6 +34,7 @@ class OrderSubmissionRequest(BaseModel):
     order_type: str = Field(default="market", description="Order type")
     time_in_force: str = Field(default="day", description="Time in force")
     client_order_id: str | None = Field(default=None, description="Client-provided order ID for idempotency")
+    risk_override: bool = Field(default=False, description="Admin risk override flag")
 
 
 class OrderSubmissionResponse(BaseModel):
@@ -44,6 +46,7 @@ class OrderSubmissionResponse(BaseModel):
     side: str
     qty: float
     submitted_at: str
+    risk_override: bool | None = Field(default=None, description="Whether admin risk override was used")
 
 
 class OrderStatusResponse(BaseModel):
@@ -335,6 +338,7 @@ async def submit_order(
         qty = data.get("qty", 0)
         order_type = data.get("order_type", "market")
         tif = data.get("time_in_force", "day")
+        risk_override = data.get("risk_override", False)
         
         # Handle idempotency - check header first, then body
         idempotency_key = (
@@ -363,46 +367,45 @@ async def submit_order(
         if errors:
             raise HTTPException(status_code=422, detail=errors)
 
-        # Risk management check with current market price estimation
+        # Risk management check using new assess_order method
         user_id = get_user_attribute(current_user, "user_id", "anonymous")
         
-        # Estimate current price for risk calculations (in production, get from market data)
-        estimated_price = 150.0  # Default estimation, would be fetched from market data service
-        
-        risk_check = await risk_manager.check_trade_risk(
-            symbol=symbol, 
-            side=side, 
-            qty=qty, 
-            user_id=user_id,
-            price=estimated_price
+        # Create OrderSpec for risk assessment
+        from decimal import Decimal
+        order_side = Side.BUY if side == "buy" else Side.SELL
+        order_spec = OrderSpec(
+            symbol=symbol,
+            side=order_side,
+            qty=Decimal(str(qty)),
+            type=order_type
         )
         
-        if not risk_check.get("approved", False):
-            issues = risk_check.get("issues", ["Unknown risk issue"])
-            warnings = risk_check.get("warnings", [])
-            risk_details = risk_check.get("details", {})
+        # Check risk with new structured assessment
+        risk_result = await risk_manager.assess_order(
+            order=order_spec,
+            current_user=current_user,
+            risk_override=risk_override,
+            request_id=request.headers.get("X-Request-ID")
+        )
+        
+        if not risk_result.get("allowed", False):
+            reason_code = risk_result.get("reason_code", "UNKNOWN")
+            message = risk_result.get("message", "Order blocked by risk management")
+            details = risk_result.get("details", {})
             
-            # Log structured RISK_BLOCKED event using standardized logger
-            event_logger.risk_blocked(
-                symbol=symbol,
-                side=side,
-                qty=qty,
-                user_id=user_id,
-                risk_score=risk_check.get("risk_score", 1.0),
-                issues=issues,
-                warnings=warnings,
-                details=risk_details,
-                endpoint="submit_order"
-            )
+            # Return structured 422 error as specified
+            error_response = {
+                "error": {
+                    "code": "RISK_LIMIT",
+                    "message": message,
+                    "details": {
+                        "reason_code": reason_code,
+                        **details
+                    }
+                }
+            }
             
-            # Use standardized risk error
-            raise risk_error(
-                message="Order blocked by risk management",
-                issues=issues,
-                warnings=warnings,
-                risk_score=risk_check.get("risk_score", 1.0),
-                context=risk_details
-            )
+            raise HTTPException(status_code=422, detail=error_response)
 
         # Prepare order data for OrderService
         order_data = {
@@ -415,10 +418,10 @@ async def submit_order(
             "attributes": {
                 "user_id": user_id,
                 "source": "api",
-                "risk_score": risk_check.get("risk_score", 0.0),
-                "risk_warnings": risk_check.get("warnings", []),
-                "estimated_price": estimated_price,
-                "risk_check_details": risk_check.get("details", {})
+                "risk_score": 0.0,  # Low risk since it passed assessment
+                "risk_warnings": [],
+                "risk_override_used": risk_result.get("risk_override", False),
+                "risk_check_details": risk_result.get("details", {})
             }
         }
 
@@ -438,15 +441,21 @@ async def submit_order(
         )
 
         # Convert to response format
-        return OrderSubmissionResponse(
-            order_id=result["order_id"],
-            client_order_id=idempotency_key,
-            status=result["status"],
-            symbol=result["symbol"],
-            side=result["side"],
-            qty=result["qty"],
-            submitted_at=result.get("submitted_at", datetime.now().isoformat())
-        )
+        response_data = {
+            "order_id": result["order_id"],
+            "client_order_id": idempotency_key,
+            "status": result["status"],
+            "symbol": result["symbol"],
+            "side": result["side"],
+            "qty": result["qty"],
+            "submitted_at": result.get("submitted_at", datetime.now().isoformat())
+        }
+        
+        # Add risk override flag if it was used
+        if risk_result.get("risk_override", False):
+            response_data["risk_override"] = True
+        
+        return OrderSubmissionResponse(**response_data)
 
     except HTTPException:
         raise

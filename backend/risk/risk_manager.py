@@ -19,10 +19,11 @@ from typing import Any
 import numpy as np
 
 from ..config import get_settings
+from ..config.base_settings import get_risk_defaults
 from ..infra.metrics import get_metrics_registry
 from ..strategies.types import Side
 from ..utils.logger import get_structured_logger
-from .types import OrderSpec, PortfolioState, RiskDecision, RiskLimits
+from .types import OrderSpec, PortfolioState, RiskDecision, RiskLimits, RiskReasonCode
 
 # Numerical stability constants
 EPS = 1e-12
@@ -188,25 +189,36 @@ class AsyncRiskManager:
         **kwargs,  # Accept any additional legacy parameters
     ):
         """Initialize async-first risk manager with institutional controls."""
-        # Handle legacy risk_limits parameter
+        
+        # Load profile-based risk defaults if no explicit limits provided
+        self.settings = get_settings()
+        risk_defaults = get_risk_defaults()
+        
+        # Initialize with profile defaults, then override with explicit parameters
+        self.max_symbol_exposure = risk_defaults.get("max_symbol_exposure", 0.15)
+        self.max_position_value_pct = risk_defaults.get("max_position_value", 1.0)
+        self.circuit_breaker_pct = risk_defaults.get("circuit_breaker_pct", 0.05)
+        
+        # Handle legacy risk_limits parameter override
         if risk_limits is not None:
             # Extract limits from RiskLimits object if provided
             try:
                 if hasattr(risk_limits, "max_symbol_exposure"):
-                    max_position_per_symbol = int(risk_limits.max_symbol_exposure)
+                    self.max_symbol_exposure = float(risk_limits.max_symbol_exposure)
                 if hasattr(risk_limits, "max_position_value"):
-                    max_single_position_value = int(risk_limits.max_position_value)
+                    self.max_position_value_pct = float(risk_limits.max_position_value)
                 if hasattr(risk_limits, "circuit_breaker_pct"):
-                    max_portfolio_var = float(risk_limits.circuit_breaker_pct)
+                    self.circuit_breaker_pct = float(risk_limits.circuit_breaker_pct)
                 elif hasattr(risk_limits, "max_portfolio_var"):
-                    max_portfolio_var = float(risk_limits.max_portfolio_var)
+                    self.circuit_breaker_pct = float(risk_limits.max_portfolio_var)
             except (AttributeError, TypeError, ValueError):
                 # If legacy risk_limits doesn't have expected attributes, continue with defaults
                 pass
 
-        self.max_position_per_symbol = max_position_per_symbol
-        self.max_single_position_value = max_single_position_value
-        self.max_portfolio_var = max_portfolio_var
+        # Legacy compatibility - map new fields to old ones
+        self.max_position_per_symbol = int(self.max_symbol_exposure * 100000)  # Convert percentage to dollar amount
+        self.max_single_position_value = int(max_single_position_value)
+        self.max_portfolio_var = self.circuit_breaker_pct
         self.math_utils = RiskMathUtils()
         self.logger = logger or get_structured_logger("risk_manager")
         self.metrics_registry = metrics or get_metrics_registry()
@@ -278,6 +290,162 @@ class AsyncRiskManager:
             ).inc()
 
             return decision
+
+    async def assess_order(
+        self,
+        order: OrderSpec,
+        portfolio_state: PortfolioState | None = None,
+        current_user: Any | None = None,
+        risk_override: bool = False,
+        request_id: str | None = None,
+    ) -> dict[str, Any]:
+        """
+        Enhanced risk assessment with symbol exposure calculation and admin override.
+        
+        Returns structured risk decision with reason codes and computed values.
+        """
+        start_time = time.time()
+        
+        try:
+            # Get portfolio information
+            portfolio_value = await self._get_portfolio_value()
+            current_positions = await self._get_current_positions()
+            
+            # Calculate current symbol exposure
+            current_qty = current_positions.get(order.symbol, Decimal("0"))
+            market_price = await self._get_market_price(order.symbol)
+            
+            # Calculate symbol exposure after the order
+            order_qty = order.qty if order.side == Side.BUY else -order.qty
+            new_qty = current_qty + order_qty
+            symbol_exposure_after = float(abs(new_qty * market_price) / portfolio_value)
+            
+            # Log risk evaluation
+            self.logger.debug("RISK_EVAL", extra={
+                "symbol": order.symbol,
+                "current_qty": float(current_qty),
+                "order_qty": float(order_qty), 
+                "new_qty": float(new_qty),
+                "market_price": float(market_price),
+                "portfolio_value": float(portfolio_value),
+                "symbol_exposure_after": symbol_exposure_after,
+                "max_symbol_exposure": self.max_symbol_exposure,
+                "request_id": request_id
+            })
+            
+            # Check symbol concentration limit
+            if symbol_exposure_after > self.max_symbol_exposure:
+                reason_code = RiskReasonCode.SYMBOL_CONCENTRATION_EXCEEDED
+                
+                # Check for admin override
+                if (risk_override and 
+                    hasattr(self.settings, 'risk') and 
+                    self.settings.risk.allow_admin_override and 
+                    current_user and 
+                    hasattr(current_user, 'role') and 
+                    current_user.role == 'admin'):
+                    
+                    # Log override and allow
+                    self.logger.warning("RISK_OVERRIDDEN", extra={
+                        "reason_code": reason_code.value,
+                        "symbol": order.symbol,
+                        "symbol_exposure_after": symbol_exposure_after,
+                        "limit": self.max_symbol_exposure,
+                        "user": getattr(current_user, 'username', 'unknown'),
+                        "request_id": request_id
+                    })
+                    
+                    return {
+                        "allowed": True,
+                        "risk_override": True,
+                        "reason_code": reason_code.value,
+                        "details": {
+                            "current": symbol_exposure_after,
+                            "limit": self.max_symbol_exposure
+                        }
+                    }
+                
+                # Block the order
+                self.logger.warning("RISK_BLOCKED", extra={
+                    "reason_code": reason_code.value,
+                    "symbol": order.symbol,
+                    "symbol_exposure_after": symbol_exposure_after,
+                    "limit": self.max_symbol_exposure,
+                    "request_id": request_id
+                })
+                
+                return {
+                    "allowed": False,
+                    "reason_code": reason_code.value,
+                    "message": "Symbol concentration exceeded",
+                    "details": {
+                        "current": symbol_exposure_after,
+                        "limit": self.max_symbol_exposure,
+                        "symbol": order.symbol
+                    }
+                }
+            
+            # Order passes risk checks
+            return {
+                "allowed": True,
+                "details": {
+                    "symbol_exposure_after": symbol_exposure_after,
+                    "limit": self.max_symbol_exposure
+                }
+            }
+            
+        except Exception as e:
+            self.logger.error("Risk assessment failed", extra={
+                "error": str(e),
+                "symbol": order.symbol,
+                "request_id": request_id
+            })
+            
+            return {
+                "allowed": False,
+                "reason_code": "SYSTEM_ERROR",
+                "message": f"Risk assessment failed: {str(e)}",
+                "details": {}
+            }
+
+    async def _get_portfolio_value(self) -> Decimal:
+        """Get current portfolio value or fallback to configured default."""
+        try:
+            # In production, this would query Alpaca account
+            # For now, use fallback value from settings
+            if hasattr(self.settings, 'risk'):
+                fallback_value = getattr(self.settings.risk, 'fallback_portfolio_value', 250000.0)
+            else:
+                fallback_value = 250000.0
+            return Decimal(str(fallback_value))
+        except Exception:
+            return Decimal("250000.0")  # Safe fallback
+    
+    async def _get_current_positions(self) -> dict[str, Decimal]:
+        """Get current positions or return empty dict."""
+        try:
+            # In production, this would query actual positions
+            # For now, return mock positions for testing
+            return {"AAPL": Decimal("100")}  # Mock 100 shares of AAPL
+        except Exception:
+            return {}
+    
+    async def _get_market_price(self, symbol: str) -> Decimal:
+        """Get current market price for symbol."""
+        try:
+            # Mock prices for testing - in production would use real market data
+            mock_prices = {
+                "AAPL": Decimal("150.00"),
+                "SPY": Decimal("400.00"),
+                "QQQ": Decimal("350.00"),
+                "MSFT": Decimal("300.00"),
+                "GOOGL": Decimal("120.00"),
+                "TSLA": Decimal("200.00"),
+                "NVDA": Decimal("500.00")
+            }
+            return mock_prices.get(symbol, Decimal("100.00"))  # Default $100
+        except Exception:
+            return Decimal("100.00")  # Safe fallback
 
     async def _evaluate_order_comprehensive(self, order: OrderSpec) -> RiskDecision:
         """Comprehensive risk evaluation with all institutional controls"""

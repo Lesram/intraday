@@ -6,6 +6,7 @@ Compatible with Pydantic V2.
 
 import os
 from functools import lru_cache
+from typing import Literal
 
 from pydantic import ConfigDict, Field, field_validator, model_validator
 from pydantic_settings import BaseSettings
@@ -544,6 +545,84 @@ class OutboxConfig(BaseSettings):
         return self
 
 
+class RiskConfig(BaseSettings):
+    """Risk management configuration with profile-based limits."""
+
+    model_config = ConfigDict(env_prefix="RISK_", case_sensitive=False, extra="ignore")
+    
+    # Risk Profile Configuration
+    profile: Literal["strict", "staging", "relaxed"] = Field(
+        default="staging", description="Risk profile for different environments"
+    )
+    allow_admin_override: bool = Field(
+        default=True, description="Allow admin users to override risk limits"
+    )
+    
+    # Portfolio and exposure limits (will be overridden by profile defaults)
+    max_symbol_exposure: float = Field(
+        default=0.60, description="Maximum symbol exposure as percentage of portfolio"
+    )
+    max_position_value: float = Field(
+        default=1.0, description="Maximum position value as percentage of portfolio"
+    )
+    circuit_breaker_pct: float = Field(
+        default=0.20, description="Circuit breaker percentage for market volatility"
+    )
+    
+    # Portfolio valuation fallback
+    fallback_portfolio_value: float = Field(
+        default=250000.0, description="Fallback portfolio value when account data unavailable"
+    )
+
+    @field_validator("max_symbol_exposure", "max_position_value", "circuit_breaker_pct")
+    @classmethod
+    def validate_percentages(cls, v):
+        if not 0 < v <= 1:
+            raise ValueError("Percentage values must be between 0 and 1")
+        return v
+
+    @field_validator("fallback_portfolio_value")
+    @classmethod
+    def validate_portfolio_value(cls, v):
+        if v <= 0:
+            raise ValueError("Portfolio value must be positive")
+        return v
+
+
+# Risk profile defaults - will be used by get_risk_defaults() helper
+RISK_DEFAULTS = {
+    "strict": {
+        "max_symbol_exposure": 0.15,
+        "max_position_value": 1.0,
+        "circuit_breaker_pct": 0.05
+    },
+    "staging": {
+        "max_symbol_exposure": 0.60,
+        "max_position_value": 1.0,
+        "circuit_breaker_pct": 0.20
+    },
+    "relaxed": {
+        "max_symbol_exposure": 0.90,
+        "max_position_value": 1.0,
+        "circuit_breaker_pct": 0.50
+    }
+}
+
+
+def get_risk_defaults() -> dict:
+    """Get risk defaults for the current profile."""
+    # Import here to avoid circular imports
+    from backend.config import get_settings
+    settings = get_settings()
+    
+    if hasattr(settings, 'risk') and hasattr(settings.risk, 'profile'):
+        profile = settings.risk.profile
+    else:
+        profile = "staging"  # Default fallback
+    
+    return RISK_DEFAULTS.get(profile, RISK_DEFAULTS["staging"])
+
+
 class ObservabilityConfig(BaseSettings):
     """Observability configuration for OpenTelemetry, Prometheus, and logging."""
 
@@ -762,6 +841,7 @@ class Settings(BaseSettings):
     database: DatabaseConfig = Field(default_factory=DatabaseConfig)
     trading: TradingConfig = Field(default_factory=TradingConfig)
     outbox: OutboxConfig = Field(default_factory=OutboxConfig)
+    risk: RiskConfig = Field(default_factory=RiskConfig)
     observability: ObservabilityConfig = Field(default_factory=ObservabilityConfig)
     mlops: MLOpsConfig = Field(default_factory=MLOpsConfig)
 
