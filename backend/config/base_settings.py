@@ -209,7 +209,7 @@ class DataConfig(BaseSettings):
 
     # Database configuration
     database_url: str = Field(
-        default="sqlite:///./trading_platform.db", description="Database connection URL"
+        default="sqlite+aiosqlite:///./trading_platform.db", description="Database connection URL"
     )
     redis_url: str = Field(
         default="redis://localhost:6379", description="Redis connection URL"
@@ -1045,7 +1045,7 @@ def get_legacy_settings() -> dict:
         "alpaca_secret_key": settings.alpaca.secret_key,
         "alpaca_base_url": settings.alpaca.base_url,
         "alpaca_websocket_url": settings.alpaca.websocket_url,
-        "alpaca_paper_trading": settings.alpaca.paper_trading,
+        "alpaca_paper_trading": settings.alpaca.paper,
         # Data settings
         "database_url": settings.data.database_url,
         "redis_url": settings.data.redis_url,
@@ -1200,7 +1200,7 @@ class _CompatBaseSettings:
         return {
             "debug": True,
             "log_level": "INFO",
-            "database_url": "sqlite:///app.db",
+            "database_url": "sqlite+aiosqlite:///app.db",
             "api_host": "localhost",
             "api_port": 8000,
             "secret_key": "default-secret-key",
@@ -1498,7 +1498,7 @@ class ConfigValidator:
     @staticmethod
     def validate_url(url: str) -> None:
         if not isinstance(url, str) or not (
-            url.startswith(("http://", "https://", "sqlite:///", "postgresql://"))
+            url.startswith(("http://", "https://", "sqlite:///", "sqlite+aiosqlite:///", "postgresql://"))
         ):
             raise ValidationError("Invalid URL")
 

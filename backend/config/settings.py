@@ -109,7 +109,7 @@ class SettingsError(Exception):
 
 @dataclass
 class DatabaseSettings:
-    url: str = "sqlite:///trading_platform.db"
+    url: str = "sqlite+aiosqlite:///trading_platform.db"
     pool_size: int = 20
     max_overflow: int = 10
     pool_timeout: int = 30
@@ -645,7 +645,7 @@ def create_app_config(environment: Any = EnvironmentEnum.DEVELOPMENT) -> AppSett
         app.security.require_https = True
     elif environment == Environment.TESTING:
         app.testing = True
-        app.database.url = "sqlite:///:memory:"
+        app.database.url = "sqlite+aiosqlite:///:memory:"
         app.logging.level = LogLevel.DEBUG
     return app
 

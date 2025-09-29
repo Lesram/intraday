@@ -46,7 +46,7 @@ except ImportError:
         DEBUG = True
         APP_ENV = "test"
         CORS_ORIGINS = ["*"]
-        DB_URL = "sqlite:///./test.db"
+        DB_URL = "sqlite+aiosqlite:///./test.db"
         
         def __init__(self):
             # Create nested attribute objects that the app expects
@@ -110,12 +110,12 @@ class MockSettings:
         self.api_port = 8000
         self.debug = False
         self.cors_origins = ["*"]
-        self.database_url = "sqlite:///test.db"
+        self.database_url = "sqlite+aiosqlite:///test.db"
         # Add uppercase attributes for test compatibility
         self.DEBUG = False
         self.APP_ENV = "test"
         self.CORS_ORIGINS = ["*"]
-        self.DB_URL = "sqlite:///test.db"
+        self.DB_URL = "sqlite+aiosqlite:///test.db"
 
 
 def create_app(settings=None, *, registry=None, ws_queue_max: int|None=None, **kwargs):
@@ -140,7 +140,7 @@ def create_app(settings=None, *, registry=None, ws_queue_max: int|None=None, **k
     elif hasattr(settings, 'data') and hasattr(settings.data, 'database_url'):
         database_url = settings.data.database_url
     else:
-        database_url = os.getenv('DATABASE_URL', 'sqlite:///./trading_platform.db')
+        database_url = os.getenv('DATABASE_URL', 'sqlite+aiosqlite:///./trading_platform.db')
     
     app.state.database_url = database_url
     
@@ -257,15 +257,16 @@ def create_app(settings=None, *, registry=None, ws_queue_max: int|None=None, **k
             # ============================================================================
             # DATABASE SHUTDOWN
             # ============================================================================
-            # Dispose database engine
-            try:
-                from backend.infra.db import dispose_engine
-                await dispose_engine()
-                logger.info("Database engine disposed successfully")
-            except Exception as e:
-                logger.error("Error disposing database engine",
-                           error=str(e),
-                           error_type=type(e).__name__)
+            # Dispose database engine if it was initialized
+            if hasattr(app.state, 'sessionmaker') and app.state.sessionmaker:
+                try:
+                    from backend.infra.db import dispose_engine
+                    await dispose_engine()
+                    logger.info("Database engine disposed successfully")
+                except Exception as e:
+                    logger.error("Error disposing database engine",
+                               error=str(e),
+                               error_type=type(e).__name__)
             
             # Cleanup application tasks
             reg = list(app.state.task_registry.tasks())
