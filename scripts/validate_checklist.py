@@ -33,8 +33,34 @@ class StagingChecklistValidator:
     
     def __init__(self, base_url="http://localhost:8000", api_token=None):
         self.base_url = base_url.rstrip('/')
-        self.api_token = api_token or "6Av--QEcw6s7O0U7i4nxbNqwSUtL3PfNzC07BIOIzFI"  # From seeding
+        self.api_token = api_token or self._get_fresh_token()  # Generate fresh JWT token
         self.results = {}
+        # Use session for connection reuse to avoid 2-second connection establishment delays
+        self.session = requests.Session()
+        # Set reasonable timeout and connection pooling
+        adapter = requests.adapters.HTTPAdapter(
+            pool_connections=10,
+            pool_maxsize=20,
+            max_retries=1,
+            pool_block=False
+        )
+        self.session.mount('http://', adapter)
+        self.session.mount('https://', adapter)
+        
+    def _get_fresh_token(self):
+        """Get a fresh JWT token for testing."""
+        try:
+            from scripts.get_token import get_jwt_token
+            token = get_jwt_token(self.base_url, "admin", "admin123")
+            if token:
+                logger.info("✅ Generated fresh JWT token for testing")
+                return token
+            else:
+                logger.warning("❌ Failed to generate JWT token, using fallback")
+                return "6Av--QEcw6s7O0U7i4nxbNqwSUtL3PfNzC07BIOIzFI"  # Fallback
+        except Exception as e:
+            logger.warning(f"❌ Error generating JWT token: {e}, using fallback")
+            return "6Av--QEcw6s7O0U7i4nxbNqwSUtL3PfNzC07BIOIzFI"  # Fallback
         
     def run_all_checks(self):
         """Run all automated checklist validations."""
@@ -51,6 +77,9 @@ class StagingChecklistValidator:
         
         # Generate report
         self.generate_report()
+        
+        # Clean up session
+        self.session.close()
         
         return self.results
 
@@ -74,7 +103,7 @@ class StagingChecklistValidator:
         
         for endpoint in protected_endpoints:
             try:
-                response = requests.get(f"{self.base_url}{endpoint}", timeout=10)
+                response = self.session.get(f"{self.base_url}{endpoint}", timeout=10)
                 expected_401 = response.status_code == 401
                 auth_results['protected_401_without_token'][endpoint] = {
                     'status_code': response.status_code,
@@ -96,7 +125,7 @@ class StagingChecklistValidator:
         
         for endpoint in ['/api/v1/signals?symbol=AAPL', '/api/v1/positions']:
             try:
-                response = requests.get(f"{self.base_url}{endpoint}", headers=headers, timeout=10)
+                response = self.session.get(f"{self.base_url}{endpoint}", headers=headers, timeout=10)
                 is_success = 200 <= response.status_code < 300
                 auth_results['protected_200_with_token'][endpoint] = {
                     'status_code': response.status_code,
@@ -129,7 +158,7 @@ class StagingChecklistValidator:
         
         # Health check
         try:
-            response = requests.get(f"{self.base_url}/health", timeout=10)
+            response = self.session.get(f"{self.base_url}/health", timeout=10)
             health_pass = response.status_code == 200
             registry_results['health_check'] = {
                 'status_code': response.status_code,
@@ -148,7 +177,7 @@ class StagingChecklistValidator:
         
         # OpenAPI spec
         try:
-            response = requests.get(f"{self.base_url}/openapi.json", timeout=10)
+            response = self.session.get(f"{self.base_url}/openapi.json", timeout=10)
             openapi_pass = response.status_code == 200
             if openapi_pass:
                 try:
@@ -176,7 +205,7 @@ class StagingChecklistValidator:
         
         # Documentation accessibility
         try:
-            response = requests.get(f"{self.base_url}/docs", timeout=10)
+            response = self.session.get(f"{self.base_url}/docs", timeout=10)
             docs_pass = response.status_code == 200
             registry_results['docs_accessible'] = {
                 'status_code': response.status_code,
@@ -220,7 +249,7 @@ class StagingChecklistValidator:
                 try:
                     start_time = time.time()
                     if method == 'GET':
-                        response = requests.get(f"{self.base_url}{endpoint}", headers=headers, timeout=10)
+                        response = self.session.get(f"{self.base_url}{endpoint}", headers=headers, timeout=10)
                     
                     response_time = (time.time() - start_time) * 1000  # Convert to ms
                     times.append(response_time)

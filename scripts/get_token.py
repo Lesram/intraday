@@ -41,18 +41,20 @@ def get_jwt_token(base_url: str, username: str, password: str) -> Optional[str]:
     try:
         login_url = f"{base_url.rstrip('/')}/api/v1/auth/login"
         
-        response = requests.post(
-            login_url,
-            json={"username": username, "password": password},
-            timeout=10
-        )
-        
-        if response.status_code == 200:
-            data = response.json()
-            return data.get("access_token")
-        else:
-            print(f"Login failed: {response.status_code} - {response.text}", file=sys.stderr)
-            return None
+        # Use session for connection reuse
+        with requests.Session() as session:
+            response = session.post(
+                login_url,
+                json={"username": username, "password": password},
+                timeout=10
+            )
+            
+            if response.status_code == 200:
+                data = response.json()
+                return data.get("access_token")
+            else:
+                print(f"Login failed: {response.status_code} - {response.text}", file=sys.stderr)
+                return None
             
     except Exception as e:
         print(f"Error during login: {e}", file=sys.stderr)
