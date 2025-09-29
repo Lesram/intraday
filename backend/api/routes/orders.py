@@ -17,7 +17,7 @@ from backend.infra.repositories.orders import OrdersRepo
 from backend.infra.security import get_current_user
 from backend.risk.types import OrderSpec, Side
 from backend.services.order_service import OrderService
-from backend.utils.logger import StandardEventLogger, get_logger
+from backend.utils.logger import StandardEventLogger, get_logger, log_order_submitted, log_order_cancelled
 
 logger = get_logger(__name__)
 event_logger = StandardEventLogger(__name__)
@@ -387,7 +387,7 @@ async def submit_order(
         result = await order_service.submit_order_async(order_data)
         
         # Log structured event using standardized logger
-        event_logger.order_submitted(
+        log_order_submitted(
             order_id=result.get("order_id"),
             symbol=symbol,
             side=side,
@@ -508,7 +508,7 @@ async def cancel_order(
                 detail=f"Order not found: {order_id}",
             )
 
-        event_logger.order_cancelled(
+        log_order_cancelled(
             order_id=order_id, 
             endpoint="cancel_order",
             user_id=getattr(current_user, 'id', None)

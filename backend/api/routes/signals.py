@@ -20,7 +20,7 @@ from backend.infra.repositories.orders import OrdersRepo
 from backend.infra.security import get_current_user
 from backend.services.order_service import OrderService
 from backend.strategies.basic import BasicStrategy
-from backend.utils.logger import get_event_logger, get_logger
+from backend.utils.logger import get_event_logger, get_logger, log_order_submitted
 
 logger = get_logger(__name__)
 event_logger = get_event_logger("signals")
@@ -646,7 +646,7 @@ async def act_on_signal(
         order_result = await order_service.submit_order_async(order_data)
         
         # Log order submission
-        event_logger.order_submitted(
+        log_order_submitted(
             order_id=order_result.get("order_id"),
             symbol=symbol,
             side=side,

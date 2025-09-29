@@ -356,7 +356,7 @@ def log_event(event: str, logger_instance=None, **fields):
     warning_events = {"RISK_BLOCKED", "ORDER_REJECTED", "LIMIT_EXCEEDED", "CIRCUIT_BREAKER"}
     info_events = {
         "SIGNAL_DECIDED", "ORDER_SUBMIT", "ORDER_STATUS", "ORDER_CANCEL", 
-        "SIGNAL_CREATED", "POSITION_UPDATE", "STRATEGY_EXECUTION"
+        "ORDER_SUBMITTED", "ORDER_ACK", "ORDER_CANCELLED", "SIGNAL_CREATED", "POSITION_UPDATE", "STRATEGY_EXECUTION"
     }
     
     if event in critical_events:
@@ -450,6 +450,27 @@ class StandardEventLogger:
             service=self.service_name,
             **kwargs
         )
+
+
+# Order event logging helpers
+def log_order_submitted(**fields):
+    """Log an order submission event."""
+    log_event("ORDER_SUBMITTED", **fields)
+
+
+def log_order_ack(**fields):
+    """Log an order acknowledgment event."""
+    log_event("ORDER_ACK", **fields)
+
+
+def log_order_rejected(**fields):
+    """Log an order rejection event."""
+    log_event("ORDER_REJECTED", **fields)
+
+
+def log_order_cancelled(**fields):
+    """Log an order cancellation event."""
+    log_event("ORDER_CANCELLED", **fields)
 
 
 # Convenience function to get a standard event logger
