@@ -4,6 +4,7 @@ Provides engine, session management, health checks, and FastAPI dependencies.
 Enhanced with comprehensive observability including tracing and metrics.
 """
 
+import asyncio
 import logging
 import time
 from collections.abc import AsyncGenerator
@@ -36,10 +37,22 @@ _engine = None
 def build_engine(dsn: str):
     global _engine
     kw = dict(pool_pre_ping=True)
-    if dsn.startswith("sqlite+"):
+    
+    # Configure connection pool based on database type
+    if dsn.startswith("sqlite"):
+        # SQLite: Use NullPool to prevent connection sharing issues
         kw["poolclass"] = NullPool
+        logger.info("Using NullPool for SQLite database")
     else:
-        kw.update(pool_size=5, max_overflow=5, pool_recycle=1800)
+        # PostgreSQL: Use proper connection pooling with lifecycle management
+        kw.update(
+            pool_size=5, 
+            max_overflow=5, 
+            pool_recycle=1800  # Recycle connections every 30 minutes
+        )
+        logger.info("Using connection pool for PostgreSQL database", 
+                   extra={"pool_size": 5, "max_overflow": 5, "pool_recycle": 1800})
+    
     _engine = create_async_engine(dsn, echo=False, **kw)
     return _engine
 
@@ -171,6 +184,36 @@ async def db_health_check() -> bool:
 
             logger.error("Database health check failed", extra={"error": str(e)})
             raise
+
+
+async def quick_ping(session: AsyncSession) -> bool:
+    """
+    Quick database ping for readiness checks with 100ms timeout.
+    
+    Args:
+        session: Database session to ping with
+        
+    Returns:
+        True if ping succeeds within timeout
+        
+    Raises:
+        asyncio.TimeoutError: If ping takes longer than 100ms
+        Exception: If ping fails for other reasons
+    """
+    try:
+        # Execute simple SELECT 1 with 100ms timeout
+        result = await asyncio.wait_for(
+            session.execute(text("SELECT 1")),
+            timeout=0.1  # 100ms timeout
+        )
+        row = result.fetchone()
+        return row is not None and row[0] == 1
+    except asyncio.TimeoutError:
+        logger.warning("Database ping timed out after 100ms")
+        raise
+    except Exception as e:
+        logger.warning("Database ping failed", extra={"error": str(e)})
+        raise
 
 
 async def close_db() -> None:
