@@ -2,13 +2,13 @@
 Trading history and execution API routes.
 """
 
-from typing import List, Dict, Any
-from fastapi import APIRouter, HTTPException, Depends, Query, Request, status
-from pydantic import BaseModel
 from datetime import datetime, timedelta
-import uuid
+from typing import Any
 
-from backend.infra.security import get_current_user, get_authenticated_user
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from pydantic import BaseModel
+
+from backend.infra.security import get_authenticated_user, get_current_user
 from backend.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -34,7 +34,7 @@ class TradeHistory(BaseModel):
 
 class TradeHistoryResponse(BaseModel):
     """Trade history list response."""
-    trades: List[TradeHistory]
+    trades: list[TradeHistory]
     total_count: int
     page: int
     page_size: int
@@ -148,7 +148,7 @@ async def get_trade_detail(
         logger.error(f"Failed to get trade detail for {trade_id}: {e}")
         raise HTTPException(status_code=500, detail="Failed to retrieve trade detail")
 
-@router.get("/stats", response_model=Dict[str, Any])
+@router.get("/stats", response_model=dict[str, Any])
 async def get_trading_stats(
     current_user: dict = Depends(get_current_user),
     start_date: datetime = Query(None, description="Start date for stats"),
@@ -191,7 +191,13 @@ async def execute_trade(
     trade_request: TradeExecutionRequest,
     current_user = Depends(get_authenticated_user)
 ):
-    """Execute a trade order."""
+    """
+    Execute a trade order.
+    
+    **DEPRECATED**: This endpoint is deprecated. 
+    Use `/api/v1/orders/submit` for new order submissions instead.
+    This endpoint will be removed in a future version.
+    """
     if current_user is None:
         raise HTTPException(status_code=401, detail="Authentication required")
     

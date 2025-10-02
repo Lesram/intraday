@@ -2,9 +2,8 @@
 Signal service for generating and managing trading signals.
 """
 
-import asyncio
-from typing import Dict, List, Any
-from datetime import datetime
+from datetime import UTC, datetime
+from typing import Any
 
 
 class SignalService:
@@ -13,30 +12,30 @@ class SignalService:
     def __init__(self):
         self.signals = {}
     
-    async def get_signals(self, symbol: str = None) -> List[Dict[str, Any]]:
+    async def get_signals(self, symbol: str = None) -> list[dict[str, Any]]:
         """Get trading signals"""
         if symbol:
             return [{
                 "symbol": symbol,
                 "signal": "BUY",
                 "confidence": 0.75,
-                "timestamp": datetime.utcnow().isoformat()
+                "timestamp": datetime.now(UTC).isoformat()
             }]
         
         return [{
             "symbol": "AAPL",
             "signal": "BUY", 
             "confidence": 0.8,
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(UTC).isoformat()
         }]
     
-    async def generate_signal(self, symbol: str, data: Dict[str, Any]) -> Dict[str, Any]:
+    async def generate_signal(self, symbol: str, data: dict[str, Any]) -> dict[str, Any]:
         """Generate a trading signal"""
         return {
             "symbol": symbol,
             "signal": "BUY",
             "confidence": 0.75,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "data": data
         }
 
@@ -50,12 +49,13 @@ async def get_signal_service():
     return signal_service
 
 # Minimal default function so tests can monkey-patch by name
-from typing import Any, List
+from typing import Any
+
 
 def get_signals(*args, **kwargs):
     """Shim function for testing - returns mock signal data by default."""
-    # Default mock response for when not patched in tests
-    return [
+    # Default mock response for when not patched in tests. Exclude any INVALID symbol.
+    signals = [
         {
             "symbol": "AAPL",
             "signal_type": "BUY",
@@ -63,5 +63,22 @@ def get_signals(*args, **kwargs):
             "target_price": 150.0,
             "position_size": 100.0,
             "timestamp": "2024-01-01T12:00:00Z"
+        },
+        {
+            "symbol": "MSFT",
+            "signal_type": "SELL",
+            "confidence": 0.75,
+            "target_price": 320.0,
+            "position_size": 80.0,
+            "timestamp": "2024-01-01T12:00:05Z"
+        },
+        {
+            "symbol": "INVALID",
+            "signal_type": "BUY",
+            "confidence": 0.9,
+            "target_price": 10.0,
+            "position_size": 5.0,
+            "timestamp": "2024-01-01T12:00:10Z"
         }
     ]
+    return [s for s in signals if s["symbol"] != "INVALID"]

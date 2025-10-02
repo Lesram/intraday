@@ -3,10 +3,10 @@ Audits repository - tracks system audit logs and compliance.
 Implements async CRUD operations with proper error handling.
 """
 
-from datetime import datetime
 import logging
-from typing import Any
 import uuid
+from datetime import UTC, datetime, timedelta
+from typing import Any
 
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.exc import IntegrityError
@@ -57,12 +57,11 @@ class AuditsRepo:
         """
         new_audit_log = AuditLog(
             action=action,
-            entity_type=entity_type,
+            entity=entity_type,
             entity_id=entity_id,
-            user_id=user_id,
-            ip_address=ip_address,
-            user_agent=user_agent,
-            details=details or {},
+            actor=user_id or "system",
+            # Note: ip_address, user_agent, details are not in the current model schema
+            # details=details or {},
         )
 
         try:
@@ -244,7 +243,7 @@ class AuditsRepo:
                     AuditLog.entity_type == entity_type, AuditLog.entity_id == entity_id
                 )
             )
-            .order_by(AuditLog.timestamp.desc())
+            .order_by(AuditLog.ts.desc())
             .limit(limit)
         )
 
@@ -270,18 +269,18 @@ class AuditsRepo:
         Returns:
             List of audit logs
         """
-        conditions = [AuditLog.user_id == user_id]
+        conditions = [AuditLog.actor == user_id]
 
         if start_time:
-            conditions.append(AuditLog.timestamp >= start_time)
+            conditions.append(AuditLog.ts >= start_time)
 
         if end_time:
-            conditions.append(AuditLog.timestamp <= end_time)
+            conditions.append(AuditLog.ts <= end_time)
 
         stmt = (
             select(AuditLog)
             .where(and_(*conditions))
-            .order_by(AuditLog.timestamp.desc())
+            .order_by(AuditLog.ts.desc())
             .limit(limit)
         )
 
@@ -310,15 +309,15 @@ class AuditsRepo:
         conditions = [AuditLog.action == action]
 
         if start_time:
-            conditions.append(AuditLog.timestamp >= start_time)
+            conditions.append(AuditLog.ts >= start_time)
 
         if end_time:
-            conditions.append(AuditLog.timestamp <= end_time)
+            conditions.append(AuditLog.ts <= end_time)
 
         stmt = (
             select(AuditLog)
             .where(and_(*conditions))
-            .order_by(AuditLog.timestamp.desc())
+            .order_by(AuditLog.ts.desc())
             .limit(limit)
         )
 
@@ -343,7 +342,7 @@ class AuditsRepo:
         if entity_type:
             stmt = stmt.where(AuditLog.entity_type == entity_type)
 
-        stmt = stmt.order_by(AuditLog.timestamp.desc()).limit(limit)
+        stmt = stmt.order_by(AuditLog.ts.desc()).limit(limit)
 
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
@@ -378,15 +377,15 @@ class AuditsRepo:
         conditions = [AuditLog.action.in_(security_actions)]
 
         if start_time:
-            conditions.append(AuditLog.timestamp >= start_time)
+            conditions.append(AuditLog.ts >= start_time)
 
         if end_time:
-            conditions.append(AuditLog.timestamp <= end_time)
+            conditions.append(AuditLog.ts <= end_time)
 
         stmt = (
             select(AuditLog)
             .where(and_(*conditions))
-            .order_by(AuditLog.timestamp.desc())
+            .order_by(AuditLog.ts.desc())
             .limit(limit)
         )
 
@@ -409,10 +408,10 @@ class AuditsRepo:
         conditions = []
 
         if start_time:
-            conditions.append(AuditLog.timestamp >= start_time)
+            conditions.append(AuditLog.ts >= start_time)
 
         if end_time:
-            conditions.append(AuditLog.timestamp <= end_time)
+            conditions.append(AuditLog.ts <= end_time)
 
         if conditions:
             stmt = select(AuditLog).where(and_(*conditions))
@@ -454,7 +453,7 @@ class AuditsRepo:
         unique_ips = len(set(log.ip_address for log in logs if log.ip_address))
 
         # Get time range from actual data
-        timestamps = [log.timestamp for log in logs]
+        timestamps = [log.ts for log in logs]
         actual_start = min(timestamps) if timestamps else None
         actual_end = max(timestamps) if timestamps else None
 
@@ -504,10 +503,10 @@ class AuditsRepo:
 
         # Time filters
         if start_time:
-            conditions.append(AuditLog.timestamp >= start_time)
+            conditions.append(AuditLog.ts >= start_time)
 
         if end_time:
-            conditions.append(AuditLog.timestamp <= end_time)
+            conditions.append(AuditLog.ts <= end_time)
 
         # Default fields to search if not specified
         if not search_fields:
@@ -532,7 +531,7 @@ class AuditsRepo:
                 )
             elif field == "user_id":
                 search_conditions.append(
-                    func.lower(AuditLog.user_id).contains(search_lower)
+                    func.lower(AuditLog.actor).contains(search_lower)
                 )
             elif field == "ip_address":
                 search_conditions.append(
@@ -546,12 +545,12 @@ class AuditsRepo:
             stmt = (
                 select(AuditLog)
                 .where(and_(*conditions))
-                .order_by(AuditLog.timestamp.desc())
+                .order_by(AuditLog.ts.desc())
                 .limit(limit)
             )
         else:
             # If no conditions, return recent logs
-            stmt = select(AuditLog).order_by(AuditLog.timestamp.desc()).limit(limit)
+            stmt = select(AuditLog).order_by(AuditLog.ts.desc()).limit(limit)
 
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
@@ -566,13 +565,12 @@ class AuditsRepo:
         Returns:
             Number of old logs found
         """
-        from datetime import timedelta
 
-        cutoff_date = datetime.utcnow() - timedelta(days=older_than_days)
+        cutoff_date = datetime.now(UTC) - timedelta(days=older_than_days)
 
         # For safety, we'll just count for now rather than actually delete
         # In production, you might want to move to archive table first
-        stmt = select(func.count(AuditLog.id)).where(AuditLog.timestamp < cutoff_date)
+        stmt = select(func.count(AuditLog.id)).where(AuditLog.ts < cutoff_date)
 
         result = await self.session.execute(stmt)
         old_log_count = result.scalar_one() or 0
@@ -587,3 +585,4 @@ class AuditsRepo:
         )
 
         return old_log_count
+

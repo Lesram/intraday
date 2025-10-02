@@ -5,8 +5,9 @@ Provides numerically stable VaR and CVaR calculations with input coercion
 to handle various data types and edge cases gracefully.
 """
 
+from typing import Any
+
 import numpy as np
-from typing import Union, Any, Optional
 
 
 def align_for_risk_math(other: Any, length: int) -> np.ndarray:
@@ -98,8 +99,24 @@ def value_at_risk(returns: Any, alpha: float = 0.95) -> float:
     
     if r.size == 0:
         return 0.0
+    
+    # Handle edge cases before quantile calculation
+    if r.size == 1:
+        return float(r[0])
         
-    return float(np.quantile(r, 1 - alpha))
+    # Remove any NaN values
+    r_clean = r[~np.isnan(r)]
+    if r_clean.size == 0:
+        return 0.0
+        
+    try:
+        return float(np.quantile(r_clean, 1 - alpha))
+    except (ValueError, TypeError):
+        # Fallback to sorted array approach
+        sorted_r = np.sort(r_clean)
+        index = int((1 - alpha) * len(sorted_r))
+        index = max(0, min(index, len(sorted_r) - 1))
+        return float(sorted_r[index])
 
 
 def conditional_var(returns: Any, alpha: float = 0.95) -> float:
@@ -131,11 +148,28 @@ def conditional_var(returns: Any, alpha: float = 0.95) -> float:
     
     if r.size == 0:
         return 0.0
-        
-    q = np.quantile(r, 1 - alpha)
-    tail = r[r <= q]
     
-    return float(tail.mean()) if tail.size > 0 else 0.0
+    # Handle edge cases
+    if r.size == 1:
+        return float(r[0])
+    
+    # Remove any NaN values
+    r_clean = r[~np.isnan(r)]
+    if r_clean.size == 0:
+        return 0.0
+        
+    try:
+        q = np.quantile(r_clean, 1 - alpha)
+        tail = r_clean[r_clean <= q]
+        return float(tail.mean()) if tail.size > 0 else 0.0
+    except (ValueError, TypeError):
+        # Fallback to sorted array approach
+        sorted_r = np.sort(r_clean)
+        index = int((1 - alpha) * len(sorted_r))
+        index = max(0, min(index, len(sorted_r) - 1))
+        threshold = sorted_r[index]
+        tail = sorted_r[sorted_r <= threshold]
+        return float(np.mean(tail)) if tail.size > 0 else 0.0
 
 
 def historical_var(returns: Any, alpha: float = 0.95) -> float:
@@ -169,8 +203,8 @@ def expected_shortfall(returns: Any, alpha: float = 0.95) -> float:
 def parametric_var(
     returns: Any, 
     alpha: float = 0.95, 
-    mean: Optional[float] = None,
-    std: Optional[float] = None
+    mean: float | None = None,
+    std: float | None = None
 ) -> float:
     """
     Calculate parametric VaR assuming normal distribution.

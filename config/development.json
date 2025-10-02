@@ -1,0 +1,17 @@
+{
+  "debug": true,
+  "log_level": "INFO",
+  "database_url": "sqlite:///app.db",
+  "api_host": "localhost",
+  "api_port": 8000,
+  "secret_key": "default-secret-key",
+  "allowed_hosts": [
+    "localhost",
+    "127.0.0.1"
+  ],
+  "cors_origins": [
+    "http://localhost:3000"
+  ],
+  "session_timeout": 3600,
+  "max_connections": 100
+}

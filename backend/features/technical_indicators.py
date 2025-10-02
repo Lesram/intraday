@@ -3,28 +3,28 @@ Technical Indicators Module
 Provides technical analysis indicators with resilience to extreme conditions.
 """
 
-import math
-import numpy as np
-import pandas as pd
-from typing import List, Dict, Any, Optional
-from dataclasses import dataclass
 import logging
+import math
+from dataclasses import dataclass
+from typing import Any
+
+import numpy as np
 
 logger = logging.getLogger(__name__)
 
 @dataclass
 class IndicatorResult:
     """Result from technical indicator calculation."""
-    value: Optional[float]
+    value: float | None
     confidence: float
-    error: Optional[str] = None
+    error: str | None = None
 
 class TechnicalIndicators:
     """
     Technical indicators calculator with resilience to extreme market conditions.
     """
     
-    def __init__(self, config: Optional[Dict[str, Any]] = None):
+    def __init__(self, config: dict[str, Any] | None = None):
         self.config = config or {}
         self.calculation_count = 0
         self.error_count = 0
@@ -70,7 +70,7 @@ class TechnicalIndicators:
             
         except Exception as e:
             # Log error but don't crash
-            print(f"Warning: Error calculating features: {e}")
+            logger.warning("Error calculating features", exc_info=True, extra={"error": str(e)})
             return None
 
     def calculate_sma(self, prices, period):
@@ -116,7 +116,7 @@ class TechnicalIndicators:
             logger.warning(f"SMA calculation error: {e}")
             return IndicatorResult(value=None, confidence=0.0, error=str(e))
     
-    def calculate_rsi(self, prices: List[float], period: int = 14) -> IndicatorResult:
+    def calculate_rsi(self, prices: list[float], period: int = 14) -> IndicatorResult:
         """
         Calculate Relative Strength Index with error handling.
         
@@ -171,7 +171,7 @@ class TechnicalIndicators:
             logger.warning(f"RSI calculation error: {e}")
             return IndicatorResult(value=None, confidence=0.0, error=str(e))
     
-    def calculate_bollinger_bands(self, prices: List[float], period: int = 20, std_dev: float = 2.0) -> Dict[str, IndicatorResult]:
+    def calculate_bollinger_bands(self, prices: list[float], period: int = 20, std_dev: float = 2.0) -> dict[str, IndicatorResult]:
         """
         Calculate Bollinger Bands with error handling.
         
@@ -233,7 +233,7 @@ class TechnicalIndicators:
                 "lower": null_result
             }
     
-    def handle_extreme_conditions(self, prices: List[float]) -> Dict[str, Any]:
+    def handle_extreme_conditions(self, prices: list[float]) -> dict[str, Any]:
         """
         Handle extreme market conditions (flash crashes, gaps, etc.).
         
@@ -320,7 +320,7 @@ class TechnicalIndicators:
         except (ValueError, TypeError, OverflowError):
             return False
     
-    def get_calculation_stats(self) -> Dict[str, Any]:
+    def get_calculation_stats(self) -> dict[str, Any]:
         """Get calculation statistics."""
         return {
             "calculation_count": self.calculation_count,

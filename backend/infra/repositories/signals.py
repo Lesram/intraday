@@ -3,11 +3,11 @@ Signals repository - tracks trading signals and model predictions.
 Implements async CRUD operations with proper error handling.
 """
 
-from datetime import datetime
-from decimal import Decimal
 import logging
-from typing import Any
 import uuid
+from datetime import UTC, datetime
+from decimal import Decimal
+from typing import Any
 
 from sqlalchemy import and_, or_, select, update
 from sqlalchemy.exc import IntegrityError
@@ -150,7 +150,7 @@ class SignalsRepo:
         conditions = []
 
         # Only include active signals (not expired)
-        current_time = datetime.utcnow()
+        current_time = datetime.now(UTC)
         conditions.append(or_(Signal.expiry.is_(None), Signal.expiry > current_time))
 
         if symbol:
@@ -241,7 +241,7 @@ class SignalsRepo:
         Returns:
             List of high-confidence signals
         """
-        current_time = datetime.utcnow()
+        current_time = datetime.now(UTC)
 
         stmt = (
             select(Signal)
@@ -274,7 +274,7 @@ class SignalsRepo:
         stmt = (
             update(Signal)
             .where(Signal.id == signal_id)
-            .values(expiry=datetime.utcnow(), updated_at=datetime.utcnow())
+            .values(expiry=datetime.now(UTC), updated_at=datetime.now(UTC))
             .returning(Signal.id)
         )
 
@@ -296,7 +296,7 @@ class SignalsRepo:
         Returns:
             Number of signals expired
         """
-        current_time = datetime.utcnow()
+        current_time = datetime.now(UTC)
 
         stmt = (
             update(Signal)
@@ -379,7 +379,7 @@ class SignalsRepo:
             directions[signal.direction] = directions.get(signal.direction, 0) + 1
 
         # Count active signals
-        current_time = datetime.utcnow()
+        current_time = datetime.now(UTC)
         active_signals = sum(
             1 for s in signals if s.expiry is None or s.expiry > current_time
         )
@@ -416,13 +416,13 @@ class SignalsRepo:
         """
         from datetime import timedelta
 
-        cutoff_time = datetime.utcnow() - timedelta(hours=max_age_hours)
+        cutoff_time = datetime.now(UTC) - timedelta(hours=max_age_hours)
 
         # Get recent active signals for the symbol
         conditions = [
             Signal.symbol == symbol,
             Signal.created_at >= cutoff_time,
-            or_(Signal.expiry.is_(None), Signal.expiry > datetime.utcnow()),
+            or_(Signal.expiry.is_(None), Signal.expiry > datetime.now(UTC)),
         ]
 
         stmt = (

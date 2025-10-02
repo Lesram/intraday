@@ -3,9 +3,7 @@ Broker health check utilities.
 Provides health checking functionality for message brokers like Redis.
 """
 
-import asyncio
 import time
-from typing import Optional
 
 from backend.config import get_settings
 from backend.utils.logger import get_logger

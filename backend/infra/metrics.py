@@ -3,13 +3,12 @@ Standardized metrics infrastructure with bounded label sets and centralized vali
 Provides type-safe metric factories and enforces label allow-lists for cardinality control.
 """
 
-from collections.abc import Sequence
 import logging
-from typing import Final, Union
+from collections.abc import Sequence
+from typing import Final
 
 from prometheus_client import (
     CONTENT_TYPE_LATEST,
-    REGISTRY,
     CollectorRegistry,
     Counter,
     Gauge,
@@ -92,6 +91,9 @@ LABEL_ALLOWLIST: Final[dict[str, tuple[str, ...]]] = {
     # Database metrics
     "db_health_checks_total": ("result",),
     "db_query_duration_seconds": ("operation",),
+    # Readiness check metrics
+    "readyz_db_ms": (),
+    "readyz_broker_ms": (),
     # WebSocket metrics
     "websocket_connections_total": ("client_type",),
     "websocket_messages_total": ("message_type", "direction"),
@@ -210,7 +212,7 @@ class MetricsRegistry:
         self.namespace = namespace
         # Create a new registry for each instance to avoid test isolation issues
         self.registry = registry or CollectorRegistry()
-        self._metrics: dict[str, Union[Counter, Histogram, Gauge]] = {}
+        self._metrics: dict[str, Counter | Histogram | Gauge] = {}
 
         # Initialize observability contract if available
         if OBSERVABILITY_CONTRACTS_AVAILABLE:
@@ -369,7 +371,8 @@ class MetricsRegistry:
         labels = labels or {}
         labels = self._validate_labels(name, labels)
 
-        metric_key = f"{name}:{sorted(labels.items())}"
+        # Use only metric name as key since Prometheus expects one metric per name
+        metric_key = name
 
         if metric_key not in self._metrics:
             full_name = self._get_metric_name(name)
@@ -394,26 +397,39 @@ class MetricsRegistry:
                     logger.debug(f"Using default Prometheus buckets for {name}")
 
             # Create histogram with appropriate buckets
-            if final_buckets is not None:
-                histogram = Histogram(
-                    full_name,
-                    documentation or f"Histogram metric: {name}",
-                    labelnames=label_names,
-                    buckets=final_buckets,
-                    registry=self.registry,
-                )
-            else:
-                histogram = Histogram(
-                    full_name,
-                    documentation or f"Histogram metric: {name}",
-                    labelnames=label_names,
-                    registry=self.registry,
-                )
-            self._metrics[metric_key] = histogram
+            try:
+                if final_buckets is not None:
+                    histogram = Histogram(
+                        full_name,
+                        documentation or f"Histogram metric: {name}",
+                        labelnames=label_names,
+                        buckets=final_buckets,
+                        registry=self.registry,
+                    )
+                else:
+                    histogram = Histogram(
+                        full_name,
+                        documentation or f"Histogram metric: {name}",
+                        labelnames=label_names,
+                        registry=self.registry,
+                    )
+                self._metrics[metric_key] = histogram
 
-            logger.debug(
-                f"Created histogram metric: {full_name} with labels: {label_names}"
-            )
+                logger.debug(
+                    f"Created histogram metric: {full_name} with labels: {label_names}"
+                )
+            except ValueError as e:
+                if "Duplicated timeseries" in str(e):
+                    # Histogram already exists in registry, find it
+                    for collector in self.registry._collector_to_names.keys():
+                        if hasattr(collector, '_name') and collector._name == full_name:
+                            self._metrics[metric_key] = collector
+                            logger.debug(f"Reused existing histogram metric: {full_name}")
+                            break
+                    else:
+                        raise
+                else:
+                    raise
 
         metric = self._metrics[metric_key]
 
@@ -624,6 +640,32 @@ class MetricsRegistry:
                 "duplicate_count": len(duplicates),
                 "observability_contracts_enabled": False,
             }
+
+    def record_readyz_db_time(self, time_ms: float) -> None:
+        """
+        Record database response time for readiness checks.
+        
+        Args:
+            time_ms: Database response time in milliseconds
+        """
+        try:
+            gauge = self.create_gauge("readyz_db_ms", "Database response time for readiness checks (ms)")
+            gauge.set(time_ms)
+        except Exception as e:
+            logger.warning(f"Failed to record readyz_db_ms metric: {e}")
+
+    def record_readyz_broker_time(self, time_ms: float) -> None:
+        """
+        Record broker response time for readiness checks.
+        
+        Args:
+            time_ms: Broker response time in milliseconds
+        """
+        try:
+            gauge = self.create_gauge("readyz_broker_ms", "Broker response time for readiness checks (ms)")
+            gauge.set(time_ms)
+        except Exception as e:
+            logger.warning(f"Failed to record readyz_broker_ms metric: {e}")
 
 
 def normalize_route(path: str) -> str:

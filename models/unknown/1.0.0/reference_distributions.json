@@ -1,0 +1,14 @@
+{
+  "feature1": {
+    "bin_edges": [],
+    "bin_counts": [],
+    "mean": 0.0,
+    "std": 1.0
+  },
+  "feature2": {
+    "bin_edges": [],
+    "bin_counts": [],
+    "mean": 0.0,
+    "std": 1.0
+  }
+}

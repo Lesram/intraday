@@ -1,1 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="0" skipped="0" tests="1" time="0.221" timestamp="2025-08-24T16:58:55.382381-07:00" hostname="BOOK-FVJOEO3Q00"><testcase classname="tests.api.test_factory_lifespan" name="test_factory_lifespan_runs_startup_shutdown" time="0.112" /></testsuite></testsuites>

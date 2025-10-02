@@ -3,15 +3,15 @@ Enhanced Security Hardening - Pydantic settings, strict CORS, JWT checks, and ra
 Provides production-ready security configurations and middleware.
 """
 
-from collections import defaultdict
 import time
+from collections import defaultdict
 from typing import Any
 
 from fastapi import HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import JSONResponse
-from pydantic import Field, validator
+from pydantic import ConfigDict, Field, field_validator
 from pydantic_settings import BaseSettings
 from starlette.middleware.base import BaseHTTPMiddleware
 
@@ -19,9 +19,10 @@ from starlette.middleware.base import BaseHTTPMiddleware
 class SecuritySettings(BaseSettings):
     """Enhanced security settings with strict validation."""
 
-    class Config:
-        env_prefix = "SECURITY_"
-        case_sensitive = False
+    model_config = ConfigDict(
+        env_prefix="SECURITY_",
+        case_sensitive=False
+    )
 
     # CORS Configuration - Strict by default
     cors_allow_origins: list[str] = Field(
@@ -80,7 +81,8 @@ class SecuritySettings(BaseSettings):
         description="HSTS max age in seconds",
     )
 
-    @validator("cors_allow_origins")
+    @field_validator("cors_allow_origins")
+    @classmethod
     def validate_cors_origins(cls, v):
         """Validate CORS origins - must be explicit."""
         if not v:
@@ -104,14 +106,16 @@ class SecuritySettings(BaseSettings):
 
         return v
 
-    @validator("trusted_hosts")
+    @field_validator("trusted_hosts")
+    @classmethod
     def validate_trusted_hosts(cls, v):
         """Validate trusted hosts."""
         if not v:
             raise ValueError("At least one trusted host must be configured")
         return v
 
-    @validator("rate_limit_requests_per_minute")
+    @field_validator("rate_limit_requests_per_minute")
+    @classmethod
     def validate_rate_limit(cls, v):
         """Validate rate limit settings."""
         if v <= 0:
@@ -468,7 +472,8 @@ class JwtVerifier:
         """Lazy import of jose.jwt"""
         if self._jwt is None:
             try:
-                from jose import jwt as jose_jwt, JWTError
+                from jose import JWTError
+                from jose import jwt as jose_jwt
                 self._jwt = jose_jwt
                 self._jwt_error = JWTError
             except ImportError as e:
@@ -489,12 +494,24 @@ class JwtVerifier:
         self._load_jwt()
         return self._jwt_error
     
-    def encode(self, payload: dict) -> str:
+    @JWTError.setter
+    def JWTError(self, value):
+        """Set jose.JWTError exception (for testing)"""
+        self._jwt_error = value
+    
+    @JWTError.deleter
+    def JWTError(self):
+        """Delete jose.JWTError exception (for testing)"""
+        self._jwt_error = None
+    
+    def encode(self, payload: dict, key: str = None, algorithm: str = None) -> str:
         """
         Encode JWT token with required claims validation.
         
         Args:
             payload: JWT payload containing iss, aud, alg, exp, and other claims
+            key: Secret key for encoding (uses default if not provided)
+            algorithm: Algorithm for encoding (uses HS256 if not provided)
             
         Returns:
             Encoded JWT token string
@@ -508,11 +525,12 @@ class JwtVerifier:
         if missing_claims:
             raise ValueError(f"Missing required JWT claims: {missing_claims}")
         
-        # Use fixed algorithm for signing (don't use payload's 'alg' field)
-        algorithm = "HS256"
-        
-        # Use a default key for encoding (in production, this should be from settings)
-        key = "default-jwt-secret-key"
+        # Use provided parameters or defaults from settings
+        algorithm = algorithm or "HS256"
+        if key is None:
+            from backend.config import get_settings
+            settings = get_settings()
+            key = settings.security.jwt_secret_key
         
         return self.jwt.encode(payload, key, algorithm=algorithm)
     
@@ -529,8 +547,10 @@ class JwtVerifier:
         Raises:
             JWTError: If token is invalid or claims validation fails
         """
-        # Use a default key for decoding (in production, this should be from settings)
-        key = "default-jwt-secret-key"
+        # Get key from settings for consistency with encoding
+        from backend.config import get_settings
+        settings = get_settings()
+        key = settings.security.jwt_secret_key
         
         # Decode with validation of required claims
         try:
@@ -562,11 +582,12 @@ class JwtVerifier:
             
             return decoded
             
-        except self.JWTError:
-            # Re-raise our custom errors
-            raise
         except Exception as e:
-            raise self.JWTError(f"JWT decode error: {str(e)}") from e
+            # Handle any JWT decode error
+            if "JWTError" in str(type(e)) or "JWSError" in str(type(e)) or "ExpiredSignatureError" in str(type(e)):
+                raise self.JWTError(f"JWT decode error: {str(e)}") from e
+            else:
+                raise self.JWTError(f"JWT decode error: {str(e)}") from e
 
 
 # Global instance to use throughout the application

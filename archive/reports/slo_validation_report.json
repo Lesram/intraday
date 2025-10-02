@@ -1,0 +1,36 @@
+{
+  "timestamp": "2025-09-30T15:36:22.108277",
+  "total_tests": 18,
+  "passed_tests": 0,
+  "success_rate": 0.0,
+  "detailed_results": {
+    "metrics_collection": {
+      "order_latency_recording": false,
+      "order_outcome_recording": false,
+      "fill_event_recording": false,
+      "system_health_recording": false,
+      "slo_calculation": false,
+      "prometheus_export": false
+    },
+    "alert_system": {
+      "alert_rule_loading": false,
+      "alert_evaluation": false,
+      "alert_notification": false,
+      "cooldown_handling": false
+    },
+    "dashboard": {
+      "dashboard_data_generation": false,
+      "health_calculation": false,
+      "static_report_generation": false
+    },
+    "synthetic_load": {
+      "load_generation": false
+    },
+    "slo_violations": {
+      "high_latency_detection": false,
+      "low_accuracy_detection": false,
+      "alert_triggering": false,
+      "burn_rate_calculation": false
+    }
+  }
+}

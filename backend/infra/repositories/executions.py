@@ -3,11 +3,11 @@ Executions repository - tracks order fills and trades.
 Implements async CRUD operations with proper error handling.
 """
 
-from datetime import datetime
-from decimal import Decimal
 import logging
-from typing import Any
 import uuid
+from datetime import UTC, datetime
+from decimal import Decimal
+from typing import Any
 
 from sqlalchemy import and_, select
 from sqlalchemy.exc import IntegrityError
@@ -74,7 +74,7 @@ class ExecutionsRepo:
             qty=qty,
             price=price,
             execution_id=execution_id,
-            timestamp=timestamp or datetime.utcnow(),
+            timestamp=timestamp or datetime.now(UTC),
             attributes=attributes or {},
         )
 

@@ -6,13 +6,13 @@ Provides async CRUD operations with proper error handling.
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from ..db import get_session
 from .audits import AuditNotFoundError, AuditsRepo
 from .executions import DuplicateExecutionError, ExecutionNotFoundError, ExecutionsRepo
 from .models import DuplicateModelError, ModelNotFoundError, ModelsRepo
 from .orders import DuplicateOrderError, OrderNotFoundError, OrdersRepo
 from .positions import DuplicatePositionError, PositionNotFoundError, PositionsRepo
 from .signals import DuplicateSignalError, SignalNotFoundError, SignalsRepo
-from ..db import get_session
 
 
 # Dependency injection functions

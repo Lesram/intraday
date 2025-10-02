@@ -16,12 +16,12 @@ __path__ = [_os.path.join(_os.path.dirname(__file__), "config")]  # type: ignore
 # Re-export common names from the real package implementation if available
 try:  # pragma: no cover - simple forwarding
     from .config.settings import (  # type: ignore
-        settings,  # noqa: F401
-        get_settings,  # noqa: F401
-        Settings,  # noqa: F401
         AppConfig,  # noqa: F401
-        SecurityConfig,  # noqa: F401
         LegacySettings,  # noqa: F401
+        SecurityConfig,  # noqa: F401
+        Settings,  # noqa: F401
+        get_settings,  # noqa: F401
+        settings,  # noqa: F401
         validate_required_settings,  # noqa: F401
     )
 except Exception:

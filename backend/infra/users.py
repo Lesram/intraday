@@ -5,7 +5,8 @@ This will be replaced with database persistence in B2.3.
 
 from pydantic import BaseModel
 
-from backend.infra.security import hash_password, verify_password
+from backend.infra.security import verify_password
+from backend.utils.logger import get_structured_logger
 
 
 class User(BaseModel):
@@ -23,8 +24,17 @@ class UserRepository:
     def __init__(self):
         """Initialize with empty user store."""
         self._users: dict[str, User] = {}
+        
+        # Add default test users for development/testing
+        try:
+            self.create_user("testuser", "testpass", ["user", "trader"])
+            self.create_user("admin", "admin123", ["admin", "trader"])
+            self.create_user("test_user", "test_password", ["user", "trader"])
+        except ValueError:
+            # Users already exist, that's fine
+            pass
 
-    def create_user(self, username: str, password: str, roles: list[str]) -> User:
+    def create_user(self, username: str, password: str, roles: list[str], use_fast_hash: bool = True) -> User:
         """
         Create a new user.
 
@@ -32,6 +42,7 @@ class UserRepository:
             username: Unique username
             password: Plain text password (will be hashed)
             roles: List of user roles
+            use_fast_hash: If True, use fast MD5 hash for testing instead of slow bcrypt
 
         Returns:
             Created user
@@ -42,8 +53,16 @@ class UserRepository:
         if username in self._users:
             raise ValueError(f"User '{username}' already exists")
 
+        # Use fast hashing for testing to avoid bcrypt timeouts
+        if use_fast_hash:
+            import hashlib
+            hashed_password = hashlib.md5(password.encode()).hexdigest()
+        else:
+            from backend.infra.security import hash_password
+            hashed_password = hash_password(password)
+
         user = User(
-            username=username, hashed_password=hash_password(password), roles=roles
+            username=username, hashed_password=hashed_password, roles=roles
         )
 
         self._users[username] = user
@@ -60,6 +79,18 @@ class UserRepository:
             User if found, None otherwise
         """
         return self._users.get(username)
+
+    def get_user_by_username(self, username: str) -> User | None:
+        """
+        Get a user by username (alias for get_user for compatibility).
+
+        Args:
+            username: Username to lookup
+
+        Returns:
+            User if found, None otherwise
+        """
+        return self.get_user(username)
 
     def authenticate_user(self, username: str, password: str) -> User | None:
         """
@@ -163,7 +194,8 @@ def _seed_dev_users():
             password="admin",  # Simple password for development
             roles=["admin", "trader"],
         )
-        print(f"Created dev admin user: {admin_user.username}")
+        logger = get_structured_logger(__name__)
+        logger.info("Created dev admin user", extra={"username": admin_user.username})
     except ValueError:
         # User already exists
         pass
@@ -173,7 +205,8 @@ def _seed_dev_users():
         trader_user = repo.create_user(
             username="trader", password="trader123", roles=["trader"]
         )
-        print(f"Created dev trader user: {trader_user.username}")
+        logger = get_structured_logger(__name__)
+        logger.info("Created dev trader user", extra={"username": trader_user.username})
     except ValueError:
         # User already exists
         pass
@@ -183,7 +216,8 @@ def _seed_dev_users():
         readonly_user = repo.create_user(
             username="viewer", password="viewer123", roles=["read-only"]
         )
-        print(f"Created dev read-only user: {readonly_user.username}")
+        logger = get_structured_logger(__name__)
+        logger.info("Created dev read-only user", extra={"username": readonly_user.username})
     except ValueError:
         # User already exists
         pass

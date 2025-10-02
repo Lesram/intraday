@@ -3,12 +3,12 @@ Market Data Processing Module
 Provides resilient market data processing with error handling.
 """
 
-import math
-import pandas as pd
-import numpy as np
-from typing import Dict, Any, Optional, List
-from dataclasses import dataclass
 import logging
+import math
+from dataclasses import dataclass
+from typing import Any
+
+import numpy as np
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +27,7 @@ class MarketDataProcessor:
     Processes market data with resilience to malformed inputs.
     """
     
-    def __init__(self, config: Optional[Dict[str, Any]] = None):
+    def __init__(self, config: dict[str, Any] | None = None):
         self.config = config or {}
         self.processed_count = 0
         self.error_count = 0
@@ -99,7 +99,7 @@ class MarketDataProcessor:
             logger.warning(f"Market data processing error: {e}")
             return {"status": "error", "error": str(e)}
     
-    def _process_string_data(self, data: str) -> Dict[str, Any]:
+    def _process_string_data(self, data: str) -> dict[str, Any]:
         """Process string-based market data."""
         try:
             if not data.strip():
@@ -121,7 +121,7 @@ class MarketDataProcessor:
         except Exception as e:
             return {"status": "error", "error": f"string_parsing: {e}"}
     
-    def _process_dict_data(self, data: Dict[str, Any]) -> Dict[str, Any]:
+    def _process_dict_data(self, data: dict[str, Any]) -> dict[str, Any]:
         """Process dictionary-based market data."""
         try:
             processed_fields = 0
@@ -157,7 +157,7 @@ class MarketDataProcessor:
         except Exception as e:
             return {"status": "error", "error": f"dict_processing: {e}"}
     
-    def _process_list_data(self, data: List[Any]) -> Dict[str, Any]:
+    def _process_list_data(self, data: list[Any]) -> dict[str, Any]:
         """Process list-based market data."""
         try:
             if not data:
@@ -183,7 +183,7 @@ class MarketDataProcessor:
         except Exception as e:
             return {"status": "error", "error": f"list_processing: {e}"}
     
-    def _process_iterable_data(self, data: Any) -> Dict[str, Any]:
+    def _process_iterable_data(self, data: Any) -> dict[str, Any]:
         """Process other iterable data types."""
         try:
             items = list(data)  # Convert to list safely
@@ -220,7 +220,7 @@ class MarketDataProcessor:
         except (ValueError, TypeError, OverflowError):
             return False
     
-    def get_processing_stats(self) -> Dict[str, int]:
+    def get_processing_stats(self) -> dict[str, int]:
         """Get processing statistics."""
         return {
             "processed_count": self.processed_count,

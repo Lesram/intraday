@@ -1,0 +1,90 @@
+# Security Waivers Configuration
+#
+# This file tracks accepted security findings from SAST/SBOM scans.
+# Each waiver MUST include:
+#   - issue_id: Tool-specific identifier (e.g., B201, CVE-2024-12345)
+#   - severity: HIGH, MEDIUM, LOW
+#   - tool: bandit, grype, etc.
+#   - reason: Business justification for accepting the risk
+#   - owner: Team/person responsible for monitoring
+#   - expiry: Date by which finding must be resolved (YYYY-MM-DD)
+#   - ticket: Tracking ticket ID for remediation
+#
+# POLICY:
+# - HIGH/CRITICAL findings require VP Engineering approval
+# - Waivers expire after 90 days maximum
+# - Expired waivers cause gate failures
+# - No blanket waivers - each finding documented individually
+
+---
+# Bandit (SAST) Waivers
+bandit:
+  # Example waiver (remove this after adding real ones):
+  - issue_id: B201
+    severity: MEDIUM
+    finding: "Flask app run with debug=True"
+    reason: "Development mode only - never deployed to production"
+    owner: "@backend-team"
+    expiry: "2025-12-31"
+    ticket: "SEC-001"
+    approved_by: "tech-lead"
+    approved_date: "2025-10-02"
+  
+  # Add your waivers here:
+  # - issue_id: B501
+  #   severity: HIGH
+  #   finding: "Insufficient SSL verification"
+  #   reason: "Internal API with mTLS at infrastructure layer"
+  #   owner: "@infra-team"
+  #   expiry: "2026-01-15"
+  #   ticket: "SEC-042"
+  #   approved_by: "vp-engineering"
+  #   approved_date: "2025-10-01"
+
+# Grype (SBOM/CVE) Waivers
+grype:
+  # Example waiver (remove this after adding real ones):
+  - issue_id: CVE-2024-00000
+    severity: HIGH
+    package: "example-lib"
+    version: "1.2.3"
+    finding: "Remote code execution in example-lib < 2.0.0"
+    reason: "Vulnerability not exploitable in our usage (we don't use vulnerable function)"
+    owner: "@security-team"
+    expiry: "2025-11-01"
+    ticket: "SEC-002"
+    approved_by: "ciso"
+    approved_date: "2025-10-02"
+    mitigation: "Monitoring for exploit attempts; upgrade planned for Q4"
+  
+  # Add your waivers here:
+  # - issue_id: CVE-2025-12345
+  #   severity: CRITICAL
+  #   package: "requests"
+  #   version: "2.28.0"
+  #   finding: "SSRF vulnerability in requests library"
+  #   reason: "No user-controlled URLs in our usage"
+  #   owner: "@backend-team"
+  #   expiry: "2025-10-30"
+  #   ticket: "SEC-103"
+  #   approved_by: "vp-engineering"
+  #   approved_date: "2025-10-15"
+
+# Waiver Policy Metadata
+policy:
+  max_waiver_duration_days: 90
+  high_severity_approval_required: "VP Engineering or CISO"
+  critical_severity_approval_required: "CTO or CISO"
+  review_cadence: "Weekly security triage meeting"
+  expiry_warning_days: 14  # Warn when waiver expires in 14 days
+  
+# Instructions:
+# 1. Run security scans: make security-scan
+# 2. For each HIGH/CRITICAL finding:
+#    a. Fix immediately (preferred), OR
+#    b. Add waiver with justification
+# 3. Submit PR with waivers for security team review
+# 4. Update tickets regularly with remediation progress
+# 5. Before expiry, either:
+#    - Fix the issue and remove waiver
+#    - Extend waiver with new approval (max 90 days)

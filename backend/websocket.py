@@ -2,47 +2,16 @@
 WebSocket client management and message broadcasting.
 """
 
-import asyncio
 import json
-import time
 import logging
-from typing import Dict, List, Optional, Any, Set
-import types
-import sys
-from dataclasses import dataclass
-from fastapi import WebSocket, WebSocketDisconnect
 from collections import defaultdict
-from datetime import datetime, timezone
+from dataclasses import dataclass
+from datetime import UTC, datetime
+from typing import Any
+
+from fastapi import WebSocket, WebSocketDisconnect
 
 logger = logging.getLogger(__name__)
-
-# --- Compatibility shim for tests that patch `backend.websocket.broadcaster.WebSocketBroadcaster` ---
-# Some legacy/integration tests expect a submodule `broadcaster` under `backend.websocket`.
-# We provide a lightweight shim module with a `WebSocketBroadcaster` class and register
-# it in sys.modules as `backend.websocket.broadcaster` so import/patch works without
-# converting this module into a package.
-class WebSocketBroadcaster:
-    """Minimal broadcaster shim for tests.
-
-    Exposes attributes that tests commonly access and can be patched/mocked.
-    """
-
-    def __init__(self, max_queue_size: int = 100, drop_policy: str = "oldest"):
-        self.max_queue_size = max_queue_size
-        self.drop_policy = drop_policy
-        self.active_connections: Dict[str, dict] = {}
-        self.connection_count: int = 0
-        self.messages_sent: int = 0
-        self.messages_dropped: int = 0
-
-    async def broadcast(self, message: dict[str, Any]):
-        """No-op default; tests usually patch this method."""
-        return None
-
-
-_broadcaster_module = types.ModuleType(__name__ + ".broadcaster")
-_broadcaster_module.WebSocketBroadcaster = WebSocketBroadcaster
-sys.modules[__name__ + ".broadcaster"] = _broadcaster_module
 
 @dataclass
 class WebSocketClient:
@@ -51,9 +20,9 @@ class WebSocketClient:
     client_id: str
     connected_at: datetime
     last_seen: datetime
-    subscriptions: Set[str]
+    subscriptions: set[str]
     queue_size: int = 100
-    message_queue: List[Dict] = None
+    message_queue: list[dict] = None
     
     def __post_init__(self):
         if self.message_queue is None:
@@ -63,8 +32,8 @@ class WebSocketClientManager:
     """Manages WebSocket client connections and message broadcasting."""
     
     def __init__(self, max_queue_size: int = 100, client_ttl: int = 300):
-        self.clients: Dict[str, WebSocketClient] = {}
-        self.subscriptions: Dict[str, Set[str]] = defaultdict(set)
+        self.clients: dict[str, WebSocketClient] = {}
+        self.subscriptions: dict[str, set[str]] = defaultdict(set)
         self.max_queue_size = max_queue_size
         self.client_ttl = client_ttl
         self.metrics = {
@@ -76,7 +45,7 @@ class WebSocketClientManager:
     
     def register_client(self, websocket: WebSocket, client_id: str) -> WebSocketClient:
         """Register a new WebSocket client."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         client = WebSocketClient(
             websocket=websocket,
             client_id=client_id,
@@ -119,7 +88,7 @@ class WebSocketClientManager:
             self.subscriptions[topic].discard(client_id)
             logger.debug(f"Client {client_id} unsubscribed from {topic}")
     
-    async def broadcast_to_all(self, message: Dict[str, Any]):
+    async def broadcast_to_all(self, message: dict[str, Any]):
         """Broadcast message to all connected clients."""
         if not self.clients:
             return
@@ -130,7 +99,7 @@ class WebSocketClientManager:
         for client_id, client in self.clients.items():
             try:
                 await client.websocket.send_text(message_str)
-                client.last_seen = datetime.now(timezone.utc)
+                client.last_seen = datetime.now(UTC)
                 self.metrics['messages_sent_total'] += 1
             except WebSocketDisconnect:
                 disconnected_clients.append(client_id)
@@ -142,7 +111,7 @@ class WebSocketClientManager:
         for client_id in disconnected_clients:
             self.unregister_client(client_id)
     
-    async def broadcast_to_topic(self, topic: str, message: Dict[str, Any]):
+    async def broadcast_to_topic(self, topic: str, message: dict[str, Any]):
         """Broadcast message to clients subscribed to a topic."""
         client_ids = self.subscriptions.get(topic, set())
         if not client_ids:
@@ -164,7 +133,7 @@ class WebSocketClientManager:
                     self.metrics['messages_dropped_total'] += 1
                 
                 await client.websocket.send_text(message_str)
-                client.last_seen = datetime.now(timezone.utc)
+                client.last_seen = datetime.now(UTC)
                 self.metrics['messages_sent_total'] += 1
             except WebSocketDisconnect:
                 disconnected_clients.append(client_id)
@@ -176,7 +145,7 @@ class WebSocketClientManager:
         for client_id in disconnected_clients:
             self.unregister_client(client_id)
     
-    async def send_to_client(self, client_id: str, message: Dict[str, Any]):
+    async def send_to_client(self, client_id: str, message: dict[str, Any]):
         """Send message to a specific client."""
         if client_id not in self.clients:
             logger.warning(f"Client {client_id} not found")
@@ -186,7 +155,7 @@ class WebSocketClientManager:
         try:
             message_str = json.dumps(message)
             await client.websocket.send_text(message_str)
-            client.last_seen = datetime.now(timezone.utc)
+            client.last_seen = datetime.now(UTC)
             self.metrics['messages_sent_total'] += 1
             return True
         except WebSocketDisconnect:
@@ -196,7 +165,7 @@ class WebSocketClientManager:
             logger.error(f"Error sending message to client {client_id}: {e}")
             return False
     
-    def get_statistics(self) -> Dict[str, Any]:
+    def get_statistics(self) -> dict[str, Any]:
         """Get WebSocket manager statistics."""
         return {
             'active_clients': len(self.clients),
@@ -211,7 +180,7 @@ class WebSocketClientManager:
     
     def cleanup_stale_clients(self):
         """Remove stale clients based on TTL."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         stale_clients = []
         
         for client_id, client in self.clients.items():
@@ -241,7 +210,7 @@ class WebSocketClientManager:
             return sent_count
 
 # Global WebSocket manager instance
-websocket_manager: Optional[WebSocketClientManager] = None
+websocket_manager: WebSocketClientManager | None = None
 
 def get_websocket_manager() -> WebSocketClientManager:
     """Get the global WebSocket manager."""

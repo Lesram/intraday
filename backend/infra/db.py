@@ -4,10 +4,11 @@ Provides engine, session management, health checks, and FastAPI dependencies.
 Enhanced with comprehensive observability including tracing and metrics.
 """
 
-from collections.abc import AsyncGenerator
-from contextlib import asynccontextmanager
+import asyncio
 import logging
 import time
+from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
 
 from fastapi import Request
 from sqlalchemy import text
@@ -17,6 +18,7 @@ from sqlalchemy.ext.asyncio import (
     async_sessionmaker,
     create_async_engine,
 )
+from sqlalchemy.pool import NullPool
 
 from backend.infra.logging import get_logger as get_structured_logger
 
@@ -28,8 +30,103 @@ from ..config import get_settings
 logger = logging.getLogger(__name__)
 
 # Global variables for engine and sessionmaker
-_engine: AsyncEngine | None = None
 _sessionmaker: async_sessionmaker[AsyncSession] | None = None
+_engine = None
+
+
+def build_engine(dsn: str):
+    global _engine
+    kw = dict(
+        pool_pre_ping=True,
+        connect_args={},
+    )
+    
+    # Configure connection pool based on database type
+    if dsn.startswith("sqlite"):
+        # SQLite: Use NullPool to prevent connection sharing issues
+        kw["poolclass"] = NullPool
+        kw["connect_args"] = {
+            "check_same_thread": False,
+            "timeout": 20,
+        }
+        logger.info("Using NullPool for SQLite database")
+    else:
+        # PostgreSQL: Production-ready connection pooling
+        kw.update(
+            pool_size=10,        # Base connection pool size
+            max_overflow=20,     # Additional connections under load
+            pool_recycle=3600,   # Recycle connections every hour
+            pool_reset_on_return="commit",  # Clean state on return
+            pool_timeout=30,     # Pool checkout timeout
+        )
+        
+        # PostgreSQL-specific connection parameters
+        kw["connect_args"] = {
+            "server_settings": {
+                "application_name": "trading_platform",
+                "jit": "off",  # Disable JIT for predictable performance
+            },
+            "command_timeout": 60,
+        }
+        
+        logger.info("Using production PostgreSQL connection pool", 
+                   extra={
+                       "pool_size": 10, 
+                       "max_overflow": 20, 
+                       "pool_recycle": 3600,
+                       "pool_reset_on_return": "commit"
+                   })
+    
+    _engine = create_async_engine(dsn, echo=False, **kw)
+    return _engine
+
+
+def build_sessionmaker(engine):
+    return async_sessionmaker(
+        engine, 
+        expire_on_commit=False,
+        class_=AsyncSession,
+        autoflush=True,     # Auto-flush pending changes
+        autocommit=False,   # Explicit transaction control
+    )
+
+
+def init_db(dsn: str):
+    global _sessionmaker
+    engine = build_engine(dsn)
+    _sessionmaker = build_sessionmaker(engine)
+    return engine, _sessionmaker
+
+
+async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
+    """
+    Production-ready database session with proper lifecycle management.
+    Ensures connections are properly returned to the pool.
+    """
+    assert _sessionmaker is not None, "DB not initialized"
+    
+    session = _sessionmaker()
+    try:
+        with trace_span("database_session"):
+            yield session
+            # Commit transaction if no exception occurred
+            await session.commit()
+    except Exception as e:
+        # Rollback on any exception
+        await session.rollback()
+        logger.error(f"Database session error, rolling back: {e}")
+        raise
+    finally:
+        # Always close session to return connection to pool
+        try:
+            await session.close()
+        except Exception as close_error:
+            logger.error(f"Error closing database session: {close_error}")
+            # Don't re-raise close errors as they mask the original error
+
+
+async def dispose_engine():
+    await _engine.dispose()
 
 
 def get_engine() -> AsyncEngine:
@@ -47,66 +144,6 @@ def get_sessionmaker() -> async_sessionmaker[AsyncSession]:
         )
     return _sessionmaker
 
-
-def init_db(database_url: str | None = None) -> async_sessionmaker[AsyncSession]:
-    """
-    Initialize database engine and sessionmaker from settings or provided URL.
-
-    Args:
-        database_url: Optional database URL override. If not provided, uses settings.
-
-    Returns:
-        async_sessionmaker with expire_on_commit=False
-    """
-    global _engine, _sessionmaker
-
-    settings = get_settings()
-
-    # Use provided URL or fallback to settings
-    if database_url is None:
-        # Use data.database_url from the nested config
-        database_url = settings.data.database_url
-
-    # Convert sqlite URL to async postgres if needed for production
-    if database_url.startswith("sqlite"):
-        logger.warning(
-            "SQLite detected. For production, use PostgreSQL with asyncpg driver."
-        )
-        # For SQLite, use aiosqlite
-        if not database_url.startswith("sqlite+aiosqlite"):
-            database_url = database_url.replace("sqlite:", "sqlite+aiosqlite:")
-
-    # Create async engine with connection pool settings
-    _engine = create_async_engine(
-        database_url,
-        pool_size=settings.database.pool_size,
-        max_overflow=settings.database.max_overflow,
-        pool_timeout=settings.database.pool_timeout,
-        echo=settings.database.echo,
-        # Important for async operations
-        future=True,
-    )
-
-    # Create sessionmaker with expire_on_commit=False
-    _sessionmaker = async_sessionmaker(
-        _engine,
-        class_=AsyncSession,
-        expire_on_commit=False,
-    )
-
-    logger.info(
-        "Database initialized",
-        extra={
-            "database_url": (
-                database_url.split("@")[-1] if "@" in database_url else database_url
-            ),  # Hide credentials
-            "pool_size": settings.database.pool_size,
-            "max_overflow": settings.database.max_overflow,
-            "echo": settings.database.echo,
-        },
-    )
-
-    return _sessionmaker
 
 
 @asynccontextmanager
@@ -192,6 +229,36 @@ async def db_health_check() -> bool:
 
             logger.error("Database health check failed", extra={"error": str(e)})
             raise
+
+
+async def quick_ping(session: AsyncSession) -> bool:
+    """
+    Quick database ping for readiness checks with 100ms timeout.
+    
+    Args:
+        session: Database session to ping with
+        
+    Returns:
+        True if ping succeeds within timeout
+        
+    Raises:
+        asyncio.TimeoutError: If ping takes longer than 100ms
+        Exception: If ping fails for other reasons
+    """
+    try:
+        # Execute simple SELECT 1 with 100ms timeout
+        result = await asyncio.wait_for(
+            session.execute(text("SELECT 1")),
+            timeout=0.1  # 100ms timeout
+        )
+        row = result.fetchone()
+        return row is not None and row[0] == 1
+    except asyncio.TimeoutError:
+        logger.warning("Database ping timed out after 100ms")
+        raise
+    except Exception as e:
+        logger.warning("Database ping failed", extra={"error": str(e)})
+        raise
 
 
 async def close_db() -> None:

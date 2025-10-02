@@ -49,13 +49,22 @@ spec:
           containerPort: 8000
           protocol: TCP
         env:
-        # Application Configuration
+        # Application Configuration from ConfigMap
         - name: APP_ENVIRONMENT
-          value: "production"
+          valueFrom:
+            configMapKeyRef:
+              name: algotrading-config
+              key: APP_ENVIRONMENT
         - name: APP_LOG_LEVEL
-          value: "INFO"
-        - name: APP_DEBUG
-          value: "false"
+          valueFrom:
+            configMapKeyRef:
+              name: algotrading-config
+              key: APP_LOG_LEVEL
+        - name: DEBUG
+          valueFrom:
+            configMapKeyRef:
+              name: algotrading-config
+              key: DEBUG
 
         # Database Configuration
         - name: DATABASE_URL
@@ -64,9 +73,15 @@ spec:
               name: algotrading-secrets
               key: database-url
         - name: DATABASE_POOL_SIZE
-          value: "20"
+          valueFrom:
+            configMapKeyRef:
+              name: algotrading-config
+              key: DATABASE_POOL_SIZE
         - name: DATABASE_MAX_OVERFLOW
-          value: "30"
+          valueFrom:
+            configMapKeyRef:
+              name: algotrading-config
+              key: DATABASE_MAX_OVERFLOW
 
         # Alpaca API Configuration
         - name: ALPACA_API_KEY
@@ -80,7 +95,10 @@ spec:
               name: alpaca-secrets
               key: secret-key
         - name: ALPACA_BASE_URL
-          value: "https://paper-api.alpaca.markets"
+          valueFrom:
+            configMapKeyRef:
+              name: algotrading-config
+              key: ALPACA_BASE_URL
 
         # Security Configuration
         - name: JWT_SECRET_KEY
@@ -89,9 +107,15 @@ spec:
               name: algotrading-secrets
               key: jwt-secret
         - name: JWT_ALGORITHM
-          value: "HS256"
+          valueFrom:
+            configMapKeyRef:
+              name: algotrading-config
+              key: JWT_ALGORITHM
         - name: JWT_EXPIRE_MINUTES
-          value: "60"
+          valueFrom:
+            configMapKeyRef:
+              name: algotrading-config
+              key: JWT_EXPIRE_MINUTES
 
         # Observability Configuration
         - name: OTEL_SERVICE_NAME

@@ -3,12 +3,12 @@ Structured JSON logging with OpenTelemetry trace correlation.
 Provides consistent log formatting across HTTP, DB, broker, and outbox operations.
 """
 
-from datetime import UTC, datetime
 import json
 import logging
 import logging.config
 import sys
-from typing import Any, Union
+from datetime import UTC, datetime
+from typing import Any
 
 from opentelemetry import trace
 
@@ -433,7 +433,7 @@ class StructuredLogger:
 
 
 def configure_structured_logging(
-    level: Union[str, int] = "INFO",
+    level: str | int = "INFO",
     service_name: str = "intraday-trading",
     service_version: str = "2.0.0",
     enable_trace_correlation: bool = True,

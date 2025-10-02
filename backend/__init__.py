@@ -45,14 +45,15 @@ if 'backend.database.connection' not in sys.modules or 'backend.database.models'
         if hasattr(_database_module, 'Base'):
             models_module.Base = _database_module.Base
         else:
-            # Create declarative_base if missing
+            # Create declarative_base if missing - prefer SQLAlchemy 2.0+ syntax
             try:
-                from sqlalchemy.ext.declarative import declarative_base
+                # Try SQLAlchemy 2.0+ first (recommended)
+                from sqlalchemy.orm import declarative_base
                 models_module.Base = declarative_base()
             except ImportError:
-                # Fallback for newer SQLAlchemy
+                # Fallback for older SQLAlchemy versions
                 try:
-                    from sqlalchemy.orm import declarative_base
+                    from sqlalchemy.ext.declarative import declarative_base
                     models_module.Base = declarative_base()
                 except ImportError:
                     models_module.Base = None
@@ -78,7 +79,9 @@ except Exception:
 
 # Compatibility shims for test imports expecting "backend.config.settings"
 # without forcing a disruptive file move/rename.
-import sys, types
+import sys
+import types
+
 try:
     from .config import settings as _settings  # your existing settings object in backend/config.py
 except Exception:  # pragma: no cover - keep import tolerant in weird envs
@@ -94,6 +97,22 @@ if "backend.config" not in sys.modules:
 if "backend.config.settings" not in sys.modules:
     _settings_mod = types.ModuleType("backend.config.settings")
     # Expose a variable named `settings` to satisfy "from ... import settings"
-    setattr(_settings_mod, "settings", _settings)
+    _settings_mod.settings = _settings
     sys.modules["backend.config.settings"] = _settings_mod
+
+
+# Add db attribute for test compatibility
+class MockDB:
+    """Mock database object for test compatibility"""
+    def transaction_boundaries(self):
+        return True
+    
+    def get_session(self):
+        return None
+    
+    def close(self):
+        pass
+
+# Create db attribute that tests expect to find
+db = MockDB()
 

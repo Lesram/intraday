@@ -3,10 +3,10 @@ Models repository - manages ML model registry and metadata.
 Implements async CRUD operations with proper error handling.
 """
 
-from datetime import datetime
 import logging
-from typing import Any
 import uuid
+from datetime import UTC, datetime
+from typing import Any
 
 from sqlalchemy import and_, select, update
 from sqlalchemy.exc import IntegrityError
@@ -123,7 +123,7 @@ class ModelsRepo:
         stmt = (
             update(ModelRegistry)
             .where(and_(ModelRegistry.name == name, ModelRegistry.version == version))
-            .values(status=status, updated_at=datetime.utcnow())
+            .values(status=status, updated_at=datetime.now(UTC))
             .returning(ModelRegistry.id)
         )
 
@@ -170,7 +170,7 @@ class ModelsRepo:
         stmt = (
             update(ModelRegistry)
             .where(and_(ModelRegistry.name == name, ModelRegistry.version == version))
-            .values(performance_metrics=merged_metrics, updated_at=datetime.utcnow())
+            .values(performance_metrics=merged_metrics, updated_at=datetime.now(UTC))
             .returning(ModelRegistry.id)
         )
 
@@ -310,14 +310,14 @@ class ModelsRepo:
             .where(
                 and_(ModelRegistry.name == name, ModelRegistry.status == "production")
             )
-            .values(status="archived", updated_at=datetime.utcnow())
+            .values(status="archived", updated_at=datetime.now(UTC))
         )
 
         # Promote the specified version
         stmt = (
             update(ModelRegistry)
             .where(and_(ModelRegistry.name == name, ModelRegistry.version == version))
-            .values(status="production", updated_at=datetime.utcnow())
+            .values(status="production", updated_at=datetime.now(UTC))
             .returning(ModelRegistry.id)
         )
 
@@ -345,7 +345,7 @@ class ModelsRepo:
         stmt = (
             update(ModelRegistry)
             .where(and_(ModelRegistry.name == name, ModelRegistry.version == version))
-            .values(status="deprecated", updated_at=datetime.utcnow())
+            .values(status="deprecated", updated_at=datetime.now(UTC))
             .returning(ModelRegistry.id)
         )
 
@@ -459,7 +459,7 @@ class ModelsRepo:
         """
         from datetime import timedelta
 
-        cutoff_date = datetime.utcnow() - timedelta(days=older_than_days)
+        cutoff_date = datetime.now(UTC) - timedelta(days=older_than_days)
 
         # For safety, we'll just count for now rather than actually delete
         # In production, you might want to move to archive table first

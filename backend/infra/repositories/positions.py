@@ -3,11 +3,11 @@ Positions repository - tracks current portfolio positions.
 Implements async CRUD operations with proper error handling.
 """
 
-from datetime import datetime
-from decimal import Decimal
 import logging
-from typing import Any
 import uuid
+from datetime import UTC, datetime
+from decimal import Decimal
+from typing import Any
 
 from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError
@@ -73,7 +73,7 @@ class PositionsRepo:
             update_values = {
                 "qty": qty,
                 "avg_cost": avg_cost,
-                "updated_at": datetime.utcnow(),
+                "updated_at": datetime.now(UTC),
             }
 
             if market_value is not None:
@@ -179,7 +179,7 @@ class PositionsRepo:
             .values(
                 market_value=market_value,
                 unrealized_pnl=unrealized_pnl,
-                updated_at=datetime.utcnow(),
+                updated_at=datetime.now(UTC),
             )
             .returning(Position.symbol)
         )
@@ -216,7 +216,7 @@ class PositionsRepo:
                 qty=Decimal("0"),
                 market_value=Decimal("0"),
                 unrealized_pnl=Decimal("0"),
-                updated_at=datetime.utcnow(),
+                updated_at=datetime.now(UTC),
             )
             .returning(Position.symbol)
         )

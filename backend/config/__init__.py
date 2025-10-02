@@ -13,6 +13,9 @@ that import fails during early boot to avoid hard errors in integration runs.
 try:
         # Re-export everything from .settings for backward compatibility
         from .settings import *  # type: ignore  # noqa: F401,F403
+
+        # Ensure Settings is explicitly available
+        from .settings import AppSettings, Settings, get_settings, settings
 except Exception:
         # Minimal fallback matching the old module-level shim behavior
         try:
@@ -24,6 +27,9 @@ except Exception:
         class Settings(_BaseSettings):  # type: ignore
                 pass
 
+        AppSettings = Settings  # type: ignore
         settings = Settings()  # type: ignore
+        get_settings = lambda: Settings()  # type: ignore
 
-__all__ = list(globals().keys())
+# Export the imported names
+__all__ = ['Settings', 'AppSettings', 'settings', 'get_settings'] + [name for name in globals().keys() if not name.startswith('_')]

@@ -1,0 +1,72 @@
+{
+  "test_execution": {
+    "timestamp": "2025-09-30T15:41:05.993850",
+    "total_scenarios": 4,
+    "paper_trading_mode": true,
+    "alpaca_client_available": true,
+    "slo_monitoring_available": true
+  },
+  "scenarios": [
+    {
+      "scenario": "basic_market_order",
+      "start_time": "2025-09-30T15:37:13.059075",
+      "end_time": "2025-09-30T15:37:43.199792",
+      "orders_submitted": 10,
+      "orders_filled": 10,
+      "orders_failed": 0,
+      "average_latency_ms": 1.707768440246582,
+      "p99_latency_ms": 2.5205612182617188,
+      "slo_violations": [],
+      "error_summary": {},
+      "success_rate": 100.0
+    },
+    {
+      "scenario": "basic_limit_order",
+      "start_time": "2025-09-30T15:37:53.208493",
+      "end_time": "2025-09-30T15:38:25.323644",
+      "orders_submitted": 8,
+      "orders_filled": 8,
+      "orders_failed": 0,
+      "average_latency_ms": 1.2268126010894775,
+      "p99_latency_ms": 1.9910335540771484,
+      "slo_violations": [],
+      "error_summary": {},
+      "success_rate": 100.0
+    },
+    {
+      "scenario": "rapid_order_burst",
+      "start_time": "2025-09-30T15:38:35.342564",
+      "end_time": "2025-09-30T15:39:25.429917",
+      "orders_submitted": 60,
+      "orders_filled": 60,
+      "orders_failed": 0,
+      "average_latency_ms": 0.6914337476094564,
+      "p99_latency_ms": 1.760721206665039,
+      "slo_violations": [],
+      "error_summary": {},
+      "success_rate": 100.0
+    },
+    {
+      "scenario": "slo_compliance",
+      "start_time": "2025-09-30T15:39:35.441507",
+      "end_time": "2025-09-30T15:41:05.988788",
+      "orders_submitted": 45,
+      "orders_filled": 45,
+      "orders_failed": 0,
+      "average_latency_ms": 1.651144027709961,
+      "p99_latency_ms": 2.618551254272461,
+      "slo_violations": [],
+      "error_summary": {},
+      "success_rate": 100.0
+    }
+  ],
+  "overall_statistics": {
+    "total_orders": 123,
+    "total_filled": 123,
+    "total_failed": 0,
+    "total_slo_violations": 0,
+    "average_latency": 1.3192897041638691,
+    "p99_latency": 2.618551254272461,
+    "success_rate": 100.0
+  }
+}

@@ -4,10 +4,10 @@ Provides structured data containers for risk decisions, order specs, and portfol
 """
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime
 from decimal import Decimal
 from enum import Enum
-from typing import Any, Literal, Optional
+from typing import Any
 
 # Contract-Adapter Patch F: Import Side enum for test compatibility
 from backend.strategies.types import Side
@@ -55,6 +55,18 @@ class RiskLevel(Enum):
     EXTREME = "extreme"
 
 
+class RiskReasonCode(Enum):
+    """Risk reason codes for structured error reporting."""
+    
+    SYMBOL_CONCENTRATION_EXCEEDED = "SYMBOL_CONCENTRATION_EXCEEDED"
+    PORTFOLIO_LIMIT_EXCEEDED = "PORTFOLIO_LIMIT_EXCEEDED"
+    CIRCUIT_BREAKER_TRIPPED = "CIRCUIT_BREAKER_TRIPPED"
+    POSITION_SIZE_EXCEEDED = "POSITION_SIZE_EXCEEDED"
+    DAILY_LOSS_EXCEEDED = "DAILY_LOSS_EXCEEDED"
+    DRAWDOWN_EXCEEDED = "DRAWDOWN_EXCEEDED"
+    LEVERAGE_EXCEEDED = "LEVERAGE_EXCEEDED"
+
+
 @dataclass
 class RiskLimits:
     """Risk limits configuration with legacy compatibility."""
@@ -62,16 +74,18 @@ class RiskLimits:
     max_position_value: float = 0.0
     max_symbol_exposure: float = 1.0
     circuit_breaker_pct: float = 0.5
+    # Admin override capability
+    allow_admin_override: bool = False
     # legacy/optional
-    max_portfolio_exposure: Optional[float] = None
+    max_portfolio_exposure: float | None = None
     
     # Legacy fields for backward compatibility
-    max_position_size: Optional[Decimal] = None
-    max_daily_loss: Optional[Decimal] = None
-    max_sector_concentration: Optional[float] = None
-    max_single_position: Optional[Decimal] = None
-    var_limit_95: Optional[Decimal] = None
-    var_limit_99: Optional[Decimal] = None
+    max_position_size: Decimal | None = None
+    max_daily_loss: Decimal | None = None
+    max_sector_concentration: float | None = None
+    max_single_position: Decimal | None = None
+    var_limit_95: Decimal | None = None
+    var_limit_99: Decimal | None = None
 
     def __init__(self, **kwargs: Any):
         # accept both new and legacy names
@@ -86,6 +100,7 @@ class RiskLimits:
             self.max_symbol_exposure = 1.0
             
         self.circuit_breaker_pct = float(kwargs.get("circuit_breaker_pct", 0.5))
+        self.allow_admin_override = bool(kwargs.get("allow_admin_override", False))
         self.max_portfolio_exposure = kwargs.get("max_portfolio_exposure", None)
         
         # Legacy field compatibility
@@ -232,6 +247,21 @@ class RiskDecision:
     risk_score: float | None = None
     timestamp: datetime | None = None
 
+    @property
+    def approved(self) -> bool:
+        """Backward compatibility property for tests."""
+        return self.allowed
+
+    @property
+    def symbol_exposure(self) -> float:
+        """Get symbol exposure from adjustments for test compatibility."""
+        return self.adjustments.get("symbol_exposure", 0.0)
+
+    @property
+    def sector_exposure(self) -> float:
+        """Get sector exposure from adjustments for test compatibility."""
+        return self.adjustments.get("sector_exposure", 0.0)
+
     @classmethod
     def allow(
         cls,
@@ -246,7 +276,7 @@ class RiskDecision:
             reason=reason,
             adjustments=adjustments or {},
             limits=limits or {},
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(UTC),
             **kwargs,
         )
 
@@ -264,6 +294,6 @@ class RiskDecision:
             reason=reason,
             adjustments=adjustments or {},
             limits=limits or {},
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(UTC),
             **kwargs,
         )
