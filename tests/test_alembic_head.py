@@ -11,10 +11,20 @@ Schema drift between code and database can cause:
 import subprocess
 import re
 import pytest
+import os
 
 
 def test_database_at_alembic_head():
     """Ensure database schema is at alembic head before tests run."""
+    
+    # Check if DATABASE_URL is configured
+    database_url = os.getenv("DATABASE_URL")
+    if not database_url or "sqlite" in database_url.lower() or "placeholder" in database_url.lower():
+        pytest.skip(
+            "PostgreSQL DATABASE_URL not configured\n"
+            "This test requires a real PostgreSQL database.\n"
+            "Set DATABASE_URL=postgresql://user:pass@localhost:5432/db"
+        )
     
     try:
         # Get current revision
@@ -80,6 +90,14 @@ def test_database_at_alembic_head():
         )
     
     except subprocess.CalledProcessError as e:
+        # Check if it's a database connection error (skip) vs other error (fail)
+        error_msg = (e.stderr or e.stdout or "").lower()
+        if "could not connect" in error_msg or "connection refused" in error_msg:
+            pytest.skip(
+                f"Cannot connect to database: {e}\n"
+                "DATABASE_URL may be incorrect or database may be down."
+            )
+        
         pytest.fail(
             f"Alembic command failed: {e}\n"
             f"stdout: {e.stdout}\n"
@@ -96,6 +114,15 @@ def test_database_at_alembic_head():
 
 def test_no_pending_model_changes():
     """Detect if model changes exist without corresponding migrations."""
+    
+    # Check if DATABASE_URL is configured
+    database_url = os.getenv("DATABASE_URL")
+    if not database_url or "sqlite" in database_url.lower() or "placeholder" in database_url.lower():
+        pytest.skip(
+            "PostgreSQL DATABASE_URL not configured\n"
+            "This test requires a real PostgreSQL database.\n"
+            "Set DATABASE_URL=postgresql://user:pass@localhost:5432/db"
+        )
     
     try:
         # Run alembic check (detects model changes without migrations)

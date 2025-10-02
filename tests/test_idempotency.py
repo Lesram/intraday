@@ -14,11 +14,95 @@ import pytest
 import uuid
 import requests
 import os
+import psycopg2
 from typing import Dict, Any
 
 
+class TestDatabaseIdempotencyConstraints:
+    """Test database-level idempotency constraints (no API required)."""
+    
+    def _get_db_connection(self):
+        """Get database connection or skip test."""
+        database_url = os.getenv("DATABASE_URL")
+        if not database_url or "sqlite" in database_url.lower() or "placeholder" in database_url.lower():
+            pytest.skip(
+                "PostgreSQL DATABASE_URL not configured\n"
+                "This test requires a real PostgreSQL database.\n"
+                "Set DATABASE_URL=postgresql://user:pass@localhost:5432/db"
+            )
+        
+        try:
+            conn = psycopg2.connect(database_url)
+            return conn
+        except Exception as e:
+            pytest.skip(f"Cannot connect to database: {e}")
+    
+    def test_orders_constraint_exists(self):
+        """Verify UNIQUE constraint exists on orders(account_id, client_order_id)."""
+        conn = self._get_db_connection()
+        try:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT conname 
+                FROM pg_constraint 
+                WHERE conname = 'uq_orders_account_client_order_id'
+            """)
+            result = cursor.fetchone()
+            
+            assert result is not None, (
+                "❌ Missing constraint: uq_orders_account_client_order_id\n"
+                "Run migration: alembic upgrade head"
+            )
+            
+            print(f"✅ Constraint exists: {result[0]}")
+        finally:
+            conn.close()
+    
+    def test_order_events_constraint_exists(self):
+        """Verify UNIQUE constraint exists on order_events."""
+        conn = self._get_db_connection()
+        try:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT conname 
+                FROM pg_constraint 
+                WHERE conname = 'uq_order_events_broker_event'
+            """)
+            result = cursor.fetchone()
+            
+            assert result is not None, (
+                "❌ Missing constraint: uq_order_events_broker_event\n"
+                "Run migration: alembic upgrade head"
+            )
+            
+            print(f"✅ Constraint exists: {result[0]}")
+        finally:
+            conn.close()
+    
+    def test_outbox_events_constraint_exists(self):
+        """Verify UNIQUE constraint exists on outbox_events."""
+        conn = self._get_db_connection()
+        try:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT conname 
+                FROM pg_constraint 
+                WHERE conname = 'uq_outbox_events_aggregate_event'
+            """)
+            result = cursor.fetchone()
+            
+            assert result is not None, (
+                "❌ Missing constraint: uq_outbox_events_aggregate_event\n"
+                "Run migration: alembic upgrade head"
+            )
+            
+            print(f"✅ Constraint exists: {result[0]}")
+        finally:
+            conn.close()
+
+
 class TestOrderIdempotency:
-    """Test order idempotency with real backend."""
+    """Test order idempotency with real backend (requires API)."""
     
     def setup_method(self):
         """Setup for each test method."""
