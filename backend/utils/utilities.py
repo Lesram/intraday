@@ -1,4 +1,4 @@
-﻿"""
+"""
 Utility functions expected by tests and application components.
 """
 

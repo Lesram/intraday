@@ -36,29 +36,59 @@ _engine = None
 
 def build_engine(dsn: str):
     global _engine
-    kw = dict(pool_pre_ping=True)
+    kw = dict(
+        pool_pre_ping=True,
+        connect_args={},
+    )
     
     # Configure connection pool based on database type
     if dsn.startswith("sqlite"):
         # SQLite: Use NullPool to prevent connection sharing issues
         kw["poolclass"] = NullPool
+        kw["connect_args"] = {
+            "check_same_thread": False,
+            "timeout": 20,
+        }
         logger.info("Using NullPool for SQLite database")
     else:
-        # PostgreSQL: Use proper connection pooling with lifecycle management
+        # PostgreSQL: Production-ready connection pooling
         kw.update(
-            pool_size=5, 
-            max_overflow=5, 
-            pool_recycle=1800  # Recycle connections every 30 minutes
+            pool_size=10,        # Base connection pool size
+            max_overflow=20,     # Additional connections under load
+            pool_recycle=3600,   # Recycle connections every hour
+            pool_reset_on_return="commit",  # Clean state on return
+            pool_timeout=30,     # Pool checkout timeout
         )
-        logger.info("Using connection pool for PostgreSQL database", 
-                   extra={"pool_size": 5, "max_overflow": 5, "pool_recycle": 1800})
+        
+        # PostgreSQL-specific connection parameters
+        kw["connect_args"] = {
+            "server_settings": {
+                "application_name": "trading_platform",
+                "jit": "off",  # Disable JIT for predictable performance
+            },
+            "command_timeout": 60,
+        }
+        
+        logger.info("Using production PostgreSQL connection pool", 
+                   extra={
+                       "pool_size": 10, 
+                       "max_overflow": 20, 
+                       "pool_recycle": 3600,
+                       "pool_reset_on_return": "commit"
+                   })
     
     _engine = create_async_engine(dsn, echo=False, **kw)
     return _engine
 
 
 def build_sessionmaker(engine):
-    return async_sessionmaker(engine, expire_on_commit=False)
+    return async_sessionmaker(
+        engine, 
+        expire_on_commit=False,
+        class_=AsyncSession,
+        autoflush=True,     # Auto-flush pending changes
+        autocommit=False,   # Explicit transaction control
+    )
 
 
 def init_db(dsn: str):
@@ -69,15 +99,30 @@ def init_db(dsn: str):
 
 
 async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
+    """
+    Production-ready database session with proper lifecycle management.
+    Ensures connections are properly returned to the pool.
+    """
     assert _sessionmaker is not None, "DB not initialized"
+    
     session = _sessionmaker()
     try:
-        yield session
-    except Exception:
+        with trace_span("database_session"):
+            yield session
+            # Commit transaction if no exception occurred
+            await session.commit()
+    except Exception as e:
+        # Rollback on any exception
         await session.rollback()
+        logger.error(f"Database session error, rolling back: {e}")
         raise
     finally:
-        await session.close()
+        # Always close session to return connection to pool
+        try:
+            await session.close()
+        except Exception as close_error:
+            logger.error(f"Error closing database session: {close_error}")
+            # Don't re-raise close errors as they mask the original error
 
 
 async def dispose_engine():

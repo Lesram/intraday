@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trading Platform SLO Dashboard</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            min-height: 100vh;
+        }
+
+        .dashboard-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .last-update {
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .metric-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .metric-title {
+            font-size: 1.1em;
+            font-weight: 600;
+            color: #555;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+        }
+
+        .metric-title .emoji {
+            margin-right: 8px;
+            font-size: 1.2em;
+        }
+
+        .health-score {
+            font-size: 3em;
+            font-weight: bold;
+            text-align: center;
+            margin: 20px 0;
+            transition: color 0.3s ease;
+        }
+
+        .status-excellent { color: #00C851; }
+        .status-good { color: #2E7D32; }
+        .status-warning { color: #FF8F00; }
+        .status-degraded { color: #FF5722; }
+        .status-critical { color: #F44336; }
+
+        .health-message {
+            text-align: center;
+            font-size: 1em;
+            color: #666;
+            margin-bottom: 15px;
+        }
+
+        .slo-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 15px;
+        }
+
+        .slo-item {
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #ddd;
+            background: #f9f9f9;
+            transition: all 0.3s ease;
+        }
+
+        .slo-item.compliant {
+            border-left-color: #00C851;
+            background: #f1f8e9;
+        }
+
+        .slo-item.warning {
+            border-left-color: #FF8F00;
+            background: #fff8e1;
+        }
+
+        .slo-item.critical {
+            border-left-color: #F44336;
+            background: #ffebee;
+        }
+
+        .slo-name {
+            font-weight: 600;
+            margin-bottom: 8px;
+            text-transform: capitalize;
+        }
+
+        .slo-metrics {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.9em;
+            color: #666;
+        }
+
+        .slo-value {
+            font-weight: bold;
+        }
+
+        .violations-section {
+            margin-top: 20px;
+        }
+
+        .violation-item {
+            background: #ffebee;
+            border: 1px solid #ffcdd2;
+            border-radius: 6px;
+            padding: 12px;
+            margin: 8px 0;
+            border-left: 4px solid #f44336;
+        }
+
+        .violation-header {
+            font-weight: 600;
+            color: #c62828;
+            margin-bottom: 5px;
+        }
+
+        .violation-details {
+            font-size: 0.9em;
+            color: #666;
+        }
+
+        .alerts-summary {
+            display: flex;
+            justify-content: space-around;
+            text-align: center;
+            margin-top: 15px;
+        }
+
+        .alert-count {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #f44336;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 200px;
+            margin-top: 15px;
+        }
+
+        .performance-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .performance-item {
+            text-align: center;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+
+        .performance-value {
+            font-size: 1.8em;
+            font-weight: bold;
+            margin: 5px 0;
+        }
+
+        .performance-label {
+            font-size: 0.9em;
+            color: #666;
+            margin-bottom: 5px;
+        }
+
+        .performance-target {
+            font-size: 0.8em;
+            color: #888;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .trend-arrow {
+            font-size: 0.8em;
+            margin-left: 5px;
+        }
+
+        .trend-up { color: #00C851; }
+        .trend-down { color: #F44336; }
+        .trend-stable { color: #666; }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.7; }
+            100% { opacity: 1; }
+        }
+
+        .updating {
+            animation: pulse 2s infinite;
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <!-- Header -->
+        <div class="header">
+            <h1>🎯 Trading Platform SLO Dashboard</h1>
+            <div class="last-update" id="lastUpdate">Connecting...</div>
+        </div>
+
+        <!-- Main Metrics Grid -->
+        <div class="metrics-grid">
+            <!-- System Health Card -->
+            <div class="metric-card">
+                <div class="metric-title">
+                    <span class="emoji">🏥</span>
+                    System Health
+                </div>
+                <div class="health-score" id="healthScore">--</div>
+                <div class="health-message" id="healthMessage">Loading...</div>
+                <div class="alerts-summary">
+                    <div>
+                        <div class="alert-count" id="criticalAlerts">0</div>
+                        <div>Critical</div>
+                    </div>
+                    <div>
+                        <div class="alert-count" id="totalAlerts">0</div>
+                        <div>Total Alerts</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SLO Compliance Card -->
+            <div class="metric-card">
+                <div class="metric-title">
+                    <span class="emoji">📊</span>
+                    SLO Compliance
+                </div>
+                <div class="slo-grid" id="sloGrid">
+                    <!-- SLO items will be populated by JavaScript -->
+                </div>
+            </div>
+
+            <!-- Performance Metrics Card -->
+            <div class="metric-card">
+                <div class="metric-title">
+                    <span class="emoji">⚡</span>
+                    Performance Metrics
+                </div>
+                <div class="performance-grid" id="performanceGrid">
+                    <!-- Performance items will be populated by JavaScript -->
+                </div>
+            </div>
+
+            <!-- System Uptime Card -->
+            <div class="metric-card">
+                <div class="metric-title">
+                    <span class="emoji">⏰</span>
+                    System Uptime
+                </div>
+                <div class="performance-item">
+                    <div class="performance-label">Current Uptime</div>
+                    <div class="performance-value" id="currentUptime">--</div>
+                    <div class="performance-target" id="lastRestart">--</div>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-top: 15px;">
+                    <div style="text-align: center;">
+                        <div style="font-weight: bold;" id="mttr">--</div>
+                        <div style="font-size: 0.8em; color: #666;">MTTR (min)</div>
+                    </div>
+                    <div style="text-align: center;">
+                        <div style="font-weight: bold;" id="mtbf">--</div>
+                        <div style="font-size: 0.8em; color: #666;">MTBF (hrs)</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Violations Section -->
+        <div class="metric-card violations-section" id="violationsSection" style="display: none;">
+            <div class="metric-title">
+                <span class="emoji">🚨</span>
+                Active SLO Violations
+            </div>
+            <div id="violationsList">
+                <!-- Violations will be populated by JavaScript -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize Socket.IO connection
+        const socket = io();
+
+        // Dashboard state
+        let dashboardData = {};
+
+        // Format time helper
+        function formatTime(timestamp) {
+            return new Date(timestamp).toLocaleString();
+        }
+
+        // Format duration helper
+        function formatDuration(hours) {
+            if (hours < 1) {
+                return `${Math.round(hours * 60)}m`;
+            } else if (hours < 24) {
+                return `${Math.round(hours)}h`;
+            } else {
+                return `${Math.round(hours / 24)}d`;
+            }
+        }
+
+        // Get status class helper
+        function getStatusClass(alertLevel) {
+            if (alertLevel === 0) return 'compliant';
+            if (alertLevel === 1) return 'warning';
+            return 'critical';
+        }
+
+        // Get trend arrow
+        function getTrendArrow(trend) {
+            switch(trend) {
+                case 'improving': return '<span class="trend-arrow trend-up">↗</span>';
+                case 'degrading': return '<span class="trend-arrow trend-down">↘</span>';
+                default: return '<span class="trend-arrow trend-stable">→</span>';
+            }
+        }
+
+        // Update system health display
+        function updateSystemHealth(healthData) {
+            const scoreElement = document.getElementById('healthScore');
+            const messageElement = document.getElementById('healthMessage');
+            const criticalElement = document.getElementById('criticalAlerts');
+            const totalElement = document.getElementById('totalAlerts');
+
+            if (healthData) {
+                scoreElement.textContent = `${healthData.score}%`;
+                scoreElement.className = `health-score status-${healthData.status}`;
+                messageElement.textContent = healthData.message;
+                criticalElement.textContent = healthData.critical_violations || 0;
+                totalElement.textContent = healthData.total_violations || 0;
+            }
+        }
+
+        // Update SLO compliance display
+        function updateSLOCompliance(sloData) {
+            const grid = document.getElementById('sloGrid');
+            grid.innerHTML = '';
+
+            Object.entries(sloData || {}).forEach(([sloName, data]) => {
+                const compliance = (data.compliance_ratio * 100).toFixed(1);
+                const errorBudget = (data.error_budget_remaining * 100).toFixed(1);
+                const burnRate = data.burn_rate.toFixed(2);
+                const alertLevel = data.alert_level;
+
+                const sloItem = document.createElement('div');
+                sloItem.className = `slo-item ${getStatusClass(alertLevel)}`;
+                
+                sloItem.innerHTML = `
+                    <div class="slo-name">${sloName.replace(/_/g, ' ')}</div>
+                    <div class="slo-metrics">
+                        <span>Compliance: <span class="slo-value">${compliance}%</span></span>
+                        <span>Budget: <span class="slo-value">${errorBudget}%</span></span>
+                    </div>
+                    <div class="slo-metrics">
+                        <span>Burn Rate: <span class="slo-value">${burnRate}x</span></span>
+                        <span>Target: <span class="slo-value">${data.target_value}${data.unit}</span></span>
+                    </div>
+                `;
+                
+                grid.appendChild(sloItem);
+            });
+        }
+
+        // Update performance metrics display
+        function updatePerformanceMetrics(perfData) {
+            const grid = document.getElementById('performanceGrid');
+            grid.innerHTML = '';
+
+            Object.entries(perfData || {}).forEach(([metricName, data]) => {
+                const item = document.createElement('div');
+                item.className = 'performance-item';
+                
+                let currentValue, unit, target;
+                
+                if (metricName === 'order_latency') {
+                    currentValue = data.current_p99_ms.toFixed(1);
+                    unit = 'ms';
+                    target = `Target: ${data.target_ms}ms`;
+                } else if (metricName.includes('percent')) {
+                    currentValue = data.current_percent.toFixed(1);
+                    unit = '%';
+                    target = `Target: ${data.target_percent}%`;
+                } else {
+                    currentValue = data.current_percent?.toFixed(1) || '--';
+                    unit = '%';
+                    target = `Target: ${data.target_percent}%`;
+                }
+                
+                item.innerHTML = `
+                    <div class="performance-label">${metricName.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</div>
+                    <div class="performance-value">${currentValue}${unit}${getTrendArrow(data.trend)}</div>
+                    <div class="performance-target">${target}</div>
+                `;
+                
+                grid.appendChild(item);
+            });
+        }
+
+        // Update uptime display
+        function updateUptime(uptimeData) {
+            if (!uptimeData) return;
+
+            document.getElementById('currentUptime').textContent = formatDuration(uptimeData.current_uptime_hours);
+            document.getElementById('lastRestart').textContent = `Since: ${formatTime(uptimeData.last_restart)}`;
+            document.getElementById('mttr').textContent = uptimeData.mttr_minutes.toFixed(1);
+            document.getElementById('mtbf').textContent = uptimeData.mtbf_hours.toFixed(1);
+        }
+
+        // Update violations display
+        function updateViolations(violations) {
+            const section = document.getElementById('violationsSection');
+            const list = document.getElementById('violationsList');
+            
+            if (!violations || violations.length === 0) {
+                section.style.display = 'none';
+                return;
+            }
+            
+            section.style.display = 'block';
+            list.innerHTML = '';
+            
+            violations.forEach(violation => {
+                const item = document.createElement('div');
+                item.className = 'violation-item';
+                
+                item.innerHTML = `
+                    <div class="violation-header">${violation.slo_name} - ${violation.severity.toUpperCase()}</div>
+                    <div class="violation-details">
+                        Burn Rate: ${violation.burn_rate.toFixed(2)}x | 
+                        Actual: ${violation.actual_value.toFixed(3)} | 
+                        Target: ${violation.target_value.toFixed(3)}
+                    </div>
+                `;
+                
+                list.appendChild(item);
+            });
+        }
+
+        // Update entire dashboard
+        function updateDashboard(data) {
+            dashboardData = data;
+            
+            // Update timestamp
+            document.getElementById('lastUpdate').textContent = `Last Updated: ${formatTime(data.timestamp)}`;
+            
+            // Update all sections
+            updateSystemHealth(data.system_health);
+            updateSLOCompliance(data.slo_compliance);
+            updatePerformanceMetrics(data.performance_metrics);
+            updateUptime(data.uptime);
+            updateViolations(data.active_violations);
+            
+            // Remove updating class if present
+            document.body.classList.remove('updating');
+        }
+
+        // Socket event handlers
+        socket.on('connect', function() {
+            console.log('Connected to SLO dashboard');
+            document.getElementById('lastUpdate').textContent = 'Connected - Loading data...';
+        });
+
+        socket.on('disconnect', function() {
+            console.log('Disconnected from SLO dashboard');
+            document.getElementById('lastUpdate').textContent = 'Disconnected - Reconnecting...';
+        });
+
+        socket.on('dashboard_data', function(data) {
+            console.log('Received initial dashboard data');
+            updateDashboard(data);
+        });
+
+        socket.on('dashboard_update', function(data) {
+            console.log('Received dashboard update');
+            document.body.classList.add('updating');
+            setTimeout(() => updateDashboard(data), 100);
+        });
+
+        // Error handling
+        socket.on('connect_error', function(error) {
+            console.error('Connection error:', error);
+            document.getElementById('lastUpdate').textContent = 'Connection Error - Retrying...';
+        });
+
+        // Auto-refresh fallback (in case WebSocket fails)
+        setInterval(async function() {
+            if (!socket.connected) {
+                try {
+                    const response = await fetch('/api/slo/status');
+                    const data = await response.json();
+                    updateDashboard(data);
+                } catch (error) {
+                    console.error('Fallback refresh failed:', error);
+                }
+            }
+        }, 30000); // Every 30 seconds
+    </script>
+</body>
+</html>

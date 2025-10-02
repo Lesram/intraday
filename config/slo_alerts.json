@@ -1,0 +1,89 @@
+{
+  "alert_rules": {
+    "order_latency_p99_critical": {
+      "name": "order_latency_p99_critical",
+      "slo_name": "order_submission_latency_p99",
+      "burn_rate_threshold": 2.0,
+      "window_minutes": 5,
+      "severity": "critical",
+      "cooldown_minutes": 15,
+      "notification_channels": [
+        "email",
+        "slack",
+        "pagerduty"
+      ],
+      "escalation_delay_minutes": 5
+    },
+    "order_latency_p99_warning": {
+      "name": "order_latency_p99_warning",
+      "slo_name": "order_submission_latency_p99",
+      "burn_rate_threshold": 1.0,
+      "window_minutes": 15,
+      "severity": "warning",
+      "cooldown_minutes": 30,
+      "notification_channels": [
+        "email",
+        "slack"
+      ],
+      "escalation_delay_minutes": 0
+    },
+    "order_accuracy_critical": {
+      "name": "order_accuracy_critical",
+      "slo_name": "order_accuracy_daily",
+      "burn_rate_threshold": 1.5,
+      "window_minutes": 30,
+      "severity": "critical",
+      "cooldown_minutes": 60,
+      "notification_channels": [
+        "email",
+        "slack",
+        "pagerduty"
+      ],
+      "escalation_delay_minutes": 10
+    },
+    "fill_rate_warning": {
+      "name": "fill_rate_warning",
+      "slo_name": "fill_rate_5min",
+      "burn_rate_threshold": 0.8,
+      "window_minutes": 10,
+      "severity": "warning",
+      "cooldown_minutes": 20,
+      "notification_channels": [
+        "slack"
+      ],
+      "escalation_delay_minutes": 0
+    },
+    "system_availability_critical": {
+      "name": "system_availability_critical",
+      "slo_name": "system_availability_hourly",
+      "burn_rate_threshold": 1.0,
+      "window_minutes": 5,
+      "severity": "critical",
+      "cooldown_minutes": 10,
+      "notification_channels": [
+        "email",
+        "slack",
+        "pagerduty"
+      ],
+      "escalation_delay_minutes": 2
+    }
+  },
+  "notification_config": {
+    "email": {
+      "smtp_server": "smtp.gmail.com",
+      "smtp_port": 587,
+      "from_address": "alerts@tradingplatform.com",
+      "to_addresses": [
+        "ops@hedgefund.com",
+        "risk@hedgefund.com"
+      ]
+    },
+    "slack": {
+      "webhook_url": "https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK",
+      "channel": "#trading-alerts"
+    },
+    "pagerduty": {
+      "integration_key": "YOUR_PAGERDUTY_INTEGRATION_KEY"
+    }
+  }
+}

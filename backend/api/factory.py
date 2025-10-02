@@ -236,10 +236,70 @@ def create_app(settings=None, *, registry=None, ws_queue_max: int|None=None, **k
             else:
                 logger.info("No database configured, skipping outbox worker startup")
                 app.state.outbox_worker = None
+
+            # ============================================================================
+            # ALPACA STREAM STARTUP
+            # ============================================================================
+            # Start Alpaca WebSocket stream for real-time order updates (if not using mocks)
+            stream_task = None
+            use_mock_broker = os.getenv("USE_MOCK_BROKER", "true").lower() in ("true", "1", "yes")
+            
+            if not use_mock_broker and hasattr(app.state, 'sessionmaker') and app.state.sessionmaker:
+                try:
+                    from backend.integrations.alpaca_stream import get_stream_client
+                    
+                    # Get stream client and start it in background task
+                    stream_client = get_stream_client()
+                    stream_task = asyncio.create_task(stream_client.start_with_reconnect())
+                    app.state.alpaca_stream_task = stream_task
+                    app.state.alpaca_stream_client = stream_client
+                    
+                    logger.info("Alpaca WebSocket stream client started successfully")
+                    
+                except Exception as e:
+                    logger.warning("Failed to start Alpaca stream client, order status updates will be polling-based",
+                                 error=str(e),
+                                 error_type=type(e).__name__)
+                    app.state.alpaca_stream_task = None
+                    app.state.alpaca_stream_client = None
+            else:
+                if use_mock_broker:
+                    logger.info("Using mock broker, skipping Alpaca stream startup")
+                else:
+                    logger.info("No database configured, skipping Alpaca stream startup")
+                app.state.alpaca_stream_task = None
+                app.state.alpaca_stream_client = None
             
             yield
             
         finally:
+            # ============================================================================
+            # ALPACA STREAM SHUTDOWN
+            # ============================================================================
+            # Stop Alpaca WebSocket stream gracefully
+            if hasattr(app.state, 'alpaca_stream_client') and app.state.alpaca_stream_client:
+                try:
+                    logger.info("Stopping Alpaca stream client...")
+                    await app.state.alpaca_stream_client.stop()
+                    logger.info("Alpaca stream client stopped successfully")
+                except Exception as e:
+                    logger.error("Error stopping Alpaca stream client",
+                               error=str(e),
+                               error_type=type(e).__name__)
+            
+            # Cancel stream task if still running
+            if hasattr(app.state, 'alpaca_stream_task') and app.state.alpaca_stream_task:
+                try:
+                    app.state.alpaca_stream_task.cancel()
+                    try:
+                        await app.state.alpaca_stream_task
+                    except asyncio.CancelledError:
+                        pass
+                except Exception as e:
+                    logger.error("Error cancelling Alpaca stream task",
+                               error=str(e),
+                               error_type=type(e).__name__)
+
             # ============================================================================
             # OUTBOX WORKER SHUTDOWN
             # ============================================================================
@@ -382,12 +442,14 @@ def create_app(settings=None, *, registry=None, ws_queue_max: int|None=None, **k
     from backend.api.routes.strategy import router as strategy_router
     from backend.api.routes.system import router as system_router
     from backend.api.routes.trades import router as trades_router
+    from backend.api.routes.monitoring import router as monitoring_router
     
     # ============================================================================
     # PUBLIC ROUTES (no authentication required)
     # ============================================================================
     # Add public system routes directly to api_router (health, metrics, etc.)
     api_router.include_router(system_router, tags=["System - Public"])
+    api_router.include_router(monitoring_router, tags=["Monitoring - Public"])
     api_router.include_router(auth_router, tags=["Authentication - Public"])
     
     # ============================================================================  

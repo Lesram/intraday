@@ -1,0 +1,74 @@
+{
+  "demo_completed_at": "2025-09-30T11:00:58.210960",
+  "final_compliance": {
+    "timestamp": "2025-09-30 11:00:58.208397",
+    "system_health_pct": 33.33333333333333,
+    "slo_compliance": {
+      "order_latency_p99": {
+        "compliant": false,
+        "current_value": 294.7164952044569,
+        "target_value": 100.0,
+        "burn_rate": 1.9471649520445693,
+        "sample_count": 488
+      },
+      "order_accuracy": {
+        "compliant": true,
+        "current_value": 95.08928571428571,
+        "target_value": 95.0,
+        "burn_rate": 0.0,
+        "sample_count": 448
+      },
+      "fill_rate": {
+        "compliant": false,
+        "current_value": 95.02230837363571,
+        "target_value": 98.0,
+        "burn_rate": 0.030384608432288678,
+        "sample_count": 455
+      }
+    },
+    "violations": [
+      {
+        "slo_name": "Order Latency P99",
+        "current_value": 294.7164952044569,
+        "target_value": 100.0,
+        "severity": "critical"
+      },
+      {
+        "slo_name": "Fill Rate",
+        "current_value": 95.02230837363571,
+        "target_value": 98.0,
+        "severity": "warning"
+      }
+    ],
+    "total_slos": 3,
+    "compliant_slos": 1
+  },
+  "total_events": {
+    "order_latencies": 488,
+    "order_outcomes": 448,
+    "fill_events": 455
+  },
+  "slo_targets": {
+    "order_latency_p99": {
+      "name": "Order Latency P99",
+      "target_value": 100.0,
+      "unit": "ms",
+      "window_minutes": 60,
+      "burn_rate_threshold": 0.1
+    },
+    "order_accuracy": {
+      "name": "Order Accuracy",
+      "target_value": 95.0,
+      "unit": "%",
+      "window_minutes": 1440,
+      "burn_rate_threshold": 0.05
+    },
+    "fill_rate": {
+      "name": "Fill Rate",
+      "target_value": 98.0,
+      "unit": "%",
+      "window_minutes": 5,
+      "burn_rate_threshold": 0.2
+    }
+  }
+}

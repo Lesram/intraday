@@ -1,0 +1,121 @@
+path,action,rationale,risk,priority,owner,estimated_hours
+backend/config_helpers.py,refactor,Remove BOM character U+FEFF causing parse failures,LOW,CRITICAL,Platform Team,0.1
+backend/utils/utilities.py,refactor,Remove BOM character U+FEFF causing parse failures,LOW,CRITICAL,Platform Team,0.1
+requirements.txt,keep,Generate SBOM and security scan from this file,NONE,CRITICAL,Security Team,0.5
+reports/CLEANUP_AUDIT.md,keep,Comprehensive audit report for this initiative,NONE,HIGH,Platform Team,0
+reports/ENV_CATALOG.md,keep,Environment variable documentation,NONE,HIGH,Platform Team,0
+.env.example,keep,Generated example config file for developers,NONE,HIGH,Platform Team,0
+scripts/cleanup/audit_platform.py,keep,Audit automation tool for future use,NONE,MEDIUM,Platform Team,0
+scripts/cleanup/generate_env_catalog.py,keep,Env var cataloging tool for future use,NONE,MEDIUM,Platform Team,0
+tests/test_route_registry.py,create,Codify route assertions to prevent Phase-G regressions,LOW,CRITICAL,API Team,1.0
+scripts/cleanup/fix_bom_encoding.py,create,Automate BOM removal from source files,LOW,HIGH,Platform Team,0.5
+scripts/cleanup/prune_artifacts.sh,create,Remove generated artifacts (coverage caches etc),NONE,HIGH,Platform Team,0.5
+scripts/cleanup/move_placeholders.py,create,Move unused prototypes to docs/blueprints/,LOW,MEDIUM,Platform Team,1.0
+scripts/cleanup/run_all.sh,create,Master cleanup orchestration script with dry-run,NONE,HIGH,Platform Team,0.5
+backend/infra/health.py,refactor,Ensure /health trivial (<10ms) /readyz micro-cached,LOW,HIGH,Infra Team,1.0
+backend/api/main.py,refactor,Validate route structure and auth consistency,LOW,MEDIUM,API Team,1.0
+reports/DEPENDENCIES_SNAPSHOT.md,create,SBOM summary with license compliance and EOL flags,NONE,CRITICAL,Security Team,2.0
+reports/UNUSED_CODEGRAPH.md,create,Orphan analysis with expanded entrypoints,MEDIUM,HIGH,Platform Team,4.0
+reports/TEST_ARTIFACTS_PRUNE.md,create,List test artifacts for archival or deletion,NONE,MEDIUM,QA Team,1.0
+reports/CLEANUP_PR_BODY.md,create,PR description with risks and rollback instructions,NONE,HIGH,Platform Team,0.5
+CONTRIBUTING.md,create,Developer contribution guidelines,NONE,MEDIUM,Platform Team,2.0
+CODEOWNERS,create,Define code ownership for review routing,NONE,MEDIUM,Platform Team,0.5
+.editorconfig,create,Standardize editor settings across team,NONE,LOW,Platform Team,0.5
+docs/architecture/,create,Architecture diagrams and design docs,NONE,MEDIUM,Architecture Team,8.0
+docs/blueprints/,create,Future plans and prototype documentation,NONE,LOW,Architecture Team,2.0
+docs/api/,create,API usage guide and examples,NONE,MEDIUM,API Team,4.0
+backend/api/routes/monitoring.py,keep,Monitoring endpoints required for production,NONE,HIGH,Ops Team,0
+backend/infra/guardrails.py,keep,Risk management guardrails in active use,NONE,HIGH,Risk Team,0
+backend/infra/guardrails_production.py,review,Determine if duplicate or environment-specific variant,MEDIUM,MEDIUM,Risk Team,0.5
+backend/database/database_config.py,review,May be duplicate of other config modules,MEDIUM,MEDIUM,Infra Team,0.5
+backend/database/unified_config.py,review,May be duplicate consolidate with base config,MEDIUM,MEDIUM,Infra Team,0.5
+backend/config/coordinator.py,review,Determine if actively used or prototype,MEDIUM,MEDIUM,Backend Team,0.5
+backend/config/unified.py,review,May overlap with base_settings.py,MEDIUM,MEDIUM,Backend Team,0.5
+scripts/ci_batched.ps1,archive,Old CI script archived in Phase 1,NONE,LOW,Platform Team,0
+scripts/ci_clean_light.ps1,archive,Old CI script archived in Phase 1,NONE,LOW,Platform Team,0
+scripts/ci_light_mode.ps1,archive,Old CI script archived in Phase 1,NONE,LOW,Platform Team,0
+scripts/ci_minimal_review.ps1,archive,Old CI script archived in Phase 1,NONE,LOW,Platform Team,0
+scripts/ci_no_stall.ps1,archive,Old CI script archived in Phase 1,NONE,LOW,Platform Team,0
+scripts/ci_sequential.ps1,archive,Old CI script archived in Phase 1,NONE,LOW,Platform Team,0
+scripts/ci_simple_light.ps1,archive,Old CI script archived in Phase 1,NONE,LOW,Platform Team,0
+scripts/ci_working.ps1,archive,Old CI script archived in Phase 1,NONE,LOW,Platform Team,0
+AUDIT_EXECUTIVE_SUMMARY.md,archive,Historical report from Phase 1 move to reports/archive/2025-10/,NONE,LOW,Platform Team,0
+COMPREHENSIVE_PLATFORM_AUDIT_REPORT.md,archive,Historical report from Phase 1 move to reports/archive/2025-10/,NONE,LOW,Platform Team,0
+CLEANUP_CHECKLIST.md,archive,Historical checklist from Phase 1 move to reports/archive/2025-10/,NONE,LOW,Platform Team,0
+CLEANUP_COMPLETE.md,archive,Historical report from Phase 2 move to reports/archive/2025-10/,NONE,LOW,Platform Team,0
+PHASE2_CLEANUP_PLAN.md,archive,Historical plan from Phase 2 move to reports/archive/2025-10/,NONE,LOW,Platform Team,0
+test_results/k6-summary-*.json,keep,Recent K6 performance test summaries needed for gates,NONE,HIGH,QA Team,0
+test_results/promotion_gates/,keep,Promotion gate results required for deployment decisions,NONE,HIGH,QA Team,0
+test_results/burn_in/,delete,Already deleted in Phase 2 cleanup,NONE,LOW,Platform Team,0
+htmlcov/,delete,Already deleted in Phase 2 cleanup,NONE,LOW,Platform Team,0
+htmlcov_*/,delete,Already deleted in Phase 2 cleanup,NONE,LOW,Platform Team,0
+documents/,delete,Already deleted in Phase 2 cleanup (73 UUID directories),NONE,LOW,Platform Team,0
+__pycache__/,delete,Already deleted in Phase 2 cleanup (1847 directories),NONE,LOW,Platform Team,0
+.pytest_cache/,delete,Already deleted in Phase 2 cleanup,NONE,LOW,Platform Team,0
+.coverage,delete,Already deleted in Phase 2 cleanup,NONE,LOW,Platform Team,0
+logs/app.log,archive,Already archived in Phase 2 to archive/logs/,NONE,LOW,Platform Team,0
+logs/audit_trail.log,archive,Already archived in Phase 2 to archive/logs/,NONE,LOW,Platform Team,0
+architect_review/,delete,Already deleted in Phase 2 (empty directory),NONE,LOW,Platform Team,0
+governance/,delete,Already deleted in Phase 2 (empty directory),NONE,LOW,Platform Team,0
+custom_optimization/,delete,Already deleted in Phase 2 (empty directory),NONE,LOW,Platform Team,0
+model_optimization/,delete,Already deleted in Phase 2 (empty directory),NONE,LOW,Platform Team,0
+model_serving/,delete,Already deleted in Phase 2 (empty directory),NONE,LOW,Platform Team,0
+data/,delete,Already deleted in Phase 2 (empty directory),NONE,LOW,Platform Team,0
+.benchmarks/,delete,Already deleted in Phase 2 (empty directory),NONE,LOW,Platform Team,0
+main.py,keep,Production entry point actively used,NONE,CRITICAL,Platform Team,0
+deploy_guardrails.py,keep,Production deployment script actively used,NONE,HIGH,Ops Team,0
+cleanup_platform.ps1,keep,Phase 1 cleanup script keep for reference,NONE,LOW,Platform Team,0
+phase2_cleanup.ps1,keep,Phase 2 cleanup script keep for reference,NONE,LOW,Platform Team,0
+pre_burnin_checklist.ps1,keep,Pre-burn-in validation script used tonight,NONE,HIGH,QA Team,0
+quick_validation.ps1,keep,Quick validation script actively used,NONE,HIGH,QA Team,0
+start-server.ps1,keep,Server management script actively used,NONE,HIGH,Ops Team,0
+deploy.ps1,keep,Deployment script actively used,NONE,HIGH,Ops Team,0
+run_phase_g_tests.ps1,archive,Phase G completed move to archive/,NONE,LOW,Platform Team,0
+run_phase_g_validation.ps1,archive,Phase G completed move to archive/,NONE,LOW,Platform Team,0
+stop_all_tests.ps1,review,Evaluate if needed or redundant with Ctrl+C,LOW,LOW,QA Team,0.25
+run_all_tests_and_report.ps1,review,May be replaced by quick_validation.ps1,LOW,MEDIUM,QA Team,0.5
+backend/api/main.py.backup,delete,Backup file not needed in git,NONE,MEDIUM,API Team,0
+trading_platform_backup_20250930_102623.db,archive,Database backup move to backups/ directory,NONE,MEDIUM,Infra Team,0
+staging.db,review,Determine if needed or can be regenerated,LOW,MEDIUM,Infra Team,0.25
+trading_platform.db,keep,Active development database,NONE,HIGH,Infra Team,0
+test_trading_platform.db,keep,Test database actively used,NONE,HIGH,QA Team,0
+trading_paper.db,keep,Paper trading database actively used,NONE,HIGH,Trading Team,0
+alembic/,keep,Database migrations required for production,NONE,CRITICAL,Infra Team,0
+k8s/,keep,Kubernetes deployment manifests needed,NONE,HIGH,Ops Team,0
+models/,keep,ML model artifacts in active use,NONE,HIGH,ML Team,0
+monitoring/,keep,Monitoring configurations needed for prod,NONE,HIGH,Ops Team,0
+backend/analytics/,review,Determine if in use or future blueprint,MEDIUM,MEDIUM,Analytics Team,1.0
+backend/brokers/,review,Determine if in use or duplicate of integrations/,MEDIUM,MEDIUM,Trading Team,1.0
+backend/deployment/,review,May overlap with deploy/ directory,MEDIUM,MEDIUM,Ops Team,0.5
+backend/optimization/,review,Determine if in use or future blueprint,MEDIUM,MEDIUM,ML Team,1.0
+backend/security/,review,Determine if in use or duplicate of auth logic,MEDIUM,MEDIUM,Security Team,1.0
+backend/migrations/,keep,Database migration versions keep all,NONE,CRITICAL,Infra Team,0
+perf/,keep,Performance testing scripts and results,NONE,HIGH,QA Team,0
+tools/,review,Determine contents and necessity,LOW,LOW,Platform Team,0.5
+utils/,review,May duplicate backend/utils/,LOW,MEDIUM,Backend Team,0.5
+examples/,review,Determine if useful or can be moved to docs/,LOW,LOW,Platform Team,0.5
+artifacts/,review,Legacy test artifacts review for archival,MEDIUM,MEDIUM,QA Team,1.0
+backups/,keep,Platform backups from cleanup operations,NONE,HIGH,Platform Team,0
+archive/,keep,Archived files from Phase 1 and Phase 2 cleanups,NONE,HIGH,Platform Team,0
+.env,keep,Protected local development config,NONE,HIGH,Platform Team,0
+.env.paper,keep,Protected paper trading config with real API keys,NONE,CRITICAL,Trading Team,0
+.env.production,keep,Protected production config with real API keys,NONE,CRITICAL,Security Team,0
+.env.staging,keep,Protected staging config,NONE,HIGH,Ops Team,0
+.env.production.template,keep,Safe template file can be committed to git,NONE,MEDIUM,Platform Team,0
+.gitignore,keep,Critical security protection for secrets,NONE,CRITICAL,Security Team,0
+requirements.txt,keep,Python dependencies primary source of truth,NONE,CRITICAL,Platform Team,0
+requirements-dev.txt,keep,Development dependencies,NONE,HIGH,Platform Team,0
+requirements.lock,keep,Locked dependencies for reproducible builds,NONE,HIGH,Platform Team,0
+pytest.ini,keep,Pytest configuration actively used,NONE,HIGH,QA Team,0
+pyproject.toml,keep,Python project metadata and tool configs,NONE,HIGH,Platform Team,0
+Makefile,keep,Build and task automation,NONE,MEDIUM,Platform Team,0
+Dockerfile,keep,Container image definition for deployment,NONE,HIGH,Ops Team,0
+docker-compose.yml,keep,Local development container orchestration,NONE,MEDIUM,Platform Team,0
+docker-compose.paper.yml,keep,Paper trading environment containers,NONE,MEDIUM,Trading Team,0
+docker-compose.prod.yml,keep,Production environment containers,NONE,HIGH,Ops Team,0
+logging_config.yaml,keep,Logging configuration actively used,NONE,HIGH,Ops Team,0
+README.md,keep,Primary repository documentation,NONE,CRITICAL,Platform Team,0
+ENV_FILES_EXPLANATION.md,keep,Recent documentation about .env files,NONE,HIGH,Platform Team,0
+ENV_SECURITY_UPDATE.md,keep,Security audit of .env files,NONE,HIGH,Security Team,0
+PRE_BURNIN_PREPARATION_SUMMARY.md,keep,Preparation docs for tonight's burn-in test,NONE,HIGH,QA Team,0
+QUICK_VALIDATION_PROTOCOL.md,keep,Validation procedures documentation,NONE,HIGH,QA Team,0

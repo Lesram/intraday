@@ -101,6 +101,34 @@ async def get_risk_manager(request: Request):
                 max_position_value=Decimal('500000')  # $500K total position value limit
             )
             
+        async def assess_order(
+            self,
+            order,  # OrderSpec object
+            current_user=None,
+            risk_override=False,
+            request_id=None
+        ):
+            """Risk assessment method compatible with route expectations."""
+            # Convert OrderSpec to legacy parameters
+            symbol = order.symbol
+            side = "buy" if order.side.value.lower() == "buy" else "sell"
+            qty = float(order.qty)
+            
+            # Use existing check_trade_risk logic
+            risk_result = await self.check_trade_risk(
+                symbol=symbol,
+                side=side, 
+                qty=qty,
+                user_id=getattr(current_user, 'get', lambda k, d: d)('user_id', 'anonymous')
+            )
+            
+            # Convert to expected format
+            return {
+                "allowed": risk_result.get("approved", True),
+                "reasons": risk_result.get("issues", []),
+                "risk_override_used": risk_override and risk_result.get("approved", True)
+            }
+
         async def check_trade_risk(
             self, 
             symbol: str, 

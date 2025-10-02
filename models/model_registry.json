@@ -1082,6 +1082,53 @@
         "metrics": {},
         "artifact_hash": "fa815ddd21c31f1ca3319fd49c4a0d2f13b3bbceb673578d6d00438646c217ae"
       }
+    },
+    {
+      "model_id": "unknown",
+      "version": "1.0.0",
+      "created_at": "2025-09-30T12:59:59.501475",
+      "status": "trained",
+      "metrics": {},
+      "training_data_hash": "2bee24c6bcac6f32fd736188f8cf6daa",
+      "feature_names": [
+        "feature1",
+        "feature2"
+      ],
+      "feature_dtypes": {
+        "feature1": "int64",
+        "feature2": "int64"
+      },
+      "train_window": {},
+      "artifact_hash": "fa815ddd21c31f1ca3319fd49c4a0d2f13b3bbceb673578d6d00438646c217ae",
+      "model_path": "models\\unknown\\1.0.0\\model.bin",
+      "metadata": {
+        "training_samples": 3,
+        "features_count": 2,
+        "model_id": "unknown",
+        "version": "1.0.0",
+        "created_at": "2025-09-30T19:59:59.500138+00:00",
+        "train_window": {},
+        "feature_names": [
+          "feature1",
+          "feature2"
+        ],
+        "feature_dtypes": {
+          "feature1": "int64",
+          "feature2": "int64"
+        },
+        "feature_schema": {
+          "columns": [
+            "feature1",
+            "feature2"
+          ],
+          "dtypes": {
+            "feature1": "int64",
+            "feature2": "int64"
+          }
+        },
+        "metrics": {},
+        "artifact_hash": "fa815ddd21c31f1ca3319fd49c4a0d2f13b3bbceb673578d6d00438646c217ae"
+      }
     }
   ]
 }

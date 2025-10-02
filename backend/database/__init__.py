@@ -215,9 +215,36 @@ class DatabaseMonitor:
 		pass
 
 class DatabaseConfig:
-	"""Database configuration stub."""
-	def __init__(self, *args, **kwargs):
-		pass
+	"""Database configuration - requires PostgreSQL."""
+	def __init__(self, url: str = None, *args, **kwargs):
+		import os
+		
+		# Use provided URL or get from environment
+		if url is None:
+			url = os.getenv("DATABASE_URL")
+		
+		# Enforce PostgreSQL requirement
+		if not url:
+			raise DatabaseError(
+				"DATABASE_URL environment variable required.\n"
+				"Set DATABASE_URL=postgresql+asyncpg://user:pass@host:5432/dbname\n"
+				"SQLite is not supported for production use.\n"
+				"For local development, use docker-compose to start PostgreSQL:\n"
+				"  docker-compose up -d postgres"
+			)
+		
+		# Validate it's PostgreSQL
+		if not url.startswith("postgresql"):
+			raise DatabaseError(
+				f"Only PostgreSQL supported in production, got: {url}\n"
+				f"Expected: postgresql+asyncpg://... or postgresql+psycopg2://...\n"
+				f"SQLite cannot validate production behavior (connection pooling, "
+				f"locking, JSON types, SELECT FOR UPDATE)."
+			)
+		
+		self.url = url
+		self.pool_size = kwargs.get('pool_size', 20)
+		self.max_overflow = kwargs.get('max_overflow', 10)
 
 # Exception classes
 class ConnectionError(DatabaseError):

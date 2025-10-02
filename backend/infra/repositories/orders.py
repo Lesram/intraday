@@ -305,6 +305,20 @@ class OrdersRepo:
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
 
+    async def get_by_broker_order_id(self, broker_order_id: str) -> Order | None:
+        """
+        Get order by broker order ID.
+
+        Args:
+            broker_order_id: Broker-assigned order ID
+
+        Returns:
+            Order if found, None otherwise
+        """
+        stmt = select(Order).where(Order.broker_order_id == broker_order_id)
+        result = await self.session.execute(stmt)
+        return result.scalar_one_or_none()
+
     async def get_by_symbol(self, symbol: str, limit: int = 100) -> list[Order]:
         """
         Get orders by symbol.

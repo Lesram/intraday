@@ -1,0 +1,1427 @@
+{
+  "deploy_guardrails.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "main.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": true,
+    "is_orphan": false
+  },
+  "alembic/versions/001_idempotency_constraints.py": {
+    "imports": [
+      "alembic"
+    ],
+    "imported_by": [
+      "alembic/versions/001_idempotency_constraints.py",
+      "backend/migrations/env.py",
+      "backend/migrations/versions/706e00fe1a28_initial_migration_users_orders_.py",
+      "backend/migrations/versions/ec197100938a_add_idempotency_constraints_and_order_.py",
+      "scripts/migrate.py"
+    ],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/config.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/config_helpers.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/database.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/settings.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/websocket.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/__init__.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/analytics/realtime_risk_analytics.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/api/auth.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/api/errors.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/api/factory.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": true,
+    "is_orphan": false
+  },
+  "backend/api/main.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": true,
+    "is_orphan": false
+  },
+  "backend/api/portfolio.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/api/websockets.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/api/websocket_manager.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/api/__init__.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/api/routes/api_v1.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/api/routes/auth.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/api/routes/features.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/api/routes/health.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/api/routes/models.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/api/routes/monitoring.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/api/routes/orders.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/api/routes/portfolio.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/api/routes/positions.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/api/routes/risk.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/api/routes/signals.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/api/routes/strategy.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/api/routes/system.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/api/routes/trades.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/api/routes/__init__.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/api/schemas/signals.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/api/test_utils/auth.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/api/test_utils/__init__.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/brokers/alpaca_production.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/config/base_settings.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/config/coordinator.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/config/settings.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/config/unified.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/config/__init__.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/data/alpaca_client.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/data/market_data.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/data/models.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/data/social_sentiment.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/database/connection.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/database/database_config.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/database/models.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/database/models_production.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/database/optimization.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/database/production.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/database/unified_config.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/database/__init__.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/database/repositories/execution_repository.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/database/repositories/order_repository.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/database/repositories/__init__.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/deployment/validator.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/features/alignment.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/features/feature_engineering.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/features/technical_indicators.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/features/types.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/features/validators.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/infra/broker.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/infra/database.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/infra/db.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/infra/guardrails.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/infra/guardrails_production.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/infra/logging.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/infra/metrics.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/infra/observability.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/infra/observability_contracts.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/infra/outbox.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/infra/outbox_worker.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": true,
+    "is_orphan": false
+  },
+  "backend/infra/repositories.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/infra/resilience.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/infra/schemas.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/infra/security.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/infra/security_hardening.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/infra/unified_database.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/infra/users.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/infra/validation.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/infra/__init__.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/infra/repositories/audits.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/infra/repositories/executions.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/infra/repositories/models.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/infra/repositories/orders.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/infra/repositories/positions.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/infra/repositories/signals.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/infra/repositories/__init__.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/integrations/alpaca_broker.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/integrations/alpaca_data.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/integrations/alpaca_outbox.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/integrations/alpaca_stream.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/integrations/alpaca_stream_production.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/integrations/__init__.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/migrations/env.py": {
+    "imports": [
+      "alembic"
+    ],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/migrations/versions/706e00fe1a28_initial_migration_users_orders_.py": {
+    "imports": [
+      "alembic"
+    ],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/migrations/versions/ec197100938a_add_idempotency_constraints_and_order_.py": {
+    "imports": [
+      "alembic"
+    ],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/ml/data_processing.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/ml/feature_engineering.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/ml/model_management.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/ml/model_manager.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/ml/model_manager_stub_backup.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/ml/prediction_service.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/ml/sentiment.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/ml/training.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/ml/validation.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/ml/__init__.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/mlops/deployment.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/mlops/experiment_tracking.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/mlops/feature_store.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/mlops/governance.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/mlops/model_manager.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/mlops/model_optimization.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/mlops/model_serving.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/mlops/monitoring.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/mlops/noop.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/mlops/pipeline.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/mlops/registry.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/mlops/__init__.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/models/ensemble_model.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/models/order_integrity.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/models/__init__.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/monitoring/enhanced_slo_manager.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/monitoring/memory_monitor.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/monitoring/per_route_sli.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/monitoring/slo_alerts.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/monitoring/slo_dashboard.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/monitoring/slo_metrics.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/monitoring/slo_monitor.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/observability/metrics.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/observability/tracing.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/observability/__init__.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/optimization/portfolio_optimizer.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/risk/advanced_risk_manager.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/risk/margin_calculator.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/risk/math.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/risk/metrics.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/risk/position_limits.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/risk/risk_calculator.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/risk/risk_manager.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/risk/types.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/risk/volatility_checker.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/security/api_hardening.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/services/order_service.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/services/positions_service.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/services/signal_service.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/services/__init__.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/strategies/basic.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/strategies/engine.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/strategies/trading_strategies.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/strategies/types.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/strategies/__init__.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/utils/helpers.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/utils/import_tracker.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/utils/logger.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/utils/port_management.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/utils/utilities.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "backend/utils/__init__.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "core/config.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "core/__init__.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "docs/blueprints/services/analytics.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "docs/blueprints/services/audit.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "docs/blueprints/services/authentication.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "docs/blueprints/services/authorization.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "docs/blueprints/services/broker_service.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "docs/blueprints/services/compliance.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "docs/blueprints/services/configuration.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "docs/blueprints/services/data_synchronization.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "docs/blueprints/services/document.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "docs/blueprints/services/email.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "docs/blueprints/services/error_handling.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "docs/blueprints/services/feature_flag.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "docs/blueprints/services/integration.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "docs/blueprints/services/key_management.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "docs/blueprints/services/load_balancer.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "docs/blueprints/services/notification.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "docs/blueprints/services/order_fsm.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "docs/blueprints/services/order_integrity_service.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "docs/blueprints/services/positions_service.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "docs/blueprints/services/risk_manager.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "docs/blueprints/services/safety_modes.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "examples/basic_trading_bot.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "examples/live_trading.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "examples/model_training.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "examples/simple_demo.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "monitoring/production_dashboard.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "perf/python_k6_alternative.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "scripts/check_config_import.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "scripts/check_coverage.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "scripts/check_coverage_clean.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "scripts/comprehensive.py": {
+    "imports": [
+      "tests"
+    ],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "scripts/dump_routes.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "scripts/export_openapi.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "scripts/get_token.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "scripts/merge_junit.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "scripts/migrate.py": {
+    "imports": [
+      "alembic"
+    ],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "scripts/minimal.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "scripts/performance_test.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "scripts/quick_http.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "scripts/run_matrix.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "scripts/run_single.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "scripts/seed_staging.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "scripts/validate_checklist.py": {
+    "imports": [
+      "scripts"
+    ],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "scripts/validate_pipeline.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "scripts/backup/rehearsal.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "scripts/ci/check_coverage_ratchet.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "scripts/ci/check_metrics_labels.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "scripts/cleanup/audit_platform.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "scripts/cleanup/move_service_blueprints.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "scripts/cleanup/remove_consolidation_archive.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "scripts/testing/ai_enhancement_integration_test.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "scripts/testing/automated_promotion_gates.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "scripts/testing/burn_in_framework.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "scripts/testing/check_services_availability.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "scripts/testing/k6_cache_manager.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "scripts/testing/quick_burn_in_test.py": {
+    "imports": [
+      "scripts"
+    ],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "scripts/testing/run_all_tests.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "scripts/testing/run_complete_five_layer_tests.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "scripts/testing/test_jwt_auth_security.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "scripts/testing/test_k6_performance.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "scripts/testing/test_layer5_business_workflows.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "scripts/testing/test_layers_1_to_4_consolidated.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "scripts/testing/test_output_enhanced.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "scripts/testing/test_paper_trading_integration.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "scripts/testing/test_security_performance.py": {
+    "imports": [],
+    "imported_by": [
+      "scripts/validate_checklist.py",
+      "scripts/testing/quick_burn_in_test.py"
+    ],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "tests/test_order_lifecycle.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "tests/test_positions_route.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "tests/test_routes_registry.py": {
+    "imports": [],
+    "imported_by": [
+      "scripts/comprehensive.py"
+    ],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "utils/logging.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "utils/validators.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  },
+  "utils/__init__.py": {
+    "imports": [],
+    "imported_by": [],
+    "is_entrypoint": false,
+    "is_orphan": true
+  }
+}

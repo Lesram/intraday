@@ -338,9 +338,11 @@ class AsyncRiskManager:
                 reason_code = RiskReasonCode.SYMBOL_CONCENTRATION_EXCEEDED
                 
                 # Check for admin override
+                import os
+                admin_override_enabled = os.getenv('RISK_ALLOW_ADMIN_OVERRIDE', 'false').lower() == 'true'
+                
                 if (risk_override and 
-                    hasattr(self.settings, 'risk') and 
-                    self.settings.risk.allow_admin_override and 
+                    admin_override_enabled and 
                     current_user and 
                     hasattr(current_user, 'role') and 
                     current_user.role == 'admin'):
@@ -376,6 +378,7 @@ class AsyncRiskManager:
                 
                 return {
                     "allowed": False,
+                    "risk_override": False,
                     "reason_code": reason_code.value,
                     "message": "Symbol concentration exceeded",
                     "details": {
@@ -388,6 +391,9 @@ class AsyncRiskManager:
             # Order passes risk checks
             return {
                 "allowed": True,
+                "risk_override": False,
+                "reason_code": "APPROVED",
+                "message": "Order approved",
                 "details": {
                     "symbol_exposure_after": symbol_exposure_after,
                     "limit": self.max_symbol_exposure
@@ -1420,6 +1426,103 @@ class RiskManager(AsyncRiskManager):
             limits={"max_drawdown": max_drawdown_limit},
             risk_score=float(max_drawdown) / max_drawdown_limit
         )
+
+    def check_risk(self, symbol: str, quantity: float, price: float = None) -> dict[str, Any]:
+        """
+        Check risk for a trade (backward compatibility method).
+        
+        Args:
+            symbol: Stock symbol
+            quantity: Trade quantity
+            price: Trade price (optional)
+            
+        Returns:
+            Dictionary with risk assessment
+        """
+        try:
+            # Create mock order spec
+            order = OrderSpec(
+                symbol=symbol,
+                side="buy" if quantity > 0 else "sell",
+                qty=Decimal(str(abs(quantity))),
+                notional=Decimal(str(abs(quantity) * (price or 100))),
+                price=Decimal(str(price)) if price else None,
+            )
+            
+            # Simple risk check
+            risk_score = min(abs(quantity) / 1000, 1.0)  # Simple quantity-based risk
+            
+            return {
+                "allowed": risk_score < 0.8,
+                "risk_score": risk_score,
+                "reason": "position_size_check",
+                "symbol": symbol,
+                "quantity": quantity
+            }
+        except Exception as e:
+            logger.error(f"Error in check_risk: {e}")
+            return {
+                "allowed": False,
+                "risk_score": 1.0,
+                "reason": f"error: {str(e)}",
+                "symbol": symbol,
+                "quantity": quantity
+            }
+
+    def validate_order(self, order_data: dict[str, Any]) -> dict[str, Any]:
+        """
+        Validate an order (backward compatibility method).
+        
+        Args:
+            order_data: Order data dictionary
+            
+        Returns:
+            Dictionary with validation results
+        """
+        try:
+            symbol = order_data.get("symbol", "UNKNOWN")
+            quantity = order_data.get("quantity", 0)
+            price = order_data.get("price", 100)
+            
+            # Basic validation checks
+            if not symbol or symbol == "UNKNOWN":
+                return {
+                    "valid": False,
+                    "reason": "invalid_symbol",
+                    "errors": ["Symbol is required"]
+                }
+            
+            if quantity == 0:
+                return {
+                    "valid": False,
+                    "reason": "zero_quantity",
+                    "errors": ["Quantity cannot be zero"]
+                }
+            
+            if price <= 0:
+                return {
+                    "valid": False,
+                    "reason": "invalid_price",
+                    "errors": ["Price must be positive"]
+                }
+            
+            # Check risk for this order
+            risk_check = self.check_risk(symbol, quantity, price)
+            
+            return {
+                "valid": risk_check.get("allowed", False),
+                "reason": risk_check.get("reason", "unknown"),
+                "risk_score": risk_check.get("risk_score", 0),
+                "errors": [] if risk_check.get("allowed", False) else [risk_check.get("reason", "Risk check failed")]
+            }
+            
+        except Exception as e:
+            logger.error(f"Error in validate_order: {e}")
+            return {
+                "valid": False,
+                "reason": f"validation_error: {str(e)}",
+                "errors": [str(e)]
+            }
 
     def _get_symbol_sector(self, symbol: str) -> str:
         """

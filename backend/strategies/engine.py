@@ -81,6 +81,25 @@ class StrategyEngine:
             },
         )
 
+    @classmethod
+    def create_default(cls, config: dict[str, Any] | None = None):
+        """
+        Factory method to create StrategyEngine with default dependencies.
+        Useful for testing and simple initialization.
+        """
+        from ..risk.risk_manager import RiskManager
+        from ..services.positions_service import PositionsService
+        
+        # Create default instances
+        risk_manager = RiskManager()
+        positions_service = PositionsService()
+        
+        return cls(
+            risk_manager=risk_manager,
+            positions_service=positions_service,
+            config=config
+        )
+
     def _get_symbol_bucket(self, symbol: str) -> str:
         """
         Bucket symbols to avoid metric cardinality explosion.

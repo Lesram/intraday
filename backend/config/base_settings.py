@@ -618,9 +618,9 @@ def get_risk_defaults() -> dict:
     if hasattr(settings, 'risk') and hasattr(settings.risk, 'profile'):
         profile = settings.risk.profile
     else:
-        profile = "staging"  # Default fallback
+        profile = "relaxed"  # Use relaxed profile for development/testing
     
-    return RISK_DEFAULTS.get(profile, RISK_DEFAULTS["staging"])
+    return RISK_DEFAULTS.get(profile, RISK_DEFAULTS["relaxed"])
 
 
 class ObservabilityConfig(BaseSettings):

@@ -49,6 +49,31 @@ class ModelStatusResponse(BaseModel):
     last_updated: str
 
 
+class PredictionRequest(BaseModel):
+    """Model prediction request."""
+    symbol: str = Field(..., description="Symbol to predict")
+    data: dict[str, Any] = Field(default_factory=dict, description="Input data for prediction")
+    model_type: str = Field(default="ensemble", description="Model type to use")
+
+
+class PredictionResponse(BaseModel):
+    """Model prediction response."""
+    symbol: str
+    prediction: float
+    confidence: float
+    model_used: str
+    timestamp: str
+
+
+class HealthCheckResponse(BaseModel):
+    """Model health check response."""
+    status: str
+    models_available: int
+    models_healthy: int
+    last_check: str
+    details: dict[str, Any]
+
+
 # Mock Dependencies
 def get_model_manager():
     """Get model manager - mock implementation"""
@@ -137,6 +162,43 @@ async def train_models(
         )
 
 
+@router.post("/predict", tags=["ML Models", "Protected"])
+async def predict_symbol(
+    prediction_request: PredictionRequest,
+    current_user=Depends(get_authenticated_user),
+    model_manager=Depends(get_model_manager),
+):
+    """
+    Get model prediction for a specific symbol.
+    Requires trader or admin privileges.
+    """
+    try:
+        # Mock prediction logic - in production this would call actual models
+        import random
+        from datetime import datetime
+        
+        # Simulate model prediction
+        prediction = random.uniform(-0.05, 0.05)  # -5% to +5% price change prediction
+        confidence = random.uniform(0.6, 0.95)    # 60% to 95% confidence
+        
+        logger.info(f"Generated prediction for {prediction_request.symbol}: {prediction:.4f}")
+        
+        return PredictionResponse(
+            symbol=prediction_request.symbol,
+            prediction=prediction,
+            confidence=confidence,
+            model_used=prediction_request.model_type,
+            timestamp=datetime.now().isoformat()
+        )
+
+    except Exception as e:
+        logger.error(f"Prediction failed for {prediction_request.symbol}: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Prediction failed: {str(e)}"
+        )
+
+
 @router.get("/status", tags=["ML Models", "Protected"])
 async def get_model_status(
     current_user=Depends(get_authenticated_user),  # Allow traders and admins
@@ -163,4 +225,48 @@ async def get_model_status(
         raise HTTPException(
             status_code=500,
             detail=f"Failed to get model status: {str(e)}"
+        )
+
+
+@router.get("/health", tags=["ML Models", "Protected"])
+async def get_model_health(
+    current_user=Depends(get_authenticated_user),
+    model_manager=Depends(get_model_manager),
+):
+    """
+    Get ML models health status.
+    Requires trader or admin privileges.
+    """
+    try:
+        from datetime import datetime
+        
+        # Mock health check - in production this would check actual model health
+        status_data = model_manager.get_model_status()
+        models = status_data.get("models", {})
+        
+        models_available = len(models)
+        models_healthy = sum(1 for model in models.values() if model.get("status") in ["trained", "ready"])
+        
+        health_status = "healthy" if models_healthy == models_available else "degraded"
+        if models_available == 0:
+            health_status = "unavailable"
+            
+        logger.info(f"Model health check: {models_healthy}/{models_available} models healthy")
+        
+        return HealthCheckResponse(
+            status=health_status,
+            models_available=models_available,
+            models_healthy=models_healthy,
+            last_check=datetime.now().isoformat(),
+            details={
+                "models": {name: {"status": model.get("status", "unknown")} for name, model in models.items()},
+                "overall_status": health_status
+            }
+        )
+
+    except Exception as e:
+        logger.error(f"Health check failed: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Health check failed: {str(e)}"
         )

@@ -2,6 +2,10 @@
 !logs/.gitkeep
 !logs/current.log
 
+# Security scanner caches (large binary files)
+.grype/db/
+.bandit/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -141,11 +145,34 @@ models/saved_models/
 *.h5
 *.joblib
 
+# Test results and artifacts (keep README for documentation)
+test_results/*
+!test_results/README.md
+!test_results/.gitkeep
+htmlcov*/
+*.cover
+coverage.xml
+.coverage
+bandit_report.json
+grype_report.json
+k6-summary*.json
+quality_gates_results.json
+*test_results*.json
+*_report_*.json
+*FIXES*.md
+*DRY_RUN*.md
+
 # API keys and sensitive data
 .env.local
+.env.paper
 .env.production
+.env.staging
 config/secrets.json
 alpaca_keys.json
+
+# Environment variable catalog (contains secret values - NEVER COMMIT)
+reports/ENV_CATALOG.md
+reports/audit/env_catalog.json
 
 # IDE specific
 .vscode/settings.json

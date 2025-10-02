@@ -30,6 +30,13 @@ except ImportError:
 # Set database URL from environment variable
 database_url = os.getenv('DATABASE_URL', 'sqlite:///./staging.db')
 if database_url:
+    # Alembic needs sync driver - replace asyncpg with psycopg2
+    if 'postgresql+asyncpg://' in database_url:
+        database_url = database_url.replace('postgresql+asyncpg://', 'postgresql+psycopg2://')
+    elif 'postgresql://' in database_url and '+' not in database_url:
+        # Add psycopg2 explicitly if generic postgresql://
+        database_url = database_url.replace('postgresql://', 'postgresql+psycopg2://')
+    
     config.set_main_option('sqlalchemy.url', database_url)
 
 # other values from the config, defined by the needs of env.py,

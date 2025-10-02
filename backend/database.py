@@ -169,9 +169,41 @@ class IsolationLevel(Enum):
     REPEATABLE_READ = "REPEATABLE_READ"
     SERIALIZABLE = "SERIALIZABLE"
 
+
+def _require_postgres_url() -> str:
+    """
+    Require PostgreSQL DATABASE_URL - no SQLite fallback.
+    
+    Raises:
+        DatabaseError: If DATABASE_URL not set or not PostgreSQL
+    """
+    import os
+    
+    url = os.getenv("DATABASE_URL")
+    if not url:
+        raise DatabaseError(
+            "DATABASE_URL environment variable required.\n"
+            "Set DATABASE_URL=postgresql+asyncpg://user:pass@host:5432/dbname\n"
+            "SQLite is not supported for production use.\n"
+            "For local development, use docker-compose to start PostgreSQL:\n"
+            "  docker-compose up -d postgres"
+        )
+    
+    # Validate it's PostgreSQL
+    if not url.startswith("postgresql"):
+        raise DatabaseError(
+            f"Only PostgreSQL supported in production, got: {url}\n"
+            f"Expected: postgresql+asyncpg://... or postgresql+psycopg2://...\n"
+            f"SQLite cannot validate production behavior (connection pooling, "
+            f"locking, JSON types, SELECT FOR UPDATE)."
+        )
+    
+    return url
+
+
 @dataclass
 class DatabaseConfig:
-    url: str = "sqlite:///trading_platform.db"
+    url: str = field(default_factory=lambda: _require_postgres_url())
     pool_size: int = 20
     max_overflow: int = 10
     pool_timeout: int = 30
