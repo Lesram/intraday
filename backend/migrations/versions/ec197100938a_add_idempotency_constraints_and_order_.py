@@ -25,7 +25,7 @@ def upgrade() -> None:
     try:
         op.create_table('order_events',
             sa.Column('id', sa.Integer(), nullable=False),
-            sa.Column('order_id', sa.String(36), nullable=False),
+            sa.Column('order_id', sa.UUID(), nullable=False),
             sa.Column('broker_order_id', sa.String(100), nullable=False),
             sa.Column('event_type', sa.String(50), nullable=False),
             sa.Column('event_time', sa.DateTime(timezone=True), nullable=False),
