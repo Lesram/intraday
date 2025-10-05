@@ -46,7 +46,8 @@ except ImportError:
         DEBUG = True
         APP_ENV = "test"
         CORS_ORIGINS = ["*"]
-        DB_URL = "sqlite+aiosqlite:///./test.db"
+        # Tests must provide DATABASE_URL
+        DB_URL = os.getenv('TEST_DATABASE_URL', '')
         
         def __init__(self):
             # Create nested attribute objects that the app expects
@@ -110,29 +111,23 @@ class MockSettings:
         self.api_port = 8000
         self.debug = False
         self.cors_origins = ["*"]
-        self.database_url = "sqlite+aiosqlite:///test.db"
+        # Tests must provide DATABASE_URL
+        self.database_url = os.getenv('TEST_DATABASE_URL', '')
         # Add uppercase attributes for test compatibility
         self.DEBUG = False
         self.APP_ENV = "test"
         self.CORS_ORIGINS = ["*"]
-        self.DB_URL = "sqlite+aiosqlite:///test.db"
+        self.DB_URL = os.getenv('TEST_DATABASE_URL', '')
 
 
 def create_app(settings=None, *, registry=None, ws_queue_max: int|None=None, **kwargs):
     
-    app = FastAPI(title="Intraday Trading Platform", version="1.0.0")
-    app.state.task_registry = TaskRegistry()
-    
-    # Store settings in app.state for dependency injection
+    # Pre-initialize settings before defining lifespan
     if settings is None:
         from backend.config import get_settings
         settings = get_settings()
-    app.state.settings = settings
     
-    # Mark this as a platform app for error handling
-    app.state.is_platform_app = True
-    
-    # Store database URL for startup initialization
+    # Store database URL for startup initialization - REQUIRED for production
     database_url = None
     # Try different settings structures for compatibility
     if hasattr(settings, 'database') and hasattr(settings.database, 'url'):
@@ -140,46 +135,20 @@ def create_app(settings=None, *, registry=None, ws_queue_max: int|None=None, **k
     elif hasattr(settings, 'data') and hasattr(settings.data, 'database_url'):
         database_url = settings.data.database_url
     else:
-        database_url = os.getenv('DATABASE_URL', 'sqlite+aiosqlite:///./trading_platform.db')
+        database_url = os.getenv('DATABASE_URL')
     
-    app.state.database_url = database_url
+    # Fail fast if DATABASE_URL is not set (no SQLite fallback in production)
+    if not database_url:
+        raise RuntimeError(
+            "DATABASE_URL environment variable is required but not set.\n\n"
+            "For local development, start PostgreSQL with Docker:\n"
+            "  docker-compose up -d db\n\n"
+            "Then set DATABASE_URL:\n"
+            "  export DATABASE_URL='postgresql+asyncpg://trading:trading_password@localhost:5432/algotrading'\n\n"
+            "Or on Windows PowerShell:\n"
+            "  $env:DATABASE_URL='postgresql+asyncpg://trading:trading_password@localhost:5432/algotrading'\n"
+        )
     
-    # Add convenience method for test compatibility
-    def register_task(task: asyncio.Task) -> asyncio.Task:
-        """Convenience method for registering tasks - delegates to task_registry."""
-        return app.state.task_registry.add(task)
-    
-    app.state.register_task = register_task
-    
-    # Initialize metrics registry  
-    if registry is not None:
-        # When a specific registry is provided, use it directly for test compatibility
-        app.state.metrics_registry = registry
-        app.state.metrics = registry
-    else:
-        # Use default initialization
-        app.state.metrics = initialize_metrics_registry()
-        app.state.metrics_registry = app.state.metrics
-    
-    # Initialize persistent risk manager for stateful risk limits
-    try:
-        from backend.risk.risk_manager import RiskManager
-        app.state.risk_manager = RiskManager()
-    except ImportError:
-        # Fallback for testing environments
-        app.state.risk_manager = None
-    
-    # Setup model manager based on DISABLE_ML environment variable
-    DISABLE_ML = os.environ.get("DISABLE_ML", "0") == "1"
-    if DISABLE_ML:
-        # Use No-Op model manager with InMemoryModelRegistry for Light Mode
-        from backend.ml.model_manager import _NoOpModelManager
-        app.state.model_manager = _NoOpModelManager()
-    else:
-        # Use full model manager for production
-        from backend.ml.model_manager import get_model_manager
-        app.state.model_manager = get_model_manager()
-
     @asynccontextmanager
     async def lifespan(app):
         baseline = set(asyncio.all_tasks())
@@ -339,7 +308,59 @@ def create_app(settings=None, *, registry=None, ws_queue_max: int|None=None, **k
                 try:
                     await asyncio.wait_for(asyncio.gather(*to_cancel, return_exceptions=True), timeout=2.0)
                 except: pass
-    app.router.lifespan_context = lifespan
+    
+    # Create FastAPI app WITH lifespan parameter (modern FastAPI)
+    app = FastAPI(
+        title="Intraday Trading Platform",
+        version="1.0.0",
+        lifespan=lifespan  # ✅ Connect lifespan to app - THIS WAS THE BUG!
+    )
+    app.state.task_registry = TaskRegistry()
+    
+    # Store settings in app.state for dependency injection
+    app.state.settings = settings
+    
+    # Mark this as a platform app for error handling
+    app.state.is_platform_app = True
+    
+    # Store database URL
+    app.state.database_url = database_url
+    
+    # Add convenience method for test compatibility
+    def register_task(task: asyncio.Task) -> asyncio.Task:
+        """Convenience method for registering tasks - delegates to task_registry."""
+        return app.state.task_registry.add(task)
+    
+    app.state.register_task = register_task
+    
+    # Initialize metrics registry  
+    if registry is not None:
+        # When a specific registry is provided, use it directly for test compatibility
+        app.state.metrics_registry = registry
+        app.state.metrics = registry
+    else:
+        # Use default initialization
+        app.state.metrics = initialize_metrics_registry()
+        app.state.metrics_registry = app.state.metrics
+    
+    # Initialize persistent risk manager for stateful risk limits
+    try:
+        from backend.risk.risk_manager import RiskManager
+        app.state.risk_manager = RiskManager()
+    except ImportError:
+        # Fallback for testing environments
+        app.state.risk_manager = None
+    
+    # Setup model manager based on DISABLE_ML environment variable
+    DISABLE_ML = os.environ.get("DISABLE_ML", "0") == "1"
+    if DISABLE_ML:
+        # Use No-Op model manager with InMemoryModelRegistry for Light Mode
+        from backend.ml.model_manager import _NoOpModelManager
+        app.state.model_manager = _NoOpModelManager()
+    else:
+        # Use full model manager for production
+        from backend.ml.model_manager import get_model_manager
+        app.state.model_manager = get_model_manager()
 
     # Basic health endpoints - optimized for performance
     @app.get("/")
@@ -432,7 +453,7 @@ def create_app(settings=None, *, registry=None, ws_queue_max: int|None=None, **k
     protected = APIRouter(dependencies=[Depends(get_authenticated_user)])
     
     # Import all routers (removing individual prefixes since we centralize here)
-    from backend.api.auth import router as auth_router
+    from backend.api.routes.auth import router as auth_router
     from backend.api.errors import router as errors_router
     from backend.api.portfolio import router as portfolio_router
     from backend.api.routes.models import router as models_router
@@ -538,8 +559,10 @@ def create_app(settings=None, *, registry=None, ws_queue_max: int|None=None, **k
     cors_origins = []
     if hasattr(settings, 'api') and hasattr(settings.api, 'cors_origins'):
         cors_origins = settings.api.cors_origins
+        logger.info(f"Using CORS origins from settings.api: {cors_origins}")
     elif hasattr(settings, 'app') and hasattr(settings.app, 'cors_origins'):
         cors_origins = settings.app.cors_origins
+        logger.info(f"Using CORS origins from settings.app: {cors_origins}")
     else:
         # Comprehensive fallback for UI development and staging
         cors_origins = [
@@ -553,12 +576,17 @@ def create_app(settings=None, *, registry=None, ws_queue_max: int|None=None, **k
             "http://127.0.0.1:5173",
             "https://localhost:5173", 
             "https://127.0.0.1:5173",
+            "http://localhost:5174",
+            "http://127.0.0.1:5174",
+            "https://localhost:5174", 
+            "https://127.0.0.1:5174",
             # Next.js dev server
             "http://localhost:3001",
             "http://127.0.0.1:3001",
             # Add staging UI origin (update as needed)
             # "https://staging-ui.trading-platform.com"
         ]
+        logger.info(f"Using fallback CORS origins: {cors_origins}")
     
     app.add_middleware(
         CORSMiddleware,
@@ -834,9 +862,8 @@ def register_middleware(app: FastAPI):
 def register_routes(app: FastAPI):
     """Register all routes for the app"""
     # Import and register all API routers
-    from backend.api.auth import router as auth_router
+    from backend.api.routes.auth import router as auth_router
     from backend.api.errors import router as errors_router
-    from backend.api.routes.auth import router as new_auth_router  # New normalized auth router
     from backend.api.routes.positions import router as positions_router  # New positions endpoint
 
     # Use the main portfolio router instead of routes.portfolio which doesn't exist
@@ -852,9 +879,8 @@ def register_routes(app: FastAPI):
     app.include_router(system_router)
     
     # Register feature-specific routers
-    app.include_router(new_auth_router, prefix="/api/v1")  # New normalized auth endpoints
-    app.include_router(positions_router, prefix="/api/v1")  # New positions endpoint
-    app.include_router(auth_router)  # Legacy auth router
+    app.include_router(auth_router, prefix="/api/v1")  # Auth endpoints
+    app.include_router(positions_router, prefix="/api/v1")  # Positions endpoint
     app.include_router(portfolio_router)  # Router already has /portfolio prefix
     app.include_router(api_v1_portfolio_router)  # Deterministic include for /api/v1/positions
     app.include_router(orders_router)
@@ -910,17 +936,13 @@ def register_routes(app: FastAPI):
     try:
         from fastapi import Depends, Form
 
-        from backend.api.auth import (
+        from backend.api.routes.auth import (
             LoginResponse,
             UserRegistrationRequest,
             UserRegistrationResponse,
             get_user_repo,
-        )
-        from backend.api.auth import (
-            login as login_function,
-        )
-        from backend.api.auth import (
-            register as register_function,
+            login,
+            register,
         )
 
         auth_alias_router = APIRouter()
@@ -929,7 +951,7 @@ def register_routes(app: FastAPI):
         async def register_user_alias(
             request: UserRegistrationRequest, user_repo=Depends(get_user_repo)
         ):
-            return await register_function(request, user_repo)
+            return await register(request, user_repo)
 
         @auth_alias_router.post("/auth/login", response_model=LoginResponse)
         async def login_alias(
@@ -938,7 +960,7 @@ def register_routes(app: FastAPI):
             password: str = Form(default=None),
             user_repo=Depends(get_user_repo),
         ):
-            return await login_function(request, username=username, password=password, user_repo=user_repo)
+            return await login(request, username=username, password=password, user_repo=user_repo)
             
         app.include_router(auth_alias_router)
     except Exception as e:

@@ -2,6 +2,8 @@
 API v1 Portfolio endpoints.
 """
 
+import logging
+import traceback
 from decimal import Decimal
 from typing import Any
 
@@ -10,10 +12,87 @@ from pydantic import BaseModel, ConfigDict, field_serializer
 
 from backend.infra.repositories import get_portfolio_repo
 from backend.infra.security import (
-    get_authenticated_user,  # kept for compatibility in tests/utilities
+    get_authenticated_user,
+    get_user_id,
 )
+from backend.services.portfolio_service import get_portfolio_service
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/portfolio", tags=["portfolio"])
+
+
+class PortfolioSummary(BaseModel):
+    """Portfolio summary response."""
+    total_value: str
+    cash: str
+    positions_value: str
+    total_pl: str
+    day_pl: str
+
+
+@router.get("/", response_model=PortfolioSummary)
+async def get_portfolio(
+    request: Request,
+    user=Depends(get_authenticated_user),
+) -> PortfolioSummary:
+    """Get portfolio summary with real-time data from database."""
+    try:
+        # Get user ID
+        user_id = get_user_id(user)
+        logger.info(f"[PORTFOLIO] Getting portfolio for user_id: {user_id}, user type: {type(user)}, user: {user}")
+        
+        # Get portfolio service
+        portfolio_service = get_portfolio_service()
+        logger.info(f"[PORTFOLIO] Portfolio service created: {portfolio_service}")
+        
+        # Fetch real portfolio data
+        logger.info(f"[PORTFOLIO] Calling get_user_portfolio({user_id})...")
+        portfolio_data = await portfolio_service.get_user_portfolio(user_id)
+        logger.info(f"[PORTFOLIO] Portfolio data received: {portfolio_data}")
+        
+        return PortfolioSummary(
+            total_value=portfolio_data['total_value'],
+            cash=portfolio_data['cash'],
+            positions_value=portfolio_data['positions_value'],
+            total_pl=portfolio_data['total_pl'],
+            day_pl=portfolio_data['day_pl']
+        )
+    except Exception as e:
+        logger.error(f"[PORTFOLIO] ERROR: {type(e).__name__}: {str(e)}")
+        logger.error(f"[PORTFOLIO] Traceback:\n{traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch portfolio: {str(e)}")
+
+
+@router.get("/history", response_model=list[dict[str, Any]])
+async def get_portfolio_history(
+    request: Request,
+    start_date: str | None = None,
+    end_date: str | None = None,
+    interval: str = "1d",
+    user=Depends(get_authenticated_user),
+) -> list[dict[str, Any]]:
+    """Get portfolio value history with optional date range filtering.
+    
+    Args:
+        start_date: Start date (ISO format)
+        end_date: End date (ISO format)
+        interval: Time interval (1m, 5m, 15m, 1h, 1d)
+    """
+    try:
+        # Get user ID
+        user_id = get_user_id(user)
+        
+        # Get portfolio service
+        portfolio_service = get_portfolio_service()
+        
+        # Fetch historical data
+        history = await portfolio_service.get_portfolio_history(
+            user_id, start_date, end_date, interval
+        )
+        
+        return history
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch portfolio history: {str(e)}")
 
 
 class PositionResponse(BaseModel):
@@ -29,9 +108,38 @@ class PositionResponse(BaseModel):
     def serialize_decimal(self, value: Decimal) -> str:
         return str(value)
 
-# Minimal shim to satisfy tests that patch this symbol (legacy import target)
-def get_portfolio_service():  # pragma: no cover - test patch target only
-    raise NotImplementedError("get_portfolio_service is a test patch target")
+
+@router.get("/positions/{symbol}", response_model=PositionResponse)
+async def get_position_by_symbol(
+    symbol: str,
+    request: Request,
+    user=Depends(get_authenticated_user),
+) -> PositionResponse:
+    """Get position details for a specific symbol."""
+    try:
+        # Get user ID
+        user_id = get_user_id(user)
+        
+        # Get portfolio service
+        portfolio_service = get_portfolio_service()
+        
+        # Fetch position
+        position = await portfolio_service.get_position_by_symbol(user_id, symbol)
+        
+        if not position:
+            raise HTTPException(status_code=404, detail=f"Position {symbol} not found")
+        
+        return PositionResponse(
+            symbol=position['symbol'],
+            qty=Decimal(str(position['qty'])),
+            avg_price=Decimal(position['avg_price']),
+            market_value=Decimal(position['market_value']),
+            unrealized_pnl=Decimal(position['unrealized_pnl'])
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch position: {str(e)}")
 
 
 @router.get("/positions", response_model=Any)
