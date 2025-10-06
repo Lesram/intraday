@@ -23,11 +23,27 @@ router = APIRouter(prefix="/portfolio", tags=["portfolio"])
 
 class PortfolioSummary(BaseModel):
     """Portfolio summary response."""
-    total_value: str
-    cash: str
-    positions_value: str
-    total_pl: str
-    day_pl: str
+    model_config = ConfigDict(populate_by_name=True)
+    
+    # Core portfolio metrics
+    totalEquity: float
+    cash: float
+    buyingPower: float
+    marginUsed: float = 0.0
+    maintenanceMargin: float = 0.0
+    
+    # P&L metrics
+    totalPnL: float
+    totalPnLPercent: float = 0.0
+    dayPnL: float
+    dayPnLPercent: float = 0.0
+    
+    # Position summary
+    positions: list = []
+    
+    # Metadata
+    userId: str | None = None
+    lastUpdate: str
 
 
 @router.get("/", response_model=PortfolioSummary)
@@ -37,8 +53,8 @@ async def get_portfolio(
 ) -> PortfolioSummary:
     """Get portfolio summary with real-time data from database."""
     try:
-        # Get user ID
-        user_id = get_user_id(user)
+        # Get user ID (use username as fallback)
+        user_id = get_user_id(user) or (user.username if hasattr(user, 'username') else None)
         logger.info(f"[PORTFOLIO] Getting portfolio for user_id: {user_id}, user type: {type(user)}, user: {user}")
         
         # Get portfolio service
@@ -51,11 +67,18 @@ async def get_portfolio(
         logger.info(f"[PORTFOLIO] Portfolio data received: {portfolio_data}")
         
         return PortfolioSummary(
-            total_value=portfolio_data['total_value'],
+            totalEquity=portfolio_data['totalEquity'],
             cash=portfolio_data['cash'],
-            positions_value=portfolio_data['positions_value'],
-            total_pl=portfolio_data['total_pl'],
-            day_pl=portfolio_data['day_pl']
+            buyingPower=portfolio_data['buyingPower'],
+            marginUsed=portfolio_data.get('marginUsed', 0.0),
+            maintenanceMargin=portfolio_data.get('maintenanceMargin', 0.0),
+            totalPnL=portfolio_data['totalPnL'],
+            totalPnLPercent=portfolio_data.get('totalPnLPercent', 0.0),
+            dayPnL=portfolio_data['dayPnL'],
+            dayPnLPercent=portfolio_data.get('dayPnLPercent', 0.0),
+            positions=portfolio_data.get('positions', []),
+            userId=portfolio_data['userId'],
+            lastUpdate=portfolio_data['lastUpdate']
         )
     except Exception as e:
         logger.error(f"[PORTFOLIO] ERROR: {type(e).__name__}: {str(e)}")

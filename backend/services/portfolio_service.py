@@ -68,30 +68,42 @@ class PortfolioService:
                 cash = self.default_cash - total_position_value + total_realized_pnl
                 total_equity = cash + total_position_value
                 total_pl = total_equity - self.default_cash
+                total_pl_percent = (total_pl / self.default_cash * 100) if self.default_cash > 0 else 0.0
+                
+                # Buying power = cash (for now, will add margin later)
+                buying_power = cash
                 
                 return {
-                    'total_value': str(total_equity),
-                    'cash': str(cash),
-                    'positions_value': str(total_position_value),
-                    'total_pl': str(total_pl),
-                    'day_pl': '0.00',  # Will calculate with price changes later
+                    'totalEquity': float(total_equity),
+                    'cash': float(cash),
+                    'buyingPower': float(buying_power),
+                    'marginUsed': 0.0,
+                    'maintenanceMargin': 0.0,
+                    'totalPnL': float(total_pl),
+                    'totalPnLPercent': float(total_pl_percent),
+                    'dayPnL': 0.0,  # Will calculate with price changes later
+                    'dayPnLPercent': 0.0,
                     'positions': positions_data,
-                    'user_id': user_id,
-                    'timestamp': datetime.now(timezone.utc).isoformat()
+                    'userId': user_id,
+                    'lastUpdate': datetime.now(timezone.utc).isoformat()
                 }
                 
         except Exception as e:
             logger.error(f"Failed to get portfolio for user {user_id}: {e}")
             # Return default portfolio on error
             return {
-                'total_value': '100000.00',
-                'cash': '100000.00',
-                'positions_value': '0.00',
-                'total_pl': '0.00',
-                'day_pl': '0.00',
+                'totalEquity': 100000.00,
+                'cash': 100000.00,
+                'buyingPower': 100000.00,
+                'marginUsed': 0.0,
+                'maintenanceMargin': 0.0,
+                'totalPnL': 0.0,
+                'totalPnLPercent': 0.0,
+                'dayPnL': 0.0,
+                'dayPnLPercent': 0.0,
                 'positions': [],
-                'user_id': user_id,
-                'timestamp': datetime.now(timezone.utc).isoformat()
+                'userId': user_id,
+                'lastUpdate': datetime.now(timezone.utc).isoformat()
             }
     
     async def get_portfolio_history(
@@ -120,10 +132,9 @@ class PortfolioService:
             current_portfolio = await self.get_user_portfolio(user_id)
             
             return [{
-                'timestamp': current_portfolio['timestamp'],
-                'total_value': current_portfolio['total_value'],
-                'cash': current_portfolio['cash'],
-                'positions_value': current_portfolio['positions_value']
+                'timestamp': current_portfolio['lastUpdate'],
+                'totalEquity': current_portfolio['totalEquity'],
+                'cash': current_portfolio['cash']
             }]
             
         except Exception as e:
