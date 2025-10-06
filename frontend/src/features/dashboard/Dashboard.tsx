@@ -1,4 +1,4 @@
-import { Card, Row, Col, Statistic, Typography, Alert } from 'antd';
+import { Card, Row, Col, Statistic, Typography, Alert, Button } from 'antd';
 import {
   ArrowUpOutlined,
   ArrowDownOutlined,
@@ -8,7 +8,7 @@ import {
 import { useMemo } from 'react';
 import { colors } from '../../styles/theme';
 import { formatCurrency, formatPercent } from '../../utils/formatters';
-import { usePortfolio, useOrders, useStrategies } from '@/hooks/useData';
+import { usePortfolio, useOrders, useStrategies, usePortfolioHistory } from '@/hooks/useData';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { usePortfolioStore } from '@/store/portfolioStore';
 import { useOrdersStore } from '@/store/ordersStore';
@@ -16,14 +16,22 @@ import { useStrategiesStore } from '@/store/strategiesStore';
 import type { PortfolioUpdateMessage, OrderUpdateMessage } from '@/types/websocket';
 import { PageSkeleton } from '@/components/common/LoadingComponents';
 import { ConnectionStatus } from '@/components/common/ConnectionStatus';
+import { PositionsTable } from '@/components/portfolio/PositionsTable';
+import { PortfolioChart } from '@/components/charts/PortfolioChart';
 
 const { Title } = Typography;
 
 const Dashboard = () => {
-  // Fetch data from API
-  const { data: portfolioData, isLoading: portfolioLoading, error: portfolioError } = usePortfolio();
+  // Fetch data from API with refetch capability
+  const { 
+    data: portfolioData, 
+    isLoading: portfolioLoading, 
+    error: portfolioError,
+    refetch: refetchPortfolio 
+  } = usePortfolio();
   const { isLoading: ordersLoading } = useOrders({ limit: 10 });
   const { isLoading: strategiesLoading } = useStrategies();
+  const { data: portfolioHistory, isLoading: historyLoading } = usePortfolioHistory();
 
   // Get data from stores (updated by WebSocket)
   const portfolio = usePortfolioStore((state) => state.portfolio);
@@ -101,15 +109,33 @@ const Dashboard = () => {
     return <PageSkeleton />;
   }
 
-  // Error state
+  // Error state with retry functionality
   if (portfolioError) {
     return (
-      <Alert
-        message="Error Loading Dashboard"
-        description="Failed to load portfolio data. Please try refreshing the page."
-        type="error"
-        showIcon
-      />
+      <div style={{ padding: '24px' }}>
+        <Alert
+          message="Failed to Load Portfolio"
+          description={
+            <div>
+              <p>Unable to fetch portfolio data from the server.</p>
+              <p style={{ marginBottom: '12px' }}>
+                {portfolioError instanceof Error 
+                  ? portfolioError.message 
+                  : 'Please check your connection and try again.'}
+              </p>
+              <Button 
+                type="primary" 
+                onClick={() => refetchPortfolio()}
+                icon={<ArrowUpOutlined />}
+              >
+                Retry
+              </Button>
+            </div>
+          }
+          type="error"
+          showIcon
+        />
+      </div>
     );
   }
 
@@ -251,14 +277,30 @@ const Dashboard = () => {
 
       {/* More dashboard content will go here */}
       <Row gutter={[16, 16]} style={{ marginTop: '24px' }}>
+        {/* Positions Table */}
+        <Col xs={24}>
+          <Card
+            title="Open Positions"
+            style={{ background: colors.backgrounds.secondary }}
+          >
+            <PositionsTable 
+              positions={currentPortfolio?.positions || []} 
+              loading={portfolioLoading}
+            />
+          </Card>
+        </Col>
+      </Row>
+
+      <Row gutter={[16, 16]} style={{ marginTop: '24px' }}>
         <Col xs={24} lg={16}>
           <Card
             title="Portfolio Performance"
             style={{ background: colors.backgrounds.secondary }}
           >
-            <div style={{ height: '300px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <span style={{ color: colors.text.tertiary }}>Chart will be implemented in Phase 3</span>
-            </div>
+            <PortfolioChart 
+              data={portfolioHistory || []} 
+              loading={historyLoading}
+            />
           </Card>
         </Col>
 
