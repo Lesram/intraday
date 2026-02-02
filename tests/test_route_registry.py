@@ -26,17 +26,7 @@ class TestRouteRegistry:
         ('/api/v1/risk/metrics', 'GET', 401),  # Protected - contains account-scoped data
     ]
     
-    @pytest.fixture
-    def client(self):
-        """Create a test client for the FastAPI app."""
-        # Import here to avoid import errors if backend not available
-        try:
-            from backend.api.main import app
-            return TestClient(app)
-        except ImportError:
-            from backend.api.factory import create_app
-            app = create_app()
-            return TestClient(app)
+    # Remove custom client fixture - use the one from conftest.py
     
     @pytest.fixture
     def auth_token(self, client):
@@ -115,6 +105,8 @@ class TestRouteRegistry:
         assert response.status_code in [200, 401], \
             f"/api/v1/positions returned {response.status_code}, expected 200 or 401 (NOT 404)"
     
+    @pytest.mark.integration
+    @pytest.mark.slow
     def test_protected_routes_with_auth_return_success(self, client, auth_token):
         """Test that protected routes return 2xx with valid authentication."""
         if not auth_token:
@@ -196,6 +188,8 @@ class TestRouteRegistry:
         assert 'paths' in schema, "OpenAPI schema should have 'paths' key"
         assert 'info' in schema, "OpenAPI schema should have 'info' key"
     
+    @pytest.mark.integration
+    @pytest.mark.slow
     def test_canonical_auth_endpoint_contract(self, client):
         """Test that canonical /auth/login endpoint follows API contract.
         
@@ -208,7 +202,7 @@ class TestRouteRegistry:
         # Test 1: Valid credentials should return proper token structure
         response = client.post(
             "/auth/login",
-            json={"username": "admin", "password": "admin123"}
+            json={"username": "admin@example.com", "password": "Admin123!@#"}
         )
         
         assert response.status_code == 200, \

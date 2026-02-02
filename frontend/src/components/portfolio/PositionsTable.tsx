@@ -3,22 +3,145 @@
  * Displays current portfolio positions with sorting and real-time updates
  */
 
-import { Table, Tag } from 'antd';
+import { useState } from 'react';
+import { Table, Tag, Button, App } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import { ArrowUpOutlined, ArrowDownOutlined } from '@ant-design/icons';
+import { ArrowUpOutlined, ArrowDownOutlined, CloseOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
 import { colors } from '@/styles/theme';
 import { formatCurrency, formatPercent } from '@/utils/formatters';
 import type { Position } from '@/store/portfolioStore';
+import { useAuthStore } from '@/store/authStore';
 
 interface PositionsTableProps {
   positions: Position[];
   loading?: boolean;
+  onPositionClosed?: () => void;
 }
 
 export const PositionsTable: React.FC<PositionsTableProps> = ({ 
   positions, 
-  loading = false 
+  loading = false,
+  onPositionClosed
 }) => {
+  const { message, modal } = App.useApp();
+  const [closingPositions, setClosingPositions] = useState<Set<string>>(new Set());
+
+  // Handle close position
+  const handleClosePosition = async (symbol: string, quantity: number) => {
+    let quantityToClose: number | undefined = undefined;
+    
+    modal.confirm({
+      title: 'Close Position',
+      icon: <ExclamationCircleOutlined />,
+      content: (
+        <div>
+          <p>Position: <strong>{symbol}</strong></p>
+          <p>Current Quantity: <strong>{quantity}</strong> shares</p>
+          <div style={{ marginTop: 16 }}>
+            <label style={{ display: 'block', marginBottom: 8 }}>
+              <strong>Quantity to close:</strong>
+            </label>
+            <input
+              type="number"
+              id="close-quantity-input"
+              min="0.01"
+              max={quantity}
+              step="0.01"
+              placeholder={`${quantity} (all shares)`}
+              style={{
+                width: '100%',
+                padding: '8px 12px',
+                border: '1px solid #d9d9d9',
+                borderRadius: 4,
+                fontSize: 14,
+                backgroundColor: '#ffffff',
+                color: '#000000',
+              }}
+              onChange={(e) => {
+                const val = parseFloat(e.target.value);
+                quantityToClose = isNaN(val) || val <= 0 ? undefined : val;
+              }}
+            />
+            <small style={{ color: '#8c8c8c', display: 'block', marginTop: 4 }}>
+              Leave empty to close entire position
+            </small>
+          </div>
+        </div>
+      ),
+      okText: 'Close Position',
+      okType: 'danger',
+      cancelText: 'Cancel',
+      onOk: async () => {
+        try {
+          setClosingPositions(prev => new Set(prev).add(symbol));
+          
+          // Get the input value at execution time
+          const inputEl = document.getElementById('close-quantity-input') as HTMLInputElement;
+          if (inputEl && inputEl.value) {
+            const val = parseFloat(inputEl.value);
+            if (!isNaN(val) && val > 0 && val <= quantity) {
+              quantityToClose = val;
+            }
+          }
+          
+          const qtyText = quantityToClose ? `${quantityToClose}` : 'all';
+          message.loading({ content: `Closing ${qtyText} shares of ${symbol}...`, key: symbol });
+          
+          // Get token from Zustand store
+          const token = useAuthStore.getState().accessToken;
+          
+          if (!token) {
+            throw new Error('Not authenticated. Please login again.');
+          }
+          
+          // Build request body
+          const body: { quantity?: number } = {};
+          if (quantityToClose !== undefined) {
+            body.quantity = quantityToClose;
+          }
+          
+          const response = await fetch(`http://localhost:8000/api/v1/positions/${symbol}/close`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(body)
+          });
+          
+          if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || 'Failed to close position');
+          }
+          
+          const data = await response.json();
+          
+          message.success({ 
+            content: data.message || `Successfully closed ${qtyText} shares of ${symbol}`, 
+            key: symbol,
+            duration: 3
+          });
+          
+          // Notify parent to refresh data
+          if (onPositionClosed) {
+            onPositionClosed();
+          }
+          
+        } catch (error: unknown) {
+          const err = error as { message?: string };
+          const errorMsg = err.message || 'Failed to close position';
+          message.error({ content: errorMsg, key: symbol, duration: 4 });
+        } finally {
+          setClosingPositions(prev => {
+            const newSet = new Set(prev);
+            newSet.delete(symbol);
+            return newSet;
+          });
+        }
+      }
+    });
+  };
+
   const columns: ColumnsType<Position> = [
     {
       title: 'Symbol',
@@ -41,9 +164,9 @@ export const PositionsTable: React.FC<PositionsTableProps> = ({
         { text: 'Short', value: 'short' },
       ],
       onFilter: (value, record) => record.side === value,
-      render: (side: 'long' | 'short') => (
-        <Tag color={side === 'long' ? 'green' : 'red'}>
-          {side.toUpperCase()}
+      render: (side: 'long' | 'short' | undefined) => (
+        <Tag color={side === 'long' ? 'green' : side === 'short' ? 'red' : 'blue'}>
+          {side ? side.toUpperCase() : 'LONG'}
         </Tag>
       ),
     },
@@ -93,16 +216,57 @@ export const PositionsTable: React.FC<PositionsTableProps> = ({
       align: 'right',
       sorter: (a, b) => a.unrealizedPnL - b.unrealizedPnL,
       defaultSortOrder: 'descend',
-      render: (pnl: number, record: Position) => {
-        const isProfit = pnl >= 0;
+      render: (pnl: number | undefined, record: Position) => {
+        const actualPnl = pnl || 0;
+        const isProfit = actualPnl >= 0;
         const icon = isProfit ? <ArrowUpOutlined /> : <ArrowDownOutlined />;
         const color = isProfit ? colors.semantic.profit : colors.semantic.loss;
         
         return (
           <div style={{ color, fontWeight: 'bold' }}>
-            {icon} {formatCurrency(Math.abs(pnl))}
+            {icon} {formatCurrency(Math.abs(actualPnl))}
             <div style={{ fontSize: '12px', opacity: 0.8 }}>
-              {formatPercent(record.unrealizedPnLPercent)}
+              {formatPercent(record.unrealizedPnLPercent || 0)}
+            </div>
+          </div>
+        );
+      },
+    },
+    {
+      title: 'Entry Date',
+      dataIndex: 'entryDate',
+      key: 'entryDate',
+      width: 140,
+      sorter: (a, b) => {
+        if (!a.entryDate || !b.entryDate) return 0;
+        return new Date(a.entryDate).getTime() - new Date(b.entryDate).getTime();
+      },
+      render: (date: string | undefined) => {
+        if (!date) return <span style={{ color: colors.text.tertiary }}>-</span>;
+        const d = new Date(date);
+        
+        // Detect user's timezone automatically
+        const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        
+        const dateStr = d.toLocaleDateString('en-US', { 
+          month: '2-digit', 
+          day: '2-digit', 
+          year: '2-digit',
+          timeZone: userTimezone
+        });
+        
+        const timeStr = d.toLocaleTimeString('en-US', { 
+          hour: '2-digit', 
+          minute: '2-digit', 
+          hour12: false,
+          timeZone: userTimezone
+        });
+        
+        return (
+          <div style={{ fontSize: '13px' }}>
+            <div>{dateStr}</div>
+            <div style={{ color: colors.text.secondary, fontSize: '11px' }}>
+              {timeStr}
             </div>
           </div>
         );
@@ -119,6 +283,25 @@ export const PositionsTable: React.FC<PositionsTableProps> = ({
         { text: 'AMEX', value: 'AMEX' },
       ],
       onFilter: (value, record) => record.exchange === value,
+    },
+    {
+      title: 'Actions',
+      key: 'actions',
+      width: 100,
+      align: 'center',
+      fixed: 'right',
+      render: (_: unknown, record: Position) => (
+        <Button
+          type="primary"
+          danger
+          size="small"
+          icon={<CloseOutlined />}
+          loading={closingPositions.has(record.symbol)}
+          onClick={() => handleClosePosition(record.symbol, record.quantity)}
+        >
+          Close
+        </Button>
+      ),
     },
   ];
 

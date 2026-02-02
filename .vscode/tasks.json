@@ -9,7 +9,7 @@
 				"-ExecutionPolicy",
 				"Bypass",
 				"-File",
-				"run_all_tests_and_report.ps1"
+				"tests/run_all_tests_and_report.ps1"
 			],
 			"group": "test",
 			"presentation": {
@@ -33,7 +33,7 @@
 				"-ExecutionPolicy",
 				"Bypass",
 				"-File",
-				"run_all_tests_and_report.ps1",
+				"tests/run_all_tests_and_report.ps1",
 				"-Fast"
 			],
 			"group": "test",

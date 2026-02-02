@@ -1,0 +1,165 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: algotrading-ingress
+  namespace: algotrading
+  annotations:
+    # Ingress class
+    kubernetes.io/ingress.class: nginx
+    
+    # cert-manager annotations for automatic certificate management
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    cert-manager.io/acme-challenge-type: http01
+    
+    # Security: Force HTTPS
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    
+    # Security headers (HSTS, XSS, etc.)
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      more_set_headers "Strict-Transport-Security: max-age=31536000; includeSubDomains; preload";
+      more_set_headers "X-Frame-Options: DENY";
+      more_set_headers "X-Content-Type-Options: nosniff";
+      more_set_headers "X-XSS-Protection: 1; mode=block";
+      more_set_headers "Referrer-Policy: strict-origin-when-cross-origin";
+    
+    # Rate limiting (integrates with platform's application-level rate limiting)
+    nginx.ingress.kubernetes.io/limit-rps: "100"
+    nginx.ingress.kubernetes.io/limit-connections: "50"
+    
+    # Timeouts (align with platform's async operations and database queries)
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "60"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "60"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
+    
+    # WebSocket support (for future real-time streaming features)
+    nginx.ingress.kubernetes.io/websocket-services: algotrading-api
+    
+    # Large request bodies (for bulk signal submissions and order batches)
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+    
+    # Client body buffer (for streaming uploads)
+    nginx.ingress.kubernetes.io/client-body-buffer-size: "1m"
+    
+spec:
+  tls:
+  - hosts:
+    - trading.yourdomain.com  # ⚠️ CHANGE THIS to your actual domain
+    secretName: algotrading-tls-cert  # cert-manager will create this secret automatically
+  
+  rules:
+  - host: trading.yourdomain.com  # ⚠️ CHANGE THIS to your actual domain
+    http:
+      paths:
+      # ============================================================================
+      # PUBLIC ENDPOINTS (No authentication required)
+      # ============================================================================
+      
+      # Health check endpoints (used by Kubernetes liveness/readiness probes)
+      - path: /health
+        pathType: Exact
+        backend:
+          service:
+            name: algotrading-api
+            port:
+              number: 8000
+      
+      - path: /healthz
+        pathType: Exact
+        backend:
+          service:
+            name: algotrading-api
+            port:
+              number: 8000
+      
+      - path: /ready
+        pathType: Exact
+        backend:
+          service:
+            name: algotrading-api
+            port:
+              number: 8000
+      
+      - path: /live
+        pathType: Exact
+        backend:
+          service:
+            name: algotrading-api
+            port:
+              number: 8000
+      
+      # Metrics endpoint (Prometheus scraping)
+      # Note: Consider adding auth in production if metrics contain sensitive data
+      - path: /metrics
+        pathType: Exact
+        backend:
+          service:
+            name: algotrading-api
+            port:
+              number: 8000
+      
+      # ============================================================================
+      # AUTHENTICATION ENDPOINTS
+      # ============================================================================
+      
+      - path: /auth
+        pathType: Prefix
+        backend:
+          service:
+            name: algotrading-api
+            port:
+              number: 8000
+      
+      # ============================================================================
+      # API ENDPOINTS (JWT authentication handled by application)
+      # ============================================================================
+      
+      # Main API v1 routes
+      # Platform handles JWT validation via backend.infra.security
+      - path: /api/v1
+        pathType: Prefix
+        backend:
+          service:
+            name: algotrading-api
+            port:
+              number: 8000
+      
+      # ============================================================================
+      # DOCUMENTATION ENDPOINTS (optional - remove in production if not needed)
+      # ============================================================================
+      
+      - path: /docs
+        pathType: Exact
+        backend:
+          service:
+            name: algotrading-api
+            port:
+              number: 8000
+      
+      - path: /redoc
+        pathType: Exact
+        backend:
+          service:
+            name: algotrading-api
+            port:
+              number: 8000
+      
+      - path: /openapi.json
+        pathType: Exact
+        backend:
+          service:
+            name: algotrading-api
+            port:
+              number: 8000
+      
+      # ============================================================================
+      # ROOT PATH (redirects or serves main page)
+      # ============================================================================
+      
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: algotrading-api
+            port:
+              number: 8000

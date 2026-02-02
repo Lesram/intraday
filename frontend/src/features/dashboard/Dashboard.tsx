@@ -1,17 +1,20 @@
-import { Card, Row, Col, Statistic, Typography, Alert, Button } from 'antd';
+import { Card, Row, Col, Statistic, Typography, Alert, Button, Tag } from 'antd';
 import {
   ArrowUpOutlined,
   ArrowDownOutlined,
   DollarOutlined,
   RiseOutlined,
+  ClockCircleOutlined,
 } from '@ant-design/icons';
 import { useMemo } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { colors } from '../../styles/theme';
 import { formatCurrency, formatPercent } from '../../utils/formatters';
+import { getTimezoneInfo } from '../../utils/timezone';
 import { usePortfolio, useOrders, useStrategies, usePortfolioHistory } from '@/hooks/useData';
 import { useWebSocket } from '@/hooks/useWebSocket';
-import { usePortfolioStore } from '@/store/portfolioStore';
-import { useOrdersStore } from '@/store/ordersStore';
+import { usePortfolioStore, type Position } from '@/store/portfolioStore';
+import { useOrdersStore, type OrderSide, type OrderType, type OrderStatus } from '@/store/ordersStore';
 import { useStrategiesStore } from '@/store/strategiesStore';
 import type { PortfolioUpdateMessage, OrderUpdateMessage } from '@/types/websocket';
 import { PageSkeleton } from '@/components/common/LoadingComponents';
@@ -22,6 +25,9 @@ import { PortfolioChart } from '@/components/charts/PortfolioChart';
 const { Title } = Typography;
 
 const Dashboard = () => {
+  // React Query client for cache invalidation
+  const queryClient = useQueryClient();
+  
   // Fetch data from API with refetch capability
   const { 
     data: portfolioData, 
@@ -48,7 +54,20 @@ const Dashboard = () => {
     () => (message: PortfolioUpdateMessage) => {
       if (message.data) {
         // API now returns camelCase, map directly to store
-        const data = message.data as any;
+        const data = message.data as {
+          userId?: string;
+          totalEquity?: number;
+          cash?: number;
+          buyingPower?: number;
+          marginUsed?: number;
+          maintenanceMargin?: number;
+          totalPnL?: number;
+          totalPnLPercent?: number;
+          dayPnL?: number;
+          dayPnLPercent?: number;
+          positions?: Position[];
+          lastUpdate?: string;
+        };
         setPortfolio({
           userId: data.userId || '',
           totalEquity: data.totalEquity || 0,
@@ -72,27 +91,44 @@ const Dashboard = () => {
     () => (message: OrderUpdateMessage) => {
       if (message.data) {
         // Convert snake_case to camelCase
-        const data = message.data as any;
+        const data = message.data as {
+          order_id: string;
+          symbol: string;
+          side: string;
+          order_type: string;
+          quantity: number;
+          filled_quantity: number;
+          status: string;
+          price?: number;
+          stop_price?: number;
+          timestamp: string;
+        };
         updateOrder(data.order_id, {
           orderId: data.order_id,
           symbol: data.symbol,
-          side: data.side,
-          orderType: data.order_type,
+          side: data.side as OrderSide,
+          orderType: data.order_type as OrderType,
           quantity: data.quantity,
           filledQuantity: data.filled_quantity,
-          status: data.status,
+          status: data.status as OrderStatus,
           limitPrice: data.price,
           stopPrice: data.stop_price,
           updatedAt: data.timestamp,
-        } as any);
+        });
+        
+        // Invalidate trade queries when orders are filled (status: 'filled' or 'partially_filled')
+        if (data.status === 'filled' || data.status === 'partially_filled') {
+          queryClient.invalidateQueries({ queryKey: ['trades', 'history'] });
+          queryClient.invalidateQueries({ queryKey: ['trades', 'analytics'] });
+        }
       }
     },
-    [updateOrder]
+    [updateOrder, queryClient]
   );
 
   const handleStrategyUpdate = useMemo(
-    () => (message: any) => {
-      if (message.data) {
+    () => (message: { data?: { strategyId?: string } }) => {
+      if (message.data && message.data.strategyId) {
         updateStrategy(message.data.strategyId, message.data);
       }
     },
@@ -139,7 +175,8 @@ const Dashboard = () => {
     );
   }
 
-  // Use portfolio from store (real-time) or API data
+  // CRITICAL FIX: Always prefer WebSocket data (store) over API data
+  // WebSocket provides real-time updates, API is just for initial load
   const currentPortfolio = portfolio || portfolioData;
   
   // Calculate statistics
@@ -155,13 +192,25 @@ const Dashboard = () => {
   const pendingOrdersCount = orders.filter(
     o => ['pending', 'submitted', 'partially_filled'].includes(o.status)
   ).length;
+  
+  // Get user's timezone info
+  const timezoneInfo = getTimezoneInfo();
 
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-        <Title level={2} style={{ color: colors.text.primary, margin: 0 }}>
-          Dashboard
-        </Title>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <Title level={2} style={{ color: colors.text.primary, margin: 0 }}>
+            Dashboard
+          </Title>
+          <Tag 
+            icon={<ClockCircleOutlined />}
+            color="blue"
+            style={{ fontSize: '12px', padding: '4px 8px' }}
+          >
+            {timezoneInfo.abbreviation} ({timezoneInfo.offsetString})
+          </Tag>
+        </div>
         <ConnectionStatus />
       </div>
 
@@ -286,6 +335,7 @@ const Dashboard = () => {
             <PositionsTable 
               positions={currentPortfolio?.positions || []} 
               loading={portfolioLoading}
+              onPositionClosed={refetchPortfolio}
             />
           </Card>
         </Col>
@@ -298,7 +348,7 @@ const Dashboard = () => {
             style={{ background: colors.backgrounds.secondary }}
           >
             <PortfolioChart 
-              data={portfolioHistory || []} 
+              data={(portfolioHistory as Array<{ timestamp: string; totalEquity: number }>) || []} 
               loading={historyLoading}
             />
           </Card>

@@ -3,8 +3,8 @@ Standardized metrics infrastructure with bounded label sets and centralized vali
 Provides type-safe metric factories and enforces label allow-lists for cardinality control.
 """
 
-import logging
 from collections.abc import Sequence
+import logging
 from typing import Final
 
 from prometheus_client import (
@@ -51,14 +51,14 @@ logger = logging.getLogger(__name__)
 
 class CounterWrapper:
     """Wrapper for Prometheus Counter that adds a value property for test compatibility."""
-    
+
     def __init__(self, prometheus_counter):
         self._counter = prometheus_counter
-        
+
     def __getattr__(self, name):
         # Delegate all other attributes to the wrapped counter
         return getattr(self._counter, name)
-    
+
     @property
     def value(self):
         """Get the total counter value across all label combinations for test compatibility."""
@@ -227,7 +227,7 @@ class MetricsRegistry:
         """Access to Counter metrics for test introspection"""
         return {k: CounterWrapper(v) for k, v in self._metrics.items() if isinstance(v, Counter)}
 
-    @property  
+    @property
     def gauges(self) -> dict[str, Gauge]:
         """Access to Gauge metrics for test introspection"""
         return {k: v for k, v in self._metrics.items() if isinstance(v, Gauge)}
@@ -464,7 +464,7 @@ class MetricsRegistry:
         labels = labels or {}
         labels = self._validate_labels(name, labels)
 
-        # Use only metric name as key since Prometheus expects one metric per name  
+        # Use only metric name as key since Prometheus expects one metric per name
         metric_key = name
 
         if metric_key not in self._metrics:
@@ -644,7 +644,7 @@ class MetricsRegistry:
     def record_readyz_db_time(self, time_ms: float) -> None:
         """
         Record database response time for readiness checks.
-        
+
         Args:
             time_ms: Database response time in milliseconds
         """
@@ -657,7 +657,7 @@ class MetricsRegistry:
     def record_readyz_broker_time(self, time_ms: float) -> None:
         """
         Record broker response time for readiness checks.
-        
+
         Args:
             time_ms: Broker response time in milliseconds
         """

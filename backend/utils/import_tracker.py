@@ -5,33 +5,33 @@ This module provides centralized import error tracking and validation,
 replacing silent failures with intelligent error reporting and fallback management.
 """
 
+from collections.abc import Callable
+from datetime import datetime
+from functools import wraps
+import logging
 import os
 import sys
-import logging
 import traceback
-import warnings
-from typing import Any, Dict, List, Optional, Callable, Union
-from functools import wraps
-from datetime import datetime
+from typing import Any
 
 
 class ImportErrorTracker:
     """
     Centralized tracking and management of import errors across the platform
     """
-    
+
     def __init__(self):
-        self.failed_imports: Dict[str, Dict[str, Any]] = {}
-        self.fallback_usage: Dict[str, int] = {}
-        self.critical_imports: List[str] = [
+        self.failed_imports: dict[str, dict[str, Any]] = {}
+        self.fallback_usage: dict[str, int] = {}
+        self.critical_imports: list[str] = [
             'backend.config.unified',
-            'backend.database.connection', 
+            'backend.database.connection',
             'backend.services.order_service',
             'backend.risk.risk_manager',
             'fastapi',
             'sqlalchemy'
         ]
-        self.optional_imports: List[str] = [
+        self.optional_imports: list[str] = [
             'redis',
             'prometheus_client',
             'scipy',
@@ -39,7 +39,7 @@ class ImportErrorTracker:
             'transformers',
             'opentelemetry'
         ]
-        
+
         # Setup logging
         self.logger = logging.getLogger('import_tracker')
         if not self.logger.handlers:
@@ -50,14 +50,14 @@ class ImportErrorTracker:
             handler.setFormatter(formatter)
             self.logger.addHandler(handler)
             self.logger.setLevel(logging.WARNING)
-    
-    def track_import_failure(self, module_name: str, error: Exception, 
+
+    def track_import_failure(self, module_name: str, error: Exception,
                            context: str = "", is_critical: bool = None) -> None:
         """Track a failed import with full context"""
-        
+
         if is_critical is None:
             is_critical = any(crit in module_name for crit in self.critical_imports)
-        
+
         failure_info = {
             'module': module_name,
             'error_type': type(error).__name__,
@@ -69,9 +69,9 @@ class ImportErrorTracker:
             'python_path': sys.path.copy(),
             'environment': dict(os.environ)
         }
-        
+
         self.failed_imports[module_name] = failure_info
-        
+
         # Log based on criticality
         if is_critical:
             self.logger.error(
@@ -89,32 +89,32 @@ class ImportErrorTracker:
                 f"⚠️  Import failure: {module_name} - {error}"
                 f"\n  Context: {context}"
             )
-    
+
     def track_fallback_usage(self, fallback_name: str) -> None:
         """Track usage of fallback/mock objects"""
         self.fallback_usage[fallback_name] = self.fallback_usage.get(fallback_name, 0) + 1
         self.logger.info(f"🔄 Using fallback: {fallback_name} (usage count: {self.fallback_usage[fallback_name]})")
-    
+
     def validate_critical_imports(self) -> bool:
         """Validate that all critical imports are available"""
         missing_critical = []
-        
+
         for module_name in self.critical_imports:
             try:
                 __import__(module_name)
             except ImportError as e:
                 missing_critical.append((module_name, str(e)))
-        
+
         if missing_critical:
             self.logger.error("🚨 CRITICAL IMPORTS MISSING:")
             for module, error in missing_critical:
                 self.logger.error(f"   - {module}: {error}")
             return False
-        
+
         self.logger.info("✅ All critical imports available")
         return True
-    
-    def get_import_status_report(self) -> Dict[str, Any]:
+
+    def get_import_status_report(self) -> dict[str, Any]:
         """Generate comprehensive import status report"""
         return {
             'critical_imports_available': self.validate_critical_imports(),
@@ -122,22 +122,22 @@ class ImportErrorTracker:
             'failed_imports': self.failed_imports,
             'fallback_usage': self.fallback_usage,
             'critical_failures': [
-                name for name, info in self.failed_imports.items() 
+                name for name, info in self.failed_imports.items()
                 if info['is_critical']
             ],
             'optional_failures': [
-                name for name, info in self.failed_imports.items() 
+                name for name, info in self.failed_imports.items()
                 if not info['is_critical']
             ]
         }
-    
+
     def raise_on_critical_failure(self) -> None:
         """Raise exception if critical imports failed"""
         critical_failures = [
-            name for name, info in self.failed_imports.items() 
+            name for name, info in self.failed_imports.items()
             if info['is_critical']
         ]
-        
+
         if critical_failures:
             raise ImportError(
                 f"Critical imports failed: {', '.join(critical_failures)}. "
@@ -149,17 +149,17 @@ class ImportErrorTracker:
 _import_tracker = ImportErrorTracker()
 
 
-def safe_import(module_name: str, context: str = "", 
+def safe_import(module_name: str, context: str = "",
                is_critical: bool = None, fallback: Any = None) -> Any:
     """
     Safe import with comprehensive error tracking and fallback management
-    
+
     Args:
         module_name: Module to import
         context: Context where import is being attempted
         is_critical: Whether this import is critical for platform operation
         fallback: Fallback object/class to use if import fails
-    
+
     Returns:
         Imported module or fallback object
     """
@@ -167,15 +167,15 @@ def safe_import(module_name: str, context: str = "",
         return __import__(module_name, fromlist=[''])
     except ImportError as e:
         _import_tracker.track_import_failure(module_name, e, context, is_critical)
-        
+
         if fallback is not None:
             _import_tracker.track_fallback_usage(f"{module_name}->fallback")
             return fallback
-        
+
         # Re-raise critical import failures
         if is_critical or any(crit in module_name for crit in _import_tracker.critical_imports):
             raise ImportError(f"Critical import failed: {module_name} - {e}") from e
-        
+
         return None
 
 
@@ -183,14 +183,14 @@ def safe_import_from(module_name: str, class_name: str, context: str = "",
                     is_critical: bool = None, fallback: Any = None) -> Any:
     """
     Safe import of specific class/function from module
-    
+
     Args:
         module_name: Module to import from
         class_name: Class/function name to import
         context: Context where import is being attempted
         is_critical: Whether this import is critical
         fallback: Fallback class/function to use
-    
+
     Returns:
         Imported class/function or fallback
     """
@@ -199,15 +199,15 @@ def safe_import_from(module_name: str, class_name: str, context: str = "",
         return getattr(module, class_name)
     except (ImportError, AttributeError) as e:
         _import_tracker.track_import_failure(f"{module_name}.{class_name}", e, context, is_critical)
-        
+
         if fallback is not None:
             _import_tracker.track_fallback_usage(f"{module_name}.{class_name}->fallback")
             return fallback
-        
+
         # Re-raise critical import failures
         if is_critical or any(crit in module_name for crit in _import_tracker.critical_imports):
             raise ImportError(f"Critical import failed: {module_name}.{class_name} - {e}") from e
-        
+
         return None
 
 
@@ -221,7 +221,7 @@ def validate_platform_imports() -> bool:
     return _import_tracker.validate_critical_imports()
 
 
-def get_import_status() -> Dict[str, Any]:
+def get_import_status() -> dict[str, Any]:
     """Get comprehensive import status report"""
     return _import_tracker.get_import_status_report()
 
@@ -266,17 +266,17 @@ def check_critical_imports() -> bool:
 if __name__ == "__main__":
     # Demo/test the import tracker
     print("🔍 Testing Import Error Tracker...")
-    
+
     # Test safe import with fallback
     redis = safe_import("redis", "test context", is_critical=False, fallback=type("MockRedis", (), {}))
     print(f"Redis import result: {type(redis)}")
-    
+
     # Test critical import validation
     critical_ok = validate_platform_imports()
     print(f"Critical imports OK: {critical_ok}")
-    
+
     # Test import status report
     status = get_import_status()
     print(f"Import status report: {len(status['failed_imports'])} failures tracked")
-    
+
     print("✅ Import Error Tracker working!")

@@ -1,9 +1,82 @@
 line-length = 100
 target-version = "py311"
+indent-width = 4
+
+exclude = [
+	".bzr",
+	".direnv",
+	".eggs",
+	".git",
+	".git-rewrite",
+	".hg",
+	".mypy_cache",
+	".nox",
+	".pants.d",
+	".pytype",
+	".ruff_cache",
+	".svn",
+	".tox",
+	".venv",
+	"__pypackages__",
+	"_build",
+	"buck-out",
+	"build",
+	"dist",
+	"node_modules",
+	"venv",
+	"alembic/versions/*.py",
+	"scripts/generated/",
+]
 
 [lint]
-select = ["E","F","I","B","UP"]
-ignore = ["E501"]  # keep long lines for now if needed
+select = [
+	"E",    # pycodestyle errors
+	"W",    # pycodestyle warnings
+	"F",    # Pyflakes
+	"I",    # isort
+	"B",    # flake8-bugbear
+	"UP",   # pyupgrade
+	"SIM",  # flake8-simplify
+	"PTH",  # flake8-use-pathlib
+	"PL",   # Pylint
+]
+
+ignore = [
+	"E501",    # Line too long (handled by formatter)
+	"B008",    # Do not perform function calls in argument defaults
+	"C901",    # Too complex (handled case-by-case)
+	"PLR0913", # Too many arguments
+	"PLR0912", # Too many branches
+	"TRY003",  # Avoid specifying long messages outside exception class
+	"PERF203", # try-except in loop (sometimes necessary)
+	"UP007",   # Use X | Y for type unions (keep compatibility)
+]
+
+[lint.isort]
+known-first-party = ["backend", "tests"]
+force-sort-within-sections = true
+split-on-trailing-comma = true
+
+[lint.per-file-ignores]
+"tests/**/*.py" = [
+	"S101",
+	"PLR2004",
+	"S105",
+	"S106",
+]
+
+"alembic/versions/*.py" = [
+	"E501",
+	"F401",
+	"F841",
+]
+
+"scripts/**/*.py" = [
+	"T201",
+]
 
 [format]
-quote-style = "preserve"
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"

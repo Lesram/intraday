@@ -256,7 +256,7 @@ def validate_feature_alignment(features: pd.DataFrame, target: pd.Series) -> Non
             # Fallback for stub mode
             import numpy as np
             is_last_nan = np.isnan(target.iloc[-1]) if hasattr(target.iloc[-1], '__float__') else False
-        
+
         if not is_last_nan:  # Last target value should be NaN (no future data)
             raise ValueError(
                 "Target appears to use future information (last value not NaN)"

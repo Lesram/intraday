@@ -3,10 +3,11 @@ Unified Configuration System
 Provides single source of truth for all platform configuration
 """
 import os
-from typing import Optional, Dict, Any
-from pydantic import Field, field_validator, model_validator
-from pydantic_settings import BaseSettings
+from typing import Any
+
 from dotenv import load_dotenv
+from pydantic import Field, field_validator, model_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # Load .env file explicitly at module level
 load_dotenv()
@@ -17,44 +18,63 @@ class UnifiedSettings(BaseSettings):
     Unified configuration system providing single source of truth
     for all platform settings
     """
-    
+
     # Core application settings
-    app_name: str = Field(default="Trading Platform", env="APP_NAME")
-    debug: bool = Field(default=False, env="DEBUG")
-    host: str = Field(default="localhost", env="HOST")
-    port: int = Field(default=8000, env="PORT")
-    
+    app_name: str = Field(default="Trading Platform")
+    debug: bool = Field(default=False)
+    host: str = Field(default="localhost")
+    port: int = Field(default=8000)
+
     # Database settings
-    database_url: str = Field(default="sqlite:///./trading_platform.db", env="DATABASE_URL")
-    database_echo: bool = Field(default=False, env="DB_ECHO")
-    database_pool_size: int = Field(default=20, env="DB_POOL_SIZE")
-    database_max_overflow: int = Field(default=30, env="DB_MAX_OVERFLOW")
-    database_pool_timeout: int = Field(default=30, env="DB_POOL_TIMEOUT")
-    database_pool_recycle: int = Field(default=3600, env="DB_POOL_RECYCLE")
-    
+    database_url: str = Field(
+        default="postgresql+asyncpg://trading:trading_password@localhost:5432/algotrading",
+        description="PostgreSQL database URL (required for production)"
+    )
+    database_echo: bool = Field(default=False, alias="db_echo")
+    database_pool_size: int = Field(default=20, alias="db_pool_size")
+    database_max_overflow: int = Field(default=30, alias="db_max_overflow")
+    database_pool_timeout: int = Field(default=30, alias="db_pool_timeout")
+    database_pool_recycle: int = Field(default=3600, alias="db_pool_recycle")
+
     # Security settings - use direct environment access due to pydantic-settings issues
     jwt_secret: str = Field(default_factory=lambda: os.getenv("SECURITY_JWT_SECRET", ""))
     jwt_algorithm: str = Field(default_factory=lambda: os.getenv("JWT_ALGORITHM", "HS256"))
     jwt_expiration_hours: int = Field(default_factory=lambda: int(os.getenv("JWT_EXPIRATION_HOURS", "24")))
-    
+
     # Alpaca settings - use direct environment access
-    alpaca_api_key: str = Field(default_factory=lambda: os.getenv("ALPACA_API_KEY", ""))
-    alpaca_secret_key: str = Field(default_factory=lambda: os.getenv("ALPACA_SECRET_KEY", ""))
+    alpaca_api_key: str = Field(default_factory=lambda: os.getenv("ALPACA_API_KEY_ID", ""))
+    alpaca_secret_key: str = Field(default_factory=lambda: os.getenv("ALPACA_API_SECRET_KEY", ""))
     alpaca_base_url: str = Field(default_factory=lambda: os.getenv("ALPACA_BASE_URL", "https://paper-api.alpaca.markets"))
     alpaca_data_url: str = Field(default_factory=lambda: os.getenv("ALPACA_DATA_URL", "https://data.alpaca.markets"))
-    
-    # Outbox settings
-    outbox_enabled: bool = Field(default=True, env="OUTBOX_ENABLED")
-    outbox_batch_size: int = Field(default=100, env="OUTBOX_BATCH_SIZE")
-    outbox_retry_attempts: int = Field(default=3, env="OUTBOX_RETRY_ATTEMPTS")
-    outbox_retry_delay_seconds: int = Field(default=5, env="OUTBOX_RETRY_DELAY")
-    outbox_max_age_hours: int = Field(default=24, env="OUTBOX_MAX_AGE_HOURS")
 
-    model_config = {
-        "case_sensitive": False,
-        "extra": "allow"
-    }
-    
+    # Outbox settings
+    outbox_enabled: bool = Field(default=True)
+    outbox_batch_size: int = Field(default=100)
+    outbox_retry_attempts: int = Field(default=3)
+    outbox_retry_delay_seconds: int = Field(default=5, alias="outbox_retry_delay")
+    outbox_max_age_hours: int = Field(default=24)
+
+    # Trading execution controls
+    #
+    # Note: paper vs live routing is still controlled by ALPACA_PAPER / ALPACA_BASE_URL.
+    # TRADING_EXECUTION_MODE controls whether we actually submit to the broker.
+    #
+    # Allowed values:
+    # - execute: normal behavior (submit to broker, paper/live depending on Alpaca config)
+    # - paper/live: aliases for execute (still relies on ALPACA_PAPER)
+    # - shadow: do not submit to broker; record intent and mark orders as 'shadow'
+    # - dry_run: simulate broker behavior (no real submission)
+    trading_execution_mode: str = Field(
+        default_factory=lambda: os.getenv("TRADING_EXECUTION_MODE", "execute")
+    )
+
+    model_config = SettingsConfigDict(
+        case_sensitive=False,
+        extra="allow",
+        env_file=".env",
+        env_file_encoding="utf-8"
+    )
+
     @field_validator('jwt_secret')
     @classmethod
     def validate_jwt_secret(cls, v):
@@ -62,14 +82,28 @@ class UnifiedSettings(BaseSettings):
         if v and len(v) < 32:
             raise ValueError("JWT secret must be at least 32 characters long")
         return v
-    
+
     @field_validator('database_url')
     @classmethod
     def validate_database_url(cls, v):
         if not v:
             raise ValueError("Database URL cannot be empty")
         return v
-    
+
+    @field_validator('trading_execution_mode')
+    @classmethod
+    def validate_trading_execution_mode(cls, v: str) -> str:
+        mode = (v or "").strip().lower()
+        allowed = {"execute", "paper", "live", "shadow", "dry_run"}
+        if mode not in allowed:
+            raise ValueError(
+                f"Invalid TRADING_EXECUTION_MODE '{v}'. Allowed: {sorted(allowed)}"
+            )
+        # Normalize aliases
+        if mode in {"paper", "live"}:
+            return "execute"
+        return mode
+
     @model_validator(mode='after')
     def validate_production_requirements(self):
         """Validate production requirements only when not in debug mode"""
@@ -79,20 +113,20 @@ class UnifiedSettings(BaseSettings):
             if not self.alpaca_api_key or not self.alpaca_secret_key:
                 raise ValueError("Alpaca credentials are required for production mode")
         return self
-    
+
     def get_database_url(self) -> str:
         """Get the unified database URL"""
         return self.database_url
-    
-    def get_jwt_config(self) -> Dict[str, Any]:
+
+    def get_jwt_config(self) -> dict[str, Any]:
         """Get JWT configuration dictionary"""
         return {
             "secret": self.jwt_secret,
             "algorithm": self.jwt_algorithm,
             "expiration_hours": self.jwt_expiration_hours
         }
-    
-    def get_alpaca_config(self) -> Dict[str, str]:
+
+    def get_alpaca_config(self) -> dict[str, str]:
         """Get Alpaca configuration dictionary"""
         return {
             "api_key": self.alpaca_api_key,
@@ -100,8 +134,8 @@ class UnifiedSettings(BaseSettings):
             "base_url": self.alpaca_base_url,
             "data_url": self.alpaca_data_url
         }
-    
-    def get_database_config(self) -> Dict[str, Any]:
+
+    def get_database_config(self) -> dict[str, Any]:
         """Get database configuration dictionary"""
         return {
             "url": self.database_url,
@@ -111,8 +145,8 @@ class UnifiedSettings(BaseSettings):
             "pool_timeout": self.database_pool_timeout,
             "pool_recycle": self.database_pool_recycle
         }
-    
-    def get_outbox_config(self) -> Dict[str, Any]:
+
+    def get_outbox_config(self) -> dict[str, Any]:
         """Get outbox configuration dictionary"""
         return {
             "enabled": self.outbox_enabled,
@@ -121,18 +155,18 @@ class UnifiedSettings(BaseSettings):
             "retry_delay_seconds": self.outbox_retry_delay_seconds,
             "max_age_hours": self.outbox_max_age_hours
         }
-    
+
     def is_development(self) -> bool:
         """Check if running in development mode"""
         return self.debug
-    
+
     def is_production(self) -> bool:
         """Check if running in production mode"""
         return not self.debug
 
 
 # Global configuration instance
-_settings: Optional[UnifiedSettings] = None
+_settings: UnifiedSettings | None = None
 
 
 def get_unified_settings() -> UnifiedSettings:
@@ -166,7 +200,7 @@ def get_jwt_secret() -> str:
     return get_unified_settings().jwt_secret
 
 
-def get_alpaca_credentials() -> Dict[str, str]:
+def get_alpaca_credentials() -> dict[str, str]:
     """Get Alpaca API credentials"""
     return get_unified_settings().get_alpaca_config()
 
@@ -176,11 +210,11 @@ def is_debug_mode() -> bool:
     return get_unified_settings().debug
 
 
-def get_database_config() -> Dict[str, Any]:
+def get_database_config() -> dict[str, Any]:
     """Get complete database configuration"""
     return get_unified_settings().get_database_config()
 
 
-def get_outbox_config() -> Dict[str, Any]:
+def get_outbox_config() -> dict[str, Any]:
     """Get complete outbox configuration"""
     return get_unified_settings().get_outbox_config()

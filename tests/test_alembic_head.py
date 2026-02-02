@@ -14,6 +14,8 @@ import pytest
 import os
 
 
+@pytest.mark.integration
+@pytest.mark.slow
 def test_database_at_alembic_head():
     """Ensure database schema is at alembic head before tests run."""
     
@@ -112,6 +114,8 @@ def test_database_at_alembic_head():
         )
 
 
+@pytest.mark.integration
+@pytest.mark.slow
 def test_no_pending_model_changes():
     """Detect if model changes exist without corresponding migrations."""
     

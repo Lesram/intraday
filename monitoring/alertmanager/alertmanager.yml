@@ -1,0 +1,179 @@
+# Alertmanager Configuration (H-12 FIX)
+# Created: 2026-02-02
+#
+# M-37 FIX: Configure notification receivers before production deployment:
+# 
+# REQUIRED ENVIRONMENT VARIABLES:
+# ================================
+# SLACK_WEBHOOK_URL  - Slack incoming webhook URL (required for Slack notifications)
+#                      Get from: https://api.slack.com/messaging/webhooks
+#
+# PAGERDUTY_KEY      - PagerDuty service integration key (required for critical alerts)
+#                      Get from: PagerDuty > Services > Integrations > Add Integration
+#
+# SMTP_HOST          - SMTP server hostname (e.g., smtp.gmail.com, smtp.sendgrid.net)
+# SMTP_USER          - SMTP authentication username
+# SMTP_PASSWORD      - SMTP authentication password or app-specific password
+#
+# ALERT_EMAIL_TO     - Email address to receive alerts (default: alerts@localhost)
+#
+# Documentation: https://prometheus.io/docs/alerting/latest/configuration/
+
+global:
+  # SMTP settings for email notifications
+  # M-37 FIX: Use environment variables, no hardcoded placeholders
+  smtp_smarthost: '${SMTP_HOST:localhost}:${SMTP_PORT:587}'
+  smtp_from: 'alertmanager@${DOMAIN:trading-platform.local}'
+  smtp_auth_username: '${SMTP_USER:}'
+  smtp_auth_password: '${SMTP_PASSWORD:}'
+  smtp_require_tls: true
+  
+  # Slack settings
+  slack_api_url: '${SLACK_WEBHOOK_URL:}'
+  
+  # PagerDuty settings  
+  pagerduty_url: 'https://events.pagerduty.com/v2/enqueue'
+
+# Alert routing configuration
+route:
+  # Default receiver for unmatched alerts
+  receiver: 'default-receiver'
+  
+  # Group alerts by alertname and severity
+  group_by: ['alertname', 'severity', 'cluster']
+  
+  # Wait before sending initial notification
+  group_wait: 30s
+  
+  # Wait before sending subsequent notifications for new alerts in the group
+  group_interval: 5m
+  
+  # Wait before re-sending notifications for the same alert
+  repeat_interval: 4h
+  
+  # Child routes for specific alert routing
+  routes:
+    # Critical alerts - immediate PagerDuty notification
+    - match:
+        severity: critical
+      receiver: 'pagerduty-critical'
+      group_wait: 10s
+      repeat_interval: 1h
+      
+    # High severity alerts - Slack + email
+    - match:
+        severity: high
+      receiver: 'slack-high'
+      group_wait: 30s
+      repeat_interval: 2h
+      
+    # Trading-specific alerts - dedicated channel
+    - match_re:
+        alertname: 'Trading.*|Order.*|Position.*'
+      receiver: 'trading-alerts'
+      group_wait: 10s
+      
+    # Risk alerts - immediate attention
+    - match_re:
+        alertname: 'Risk.*|CircuitBreaker.*|DrawdownLimit.*'
+      receiver: 'risk-alerts'
+      group_wait: 5s
+      repeat_interval: 30m
+
+# Notification receivers
+receivers:
+  - name: 'default-receiver'
+    slack_configs:
+      - channel: '#trading-alerts'
+        send_resolved: true
+        title: '{{ .Status | toUpper }}: {{ .CommonLabels.alertname }}'
+        text: |-
+          {{ range .Alerts }}
+          *Alert:* {{ .Labels.alertname }}
+          *Severity:* {{ .Labels.severity }}
+          *Description:* {{ .Annotations.description }}
+          *Details:*
+            {{ range .Labels.SortedPairs }} - {{ .Name }}: {{ .Value }}
+            {{ end }}
+          {{ end }}
+          
+  - name: 'pagerduty-critical'
+    pagerduty_configs:
+      - service_key: '${PAGERDUTY_KEY:}'
+        severity: critical
+        description: '{{ .CommonLabels.alertname }}: {{ .CommonAnnotations.summary }}'
+        details:
+          firing: '{{ template "pagerduty.default.description" .Alerts.Firing }}'
+          resolved: '{{ template "pagerduty.default.description" .Alerts.Resolved }}'
+          
+  - name: 'slack-high'
+    slack_configs:
+      - channel: '#trading-alerts-high'
+        send_resolved: true
+        color: '{{ if eq .Status "firing" }}danger{{ else }}good{{ end }}'
+        title: '🚨 HIGH: {{ .CommonLabels.alertname }}'
+        text: |-
+          {{ range .Alerts }}
+          *Summary:* {{ .Annotations.summary }}
+          *Description:* {{ .Annotations.description }}
+          {{ end }}
+        actions:
+          - type: button
+            text: 'View Runbook'
+            url: 'https://docs.trading-platform.local/runbooks/{{ .CommonLabels.alertname }}'
+            
+  - name: 'trading-alerts'
+    slack_configs:
+      - channel: '#trading-ops'
+        send_resolved: true
+        title: '📈 Trading Alert: {{ .CommonLabels.alertname }}'
+        text: |-
+          {{ range .Alerts }}
+          *Status:* {{ .Status }}
+          *Symbol:* {{ .Labels.symbol }}
+          *Details:* {{ .Annotations.description }}
+          {{ end }}
+          
+  - name: 'risk-alerts'
+    slack_configs:
+      - channel: '#risk-management'
+        send_resolved: true
+        color: 'danger'
+        title: '⚠️ RISK ALERT: {{ .CommonLabels.alertname }}'
+        text: |-
+          {{ range .Alerts }}
+          *Severity:* {{ .Labels.severity }}
+          *Description:* {{ .Annotations.description }}
+          *Action Required:* {{ .Annotations.action }}
+          {{ end }}
+    pagerduty_configs:
+      - service_key: '${PAGERDUTY_KEY:}'
+        severity: '{{ .CommonLabels.severity }}'
+        description: 'RISK: {{ .CommonLabels.alertname }}'
+
+# Inhibition rules - suppress lower severity alerts when higher severity fires
+inhibit_rules:
+  # Suppress warning when critical is firing for same alertname
+  - source_match:
+      severity: 'critical'
+    target_match:
+      severity: 'warning'
+    equal: ['alertname', 'cluster']
+    
+  # Suppress high when critical is firing
+  - source_match:
+      severity: 'critical'
+    target_match:
+      severity: 'high'
+    equal: ['alertname', 'cluster']
+    
+  # Suppress risk warnings during market close
+  - source_match:
+      alertname: 'MarketClosed'
+    target_match_re:
+      alertname: 'Trading.*Warning'
+    equal: ['cluster']
+
+# Templates for custom notification formatting
+templates:
+  - '/etc/alertmanager/templates/*.tmpl'

@@ -5,12 +5,12 @@ Enhanced with OpenTelemetry tracing, structured logging, and Prometheus metrics.
 """
 
 import asyncio
+from datetime import UTC, datetime, timedelta
 import logging
 import random
 import time
-import uuid
-from datetime import UTC, datetime, timedelta
 from typing import Any
+import uuid
 
 from prometheus_client import Counter, Gauge, Histogram
 from sqlalchemy import select, update

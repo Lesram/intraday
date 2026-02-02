@@ -21,13 +21,29 @@ export const PortfolioChart: React.FC<PortfolioChartProps> = ({
   data = [], 
   loading = false 
 }) => {
+  // Ensure data is always an array
+  const safeData = Array.isArray(data) ? data : [];
+  
   // Calculate min/max for scale
-  const { minValue, maxValue, range } = useMemo(() => {
-    if (!data || data.length === 0) {
+  const { minValue, range } = useMemo(() => {
+    if (!safeData || safeData.length === 0) {
       return { minValue: 0, maxValue: 100000, range: 100000 };
     }
     
-    const values = data.map(d => d.totalEquity);
+    // Filter out invalid values and ensure we have valid numbers
+    const values = safeData
+      .map(d => d.totalEquity)
+      .filter(v => typeof v === 'number' && !isNaN(v) && isFinite(v));
+    
+    // If no valid values, return safe defaults
+    if (values.length === 0) {
+      return {
+        minValue: 0,
+        maxValue: 100000,
+        range: 100000,
+      };
+    }
+    
     const min = Math.min(...values);
     const max = Math.max(...values);
     const padding = (max - min) * 0.1 || 10000; // 10% padding or $10k minimum
@@ -37,7 +53,7 @@ export const PortfolioChart: React.FC<PortfolioChartProps> = ({
       maxValue: max + padding,
       range: max - min + 2 * padding,
     };
-  }, [data]);
+  }, [safeData]);
 
   // Loading state
   if (loading) {
@@ -54,7 +70,7 @@ export const PortfolioChart: React.FC<PortfolioChartProps> = ({
   }
 
   // Empty state
-  if (!data || data.length === 0) {
+  if (!safeData || safeData.length === 0) {
     return (
       <div style={{
         height: '300px',
@@ -81,10 +97,27 @@ export const PortfolioChart: React.FC<PortfolioChartProps> = ({
   const chartWidth = width - padding.left - padding.right;
   const chartHeight = height - padding.top - padding.bottom;
 
-  // Generate SVG path
-  const points = data.map((d, i) => {
-    const x = (i / (data.length - 1)) * chartWidth + padding.left;
+  // Generate SVG path - with NaN safety checks
+  // First filter out invalid data points
+  const validData = safeData.filter(d => 
+    d && 
+    typeof d.totalEquity === 'number' && 
+    !isNaN(d.totalEquity) && 
+    isFinite(d.totalEquity) &&
+    d.timestamp
+  );
+  
+  const points = validData.map((d, i) => {
+    const x = validData.length > 1
+      ? (i / (validData.length - 1)) * chartWidth + padding.left
+      : chartWidth / 2 + padding.left; // Center single point
     const y = height - padding.bottom - ((d.totalEquity - minValue) / range) * chartHeight;
+    
+    // Safety check for NaN (shouldn't happen with filtered data, but defensive)
+    if (isNaN(x) || isNaN(y) || !isFinite(x) || !isFinite(y)) {
+      return { x: padding.left, y: height - padding.bottom, data: d };
+    }
+    
     return { x, y, data: d };
   });
 

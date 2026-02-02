@@ -1,35 +1,15 @@
-"""
-backend.config package
+"""Core package initialization."""
 
-Preserves legacy imports and provides:
-  - from backend.config import settings, Settings, ...
-  - from backend.config.settings import settings
-  - import backend.config.settings
+from .base_settings import LegacySettings, Settings
+from .config import Config, get_config, load_config
+from .settings import AppSettings, get_settings
 
-Primary API is re-exported from .settings; a minimal fallback is provided if
-that import fails during early boot to avoid hard errors in integration runs.
-"""
-
-try:
-        # Re-export everything from .settings for backward compatibility
-        from .settings import *  # type: ignore  # noqa: F401,F403
-
-        # Ensure Settings is explicitly available
-        from .settings import AppSettings, Settings, get_settings, settings
-except Exception:
-        # Minimal fallback matching the old module-level shim behavior
-        try:
-                from pydantic import BaseSettings as _BaseSettings  # type: ignore
-        except Exception:  # pragma: no cover - ultra fallback
-                class _BaseSettings:  # type: ignore
-                        pass
-
-        class Settings(_BaseSettings):  # type: ignore
-                pass
-
-        AppSettings = Settings  # type: ignore
-        settings = Settings()  # type: ignore
-        get_settings = lambda: Settings()  # type: ignore
-
-# Export the imported names
-__all__ = ['Settings', 'AppSettings', 'settings', 'get_settings'] + [name for name in globals().keys() if not name.startswith('_')]
+__all__ = [
+    'Config',
+    'get_config',
+    'load_config',
+    'get_settings',
+    'AppSettings',
+    'Settings',
+    'LegacySettings',
+]

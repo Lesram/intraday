@@ -31,16 +31,7 @@ class TestHealthEndpointPerformanceSLO:
     # Number of requests for percentile calculation
     SAMPLE_SIZE = 100
     
-    @pytest.fixture
-    def client(self):
-        """Create a test client for the FastAPI app."""
-        try:
-            from backend.api.main import app
-            return TestClient(app)
-        except ImportError:
-            from backend.api.factory import create_app
-            app = create_app()
-            return TestClient(app)
+    # Remove custom client fixture - use the one from conftest.py
     
     @pytest.mark.performance
     @pytest.mark.unit
@@ -135,16 +126,7 @@ class TestCriticalAPIPerformanceSLO:
     
     SAMPLE_SIZE = 50  # Smaller sample for heavier endpoints
     
-    @pytest.fixture
-    def client(self):
-        """Create a test client for the FastAPI app."""
-        try:
-            from backend.api.main import app
-            return TestClient(app)
-        except ImportError:
-            from backend.api.factory import create_app
-            app = create_app()
-            return TestClient(app)
+    # Remove custom client fixture - use the one from conftest.py
     
     @pytest.fixture
     def auth_token(self, client):
@@ -161,7 +143,8 @@ class TestCriticalAPIPerformanceSLO:
         return None
     
     @pytest.mark.performance
-    @pytest.mark.unit
+    @pytest.mark.integration
+    @pytest.mark.slow
     def test_signals_endpoint_performance_slo(self, client, auth_token):
         """HARD REQUIREMENT: /api/v1/signals p95 latency < 1s
         
@@ -217,16 +200,7 @@ class TestUnexpectedErrorRateSLO:
     # SLO: < 2% unexpected errors
     MAX_UNEXPECTED_ERROR_RATE = 0.02
     
-    @pytest.fixture
-    def client(self):
-        """Create a test client for the FastAPI app."""
-        try:
-            from backend.api.main import app
-            return TestClient(app)
-        except ImportError:
-            from backend.api.factory import create_app
-            app = create_app()
-            return TestClient(app)
+    # Remove custom client fixture - use the one from conftest.py
     
     @pytest.mark.performance
     @pytest.mark.unit

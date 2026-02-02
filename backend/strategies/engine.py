@@ -6,10 +6,11 @@ Routes all execution through RiskManager.before_order() before creating orders.
 """
 
 import asyncio
-import logging
 from collections import defaultdict
 from datetime import UTC, datetime
 from decimal import ROUND_DOWN, Decimal
+import logging
+import os
 from typing import Any
 
 from ..config import get_settings
@@ -19,6 +20,14 @@ from ..services.positions_service import PositionsService
 from .types import ExecutionPlan, Side, TradingSignal
 
 logger = logging.getLogger(__name__)
+
+# M-16 FIX: Import quote manager for real price data
+try:
+    from ..services.quote_manager import QuoteManager
+    QUOTE_MANAGER_AVAILABLE = True
+except ImportError:
+    QUOTE_MANAGER_AVAILABLE = False
+    logger.warning("QuoteManager not available, will use fallback prices")
 
 
 class StrategyEngine:
@@ -89,11 +98,11 @@ class StrategyEngine:
         """
         from ..risk.risk_manager import RiskManager
         from ..services.positions_service import PositionsService
-        
+
         # Create default instances
         risk_manager = RiskManager()
         positions_service = PositionsService()
-        
+
         return cls(
             risk_manager=risk_manager,
             positions_service=positions_service,
@@ -159,13 +168,13 @@ class StrategyEngine:
             # Continue with empty position map
             position_map = {}
 
-        for symbol, symbol_signals in signals_by_symbol.items():
+        # Build plans for all symbols in parallel for better performance
+        async def build_plan_safe(symbol: str, symbol_signals: list[TradingSignal]):
+            """Wrapper to catch exceptions per-symbol without failing the batch."""
             try:
-                plan = await self._build_symbol_plan(
+                return await self._build_symbol_plan(
                     symbol, symbol_signals, current_time, position_map
                 )
-                if plan:
-                    plans.append(plan)
             except Exception as e:
                 import traceback
                 logger.error(
@@ -177,7 +186,13 @@ class StrategyEngine:
                         "signals_count": len(symbol_signals),
                     },
                 )
-                continue
+                return None
+
+        # Execute all symbol plan builds concurrently
+        results = await asyncio.gather(
+            *[build_plan_safe(sym, sigs) for sym, sigs in signals_by_symbol.items()]
+        )
+        plans = [plan for plan in results if plan is not None]
 
         return plans
 
@@ -228,7 +243,7 @@ class StrategyEngine:
             from_exposure = 0.0
 
         # Store last exposure for flip detection
-        last_exposure = self.last_exposures.get(symbol, from_exposure)
+        self.last_exposures.get(symbol, from_exposure)
         self.last_exposures[symbol] = from_exposure
 
         # Net signals using weighted average
@@ -366,14 +381,8 @@ class StrategyEngine:
         if abs(exposure) < 0.001:  # Essentially flat
             return Decimal("0"), Decimal("0"), "flat"
 
-        # Get current price (mock for now - in real implementation, fetch from market data)
-        # For testing, assume reasonable prices
-        mock_prices = {
-            "BTCUSD": 45000,
-            "ETHUSD": 3000,
-            "EURUSD": 1.1,
-        }
-        price = mock_prices.get(symbol, 100)  # Default to $100
+        # M-16 FIX: Get current price from quote manager or broker
+        price = await self._get_current_price(symbol)
 
         # Calculate notional value
         notional_value = abs(exposure) * account_value
@@ -399,6 +408,48 @@ class StrategyEngine:
             side = Side.FLAT
 
         return qty, notional, side
+
+    async def _get_current_price(self, symbol: str) -> float:
+        """
+        M-16 FIX: Get current price from broker or quote manager.
+        
+        Falls back to a conservative default only in test mode.
+        """
+        # Try QuoteManager first
+        if QUOTE_MANAGER_AVAILABLE:
+            try:
+                quote_manager = QuoteManager()
+                quotes = await quote_manager.get_quotes([symbol])
+                if symbol in quotes and quotes[symbol].last > 0:
+                    return quotes[symbol].last
+            except Exception as e:
+                logger.warning(f"QuoteManager failed for {symbol}: {e}")
+        
+        # Try positions service for last known price
+        try:
+            if self.positions_service:
+                positions = await self.positions_service.get_all_positions()
+                if positions:
+                    for pos in positions:
+                        if pos.get('symbol') == symbol and pos.get('current_price', 0) > 0:
+                            return float(pos['current_price'])
+        except Exception as e:
+            logger.warning(f"PositionsService price lookup failed: {e}")
+        
+        # In production, fail if we can't get real prices
+        is_production = os.getenv("APP_ENVIRONMENT", "").lower() in ("production", "prod")
+        if is_production:
+            logger.error(f"Cannot get real price for {symbol} in production")
+            raise ValueError(f"M-16 SECURITY: Cannot calculate order size without real price for {symbol}")
+        
+        # Test/development fallback with common defaults
+        logger.warning(f"Using fallback price for {symbol} - only acceptable in test mode")
+        fallback_prices = {
+            "AAPL": 175.0, "MSFT": 380.0, "GOOGL": 140.0, "TSLA": 250.0,
+            "NVDA": 500.0, "SPY": 450.0, "QQQ": 380.0,
+            "BTCUSD": 45000.0, "ETHUSD": 3000.0, "EURUSD": 1.1,
+        }
+        return fallback_prices.get(symbol, 100.0)
 
     async def gate_with_risk(
         self, plan: ExecutionPlan, portfolio_state: dict[str, Any] | None = None

@@ -10,11 +10,11 @@ those symbols to preserve backward compatibility.
 
 from __future__ import annotations
 
-import json
-import os
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
+import json
+import os
 from pathlib import Path
 from typing import Any
 
@@ -53,12 +53,15 @@ try:
 except Exception:  # pragma: no cover - optional
     # Provide minimal fallbacks for names; not used by Module35 tests
     _legacy_settings = None
-    _get_runtime_settings = lambda: None  # type: ignore
-    get_legacy_settings = lambda: None  # type: ignore
+    def _get_runtime_settings():
+        return None  # type: ignore
+    def get_legacy_settings():
+        return None  # type: ignore
     RuntimeSettings = object  # type: ignore
     RuntimeLegacySettings = object  # type: ignore
     AppConfig = SecurityConfig = AlpacaConfig = DataConfig = WebsocketConfig = MetricsConfig = DatabaseConfig = TradingConfig = OutboxConfig = ObservabilityConfig = MLOpsConfig = object  # type: ignore
-    validate_required_settings = lambda *a, **k: None  # type: ignore
+    def validate_required_settings(*a, **k):
+        return None  # type: ignore
 
 # Provide a type-safe alias for the canonical Environment enum.
 # Use TYPE_CHECKING to give static analyzers a concrete type while preserving
@@ -109,7 +112,7 @@ class SettingsError(Exception):
 
 @dataclass
 class DatabaseSettings:
-    url: str = "sqlite+aiosqlite:///trading_platform.db"
+    url: str = ""  # REQUIRED - must be set via DATABASE_URL environment variable
     pool_size: int = 20
     max_overflow: int = 10
     pool_timeout: int = 30
@@ -121,7 +124,14 @@ class DatabaseSettings:
 
     # Perform basic validations at construction time to match tests
     def __post_init__(self):
-        # Allow instantiation with url=="" for validator tests; validator will catch
+        # Read DATABASE_URL from environment if url is empty
+        if not self.url:
+            self.url = os.getenv("DATABASE_URL", "")
+            # For testing environment, use in-memory SQLite
+            if not self.url and os.getenv("APP_ENVIRONMENT", "").lower() == "testing":
+                self.url = "sqlite+aiosqlite:///:memory:"
+
+        # Validate pool settings
         if self.pool_size < 1 and self.url != "":
             raise SettingsError("Pool size must be positive")
         if self.max_overflow < 0:
@@ -168,7 +178,7 @@ class APISettings:
     workers: int = 4
     timeout: int = 30
     max_connections: int = 1000
-    cors_origins: list[str] = field(default_factory=lambda: ["http://localhost:3000"])
+    cors_origins: list[str] = field(default_factory=lambda: ["http://localhost:3000", "http://127.0.0.1:3000", "http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:5174", "http://127.0.0.1:5174"])
     cors_methods: list[str] = field(default_factory=lambda: ["GET", "POST", "PUT", "DELETE"])
     cors_headers: list[str] = field(default_factory=lambda: ["Content-Type", "Authorization"])
     rate_limit: dict[str, int] = field(default_factory=lambda: {"requests": 100, "window": 60})
@@ -207,7 +217,7 @@ class LoggingSettings:
 class SecuritySettings:
     secret_key: str = "change-this-secret-key-in-production"
     jwt_expiry_hours: int = 24
-    password_min_length: int = 8
+    password_min_length: int = 12  # M-07 FIX: Increased from 8 to 12 characters
     max_login_attempts: int = 5
     login_lockout_minutes: int = 15
     session_timeout_minutes: int = 60
@@ -343,10 +353,10 @@ class AppSettings:
     environment: Any = EnvironmentEnum.DEVELOPMENT
     debug: bool = True
     testing: bool = False
-    
+
     # Broker configuration toggles
     use_mock_data: bool = True
-    use_mock_broker: bool = True
+    use_mock_broker: bool = False  # Default to FALSE - use real Alpaca
     alpaca_paper: bool = True
 
     database: DatabaseSettings = field(default_factory=DatabaseSettings)
@@ -364,20 +374,25 @@ class AppSettings:
     updated_at: datetime = field(default_factory=datetime.now)
 
     def __post_init__(self):
-        # Set environment-specific broker defaults
+        # Check for explicit environment variable settings
+        mock_broker_env = os.getenv("USE_MOCK_BROKER")
+        if mock_broker_env is not None:
+            # Respect explicit environment variable
+            use_mock = mock_broker_env.lower() in ('true', '1', 'yes')
+            object.__setattr__(self, 'use_mock_broker', use_mock)
+
+        # Set other environment-specific defaults
         env_name = os.getenv("APP_ENVIRONMENT", "development").lower()
         if env_name == "development":
-            # dev: USE_MOCK_DATA=True, USE_MOCK_BROKER=True
+            # dev: USE_MOCK_DATA=True, ALPACA_PAPER=True
             object.__setattr__(self, 'use_mock_data', True)
-            object.__setattr__(self, 'use_mock_broker', True)
             object.__setattr__(self, 'alpaca_paper', True)
         elif env_name == "staging":
-            # staging: USE_MOCK_DATA=False, USE_MOCK_BROKER=True, ALPACA_PAPER=True
+            # staging: USE_MOCK_DATA=False, ALPACA_PAPER=True
             object.__setattr__(self, 'use_mock_data', False)
-            object.__setattr__(self, 'use_mock_broker', True)
             object.__setattr__(self, 'alpaca_paper', True)
         # For production, use explicit settings or defaults
-        
+
         if self.environment == EnvironmentEnum.PRODUCTION:
             if self.debug:
                 raise SettingsError("Debug mode should be disabled in production")
@@ -404,7 +419,7 @@ class AppSettings:
         """Use mock market data instead of real API calls."""
         return self.use_mock_data
 
-    @property 
+    @property
     def USE_MOCK_BROKER(self) -> bool:  # noqa: N802 (legacy naming)
         """Use mock broker instead of real Alpaca API."""
         return self.use_mock_broker

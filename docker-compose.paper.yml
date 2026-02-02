@@ -1,7 +1,5 @@
 # Paper Trading Deployment Configuration
 # Uses real Alpaca Paper Trading API with working credentials
-version: '3.8'
-
 services:
   # Main API Service - Paper Trading Configuration
   api:
@@ -17,22 +15,30 @@ services:
       - APP_LOG_LEVEL=INFO
       - DEBUG=false
 
+      # CORS (frontend origins)
+      # Note: pydantic-settings treats list fields as JSON in env vars.
+      - APP_CORS_ORIGINS=${APP_CORS_ORIGINS:-["http://localhost:3000","http://127.0.0.1:3000","http://localhost:5173","http://127.0.0.1:5173"]}
+      - CORS_ORIGINS=${CORS_ORIGINS:-["http://localhost:3000","http://127.0.0.1:3000","http://localhost:5173","http://127.0.0.1:5173"]}
+
       # Database Configuration - Paper Trading DB
-      - DATABASE_URL=postgresql+asyncpg://trading_user:trading_password_secure_2024@postgres:5432/trading_platform
+      # SECURITY FIX (H-10): Passwords must be set via environment variables
+      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-trading_user}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/${POSTGRES_DB:-trading_platform}
       - DATABASE_POOL_SIZE=20
       - DATABASE_MAX_OVERFLOW=30
       - DATABASE_ECHO=false
 
       # Alpaca Configuration - PAPER TRADING (WORKING CREDENTIALS)
-      - ALPACA_API_KEY_ID=PK6HHOLVI6KJ2DTESPKR
-      - ALPACA_API_SECRET_KEY=vpuCh1GHrr6NBjIecJdc8dGQRa0f302vSmD8kM7W
+      # NOTE: Set credentials via .env / env file; do not hardcode keys in compose.
+      - ALPACA_API_KEY_ID=${ALPACA_API_KEY_ID}
+      - ALPACA_API_SECRET_KEY=${ALPACA_API_SECRET_KEY}
       - ALPACA_BASE_URL=https://paper-api.alpaca.markets
       - ALPACA_DATA_URL=https://data.alpaca.markets/v2
       - ALPACA_STREAM_URL=wss://paper-api.alpaca.markets/stream
       - ALPACA_PAPER=true
 
       # Security Settings - PRODUCTION SECURE JWT
-      - JWT_SECRET_KEY=-su+!LL(*t2ej3Dk5LXyVwjRPctWyRDN#cYnJP3NwYniGVSiS9(!tL+4(9w_+^%D
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+      - SECURITY_JWT_SECRET=${JWT_SECRET_KEY}
       - JWT_ALGORITHM=HS256
       - JWT_EXPIRE_MINUTES=60
 
@@ -91,9 +97,10 @@ services:
     image: postgres:16-alpine
     container_name: trading_platform_db_paper
     environment:
-      POSTGRES_DB: trading_platform
-      POSTGRES_USER: trading_user
-      POSTGRES_PASSWORD: trading_password_secure_2024
+      POSTGRES_DB: ${POSTGRES_DB:-trading_platform}
+      POSTGRES_USER: ${POSTGRES_USER:-trading_user}
+      # SECURITY FIX (H-10): Password must be set via environment variable
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD environment variable is required}
       POSTGRES_HOST_AUTH_METHOD: md5
     ports:
       - "5432:5432"

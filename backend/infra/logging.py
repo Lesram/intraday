@@ -3,11 +3,11 @@ Structured JSON logging with OpenTelemetry trace correlation.
 Provides consistent log formatting across HTTP, DB, broker, and outbox operations.
 """
 
+from datetime import UTC, datetime
 import json
 import logging
 import logging.config
 import sys
-from datetime import UTC, datetime
 from typing import Any
 
 from opentelemetry import trace
@@ -187,11 +187,27 @@ class StructuredLogger:
         self, level: int, message: str, context: dict[str, Any] | None = None, **kwargs
     ) -> None:
         """Log message with structured context."""
-        if context:
-            # Add context as extra fields
-            self.logger.log(level, message, extra=context, **kwargs)
+        # Only these kwargs are valid for logging.Logger.log()
+        valid_log_kwargs = {"exc_info", "stack_info", "stacklevel", "extra"}
+        
+        # Separate valid logger kwargs from extra context fields
+        log_kwargs = {}
+        extra_fields = {}
+        for key, value in kwargs.items():
+            if key in valid_log_kwargs:
+                log_kwargs[key] = value
+            else:
+                # Invalid kwargs like 'error=...' go into extra context
+                extra_fields[key] = value
+        
+        # Merge context and extra_fields into the extra dict
+        extra = dict(context) if context else {}
+        extra.update(extra_fields)
+        
+        if extra:
+            self.logger.log(level, message, extra=extra, **log_kwargs)
         else:
-            self.logger.log(level, message, **kwargs)
+            self.logger.log(level, message, **log_kwargs)
 
     def debug(
         self, message: str, context: dict[str, Any] | None = None, **kwargs

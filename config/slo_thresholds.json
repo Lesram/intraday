@@ -1,0 +1,121 @@
+{
+  "last_updated": "2026-02-01T09:40:21.801186",
+  "thresholds": [
+    {
+      "slo_name": "availability",
+      "metric_name": "http_requests_success_rate",
+      "current_threshold": 0.999,
+      "baseline_threshold": 0.999,
+      "environment": "production",
+      "adjustment_window_hours": 24,
+      "adjustment_sensitivity": 0.1,
+      "max_adjustment_percent": 0.2,
+      "recent_values": [],
+      "last_adjustment": null,
+      "adjustment_history": []
+    },
+    {
+      "slo_name": "latency_p95",
+      "metric_name": "http_request_duration_p95",
+      "current_threshold": 300,
+      "baseline_threshold": 300,
+      "environment": "production",
+      "adjustment_window_hours": 24,
+      "adjustment_sensitivity": 0.1,
+      "max_adjustment_percent": 0.2,
+      "recent_values": [],
+      "last_adjustment": null,
+      "adjustment_history": []
+    },
+    {
+      "slo_name": "latency_p99",
+      "metric_name": "http_request_duration_p99",
+      "current_threshold": 500,
+      "baseline_threshold": 500,
+      "environment": "production",
+      "adjustment_window_hours": 24,
+      "adjustment_sensitivity": 0.1,
+      "max_adjustment_percent": 0.2,
+      "recent_values": [],
+      "last_adjustment": null,
+      "adjustment_history": []
+    },
+    {
+      "slo_name": "error_rate",
+      "metric_name": "http_requests_error_rate",
+      "current_threshold": 0.01,
+      "baseline_threshold": 0.01,
+      "environment": "production",
+      "adjustment_window_hours": 24,
+      "adjustment_sensitivity": 0.1,
+      "max_adjustment_percent": 0.2,
+      "recent_values": [],
+      "last_adjustment": null,
+      "adjustment_history": []
+    },
+    {
+      "slo_name": "order_success_rate",
+      "metric_name": "orders_success_rate",
+      "current_threshold": 0.995,
+      "baseline_threshold": 0.995,
+      "environment": "production",
+      "adjustment_window_hours": 24,
+      "adjustment_sensitivity": 0.1,
+      "max_adjustment_percent": 0.2,
+      "recent_values": [],
+      "last_adjustment": null,
+      "adjustment_history": []
+    },
+    {
+      "slo_name": "signal_processing_latency",
+      "metric_name": "signal_processing_duration_p95",
+      "current_threshold": 200,
+      "baseline_threshold": 200,
+      "environment": "production",
+      "adjustment_window_hours": 24,
+      "adjustment_sensitivity": 0.1,
+      "max_adjustment_percent": 0.2,
+      "recent_values": [],
+      "last_adjustment": null,
+      "adjustment_history": []
+    }
+  ],
+  "environment_profiles": [
+    {
+      "environment_name": "development",
+      "risk_tolerance": "high",
+      "business_criticality": "dev",
+      "availability_target": 0.95,
+      "latency_p95_target_ms": 1000,
+      "latency_p99_target_ms": 2000,
+      "error_rate_target": 0.05,
+      "burn_rate_1h_multiplier": 5.0,
+      "burn_rate_5m_multiplier": 15.0,
+      "burn_rate_1m_multiplier": 14.4
+    },
+    {
+      "environment_name": "staging",
+      "risk_tolerance": "medium",
+      "business_criticality": "staging",
+      "availability_target": 0.98,
+      "latency_p95_target_ms": 500,
+      "latency_p99_target_ms": 1000,
+      "error_rate_target": 0.02,
+      "burn_rate_1h_multiplier": 3.0,
+      "burn_rate_5m_multiplier": 8.0,
+      "burn_rate_1m_multiplier": 14.4
+    },
+    {
+      "environment_name": "production",
+      "risk_tolerance": "low",
+      "business_criticality": "prod",
+      "availability_target": 0.999,
+      "latency_p95_target_ms": 300,
+      "latency_p99_target_ms": 500,
+      "error_rate_target": 0.01,
+      "burn_rate_1h_multiplier": 2.0,
+      "burn_rate_5m_multiplier": 6.0,
+      "burn_rate_1m_multiplier": 14.4
+    }
+  ]
+}

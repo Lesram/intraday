@@ -5,10 +5,10 @@ Enhanced with comprehensive observability including tracing and metrics.
 """
 
 import asyncio
-import time
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
+import time
 from typing import Any
 
 import pandas as pd
@@ -23,7 +23,6 @@ from backend.infra.observability import (
 )
 
 try:
-    from alpaca.common.exceptions import APIError
     from alpaca.data.historical import (
         CryptoHistoricalDataClient,
         StockHistoricalDataClient,
@@ -36,7 +35,7 @@ try:
     )
     from alpaca.data.timeframe import TimeFrame
     from alpaca.trading.client import TradingClient
-    from alpaca.trading.enums import OrderSide, OrderType, TimeInForce
+    from alpaca.trading.enums import OrderSide, TimeInForce
     from alpaca.trading.requests import (
         GetOrdersRequest,
         LimitOrderRequest,
@@ -65,7 +64,7 @@ except ImportError:
 
 
 from ..utils.helpers import validate_symbol
-from ..utils.logger import audit_logger, get_structured_logger
+from ..utils.logger import audit_logger
 
 
 @dataclass
@@ -170,7 +169,7 @@ class AlpacaClient:
                 try:
                     account = self.trading_client.get_account()
                     self.connected = True
-                    
+
                     # Handle buying_power safely for both real and mock objects
                     buying_power_raw = getattr(account, "buying_power", 0.0) or 0.0
                     try:
@@ -178,7 +177,7 @@ class AlpacaClient:
                     except (TypeError, ValueError):
                         # Handle Mock objects or invalid values in test mode
                         buying_power = 0.0
-                    
+
                     self.logger.info(
                         "Connected to Alpaca",
                         account_number=getattr(account, "account_number", "unknown"),
@@ -375,7 +374,7 @@ class AlpacaClient:
         method="POST",
         extra_labels={"endpoint": "/v2/orders"},
     )
-    def submit_order(
+    async def submit_order(
         self,
         symbol: str,
         qty: float,
@@ -442,9 +441,9 @@ class AlpacaClient:
                 else:
                     raise ValueError(f"Unsupported order type: {order_type}")
 
-                # Submit order with API call timing
+                # Submit order with API call timing (async wrapper for sync API)
                 api_start_time = time.time()
-                order = self.trading_client.submit_order(order_request)
+                order = await asyncio.to_thread(self.trading_client.submit_order, order_request)
                 api_duration = time.time() - api_start_time
 
                 # Record Alpaca API metrics
@@ -550,7 +549,7 @@ class AlpacaClient:
         method="DELETE",
         extra_labels={"endpoint": "/v2/orders/{id}"},
     )
-    def cancel_order(self, order_id: str) -> bool:
+    async def cancel_order(self, order_id: str) -> bool:
         """
         Cancel an existing order by ID.
         Enhanced with comprehensive tracing and metrics.
@@ -571,9 +570,9 @@ class AlpacaClient:
             try:
                 self._rate_limit()
 
-                # Cancel order with API call timing
+                # Cancel order with API call timing (async wrapper for sync API)
                 api_start_time = time.time()
-                self.trading_client.cancel_order_by_id(order_id)
+                await asyncio.to_thread(self.trading_client.cancel_order_by_id, order_id)
                 api_duration = time.time() - api_start_time
 
                 # Record Alpaca API metrics
@@ -626,7 +625,7 @@ class AlpacaClient:
                 )
                 return False
 
-    def get_account_status(self) -> dict[str, Any]:
+    async def get_account_status(self) -> dict[str, Any]:
         """
         Retrieve current account balance, equity, and open positions.
 
@@ -636,11 +635,11 @@ class AlpacaClient:
         try:
             self._rate_limit()
 
-            # Get account info
-            account = self.trading_client.get_account()
+            # Get account info (async wrapper for sync API)
+            account = await asyncio.to_thread(self.trading_client.get_account)
 
-            # Get positions
-            positions = self.trading_client.get_all_positions()
+            # Get positions (async wrapper for sync API)
+            positions = await asyncio.to_thread(self.trading_client.get_all_positions)
 
             # Format positions - handle Mock objects in test mode
             position_data = {}
@@ -700,7 +699,7 @@ class AlpacaClient:
             self.logger.error("Failed to get account status", error=str(e))
             raise
 
-    def get_recent_orders(self, limit: int = 50) -> list[dict[str, Any]]:
+    async def get_recent_orders(self, limit: int = 50) -> list[dict[str, Any]]:
         """
         Get recent orders.
 
@@ -713,14 +712,14 @@ class AlpacaClient:
         try:
             self._rate_limit()
 
-            # Get orders
+            # Get orders (async wrapper for sync API)
             # Some test doubles expect simple kwargs; keep it minimal/compatible
             try:
                 request = GetOrdersRequest(status=None, limit=limit)
             except TypeError:
                 # Fallback to only limit if signature differs in mocks
                 request = GetOrdersRequest(limit=limit)
-            orders = self.trading_client.get_orders(request)
+            orders = await asyncio.to_thread(self.trading_client.get_orders, request)
 
             # Helper function for safe enum value extraction
             def safe_get_enum_value(obj, default="Unknown"):
@@ -810,7 +809,12 @@ class AlpacaClient:
             return None
 
     def _rate_limit(self):
-        """Implement rate limiting to avoid API limits."""
+        """
+        Implement rate limiting to avoid API limits.
+
+        NOTE: This is a synchronous rate limiter for sync code paths.
+        For async code, use _async_rate_limit() instead.
+        """
         import time
 
         current_time = time.time()
@@ -818,7 +822,24 @@ class AlpacaClient:
 
         if elapsed < self.min_request_interval:
             sleep_time = self.min_request_interval - elapsed
+            # Only sleep in sync context - async callers should use _async_rate_limit
             time.sleep(sleep_time)
+
+        self.last_request_time = time.time()
+
+    async def _async_rate_limit(self):
+        """
+        Async-friendly rate limiting using asyncio.sleep.
+
+        Use this in async code paths instead of _rate_limit() to avoid
+        blocking the event loop.
+        """
+        current_time = time.time()
+        elapsed = current_time - self.last_request_time
+
+        if elapsed < self.min_request_interval:
+            sleep_time = self.min_request_interval - elapsed
+            await asyncio.sleep(sleep_time)
 
         self.last_request_time = time.time()
 
@@ -840,7 +861,7 @@ class AlpacaClient:
         """Cleanup on destruction."""
         if self.connected:
             self.disconnect()
-    
+
     def get_bars(self, *args, **kwargs) -> pd.DataFrame:
         """Compatibility alias for get_historical_data - for Mock objects in tests."""
         # Extract common parameters from args/kwargs
@@ -849,7 +870,7 @@ class AlpacaClient:
         start = kwargs.get('start')
         end = kwargs.get('end')
         limit = kwargs.get('limit', 1000)
-        
+
         if symbol:
             return self.get_historical_data(
                 symbol=symbol,
@@ -858,6 +879,6 @@ class AlpacaClient:
                 end=end,
                 limit=limit
             )
-        
+
         # Return empty DataFrame if no symbol provided
         return pd.DataFrame()

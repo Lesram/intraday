@@ -1,9 +1,8 @@
+from logging.config import fileConfig
 import os
 import sys
-from logging.config import fileConfig
 
-from sqlalchemy import engine_from_config
-from sqlalchemy import pool
+from sqlalchemy import engine_from_config, pool
 
 from alembic import context
 
@@ -36,7 +35,7 @@ if database_url:
     elif 'postgresql://' in database_url and '+' not in database_url:
         # Add psycopg2 explicitly if generic postgresql://
         database_url = database_url.replace('postgresql://', 'postgresql+psycopg2://')
-    
+
     config.set_main_option('sqlalchemy.url', database_url)
 
 # other values from the config, defined by the needs of env.py,

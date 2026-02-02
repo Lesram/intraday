@@ -1,0 +1,9 @@
+{
+  "extra": {
+    "promotion_mode": "monthly_review"
+  },
+  "feature_columns": null,
+  "name": "test_model",
+  "path": "<MagicMock name='mock.path' id='2201818276800'>",
+  "target_kind": "direction_up",
+  "trained_at": 

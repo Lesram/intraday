@@ -365,11 +365,15 @@ class K6CacheManager:
             http_req_duration = metrics.get('http_req_duration', {})
             if http_req_duration:
                 values = http_req_duration.get('values', {})
-                result.avg_latency_ms = float(values.get('avg', 0))
-                result.p95_latency_ms = float(values.get('p(95)', 0))
-                result.p99_latency_ms = float(values.get('p(99)', 0))
-                result.min_latency_ms = float(values.get('min', 0))
-                result.max_latency_ms = float(values.get('max', 0))
+                # K6 stores values as numbers that might be strings in JSON
+                # Robust parsing to handle both numeric and string formats
+                result.avg_latency_ms = float(values.get('avg', 0) or 0)
+                result.p95_latency_ms = float(values.get('p(95)', 0) or 0)
+                result.p99_latency_ms = float(values.get('p(99)', 0) or 0)
+                result.min_latency_ms = float(values.get('min', 0) or 0)
+                result.max_latency_ms = float(values.get('max', 0) or 0)
+                
+                logger.info(f"✅ Extracted latency metrics: P95={result.p95_latency_ms:.1f}ms, P99={result.p99_latency_ms:.1f}ms")
             
             # Unexpected error rate (custom metric from enhanced K6 script)
             unexpected_errors = metrics.get('unexpected_error_rate', {})
@@ -382,25 +386,52 @@ class K6CacheManager:
     async def _extract_route_metrics(self, result: K6TestResult, summary_data: Dict[str, Any]):
         """Extract per-route performance metrics from K6 summary"""
         try:
-            # This will depend on how the enhanced K6 script reports per-route metrics
-            # For now, we'll parse from the raw output or look for tagged metrics
-            
             metrics = summary_data.get('metrics', {})
+            route_metrics = {}
             
-            # Look for route-tagged metrics (if K6 script uses tags)
+            # K6 enhanced script stores tagged metrics as: http_req_duration{name:endpoint}
+            # Extract all metrics with {name:...} tags for route-specific latencies
             for metric_name, metric_data in metrics.items():
-                if 'tags' in metric_data:
-                    # Process tagged metrics for routes
-                    pass  # Implementation depends on K6 script tagging strategy
+                # Look for http_req_duration with name tag
+                if metric_name.startswith('http_req_duration{name:') and metric_name.endswith('}'):
+                    # Extract endpoint name from metric name
+                    # Format: http_req_duration{name:GET /api/v1/signals}
+                    start_idx = metric_name.find('name:') + 5
+                    end_idx = metric_name.rfind('}')
+                    endpoint = metric_name[start_idx:end_idx]
+                    
+                    # Extract latency values
+                    values = metric_data.get('values', {})
+                    if values:
+                        route_metrics[endpoint] = {
+                            'p95_ms': float(values.get('p(95)', 0) or 0),
+                            'p99_ms': float(values.get('p(99)', 0) or 0),
+                            'avg_ms': float(values.get('avg', 0) or 0),
+                            'min_ms': float(values.get('min', 0) or 0),
+                            'max_ms': float(values.get('max', 0) or 0),
+                            'count': int(values.get('count', 0) or 0)
+                        }
+            
+            if route_metrics:
+                result.route_metrics = route_metrics
+                logger.info(f"✅ Extracted {len(route_metrics)} route metrics: {list(route_metrics.keys())}")
+            else:
+                logger.warning("⚠️  No route-specific metrics found in K6 output")
                     
         except Exception as e:
             logger.warning(f"Failed to extract route metrics: {str(e)}")
     
     def _evaluate_test_success(self, result: K6TestResult, return_code: int) -> bool:
         """Evaluate if K6 test passed based on metrics and return code"""
-        if return_code != 0:
-            result.failure_reasons.append(f"K6 exited with code {return_code}")
+        # K6 exit codes: 0 = success, 99 = completed with thresholds failed (non-fatal)
+        # Exit code 99 means K6 completed all work but some thresholds weren't met
+        # We evaluate success based on metrics, not just exit code
+        if return_code not in [0, 99]:
+            result.failure_reasons.append(f"K6 exited with error code {return_code}")
             return False
+        
+        if return_code == 99:
+            logger.info("⚠️  K6 exited with code 99 (thresholds not met), evaluating metrics...")
         
         # Success criteria (can be made configurable)
         success_criteria = [

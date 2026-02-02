@@ -3,11 +3,11 @@ Orders repository - handles order lifecycle and idempotency.
 Implements async CRUD operations with proper error handling.
 """
 
-import logging
-import uuid
 from datetime import UTC, datetime
 from decimal import Decimal
+import logging
 from typing import Any
+import uuid
 
 from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError
@@ -46,6 +46,7 @@ class OrdersRepo:
         order_type: str,
         tif: str,
         attributes: dict[str, Any] | None = None,
+        user_id: str = "admin",
     ) -> Order:
         """
         Create order with idempotency protection.
@@ -61,6 +62,7 @@ class OrdersRepo:
             order_type: Order type ('market', 'limit', etc.)
             tif: Time in force ('gtc', 'ioc', 'fok')
             attributes: Optional additional attributes
+            user_id: User ID for ownership tracking (default: 'admin')
 
         Returns:
             Order: Either existing or newly created order
@@ -85,6 +87,7 @@ class OrdersRepo:
         # Create new order
         new_order = Order(
             client_idempotency_key=client_key,
+            user_id=user_id,
             symbol=symbol,
             side=side,
             qty=qty,
@@ -199,7 +202,7 @@ class OrdersRepo:
         """
         # Extract client_key or generate one
         client_key = order_data.get("client_key", str(uuid.uuid4()))
-        
+
         # Convert dict to Order model fields
         return await self.upsert_by_idempotency(
             client_key=client_key,
@@ -218,6 +221,10 @@ class OrdersRepo:
         broker_order_id: str | None = None,
         status: str | None = None,
         attributes: dict[str, Any] | None = None,
+        filled_qty: Decimal | None = None,
+        avg_fill_price: Decimal | None = None,
+        limit_price: Decimal | None = None,
+        stop_price: Decimal | None = None,
     ) -> None:
         """
         Update order with broker response.
@@ -227,6 +234,10 @@ class OrdersRepo:
             broker_order_id: Broker's order ID
             status: New order status
             attributes: Additional attributes to merge
+            filled_qty: Filled quantity from broker
+            avg_fill_price: Average fill price from broker
+            limit_price: Limit price (for limit orders)
+            stop_price: Stop price (for stop orders)
 
         Raises:
             OrderNotFoundError: If order not found
@@ -239,6 +250,19 @@ class OrdersRepo:
 
         if status is not None:
             values["status"] = status
+
+        # Update price and fill fields if provided
+        if filled_qty is not None:
+            values["filled_qty"] = filled_qty
+
+        if avg_fill_price is not None:
+            values["avg_fill_price"] = avg_fill_price
+
+        if limit_price is not None:
+            values["limit_price"] = limit_price
+
+        if stop_price is not None:
+            values["stop_price"] = stop_price
 
         # For attributes, we need to merge with existing attributes
         if attributes:
@@ -273,6 +297,8 @@ class OrdersRepo:
                 "order_id": str(order_id),
                 "broker_order_id": broker_order_id,
                 "status": status,
+                "filled_qty": str(filled_qty) if filled_qty else None,
+                "avg_fill_price": str(avg_fill_price) if avg_fill_price else None,
                 "attributes_updated": bool(attributes),
             },
         )
@@ -357,5 +383,178 @@ class OrdersRepo:
             .order_by(Order.created_at.desc())
             .limit(limit)
         )
+        result = await self.session.execute(stmt)
+        return list(result.scalars().all())
+
+    # ==========================================================================
+    # BATCH OPERATIONS (M-25: HFT optimization)
+    # ==========================================================================
+
+    async def batch_create_orders(
+        self,
+        orders_data: list[dict[str, Any]],
+        *,
+        skip_duplicates: bool = True,
+    ) -> tuple[list[Order], list[str]]:
+        """
+        Batch create multiple orders efficiently for HFT scenarios.
+
+        Uses SQLAlchemy bulk insert for optimal performance.
+        Orders with duplicate idempotency keys are skipped if skip_duplicates=True.
+
+        Args:
+            orders_data: List of order dictionaries with required fields:
+                - client_key: Idempotency key
+                - symbol: Trading symbol
+                - side: 'buy' or 'sell'
+                - qty: Order quantity (Decimal)
+                - order_type: 'market', 'limit', etc.
+                - tif: Time in force
+                - user_id: Optional user ID (default: 'admin')
+            skip_duplicates: If True, skip orders with existing idempotency keys
+
+        Returns:
+            Tuple of (created_orders, skipped_keys)
+        """
+        if not orders_data:
+            return [], []
+
+        # Check for existing idempotency keys
+        client_keys = [o.get("client_key") for o in orders_data if o.get("client_key")]
+        existing_keys: set[str] = set()
+
+        if client_keys and skip_duplicates:
+            stmt = select(Order.client_idempotency_key).where(
+                Order.client_idempotency_key.in_(client_keys)
+            )
+            result = await self.session.execute(stmt)
+            existing_keys = {row[0] for row in result.fetchall()}
+
+        # Filter and prepare orders
+        orders_to_create: list[Order] = []
+        skipped_keys: list[str] = list(existing_keys)
+        now = datetime.now(UTC)
+
+        for order_data in orders_data:
+            client_key = order_data.get("client_key")
+            if client_key in existing_keys:
+                continue
+
+            order = Order(
+                id=uuid.uuid4(),
+                client_idempotency_key=client_key or str(uuid.uuid4()),
+                broker_order_id="",
+                symbol=order_data["symbol"],
+                side=order_data["side"],
+                qty=Decimal(str(order_data["qty"])),
+                filled_qty=Decimal("0"),
+                avg_fill_price=None,
+                status="accepted",
+                order_type=order_data["order_type"],
+                tif=order_data.get("tif", "gtc"),
+                limit_price=order_data.get("limit_price"),
+                stop_price=order_data.get("stop_price"),
+                attributes=order_data.get("attributes", {}),
+                user_id=order_data.get("user_id", "admin"),
+                submitted_at=now,
+                created_at=now,
+                updated_at=now,
+            )
+            orders_to_create.append(order)
+
+        # Bulk add all orders
+        if orders_to_create:
+            self.session.add_all(orders_to_create)
+            await self.session.flush()
+
+            logger.info(
+                "Batch order creation completed",
+                extra={
+                    "created_count": len(orders_to_create),
+                    "skipped_count": len(skipped_keys),
+                },
+            )
+
+        return orders_to_create, skipped_keys
+
+    async def batch_update_status(
+        self,
+        updates: list[dict[str, Any]],
+    ) -> int:
+        """
+        Batch update order statuses for HFT fill processing.
+
+        Args:
+            updates: List of dicts with 'order_id', 'status', and optional
+                     'filled_qty', 'avg_fill_price', 'broker_order_id'
+
+        Returns:
+            Number of orders updated
+        """
+        if not updates:
+            return 0
+
+        updated_count = 0
+        now = datetime.now(UTC)
+
+        for upd in updates:
+            order_id = upd.get("order_id")
+            if not order_id:
+                continue
+
+            try:
+                order_uuid = uuid.UUID(str(order_id))
+            except (ValueError, TypeError):
+                logger.warning(f"Invalid order_id in batch update: {order_id}")
+                continue
+
+            update_data: dict[str, Any] = {"updated_at": now}
+
+            if "status" in upd:
+                update_data["status"] = upd["status"]
+            if "filled_qty" in upd:
+                update_data["filled_qty"] = Decimal(str(upd["filled_qty"]))
+            if "avg_fill_price" in upd:
+                update_data["avg_fill_price"] = Decimal(str(upd["avg_fill_price"]))
+            if "broker_order_id" in upd:
+                update_data["broker_order_id"] = upd["broker_order_id"]
+
+            stmt = update(Order).where(Order.id == order_uuid).values(**update_data)
+            result = await self.session.execute(stmt)
+            updated_count += result.rowcount
+
+        await self.session.flush()
+
+        logger.info(
+            "Batch status update completed",
+            extra={"updated_count": updated_count, "requested_count": len(updates)},
+        )
+
+        return updated_count
+
+    async def batch_get_by_ids(self, order_ids: list[str]) -> list[Order]:
+        """
+        Batch fetch orders by IDs for efficient HFT lookups.
+
+        Args:
+            order_ids: List of order UUIDs (as strings)
+
+        Returns:
+            List of found orders
+        """
+        if not order_ids:
+            return []
+
+        valid_uuids = []
+        for oid in order_ids:
+            try:
+                valid_uuids.append(uuid.UUID(str(oid)))
+            except (ValueError, TypeError):
+                continue
+
+        if not valid_uuids:
+            return []
+
+        stmt = select(Order).where(Order.id.in_(valid_uuids))
         result = await self.session.execute(stmt)
         return list(result.scalars().all())

@@ -8,10 +8,10 @@ from typing import Any
 
 class SignalService:
     """Service for generating trading signals"""
-    
+
     def __init__(self):
         self.signals = {}
-    
+
     async def get_signals(self, symbol: str = None) -> list[dict[str, Any]]:
         """Get trading signals"""
         if symbol:
@@ -21,14 +21,14 @@ class SignalService:
                 "confidence": 0.75,
                 "timestamp": datetime.now(UTC).isoformat()
             }]
-        
+
         return [{
             "symbol": "AAPL",
-            "signal": "BUY", 
+            "signal": "BUY",
             "confidence": 0.8,
             "timestamp": datetime.now(UTC).isoformat()
         }]
-    
+
     async def generate_signal(self, symbol: str, data: dict[str, Any]) -> dict[str, Any]:
         """Generate a trading signal"""
         return {

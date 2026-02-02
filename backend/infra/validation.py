@@ -3,8 +3,8 @@ Input validation utilities with comprehensive edge case handling.
 Provides validation functions for trading platform inputs.
 """
 
-import re
 from decimal import Decimal
+import re
 from typing import Any
 
 
@@ -149,7 +149,7 @@ def validate_portfolio_constraints(portfolio_data: dict[str, Any]) -> list[str]:
     max_position_weight = 0.0
     total_weight = 0.0
 
-    for symbol, position in positions.items():
+    for _symbol, position in positions.items():
         weight = position.get("weight", 0.0)
         total_weight += abs(weight)
         max_position_weight = max(max_position_weight, abs(weight))

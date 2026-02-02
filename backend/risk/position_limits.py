@@ -14,31 +14,31 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 class PositionLimits(BaseModel):
     """
     Position limits configuration for risk management.
-    
+
     Supports backward compatibility for various field names and formats:
-    - circuit_breaker_pct / circuit_breaker aliases 
+    - circuit_breaker_pct / circuit_breaker aliases
     - Percent (0-100) or fraction (0-1) formats for percentages
     - max_position_value as alias for max_position_size
     """
-    
+
     # Maximum position size limits
     max_position_size: Decimal = Field(
-        default=Decimal('1000000'), 
+        default=Decimal('1000000'),
         description="Maximum position size in dollars",
         alias="max_position_value"  # Backward compatibility
     )
     max_position_count: int = Field(default=100, description="Maximum number of positions")
-    
-    # Concentration limits  
+
+    # Concentration limits
     max_sector_concentration: Decimal = Field(
-        default=Decimal('0.25'), 
+        default=Decimal('0.25'),
         description="Maximum sector concentration as fraction (0.25 = 25%)"
     )
     max_symbol_concentration: Decimal = Field(
         default=Decimal('0.10'),
         description="Maximum symbol concentration as fraction (0.10 = 10%)"
     )
-    
+
     # Risk limits
     max_daily_loss: Decimal = Field(
         default=Decimal('50000'),
@@ -48,14 +48,14 @@ class PositionLimits(BaseModel):
         default=Decimal('0.15'),
         description="Maximum drawdown as fraction (0.15 = 15%)"
     )
-    
+
     # Circuit breaker - backward compatible field with aliases and normalization
     circuit_breaker_pct: Decimal = Field(
         default=Decimal('0.05'),
         description="Circuit breaker threshold as fraction (0.05 = 5%)",
         alias="circuit_breaker"  # Accept both names
     )
-    
+
     # Position sizing limits
     min_position_size: Decimal = Field(
         default=Decimal('1000'),
@@ -65,7 +65,7 @@ class PositionLimits(BaseModel):
         default=Decimal('100'),
         description="Position size increment in dollars"
     )
-    
+
     # Leverage limits
     max_leverage: Decimal = Field(
         default=Decimal('4.0'),
@@ -75,17 +75,17 @@ class PositionLimits(BaseModel):
         default=Decimal('0.25'),
         description="Maintenance margin as fraction (0.25 = 25%)"
     )
-    
+
     # Additional configuration
     allowed_symbols: list | None = Field(
         default_factory=list,
         description="List of allowed trading symbols (empty = all allowed)"
     )
     restricted_symbols: list | None = Field(
-        default_factory=list, 
+        default_factory=list,
         description="List of restricted trading symbols"
     )
-    
+
     @field_validator('circuit_breaker_pct', mode='before')
     @classmethod
     def normalize_circuit_breaker_pct(cls, v: str | int | float | Decimal) -> Decimal:
@@ -95,18 +95,18 @@ class PositionLimits(BaseModel):
         """
         if v is None:
             return Decimal('0.05')  # Default 5%
-            
+
         # Convert to Decimal
         value = Decimal(str(v))
-        
+
         # If value > 1, assume it's in percentage format (e.g., 5 = 5%)
         if value > 1:
             value = value / 100
-            
+
         return value
-    
+
     @field_validator('max_sector_concentration', 'max_symbol_concentration', 'max_drawdown', 'maintenance_margin')
-    @classmethod  
+    @classmethod
     def normalize_percentage_fields(cls, v: str | int | float | Decimal) -> Decimal:
         """
         Normalize percentage fields to fractions.
@@ -114,43 +114,43 @@ class PositionLimits(BaseModel):
         """
         if v is None:
             return Decimal('0.0')
-            
+
         # Convert to Decimal
         value = Decimal(str(v))
-        
+
         # If value > 1, assume it's in percentage format
         if value > 1:
             value = value / 100
-            
+
         return value
-        
+
     @model_validator(mode='after')
     def validate_limits(self) -> 'PositionLimits':
         """Validate that all percentage fields are in valid ranges after normalization."""
-        
+
         # Validate percentage fields are in [0.0, 1.0] range
         percentage_fields = [
             ('circuit_breaker_pct', self.circuit_breaker_pct),
-            ('max_sector_concentration', self.max_sector_concentration), 
+            ('max_sector_concentration', self.max_sector_concentration),
             ('max_symbol_concentration', self.max_symbol_concentration),
             ('max_drawdown', self.max_drawdown),
             ('maintenance_margin', self.maintenance_margin)
         ]
-        
+
         for field_name, value in percentage_fields:
             if not (Decimal('0.0') <= value <= Decimal('1.0')):
                 raise ValueError(f"{field_name} must be between 0.0 and 1.0 (fraction), got {value}")
-        
+
         # Validate size limits
         if self.min_position_size >= self.max_position_size:
             raise ValueError("min_position_size must be less than max_position_size")
-            
+
         return self
-    
+
     def validate_position_size(self, size: Decimal) -> bool:
         """Validate if position size is within limits"""
         return (self.min_position_size <= size <= self.max_position_size)
-    
+
     def validate_symbol(self, symbol: str) -> bool:
         """Validate if symbol is allowed for trading"""
         if self.restricted_symbols and symbol in self.restricted_symbols:
@@ -158,12 +158,12 @@ class PositionLimits(BaseModel):
         if self.allowed_symbols and symbol not in self.allowed_symbols:
             return False
         return True
-    
+
     def get_max_position_for_symbol(self, symbol: str, portfolio_value: Decimal) -> Decimal:
         """Calculate maximum allowed position size for a symbol"""
         symbol_limit = portfolio_value * self.max_symbol_concentration
         return min(symbol_limit, self.max_position_size)
-    
+
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization"""
         return {
@@ -181,7 +181,7 @@ class PositionLimits(BaseModel):
             "allowed_symbols": self.allowed_symbols,
             "restricted_symbols": self.restricted_symbols,
         }
-    
+
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "PositionLimits":
         """Create from dictionary"""
@@ -215,6 +215,6 @@ DEVELOPMENT_POSITION_LIMITS = PositionLimits(
 
 __all__ = [
     "PositionLimits",
-    "DEFAULT_POSITION_LIMITS", 
+    "DEFAULT_POSITION_LIMITS",
     "DEVELOPMENT_POSITION_LIMITS",
 ]

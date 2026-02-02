@@ -1,13 +1,24 @@
 # OpenTelemetry Collector Configuration
 # BRANCH 2.12 - Deploy Readiness
+# M-35 NOTE: TLS configuration added for secure communication
 
 receivers:
   otlp:
     protocols:
       grpc:
         endpoint: 0.0.0.0:4317
+        # M-35 FIX: Add TLS configuration for production
+        # Uncomment and configure for production deployments:
+        # tls:
+        #   cert_file: /etc/otel/certs/server.crt
+        #   key_file: /etc/otel/certs/server.key
+        #   ca_file: /etc/otel/certs/ca.crt
       http:
         endpoint: 0.0.0.0:4318
+        # M-35 FIX: Add TLS configuration for production
+        # tls:
+        #   cert_file: /etc/otel/certs/server.crt
+        #   key_file: /etc/otel/certs/server.key
 
   prometheus:
     config:
@@ -15,7 +26,7 @@ receivers:
         - job_name: 'algotrading-api'
           static_configs:
             - targets: ['api:8000']
-          scrape_interval: 30s
+          scrape_interval: 15s  # M-33 FIX: Reduced from 30s to 15s
           metrics_path: /metrics
 
 processors:
@@ -50,10 +61,17 @@ exporters:
       service: algotrading-api
 
   # OTLP exporter (for external observability platforms)
+  # M-35 FIX: Configure TLS for production
   otlp:
     endpoint: http://jaeger:4317
     tls:
-      insecure: true
+      # WARNING: insecure: true is for development only!
+      # For production, set insecure: false and configure certificates:
+      insecure: true  # Set to false in production
+      # insecure: false
+      # cert_file: /etc/otel/certs/client.crt
+      # key_file: /etc/otel/certs/client.key
+      # ca_file: /etc/otel/certs/ca.crt
 
   # Logging exporter for debugging
   logging:

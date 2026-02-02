@@ -4,7 +4,9 @@ Provides SLI metrics, SLO compliance, and observability endpoints.
 """
 
 from datetime import datetime
+
 from fastapi import APIRouter, HTTPException, Request
+
 from backend.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -16,10 +18,10 @@ router = APIRouter(prefix="/monitoring", tags=["Monitoring"])
 async def get_sli_metrics(request: Request):
     """
     Get per-route Service Level Indicator metrics
-    
+
     Returns availability, latency percentiles, and error rates for each monitored route.
     Used by automated promotion gates to validate system performance.
-    
+
     Returns:
         {
             "routes": {
@@ -41,16 +43,16 @@ async def get_sli_metrics(request: Request):
         # Try to get SLI data from metrics registry if available
         metrics_registry = getattr(request.app.state, "metrics_registry", None)
         sli_cache = getattr(request.app.state, "sli_metrics_cache", None)
-        
+
         # If we have cached SLI data, return it
         if sli_cache and isinstance(sli_cache, dict):
             return sli_cache
-        
+
         # Otherwise, try to compute from metrics registry
         if metrics_registry:
             # Try to extract per-route metrics from prometheus data
             routes_data = {}
-            
+
             # Common routes to report
             monitored_routes = [
                 ("GET", "/health"),
@@ -60,10 +62,10 @@ async def get_sli_metrics(request: Request):
                 ("GET", "/api/v1/positions"),
                 ("GET", "/api/v1/risk/metrics")
             ]
-            
+
             for method, route in monitored_routes:
                 route_key = f"{method} {route}"
-                
+
                 # Generate synthetic metrics based on recent performance
                 # In production, these would be computed from actual request data
                 routes_data[route_key] = {
@@ -74,14 +76,14 @@ async def get_sli_metrics(request: Request):
                     "error_rate": 0.001,
                     "total_requests": 100
                 }
-            
+
             return {
                 "routes": routes_data,
                 "timestamp": datetime.now().isoformat(),
                 "collection_period_seconds": 300,
                 "data_source": "synthetic"
             }
-        
+
         # Fallback: return minimal synthetic data for promotion gates
         return {
             "routes": {
@@ -122,7 +124,7 @@ async def get_sli_metrics(request: Request):
             "collection_period_seconds": 300,
             "data_source": "fallback_synthetic"
         }
-        
+
     except Exception as e:
         logger.error(f"SLI metrics generation failed: {e}")
         raise HTTPException(
@@ -135,10 +137,10 @@ async def get_sli_metrics(request: Request):
 async def get_slo_status(request: Request):
     """
     Get SLO (Service Level Objective) compliance status
-    
+
     Returns error budget, availability, and compliance metrics.
     Used by automated promotion gates and canary deployment decisions.
-    
+
     Returns:
         {
             "compliance": {
@@ -170,10 +172,10 @@ async def get_slo_status(request: Request):
     try:
         # Try to get SLO data from app state
         slo_cache = getattr(request.app.state, "slo_status_cache", None)
-        
+
         if slo_cache and isinstance(slo_cache, dict):
             return slo_cache
-        
+
         # Return synthetic SLO data for promotion gates
         return {
             "compliance": {
@@ -208,7 +210,7 @@ async def get_slo_status(request: Request):
             "collection_period_seconds": 3600,  # 1 hour
             "data_source": "synthetic"
         }
-        
+
     except Exception as e:
         logger.error(f"SLO status generation failed: {e}")
         raise HTTPException(

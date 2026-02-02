@@ -3,8 +3,8 @@ Enhanced Security Hardening - Pydantic settings, strict CORS, JWT checks, and ra
 Provides production-ready security configurations and middleware.
 """
 
-import time
 from collections import defaultdict
+import time
 from typing import Any
 
 from fastapi import HTTPException, Request, status
@@ -255,8 +255,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         except Exception as e:
             # Convert exceptions to proper HTTP responses with rate limit headers
             from fastapi import HTTPException
-            from starlette.responses import JSONResponse
-            
+
             if isinstance(e, HTTPException):
                 # For HTTPException, return a proper response with rate limit headers
                 response = JSONResponse(
@@ -460,14 +459,14 @@ class JWTValidator:
 
 class JwtVerifier:
     """JWT encoder/decoder with lazy import of jose.jwt to avoid import issues in tests."""
-    
+
     def __init__(self):
         """Initialize with lazy import of jose.jwt"""
         self._jwt = None
         self._jwt_error = None
         # Lazy import on first use
         self._load_jwt()
-    
+
     def _load_jwt(self):
         """Lazy import of jose.jwt"""
         if self._jwt is None:
@@ -481,41 +480,41 @@ class JwtVerifier:
                     "python-jose is required for JWT operations. "
                     "Install it with: pip install python-jose[cryptography]"
                 ) from e
-    
+
     @property
     def jwt(self):
         """Get jose.jwt module"""
         self._load_jwt()
         return self._jwt
-    
+
     @property
     def JWTError(self):
         """Get jose.JWTError exception"""
         self._load_jwt()
         return self._jwt_error
-    
+
     @JWTError.setter
     def JWTError(self, value):
         """Set jose.JWTError exception (for testing)"""
         self._jwt_error = value
-    
+
     @JWTError.deleter
     def JWTError(self):
         """Delete jose.JWTError exception (for testing)"""
         self._jwt_error = None
-    
+
     def encode(self, payload: dict, key: str = None, algorithm: str = None) -> str:
         """
         Encode JWT token with required claims validation.
-        
+
         Args:
             payload: JWT payload containing iss, aud, alg, exp, and other claims
             key: Secret key for encoding (uses default if not provided)
             algorithm: Algorithm for encoding (uses HS256 if not provided)
-            
+
         Returns:
             Encoded JWT token string
-            
+
         Raises:
             ValueError: If required claims (iss, aud, alg, exp) are missing
         """
@@ -524,26 +523,26 @@ class JwtVerifier:
         missing_claims = [claim for claim in required_claims if claim not in payload]
         if missing_claims:
             raise ValueError(f"Missing required JWT claims: {missing_claims}")
-        
+
         # Use provided parameters or defaults from settings
         algorithm = algorithm or "HS256"
         if key is None:
             from backend.config import get_settings
             settings = get_settings()
             key = settings.security.jwt_secret_key
-        
+
         return self.jwt.encode(payload, key, algorithm=algorithm)
-    
+
     def decode(self, token: str) -> dict:
         """
         Decode JWT token with validation of iss, aud, alg, exp claims.
-        
+
         Args:
             token: JWT token string to decode
-            
+
         Returns:
             Decoded JWT payload as dictionary
-            
+
         Raises:
             JWTError: If token is invalid or claims validation fails
         """
@@ -551,7 +550,7 @@ class JwtVerifier:
         from backend.config import get_settings
         settings = get_settings()
         key = settings.security.jwt_secret_key
-        
+
         # Decode with validation of required claims
         try:
             # First decode without strict validation to get claims
@@ -569,19 +568,19 @@ class JwtVerifier:
                     "require_aud": False
                 }
             )
-            
+
             # Manual validation of required claims
             required_claims = ['iss', 'aud', 'exp']
             missing_claims = [claim for claim in required_claims if claim not in decoded]
             if missing_claims:
                 raise self.JWTError(f"Missing required claims: {missing_claims}")
-            
+
             # Validate algorithm claim if present
             if 'alg' in decoded and decoded['alg'] not in ["HS256", "RS256"]:
                 raise self.JWTError(f"Unsupported algorithm: {decoded['alg']}")
-            
+
             return decoded
-            
+
         except Exception as e:
             # Handle any JWT decode error
             if "JWTError" in str(type(e)) or "JWSError" in str(type(e)) or "ExpiredSignatureError" in str(type(e)):
@@ -592,3 +591,146 @@ class JwtVerifier:
 
 # Global instance to use throughout the application
 jwt_verifier = JwtVerifier()
+
+
+# ================== Input Validation ==================
+
+from dataclasses import dataclass, field
+import re
+from typing import Any
+
+
+@dataclass
+class ValidationResult:
+    """Result of input validation."""
+
+    is_valid: bool
+    sanitized_value: Any = None
+    errors: list[str] = field(default_factory=list)
+
+
+class InputValidator:
+    """
+    Input validation and sanitization utilities.
+
+    Validates common trading platform inputs:
+    - Symbols
+    - Order quantities
+    - Prices
+    - User inputs
+    """
+
+    # Patterns
+    SYMBOL_PATTERN = re.compile(r"^[A-Z]{1,5}$")
+    ORDER_ID_PATTERN = re.compile(r"^[a-f0-9\-]{36}$")
+    SAFE_STRING_PATTERN = re.compile(r"^[a-zA-Z0-9_\-\.@\s]+$")
+
+    # Limits
+    MAX_SYMBOL_LENGTH = 10
+    MAX_STRING_LENGTH = 1000
+    MAX_QUANTITY = 1_000_000
+    MIN_QUANTITY = 0.0001
+    MAX_PRICE = 1_000_000
+    MIN_PRICE = 0.0001
+
+    @classmethod
+    def validate_symbol(cls, value: str) -> ValidationResult:
+        """Validate a stock symbol."""
+        if not value:
+            return ValidationResult(False, errors=["Symbol is required"])
+
+        sanitized = value.upper().strip()
+
+        if len(sanitized) > cls.MAX_SYMBOL_LENGTH:
+            return ValidationResult(False, errors=["Symbol too long"])
+
+        if not cls.SYMBOL_PATTERN.match(sanitized):
+            return ValidationResult(False, errors=["Invalid symbol format"])
+
+        return ValidationResult(True, sanitized)
+
+    @classmethod
+    def validate_quantity(cls, value: float | int | str) -> ValidationResult:
+        """Validate an order quantity."""
+        try:
+            qty = float(value)
+        except (ValueError, TypeError):
+            return ValidationResult(False, errors=["Invalid quantity format"])
+
+        if qty < cls.MIN_QUANTITY:
+            return ValidationResult(False, errors=[f"Quantity must be >= {cls.MIN_QUANTITY}"])
+
+        if qty > cls.MAX_QUANTITY:
+            return ValidationResult(False, errors=[f"Quantity must be <= {cls.MAX_QUANTITY}"])
+
+        return ValidationResult(True, qty)
+
+    @classmethod
+    def validate_price(cls, value: float | int | str) -> ValidationResult:
+        """Validate a price."""
+        try:
+            price = float(value)
+        except (ValueError, TypeError):
+            return ValidationResult(False, errors=["Invalid price format"])
+
+        if price < cls.MIN_PRICE:
+            return ValidationResult(False, errors=[f"Price must be >= {cls.MIN_PRICE}"])
+
+        if price > cls.MAX_PRICE:
+            return ValidationResult(False, errors=[f"Price must be <= {cls.MAX_PRICE}"])
+
+        return ValidationResult(True, round(price, 4))
+
+    @classmethod
+    def validate_order_id(cls, value: str) -> ValidationResult:
+        """Validate a UUID order ID."""
+        if not value:
+            return ValidationResult(False, errors=["Order ID is required"])
+
+        sanitized = value.lower().strip()
+
+        if not cls.ORDER_ID_PATTERN.match(sanitized):
+            return ValidationResult(False, errors=["Invalid order ID format"])
+
+        return ValidationResult(True, sanitized)
+
+    @classmethod
+    def sanitize_string(cls, value: str, max_length: int | None = None) -> ValidationResult:
+        """Sanitize a general string input."""
+        if not value:
+            return ValidationResult(True, "")
+
+        max_len = max_length or cls.MAX_STRING_LENGTH
+
+        # Truncate
+        sanitized = value[:max_len]
+
+        # Remove control characters
+        sanitized = "".join(c for c in sanitized if ord(c) >= 32 or c in "\n\t")
+
+        # Check for safe characters only
+        if not cls.SAFE_STRING_PATTERN.match(sanitized):
+            # Remove unsafe characters
+            sanitized = re.sub(r"[^a-zA-Z0-9_\-\.@\s]", "", sanitized)
+
+        return ValidationResult(True, sanitized.strip())
+
+    @classmethod
+    def validate_email(cls, value: str) -> ValidationResult:
+        """Validate an email address."""
+        if not value:
+            return ValidationResult(False, errors=["Email is required"])
+
+        # Simple email pattern
+        pattern = re.compile(r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$")
+
+        sanitized = value.lower().strip()
+
+        if len(sanitized) > 254:
+            return ValidationResult(False, errors=["Email too long"])
+
+        if not pattern.match(sanitized):
+            return ValidationResult(False, errors=["Invalid email format"])
+
+        return ValidationResult(True, sanitized)
+

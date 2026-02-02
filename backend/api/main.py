@@ -3,6 +3,7 @@ Main API application - FastAPI entry point using factory pattern
 """
 
 from typing import Any
+
 from backend.api.factory import create_app
 from backend.config.settings import get_settings
 
@@ -13,7 +14,7 @@ app = create_app(settings)
 # Backward compatibility: Expose app state for any tests that might reference it
 app_state = {
     "risk_manager": getattr(app.state, 'risk_manager', None),
-    "ensemble_model": getattr(app.state, 'ensemble_model', None), 
+    "ensemble_model": getattr(app.state, 'ensemble_model', None),
     "strategy_manager": getattr(app.state, 'strategy_manager', None),
     "alpaca_client": getattr(app.state, 'alpaca_client', None),
     "sentiment_analyzer": getattr(app.state, 'sentiment_analyzer', None),
@@ -32,34 +33,34 @@ app.openapi_schema = None
 def custom_openapi():
     """
     Custom OpenAPI schema with Bearer authentication security scheme.
-    
+
     Configures JWT Bearer token authentication as the global security requirement
     for all protected endpoints. Public routes can override this by setting
     openapi_extra={"security": []} in their route decorators.
     """
     if app.openapi_schema:
         return app.openapi_schema
-        
+
     # Generate base OpenAPI schema
     schema = get_openapi(
         title="Algotrading Platform API",
-        version="1.0.0", 
+        version="1.0.0",
         description="Algorithmic Trading Platform with real-time signals, risk management, and order execution",
         routes=app.routes
     )
-    
+
     # Add Bearer authentication security scheme
     schema.setdefault("components", {}).setdefault("securitySchemes", {})["BearerAuth"] = {
         "type": "http",
-        "scheme": "bearer", 
+        "scheme": "bearer",
         "bearerFormat": "JWT",
         "description": "JWT Bearer token for API authentication. Use format: Bearer <your_jwt_token>"
     }
-    
+
     # Set BearerAuth as global security requirement
     # Individual routes can override this with openapi_extra={"security": []}
     schema["security"] = [{"BearerAuth": []}]
-    
+
     # Cache the schema
     app.openapi_schema = schema
     return schema
@@ -69,6 +70,7 @@ app.openapi = custom_openapi
 
 # Mock app.on_event for test compatibility
 from unittest.mock import Mock
+
 app.on_event = Mock()
 
 # Compatibility functions that some tests might import directly
@@ -290,6 +292,7 @@ def get_system_status() -> dict[str, Any]:
 # Mock lifespan context manager for test compatibility
 from unittest.mock import AsyncMock
 
+
 async def lifespan_context(app):
     """Mock lifespan context manager for FastAPI app lifecycle."""
     # Startup logic
@@ -299,3 +302,14 @@ async def lifespan_context(app):
 
 # For backward compatibility with tests that patch this
 lifespan_context = AsyncMock(side_effect=lifespan_context)
+
+# ============================================================================
+# SOCKET.IO INTEGRATION
+# ============================================================================
+from backend.api.socketio_server import create_socketio_app
+
+# Create Socket.IO wrapped app for WebSocket support
+socketio_app = create_socketio_app(app)
+
+# Export both apps for flexibility
+__all__ = ['app', 'socketio_app']

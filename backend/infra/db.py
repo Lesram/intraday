@@ -5,10 +5,10 @@ Enhanced with comprehensive observability including tracing and metrics.
 """
 
 import asyncio
-import logging
-import time
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+import logging
+import time
 
 from fastapi import Request
 from sqlalchemy import text
@@ -25,8 +25,6 @@ from backend.infra.logging import get_logger as get_structured_logger
 # B2.5 - Observability imports
 from backend.infra.observability import record_database_operation, trace_span
 
-from ..config import get_settings
-
 logger = logging.getLogger(__name__)
 
 # Global variables for engine and sessionmaker
@@ -40,7 +38,7 @@ def build_engine(dsn: str):
         pool_pre_ping=True,
         connect_args={},
     )
-    
+
     # Configure connection pool based on database type
     if dsn.startswith("sqlite"):
         # SQLite: Use NullPool to prevent connection sharing issues
@@ -59,7 +57,7 @@ def build_engine(dsn: str):
             pool_reset_on_return="commit",  # Clean state on return
             pool_timeout=30,     # Pool checkout timeout
         )
-        
+
         # PostgreSQL-specific connection parameters
         kw["connect_args"] = {
             "server_settings": {
@@ -68,22 +66,22 @@ def build_engine(dsn: str):
             },
             "command_timeout": 60,
         }
-        
-        logger.info("Using production PostgreSQL connection pool", 
+
+        logger.info("Using production PostgreSQL connection pool",
                    extra={
-                       "pool_size": 10, 
-                       "max_overflow": 20, 
+                       "pool_size": 10,
+                       "max_overflow": 20,
                        "pool_recycle": 3600,
                        "pool_reset_on_return": "commit"
                    })
-    
+
     _engine = create_async_engine(dsn, echo=False, **kw)
     return _engine
 
 
 def build_sessionmaker(engine):
     return async_sessionmaker(
-        engine, 
+        engine,
         expire_on_commit=False,
         class_=AsyncSession,
         autoflush=True,     # Auto-flush pending changes
@@ -104,7 +102,7 @@ async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
     Ensures connections are properly returned to the pool.
     """
     assert _sessionmaker is not None, "DB not initialized"
-    
+
     session = _sessionmaker()
     try:
         with trace_span("database_session"):
@@ -234,13 +232,13 @@ async def db_health_check() -> bool:
 async def quick_ping(session: AsyncSession) -> bool:
     """
     Quick database ping for readiness checks with 100ms timeout.
-    
+
     Args:
         session: Database session to ping with
-        
+
     Returns:
         True if ping succeeds within timeout
-        
+
     Raises:
         asyncio.TimeoutError: If ping takes longer than 100ms
         Exception: If ping fails for other reasons
@@ -253,7 +251,7 @@ async def quick_ping(session: AsyncSession) -> bool:
         )
         row = result.fetchone()
         return row is not None and row[0] == 1
-    except asyncio.TimeoutError:
+    except TimeoutError:
         logger.warning("Database ping timed out after 100ms")
         raise
     except Exception as e:

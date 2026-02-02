@@ -1,0 +1,201 @@
+/**
+ * Accessibility Styles
+ * Global styles for accessibility features
+ */
+
+/* Screen reader only - visually hidden but accessible to assistive tech */
+.sr-only,
+.visually-hidden {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+/* Skip link - visible on focus */
+.skip-link {
+  position: absolute;
+  top: -40px;
+  left: 0;
+  background: #000;
+  color: #fff;
+  padding: 8px 16px;
+  text-decoration: none;
+  z-index: 10000;
+  border-radius: 0 0 4px 0;
+}
+
+.skip-link:focus {
+  top: 0;
+}
+
+/* Enhanced focus indicators */
+*:focus-visible {
+  outline: 2px solid #1890ff;
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* Button focus styles */
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid #1890ff;
+  outline-offset: 2px;
+}
+
+/* Remove outline for mouse users (only show for keyboard) */
+*:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  * {
+    border-width: 2px !important;
+  }
+  
+  button,
+  a {
+    text-decoration: underline;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Focus trap container */
+[data-focus-trap] {
+  position: relative;
+}
+
+/* Keyboard navigation indicators */
+.keyboard-navigation-active *:focus {
+  outline: 2px solid #1890ff;
+  outline-offset: 2px;
+}
+
+/* Touch target size (WCAG 2.5.5) - minimum 44x44px */
+button,
+a,
+input[type="checkbox"],
+input[type="radio"],
+select {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+/* Exception for icon-only buttons with proper spacing */
+.ant-btn-icon-only {
+  min-width: 32px;
+  min-height: 32px;
+  padding: 4px 8px;
+}
+
+.ant-btn-icon-only:not(:last-child) {
+  margin-right: 8px;
+}
+
+/* Table keyboard navigation */
+table[aria-label]:focus-within tr:focus-within {
+  outline: 2px solid #1890ff;
+  outline-offset: -2px;
+}
+
+/* Loading states - ensure they're announced */
+[aria-busy="true"] {
+  cursor: wait;
+}
+
+/* Disabled states - ensure they're properly indicated */
+[aria-disabled="true"],
+[disabled] {
+  opacity: 0.6;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* Error states */
+[aria-invalid="true"] {
+  border-color: #ff4d4f !important;
+}
+
+[aria-invalid="true"]:focus {
+  outline-color: #ff4d4f !important;
+}
+
+/* Required fields */
+[aria-required="true"]::after {
+  content: " *";
+  color: #ff4d4f;
+}
+
+/* Live regions for screen readers */
+[role="status"],
+[role="alert"],
+[aria-live] {
+  position: absolute;
+  left: -10000px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+
+/* Ensure focus is visible in modals */
+.ant-modal-wrap:focus-within .ant-modal {
+  outline: 2px solid #1890ff;
+  outline-offset: 4px;
+}
+
+/* Tooltip accessibility */
+.ant-tooltip {
+  pointer-events: auto;
+}
+
+.ant-tooltip[role="tooltip"] {
+  z-index: 1070;
+}
+
+/* Ensure adequate color contrast */
+.ant-tag {
+  border-width: 1px;
+}
+
+/* Keyboard shortcuts hint */
+.keyboard-shortcut {
+  font-family: monospace;
+  background: #f0f0f0;
+  padding: 2px 6px;
+  border-radius: 3px;
+  border: 1px solid #d9d9d9;
+  font-size: 0.85em;
+}
+
+/* Dark mode support for accessibility */
+@media (prefers-color-scheme: dark) {
+  .keyboard-shortcut {
+    background: #1f1f1f;
+    border-color: #434343;
+    color: #fff;
+  }
+  
+  *:focus-visible {
+    outline-color: #40a9ff;
+  }
+}

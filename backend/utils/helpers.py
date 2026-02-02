@@ -3,11 +3,11 @@ Helper utilities for the Algorithmic Trading Platform.
 Contains common mathematical, financial, and utility functions.
 """
 
+from datetime import datetime
 import hashlib
+from typing import Any
 import uuid
 import warnings
-from datetime import datetime
-from typing import Any
 
 # Suppress NumPy reload warning
 warnings.filterwarnings("ignore", message="The NumPy module was reloaded")
@@ -19,21 +19,21 @@ import pandas as pd
 def align_for_pandas_arithmetic(other: Any, index: pd.Index) -> pd.Series:
     """
     Align other data with DataFrame index for safe pandas arithmetic operations.
-    
-    Prevents "ValueError: other must be a DataFrame or Series" by normalizing 
+
+    Prevents "ValueError: other must be a DataFrame or Series" by normalizing
     inputs to properly aligned pandas Series before subtract/compare operations.
-    
+
     Args:
         other: Data to align (scalar, list, Series, DataFrame, etc.)
         index: pandas Index to align with
-        
+
     Returns:
         pandas Series aligned with the provided index
-        
+
     Examples:
         >>> df = pd.DataFrame({'col': [1, 2, 3]}, index=[0, 1, 2])
         >>> df['col'] - align_for_pandas_arithmetic(5, df.index)  # scalar
-        >>> df['col'] - align_for_pandas_arithmetic([1, 2, 3], df.index)  # list  
+        >>> df['col'] - align_for_pandas_arithmetic([1, 2, 3], df.index)  # list
         >>> df['col'] - align_for_pandas_arithmetic(other_series, df.index)  # series
     """
     if isinstance(other, (int, float)):
@@ -415,24 +415,24 @@ def rsi(
         prices_array = np.array(prices, dtype=float)
         if len(prices_array) < period + 1:
             return np.full(len(prices_array), np.nan)
-        
+
         delta = np.diff(prices_array)
         gains = np.where(delta > 0, delta, 0)
         losses = np.where(delta < 0, -delta, 0)
-        
+
         # Simple moving average for the first calculation
         avg_gain = np.convolve(gains, np.ones(period)/period, mode='valid')
         avg_loss = np.convolve(losses, np.ones(period)/period, mode='valid')
-        
+
         # Calculate RSI
         avg_loss = np.where(avg_loss == 0, 1e-10, avg_loss)  # Avoid division by zero
         rs = avg_gain / avg_loss
         rsi = 100 - (100 / (1 + rs))
-        
+
         # Pad with NaN for the initial period
         result = np.full(len(prices_array), np.nan)
         result[period:] = rsi
-        
+
         return result
 
 

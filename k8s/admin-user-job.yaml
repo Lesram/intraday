@@ -1,0 +1,109 @@
+---
+# Kubernetes Job: Create Admin User
+# This job creates the initial admin user in the database
+# Run once during initial deployment or when resetting admin credentials
+
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: create-admin-user
+  namespace: algotrading
+  labels:
+    app: algotrading-api
+    component: admin-setup
+spec:
+  # Keep job history for 7 days
+  ttlSecondsAfterFinished: 604800
+  
+  # Retry up to 3 times if job fails
+  backoffLimit: 3
+  
+  template:
+    metadata:
+      labels:
+        app: algotrading-api
+        job: create-admin-user
+    spec:
+      restartPolicy: OnFailure
+      
+      containers:
+      - name: create-admin
+        image: algotrading-platform:latest
+        imagePullPolicy: IfNotPresent
+        
+        command: ["python", "scripts/create_admin_user.py"]
+        
+        env:
+        # Admin credentials from Secret
+        - name: ADMIN_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: algotrading-secrets
+              key: admin-username
+        
+        - name: ADMIN_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: algotrading-secrets
+              key: admin-password
+        
+        # Database connection from Secret
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: algotrading-secrets
+              key: database-url
+        
+        # Application environment from ConfigMap
+        - name: APP_ENVIRONMENT
+          valueFrom:
+            configMapKeyRef:
+              name: algotrading-config
+              key: APP_ENVIRONMENT
+        
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+
+---
+# Alternative: CronJob for periodic admin user checks
+# Uncomment if you want to ensure admin user exists on schedule
+
+# apiVersion: batch/v1
+# kind: CronJob
+# metadata:
+#   name: ensure-admin-user
+#   namespace: algotrading
+# spec:
+#   # Run once per day at 3 AM
+#   schedule: "0 3 * * *"
+#   
+#   jobTemplate:
+#     spec:
+#       template:
+#         spec:
+#           restartPolicy: OnFailure
+#           containers:
+#           - name: ensure-admin
+#             image: algotrading-platform:latest
+#             command: ["python", "scripts/create_admin_user.py", "--force"]
+#             env:
+#             - name: ADMIN_USERNAME
+#               valueFrom:
+#                 secretKeyRef:
+#                   name: algotrading-secrets
+#                   key: admin-username
+#             - name: ADMIN_PASSWORD
+#               valueFrom:
+#                 secretKeyRef:
+#                   name: algotrading-secrets
+#                   key: admin-password
+#             - name: DATABASE_URL
+#               valueFrom:
+#                 secretKeyRef:
+#                   name: algotrading-secrets
+#                   key: database-url

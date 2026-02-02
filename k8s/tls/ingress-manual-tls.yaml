@@ -1,0 +1,55 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: algotrading-ingress
+  namespace: algotrading
+  annotations:
+    # Ingress class
+    kubernetes.io/ingress.class: nginx
+    
+    # Security: Force HTTPS (no cert-manager annotations)
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    
+    # Security headers
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      more_set_headers "Strict-Transport-Security: max-age=31536000; includeSubDomains; preload";
+      more_set_headers "X-Frame-Options: DENY";
+      more_set_headers "X-Content-Type-Options: nosniff";
+      more_set_headers "X-XSS-Protection: 1; mode=block";
+      more_set_headers "Referrer-Policy: strict-origin-when-cross-origin";
+    
+    # Rate limiting
+    nginx.ingress.kubernetes.io/limit-rps: "100"
+    nginx.ingress.kubernetes.io/limit-connections: "50"
+    
+    # Timeouts
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "60"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "60"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
+    
+    # WebSocket support
+    nginx.ingress.kubernetes.io/websocket-services: algotrading-api
+    
+    # Large request bodies
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+    
+spec:
+  tls:
+  - hosts:
+    - trading.yourdomain.com  # ⚠️ CHANGE THIS to your actual domain
+    secretName: algotrading-tls-cert  # Reference to your manually created secret
+  
+  rules:
+  - host: trading.yourdomain.com  # ⚠️ CHANGE THIS to your actual domain
+    http:
+      paths:
+      # All paths route to the same backend service
+      # Application handles path routing internally
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: algotrading-api
+            port:
+              number: 8000

@@ -8,15 +8,15 @@ from typing import Any
 
 class RiskCalculator:
     """Risk calculation and metrics"""
-    
+
     def __init__(self):
         self.metrics = {}
-    
+
     def calculate_metrics(self, positions: list[dict[str, Any]]) -> dict[str, Any]:
         """Calculate risk metrics for positions"""
         total_value = sum(Decimal(str(pos.get('value', 0))) for pos in positions)
         total_exposure = sum(abs(Decimal(str(pos.get('quantity', 0)))) for pos in positions)
-        
+
         return {
             "total_value": float(total_value),
             "total_exposure": float(total_exposure),
@@ -25,12 +25,12 @@ class RiskCalculator:
             "max_drawdown": -0.08,
             "beta": 0.9
         }
-    
+
     def check_position_limits(self, position: dict[str, Any]) -> bool:
         """Check if position is within risk limits"""
         value = abs(Decimal(str(position.get('value', 0))))
         return value < Decimal('1000000')  # 1M limit
-    
+
     def calculate_var(self, positions: list[dict[str, Any]], confidence: float = 0.95) -> float:
         """Calculate Value at Risk"""
         total_value = sum(Decimal(str(pos.get('value', 0))) for pos in positions)

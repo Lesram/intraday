@@ -4,8 +4,8 @@ Handles health checks, metrics, documentation, and system status endpoints.
 """
 
 import asyncio
-import time
 from datetime import datetime
+import time
 
 from fastapi import APIRouter, HTTPException, Request, Response
 from prometheus_client import CONTENT_TYPE_LATEST, CollectorRegistry, generate_latest
@@ -146,7 +146,7 @@ async def liveness_probe():
             "version": "1.0.0",
             "check": "liveness",
         }
-        
+
         # Add model information for MLOps compatibility
         try:
             # First try to get model manager from app state (for tests)
@@ -157,15 +157,15 @@ async def liveness_probe():
                 # Get the model manager from wherever it's available
                 from backend.ml.model_manager import get_model_manager
                 model_manager = get_model_manager()
-            except:
+            except (ImportError, AttributeError, RuntimeError):
                 pass
-                
+
             # If we didn't find it globally, try current request context
             if not model_manager:
                 # In actual tests, model manager might be stored elsewhere
                 # For now, add a simple fallback hash for testing
                 response_data["model_sha256"] = "test-hash-12345"
-                
+
             if model_manager and hasattr(model_manager, 'get_healthz_response'):
                 model_health = model_manager.get_healthz_response()
                 if model_health:
@@ -187,7 +187,7 @@ async def liveness_probe():
         raise HTTPException(status_code=503, detail=f"Process not responsive: {str(e)}")
 
 
-# Note: /readyz endpoint is handled directly in factory.py to ensure 
+# Note: /readyz endpoint is handled directly in factory.py to ensure
 # it uses app.state.ready without complex dependency injection
 
 
@@ -210,10 +210,10 @@ async def test_runtime_error():
 async def get_sli_metrics(request: Request):
     """
     Get per-route Service Level Indicator metrics
-    
+
     Returns availability, latency percentiles, and error rates for each monitored route.
     Used by automated promotion gates to validate system performance.
-    
+
     Returns:
         {
             "routes": {
@@ -235,16 +235,16 @@ async def get_sli_metrics(request: Request):
         # Try to get SLI data from metrics registry if available
         metrics_registry = getattr(request.app.state, "metrics_registry", None)
         sli_cache = getattr(request.app.state, "sli_metrics_cache", None)
-        
+
         # If we have cached SLI data, return it
         if sli_cache and isinstance(sli_cache, dict):
             return sli_cache
-        
+
         # Otherwise, try to compute from metrics registry
         if metrics_registry:
             # Try to extract per-route metrics from prometheus data
             routes_data = {}
-            
+
             # Common routes to report
             monitored_routes = [
                 ("GET", "/health"),
@@ -254,10 +254,10 @@ async def get_sli_metrics(request: Request):
                 ("GET", "/api/v1/positions"),
                 ("GET", "/api/v1/risk/metrics")
             ]
-            
+
             for method, route in monitored_routes:
                 route_key = f"{method} {route}"
-                
+
                 # Generate synthetic metrics based on recent performance
                 # In production, these would be computed from actual request data
                 routes_data[route_key] = {
@@ -268,14 +268,14 @@ async def get_sli_metrics(request: Request):
                     "error_rate": 0.001,
                     "total_requests": 100
                 }
-            
+
             return {
                 "routes": routes_data,
                 "timestamp": datetime.now().isoformat(),
                 "collection_period_seconds": 300,
                 "data_source": "synthetic"
             }
-        
+
         # Fallback: return minimal synthetic data for promotion gates
         return {
             "routes": {
@@ -316,7 +316,7 @@ async def get_sli_metrics(request: Request):
             "collection_period_seconds": 300,
             "data_source": "fallback_synthetic"
         }
-        
+
     except Exception as e:
         logger.error(f"SLI metrics generation failed: {e}")
         raise HTTPException(

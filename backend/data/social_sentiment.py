@@ -4,11 +4,11 @@ Fetches social media data and computes sentiment using FinBERT.
 """
 
 import asyncio
+from collections import defaultdict, deque
+from datetime import UTC, datetime, timedelta
 import os
 import re
 import time
-from collections import defaultdict, deque
-from datetime import UTC, datetime, timedelta
 from typing import Any
 
 # Centralized DISABLE_ML check for test mode
@@ -73,7 +73,7 @@ NLP_AVAILABLE = False
 if not DISABLE_ML and not os.environ.get('DISABLE_TORCH') and not os.environ.get('DISABLE_TRANSFORMERS') and not os.environ.get('PYTEST_RUNNING'):
     try:
         import torch
-        from transformers import AutoModelForSequenceClassification, AutoTokenizer, pipeline
+        from transformers import pipeline
         NLP_AVAILABLE = True
     except ImportError:
         NLP_AVAILABLE = False

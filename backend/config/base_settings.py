@@ -4,8 +4,8 @@ Uses pydantic-settings BaseSettings pattern with nested configuration sections.
 Compatible with Pydantic V2.
 """
 
-import os
 from functools import lru_cache
+import os
 from typing import Literal
 
 from pydantic import ConfigDict, Field, field_validator, model_validator
@@ -26,11 +26,12 @@ class AppConfig(BaseSettings):
     """Application configuration section."""
 
     model_config = ConfigDict(
-        env_prefix="APP_", 
+        env_prefix="APP_",
         case_sensitive=False,
         env_file=".env",
         env_file_encoding="utf-8",
-        extra="ignore"  # Allow extra fields to be ignored
+        extra="ignore",  # Allow extra fields to be ignored
+        json_schema_serialization_defaults_required=True,
     )
 
     environment: str = Field(
@@ -43,7 +44,7 @@ class AppConfig(BaseSettings):
     max_connections: int = Field(default=1000, description="Maximum connections")
     request_timeout: int = Field(default=30, description="Request timeout in seconds")
     cors_origins: list[str] = Field(
-        default=["http://localhost:3000", "http://127.0.0.1:3000"],
+        default_factory=lambda: ["http://localhost:3000", "http://127.0.0.1:3000", "http://localhost:5173", "http://localhost:5174"],
         description="CORS allowed origins",
     )
     dev_mode: bool = Field(default=True, description="Development mode")
@@ -53,7 +54,7 @@ class AppConfig(BaseSettings):
     @field_validator("environment")
     @classmethod
     def validate_environment(cls, v):
-        allowed_envs = ["development", "staging", "production"]
+        allowed_envs = ["development", "staging", "production", "testing"]
         if v not in allowed_envs:
             raise ValueError(f"Environment must be one of {allowed_envs}")
         return v
@@ -90,7 +91,7 @@ class SecurityConfig(BaseSettings):
     """Security configuration section."""
 
     model_config = ConfigDict(
-        env_prefix="SECURITY_", 
+        env_prefix="SECURITY_",
         case_sensitive=False,
         env_file=".env",
         env_file_encoding="utf-8",
@@ -114,6 +115,20 @@ class SecurityConfig(BaseSettings):
     def validate_jwt_secret(cls, v):
         if len(v) < 32:
             raise ValueError("JWT secret key must be at least 32 characters")
+        # M-04 FIX: Reject insecure default in production
+        insecure_defaults = [
+            "your-super-secret-jwt-key-change-this-in-production",
+            "change-me-in-production",
+            "secret",
+            "default",
+        ]
+        env = os.environ.get("ENVIRONMENT", "development").lower()
+        if env in ("production", "prod", "staging") and v.lower() in [d.lower() for d in insecure_defaults]:
+            raise ValueError(
+                "M-04 SECURITY: Default JWT secret key detected in production! "
+                "Set JWT_SECRET_KEY environment variable to a secure random value. "
+                "Generate with: python -c 'import secrets; print(secrets.token_urlsafe(64))'"
+            )
         return v
 
     @field_validator("jwt_algorithm")
@@ -138,7 +153,7 @@ class AlpacaConfig(BaseSettings):
     """Alpaca API configuration section."""
 
     model_config = ConfigDict(
-        env_prefix="ALPACA_", 
+        env_prefix="ALPACA_",
         case_sensitive=False,
         env_file=".env",
         env_file_encoding="utf-8",
@@ -155,19 +170,19 @@ class AlpacaConfig(BaseSettings):
         description="Alpaca WebSocket URL",
     )
     paper: bool = Field(default=True, description="Use Alpaca paper trading environment")
-    use_mock_broker: bool = Field(default=True, description="Use mock broker instead of real Alpaca API")
+    use_mock_broker: bool = Field(default=False, description="Use mock broker instead of real Alpaca API")
 
     @field_validator("use_mock_broker")
     @classmethod
     def set_mock_broker_defaults(cls, v):
-        """Set environment-specific defaults for mock broker usage."""
-        env = os.getenv("APP_ENVIRONMENT", "development").lower()
-        if env == "development":
-            return True  # dev: USE_MOCK_BROKER=True
-        elif env == "staging":
-            return True  # staging: USE_MOCK_BROKER=True (paper trading)
-        else:  # production
-            return v  # Use explicit setting
+        """Respect explicit USE_MOCK_BROKER environment variable setting."""
+        # Check if explicitly set via environment variable
+        env_value = os.getenv("USE_MOCK_BROKER")
+        if env_value is not None:
+            # Explicitly set - respect the user's choice
+            return env_value.lower() in ('true', '1', 'yes')
+        # Not set - use the default (False for real Alpaca)
+        return v
 
     @field_validator("paper")
     @classmethod
@@ -200,23 +215,44 @@ class DataConfig(BaseSettings):
     """Data sources configuration section."""
 
     model_config = ConfigDict(
-        env_prefix="DATA_", 
+        env_prefix="DATA_",
         case_sensitive=False,
         env_file=".env",
         env_file_encoding="utf-8",
         extra="ignore"  # Allow extra fields to be ignored
     )
 
-    # Database configuration
+    # Database configuration - REQUIRED (no default, must be set via environment)
     database_url: str = Field(
-        default="sqlite+aiosqlite:///./trading_platform.db", description="Database connection URL"
+        default="",
+        description="Database connection URL (REQUIRED). Example: postgresql+asyncpg://user:pass@host:5432/dbname"
     )
+
     redis_url: str = Field(
         default="redis://localhost:6379", description="Redis connection URL"
     )
     redis_host: str = Field(default="localhost", description="Redis host")
     redis_port: int = Field(default=6379, description="Redis port")
     redis_db: int = Field(default=0, description="Redis database number")
+    redis_password: str = Field(default="", description="Redis password (optional)")
+
+    # Redis High Availability settings
+    redis_mode: str = Field(
+        default="standalone",
+        description="Redis mode: 'standalone', 'sentinel', or 'cluster'"
+    )
+    redis_sentinel_master: str = Field(
+        default="mymaster",
+        description="Redis Sentinel master name"
+    )
+    redis_sentinel_hosts: str = Field(
+        default="",
+        description="Redis Sentinel hosts as comma-separated host:port pairs (e.g., 'sentinel1:26379,sentinel2:26379')"
+    )
+    redis_cluster_hosts: str = Field(
+        default="",
+        description="Redis Cluster nodes as comma-separated host:port pairs (e.g., 'node1:7000,node2:7001')"
+    )
 
     # Social media API configuration
     reddit_client_id: str = Field(default="", description="Reddit API client ID")
@@ -272,8 +308,15 @@ class DataConfig(BaseSettings):
     @field_validator("database_url")
     @classmethod
     def validate_database_url(cls, v):
+        """Validate database URL - allow empty for import-time, will be checked at app creation."""
+        # Allow empty for module import - factory.py will validate at app creation time
+        # This prevents issues with global settings initialization in base_settings.py line ~1160
         if not v:
-            raise ValueError("Database URL is required")
+            # For tests, use in-memory SQLite
+            if os.getenv("APP_ENVIRONMENT", "").lower() == "testing":
+                return os.getenv("TEST_DATABASE_URL", "sqlite+aiosqlite:///:memory:")
+            # For non-test, return empty - factory.py will enforce requirement
+            return ""
         return v
 
     @field_validator("redis_port")
@@ -549,7 +592,7 @@ class RiskConfig(BaseSettings):
     """Risk management configuration with profile-based limits."""
 
     model_config = ConfigDict(env_prefix="RISK_", case_sensitive=False, extra="ignore")
-    
+
     # Risk Profile Configuration
     profile: Literal["strict", "staging", "relaxed"] = Field(
         default="staging", description="Risk profile for different environments"
@@ -557,7 +600,7 @@ class RiskConfig(BaseSettings):
     allow_admin_override: bool = Field(
         default=True, description="Allow admin users to override risk limits"
     )
-    
+
     # Portfolio and exposure limits (will be overridden by profile defaults)
     max_symbol_exposure: float = Field(
         default=0.60, description="Maximum symbol exposure as percentage of portfolio"
@@ -568,7 +611,7 @@ class RiskConfig(BaseSettings):
     circuit_breaker_pct: float = Field(
         default=0.20, description="Circuit breaker percentage for market volatility"
     )
-    
+
     # Portfolio valuation fallback
     fallback_portfolio_value: float = Field(
         default=250000.0, description="Fallback portfolio value when account data unavailable"
@@ -614,12 +657,12 @@ def get_risk_defaults() -> dict:
     # Import here to avoid circular imports
     from backend.config import get_settings
     settings = get_settings()
-    
+
     if hasattr(settings, 'risk') and hasattr(settings.risk, 'profile'):
         profile = settings.risk.profile
     else:
         profile = "relaxed"  # Use relaxed profile for development/testing
-    
+
     return RISK_DEFAULTS.get(profile, RISK_DEFAULTS["relaxed"])
 
 
@@ -662,8 +705,10 @@ class ObservabilityConfig(BaseSettings):
     otel_sampler: str = Field(
         default="parentbased_traceidratio", description="OpenTelemetry sampler type"
     )
+    # M-34 FIX: Increased default sampling rate from 0.1 (10%) to 0.5 (50%)
+    # for better HFT debugging visibility. Override with OTEL_SAMPLER_ARG env var.
     otel_sampler_arg: float = Field(
-        default=0.1, description="OpenTelemetry sampler argument (e.g., sampling ratio)"
+        default=0.5, description="OpenTelemetry sampler argument (sampling ratio 0.0-1.0)"
     )
 
     # Log correlation settings
@@ -970,7 +1015,7 @@ class Settings(BaseSettings):
         """Use mock market data instead of real API calls."""
         return self.data.use_mock_data
 
-    @property 
+    @property
     def USE_MOCK_BROKER(self) -> bool:  # noqa: N802 (legacy naming)
         """Use mock broker instead of real Alpaca API."""
         return self.alpaca.use_mock_broker
@@ -1114,7 +1159,7 @@ class LegacySettings:
             "observability",
             "mlops"
         ]
-        
+
         if name in section_names:
             return getattr(self._settings, name)
 
@@ -1130,6 +1175,10 @@ class LegacySettings:
 
 
 # Legacy support - provide instance for backward compatibility
+# Set a temporary DATABASE_URL for import-time initialization if not set
+if not os.getenv("DATABASE_URL"):
+    os.environ["DATABASE_URL"] = ""  # Will be validated at app creation time
+
 settings = LegacySettings()
 
 # Validate settings on import (unless explicitly skipped)
@@ -1147,10 +1196,10 @@ if os.getenv("SKIP_VALIDATION") != "true":
 # This is additive and does not interfere with the pydantic-based Settings above.
 # ---------------------------------------------------------------------------
 
-import json as _json
 from collections.abc import Callable as _Callable
 from datetime import datetime
 from enum import Enum
+import json as _json
 from pathlib import Path as _Path
 from typing import Any as _Any
 
@@ -1200,7 +1249,7 @@ class _CompatBaseSettings:
         return {
             "debug": True,
             "log_level": "INFO",
-            "database_url": "sqlite+aiosqlite:///app.db",
+            "database_url": "",  # No default - must be set explicitly
             "api_host": "localhost",
             "api_port": 8000,
             "secret_key": "default-secret-key",

@@ -23,7 +23,7 @@ class FeatureSchema:
     def __init__(self, **kw):
         """
         Initialize FeatureSchema with legacy kwargs support.
-        
+
         Args:
             columns: List of column names (canonical)
             features: List of column names (alias for columns)
@@ -33,11 +33,11 @@ class FeatureSchema:
         # Handle columns/features alias - prefer columns, fallback to features
         columns = kw.get("columns") or kw.get("features") or []
         dtypes = kw.get("dtypes") or {}
-        
+
         # Set fields using object.__setattr__ since frozen=True
         object.__setattr__(self, 'columns', columns)
         object.__setattr__(self, 'dtypes', dtypes)
-        
+
         # Call validation
         self.__post_init__()
 

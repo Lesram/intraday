@@ -25,6 +25,7 @@ from pathlib import Path
 from datetime import datetime, timedelta
 from typing import Dict, Any, Optional, List, Tuple
 from dataclasses import dataclass
+from io import StringIO
 
 # Add project root to Python path
 project_root = Path(__file__).parent.parent.parent
@@ -221,9 +222,10 @@ class PreRunTestSuite:
             X = np.random.random((100, 2))
             y = np.random.random((100, 1))
             
-            # Create and compile model
+            # Create and compile model using modern Keras API
             model = tf.keras.Sequential([
-                tf.keras.layers.Dense(4, activation='relu', input_shape=(2,)),
+                tf.keras.layers.Input(shape=(2,)),
+                tf.keras.layers.Dense(4, activation='relu'),
                 tf.keras.layers.Dense(1)
             ])
             
@@ -295,7 +297,7 @@ class PreRunTestSuite:
             
             # Test serialization
             json_str = df.head().to_json()
-            df_restored = pd.read_json(json_str)
+            df_restored = pd.read_json(StringIO(json_str))
             
             success = (
                 len(df) == 300 and
@@ -487,36 +489,49 @@ class PreRunTestSuite:
                 if db_url:
                     print(f"  [INFO] Using DATABASE_URL from environment")
             
-            # Require real PostgreSQL database for functional tests
+            # Require PostgreSQL database for functional tests
             if not db_url:
                 pytest.fail(
-                    "DATABASE_URL not configured. Functional tests require real database.\n"
-                    "Set DATABASE_URL=postgresql+asyncpg://user:pass@localhost:5432/test_db\n"
-                    "SQLite cannot validate production PostgreSQL behavior (pooling, locking, JSON types).\n"
-                    "Use docker-compose to start test database: docker-compose up -d postgres"
+                    "DATABASE_URL not configured. Functional tests require PostgreSQL.\n"
+                    "Set DATABASE_URL=postgresql+asyncpg://trading:trading_password@localhost:5432/algotrading\n"
+                    "Start PostgreSQL: docker-compose up -d db\n"
+                    "\n"
+                    "Production systems MUST use PostgreSQL for proper validation of:\n"
+                    "  - Connection pooling\n"
+                    "  - Transaction isolation\n"
+                    "  - JSON/JSONB types\n"
+                    "  - Full-text search\n"
+                    "  - Concurrent connections\n"
                 )
             
-            # Validate it's PostgreSQL (not SQLite or other)
+            # Enforce PostgreSQL only - no SQLite fallback
             if not db_url.startswith("postgresql"):
                 pytest.fail(
                     f"Functional tests require PostgreSQL, got: {db_url}\n"
-                    "SQLite/other engines cannot validate production behavior.\n"
-                    "Expected: postgresql+asyncpg://... or postgresql+psycopg2://..."
+                    "\n"
+                    "SQLite is NOT supported for testing. Production systems use PostgreSQL.\n"
+                    "\n"
+                    "To fix:\n"
+                    "  1. Start PostgreSQL: docker-compose up -d db\n"
+                    "  2. Set DATABASE_URL=postgresql+asyncpg://trading:trading_password@localhost:5432/algotrading\n"
+                    "  3. Re-run tests\n"
                 )
             
             using_real_db = True
+            print(f"  [INFO] Using PostgreSQL - full production feature validation")
             
-            # Create engine with connection pooling settings for real DBs
-            if db_url.startswith("postgresql"):
-                engine = create_engine(
-                    db_url,
-                    pool_pre_ping=True,  # Verify connections before using
-                    pool_size=5,
-                    max_overflow=10,
-                    echo=False
-                )
-            else:
-                engine = create_engine(db_url)
+            # Convert asyncpg URL to psycopg2 for synchronous testing
+            # asyncpg is for async operations, but test uses sync engine
+            test_db_url = db_url.replace("postgresql+asyncpg://", "postgresql+psycopg2://")
+            
+            # Create engine with connection pooling settings for PostgreSQL
+            engine = create_engine(
+                test_db_url,
+                pool_pre_ping=True,  # Verify connections before using
+                pool_size=5,
+                max_overflow=10,
+                echo=False
+            )
             
             # Test database connection and operations
             with engine.connect() as conn:
@@ -565,39 +580,6 @@ class PreRunTestSuite:
                         print(f"  [WARN]  No expected tables found - schema may not be initialized")
                         print(f"  [WARN]  Available tables: {tables[:10]}")  # Show first 10
                         # Don't fail - schema might be valid but different
-                    
-                else:
-                    # SQLite fallback test
-                    # Create test table
-                    conn.execute(text("""
-                        CREATE TABLE IF NOT EXISTS test_table (
-                            id INTEGER PRIMARY KEY,
-                            symbol VARCHAR(10),
-                            price DECIMAL(10,2),
-                            timestamp DATETIME
-                        )
-                    """))
-                    
-                    # Insert test data
-                    conn.execute(text("""
-                        INSERT INTO test_table (symbol, price, timestamp) 
-                        VALUES ('AAPL', 150.25, datetime('now'))
-                    """))
-                    
-                    # Query data
-                    result = conn.execute(text("SELECT * FROM test_table")).fetchall()
-                    
-                    conn.commit()
-                    
-                    success = len(result) >= 1
-                    details = {
-                        "database_type": "sqlite_memory",
-                        "engine_created": True,
-                        "table_created": True,
-                        "data_inserted": True,
-                        "data_queried": len(result),
-                        "warning": "Using in-memory SQLite - not testing production database"
-                    }
             
             duration_ms = (time.time() - start_time) * 1000
             
@@ -1043,8 +1025,8 @@ class PreRunTestSuite:
         
         endpoints_to_test = [
             "/api/v1/signals/",
-            "/api/v1/positions", 
-            "/api/v1/orders/"
+            "/api/v1/positions",  
+            "/api/v1/orders"  # Removed trailing slash - may fix 405 error
         ]
         
         successful_endpoints = 0
@@ -1063,15 +1045,21 @@ class PreRunTestSuite:
                             timeout=5.0
                         )
                         
-                        # Consider success if we get any reasonable response (including redirects and method not allowed)
-                        if response.status_code in [200, 301, 307, 401, 405, 422, 404]:
+                        # Consider success if endpoint exists and responds correctly
+                        # 200: OK, 301/307: Redirects, 401: Auth required (endpoint exists), 422: Validation error
+                        # Excludes: 404 (not found), 405 (method not allowed) - these indicate problems
+                        if response.status_code in [200, 301, 307, 401, 422]:
                             successful_endpoints += 1
+                            print(f"    {endpoint}: [PASS] {response.status_code}")
+                        else:
+                            print(f"    {endpoint}: [FAIL] {response.status_code} (not acceptable)")
                             
                     except Exception as endpoint_error:
                         print(f"    {endpoint}: [FAIL] FAIL - {str(endpoint_error)}")
                         continue
             
-            success = successful_endpoints >= len(endpoints_to_test) * 0.7  # 70% success rate
+            # Require 100% of endpoints to succeed - no broken endpoints allowed
+            success = successful_endpoints == len(endpoints_to_test)
             
             duration_ms = (time.time() - start_time) * 1000
             

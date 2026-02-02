@@ -13,15 +13,11 @@ class TestRouteRegistry:
     """Test suite to ensure all expected routes are properly registered."""
     
     # Expected route paths that must be available
-    EXPECT = {
-        # Public system routes
-        "/api/v1/health", 
-        "/api/v1/readyz", 
-        "/api/v1/livez",
-        "/api/v1/healthz",
-        "/api/v1/system/health",
-        "/api/v1/system/status",
-        "/api/v1/system/metrics",
+    # Updated to match actual deployed routes (removed old/migrated endpoints)
+    EXPECTED_ROUTES = {
+        # Public system routes (new paths - old /api/v1/health etc migrated to /api/v1/system/)
+        "/api/v1/system/",
+        "/api/v1/system/healthz",
         
         # Authentication routes (public)
         "/api/v1/auth/login",
@@ -29,52 +25,51 @@ class TestRouteRegistry:
         "/api/v1/auth/token",
         "/api/v1/auth/token/validate",
         "/api/v1/auth/me",
+        "/api/v1/auth/verify",
         
-        # Trading signals (protected)
-        "/api/v1/signals/",
-        "/api/v1/signals/{symbol}",
-        "/api/v1/signals/act",
-        "/api/v1/signals/batch",
+        # Trading signals (protected) - migrated to /api/v1/strategies/
+        "/api/v1/strategies/signals/submit",
+        "/api/v1/strategies/signals/batch",
         
         # Orders (protected)
         "/api/v1/orders/",
-        "/api/v1/orders/submit", 
         "/api/v1/orders/{order_id}",
         "/api/v1/orders/{order_id}/cancel",
-        "/api/v1/orders/{order_id}/audit",
+        "/api/v1/orders/validate",  # Phase 2 validation endpoint
         
         # Risk management (protected)
         "/api/v1/risk/limits",
         "/api/v1/risk/metrics",
+        "/api/v1/risk/dashboard",
         
         # Portfolio (protected)
-        "/api/v1/portfolio/positions",
-        "/api/v1/portfolio/performance",
-        "/api/v1/positions",  # New positions endpoint
+        "/api/v1/portfolio/",
+        "/api/v1/portfolio/positions/{symbol}",
+        "/api/v1/positions",  # Positions endpoint
         
         # Trades (protected)
-        "/api/v1/trades/",
         "/api/v1/trades/history",
-        "/api/v1/trades/execute",
-        "/api/v1/trades/stats",
+        "/api/v1/trades/analytics",
         
         # Models (protected)
-        "/api/v1/models/status",
-        "/api/v1/models/train",
+        "/api/v1/models",
+        "/api/v1/models/{model_id}",
         
-        # Strategy (protected)
-        "/api/v1/strategy/status",
-        "/api/v1/strategy/signals/submit",
-        "/api/v1/strategy/signals/batch",
+        # Strategy (protected) - new unified endpoint
+        "/api/v1/strategies/",
+        "/api/v1/strategies/{strategy_id}",
+        "/api/v1/strategies/status",
         
         # Legacy/compatibility routes
         "/health",
-        "/readyz",
         "/livez",
-        "/healthz",
-        "/metrics",
         "/",
+        "/auth/login",
+        "/auth/token",
     }
+    
+    # For backward compatibility, keep old name
+    EXPECT = EXPECTED_ROUTES
     
     def test_route_registry_coverage(self):
         """

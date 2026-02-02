@@ -5,11 +5,11 @@ Compatibility module for tests that expect backend.database.connection
 """
 
 import asyncio
-import os
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from typing import Any, Optional, Dict
 import logging
+import os
+from typing import Any
 
 # Define SessionLocal globally for backwards compatibility
 SessionLocal = None  # type: ignore[assignment]
@@ -17,7 +17,7 @@ SessionLocal = None  # type: ignore[assignment]
 logger = logging.getLogger(__name__)
 
 try:
-    from .database_config import db_config, get_db_session, get_db_health, create_db_backup
+    from .database_config import create_db_backup, db_config, get_db_health
     PRODUCTION_DB_AVAILABLE = True
 except ImportError:
     PRODUCTION_DB_AVAILABLE = False
@@ -46,10 +46,10 @@ async def get_database_session() -> AsyncIterator[Any]:
     Uses production connection pooling in production, mock/SessionLocal in testing.
     """
     # Check if we're in testing environment or production DB is not available
-    if (os.getenv("TESTING", "false").lower() == "true" or 
-        not PRODUCTION_DB_AVAILABLE or 
+    if (os.getenv("TESTING", "false").lower() == "true" or
+        not PRODUCTION_DB_AVAILABLE or
         SessionLocal is not None):
-        
+
         # Use existing logic for backwards compatibility
         session = None
         try:
@@ -85,9 +85,9 @@ async def get_database_session() -> AsyncIterator[Any]:
                 await session.close()
 
 
-async def check_database_health() -> Dict[str, Any]:
+async def check_database_health() -> dict[str, Any]:
     """Check database connection health and pool status."""
-    if (os.getenv("TESTING", "false").lower() == "true" or 
+    if (os.getenv("TESTING", "false").lower() == "true" or
         not PRODUCTION_DB_AVAILABLE):
         return {
             "healthy": True,
@@ -95,13 +95,13 @@ async def check_database_health() -> Dict[str, Any]:
             "pool_status": {"mode": "mock"},
             "timestamp": "mock"
         }
-    
+
     return await get_db_health()
 
 
-async def create_database_backup(backup_name: Optional[str] = None) -> Dict[str, Any]:
+async def create_database_backup(backup_name: str | None = None) -> dict[str, Any]:
     """Create database backup."""
-    if (os.getenv("TESTING", "false").lower() == "true" or 
+    if (os.getenv("TESTING", "false").lower() == "true" or
         not PRODUCTION_DB_AVAILABLE):
         return {
             "success": True,
@@ -109,13 +109,13 @@ async def create_database_backup(backup_name: Optional[str] = None) -> Dict[str,
             "backup_size": 1024,
             "timestamp": "mock"
         }
-    
+
     return await create_db_backup(backup_name)
 
 
 async def initialize_database_connections():
     """Initialize database connection pools."""
-    if (os.getenv("TESTING", "false").lower() != "true" and 
+    if (os.getenv("TESTING", "false").lower() != "true" and
         PRODUCTION_DB_AVAILABLE):
         try:
             # Test the connection
@@ -131,7 +131,7 @@ async def initialize_database_connections():
 
 async def close_database_connections():
     """Close all database connections."""
-    if (os.getenv("TESTING", "false").lower() != "true" and 
+    if (os.getenv("TESTING", "false").lower() != "true" and
         PRODUCTION_DB_AVAILABLE):
         try:
             await db_config.close_connections()

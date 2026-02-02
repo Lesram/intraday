@@ -223,8 +223,14 @@ class ProductionDashboard:
                            static_folder='static')
             self.app.config['SECRET_KEY'] = 'production_dashboard_key'
             
-            # Initialize SocketIO for real-time updates
-            self.socketio = SocketIO(self.app, cors_allowed_origins="*")
+            # SECURITY FIX (H-03): Restrict CORS to specific origins instead of wildcard
+            # In production, set DASHBOARD_ALLOWED_ORIGINS env var to comma-separated list
+            import os
+            allowed_origins = os.environ.get('DASHBOARD_ALLOWED_ORIGINS', 'http://localhost:3000,http://localhost:5000')
+            cors_origins = [origin.strip() for origin in allowed_origins.split(',')]
+            
+            # Initialize SocketIO for real-time updates with restricted CORS
+            self.socketio = SocketIO(self.app, cors_allowed_origins=cors_origins)
             
             # Register routes
             self._register_routes()

@@ -11,14 +11,14 @@ This module provides comprehensive resilience patterns including:
 """
 
 import asyncio
-import inspect
-import logging
-import random
-import time
 from collections.abc import Callable
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from enum import Enum
+import inspect
+import logging
+import random
+import time
 from typing import Any
 
 from prometheus_client import Counter, Histogram

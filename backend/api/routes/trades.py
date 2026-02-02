@@ -1,339 +1,311 @@
 """
-Trading history and execution API routes.
+Trade history and analytics API routes.
+Provides historical trade data with analytics and export functionality.
 """
 
-from datetime import datetime, timedelta
-from typing import Any
+from datetime import date
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
-from pydantic import BaseModel
+from fastapi import APIRouter, Depends, Query, Response
+from pydantic import BaseModel, ConfigDict, Field
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.infra.security import get_authenticated_user, get_current_user
+from backend.infra.db import get_db_session
+from backend.infra.security import get_current_user
+from backend.services.trade_service import TradeService
 from backend.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
-# In-memory idempotency cache for tests
-# In production this would be a Redis cache or database
-_idempotency_cache = {}
-_submitted_orders = set()  # Track which orders have been submitted to broker
+router = APIRouter(prefix="/trades", tags=["Trading", "Protected"])
 
-router = APIRouter(prefix="/trades", tags=["trades"])
 
-class TradeHistory(BaseModel):
-    """Trade history response model."""
-    trade_id: str
+# Response Models
+
+class Execution(BaseModel):
+    """Execution detail model"""
+    executionId: str = Field(alias="executionId")
+    fillQty: float = Field(alias="fillQty")
+    fillPrice: float = Field(alias="fillPrice")
+    timestamp: str
+    venue: str
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class Trade(BaseModel):
+    """Trade model"""
+    orderId: str = Field(alias="orderId")
     symbol: str
-    quantity: float
-    price: float
-    side: str  # "buy" or "sell"
-    timestamp: datetime
-    order_type: str = "market"
-    fees: float = 0.0
-    pnl: float = 0.0
+    side: str
+    qty: float
+    filledQty: float = Field(alias="filledQty")
+    avgFillPrice: float | None = Field(None, alias="avgFillPrice")
+    orderType: str = Field(alias="orderType")
+    status: str
+    submittedAt: str = Field(alias="submittedAt")
+    updatedAt: str = Field(alias="updatedAt")
+    strategyId: str | None = Field(None, alias="strategyId")
+    attributes: dict | None = Field(default_factory=dict)  # Includes imported flag
+    positionStatus: str | None = Field(None, alias="positionStatus")  # open, closed, unknown
+    positionNote: str | None = Field(None, alias="positionNote")  # Explanation
+    currentQty: float | None = Field(None, alias="currentQty")  # Current qty at broker
+    currentPrice: float | None = Field(None, alias="currentPrice")  # Current market price
+    unrealizedPnL: float | None = Field(None, alias="unrealizedPnL")  # Unrealized P&L
+    executions: list[Execution]
+
+    model_config = ConfigDict(populate_by_name=True)
+
 
 class TradeHistoryResponse(BaseModel):
-    """Trade history list response."""
-    trades: list[TradeHistory]
-    total_count: int
-    page: int
-    page_size: int
-
-@router.get("/history", response_model=TradeHistoryResponse)
-async def get_trade_history(
-    current_user = Depends(get_authenticated_user),
-    symbol: str = Query(None, description="Filter by symbol"),
-    start_date: datetime = Query(None, description="Start date filter"),
-    end_date: datetime = Query(None, description="End date filter"),
-    page: int = Query(1, ge=1, description="Page number"),
-    page_size: int = Query(100, ge=1, le=1000, description="Page size")
-):
-    """Get trading history for the current user."""
-    # Check user has trading access
-    user_roles = current_user.roles if hasattr(current_user, 'roles') else []
-    if "read-only" in user_roles:
-        raise HTTPException(
-            status_code=403,
-            detail="Insufficient permissions"
-        )
-    
-    try:
-        # Mock data for now - in production this would query the trades repository
-        mock_trades = [
-            TradeHistory(
-                trade_id="trade_001",
-                symbol="AAPL",
-                quantity=100,
-                price=150.25,
-                side="buy",
-                timestamp=datetime.now() - timedelta(days=1),
-                order_type="market",
-                fees=1.50,
-                pnl=0.0
-            ),
-            TradeHistory(
-                trade_id="trade_002",
-                symbol="AAPL",
-                quantity=50,
-                price=152.10,
-                side="sell",
-                timestamp=datetime.now() - timedelta(hours=12),
-                order_type="limit",
-                fees=0.75,
-                pnl=92.50
-            ),
-            TradeHistory(
-                trade_id="trade_003",
-                symbol="MSFT",
-                quantity=25,
-                price=300.50,
-                side="buy",
-                timestamp=datetime.now() - timedelta(hours=6),
-                order_type="market",
-                fees=0.75,
-                pnl=0.0
-            )
-        ]
-        
-        # Apply symbol filter if provided
-        if symbol:
-            mock_trades = [t for t in mock_trades if t.symbol == symbol]
-        
-        # Apply date filters if provided
-        if start_date:
-            mock_trades = [t for t in mock_trades if t.timestamp >= start_date]
-        if end_date:
-            mock_trades = [t for t in mock_trades if t.timestamp <= end_date]
-        
-        # Simple pagination
-        total_count = len(mock_trades)
-        start_idx = (page - 1) * page_size
-        end_idx = start_idx + page_size
-        paginated_trades = mock_trades[start_idx:end_idx]
-        
-        return TradeHistoryResponse(
-            trades=paginated_trades,
-            total_count=total_count,
-            page=page,
-            page_size=page_size
-        )
-        
-    except Exception as e:
-        logger.error(f"Failed to get trade history: {e}")
-        raise HTTPException(status_code=500, detail="Failed to retrieve trade history")
-
-@router.get("/history/{trade_id}", response_model=TradeHistory)
-async def get_trade_detail(
-    trade_id: str,
-    current_user: dict = Depends(get_current_user)
-):
-    """Get details for a specific trade."""
-    try:
-        # Mock implementation - return a sample trade
-        trade = TradeHistory(
-            trade_id=trade_id,
-            symbol="AAPL",
-            quantity=100,
-            price=150.25,
-            side="buy",
-            timestamp=datetime.now() - timedelta(days=1),
-            order_type="market",
-            fees=1.50,
-            pnl=0.0
-        )
-        
-        return trade
-        
-    except Exception as e:
-        logger.error(f"Failed to get trade detail for {trade_id}: {e}")
-        raise HTTPException(status_code=500, detail="Failed to retrieve trade detail")
-
-@router.get("/stats", response_model=dict[str, Any])
-async def get_trading_stats(
-    current_user: dict = Depends(get_current_user),
-    start_date: datetime = Query(None, description="Start date for stats"),
-    end_date: datetime = Query(None, description="End date for stats")
-):
-    """Get trading statistics for the current user."""
-    try:
-        # Mock statistics - in production this would calculate from actual trades
-        stats = {
-            "total_trades": 15,
-            "profitable_trades": 9,
-            "losing_trades": 6,
-            "win_rate": 60.0,
-            "total_pnl": 1250.75,
-            "total_fees": 45.25,
-            "net_pnl": 1205.50,
-            "avg_trade_pnl": 80.37,
-            "best_trade": 450.00,
-            "worst_trade": -125.50,
-            "total_volume": 125000.00
-        }
-        
-        return stats
-        
-    except Exception as e:
-        logger.error(f"Failed to get trading stats: {e}")
-        raise HTTPException(status_code=500, detail="Failed to retrieve trading statistics")
+    """Trade history response"""
+    trades: list[Trade]
+    total: int
+    limit: int
+    offset: int
 
 
-class TradeExecutionRequest(BaseModel):
-    """Trade execution request model."""
+class BestWorstTrade(BaseModel):
+    """Best/worst trade model"""
     symbol: str
-    quantity: float
-    side: str  # "buy" or "sell"
-    order_type: str = "market"
+    pnl: float
+    date: str
 
 
-@router.post("/execute")
-async def execute_trade(
-    trade_request: TradeExecutionRequest,
-    current_user = Depends(get_authenticated_user)
+class PnLByDay(BaseModel):
+    """P&L by day model"""
+    date: str
+    pnl: float
+    trades: int
+
+
+class InstitutionalMetrics(BaseModel):
+    """Institutional-grade performance metrics"""
+    # Risk-Adjusted Returns
+    sharpeRatio: float
+    sortinoRatio: float
+    calmarRatio: float
+
+    # Drawdown Metrics
+    maxDrawdown: float
+    maxDrawdownDollars: float
+    maxDrawdownDuration: int
+
+    # Profitability Metrics
+    profitFactor: float
+    expectancy: float
+    recoveryFactor: float
+
+    # Streak Analysis
+    maxWinStreak: int
+    maxLossStreak: int
+    currentStreak: int
+    currentStreakType: str
+
+    # Returns Distribution
+    monthlyReturns: list[dict]
+    rMultiples: dict
+
+    # Time Metrics
+    avgTradeDurationHours: float
+
+    # Basic Stats
+    totalTrades: int
+    winningTrades: int
+    losingTrades: int
+    winRate: float
+    avgWin: float
+    avgLoss: float
+
+
+class TradeAnalytics(BaseModel):
+    """Trade analytics response"""
+    totalTrades: int = Field(alias="totalTrades")
+    totalVolume: float = Field(alias="totalVolume")
+    buyTrades: int = Field(alias="buyTrades")
+    sellTrades: int = Field(alias="sellTrades")
+    avgTradeValue: float = Field(alias="avgTradeValue")
+    totalRealizedPnL: float = Field(alias="totalRealizedPnL")
+    winningTrades: int = Field(alias="winningTrades")
+    losingTrades: int = Field(alias="losingTrades")
+    winRate: float = Field(alias="winRate")
+    avgWinningTrade: float = Field(alias="avgWinningTrade")
+    avgLosingTrade: float = Field(alias="avgLosingTrade")
+    bestTrade: BestWorstTrade | None = Field(None, alias="bestTrade")
+    worstTrade: BestWorstTrade | None = Field(None, alias="worstTrade")
+    pnlByDay: list[PnLByDay] = Field(alias="pnlByDay")
+    institutionalMetrics: InstitutionalMetrics | None = Field(None, alias="institutionalMetrics")
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+# API Endpoints
+
+@router.get(
+    "/history",
+    response_model=TradeHistoryResponse,
+    summary="Get Trade History",
+    description="Fetch paginated trade history with optional filters. Returns filled orders with execution details."
+)
+async def get_trade_history(
+    start_date: date | None = Query(None, description="Filter trades from this date (YYYY-MM-DD)"),
+    end_date: date | None = Query(None, description="Filter trades until this date (YYYY-MM-DD)"),
+    symbol: str | None = Query(None, description="Filter by trading symbol (e.g., AAPL)"),
+    strategy_id: str | None = Query(None, description="Filter by strategy ID"),
+    side: str | None = Query(None, description="Filter by order side: buy or sell"),
+    limit: int = Query(100, ge=1, le=1000, description="Maximum number of results (1-1000)"),
+    offset: int = Query(0, ge=0, description="Pagination offset"),
+    db: AsyncSession = Depends(get_db_session),
+    user=Depends(get_current_user)
+) -> TradeHistoryResponse:
+    """
+    Get trade history with filters and pagination.
+
+    - **start_date**: Optional start date filter
+    - **end_date**: Optional end date filter
+    - **symbol**: Optional symbol filter (e.g., AAPL, MSFT)
+    - **strategy_id**: Optional strategy filter
+    - **side**: Optional side filter (buy/sell)
+    - **limit**: Page size (default 100, max 1000)
+    - **offset**: Pagination offset (default 0)
+
+    Returns paginated list of filled orders with execution details.
+    """
+    try:
+        logger.info(f"Fetching trade history: start={start_date}, end={end_date}, "
+                   f"symbol={symbol}, strategy={strategy_id}, side={side}, "
+                   f"limit={limit}, offset={offset}")
+
+        trade_service = TradeService(db)
+        result = await trade_service.get_trade_history(
+            start_date=start_date,
+            end_date=end_date,
+            symbol=symbol,
+            strategy_id=strategy_id,
+            side=side,
+            limit=limit,
+            offset=offset
+        )
+
+        return TradeHistoryResponse(**result)
+
+    except Exception as e:
+        logger.error(f"Error fetching trade history: {e}")
+        raise
+
+
+@router.get(
+    "/analytics",
+    response_model=TradeAnalytics,
+    summary="Get Trade Analytics",
+    description="Calculate comprehensive trade analytics including P&L, win rate, and performance metrics."
+)
+async def get_trade_analytics(
+    start_date: date | None = Query(None, description="Calculate from this date (YYYY-MM-DD)"),
+    end_date: date | None = Query(None, description="Calculate until this date (YYYY-MM-DD)"),
+    symbol: str | None = Query(None, description="Filter by trading symbol (e.g., AAPL)"),
+    strategy_id: str | None = Query(None, description="Filter by strategy ID"),
+    db: AsyncSession = Depends(get_db_session),
+    user=Depends(get_current_user)
+) -> TradeAnalytics:
+    """
+    Calculate trade analytics and performance metrics.
+
+    - **start_date**: Optional start date filter
+    - **end_date**: Optional end date filter
+    - **symbol**: Optional symbol filter
+    - **strategy_id**: Optional strategy filter
+
+    Returns comprehensive analytics including:
+    - Total trades, volume, and P&L
+    - Win rate and average trade values
+    - Best and worst trades
+    - P&L breakdown by day
+    """
+    try:
+        # Extract user_id from authenticated user (when auth is enabled)
+        user_id = getattr(user, 'id', None) or getattr(user, 'username', None) or "admin"
+
+        logger.info(f"Calculating trade analytics: start={start_date}, end={end_date}, "
+                   f"symbol={symbol}, strategy={strategy_id}, user={user_id}")
+
+        trade_service = TradeService(db)
+        analytics = await trade_service.calculate_analytics(
+            start_date=start_date,
+            end_date=end_date,
+            symbol=symbol,
+            strategy_id=strategy_id,
+            user_id=str(user_id)
+        )
+
+        return TradeAnalytics(**analytics)
+
+    except Exception as e:
+        logger.error(f"Error calculating analytics: {e}")
+        raise
+
+
+@router.get(
+    "/export/csv",
+    summary="Export Trades to CSV",
+    description="Export filtered trade history to CSV format for download.",
+    response_class=Response
+)
+async def export_trades_csv(
+    start_date: date | None = Query(None, description="Filter trades from this date (YYYY-MM-DD)"),
+    end_date: date | None = Query(None, description="Filter trades until this date (YYYY-MM-DD)"),
+    symbol: str | None = Query(None, description="Filter by trading symbol (e.g., AAPL)"),
+    strategy_id: str | None = Query(None, description="Filter by strategy ID"),
+    side: str | None = Query(None, description="Filter by order side: buy or sell"),
+    db: AsyncSession = Depends(get_db_session),
+    user=Depends(get_current_user)
 ):
     """
-    Execute a trade order.
-    
-    **DEPRECATED**: This endpoint is deprecated. 
-    Use `/api/v1/orders/submit` for new order submissions instead.
-    This endpoint will be removed in a future version.
+    Export trade history to CSV file.
+
+    - **start_date**: Optional start date filter
+    - **end_date**: Optional end date filter
+    - **symbol**: Optional symbol filter
+    - **strategy_id**: Optional strategy filter
+    - **side**: Optional side filter (buy/sell)
+
+    Returns CSV file with trade data for download.
+    Maximum 10,000 trades per export.
     """
-    if current_user is None:
-        raise HTTPException(status_code=401, detail="Authentication required")
-    
-    # Check if user has trading privileges
-    user_roles = current_user.roles if hasattr(current_user, 'roles') else []
-    if "trader" not in user_roles and "admin" not in user_roles:
-        raise HTTPException(status_code=403, detail="Trading privileges required")
-    
     try:
-        # Mock trade execution
-        import uuid
-        from datetime import datetime
-        
-        trade_id = str(uuid.uuid4())
-        mock_price = 150.00  # Mock price
-        
-        return {
-            "trade_id": trade_id,
-            "symbol": trade_request.symbol,
-            "quantity": trade_request.quantity,
-            "side": trade_request.side,
-            "order_type": trade_request.order_type,
-            "price": mock_price,
-            "timestamp": datetime.now(),
-            "status": "executed"
-        }
-        
+        logger.info(f"Exporting trades to CSV: start={start_date}, end={end_date}, "
+                   f"symbol={symbol}, strategy={strategy_id}, side={side}")
+
+        trade_service = TradeService(db)
+
+        # Fetch trades (limit to 10K for CSV export)
+        result = await trade_service.get_trade_history(
+            start_date=start_date,
+            end_date=end_date,
+            symbol=symbol,
+            strategy_id=strategy_id,
+            side=side,
+            limit=10000,
+            offset=0
+        )
+
+        # Generate CSV
+        csv_content = trade_service.generate_csv(result['trades'])
+
+        # Generate filename with date
+        from datetime import datetime as dt
+        filename = f"trades_export_{dt.now().strftime('%Y%m%d_%H%M%S')}.csv"
+
+        logger.info(f"Generated CSV export with {len(result['trades'])} trades: {filename}")
+
+        # Return CSV as downloadable file
+        return Response(
+            content=csv_content,
+            media_type="text/csv",
+            headers={
+                "Content-Disposition": f"attachment; filename={filename}"
+            }
+        )
+
     except Exception as e:
-        logger.error(f"Failed to execute trade: {e}")
-        raise HTTPException(status_code=500, detail="Trade execution failed")
-
-
-@router.post("/", status_code=status.HTTP_201_CREATED)
-async def create_trade(request: Request):
-    """Create a new trade with idempotency support.
-
-    Returns 201 with an order_id if an idempotency key is present, else 200 to indicate existing order.
-    """
-    # Parse request body
-    body = await request.json()
-    
-    # Check idempotency key
-    idem = request.headers.get("X-Idempotency-Key")
-    if idem and idem in _idempotency_cache:
-        # Return cached response for duplicate idempotency key
-        return _idempotency_cache[idem]
-    
-    # Generate IDs based on idempotency key or request content
-    if idem:
-        order_id = f"mock_{abs(hash(idem)) % 10_000}"
-        client_order_id = f"client_{abs(hash(idem)) % 10_000}"
-    else:
-        content_hash = abs(hash(str(body)))
-        order_id = f"mock_{content_hash % 10_000}"
-        client_order_id = f"client_{content_hash % 10_000}"
-    
-    # Create response
-    response_data = {
-        "order_id": order_id,
-        "client_order_id": client_order_id,
-        "status": "submitted",
-        "symbol": body.get("symbol", "UNKNOWN"),
-        "quantity": body.get("quantity", "0"),
-        "side": body.get("side", "buy"),
-        "order_type": body.get("order_type", "market"),
-        "time_in_force": body.get("time_in_force", "day"),
-        "submitted_at": "2025-08-21T12:00:00Z",
-        "asset_id": f"asset_{abs(hash(body.get('symbol', 'UNKNOWN'))) % 10_000}",
-        "asset_class": "us_equity",
-    }
-    
-    # For integration tests, also simulate broker submission
-    # Check if this looks like a test environment by examining the request
-    if hasattr(request.app.state, 'ws_manager') and order_id not in _submitted_orders:  # Test indicator
-        await _simulate_broker_submission(request, body, order_id)
-        _submitted_orders.add(order_id)
-        
-        # Also trigger outbox dispatcher for metrics
-        try:
-            outbox_dispatcher = getattr(request.app.state, 'outbox_dispatcher', None)
-            if outbox_dispatcher and hasattr(outbox_dispatcher, 'poll_and_dispatch'):
-                await outbox_dispatcher.poll_and_dispatch()
-                
-            # Manually increment outbox_dispatched_total for test compatibility
-            from prometheus_client import Counter as _PCounter
-            reg = getattr(request.app.state, "metrics_registry", None)
-            if reg is not None:
-                try:
-                    c = _PCounter(
-                        "outbox_dispatched_total",
-                        "Total outbox dispatched",
-                        registry=reg,
-                    )
-                    c.inc()
-                except ValueError:
-                    c = getattr(reg, "_names_to_collectors", {}).get("outbox_dispatched_total")
-                    if c is not None:
-                        c.inc()
-                        
-        except Exception:
-            pass
-    
-    # Cache response for idempotency
-    if idem:
-        _idempotency_cache[idem] = response_data
-    
-    return response_data
-
-
-async def _simulate_broker_submission(request: Request, order_data: dict, order_id: str):
-    """Simulate broker submission for integration tests."""
-    try:
-        import httpx
-        # Try to submit to the mock broker (if running in test)
-        broker_payload = {
-            "symbol": order_data.get("symbol"),
-            "qty": order_data.get("quantity"),
-            "side": order_data.get("side"),
-            "type": order_data.get("order_type", "market"),
-            "time_in_force": order_data.get("time_in_force", "day"),
-            "client_order_id": f"client_{order_id}",
-            "status": "submitted"
-        }
-        
-        # Submit to local mock if available
-        async with httpx.AsyncClient() as client:
-            try:
-                # This will hit the respx mock in tests
-                await client.post(
-                    "https://paper-api.alpaca.markets/v2/orders",
-                    json=broker_payload,
-                    timeout=1.0
-                )
-            except Exception:
-                # Mock might not be set up, that's okay
-                pass
-    except Exception:
-        # Don't fail the API call if broker simulation fails
-        pass
+        logger.error(f"Error exporting trades to CSV: {e}")
+        raise

@@ -3,18 +3,21 @@ Utility functions expected by tests and application components.
 """
 
 import asyncio
+from datetime import datetime, timedelta
 import decimal
 import functools
+import logging
 import re
 import threading
-from datetime import datetime, timedelta
 from typing import Any
+
+_logger = logging.getLogger(__name__)
 
 
 async def async_retry(func, max_attempts=3, base_delay=1.0, max_delay=60.0, backoff_factor=2.0, jitter=True):
     """
     Retry function with exponential backoff, jitter, and timeout protection.
-    
+
     Args:
         func: Function to retry (sync or async)
         max_attempts: Maximum retry attempts
@@ -22,17 +25,17 @@ async def async_retry(func, max_attempts=3, base_delay=1.0, max_delay=60.0, back
         max_delay: Maximum delay cap in seconds
         backoff_factor: Exponential backoff multiplier
         jitter: Add random jitter to prevent thundering herd
-        
+
     Returns:
         Function result if successful
-        
+
     Raises:
         Last exception if all attempts fail
     """
     import random
-    
+
     last_exception = None
-    
+
     for attempt in range(max_attempts):
         try:
             if asyncio.iscoroutinefunction(func):
@@ -41,38 +44,38 @@ async def async_retry(func, max_attempts=3, base_delay=1.0, max_delay=60.0, back
                 return func()
         except Exception as e:
             last_exception = e
-            
+
             if attempt == max_attempts - 1:
                 # Last attempt failed, re-raise the exception
                 raise last_exception
-            
+
             # Calculate delay with exponential backoff
             delay = min(base_delay * (backoff_factor ** attempt), max_delay)
-            
+
             # Add jitter to prevent thundering herd effect
             if jitter:
                 delay = delay * (0.5 + random.random() * 0.5)
-            
+
             await asyncio.sleep(delay)
             last_exception = e
-            
+
             if attempt == max_attempts - 1:
                 # Last attempt failed, re-raise the exception
                 raise last_exception
-            
+
             # Calculate delay with exponential backoff
             delay = min(base_delay * (backoff_factor ** attempt), max_delay)
-            
+
             # Add jitter to prevent thundering herd effect
             if jitter:
                 delay = delay * (0.5 + random.random() * 0.5)
-            
+
             await asyncio.sleep(delay)
 
 
-import time
 from collections.abc import Callable
 from datetime import UTC
+import time
 from typing import TypeVar
 
 F = TypeVar('F', bound=Callable[..., Any])
@@ -107,7 +110,7 @@ def calculate_business_days(start, end):
     return days
 
 def sanitize_symbol(s):
-    """Sanitize trading symbol.""" 
+    """Sanitize trading symbol."""
     cleaned = s.strip().upper()
     if not cleaned:
         raise ValueError("Empty symbol")
@@ -150,18 +153,18 @@ def rate_limit(calls_per_second):
     lock = threading.Lock()
     call_times = []
     min_interval = 1.0 / calls_per_second
-    
+
     def deco(f):
-        @functools.wraps(f)  
+        @functools.wraps(f)
         async def async_wrapper(*a, **k):
             nonlocal call_times
             now = time.time()
-            
+
             with lock:
                 # Clean old calls (older than 1 second)
                 cutoff = now - 1.0
                 call_times[:] = [t for t in call_times if t > cutoff]
-                
+
                 # If we have any recent calls, calculate wait time
                 if call_times:
                     # Calculate when the next call can be made
@@ -170,35 +173,35 @@ def rate_limit(calls_per_second):
                     wait_time = max(0, next_allowed - now)
                     if wait_time > 0:
                         await asyncio.sleep(wait_time)
-                
+
                 # Record this call
                 call_times.append(time.time())
-            
+
             if asyncio.iscoroutinefunction(f):
                 return await f(*a, **k)
             else:
                 return f(*a, **k)
-        
+
         if asyncio.iscoroutinefunction(f):
             return async_wrapper
         else:
             @functools.wraps(f)
             def wrapper(*a, **k):
                 now = time.time()
-                
+
                 with lock:
                     cutoff = now - 1.0
                     call_times[:] = [t for t in call_times if t > cutoff]
-                    
+
                     if call_times:
                         last_call = call_times[-1]
                         next_allowed = last_call + min_interval
                         wait_time = max(0, next_allowed - now)
                         if wait_time > 0:
                             time.sleep(wait_time)
-                    
+
                     call_times.append(time.time())
-                
+
                 return f(*a, **k)
             return wrapper
     return deco
@@ -258,9 +261,9 @@ def time_ago(date_obj: datetime) -> str:
 import hashlib
 import json
 import os
+from pathlib import Path
 import time as _time
 import uuid
-from pathlib import Path
 
 
 def format_currency(amount: float, currency: str = "USD", decimal_places: int = 2) -> str:
@@ -505,7 +508,7 @@ def timer(func):
         start = _time.time()
         result = func(*args, **kwargs)
         end = _time.time()
-        print(f"{func.__name__} took {end - start:.3f}s")
+        _logger.debug(f"{func.__name__} took {end - start:.3f}s")
         return result
 
     return wrapper

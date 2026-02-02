@@ -14,10 +14,19 @@ import pytest
 import uuid
 import requests
 import os
-import psycopg2
+
+try:
+    import psycopg2
+    PSYCOPG2_AVAILABLE = True
+except ImportError:
+    PSYCOPG2_AVAILABLE = False
+    
 from typing import Dict, Any
 
 
+@pytest.mark.integration
+@pytest.mark.slow
+@pytest.mark.skipif(not PSYCOPG2_AVAILABLE, reason="psycopg2 not installed")
 class TestDatabaseIdempotencyConstraints:
     """Test database-level idempotency constraints (no API required)."""
     

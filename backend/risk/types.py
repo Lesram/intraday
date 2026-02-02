@@ -57,7 +57,7 @@ class RiskLevel(Enum):
 
 class RiskReasonCode(Enum):
     """Risk reason codes for structured error reporting."""
-    
+
     SYMBOL_CONCENTRATION_EXCEEDED = "SYMBOL_CONCENTRATION_EXCEEDED"
     PORTFOLIO_LIMIT_EXCEEDED = "PORTFOLIO_LIMIT_EXCEEDED"
     CIRCUIT_BREAKER_TRIPPED = "CIRCUIT_BREAKER_TRIPPED"
@@ -78,7 +78,7 @@ class RiskLimits:
     allow_admin_override: bool = False
     # legacy/optional
     max_portfolio_exposure: float | None = None
-    
+
     # Legacy fields for backward compatibility
     max_position_size: Decimal | None = None
     max_daily_loss: Decimal | None = None
@@ -90,7 +90,7 @@ class RiskLimits:
     def __init__(self, **kwargs: Any):
         # accept both new and legacy names
         self.max_position_value = float(kwargs.get("max_position_value", 0.0))
-        
+
         # Prioritize max_symbol_exposure over max_portfolio_exposure
         if "max_symbol_exposure" in kwargs:
             self.max_symbol_exposure = float(kwargs["max_symbol_exposure"])
@@ -98,15 +98,15 @@ class RiskLimits:
             self.max_symbol_exposure = float(kwargs["max_portfolio_exposure"])
         else:
             self.max_symbol_exposure = 1.0
-            
+
         self.circuit_breaker_pct = float(kwargs.get("circuit_breaker_pct", 0.5))
         self.allow_admin_override = bool(kwargs.get("allow_admin_override", False))
-        self.max_portfolio_exposure = kwargs.get("max_portfolio_exposure", None)
-        
+        self.max_portfolio_exposure = kwargs.get("max_portfolio_exposure")
+
         # Legacy field compatibility
         self.max_position_size = kwargs.get("max_position_size", Decimal("100000") if "max_position_size" in kwargs else None)
         self.max_daily_loss = kwargs.get("max_daily_loss", Decimal("10000") if "max_daily_loss" in kwargs else None)
-        self.max_sector_concentration = kwargs.get("max_sector_concentration", None)
+        self.max_sector_concentration = kwargs.get("max_sector_concentration")
         self.max_single_position = kwargs.get("max_single_position", Decimal("50000") if "max_single_position" in kwargs else None)
         self.var_limit_95 = kwargs.get("var_limit_95", Decimal("25000") if "var_limit_95" in kwargs else None)
         self.var_limit_99 = kwargs.get("var_limit_99", Decimal("50000") if "var_limit_99" in kwargs else None)
@@ -131,13 +131,13 @@ class OrderSpec:
         # E2: OrderSpec accept order_type and quantity aliases
         # Handle the type/order_type alias - prefer canonical, fallback to alias
         order_type = kw.get("type") or kw.get("order_type")
-        # Handle the qty/quantity alias - prefer canonical, fallback to alias  
+        # Handle the qty/quantity alias - prefer canonical, fallback to alias
         quantity = kw.get("qty") or kw.get("quantity")
-        
+
         # Remove aliases from kwargs if present since we only keep the canonical names
         kw.pop("order_type", None)
         kw.pop("quantity", None)
-        
+
         # Set all the fields using object.__setattr__ since frozen=True
         object.__setattr__(self, 'symbol', kw.get('symbol'))
         object.__setattr__(self, 'side', kw.get('side'))
@@ -147,7 +147,7 @@ class OrderSpec:
         object.__setattr__(self, 'tif', kw.get('tif'))
         object.__setattr__(self, 'attributes', kw.get('attributes'))
         object.__setattr__(self, 'type', order_type)
-        
+
         # Call __post_init__ manually since we're overriding __init__
         self.__post_init__()
 
@@ -155,7 +155,7 @@ class OrderSpec:
         """Validate order specification invariants."""
         if self.qty < 0:
             raise ValueError("qty must be non-negative, use side for direction")
-        
+
         # Contract-Adapter Patch F: Auto-calculate notional if not provided
         if self.notional is None and self.price is not None:
             # Auto-calculate notional from qty * price

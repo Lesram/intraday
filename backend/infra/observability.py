@@ -4,11 +4,11 @@ and standardized latency instrumentation decorators.
 """
 
 import asyncio
+from collections.abc import Callable
+from contextlib import contextmanager
 import functools
 import logging
 import time
-from collections.abc import Callable
-from contextlib import contextmanager
 from typing import Any, TypeVar
 
 from opentelemetry import metrics as otel_metrics
@@ -58,7 +58,8 @@ class ObservabilityConfig:
         otel_exporter_otlp_endpoint: str | None = None,
         otel_exporter_protocol: str = "grpc",
         otel_sampler: str = "traceidratio",
-        otel_sampler_arg: float = 0.1,
+        # M-34 FIX: Increased default from 0.1 to 0.5 for HFT visibility
+        otel_sampler_arg: float = 0.5,
         prometheus_enabled: bool = True,
         prometheus_path: str = "/metrics",
         metric_namespace: str = "intraday",

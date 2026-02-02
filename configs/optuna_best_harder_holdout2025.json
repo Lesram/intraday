@@ -1,0 +1,73 @@
+{
+  "name": "universe20_profit_holdout2025_full_HARDER",
+  "source_log": "test_results/optuna_universe20_profit_holdout2025_full_HARDER_leverage_floorgex16_gex30_pos100_risk12_dd80_recency06_trials200_penlow_2026-01-27.txt",
+  "symbols": [
+    "AAPL",
+    "MSFT",
+    "GOOGL",
+    "AMZN",
+    "NVDA",
+    "META",
+    "TSLA",
+    "AVGO",
+    "AMD",
+    "COST",
+    "NFLX",
+    "ORCL",
+    "QCOM",
+    "INTC",
+    "CRM",
+    "ADBE",
+    "JPM",
+    "UNH",
+    "XOM",
+    "JNJ"
+  ],
+  "range": {
+    "start": "2023-01-01",
+    "end": "2025-12-31"
+  },
+  "holdout": {
+    "start": "2025-01-01",
+    "end": "2025-12-31"
+  },
+  "env": {
+    "OPT_HIGH_RETURN_MODE": "1",
+    "OPT_ALLOW_LEVERAGE": "1",
+    "OPT_MARKET_BUFFER_SIDE": "above",
+    "OPT_FIXED_SLIPPAGE_BPS": "8.5",
+    "OPT_FIXED_COMMISSION_PER_TRADE": "0.30"
+  },
+  "costs": {
+    "slippage_bps": 8.5,
+    "commission_per_trade": 0.3
+  },
+  "params": {
+    "warmup": 75.0,
+    "stop_loss_pct": 0.09833772352869319,
+    "take_profit_pct": 0.08928669840843234,
+    "position_size_pct": 0.6846339015854539,
+    "risk_per_trade_pct": 0.06287340997581851,
+    "max_gross_exposure": 2.582111074253742,
+    "max_positions": 2.0,
+    "min_position_dollars": 1165.8745979483826,
+    "min_hold_days": 5.0,
+    "rsi_buy": 43.284661058973604,
+    "rsi_sell": 83.2468115862686,
+    "sma_fast": 8.0,
+    "sma_slow": 40.0,
+    "band_tolerance": 0.006682754081147303,
+    "entry_threshold": 2.4402578163447624,
+    "trend_threshold": 0.009347474483821937,
+    "decision_threshold": 0.5580050425715477,
+    "w_ensemble": 1.1878727616569447,
+    "w_momentum": 2.6594578620444094,
+    "w_meanrev": 0.7551903476822991,
+    "w_statarb": 0.22994349120337743,
+    "market_sma": 120.0,
+    "market_buffer": 0.01,
+    "market_force_exit": 0.0,
+    "market_trim_risk_off": 1.0,
+    "risk_off_exposure_mult": 0.7
+  }
+}

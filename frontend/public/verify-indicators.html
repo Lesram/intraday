@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Indicator Verification</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; background: #1a1a2e; color: #eee; }
+        .card { background: #16213e; padding: 15px; margin: 10px 0; border-radius: 8px; }
+        .success { color: #4ade80; }
+        .error { color: #f87171; }
+        .info { color: #60a5fa; }
+        h1 { color: #818cf8; }
+        button { background: #6366f1; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; }
+        button:hover { background: #4f46e5; }
+        pre { background: #0f172a; padding: 10px; border-radius: 4px; overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 8px; text-align: left; border-bottom: 1px solid #334155; }
+        th { background: #1e293b; }
+    </style>
+</head>
+<body>
+    <h1>📊 Indicator Verification Tool</h1>
+    
+    <div class="card">
+        <h3>Login</h3>
+        <input type="text" id="username" value="admin@example.com" placeholder="Username">
+        <input type="password" id="password" value="admin123" placeholder="Password">
+        <button onclick="login()">Login & Run Tests</button>
+    </div>
+
+    <div id="results"></div>
+
+    <script>
+        let token = null;
+
+        async function login() {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            
+            try {
+                const resp = await fetch('http://localhost:8000/api/v1/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+                const data = await resp.json();
+                token = data.access_token;
+                document.getElementById('results').innerHTML = '<p class="success">✅ Logged in successfully</p>';
+                await runTests();
+            } catch (err) {
+                document.getElementById('results').innerHTML = `<p class="error">❌ Login failed: ${err.message}</p>`;
+            }
+        }
+
+        async function testIndicator(name, params, validateFn) {
+            const resp = await fetch('http://localhost:8000/api/v1/indicators/calculate', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    symbol: 'AAPL',
+                    indicator: name,
+                    timeframe: '1D',
+                    params: params
+                })
+            });
+            const data = await resp.json();
+            return { name, data, validation: validateFn(data) };
+        }
+
+        function getLastValue(obj) {
+            const keys = Object.keys(obj || {});
+            return keys.length > 0 ? obj[keys[keys.length - 1]] : null;
+        }
+
+        async function runTests() {
+            const results = document.getElementById('results');
+            results.innerHTML += '<h2>Running indicator tests...</h2>';
+
+            const tests = [
+                {
+                    name: 'RSI',
+                    params: { period: 14 },
+                    validate: (d) => {
+                        const val = getLastValue(d.values?.values);
+                        return { 
+                            value: val?.toFixed(2), 
+                            valid: val >= 0 && val <= 100,
+                            expected: '0-100'
+                        };
+                    }
+                },
+                {
+                    name: 'ATR',
+                    params: { period: 14 },
+                    validate: (d) => {
+                        const val = getLastValue(d.values?.values);
+                        return { 
+                            value: val?.toFixed(2), 
+                            valid: val > 0 && val < 50,
+                            expected: '1-20 for stocks'
+                        };
+                    }
+                },
+                {
+                    name: 'MACD',
+                    params: { fast_period: 12, slow_period: 26, signal_period: 9 },
+                    validate: (d) => {
+                        const hist = getLastValue(d.values?.histogram);
+                        const macd = getLastValue(d.values?.macd);
+                        const signal = getLastValue(d.values?.signal);
+                        return { 
+                            value: `MACD: ${macd?.toFixed(2)}, Signal: ${signal?.toFixed(2)}, Hist: ${hist?.toFixed(2)}`, 
+                            valid: hist !== null && macd !== null,
+                            expected: 'Small numbers around 0'
+                        };
+                    }
+                },
+                {
+                    name: 'BOLLINGER',
+                    params: { period: 20, std_dev: 2 },
+                    validate: (d) => {
+                        const upper = getLastValue(d.values?.upper);
+                        const middle = getLastValue(d.values?.middle);
+                        const lower = getLastValue(d.values?.lower);
+                        return { 
+                            value: `Upper: ${upper?.toFixed(2)}, Mid: ${middle?.toFixed(2)}, Lower: ${lower?.toFixed(2)}`, 
+                            valid: upper > middle && middle > lower,
+                            expected: 'Upper > Middle > Lower, near price'
+                        };
+                    }
+                },
+                {
+                    name: 'SMA',
+                    params: { period: 20 },
+                    validate: (d) => {
+                        const val = getLastValue(d.values?.values);
+                        return { 
+                            value: val?.toFixed(2), 
+                            valid: val > 100 && val < 500,
+                            expected: 'Near current price'
+                        };
+                    }
+                },
+                {
+                    name: 'EMA',
+                    params: { period: 20 },
+                    validate: (d) => {
+                        const val = getLastValue(d.values?.values);
+                        return { 
+                            value: val?.toFixed(2), 
+                            valid: val > 100 && val < 500,
+                            expected: 'Near current price'
+                        };
+                    }
+                }
+            ];
+
+            let html = '<table><tr><th>Indicator</th><th>Value</th><th>Expected</th><th>Status</th></tr>';
+
+            for (const test of tests) {
+                try {
+                    const result = await testIndicator(test.name, test.params, test.validate);
+                    const v = result.validation;
+                    html += `<tr>
+                        <td>${test.name}</td>
+                        <td>${v.value}</td>
+                        <td>${v.expected}</td>
+                        <td class="${v.valid ? 'success' : 'error'}">${v.valid ? '✅ PASS' : '❌ FAIL'}</td>
+                    </tr>`;
+                } catch (err) {
+                    html += `<tr>
+                        <td>${test.name}</td>
+                        <td colspan="2">${err.message}</td>
+                        <td class="error">❌ ERROR</td>
+                    </tr>`;
+                }
+            }
+
+            html += '</table>';
+            results.innerHTML += html;
+
+            // Market data test
+            results.innerHTML += '<h2>Market Data Test</h2>';
+            try {
+                const barsResp = await fetch('http://localhost:8000/api/v1/market-data/bars?symbol=AAPL&timeframe=1D&limit=10', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const barsData = await barsResp.json();
+                const bars = barsData.bars || barsData;
+                const lastBar = bars[bars.length - 1];
+                results.innerHTML += `<div class="card">
+                    <p class="success">✅ Received ${bars.length} bars</p>
+                    <p>Last bar date: <strong>${lastBar?.time || lastBar?.timestamp}</strong></p>
+                    <p>Last close: <strong>$${lastBar?.close?.toFixed(2)}</strong></p>
+                    <p class="info">Note: Jan 17-19, 2026 are non-trading days (weekend + MLK Day)</p>
+                </div>`;
+            } catch (err) {
+                results.innerHTML += `<p class="error">❌ Market data error: ${err.message}</p>`;
+            }
+        }
+    </script>
+</body>
+</html>

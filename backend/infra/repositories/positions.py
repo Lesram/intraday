@@ -3,11 +3,11 @@ Positions repository - tracks current portfolio positions.
 Implements async CRUD operations with proper error handling.
 """
 
-import logging
-import uuid
 from datetime import UTC, datetime
 from decimal import Decimal
+import logging
 from typing import Any
+import uuid
 
 from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError
@@ -443,17 +443,17 @@ class PositionsRepo:
     async def get_positions_by_user_id(self, user_id: str) -> list[dict[str, Any]]:
         """
         Get all positions for a specific user.
-        
+
         Args:
             user_id: User ID to fetch positions for
-            
+
         Returns:
             List of position dictionaries with required fields
         """
         # For now, return mock data since the existing schema doesn't have user_id
         # In a real implementation, this would filter by user_id
         all_positions = await self.get_all_positions()
-        
+
         # Transform to expected format
         result = []
         for position in all_positions:
@@ -464,5 +464,5 @@ class PositionsRepo:
                 "market_value": position.market_value or Decimal("0"),
                 "unrealized_pnl": position.unrealized_pnl or Decimal("0")
             })
-        
+
         return result

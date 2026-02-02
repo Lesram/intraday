@@ -3,8 +3,8 @@ Feature Engineering Pipeline for Technical Indicators & Feature Enrichment.
 Computes comprehensive technical indicators and market features for ML models.
 """
 
-import warnings
 from typing import Any
+import warnings
 
 import numpy as np
 import pandas as pd
@@ -660,7 +660,7 @@ class FeatureEngineer:
             )
         else:
             # Simplified trend strength indicator
-            price_range = df["high"] - df["low"]
+            df["high"] - df["low"]
             trend_up = (df["close"] > df["close"].shift(1)).rolling(window=14).sum()
             trend_down = (df["close"] < df["close"].shift(1)).rolling(window=14).sum()
             df["trend_strength"] = abs(trend_up - trend_down) / 14
@@ -1220,7 +1220,7 @@ def compute_all_features(df: pd.DataFrame, *, fast: bool = True) -> pd.DataFrame
             features = engineer.compute_all_features_comprehensive(df)
 
     # Record timing metrics
-    metrics = get_metrics_registry()
+    get_metrics_registry()
     # Metrics will be recorded by performance_logger context manager
 
     return features

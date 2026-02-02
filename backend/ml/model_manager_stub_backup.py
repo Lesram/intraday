@@ -9,12 +9,12 @@ from unittest.mock import Mock
 
 class ModelManager:
     """Model Manager stub class."""
-    
+
     def __init__(self):
         self.models = {}
         self.active_model = None
         self.model_registry = {}
-        
+
     def register_model(self, name: str, model: Any) -> None:
         """Register a model."""
         self.models[name] = model
@@ -24,25 +24,25 @@ class ModelManager:
             "status": "registered",
             "created_at": "2025-08-27T22:00:00Z"
         }
-        
+
     def get_model(self, name: str) -> Any:
         """Get a registered model."""
         return self.models.get(name, Mock())
-        
+
     def set_active_model(self, name: str) -> None:
         """Set the active model."""
         self.active_model = name
-        
+
     def get_active_model(self) -> Any:
         """Get the currently active model."""
         if self.active_model is not None and self.active_model in self.models:
             return self.models[self.active_model]
         return Mock()
-        
+
     def list_models(self) -> list[dict[str, Any]]:
         """List all registered models."""
         return list(self.model_registry.values())
-        
+
     def remove_model(self, name: str) -> bool:
         """Remove a model."""
         if name in self.models:
@@ -50,11 +50,11 @@ class ModelManager:
             del self.model_registry[name]
             return True
         return False
-        
+
     def get_model_info(self, name: str) -> dict[str, Any]:
         """Get model information."""
         return self.model_registry.get(name, {})
-        
+
     def train_model(self, name: str, training_data: Any) -> dict[str, Any]:
         """Train a model."""
         return {
@@ -64,7 +64,7 @@ class ModelManager:
             "accuracy": 0.85,
             "loss": 0.23
         }
-        
+
     def evaluate_model(self, name: str, test_data: Any) -> dict[str, Any]:
         """Evaluate a model."""
         return {
@@ -73,7 +73,7 @@ class ModelManager:
             "recall": 0.87,
             "f1_score": 0.85
         }
-        
+
     def predict_with_model(self, name: str, input_data: Any) -> dict[str, Any]:
         """Make predictions with a model."""
         return {
@@ -81,7 +81,7 @@ class ModelManager:
             "confidence": [0.85, 0.72, 0.91, 0.78, 0.83],
             "model_name": name
         }
-        
+
     def deploy_model(self, name: str, endpoint: str = None) -> dict[str, Any]:
         """Deploy model to production."""
         return {

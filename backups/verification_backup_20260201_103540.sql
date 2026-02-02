@@ -1,0 +1,3 @@
+-- Mock SQLite backup for testing
+-- Created: 2026-02-01T10:35:40.119554
+-- Database: trading_platform (test)

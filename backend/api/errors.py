@@ -18,19 +18,19 @@ event_logger = StandardEventLogger(__name__)
 # Standardized Error Classes
 class ErrorCodes:
     """Standard error codes used across the application."""
-    
+
     # Authentication & Authorization
     UNAUTHORIZED = "UNAUTHORIZED"
-    FORBIDDEN = "FORBIDDEN" 
+    FORBIDDEN = "FORBIDDEN"
     TOKEN_EXPIRED = "TOKEN_EXPIRED"
     INVALID_CREDENTIALS = "INVALID_CREDENTIALS"
-    
+
     # Validation
     VALIDATION_ERROR = "VALIDATION_ERROR"
     INVALID_INPUT = "INVALID_INPUT"
     MISSING_FIELD = "MISSING_FIELD"
     INVALID_FORMAT = "INVALID_FORMAT"
-    
+
     # Business Logic
     INSUFFICIENT_FUNDS = "INSUFFICIENT_FUNDS"
     RISK_LIMIT_EXCEEDED = "RISK_LIMIT_EXCEEDED"
@@ -38,7 +38,7 @@ class ErrorCodes:
     DUPLICATE_ORDER = "DUPLICATE_ORDER"
     MARKET_CLOSED = "MARKET_CLOSED"
     INVALID_SYMBOL = "INVALID_SYMBOL"
-    
+
     # System
     INTERNAL_ERROR = "INTERNAL_ERROR"
     SERVICE_UNAVAILABLE = "SERVICE_UNAVAILABLE"
@@ -52,9 +52,9 @@ class APIError(Exception):
     Base API error with standardized format.
     Use this for raising errors that should be returned to clients.
     """
-    
+
     def __init__(
-        self, 
+        self,
         code: str,
         message: str,
         status_code: int = status.HTTP_400_BAD_REQUEST,
@@ -62,7 +62,7 @@ class APIError(Exception):
         context: dict[str, Any] | None = None
     ):
         self.code = code
-        self.message = message 
+        self.message = message
         self.status_code = status_code
         self.field = field
         self.context = context or {}
@@ -71,10 +71,10 @@ class APIError(Exception):
 
 class RiskError(APIError):
     """Risk management error with detailed context."""
-    
+
     def __init__(
-        self, 
-        message: str, 
+        self,
+        message: str,
         issues: list[str] = None,
         warnings: list[str] = None,
         risk_score: float = None,
@@ -86,11 +86,11 @@ class RiskError(APIError):
             "warnings": warnings or [],
             "risk_score": risk_score
         })
-        
+
         super().__init__(
             code=ErrorCodes.RISK_LIMIT_EXCEEDED,
             message=message,
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             context=risk_context
         )
 
@@ -98,11 +98,11 @@ class RiskError(APIError):
 def install_error_handlers(app: FastAPI) -> None:
     """
     Install standardized error handlers on the FastAPI app.
-    
+
     Args:
         app: FastAPI application instance
     """
-    
+
     @app.exception_handler(RequestValidationError)
     async def validation_error_handler(
         request: Request, exc: RequestValidationError
@@ -123,14 +123,14 @@ def install_error_handlers(app: FastAPI) -> None:
             return create_error_response(
                 error_type="validation_error",
                 detail=details,
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             )
         else:
             return JSONResponse(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                 content={"detail": exc.errors()},
             )
-    
+
     @app.exception_handler(APIError)
     async def api_error_handler(request: Request, exc: APIError) -> JSONResponse:
         """Handle APIError instances with standardized format."""
@@ -144,7 +144,7 @@ def install_error_handlers(app: FastAPI) -> None:
             field=exc.field,
             context=exc.context
         )
-        
+
         return create_api_error_response(exc, request)
 
     @app.exception_handler(HTTPException)
@@ -170,39 +170,53 @@ def install_error_handlers(app: FastAPI) -> None:
                 status_code=exc.status_code,
                 content={"detail": exc.detail},
             )
-    
+
     @app.exception_handler(Exception)
     async def catch_all_handler(
         request: Request, exc: Exception
     ) -> JSONResponse:
         """
-        Catch-all handler for unexpected exceptions.
+        M-23 FIX: Catch-all handler for unexpected exceptions.
         Returns 500 with generic error message to avoid exposing internals.
-        """
-        # Log the full exception for debugging
-        logging.exception(f"Unhandled exception in {request.method} {request.url}: {exc}")
         
-        # Return generic error response with standardized envelope
+        SECURITY: Do NOT return str(exc) to clients as it may contain:
+        - Database schema/table names
+        - File paths
+        - Internal service names
+        - Stack traces
+        """
+        import uuid
+        
+        # Generate unique error ID for correlation
+        error_id = str(uuid.uuid4())[:8]
+        
+        # Log the full exception for debugging (server-side only)
+        logging.exception(
+            f"Unhandled exception [{error_id}] in {request.method} {request.url}: {exc}"
+        )
+
+        # M-23 FIX: Return generic error message to clients
+        # Do NOT expose internal exception details
         return create_error_response(
-            error_type=type(exc).__name__,
-            detail=str(exc),
+            error_type="internal_error",
+            detail=f"An internal error occurred. Reference ID: {error_id}",
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
 
 
 def create_error_response(
-    error_type: str, 
-    detail: Any, 
+    error_type: str,
+    detail: Any,
     status_code: int = 500
 ) -> JSONResponse:
     """
     Create a standardized error response.
-    
+
     Args:
         error_type: Type of error (e.g., "validation_error", "internal_error")
         detail: Error details (can be string, dict, or list)
         status_code: HTTP status code
-        
+
     Returns:
         JSONResponse with standardized error format
     """
@@ -221,16 +235,16 @@ def create_error_response(
 def create_api_error_response(error: APIError, request: Request) -> JSONResponse:
     """
     Create standardized error response for APIError instances.
-    
+
     Args:
         error: APIError instance
         request: FastAPI request object
-        
+
     Returns:
         JSONResponse with enhanced standardized error format
     """
     from datetime import datetime
-    
+
     error_content = {
         "detail": error.message,  # Top-level detail for compatibility
         "error": {
@@ -239,18 +253,18 @@ def create_api_error_response(error: APIError, request: Request) -> JSONResponse
             "type": type(error).__name__,
         }
     }
-    
+
     # Add optional fields if present
     if error.field:
         error_content["error"]["field"] = error.field
-    
+
     if error.context:
         error_content["error"]["context"] = error.context
-        
+
     # Add request metadata
     error_content["error"]["timestamp"] = datetime.now().isoformat()
     error_content["error"]["path"] = str(request.url.path)
-    
+
     return JSONResponse(
         status_code=error.status_code,
         content=error_content
@@ -260,10 +274,10 @@ def create_api_error_response(error: APIError, request: Request) -> JSONResponse
 def format_validation_errors(errors: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """
     Format Pydantic validation errors into a consistent structure.
-    
+
     Args:
         errors: List of Pydantic error dictionaries
-        
+
     Returns:
         List of formatted error dictionaries
     """
@@ -287,7 +301,7 @@ def format_validation_errors(errors: list[dict[str, Any]]) -> list[dict[str, Any
             else:
                 formatted_error["input"] = input_value
         formatted_errors.append(formatted_error)
-    
+
     return formatted_errors
 
 # Test error endpoints router
@@ -296,27 +310,27 @@ from fastapi import APIRouter
 router = APIRouter(prefix="/test", tags=["test-errors"])
 
 @router.get("/http-401")
-def http_401(): 
+def http_401():
     raise HTTPException(401, detail="Authentication required")
 
 @router.get("/http-403")
-def http_403(): 
+def http_403():
     raise HTTPException(403, detail="Forbidden")
 
 @router.get("/http-422")
-def http_422(): 
+def http_422():
     raise HTTPException(422, detail="Invalid request")
 
 @router.get("/http-500")
-def http_500(): 
+def http_500():
     raise HTTPException(500, detail="Server error")
 
 
 # Helper functions for common error creation
 def risk_error(
-    message: str, 
+    message: str,
     issues: list[str] = None,
-    warnings: list[str] = None, 
+    warnings: list[str] = None,
     risk_score: float = None,
     context: dict[str, Any] = None
 ) -> RiskError:
@@ -335,18 +349,18 @@ def validation_error(field: str, message: str, context: dict[str, Any] = None) -
     return APIError(
         code=ErrorCodes.VALIDATION_ERROR,
         message=message,
-        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
         field=field,
         context=context
     )
 
 
 def business_error(code: str, message: str, context: dict[str, Any] = None) -> APIError:
-    """Create business logic error.""" 
+    """Create business logic error."""
     return APIError(
         code=code,
         message=message,
-        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
         context=context
     )
 
@@ -356,9 +370,9 @@ def not_found_error(resource: str, identifier: str = None) -> APIError:
     message = f"{resource} not found"
     if identifier:
         message += f": {identifier}"
-        
+
     return APIError(
-        code="NOT_FOUND", 
+        code="NOT_FOUND",
         message=message,
         status_code=status.HTTP_404_NOT_FOUND,
         context={"resource": resource, "identifier": identifier}

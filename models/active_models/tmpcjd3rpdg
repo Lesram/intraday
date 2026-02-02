@@ -1,0 +1,9 @@
+{
+  "extra": {
+    "promotion_mode": "monthly_review"
+  },
+  "feature_columns": null,
+  "name": "bad_metrics_model",
+  "path": "<MagicMock name='mock.path' id='2776412925504'>",
+  "target_kind": "direction_up",
+  "trained_at": 

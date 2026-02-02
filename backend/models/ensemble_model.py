@@ -3,10 +3,10 @@ AI/ML Ensemble Modeling System
 Combines LSTM, XGBoost, and RandomForest for comprehensive price prediction
 """
 
-import logging
-import os
 from dataclasses import dataclass
 from datetime import datetime
+import logging
+import os
 from typing import Any
 
 # Infrastructure compatibility stubs
@@ -14,38 +14,38 @@ from typing import Any
 
 class StandardScaler:
     """StandardScaler stub for test compatibility."""
-    
+
     def fit(self, X):
         """Fit scaler to data."""
         return self
-        
+
     def transform(self, X):
         """Transform data."""
         return X
-        
+
     def fit_transform(self, X):
         """Fit and transform data."""
         return X
-        
+
     def inverse_transform(self, X):
         """Inverse transform data."""
         return X
 
 class ModelStub:
     """Model stub for test compatibility."""
-    
+
     def __init__(self):
         self.is_trained = False
-        
+
     def fit(self, X, y):
         """Fit model."""
         self.is_trained = True
         return self
-        
+
     def predict(self, X):
         """Make predictions."""
         return [1] * len(X)
-        
+
     def predict_proba(self, X):
         """Predict probabilities."""
         return [[0.3, 0.7]] * len(X)
@@ -70,7 +70,6 @@ SKLEARN_AVAILABLE = False
 # Skip heavy imports during testing on Windows to prevent hangs
 if not DISABLE_ML and not os.environ.get('DISABLE_TENSORFLOW') and not os.environ.get('PYTEST_RUNNING'):
     try:
-        import tensorflow as tf
         from tensorflow import keras
         from tensorflow.keras import layers
         TENSORFLOW_AVAILABLE = True
@@ -84,9 +83,8 @@ if not DISABLE_ML:
     try:
         import joblib
         from sklearn.ensemble import RandomForestRegressor
-        from sklearn.metrics import mean_absolute_error, mean_squared_error
+        from sklearn.metrics import mean_squared_error
         from sklearn.model_selection import TimeSeriesSplit
-        from sklearn.preprocessing import StandardScaler
 
         SKLEARN_AVAILABLE = True
         JOBLIB_AVAILABLE = True
@@ -113,11 +111,13 @@ else:
     XGBOOST_AVAILABLE = False
 
 from ..config import get_settings
+from ..ml.active_model_pointer import load_active_model_pointer
 from ..utils.logger import audit_logger
+from ..utils.secure_pickle import secure_load_from_path
 
 # Import MLOps components with fallback for backward compatibility
 try:
-    from ..mlops import SchemaMismatchError, get_model_manager
+    from ..mlops import SchemaMismatchError
 
     MLOPS_AVAILABLE = True
 
@@ -149,7 +149,7 @@ except ImportError as e:
 # Import feature pipeline components (Branch 2.9)
 try:
     from ..features.alignment import align_features_target
-    from ..features.types import FeatureFrame, FeatureSchema, SchemaValidationError
+    from ..features.types import SchemaValidationError
     from ..features.validators import guard_no_lookahead
 
     FEATURE_PIPELINE_AVAILABLE = True
@@ -163,20 +163,20 @@ class _NoOpModel:
     """Base no-op model for test mode"""
     def __init__(self, *args, **kwargs):
         self.is_trained = False
-        
+
     async def train(self, *args, **kwargs):
         """No-op training method"""
         self.is_trained = True
         return True
-        
+
     def predict(self, *args, **kwargs):
         """No-op prediction method"""
         return (0.0, 0.1)  # price, confidence
-        
+
     def save_model(self, *args, **kwargs):
         """No-op save method"""
         pass
-        
+
     def load_model(self, *args, **kwargs):
         """No-op load method"""
         return True
@@ -200,7 +200,7 @@ MODEL_AVAILABILITY = {
 @dataclass
 class EnsembleTrainingConfig:
     """Configuration for ensemble model training"""
-    
+
     lstm_epochs: int = 20
     xgboost_rounds: int = 150
     random_forest_trees: int = 100
@@ -211,32 +211,19 @@ class EnsembleTrainingConfig:
     random_state: int = 42
 
 
-@dataclass
-class ModelPrediction:
-    """Container for model predictions"""
-
-    symbol: str
-    timestamp: datetime
-    predictions: dict[str, float]  # model_name -> prediction
-    confidence_scores: dict[str, float]  # model_name -> confidence
-    ensemble_prediction: float
-    ensemble_confidence: float
-    metadata: dict[str, Any]
-
-
 class ModelPrediction:
     """
     ModelPrediction class supporting both legacy and new interfaces.
     """
-    def __init__(self, price: float = None, confidence: float = None, model_name: str = None, 
+    def __init__(self, price: float = None, confidence: float = None, model_name: str = None,
                  symbol: str = None, timestamp=None, predictions=None, confidence_scores=None,
-                 ensemble_prediction: float = None, ensemble_confidence: float = None, 
+                 ensemble_prediction: float = None, ensemble_confidence: float = None,
                  metadata=None, features_used=None, value: float = None, **kwargs):
-        
+
         # Handle 'value' parameter for test compatibility
         if value is not None:
             price = value
-        
+
         if price is not None:
             # Legacy interface - simple prediction object
             self.price = price
@@ -253,10 +240,10 @@ class ModelPrediction:
             self.ensemble_prediction = ensemble_prediction or 0.0
             self.ensemble_confidence = ensemble_confidence or 0.0
             self.metadata = metadata or {}
-            
+
         # Additional compatibility attributes for tests
         self.model_version = kwargs.get('model_version', 'v1.0')
-    
+
     @property
     def value(self):
         """Compatibility property for tests expecting 'value' attribute."""
@@ -277,7 +264,7 @@ def get_model_fallback_predictions(data, symbol: str):
             confidence=0.5,
             model_name="fallback_default"
         )
-    
+
     # Simple moving average fallback
     if 'price' in data.columns:
         recent_price = data['price'].iloc[-1] if len(data) > 0 else 100.0
@@ -285,7 +272,7 @@ def get_model_fallback_predictions(data, symbol: str):
         predicted_price = recent_price * 1.001
     else:
         predicted_price = 100.0
-    
+
     return ModelPrediction(
         price=predicted_price,
         confidence=0.6,
@@ -300,23 +287,23 @@ def validate_prediction_consistency(predictions):
     """
     if not predictions or len(predictions) <= 1:
         return True
-    
+
     prices = [p.price for p in predictions if hasattr(p, 'price')]
     if not prices:
         return True
-    
+
     # Calculate coefficient of variation (std dev / mean)
     import statistics
     if len(prices) < 2:
         return True
-        
+
     mean_price = statistics.mean(prices)
     if mean_price == 0:
         return True
-        
+
     std_dev = statistics.stdev(prices)
     coefficient_of_variation = std_dev / mean_price
-    
+
     # Consider consistent if CoV is less than 10%
     return coefficient_of_variation < 0.1
 
@@ -696,6 +683,93 @@ class EnsembleModel:
             "weights": self.weights.copy(),
         }
 
+        # Cache for the most recent trained artifact used for live inference.
+        self._active_artifact_cache: dict[str, tuple[str, Any]] = {}
+
+    def _predict_with_active_trained_model(
+        self,
+        *,
+        symbol: str,
+        features: pd.DataFrame,
+    ) -> tuple[float, float, dict[str, Any]] | None:
+        """Try to predict using the latest trained artifact pointer.
+
+        Returns (prediction, confidence, metadata) or None if not available.
+        """
+        # Opt-in guard: when ENABLE_ML_MODELS isn't set, strategies load a stub anyway.
+        if os.getenv("ENABLE_ML_MODELS", "").lower() not in ("1", "true", "yes"):
+            return None
+
+        model_name = (os.getenv("LIVE_MODEL_NAME") or "").strip()
+        candidate_names = [n for n in [symbol, model_name, "market_model"] if n]
+
+        info = None
+        for name in candidate_names:
+            info = load_active_model_pointer(name)
+            if info and info.path:
+                break
+
+        if not info or not info.path:
+            return None
+
+        # Load (or re-use) model.
+        cache_key = info.name
+        cached = self._active_artifact_cache.get(cache_key)
+        model_obj = None
+        if cached and cached[0] == info.path:
+            model_obj = cached[1]
+        else:
+            model_obj = secure_load_from_path(info.path, allow_unsigned=True)
+            self._active_artifact_cache[cache_key] = (info.path, model_obj)
+
+        if not hasattr(model_obj, "predict"):
+            return None
+
+        # Build inference frame: single latest row.
+        X = features.tail(1).copy()
+        if info.feature_columns:
+            expected = list(info.feature_columns)
+            missing = [c for c in expected if c not in X.columns]
+            extra = [c for c in X.columns if c not in expected]
+            if missing or extra:
+                logging.error(
+                    "Active trained model feature schema mismatch",
+                    extra={
+                        "model": info.name,
+                        "version": info.version,
+                        "missing": missing,
+                        "extra": extra,
+                    },
+                )
+                return 0.0, 0.0, {"active_model_used": False, "reason": "schema_mismatch"}
+            X = X[expected]
+
+        # Only use regression-to-price targets for trading signals.
+        if info.target_kind and info.target_kind not in {"next_close", "regression"}:
+            return None
+
+        pred = model_obj.predict(X)
+        pred_value = float(pred[0])
+
+        confidence = 0.75
+        if hasattr(model_obj, "predict_proba"):
+            try:
+                proba = model_obj.predict_proba(X)[0]
+                confidence = float(max(proba))
+            except Exception:
+                confidence = 0.75
+
+        md = {
+            "active_model_used": True,
+            "active_model_name": info.name,
+            "active_model_version": info.version,
+            "active_model_path": info.path,
+            "active_model_trained_at": info.trained_at,
+            "active_model_target_kind": info.target_kind,
+        }
+
+        return pred_value, confidence, md
+
     # --- Minimal test-friendly interfaces ---
     def evaluate(self, features: pd.DataFrame, targets: pd.Series | pd.DataFrame | list | None) -> dict[str, Any]:
         """Lightweight evaluation returning a metrics dict expected by tests.
@@ -838,7 +912,7 @@ class EnsembleModel:
         except Exception as e:
             logging.warning(f"XGBoost training failed: {e}")
             results["xgboost"] = False
-            
+
         try:
             results["random_forest"] = await self.models["random_forest"].train(
                 features_aligned, target_aligned
@@ -860,6 +934,42 @@ class EnsembleModel:
         start_time = datetime.now()
         predictions = {}
         confidences = {}
+
+        # Prefer the explicitly trained live artifact when available.
+        try:
+            active_pred = self._predict_with_active_trained_model(symbol=symbol, features=features)
+        except Exception as e:
+            logging.error(f"Active trained model inference failed: {e}")
+            active_pred = None
+
+        if active_pred is not None:
+            pred_value, conf_value, active_md = active_pred
+            result = ModelPrediction(
+                symbol=symbol,
+                timestamp=datetime.now(),
+                predictions={"active_trained_model": pred_value},
+                confidence_scores={"active_trained_model": conf_value},
+                ensemble_prediction=pred_value,
+                ensemble_confidence=conf_value,
+                metadata={
+                    **active_md,
+                    "processing_time_ms": (datetime.now() - start_time).total_seconds() * 1000,
+                    "data_shape": {
+                        "price_rows": len(price_data),
+                        "feature_cols": len(features.columns),
+                    },
+                },
+            )
+
+            audit_logger.info(
+                "ensemble_prediction_generated",
+                symbol=symbol,
+                prediction=pred_value,
+                confidence=conf_value,
+                individual_predictions={"active_trained_model": pred_value},
+            )
+
+            return result
 
         # Branch 2.9: Feature validation and alignment
         if FEATURE_PIPELINE_AVAILABLE:
@@ -994,7 +1104,7 @@ class EnsembleModel:
         )
 
         ensemble_prediction = weighted_sum / weight_sum if weight_sum > 0 else 0.0
-        
+
         # Calculate confidence as weighted average of individual confidences
         confidence_weighted_sum = sum(
             confidences[model] * self.weights[model]
@@ -1004,7 +1114,7 @@ class EnsembleModel:
 
         # Add processing time to metadata
         processing_time_ms = (datetime.now() - start_time).total_seconds() * 1000
-        
+
         result = ModelPrediction(
             symbol=symbol,
             timestamp=datetime.now(),
@@ -1351,7 +1461,7 @@ class EnsembleModel:
                     artifacts[f"{model_name_key}_trained"] = False
 
             # Get feature dtypes
-            feature_dtypes = {col: str(features[col].dtype) for col in features.columns}
+            {col: str(features[col].dtype) for col in features.columns}
 
             # Register with MLOps registry
             model_version = self.model_manager.registry.register_model(

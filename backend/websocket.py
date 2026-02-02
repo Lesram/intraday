@@ -2,11 +2,11 @@
 WebSocket client management and message broadcasting.
 """
 
-import json
-import logging
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import UTC, datetime
+import json
+import logging
 from typing import Any
 
 from fastapi import WebSocket, WebSocketDisconnect
@@ -23,14 +23,14 @@ class WebSocketClient:
     subscriptions: set[str]
     queue_size: int = 100
     message_queue: list[dict] = None
-    
+
     def __post_init__(self):
         if self.message_queue is None:
             self.message_queue = []
 
 class WebSocketClientManager:
     """Manages WebSocket client connections and message broadcasting."""
-    
+
     def __init__(self, max_queue_size: int = 100, client_ttl: int = 300):
         self.clients: dict[str, WebSocketClient] = {}
         self.subscriptions: dict[str, set[str]] = defaultdict(set)
@@ -42,7 +42,7 @@ class WebSocketClientManager:
             'messages_sent_total': 0,
             'messages_dropped_total': 0
         }
-    
+
     def register_client(self, websocket: WebSocket, client_id: str) -> WebSocketClient:
         """Register a new WebSocket client."""
         now = datetime.now(UTC)
@@ -54,12 +54,12 @@ class WebSocketClientManager:
             subscriptions=set(),
             queue_size=self.max_queue_size
         )
-        
+
         self.clients[client_id] = client
         self.metrics['connections_total'] += 1
         logger.info(f"Registered WebSocket client: {client_id}")
         return client
-    
+
     def unregister_client(self, client_id: str) -> bool:
         """Unregister a WebSocket client."""
         if client_id in self.clients:
@@ -67,35 +67,35 @@ class WebSocketClientManager:
             # Remove from subscriptions
             for topic in client.subscriptions:
                 self.subscriptions[topic].discard(client_id)
-            
+
             del self.clients[client_id]
             self.metrics['disconnections_total'] += 1
             logger.info(f"Unregistered WebSocket client: {client_id}")
             return True
         return False
-    
+
     def subscribe_client(self, client_id: str, topic: str):
         """Subscribe client to a topic."""
         if client_id in self.clients:
             self.clients[client_id].subscriptions.add(topic)
             self.subscriptions[topic].add(client_id)
             logger.debug(f"Client {client_id} subscribed to {topic}")
-    
+
     def unsubscribe_client(self, client_id: str, topic: str):
         """Unsubscribe client from a topic."""
         if client_id in self.clients:
             self.clients[client_id].subscriptions.discard(topic)
             self.subscriptions[topic].discard(client_id)
             logger.debug(f"Client {client_id} unsubscribed from {topic}")
-    
+
     async def broadcast_to_all(self, message: dict[str, Any]):
         """Broadcast message to all connected clients."""
         if not self.clients:
             return
-        
+
         message_str = json.dumps(message)
         disconnected_clients = []
-        
+
         for client_id, client in self.clients.items():
             try:
                 await client.websocket.send_text(message_str)
@@ -106,24 +106,24 @@ class WebSocketClientManager:
             except Exception as e:
                 logger.error(f"Error sending message to client {client_id}: {e}")
                 disconnected_clients.append(client_id)
-        
+
         # Clean up disconnected clients
         for client_id in disconnected_clients:
             self.unregister_client(client_id)
-    
+
     async def broadcast_to_topic(self, topic: str, message: dict[str, Any]):
         """Broadcast message to clients subscribed to a topic."""
         client_ids = self.subscriptions.get(topic, set())
         if not client_ids:
             return
-        
+
         message_str = json.dumps(message)
         disconnected_clients = []
-        
+
         for client_id in client_ids:
             if client_id not in self.clients:
                 continue
-            
+
             client = self.clients[client_id]
             try:
                 # Check queue size for backpressure management
@@ -131,7 +131,7 @@ class WebSocketClientManager:
                     # Drop oldest message
                     client.message_queue.pop(0)
                     self.metrics['messages_dropped_total'] += 1
-                
+
                 await client.websocket.send_text(message_str)
                 client.last_seen = datetime.now(UTC)
                 self.metrics['messages_sent_total'] += 1
@@ -140,17 +140,17 @@ class WebSocketClientManager:
             except Exception as e:
                 logger.error(f"Error sending message to client {client_id}: {e}")
                 disconnected_clients.append(client_id)
-        
+
         # Clean up disconnected clients
         for client_id in disconnected_clients:
             self.unregister_client(client_id)
-    
+
     async def send_to_client(self, client_id: str, message: dict[str, Any]):
         """Send message to a specific client."""
         if client_id not in self.clients:
             logger.warning(f"Client {client_id} not found")
             return False
-        
+
         client = self.clients[client_id]
         try:
             message_str = json.dumps(message)
@@ -164,33 +164,33 @@ class WebSocketClientManager:
         except Exception as e:
             logger.error(f"Error sending message to client {client_id}: {e}")
             return False
-    
+
     def get_statistics(self) -> dict[str, Any]:
         """Get WebSocket manager statistics."""
         return {
             'active_clients': len(self.clients),
             'client_count': len(self.clients),  # Alternative name for tests
             'total_clients': len(self.clients),  # Another alternative
-            'total_connections': len(self.clients),  # Another alternative  
+            'total_connections': len(self.clients),  # Another alternative
             'total_subscriptions': sum(len(subs) for subs in self.subscriptions.values()),
             'heartbeat_interval': 30,
             'queue_max': 100,
             'metrics': self.metrics.copy()
         }
-    
+
     def cleanup_stale_clients(self):
         """Remove stale clients based on TTL."""
         now = datetime.now(UTC)
         stale_clients = []
-        
+
         for client_id, client in self.clients.items():
             if (now - client.last_seen).total_seconds() > self.client_ttl:
                 stale_clients.append(client_id)
-        
+
         for client_id in stale_clients:
             self.unregister_client(client_id)
             logger.info(f"Removed stale client: {client_id}")
-    
+
     def get_client_count(self) -> int:
         """Get the number of active clients."""
         return len(self.clients)

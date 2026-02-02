@@ -2,9 +2,11 @@
 API v1 Portfolio endpoints.
 """
 
+import asyncio
+from datetime import UTC, datetime
+from decimal import Decimal
 import logging
 import traceback
-from decimal import Decimal
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -24,23 +26,23 @@ router = APIRouter(prefix="/portfolio", tags=["portfolio"])
 class PortfolioSummary(BaseModel):
     """Portfolio summary response."""
     model_config = ConfigDict(populate_by_name=True)
-    
+
     # Core portfolio metrics
     totalEquity: float
     cash: float
     buyingPower: float
     marginUsed: float = 0.0
     maintenanceMargin: float = 0.0
-    
+
     # P&L metrics
     totalPnL: float
     totalPnLPercent: float = 0.0
     dayPnL: float
     dayPnLPercent: float = 0.0
-    
+
     # Position summary
     positions: list = []
-    
+
     # Metadata
     userId: str | None = None
     lastUpdate: str
@@ -56,16 +58,16 @@ async def get_portfolio(
         # Get user ID (use username as fallback)
         user_id = get_user_id(user) or (user.username if hasattr(user, 'username') else None)
         logger.info(f"[PORTFOLIO] Getting portfolio for user_id: {user_id}, user type: {type(user)}, user: {user}")
-        
+
         # Get portfolio service
         portfolio_service = get_portfolio_service()
         logger.info(f"[PORTFOLIO] Portfolio service created: {portfolio_service}")
-        
+
         # Fetch real portfolio data
         logger.info(f"[PORTFOLIO] Calling get_user_portfolio({user_id})...")
         portfolio_data = await portfolio_service.get_user_portfolio(user_id)
         logger.info(f"[PORTFOLIO] Portfolio data received: {portfolio_data}")
-        
+
         return PortfolioSummary(
             totalEquity=portfolio_data['totalEquity'],
             cash=portfolio_data['cash'],
@@ -95,7 +97,7 @@ async def get_portfolio_history(
     user=Depends(get_authenticated_user),
 ) -> list[dict[str, Any]]:
     """Get portfolio value history with optional date range filtering.
-    
+
     Args:
         start_date: Start date (ISO format)
         end_date: End date (ISO format)
@@ -104,15 +106,15 @@ async def get_portfolio_history(
     try:
         # Get user ID
         user_id = get_user_id(user)
-        
+
         # Get portfolio service
         portfolio_service = get_portfolio_service()
-        
+
         # Fetch historical data
         history = await portfolio_service.get_portfolio_history(
             user_id, start_date, end_date, interval
         )
-        
+
         return history
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to fetch portfolio history: {str(e)}")
@@ -120,7 +122,7 @@ async def get_portfolio_history(
 
 class PositionResponse(BaseModel):
     model_config = ConfigDict()
-    
+
     symbol: str
     qty: Decimal
     avg_price: Decimal
@@ -142,16 +144,16 @@ async def get_position_by_symbol(
     try:
         # Get user ID
         user_id = get_user_id(user)
-        
+
         # Get portfolio service
         portfolio_service = get_portfolio_service()
-        
+
         # Fetch position
         position = await portfolio_service.get_position_by_symbol(user_id, symbol)
-        
+
         if not position:
             raise HTTPException(status_code=404, detail=f"Position {symbol} not found")
-        
+
         return PositionResponse(
             symbol=position['symbol'],
             qty=Decimal(str(position['qty'])),
@@ -235,7 +237,7 @@ async def get_performance(
     """Get portfolio performance metrics."""
     from backend.utils.logger import get_logger
     logger = get_logger(__name__)
-    
+
     try:
         # Mock performance data for tests
         return {
@@ -252,3 +254,301 @@ async def get_performance(
     except Exception as e:
         logger.error(f"Failed to get performance metrics: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to get performance metrics")
+
+
+@router.post("/sync")
+async def sync_portfolio_from_alpaca(
+    request: Request,
+    user=Depends(get_authenticated_user),
+) -> dict:
+    """
+    Sync portfolio data from Alpaca broker.
+
+    Fetches current account balance, buying power, and positions from Alpaca
+    and updates the local database. Also broadcasts updates via WebSocket.
+
+    Returns:
+        Dict with sync results including portfolio summary and positions
+    """
+    try:
+        # Get user ID
+        user_id = get_user_id(user) or (user.username if hasattr(user, 'username') else None)
+        logger.info(f"[SYNC] Starting portfolio sync from Alpaca for user: {user_id}")
+
+        # Import sync service
+        from backend.services.portfolio_sync_service import get_portfolio_sync_service
+        sync_service = get_portfolio_sync_service()
+
+        # Perform sync
+        sync_result = await sync_service.sync_full_portfolio(user_id)
+
+        if not sync_result.get("success"):
+            raise HTTPException(
+                status_code=502,
+                detail=f"Failed to sync from Alpaca: {sync_result.get('error')}"
+            )
+
+        logger.info(f"[SYNC] Successfully synced portfolio for user {user_id}")
+
+        # Broadcast updated portfolio via WebSocket
+        try:
+            from backend.api.socketio_server import broadcast_portfolio_update
+            portfolio_data = sync_result.get("portfolio", {})
+            await broadcast_portfolio_update(user_id, portfolio_data)
+            logger.info("[SYNC] Broadcasted portfolio update via WebSocket")
+        except Exception as ws_error:
+            logger.warning(f"[SYNC] Failed to broadcast WebSocket update: {ws_error}")
+
+        return {
+            "success": True,
+            "message": "Portfolio synced successfully from Alpaca",
+            "data": sync_result
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[SYNC] Unexpected error: {type(e).__name__}: {str(e)}")
+        logger.error(f"[SYNC] Traceback:\n{traceback.format_exc()}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to sync portfolio: {str(e)}"
+        )
+
+
+@router.post("/test-broadcast")
+async def test_broadcast_portfolio(
+    user=Depends(get_authenticated_user),
+) -> dict[str, Any]:
+    """
+    TEST ENDPOINT: Trigger WebSocket portfolio broadcast
+    This endpoint broadcasts test portfolio updates to verify WebSocket functionality.
+    """
+    import asyncio
+    from datetime import datetime
+
+    from backend.api.socketio_server import broadcast_portfolio_update
+
+    user_id = user.username
+    logger.info(f"🧪 TEST: Broadcasting portfolio updates to user: {user_id}")
+
+    try:
+        # Test 1: Initial state
+        await broadcast_portfolio_update(user_id, {
+            'totalEquity': 100000.0,
+            'cash': 100000.0,
+            'buyingPower': 100000.0,
+            'marginUsed': 0.0,
+            'maintenanceMargin': 0.0,
+            'totalPnL': 0.0,
+            'totalPnLPercent': 0.0,
+            'dayPnL': 0.0,
+            'dayPnLPercent': 0.0,
+            'positions': [],
+            'userId': user_id,
+            'lastUpdate': datetime.now(UTC).isoformat()
+        })
+        await asyncio.sleep(2)
+
+        # Test 2: With profit
+        await broadcast_portfolio_update(user_id, {
+            'totalEquity': 105000.0,
+            'cash': 95000.0,
+            'buyingPower': 95000.0,
+            'marginUsed': 0.0,
+            'maintenanceMargin': 0.0,
+            'totalPnL': 5000.0,
+            'totalPnLPercent': 5.0,
+            'dayPnL': 5000.0,
+            'dayPnLPercent': 5.0,
+            'positions': [{
+                'symbol': 'AAPL',
+                'quantity': 100,
+                'avgPrice': 100.0,
+                'currentPrice': 150.0,
+                'marketValue': 15000.0,
+                'unrealizedPnL': 5000.0,
+                'unrealizedPnLPercent': 50.0
+            }],
+            'userId': user_id,
+            'lastUpdate': datetime.now(UTC).isoformat()
+        })
+        await asyncio.sleep(2)
+
+        # Test 3: With loss
+        await broadcast_portfolio_update(user_id, {
+            'totalEquity': 103000.0,
+            'cash': 95000.0,
+            'buyingPower': 95000.0,
+            'marginUsed': 0.0,
+            'maintenanceMargin': 0.0,
+            'totalPnL': 3000.0,
+            'totalPnLPercent': 3.0,
+            'dayPnL': -2000.0,
+            'dayPnLPercent': -1.9,
+            'positions': [{
+                'symbol': 'AAPL',
+                'quantity': 100,
+                'avgPrice': 100.0,
+                'currentPrice': 130.0,
+                'marketValue': 13000.0,
+                'unrealizedPnL': 3000.0,
+                'unrealizedPnLPercent': 30.0
+            }],
+            'userId': user_id,
+            'lastUpdate': datetime.now(UTC).isoformat()
+        })
+        await asyncio.sleep(2)
+
+        # Test 4: Reset
+        await broadcast_portfolio_update(user_id, {
+            'totalEquity': 100000.0,
+            'cash': 100000.0,
+            'buyingPower': 100000.0,
+            'marginUsed': 0.0,
+            'maintenanceMargin': 0.0,
+            'totalPnL': 0.0,
+            'totalPnLPercent': 0.0,
+            'dayPnL': 0.0,
+            'dayPnLPercent': 0.0,
+            'positions': [],
+            'userId': user_id,
+            'lastUpdate': datetime.now(UTC).isoformat()
+        })
+
+        logger.info("✅ TEST: Successfully sent 4 portfolio broadcasts")
+        return {
+            "success": True,
+            "message": "Sent 4 portfolio updates via WebSocket",
+            "user_id": user_id
+        }
+
+    except Exception as e:
+        logger.error(f"❌ TEST: Failed to broadcast: {e}")
+        logger.error(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=f"Broadcast failed: {str(e)}")
+
+
+@router.post("/test-simple-broadcast")
+async def test_simple_broadcast(
+    target_value: float = 105000.0,
+    user=Depends(get_authenticated_user)
+):
+    """
+    Simple test: Broadcast ONE portfolio update with custom value to ALL clients.
+    Usage: POST /api/v1/portfolio/test-simple-broadcast?target_value=105000
+    """
+    try:
+        from backend.api.socketio_server import client_subscriptions, sio
+
+        # Get all connected clients
+        all_clients = list(client_subscriptions.keys())
+        logger.info(f"🎯 SIMPLE TEST: Broadcasting ${target_value:,.2f} to {len(all_clients)} clients")
+
+        portfolio_data = {
+            'totalEquity': target_value,
+            'cash': target_value,
+            'buyingPower': target_value,
+            'marginUsed': 0.0,
+            'maintenanceMargin': 0.0,
+            'totalPnL': target_value - 100000.0,
+            'totalPnLPercent': ((target_value - 100000.0) / 100000.0) * 100,
+            'dayPnL': target_value - 100000.0,
+            'dayPnLPercent': ((target_value - 100000.0) / 100000.0) * 100,
+            'positions': [],
+            'userId': 'SIMPLE_TEST',
+            'lastUpdate': datetime.now(UTC).isoformat(),
+            'timestamp': datetime.now(UTC).isoformat()
+        }
+
+        # Broadcast to ALL clients
+        for sid in all_clients:
+            await sio.emit('portfolio_update', {
+                'type': 'portfolio_update',
+                'data': portfolio_data,
+                'timestamp': portfolio_data['timestamp']
+            }, to=sid)
+
+        logger.info(f"✅ Broadcasted ${target_value:,.2f} to {len(all_clients)} clients")
+        return {
+            "success": True,
+            "message": f"Broadcasted ${target_value:,.2f} to {len(all_clients)} clients",
+            "value": target_value,
+            "clients_count": len(all_clients)
+        }
+
+    except Exception as e:
+        logger.error(f"❌ SIMPLE TEST failed: {e}")
+        logger.error(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/test-broadcast-all")
+async def test_broadcast_all_users(user=Depends(get_authenticated_user)):
+    """
+    Test endpoint: Broadcast portfolio updates to ALL connected clients (any user).
+    Sends 4 test updates with 2-second delays between each.
+    Used for testing WebSocket real-time updates.
+    """
+    try:
+        from backend.api.socketio_server import client_subscriptions, sio
+
+        # Get all connected clients
+        all_clients = list(client_subscriptions.keys())
+        logger.info(f"🚀 TEST BROADCAST ALL: Found {len(all_clients)} connected clients")
+
+        # Test data sequence
+        test_values = [
+            {'totalEquity': 100000.0, 'dayPnL': 0.0, 'dayPnLPercent': 0.0, 'label': 'Initial'},
+            {'totalEquity': 105000.0, 'dayPnL': 5000.0, 'dayPnLPercent': 5.0, 'label': 'Profit +$5k'},
+            {'totalEquity': 103000.0, 'dayPnL': 3000.0, 'dayPnLPercent': 3.0, 'label': 'Adjusted -$2k'},
+            {'totalEquity': 100000.0, 'dayPnL': 0.0, 'dayPnLPercent': 0.0, 'label': 'Reset'}
+        ]
+
+        for idx, values in enumerate(test_values, 1):
+            portfolio_data = {
+                'totalEquity': values['totalEquity'],
+                'cash': values['totalEquity'],
+                'buyingPower': values['totalEquity'],
+                'marginUsed': 0.0,
+                'maintenanceMargin': 0.0,
+                'totalPnL': values['dayPnL'],
+                'totalPnLPercent': values['dayPnLPercent'],
+                'dayPnL': values['dayPnL'],
+                'dayPnLPercent': values['dayPnLPercent'],
+                'positions': [],
+                'userId': 'TEST_BROADCAST_ALL',
+                'lastUpdate': datetime.now(UTC).isoformat(),
+                'timestamp': datetime.now(UTC).isoformat()
+            }
+
+            # Broadcast to ALL clients
+            for sid in all_clients:
+                try:
+                    await sio.emit('portfolio_update', {
+                        'type': 'portfolio_update',
+                        'data': portfolio_data,
+                        'timestamp': portfolio_data['timestamp']
+                    }, to=sid)
+                    logger.info(f"✅ Sent broadcast #{idx} ({values['label']}) to client {sid}")
+                except Exception as e:
+                    logger.error(f"❌ Failed to send to {sid}: {e}")
+
+            logger.info(f"📡 Broadcast #{idx}: {values['label']} - ${values['totalEquity']:,.2f} to {len(all_clients)} clients")
+
+            # Wait before next update (except after last one)
+            if idx < len(test_values):
+                await asyncio.sleep(2)
+
+        logger.info("✅ TEST BROADCAST ALL: Successfully sent 4 portfolio broadcasts to all clients")
+        return {
+            "success": True,
+            "message": f"Sent 4 portfolio updates to ALL {len(all_clients)} connected clients",
+            "clients_count": len(all_clients),
+            "test_sequence": [v['label'] for v in test_values]
+        }
+
+    except Exception as e:
+        logger.error(f"❌ TEST BROADCAST ALL: Failed: {e}")
+        logger.error(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=f"Broadcast failed: {str(e)}")

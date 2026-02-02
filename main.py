@@ -1,6 +1,10 @@
 """
 Main Application Entry Point
 Algorithmic Trading Platform
+
+Note: Database initialization is handled in backend.api.factory.create_app()
+via the FastAPI lifespan context manager. This ensures proper async initialization
+and cleanup, as well as consistent behavior across all entry points.
 """
 import logging
 from pathlib import Path
@@ -35,40 +39,17 @@ def main():
     print("=" * 50)
     
     # ============================================================================
-    # CRITICAL FIX: Initialize database BEFORE starting uvicorn
-    # Socket.IO wrapper doesn't forward ASGI lifespan events properly!
+    # NOTE: Database initialization is handled by FastAPI lifespan in factory.py
+    # 
+    # The factory.create_app() function configures the lifespan context manager
+    # which properly initializes:
+    # - Database engine and sessionmaker
+    # - Outbox worker for background order processing  
+    # - Alpaca WebSocket stream for real-time updates
+    # - Portfolio and order sync on startup
+    #
+    # This ensures single-source-of-truth for initialization logic.
     # ============================================================================
-    try:
-        from backend.infra.db import init_db
-        
-        # Get database URL from settings
-        database_url = None
-        if hasattr(settings, 'database') and hasattr(settings.database, 'url'):
-            database_url = settings.database.url
-        elif hasattr(settings, 'data') and hasattr(settings.data, 'database_url'):
-            database_url = settings.data.database_url
-        else:
-            import os
-            database_url = os.getenv('DATABASE_URL')
-        
-        if database_url:
-            print(f"📊 Initializing database: {database_url.split('@')[0]}@...")
-            engine, sessionmaker = init_db(database_url)
-            print("✅ Database initialized successfully")
-            
-            # Store in app.state for access by the app
-            from backend.api.main import app
-            app.state.sessionmaker = sessionmaker
-            app.state.db_sessionmaker = sessionmaker  # Backward compatibility
-            
-        else:
-            print("⚠️ No DATABASE_URL configured, skipping database initialization")
-            
-    except Exception as e:
-        print(f"❌ Database initialization failed: {e}")
-        print("   Server will start but database features may not work")
-        import traceback
-        traceback.print_exc()
 
     # Start the FastAPI server with Socket.IO support
     uvicorn.run(

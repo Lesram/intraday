@@ -37,6 +37,22 @@ spec:
         runAsUser: 10001
         runAsGroup: 0
         fsGroup: 0
+      # L-14: Pod anti-affinity to spread replicas across nodes for HA
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  app: algotrading-api
+              topologyKey: kubernetes.io/hostname
+          - weight: 50
+            podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  app: algotrading-api
+              topologyKey: topology.kubernetes.io/zone
       containers:
       - name: api
         image: algotrading-api:latest

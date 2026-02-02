@@ -3,14 +3,14 @@ Trading Strategies Framework
 Implements various algorithmic trading strategies with unified interface
 """
 
-import logging
-
-# Avoid importing heavy ML dependencies (TensorFlow) at module import time unless explicitly enabled.
-import os as _os  # local alias to avoid polluting namespace
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
+import logging
+
+# Avoid importing heavy ML dependencies (TensorFlow) at module import time unless explicitly enabled.
+import os as _os  # local alias to avoid polluting namespace
 from typing import Any
 
 import numpy as np
@@ -84,7 +84,19 @@ class StrategyPerformance:
 class BaseStrategy(ABC):
     """Abstract base class for all trading strategies"""
 
-    def __init__(self, name: str, risk_manager: RiskManager):
+    # Default risk parameters (can be overridden in child classes)
+    DEFAULT_MAX_RISK_PER_TRADE = 0.02  # 2% max risk per trade
+    DEFAULT_STOP_LOSS_PCT = 0.05  # 5% stop loss
+    DEFAULT_TAKE_PROFIT_PCT = 0.02  # 2% take profit
+
+    def __init__(
+        self,
+        name: str,
+        risk_manager: RiskManager,
+        max_risk_per_trade: float | None = None,
+        stop_loss_pct: float | None = None,
+        take_profit_pct: float | None = None,
+    ):
         self.name = name
         self.risk_manager = risk_manager
         self.settings = get_settings()
@@ -92,6 +104,11 @@ class BaseStrategy(ABC):
         self.trade_history = []
         self.performance_metrics = None
         self.is_active = True
+
+        # Configurable risk parameters
+        self.max_risk_per_trade = max_risk_per_trade if max_risk_per_trade is not None else self.DEFAULT_MAX_RISK_PER_TRADE
+        self.stop_loss_pct = stop_loss_pct if stop_loss_pct is not None else self.DEFAULT_STOP_LOSS_PCT
+        self.take_profit_pct = take_profit_pct if take_profit_pct is not None else self.DEFAULT_TAKE_PROFIT_PCT
 
     @abstractmethod
     async def generate_signal(
@@ -131,7 +148,7 @@ class BaseStrategy(ABC):
 
         # Risk-adjusted position sizing
         portfolio_value = self.risk_manager.get_portfolio_value()
-        max_risk_per_trade = portfolio_value * 0.02  # 2% max risk per trade
+        max_risk_per_trade = portfolio_value * self.max_risk_per_trade
 
         position_value = base_position * price
         if position_value > max_risk_per_trade:
@@ -169,10 +186,19 @@ class BaseStrategy(ABC):
 class EnsembleStrategy(BaseStrategy):
     """Strategy based on AI ensemble predictions"""
 
-    def __init__(self, risk_manager: RiskManager, ensemble_model: EnsembleModel):
+    def __init__(
+        self,
+        risk_manager: RiskManager,
+        ensemble_model: EnsembleModel,
+        confidence_threshold: float = 0.6,
+        return_threshold: float = 0.02,
+        strong_return_threshold: float = 0.05,
+    ):
         super().__init__("EnsembleStrategy", risk_manager)
         self.ensemble_model = ensemble_model
-        self.confidence_threshold = 0.6
+        self.confidence_threshold = confidence_threshold
+        self.return_threshold = return_threshold
+        self.strong_return_threshold = strong_return_threshold
 
     async def generate_signal(
         self, symbol: str, price_data: pd.DataFrame, features: pd.DataFrame
@@ -193,14 +219,14 @@ class EnsembleStrategy(BaseStrategy):
         # Determine signal type based on prediction and confidence
         signal_type = SignalType.HOLD
         if prediction.ensemble_confidence > self.confidence_threshold:
-            if predicted_return > 0.02:  # 2% threshold
+            if predicted_return > self.return_threshold:
                 signal_type = (
-                    SignalType.STRONG_BUY if predicted_return > 0.05 else SignalType.BUY
+                    SignalType.STRONG_BUY if predicted_return > self.strong_return_threshold else SignalType.BUY
                 )
-            elif predicted_return < -0.02:
+            elif predicted_return < -self.return_threshold:
                 signal_type = (
                     SignalType.STRONG_SELL
-                    if predicted_return < -0.05
+                    if predicted_return < -self.strong_return_threshold
                     else SignalType.SELL
                 )
 
@@ -213,15 +239,15 @@ class EnsembleStrategy(BaseStrategy):
             else 0.0
         )
 
-        # Set stop loss and take profit
+        # Set stop loss and take profit using configurable percentages
         stop_loss = None
         take_profit = None
         if signal_type in [SignalType.BUY, SignalType.STRONG_BUY]:
-            stop_loss = current_price * 0.95  # 5% stop loss
-            take_profit = prediction.ensemble_prediction * 1.02  # 2% above prediction
+            stop_loss = current_price * (1 - self.stop_loss_pct)
+            take_profit = prediction.ensemble_prediction * (1 + self.take_profit_pct)
         elif signal_type in [SignalType.SELL, SignalType.STRONG_SELL]:
-            stop_loss = current_price * 1.05
-            take_profit = prediction.ensemble_prediction * 0.98
+            stop_loss = current_price * (1 + self.stop_loss_pct)
+            take_profit = prediction.ensemble_prediction * (1 - self.take_profit_pct)
 
         signal = TradingSignal(
             symbol=symbol,
@@ -275,10 +301,19 @@ class EnsembleStrategy(BaseStrategy):
 class MeanReversionStrategy(BaseStrategy):
     """Mean reversion strategy using Bollinger Bands and RSI"""
 
-    def __init__(self, risk_manager: RiskManager):
+    def __init__(
+        self,
+        risk_manager: RiskManager,
+        oversold_threshold: float = 30.0,
+        overbought_threshold: float = 70.0,
+        band_tolerance: float = 0.01,  # How close to band before triggering (1%)
+        band_stop_offset: float = 0.02,  # Stop loss offset from band (2%)
+    ):
         super().__init__("MeanReversionStrategy", risk_manager)
-        self.oversold_threshold = 30
-        self.overbought_threshold = 70
+        self.oversold_threshold = oversold_threshold
+        self.overbought_threshold = overbought_threshold
+        self.band_tolerance = band_tolerance
+        self.band_stop_offset = band_stop_offset
 
     async def generate_signal(
         self, symbol: str, price_data: pd.DataFrame, features: pd.DataFrame
@@ -304,13 +339,13 @@ class MeanReversionStrategy(BaseStrategy):
         confidence = 0.5
 
         # Oversold condition: price near lower band + low RSI
-        if current_price < bb_lower * 1.01 and current_rsi < self.oversold_threshold:
+        if current_price < bb_lower * (1 + self.band_tolerance) and current_rsi < self.oversold_threshold:
             signal_type = SignalType.BUY
             confidence = min(0.9, (self.oversold_threshold - current_rsi) / 20)
 
         # Overbought condition: price near upper band + high RSI
         elif (
-            current_price > bb_upper * 0.99 and current_rsi > self.overbought_threshold
+            current_price > bb_upper * (1 - self.band_tolerance) and current_rsi > self.overbought_threshold
         ):
             signal_type = SignalType.SELL
             confidence = min(0.9, (current_rsi - self.overbought_threshold) / 20)
@@ -323,10 +358,10 @@ class MeanReversionStrategy(BaseStrategy):
         take_profit = None
 
         if signal_type == SignalType.BUY:
-            stop_loss = bb_lower * 0.98
+            stop_loss = bb_lower * (1 - self.band_stop_offset)
             take_profit = bb_middle
         elif signal_type == SignalType.SELL:
-            stop_loss = bb_upper * 1.02
+            stop_loss = bb_upper * (1 + self.band_stop_offset)
             take_profit = bb_middle
 
         return TradingSignal(
@@ -351,8 +386,14 @@ class MeanReversionStrategy(BaseStrategy):
 class MomentumStrategy(BaseStrategy):
     """Momentum strategy using MACD and moving averages"""
 
-    def __init__(self, risk_manager: RiskManager):
-        super().__init__("MomentumStrategy", risk_manager)
+    def __init__(
+        self,
+        risk_manager: RiskManager,
+        momentum_multiplier: float = 0.1,  # Target price multiplier based on momentum
+        stop_loss_pct: float = 0.03,  # 3% stop loss for momentum trades
+    ):
+        super().__init__("MomentumStrategy", risk_manager, stop_loss_pct=stop_loss_pct)
+        self.momentum_multiplier = momentum_multiplier
 
     async def generate_signal(
         self, symbol: str, price_data: pd.DataFrame, features: pd.DataFrame
@@ -383,7 +424,7 @@ class MomentumStrategy(BaseStrategy):
 
         # Set targets based on momentum strength
         momentum_strength = abs(macd - macd_signal)
-        target_multiplier = 1 + (momentum_strength * 0.1)
+        target_multiplier = 1 + (momentum_strength * self.momentum_multiplier)
 
         target_price = (
             current_price * target_multiplier
@@ -397,9 +438,9 @@ class MomentumStrategy(BaseStrategy):
             confidence=confidence,
             target_price=target_price,
             stop_loss=(
-                current_price * 0.97
+                current_price * (1 - self.stop_loss_pct)
                 if signal_type == SignalType.BUY
-                else current_price * 1.03
+                else current_price * (1 + self.stop_loss_pct)
             ),
             take_profit=target_price,
             position_size=position_size if signal_type != SignalType.HOLD else 0.0,
@@ -418,10 +459,15 @@ class MomentumStrategy(BaseStrategy):
 class RebalancingStrategy(BaseStrategy):
     """Portfolio rebalancing strategy"""
 
-    def __init__(self, risk_manager: RiskManager, target_weights: dict[str, float]):
+    def __init__(
+        self,
+        risk_manager: RiskManager,
+        target_weights: dict[str, float],
+        rebalance_threshold: float = 0.05,
+    ):
         super().__init__("RebalancingStrategy", risk_manager)
         self.target_weights = target_weights
-        self.rebalance_threshold = 0.05  # 5% deviation triggers rebalance
+        self.rebalance_threshold = rebalance_threshold  # Deviation threshold to trigger rebalance
 
     async def generate_signal(
         self, symbol: str, price_data: pd.DataFrame, features: pd.DataFrame
@@ -481,12 +527,19 @@ class RebalancingStrategy(BaseStrategy):
 class StatisticalArbitrageStrategy(BaseStrategy):
     """Statistical arbitrage using correlation and cointegration"""
 
-    def __init__(self, risk_manager: RiskManager, reference_symbol: str = "SPY"):
+    def __init__(
+        self,
+        risk_manager: RiskManager,
+        reference_symbol: str = "SPY",
+        lookback_period: int = 60,
+        entry_threshold: float = 2.0,
+        exit_threshold: float = 0.5,
+    ):
         super().__init__("StatArbStrategy", risk_manager)
         self.reference_symbol = reference_symbol
-        self.lookback_period = 60
-        self.entry_threshold = 2.0  # Z-score threshold
-        self.exit_threshold = 0.5
+        self.lookback_period = lookback_period
+        self.entry_threshold = entry_threshold  # Z-score threshold for entry
+        self.exit_threshold = exit_threshold  # Z-score threshold for exit
 
     async def generate_signal(
         self, symbol: str, price_data: pd.DataFrame, features: pd.DataFrame
@@ -535,9 +588,9 @@ class StatisticalArbitrageStrategy(BaseStrategy):
             confidence=confidence,
             target_price=target_price,
             stop_loss=(
-                current_price * 1.05
+                current_price * (1 + self.stop_loss_pct)
                 if signal_type == SignalType.SELL
-                else current_price * 0.95
+                else current_price * (1 - self.stop_loss_pct)
             ),
             take_profit=target_price,
             position_size=position_size if signal_type != SignalType.HOLD else 0.0,

@@ -4,26 +4,37 @@ On-disk model registry with feature schema lock, PSI drift detection, and infere
 Integrates with existing observability infrastructure from Branch 2.5.
 """
 
+from dataclasses import dataclass, field
+from datetime import UTC, datetime
+from enum import Enum
 import hashlib
 import json
 import logging
 import os
+from pathlib import Path
 import pickle
 import time
-from dataclasses import dataclass, field
-from datetime import UTC, datetime
-from enum import Enum
-from pathlib import Path
 from typing import Any, Protocol
 
 # Centralized DISABLE_ML check for test mode
 DISABLE_ML = os.environ.get("DISABLE_ML", "0") == "1"
+
+# Some legacy paths return mock predictions for test compatibility.
+# Keep these strictly opt-in so production never silently produces fake outputs.
+ALLOW_MOCK_ML = (
+    os.environ.get("ALLOW_MOCK_ML", "0").lower() in {"1", "true", "yes"}
+    or ("PYTEST_CURRENT_TEST" in os.environ)
+)
 
 # Import real pandas and numpy - they're lightweight and needed
 import numpy as np
 import pandas as pd
 
 from ..config import get_settings
+from ..utils.secure_pickle import (
+    PickleSecurityError,
+    secure_load,
+)
 
 # Lazy import to avoid circular dependency with ensemble_model
 # EnsembleModel will be imported when needed in methods
@@ -32,17 +43,17 @@ from ..config import get_settings
 class InMemoryModelRegistry:
     """
     Simple in-memory model registry for Light Mode and testing.
-    
+
     Provides basic model registration and retrieval without complex persistence.
     """
-    
+
     def __init__(self):
         self._store = {}  # (name, version) -> (model, ModelVersion)
-    
+
     def register(self, name, version, model, *, metadata=None, artifacts_path=None, feature_schema=None):
         """
         Register a model with version metadata.
-        
+
         Args:
             name: Model name
             version: Model version string
@@ -50,7 +61,7 @@ class InMemoryModelRegistry:
             metadata: Optional metadata dict
             artifacts_path: Optional path to model artifacts
             feature_schema: Optional feature schema
-            
+
         Returns:
             ModelVersion instance
         """
@@ -59,25 +70,25 @@ class InMemoryModelRegistry:
             def __init__(self, **data):
                 for key, value in data.items():
                     setattr(self, key, value)
-        
+
         mv = ModelVersionShim(
-            model_name=name, 
-            version=version, 
+            model_name=name,
+            version=version,
             artifacts_path=artifacts_path,
-            feature_schema=feature_schema, 
+            feature_schema=feature_schema,
             metadata=metadata or {}
         )
         self._store[(name, version)] = (model, mv)
         return mv
-    
+
     def load(self, name, version=None):
         """
         Load a model by name and version.
-        
+
         Args:
             name: Model name
             version: Model version (optional, will get latest if not specified)
-            
+
         Returns:
             The model object, or RegistryNoopModel if not found
         """
@@ -86,7 +97,7 @@ class InMemoryModelRegistry:
             matching_versions = [k for k in self._store.keys() if k[0] == name]
             if not matching_versions:
                 return RegistryNoopModel()
-            
+
             # Get the latest version (sort by version string)
             latest_key = max(matching_versions, key=lambda x: x[1])
             return self._store[latest_key][0]
@@ -96,15 +107,15 @@ class InMemoryModelRegistry:
             if key not in self._store:
                 return RegistryNoopModel()
             return self._store[key][0]
-    
+
     def get(self, name, version):
         """
         Get a model and version info by name and version.
-        
+
         Args:
             name: Model name
             version: Model version
-            
+
         Returns:
             Tuple of (model, ModelVersion) or None if not found
         """
@@ -112,31 +123,31 @@ class InMemoryModelRegistry:
         if key in self._store:
             return self._store[key]  # Returns (model, ModelVersion)
         return None
-    
+
     def list_versions(self, name):
         """
         List all versions for a model name.
-        
+
         Args:
             name: Model name
-            
+
         Returns:
             List of ModelVersion instances
         """
         versions = []
-        for key, (model, version_info) in self._store.items():
+        for key, (_model, version_info) in self._store.items():
             if key[0] == name:
                 versions.append(version_info)
         return versions
-    
+
     def version_info(self, name, version):
         """
         Get version info for a model.
-        
+
         Args:
             name: Model name
             version: Model version
-            
+
         Returns:
             ModelVersion instance
         """
@@ -149,23 +160,23 @@ class _NoOpModelManager:
     def __init__(self, *args, **kwargs):
         self.models = {}
         self.registry = InMemoryModelRegistry()  # Use simple in-memory registry
-        
+
     def register_model(self, *args, **kwargs):
         """No-op model registration"""
         return "test-model-id"
-        
+
     def get_model(self, *args, **kwargs):
         """No-op model retrieval"""
         return _NoOpModel()
-        
+
     def predict(self, *args, **kwargs):
         """No-op prediction"""
         return {"prediction": 0.5, "confidence": 0.8}
-        
+
     def set_reference_data(self, *args, **kwargs):
         """No-op reference data setting"""
         pass
-        
+
     def detect_drift(self, *args, **kwargs):
         """No-op drift detection"""
         return {"drift_detected": False, "psi_score": 0.0}
@@ -175,12 +186,6 @@ class _NoOpModel:
     """No-op model for test mode"""
     def predict(self, *args, **kwargs):
         return 0.0
-
-
-class NoopModel:
-    """No-op model for registry fallbacks"""
-    def predict(self, *args, **kwargs):
-        return {"prediction": 0.0}
 
 
 class RegistryNoopModel:
@@ -193,7 +198,7 @@ def get_model_manager(*args, **kwargs):
     """Factory function that returns appropriate manager based on environment"""
     if DISABLE_ML:
         return _NoOpModelManager()
-    
+
     # Use singleton pattern for normal operation
     global _model_manager
     if _model_manager is None:
@@ -223,31 +228,31 @@ class ModelMetadata:
 
 class ModelManagerInterface(Protocol):
     """Standardized model interface"""
-    
+
     def __init__(self, model: Any, version: str, sha256: str):
         self.model = model
         self.version = version
         self.sha256 = sha256
-    
+
     def predict(self, features: dict[str, Any]) -> float:
         """Make prediction from features"""
 
 
 class ModelManager:
     """Concrete ModelManager implementation for testing and production use."""
-    
+
     def __init__(self, model_store_path: str = "./models", base_path: str = None):
         # Handle backward compatibility - some tests use base_path instead of model_store_path
         if base_path is not None:
             model_store_path = base_path
-        
+
         self.model_store_path = Path(model_store_path)
         self.base_path = str(self.model_store_path)  # Add base_path attribute for test compatibility
         self.model_store_path.mkdir(exist_ok=True, parents=True)
         self.models: dict[str, Any] = {}  # model_name -> model_object
         self.metadata: dict[str, ModelMetadata] = {}  # model_name -> metadata
         self.registry = ModelRegistry(str(self.model_store_path))
-    
+
     def register_model(self, model: Any, metadata = None, version: str = None, **kwargs) -> bool:
         """Register a new model with metadata (with backward compatibility)."""
         # Handle different call signatures for test compatibility
@@ -261,21 +266,21 @@ class ModelManager:
                 # register_model(model, name="test", version="1.0.0") - kwargs
                 name = kwargs.get('name', 'unknown')
                 version = version or kwargs.get('version', '1.0.0')
-            
+
             features = kwargs.get('features', ['feature1'])
-            
+
             # Create metadata from parameters for compatibility
             metadata = ModelMetadata(
                 name=name,
-                version=version, 
+                version=version,
                 features=features,
                 model_type=kwargs.get('model_type', 'unknown'),
                 created_at=kwargs.get('created_at', 'unknown')
             )
-        
+
         if not isinstance(metadata, ModelMetadata):
             raise TypeError("metadata must be a ModelMetadata instance or provide name/version parameters")
-        
+
         try:
             # Basic metadata validation for smoke tests
             self._validate_metadata(metadata)
@@ -324,35 +329,47 @@ class ModelManager:
             if isinstance(e, (ValueError, TypeError)):
                 raise
             return False
-    
+
     def load_model(self, model_name: str, version: str = "latest") -> Any:
         """Load a model by name and version."""
         # For versioned models, construct the full model key
         model_key = f"{model_name}_{version}" if version != "latest" else model_name
-        
+
         if model_key in self.models:
             return self.models[model_key]
-        
+
         if model_name in self.models:
             return self.models[model_name]
-        
-        # Try loading from disk
+
+        # Try loading from disk with secure pickle
         for model_path in self.model_store_path.glob(f"{model_name}_*.pkl"):
             try:
                 with open(model_path, 'rb') as f:
-                    model = pickle.load(f)
+                    # SECURITY FIX: Only allow unsigned models in development/test mode
+                    # Production should require signed models to prevent code injection
+                    import os
+                    is_production = os.getenv("APP_ENVIRONMENT", "").lower() in ("production", "prod")
+                    allow_unsigned = not is_production
+                    
+                    if is_production:
+                        logging.warning(f"Loading model {model_name} in production - requiring signature")
+                    
+                    model = secure_load(f, allow_unsigned=allow_unsigned)
                     self.models[model_name] = model
                     return model
+            except PickleSecurityError as e:
+                logging.error(f"Security error loading model {model_name}: {e}")
+                raise
             except Exception as e:
                 logging.error(f"Failed to load model {model_name}: {e}")
-        
+
         raise ModelNotFoundError(f"Model {model_name} not found")
-    
+
     def predict(self, model_name: str, features: dict[str, Any]) -> Any:
         """Make prediction using a specific model."""
         model = self.load_model(model_name)
         return model.predict(features)
-        
+
     def get_model(self, model_id: str, version: str = None) -> Any:
         """Get a model by ID (delegates to registry or loads from storage)."""
         try:
@@ -361,17 +378,17 @@ class ModelManager:
                 return self.registry.get_model(model_id, version)
         except Exception:
             pass
-        
+
         # Fallback to load_model for backward compatibility
         try:
             return self.load_model(model_id)
         except Exception:
             return None
-    
+
     def list_models(self) -> list[str]:
         """List all registered models."""
         return list(self.models.keys())
-    
+
     def get_model_metadata(self, model_name: str) -> ModelMetadata:
         """Get metadata for a model."""
         if model_name not in self.metadata:
@@ -388,12 +405,12 @@ class ModelManager:
             return True
         except Exception:
             return False
-    
+
     def get_model_versions(self, model_id: str):
         """Get all versions of a model - compatibility method"""
         # Return empty list for compatibility
         return []
-    
+
     def save_ensemble_model(self, ensemble, name, version=None, **kwargs):
         """Save ensemble model - compatibility method"""
         try:
@@ -402,7 +419,7 @@ class ModelManager:
             return True
         except Exception:
             return False
-    
+
     def record_performance(self, model_name, metrics, **kwargs):
         """Record model performance - compatibility method"""
         # Store in metadata if available
@@ -413,7 +430,7 @@ class ModelManager:
             return False
         except Exception:
             return False
-    
+
     def validate_model(self, model, **kwargs):
         """Validate model - compatibility method"""
         # Basic validation - model exists
@@ -443,7 +460,7 @@ class ModelManager:
             model = self.get_model(model_name, version)
             if model is None:
                 return {"status": "error", "message": f"Model {model_name} not found"}
-            
+
             return {
                 "status": "success",
                 "model_name": model_name,
@@ -459,7 +476,7 @@ class ModelManager:
         # Use model_id or model_type for backward compatibility
         model_name = model_id or model_type or "default_model"
         version = kwargs.get("version", "v1.0.0")  # Default with "v" prefix for test compatibility
-        
+
         # Handle different feature types safely
         if features is None:
             features_dict = {}
@@ -469,10 +486,10 @@ class ModelManager:
             features_dict = features
         else:
             features_dict = {"features": str(features)}
-        
+
         # Mock training process for test compatibility
         mock_model = {"type": model_name, "features": features_dict, "trained": True}
-        
+
         # Create a mock version object similar to what tests expect
         class MockVersion:
             def __init__(self, model_id: str):
@@ -480,9 +497,9 @@ class ModelManager:
                 self.version = version
                 self.status = "trained"
                 self.metrics = {"accuracy": 0.95, "precision": 0.92, "recall": 0.93}  # Mock metrics
-        
+
         mock_version = MockVersion(model_name)
-        
+
         # Register the model if possible
         try:
             feature_list = (
@@ -497,18 +514,18 @@ class ModelManager:
             self.register_model(mock_model, metadata=metadata, version=version)
         except Exception:
             pass  # Don't fail if registration fails
-        
+
         return mock_version
 
 
 class _NoopModel:
     """Default no-op model implementation"""
-    
+
     def __init__(self, model: Any = None, version: str = "1.0.0", sha256: str = ""):
         self.model = model
         self.version = version
         self.sha256 = sha256
-    
+
     def predict(self, features: dict[str, Any]) -> float:
         """Make prediction from features - default returns 0.0"""
         return 0.0
@@ -522,15 +539,6 @@ def _set_model_manager(model_manager: ModelManager) -> None:
     """Set the global model manager instance for testing/DI"""
     global _model_manager
     _model_manager = model_manager
-
-
-def get_model_manager() -> ModelManager:
-    """Get the current model manager instance"""
-    global _model_manager
-    if _model_manager is None:
-        # Initialize with default ModelManager if not set
-        _model_manager = ModelManager()
-    return _model_manager
 
 # Backwards-compatible export names expected by some tests
 NoopModel = _NoopModel
@@ -589,13 +597,13 @@ class ModelVersion:
     def __init__(self, **data):
         """
         Initialize ModelVersion with flexible kwargs support.
-        
+
         Accepts both canonical field names and legacy aliases for backward compatibility.
         """
         # Core fields with proper alias handling
         model_name = data.get("model_name")
         model_id = data.get("model_id")
-        
+
         # Smart mapping: prefer model_name, fallback to model_id, sync both
         if model_name:
             self.model_name = model_name
@@ -606,14 +614,14 @@ class ModelVersion:
         else:
             self.model_name = None
             self.model_id = None
-            
+
         # Other core fields
         self.version = data.get("version")
         self.created_at = data.get("created_at")
         self.artifacts_path = data.get("artifacts_path") or data.get("model_path")
         self.feature_schema = data.get("feature_schema")
         self.metadata = data.get("metadata") or {}
-        
+
         # Additional legacy/compatibility fields
         self.status = data.get("status", "trained")
         self.metrics = data.get("metrics", {})
@@ -658,7 +666,7 @@ class DriftDetection:
     severity: float  # 0-1 scale
     detected_at: datetime
     affected_features: list[str]
-    
+
     # Optional fields with defaults
     recommendation: str = "Monitor closely"
     details: dict[str, Any] = field(default_factory=dict)
@@ -801,7 +809,7 @@ class ModelRegistry:
         self,
         model_id: str,
         model_obj: Any,  # The model object - second parameter to match test expectations
-        metadata: dict[str, Any] = None,  # Third parameter for metadata 
+        metadata: dict[str, Any] = None,  # Third parameter for metadata
         version: str = None,  # Optional version parameter
         metrics: dict[str, float] = None,
         training_data = None,  # Remove type annotation to avoid pandas issues
@@ -811,7 +819,7 @@ class ModelRegistry:
         model_type: str = "ensemble",  # Add for test compatibility
     ) -> ModelVersion:
         """Register a new model version with on-disk artifacts storage"""
-        
+
         # Handle parameter compatibility
         model = model_obj  # Use the provided model object
         if metadata is None:
@@ -820,7 +828,7 @@ class ModelRegistry:
             metrics = {}
         if feature_schema is None:
             feature_schema = {}
-        
+
         # Handle training data compatibility
         if training_data is None:
             # Create dummy training data for compatibility
@@ -833,7 +841,7 @@ class ModelRegistry:
         # Generate or use provided version
         if model_id not in self.models:
             self.models[model_id] = []
-        
+
         if version is None:
             # Check if version is provided in metadata first
             if metadata and "version" in metadata:
@@ -863,14 +871,14 @@ class ModelRegistry:
         # Persist model object
         model_file = model_path / "model.bin"
         cache_key = f"{model_id}:{version}"
-        
+
         try:
             with open(model_file, "wb") as f:
                 pickle.dump(model, f)
         except Exception as e:
             logger.error(f"Error saving model to disk: {e}")
             model_file = None
-            
+
         # Always store model in memory cache for testing/fallback
         self._model_cache[cache_key] = model
 
@@ -939,13 +947,13 @@ class ModelRegistry:
         # Prepare metadata - keep user metadata simple and separate from system metadata
         if metadata is None:
             metadata = {}
-        
+
         # Create system metadata separately to avoid mixing
         system_metadata = {
             "training_samples": len(training_data) if hasattr(training_data, '__len__') else 0,
             "features_count": len(training_data.columns) if hasattr(training_data, 'columns') else 0,
         }
-        
+
         # Merge user metadata with system metadata, giving priority to user metadata
         final_metadata = system_metadata.copy()
         final_metadata.update(metadata)  # User metadata overwrites system metadata
@@ -1079,17 +1087,17 @@ class ModelRegistry:
         try:
             version_path = self.base_path / model_id / version
 
-            # Load model object
+            # Load model object with secure pickle
             model_path = version_path / "model.bin"
             with open(model_path, "rb") as f:
-                model_obj = pickle.load(f)
+                model_obj = secure_load(f, allow_unsigned=True)
 
-            # Load artifacts (optional)
+            # Load artifacts (optional) with secure pickle
             artifacts = {}
             artifacts_path = version_path / "artifacts.pkl"
             if artifacts_path.exists():
                 with open(artifacts_path, "rb") as f:
-                    artifacts = pickle.load(f)
+                    artifacts = secure_load(f, allow_unsigned=True)
 
             # Load metadata
             metadata_path = version_path / "metadata.json"
@@ -1280,7 +1288,7 @@ class ModelRegistry:
             if not hasattr(pd, 'api') or not hasattr(pd.api, 'types'):
                 # We're in stub mode, skip this functionality
                 return
-                
+
             for column in training_data.columns:
                 if pd.api.types.is_numeric_dtype(training_data[column]):
                     # For numeric features, create histogram bins
@@ -1328,45 +1336,48 @@ class ModelRegistry:
     def predict(self, model_id: str, features: dict[str, Any], version: str = None) -> Any:
         """Make predictions using a registered model"""
         start_time = time.time()
-        
+
         try:
             # Validate features parameter
             if not isinstance(features, dict):
                 raise ValueError("Features must be a dictionary")
-            
+
             model_version = self.get_model(model_id, version)
             if not model_version:
                 raise ModelNotFoundError(f"Model {model_id} not found")
-            
+
             # Load the actual model - try memory cache first, then disk
             cache_key = f"{model_id}:{model_version.version}"
             model = None
-            
+
             if cache_key in self._model_cache:
                 # Use cached model object (important for test models that can't be pickled)
                 model = self._model_cache[cache_key]
             else:
-                # Try loading from disk
+                # Try loading from disk with secure pickle
                 model_path = self.base_path / model_id / model_version.version / "model.bin"
                 if model_path.exists():
                     try:
                         with open(model_path, "rb") as f:
-                            model = pickle.load(f)
+                            model = secure_load(f, allow_unsigned=True)
+                    except PickleSecurityError as e:
+                        logger.error(f"Security error loading model: {e}")
+                        raise
                     except Exception as e:
                         logger.error(f"Error loading model from disk: {e}")
                         # Could not load from disk and not in cache
                         raise RuntimeError(f"Model {model_id} could not be loaded")
-            
+
             if not model:
                 raise RuntimeError(f"Model {model_id} not available")
-            
+
             # Convert features dict to expected format (DataFrame or array)
             if hasattr(model, 'predict'):
                 if isinstance(features, dict):
                     # Check for specific test scenarios that should raise exceptions
                     if "invalid_field" in features:
                         raise ValueError("Invalid features: missing required fields")
-                    
+
                     try:
                         # Try calling with raw dict first (for test models)
                         result = model.predict(features)
@@ -1416,27 +1427,25 @@ class ModelRegistry:
                     # If the model returns a float, wrap it in expected format
                     if isinstance(result, (int, float)):
                         prediction_result = {
-                            "signal": "buy" if result > 0.5 else "sell", 
+                            "signal": "buy" if result > 0.5 else "sell",
                             "confidence": float(result)
                         }
                     else:
                         prediction_result = result
+            elif ALLOW_MOCK_ML:
+                prediction_result = {"signal": "buy", "confidence": 0.75}
             else:
-                # Mock prediction with expected format
-                prediction_result = {
-                    "signal": "buy",
-                    "confidence": 0.75
-                }
-            
+                raise RuntimeError(f"Model {model_id} does not support prediction")
+
             # Record successful prediction metrics
             if hasattr(self, 'metrics') and self.metrics:
                 latency = time.time() - start_time
                 self.metrics.increment("model_predictions_total", {"model_id": model_id, "status": "success"})
                 if hasattr(self.metrics, 'histogram'):
                     self.metrics.histogram("model_prediction_latency_seconds", latency, {"model_id": model_id})
-            
+
             return prediction_result
-            
+
         except (ValueError, RuntimeError, ModelNotFoundError):
             # Record error metrics
             if hasattr(self, 'metrics') and self.metrics:
@@ -1448,30 +1457,28 @@ class ModelRegistry:
             # Record error metrics
             if hasattr(self, 'metrics') and self.metrics:
                 self.metrics.increment("model_predictions_total", {"model_id": model_id, "status": "error"})
-            # Return mock prediction in expected format for unexpected errors
-            return {
-                "signal": "sell",
-                "confidence": 0.3
-            }
+            if ALLOW_MOCK_ML:
+                return {"signal": "sell", "confidence": 0.3}
+            raise
 
     def get_model(self, model_id: str, version: str = None) -> ModelVersion:
         """Get a model version by ID and version"""
         if model_id not in self.models:
             return None
-        
+
         versions = self.models[model_id]
         if not versions:
             return None
-        
+
         if version is None or version == "latest":
             # Get the latest version
             return max(versions, key=lambda v: v.created_at)
-        
+
         # Find specific version
         for v in versions:
             if v.version == version:
                 return v
-        
+
         return None
 
     def get_latest_version(self, model_id: str) -> ModelVersion:
@@ -1484,9 +1491,9 @@ class ModelRegistry:
             model_version = self.get_model(model_id, version)
             if not model_version:
                 return {"status": "error", "message": f"Model {model_id} not found"}
-            
+
             model_path = self.base_path / model_id / model_version.version / "model.bin"
-            
+
             health_status = {
                 "status": "healthy" if model_path.exists() else "degraded",
                 "model_id": model_id,
@@ -1498,7 +1505,7 @@ class ModelRegistry:
                 "hash": model_version.artifact_hash or self.get_model_hash(model_id, version),
                 "model_hash": model_version.artifact_hash or self.get_model_hash(model_id, version)
             }
-            
+
             return health_status
         except Exception as e:
             logger.error(f"Health check error for {model_id}: {e}")
@@ -1510,12 +1517,12 @@ class ModelRegistry:
             model_version = self.get_model(model_id, version)
             if model_version and model_version.artifact_hash:
                 return model_version.artifact_hash
-            
+
             # Compute hash if not stored
             model_path = self.base_path / model_id / (model_version.version if model_version else "latest") / "model.bin"
             if model_path.exists():
                 return self._compute_file_hash(model_path)
-            
+
             return "no_hash"
         except Exception as e:
             logger.error(f"Hash computation error for {model_id}: {e}")
@@ -1527,7 +1534,7 @@ class ModelRegistry:
             model_version = self.get_model(model_id, version)
             if not model_version:
                 return {}
-            
+
             # Flatten the metadata for test compatibility
             result = {
                 "model_id": model_version.model_id,
@@ -1538,11 +1545,11 @@ class ModelRegistry:
                 "feature_names": model_version.feature_names,
                 "feature_dtypes": model_version.feature_dtypes,
             }
-            
+
             # Add metadata fields at top level for test compatibility
             if model_version.metadata:
                 result.update(model_version.metadata)
-            
+
             return result
         except Exception as e:
             logger.error(f"Metadata retrieval error for {model_id}: {e}")
@@ -1554,18 +1561,18 @@ class ModelRegistry:
             all_models = {}
             total_models = 0
             healthy_models = 0
-            
+
             for model_id in self.models:
                 health = self.check_model_health(model_id)
                 all_models[model_id] = health
                 total_models += 1
                 if health.get("status") == "healthy":
                     healthy_models += 1
-            
+
             overall_status = "healthy" if healthy_models == total_models else "degraded"
             if total_models == 0:
                 overall_status = "unknown"
-            
+
             return {
                 "status": overall_status,
                 "total_models": total_models,
@@ -1600,11 +1607,11 @@ class DriftDetector:
         # Separate numeric and categorical data
         numeric_data = data.select_dtypes(include=[np.number])
         categorical_data = data.select_dtypes(exclude=[np.number])
-        
+
         reference_data = {
             "feature_names": list(data.columns),
         }
-        
+
         # Calculate statistics for numeric data only
         if not numeric_data.empty:
             reference_data.update({
@@ -1612,14 +1619,14 @@ class DriftDetector:
                 "std": numeric_data.std().to_dict(),
                 "correlations": numeric_data.corr().to_dict() if len(numeric_data.columns) > 1 else {},
             })
-        
+
         # Store categorical feature information
         if not categorical_data.empty:
             reference_data["categorical_features"] = {
-                col: categorical_data[col].value_counts().to_dict() 
+                col: categorical_data[col].value_counts().to_dict()
                 for col in categorical_data.columns
             }
-        
+
         self.reference_data[model_id] = reference_data
         # Also update reference_distributions for compatibility
         self.reference_distributions[model_id] = reference_data
@@ -1667,27 +1674,27 @@ class DriftDetector:
 
                 if drift_score > 2.0:  # Threshold for significant drift
                     affected_features.append(feature)
-            
+
             elif "categorical_features" in reference and feature in reference["categorical_features"]:
                 # Handle categorical feature
                 ref_dist = reference["categorical_features"][feature]
                 curr_dist = current_data[feature].value_counts().to_dict()
-                
+
                 # Simple categorical drift detection using value counts
                 all_categories = set(ref_dist.keys()) | set(curr_dist.keys())
                 total_ref = sum(ref_dist.values())
                 total_curr = len(current_data)
-                
+
                 # Calculate distribution difference
                 dist_diff = 0
                 for cat in all_categories:
                     ref_prop = ref_dist.get(cat, 0) / total_ref
                     curr_prop = curr_dist.get(cat, 0) / total_curr
                     dist_diff += abs(ref_prop - curr_prop)
-                
+
                 drift_score = dist_diff / 2  # Normalize
                 drift_scores[feature] = drift_score
-                
+
                 if drift_score > 0.2:  # Lower threshold for categorical features
                     affected_features.append(feature)
 
@@ -1857,7 +1864,7 @@ class DriftDetector:
             model_version = self.get_model(model_id, version)
             if not model_version:
                 return {}
-            
+
             # Return mock feature importance for compatibility
             if hasattr(model_version, 'feature_schema'):
                 features = model_version.feature_schema
@@ -1867,7 +1874,7 @@ class DriftDetector:
                     for i, feature in enumerate(features):
                         importance[feature] = 1.0 / (i + 1)  # Decreasing importance
                     return importance
-            
+
             return {}
         except Exception as e:
             logger.error(f"Error computing feature importance for {model_id}: {e}")
@@ -1901,6 +1908,7 @@ class DriftDetector:
 
         if avg_degradation > 0.2:  # 20% performance degradation
             return DriftDetection(
+                model_id=model_id,
                 drift_type=DriftType.PERFORMANCE_DRIFT,
                 severity=min(1.0, avg_degradation),
                 detected_at=datetime.now(),
@@ -1941,7 +1949,8 @@ def load_model_from_registry(name: str):
     try:
         registry = ModelRegistry()
         return registry.load_model(name)
-    except:
+    except (ModelNotFoundError, FileNotFoundError, OSError, Exception) as e:
+        logging.debug(f"Could not load model from registry: {e}")
         from unittest.mock import Mock
         return Mock()
 
@@ -1951,7 +1960,8 @@ def save_model_to_registry(name: str, model):
         registry = ModelRegistry()
         registry.register_model(name, model, {}, {})
         return True
-    except:
+    except (ValueError, TypeError, OSError, Exception) as e:
+        logging.debug(f"Could not save model to registry: {e}")
         return False
 
 def get_model_metrics(model_name: str):

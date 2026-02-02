@@ -9,12 +9,13 @@ Implements institutional-grade risk controls with:
 """
 
 import asyncio
+from datetime import UTC, date, datetime, timedelta
+from decimal import Decimal
 import logging
 import time
-import warnings
-from datetime import UTC, datetime
-from decimal import Decimal
 from typing import Any
+import warnings
+from zoneinfo import ZoneInfo
 
 import numpy as np
 
@@ -29,19 +30,234 @@ from .types import OrderSpec, PortfolioState, RiskDecision, RiskLimits, RiskReas
 EPS = 1e-12
 MIN_SAMPLES = 30
 
+# Eastern timezone for NYSE
+ET = ZoneInfo("America/New_York")
 
-def is_market_hours() -> bool:
-    """Simple market hours check for testing purposes."""
-    # In production, this would check actual market hours
-    # For tests, we'll return True by default
-    from datetime import datetime, time
 
-    now = datetime.now()
-    # Simple 9:30 AM to 4:00 PM ET approximation
-    market_open = time(9, 30)
-    market_close = time(16, 0)
-    current_time = now.time()
-    return market_open <= current_time <= market_close
+def _calculate_nyse_holidays(year: int) -> set[date]:
+    """
+    M-15 FIX: Dynamically calculate NYSE holidays for a given year.
+    
+    NYSE holidays are defined by their own rules, not federal holidays.
+    This function calculates the official NYSE holiday schedule.
+    
+    Reference: https://www.nyse.com/markets/hours-calendars
+    """
+    holidays_set: set[date] = set()
+    
+    # New Year's Day - January 1 (if falls on weekend, observed Friday before or Monday after)
+    new_year = date(year, 1, 1)
+    if new_year.weekday() == 5:  # Saturday -> Friday before
+        holidays_set.add(date(year - 1, 12, 31))
+    elif new_year.weekday() == 6:  # Sunday -> Monday after
+        holidays_set.add(date(year, 1, 2))
+    else:
+        holidays_set.add(new_year)
+    
+    # MLK Day - Third Monday of January
+    jan_first = date(year, 1, 1)
+    mlk = date(year, 1, 1) + timedelta(days=(7 - jan_first.weekday()) % 7 + 14)  # Third Monday
+    holidays_set.add(mlk)
+    
+    # Presidents Day - Third Monday of February  
+    feb_first = date(year, 2, 1)
+    presidents = date(year, 2, 1) + timedelta(days=(7 - feb_first.weekday()) % 7 + 14)
+    holidays_set.add(presidents)
+    
+    # Good Friday - Friday before Easter Sunday (computed using anonymous Gregorian algorithm)
+    # https://en.wikipedia.org/wiki/Date_of_Easter#Anonymous_Gregorian_algorithm
+    a = year % 19
+    b = year // 100
+    c = year % 100
+    d = b // 4
+    e = b % 4
+    f = (b + 8) // 25
+    g = (b - f + 1) // 3
+    h = (19 * a + b - d - g + 15) % 30
+    i = c // 4
+    k = c % 4
+    l = (32 + 2 * e + 2 * i - h - k) % 7
+    m = (a + 11 * h + 22 * l) // 451
+    month = (h + l - 7 * m + 114) // 31
+    day = ((h + l - 7 * m + 114) % 31) + 1
+    easter = date(year, month, day)
+    good_friday = easter - timedelta(days=2)
+    holidays_set.add(good_friday)
+    
+    # Memorial Day - Last Monday of May
+    may_last = date(year, 5, 31)
+    memorial = may_last - timedelta(days=(may_last.weekday() + 7) % 7 - 0)  # Find Monday
+    if memorial.month != 5:
+        memorial = may_last - timedelta(days=may_last.weekday())
+    holidays_set.add(memorial)
+    
+    # Juneteenth - June 19 (observed if weekend)
+    juneteenth = date(year, 6, 19)
+    if juneteenth.weekday() == 5:  # Saturday -> Friday
+        juneteenth = date(year, 6, 18)
+    elif juneteenth.weekday() == 6:  # Sunday -> Monday
+        juneteenth = date(year, 6, 20)
+    holidays_set.add(juneteenth)
+    
+    # Independence Day - July 4 (observed if weekend)
+    july4 = date(year, 7, 4)
+    if july4.weekday() == 5:  # Saturday -> Friday
+        holidays_set.add(date(year, 7, 3))
+    elif july4.weekday() == 6:  # Sunday -> Monday
+        holidays_set.add(date(year, 7, 5))
+    else:
+        holidays_set.add(july4)
+    
+    # Labor Day - First Monday of September
+    sep_first = date(year, 9, 1)
+    labor = sep_first + timedelta(days=(7 - sep_first.weekday()) % 7)
+    holidays_set.add(labor)
+    
+    # Thanksgiving - Fourth Thursday of November
+    nov_first = date(year, 11, 1)
+    # Find first Thursday
+    first_thursday = nov_first + timedelta(days=(3 - nov_first.weekday() + 7) % 7)
+    thanksgiving = first_thursday + timedelta(days=21)  # Fourth Thursday
+    holidays_set.add(thanksgiving)
+    
+    # Christmas - December 25 (observed if weekend)
+    christmas = date(year, 12, 25)
+    if christmas.weekday() == 5:  # Saturday -> Friday
+        holidays_set.add(date(year, 12, 24))
+    elif christmas.weekday() == 6:  # Sunday -> Monday
+        holidays_set.add(date(year, 12, 26))
+    else:
+        holidays_set.add(christmas)
+    
+    return holidays_set
+
+
+def _calculate_nyse_early_close(year: int) -> set[date]:
+    """
+    Calculate NYSE early close days (1:00 PM ET) for a given year.
+    
+    Early close days are typically:
+    - Day before Independence Day (if trading day)
+    - Day after Thanksgiving (Black Friday)
+    - Christmas Eve (if trading day)
+    """
+    early_close: set[date] = set()
+    
+    # Day before July 4 (if July 3 is a trading day)
+    july3 = date(year, 7, 3)
+    if july3.weekday() < 5:  # Not weekend
+        early_close.add(july3)
+    
+    # Day after Thanksgiving (Black Friday)
+    nov_first = date(year, 11, 1)
+    first_thursday = nov_first + timedelta(days=(3 - nov_first.weekday() + 7) % 7)
+    thanksgiving = first_thursday + timedelta(days=21)
+    black_friday = thanksgiving + timedelta(days=1)
+    early_close.add(black_friday)
+    
+    # Christmas Eve (if trading day)
+    dec24 = date(year, 12, 24)
+    if dec24.weekday() < 5:  # Not weekend
+        early_close.add(dec24)
+    
+    return early_close
+
+
+# M-15 FIX: Generate holidays dynamically for current and next 5 years
+def _get_nyse_holidays_set() -> set[date]:
+    """Get NYSE holidays for current and upcoming years."""
+    current_year = datetime.now().year
+    all_holidays: set[date] = set()
+    for year in range(current_year - 1, current_year + 6):  # 5 years ahead
+        all_holidays.update(_calculate_nyse_holidays(year))
+    return all_holidays
+
+
+def _get_nyse_early_close_set() -> set[date]:
+    """Get NYSE early close days for current and upcoming years."""
+    current_year = datetime.now().year
+    all_early_close: set[date] = set()
+    for year in range(current_year - 1, current_year + 6):
+        all_early_close.update(_calculate_nyse_early_close(year))
+    return all_early_close
+
+
+# Generate at module load time (cached)
+NYSE_HOLIDAYS = _get_nyse_holidays_set()
+NYSE_EARLY_CLOSE = _get_nyse_early_close_set()
+
+
+def is_market_hours(check_time: datetime | None = None) -> bool:
+    """
+    Check if the market is currently open.
+
+    Accounts for:
+    - NYSE trading hours (9:30 AM - 4:00 PM ET)
+    - Weekends (Saturday/Sunday)
+    - NYSE holidays
+    - Early close days (1:00 PM ET)
+
+    Args:
+        check_time: Optional datetime to check. Uses current time if None.
+
+    Returns:
+        True if market is open, False otherwise
+    """
+    if check_time is None:
+        check_time = datetime.now(UTC)
+
+    # Convert to Eastern Time
+    et_time = check_time.astimezone(ET)
+    et_date = et_time.date()
+
+    # Check weekend
+    if et_time.weekday() >= 5:  # Saturday = 5, Sunday = 6
+        return False
+
+    # Check holidays
+    if et_date in NYSE_HOLIDAYS:
+        return False
+
+    # Determine close time (early close or regular)
+    if et_date in NYSE_EARLY_CLOSE:
+        market_close_hour = 13
+        market_close_minute = 0
+    else:
+        market_close_hour = 16
+        market_close_minute = 0
+
+    # Market opens at 9:30 AM ET
+    market_open = et_time.replace(hour=9, minute=30, second=0, microsecond=0)
+    market_close = et_time.replace(hour=market_close_hour, minute=market_close_minute, second=0, microsecond=0)
+
+    return market_open <= et_time < market_close
+
+
+def get_next_market_open(from_time: datetime | None = None) -> datetime:
+    """
+    Get the next market open time.
+
+    Args:
+        from_time: Starting time. Uses current time if None.
+
+    Returns:
+        datetime of next market open in UTC
+    """
+    if from_time is None:
+        from_time = datetime.now(UTC)
+
+    et_time = from_time.astimezone(ET)
+
+    # Start with next day's 9:30 AM
+    next_open = et_time.replace(hour=9, minute=30, second=0, microsecond=0)
+    if et_time.time() >= next_open.time():
+        next_open += timedelta(days=1)
+
+    # Skip weekends and holidays
+    while next_open.weekday() >= 5 or next_open.date() in NYSE_HOLIDAYS:
+        next_open += timedelta(days=1)
+
+    return next_open.astimezone(UTC)
 
 
 # Bounded reason categories for metrics
@@ -110,7 +326,7 @@ class RiskMathUtils:
             if weight_sum <= 0:
                 return 0.1
             weights = [w / weight_sum for w in weights]
-            
+
             mean_return = sum(r * w for r, w in zip(returns, weights, strict=False))
             variance = sum(((r - mean_return) ** 2) * w for r, w in zip(returns, weights, strict=False))
 
@@ -189,16 +405,16 @@ class AsyncRiskManager:
         **kwargs,  # Accept any additional legacy parameters
     ):
         """Initialize async-first risk manager with institutional controls."""
-        
+
         # Load profile-based risk defaults if no explicit limits provided
         self.settings = get_settings()
         risk_defaults = get_risk_defaults()
-        
+
         # Initialize with profile defaults, then override with explicit parameters
         self.max_symbol_exposure = risk_defaults.get("max_symbol_exposure", 0.15)
         self.max_position_value_pct = risk_defaults.get("max_position_value", 1.0)
         self.circuit_breaker_pct = risk_defaults.get("circuit_breaker_pct", 0.05)
-        
+
         # Handle legacy risk_limits parameter override
         if risk_limits is not None:
             # Extract limits from RiskLimits object if provided
@@ -301,30 +517,33 @@ class AsyncRiskManager:
     ) -> dict[str, Any]:
         """
         Enhanced risk assessment with symbol exposure calculation and admin override.
-        
+
         Returns structured risk decision with reason codes and computed values.
         """
-        start_time = time.time()
-        
+        time.time()
+
         try:
-            # Get portfolio information
+            # Get portfolio information (debug logging for troubleshooting only)
+            self.logger.debug(f"Risk assessment: {order.symbol} {order.side} {order.qty}")
+
             portfolio_value = await self._get_portfolio_value()
             current_positions = await self._get_current_positions()
-            
+
             # Calculate current symbol exposure
             current_qty = current_positions.get(order.symbol, Decimal("0"))
             market_price = await self._get_market_price(order.symbol)
-            
+
             # Calculate symbol exposure after the order
             order_qty = order.qty if order.side == Side.BUY else -order.qty
             new_qty = current_qty + order_qty
-            symbol_exposure_after = float(abs(new_qty * market_price) / portfolio_value)
-            
+            exposure_numerator = abs(new_qty * market_price)
+            symbol_exposure_after = float(exposure_numerator / portfolio_value)
+
             # Log risk evaluation
             self.logger.debug("RISK_EVAL", extra={
                 "symbol": order.symbol,
                 "current_qty": float(current_qty),
-                "order_qty": float(order_qty), 
+                "order_qty": float(order_qty),
                 "new_qty": float(new_qty),
                 "market_price": float(market_price),
                 "portfolio_value": float(portfolio_value),
@@ -332,21 +551,21 @@ class AsyncRiskManager:
                 "max_symbol_exposure": self.max_symbol_exposure,
                 "request_id": request_id
             })
-            
+
             # Check symbol concentration limit
             if symbol_exposure_after > self.max_symbol_exposure:
                 reason_code = RiskReasonCode.SYMBOL_CONCENTRATION_EXCEEDED
-                
+
                 # Check for admin override
                 import os
                 admin_override_enabled = os.getenv('RISK_ALLOW_ADMIN_OVERRIDE', 'false').lower() == 'true'
-                
-                if (risk_override and 
-                    admin_override_enabled and 
-                    current_user and 
-                    hasattr(current_user, 'role') and 
+
+                if (risk_override and
+                    admin_override_enabled and
+                    current_user and
+                    hasattr(current_user, 'role') and
                     current_user.role == 'admin'):
-                    
+
                     # Log override and allow
                     self.logger.warning("RISK_OVERRIDDEN", extra={
                         "reason_code": reason_code.value,
@@ -356,7 +575,7 @@ class AsyncRiskManager:
                         "user": getattr(current_user, 'username', 'unknown'),
                         "request_id": request_id
                     })
-                    
+
                     return {
                         "allowed": True,
                         "risk_override": True,
@@ -366,7 +585,7 @@ class AsyncRiskManager:
                             "limit": self.max_symbol_exposure
                         }
                     }
-                
+
                 # Block the order
                 self.logger.warning("RISK_BLOCKED", extra={
                     "reason_code": reason_code.value,
@@ -375,7 +594,7 @@ class AsyncRiskManager:
                     "limit": self.max_symbol_exposure,
                     "request_id": request_id
                 })
-                
+
                 return {
                     "allowed": False,
                     "risk_override": False,
@@ -387,7 +606,7 @@ class AsyncRiskManager:
                         "symbol": order.symbol
                     }
                 }
-            
+
             # Order passes risk checks
             return {
                 "allowed": True,
@@ -399,59 +618,183 @@ class AsyncRiskManager:
                     "limit": self.max_symbol_exposure
                 }
             }
-            
+
         except Exception as e:
-            self.logger.error("Risk assessment failed", extra={
-                "error": str(e),
-                "symbol": order.symbol,
-                "request_id": request_id
-            })
-            
+            # Comprehensive error logging
+            import traceback
+            self.logger.error("=== RISK ASSESSMENT FAILED ===")
+            self.logger.error(f"Exception type: {type(e).__name__}")
+            self.logger.error(f"Exception message: {str(e)}")
+            self.logger.error(f"Traceback: {traceback.format_exc()}")
+            self.logger.error(f"Order details: symbol={order.symbol}, side={order.side}, qty={order.qty}")
+            self.logger.error(f"Request ID: {request_id}")
+
             return {
                 "allowed": False,
                 "reason_code": "SYSTEM_ERROR",
-                "message": f"Risk assessment failed: {str(e)}",
-                "details": {}
+                "message": f"Risk assessment failed: {type(e).__name__}: {str(e)}",
+                "details": {
+                    "error_type": type(e).__name__,
+                    "error_message": str(e)
+                }
             }
 
     async def _get_portfolio_value(self) -> Decimal:
-        """Get current portfolio value or fallback to configured default."""
+        """
+        Get current portfolio value from broker or fallback to configured default.
+        
+        CRITICAL: If portfolio value cannot be retrieved from broker, this impacts
+        position sizing accuracy. The fallback should only be used in test/paper mode.
+        
+        Returns:
+            Portfolio value as Decimal. Falls back to configured default if
+            broker data is unavailable.
+            
+        Raises:
+            ValueError: In production mode if broker data is unavailable
+        """
         try:
-            # In production, this would query Alpaca account
-            # For now, use fallback value from settings
+            # Try to use positions_service if available
+            if self.positions_service is not None:
+                try:
+                    portfolio_value = await self.positions_service.get_total_portfolio_value()
+                    if portfolio_value and portfolio_value > 0:
+                        return Decimal(str(portfolio_value))
+                except Exception as e:
+                    self.logger.warning(f"Failed to get portfolio value from service: {e}")
+
+            # Fallback: Try to create a PositionsService dynamically
+            try:
+                from backend.services.positions_service import create_positions_service
+                service = create_positions_service()
+                if service.trading_client is not None:
+                    portfolio_value = await service.get_total_portfolio_value()
+                    if portfolio_value and portfolio_value > 0:
+                        return Decimal(str(portfolio_value))
+            except ImportError:
+                pass
+            except Exception as e:
+                self.logger.warning(f"Failed to create PositionsService: {e}")
+
+            # CRITICAL: Log at ERROR level when using fallback - this affects position sizing!
+            import os
+            is_production = os.getenv("APP_ENVIRONMENT", "").lower() in ("production", "prod")
+            is_mock = os.getenv("USE_MOCK_BROKER", "false").lower() in ("true", "1", "yes")
+            
+            if is_production and not is_mock:
+                # H-08 FIX: Block trading in production when portfolio data unavailable
+                self.logger.error(
+                    "CRITICAL: Cannot retrieve portfolio value in production! "
+                    "Trading blocked until broker connection restored."
+                )
+                raise ValueError(
+                    "H-08 SECURITY: Portfolio value unavailable in production. "
+                    "Cannot safely calculate position sizes. Trading blocked."
+                )
+            else:
+                self.logger.warning(
+                    "Using fallback portfolio value - broker connection unavailable. "
+                    "This is acceptable for testing/paper trading only."
+                )
+
+            # Fallback to configured default
             if hasattr(self.settings, 'risk'):
                 fallback_value = getattr(self.settings.risk, 'fallback_portfolio_value', 250000.0)
             else:
                 fallback_value = 250000.0
             return Decimal(str(fallback_value))
-        except Exception:
+        except Exception as e:
+            self.logger.error(f"Portfolio value retrieval failed completely: {e}")
             return Decimal("250000.0")  # Safe fallback
-    
+
     async def _get_current_positions(self) -> dict[str, Decimal]:
-        """Get current positions or return empty dict."""
+        """
+        Get current positions as symbol -> market_value map.
+        
+        Returns:
+            Dict mapping symbols to their current market value (Decimal).
+            Empty dict if no positions or service unavailable.
+        """
         try:
-            # In production, this would query actual positions
-            # For now, return mock positions for testing
-            return {"AAPL": Decimal("100")}  # Mock 100 shares of AAPL
-        except Exception:
+            # Try to use positions_service if available
+            if self.positions_service is not None:
+                positions = await self.positions_service.get_all_positions()
+                if positions:
+                    # Convert to Decimal market values
+                    return {
+                        symbol: Decimal(str(pos.get('market_value', 0.0)))
+                        for symbol, pos in positions.items()
+                        if pos.get('qty', 0) != 0
+                    }
+
+            # Fallback: Try to create a PositionsService dynamically
+            try:
+                from backend.services.positions_service import create_positions_service
+                service = create_positions_service()
+                if service.trading_client is not None:
+                    positions = await service.get_all_positions()
+                    if positions:
+                        return {
+                            symbol: Decimal(str(pos.get('market_value', 0.0)))
+                            for symbol, pos in positions.items()
+                            if pos.get('qty', 0) != 0
+                        }
+            except ImportError:
+                self.logger.debug("PositionsService not available")
+            except Exception as e:
+                self.logger.debug(f"Failed to create PositionsService: {e}")
+
+            # No positions available
             return {}
-    
+
+        except Exception as e:
+            self.logger.warning(f"Error fetching current positions: {e}")
+            return {}
+
     async def _get_market_price(self, symbol: str) -> Decimal:
-        """Get current market price for symbol."""
+        """✅ REAL DATA: Get current market price from QuoteManager"""
         try:
-            # Mock prices for testing - in production would use real market data
-            mock_prices = {
-                "AAPL": Decimal("150.00"),
-                "SPY": Decimal("400.00"),
-                "QQQ": Decimal("350.00"),
-                "MSFT": Decimal("300.00"),
-                "GOOGL": Decimal("120.00"),
-                "TSLA": Decimal("200.00"),
-                "NVDA": Decimal("500.00")
-            }
-            return mock_prices.get(symbol, Decimal("100.00"))  # Default $100
-        except Exception:
-            return Decimal("100.00")  # Safe fallback
+            from datetime import datetime, timedelta
+            import os
+
+            from alpaca.data.historical import StockHistoricalDataClient
+            from alpaca.data.requests import StockBarsRequest
+            from alpaca.data.timeframe import TimeFrame, TimeFrameUnit
+
+            from backend.services.quote_manager import get_quote_manager
+
+            # Get real quote from QuoteManager
+            quote_manager = get_quote_manager()
+            quote = await quote_manager.get_quote(symbol)
+
+            if quote and quote.last > 0:
+                return Decimal(str(quote.last))
+
+            # Fallback: Get last bar close if quote unavailable
+            alpaca_client = StockHistoricalDataClient(
+                api_key=os.getenv('ALPACA_API_KEY_ID'),
+                secret_key=os.getenv('ALPACA_API_SECRET_KEY')
+            )
+
+            request = StockBarsRequest(
+                symbol_or_symbols=symbol,
+                timeframe=TimeFrame(1, TimeFrameUnit.Day),
+                start=datetime.utcnow() - timedelta(days=7),
+                limit=1
+            )
+
+            response = alpaca_client.get_stock_bars(request)
+
+            if symbol in response and len(response[symbol]) > 0:
+                last_bar = list(response[symbol])[-1]
+                return Decimal(str(last_bar.close))
+
+            # No fallback to mock - raise error if no price available
+            raise ValueError(f"No market price available for {symbol}")
+
+        except Exception as e:
+            logger.error(f"Error fetching market price for {symbol}: {e}")
+            raise ValueError(f"Failed to get market price for {symbol}: {str(e)}")
 
     async def _evaluate_order_comprehensive(self, order: OrderSpec) -> RiskDecision:
         """Comprehensive risk evaluation with all institutional controls"""
@@ -569,7 +912,7 @@ class AsyncRiskManager:
             qty = float(order_data.get("qty", 0))
             price = float(order_data.get("price", 100))
             symbol = order_data.get("symbol", "")
-            side = order_data.get("side", "buy")
+            order_data.get("side", "buy")
             notional = qty * price
 
             # Use legacy test dependencies if available
@@ -710,27 +1053,27 @@ class AsyncRiskManager:
     ):
         """
         Check cash balance with flexible interface.
-        
+
         Can be called either:
         - check_cash_balance(required_cash: float, portfolio_state) -> dict (legacy)
         - check_cash_balance(order_spec: OrderSpec, portfolio_state) -> RiskDecision (new)
         """
         from .types import OrderSpec, RiskDecision
-        
+
         # Check if first parameter is OrderSpec (new interface)
         if isinstance(order_spec_or_required_cash, OrderSpec):
             order_spec = order_spec_or_required_cash
             required_cash = float(order_spec.qty * (order_spec.price or Decimal("100")))
-            
+
             # Get available cash
             if portfolio_state is None:
                 portfolio_state = {}
             available_cash = float(portfolio_state.get("cash", 100000))
-            
+
             # Check minimum cash reserve (e.g., keep 10% as buffer)
             min_cash_reserve = 10000  # Default $10K cash reserve
             available_for_trading = available_cash - min_cash_reserve
-            
+
             if required_cash > available_for_trading:
                 return RiskDecision.block(
                     reason="insufficient_cash",
@@ -738,18 +1081,18 @@ class AsyncRiskManager:
                     limits={"min_cash_reserve": min_cash_reserve},
                     risk_score=required_cash / available_for_trading if available_for_trading > 0 else 1.0
                 )
-            
+
             return RiskDecision.allow(
                 reason="cash_balance_sufficient",
                 adjustments={"required_cash": required_cash, "available_cash": available_for_trading},
                 limits={"min_cash_reserve": min_cash_reserve},
                 risk_score=required_cash / available_for_trading if available_for_trading > 0 else 0.0
             )
-        
+
         else:
             # Legacy interface: check_cash_balance(required_cash, portfolio_state)
             required_cash = float(order_spec_or_required_cash)
-            
+
             try:
                 if portfolio_state is None:
                     portfolio_state = {}
@@ -892,11 +1235,11 @@ class AsyncRiskManager:
                     "side": side or "buy",
                     "price": 100.0,  # Default price for calculation
                 }
-            
+
             symbol = position_data.get("symbol", symbol or "UNKNOWN")
             quantity = position_data.get("quantity", quantity or 0)
             price = position_data.get("price", 100.0)
-            
+
             return {
                 "symbol": symbol,
                 "quantity": quantity,
@@ -949,7 +1292,7 @@ class RiskManager(AsyncRiskManager):
     def __init__(self, *args, **kwargs):
         """Initialize RiskManager with mock risk_limits for test compatibility."""
         super().__init__(*args, **kwargs)
-        
+
         # Create mock risk_limits object for test compatibility
         class MockRiskLimits:
             def __init__(self):
@@ -958,7 +1301,7 @@ class RiskManager(AsyncRiskManager):
                 self.max_daily_loss = 5000  # $5K
                 self.max_drawdown = 0.10  # 10%
                 self.min_cash_reserve = 10000  # $10K
-                
+
         self.risk_limits = MockRiskLimits()
 
     def before_order(
@@ -1274,42 +1617,42 @@ class RiskManager(AsyncRiskManager):
     def check_concentration_limits(self, order_spec: OrderSpec, portfolio_state: dict[str, Any]) -> "RiskDecision":
         """
         Check concentration limits for symbol and sector exposure.
-        
+
         Args:
             order_spec: Order specification
             portfolio_state: Current portfolio state
-            
+
         Returns:
             RiskDecision with concentration check results
         """
         from .types import RiskDecision
-        
+
         # Get current portfolio value
         portfolio_value = float(portfolio_state.get("total_value", 100000))
-        
+
         # Check single symbol exposure limit
         current_symbol_value = portfolio_state.get("positions", {}).get(order_spec.symbol, {}).get("market_value", 0)
         order_value = float(order_spec.qty * (order_spec.price or Decimal("100")))
         new_symbol_value = float(current_symbol_value) + order_value
         symbol_exposure_ratio = new_symbol_value / portfolio_value
-        
+
         # Use stored max position value or default to 15% exposure limit
         max_single_exposure = 0.15  # 15% default exposure limit
-        
-        # Check sector concentration 
+
+        # Check sector concentration
         sector = self._get_symbol_sector(order_spec.symbol)
         max_sector_exposure = 0.30  # 30% default sector exposure limit
-        
+
         # Calculate current sector exposure
         sector_exposure = 0.0
         for symbol, position in portfolio_state.get("positions", {}).items():
             if self._get_symbol_sector(symbol) == sector:
                 sector_exposure += float(position.get("market_value", 0))
-        
+
         # Add this order's contribution to sector exposure
         new_sector_exposure = sector_exposure + order_value
         sector_exposure_ratio = new_sector_exposure / portfolio_value
-        
+
         # Check sector limit first (higher priority)
         if sector_exposure_ratio > max_sector_exposure:
             return RiskDecision.block(
@@ -1325,7 +1668,7 @@ class RiskManager(AsyncRiskManager):
                 },
                 risk_score=sector_exposure_ratio / max_sector_exposure
             )
-        
+
         # Check symbol limit
         if symbol_exposure_ratio > max_single_exposure:
             return RiskDecision.block(
@@ -1341,7 +1684,7 @@ class RiskManager(AsyncRiskManager):
                 },
                 risk_score=symbol_exposure_ratio / max_single_exposure
             )
-        
+
         return RiskDecision.allow(
             reason="concentration_check_passed",
             adjustments={
@@ -1353,33 +1696,33 @@ class RiskManager(AsyncRiskManager):
                 "max_single_symbol_exposure": max_single_exposure,
                 "max_sector_exposure": max_sector_exposure
             },
-            risk_score=max(symbol_exposure_ratio / max_single_exposure, 
+            risk_score=max(symbol_exposure_ratio / max_single_exposure,
                           sector_exposure_ratio / max_sector_exposure)
         )
 
     def check_daily_loss_limit(self, order_spec: OrderSpec, portfolio_state: dict[str, Any]) -> "RiskDecision":
         """
         Check daily loss limits.
-        
+
         Args:
             order_spec: Order specification
             portfolio_state: Current portfolio state
-            
+
         Returns:
             RiskDecision with daily loss check results
         """
         from .types import RiskDecision
-        
+
         # Get daily P&L
         daily_pnl = portfolio_state.get("daily_pnl", 0)
         daily_loss_limit = 5000  # Default $5K daily loss limit
-        
+
         # Calculate potential additional loss (simple estimate)
         order_value = float(order_spec.qty * (order_spec.price or Decimal("100")))
         estimated_risk = order_value * 0.05  # Assume 5% potential loss
-        
+
         potential_total_loss = abs(float(daily_pnl)) + estimated_risk
-        
+
         if potential_total_loss > daily_loss_limit:
             return RiskDecision.block(
                 reason="daily_loss_limit_exceeded",
@@ -1387,7 +1730,7 @@ class RiskManager(AsyncRiskManager):
                 limits={"max_daily_loss": daily_loss_limit},
                 risk_score=potential_total_loss / daily_loss_limit
             )
-        
+
         return RiskDecision.allow(
             reason="daily_loss_check_passed",
             adjustments={"potential_loss": potential_total_loss},
@@ -1398,20 +1741,20 @@ class RiskManager(AsyncRiskManager):
     def check_drawdown_limit(self, order_spec: OrderSpec, portfolio_state: dict[str, Any]) -> "RiskDecision":
         """
         Check maximum drawdown limits.
-        
+
         Args:
             order_spec: Order specification
             portfolio_state: Current portfolio state
-            
+
         Returns:
             RiskDecision with drawdown check results
         """
         from .types import RiskDecision
-        
+
         # Get current drawdown
         max_drawdown = portfolio_state.get("max_drawdown", 0)
         max_drawdown_limit = 0.10  # 10% default drawdown limit
-        
+
         if float(max_drawdown) > max_drawdown_limit:
             return RiskDecision.block(
                 reason="max_drawdown_exceeded",
@@ -1419,7 +1762,7 @@ class RiskManager(AsyncRiskManager):
                 limits={"max_drawdown": max_drawdown_limit},
                 risk_score=float(max_drawdown) / max_drawdown_limit
             )
-        
+
         return RiskDecision.allow(
             reason="drawdown_check_passed",
             adjustments={"current_drawdown": float(max_drawdown)},
@@ -1430,28 +1773,28 @@ class RiskManager(AsyncRiskManager):
     def check_risk(self, symbol: str, quantity: float, price: float = None) -> dict[str, Any]:
         """
         Check risk for a trade (backward compatibility method).
-        
+
         Args:
             symbol: Stock symbol
             quantity: Trade quantity
             price: Trade price (optional)
-            
+
         Returns:
             Dictionary with risk assessment
         """
         try:
             # Create mock order spec
-            order = OrderSpec(
+            OrderSpec(
                 symbol=symbol,
                 side="buy" if quantity > 0 else "sell",
                 qty=Decimal(str(abs(quantity))),
                 notional=Decimal(str(abs(quantity) * (price or 100))),
                 price=Decimal(str(price)) if price else None,
             )
-            
+
             # Simple risk check
             risk_score = min(abs(quantity) / 1000, 1.0)  # Simple quantity-based risk
-            
+
             return {
                 "allowed": risk_score < 0.8,
                 "risk_score": risk_score,
@@ -1472,10 +1815,10 @@ class RiskManager(AsyncRiskManager):
     def validate_order(self, order_data: dict[str, Any]) -> dict[str, Any]:
         """
         Validate an order (backward compatibility method).
-        
+
         Args:
             order_data: Order data dictionary
-            
+
         Returns:
             Dictionary with validation results
         """
@@ -1483,7 +1826,7 @@ class RiskManager(AsyncRiskManager):
             symbol = order_data.get("symbol", "UNKNOWN")
             quantity = order_data.get("quantity", 0)
             price = order_data.get("price", 100)
-            
+
             # Basic validation checks
             if not symbol or symbol == "UNKNOWN":
                 return {
@@ -1491,31 +1834,31 @@ class RiskManager(AsyncRiskManager):
                     "reason": "invalid_symbol",
                     "errors": ["Symbol is required"]
                 }
-            
+
             if quantity == 0:
                 return {
                     "valid": False,
                     "reason": "zero_quantity",
                     "errors": ["Quantity cannot be zero"]
                 }
-            
+
             if price <= 0:
                 return {
                     "valid": False,
                     "reason": "invalid_price",
                     "errors": ["Price must be positive"]
                 }
-            
+
             # Check risk for this order
             risk_check = self.check_risk(symbol, quantity, price)
-            
+
             return {
                 "valid": risk_check.get("allowed", False),
                 "reason": risk_check.get("reason", "unknown"),
                 "risk_score": risk_check.get("risk_score", 0),
                 "errors": [] if risk_check.get("allowed", False) else [risk_check.get("reason", "Risk check failed")]
             }
-            
+
         except Exception as e:
             logger.error(f"Error in validate_order: {e}")
             return {
@@ -1527,17 +1870,17 @@ class RiskManager(AsyncRiskManager):
     def _get_symbol_sector(self, symbol: str) -> str:
         """
         Get sector for a given symbol.
-        
+
         Args:
             symbol: Stock symbol
-            
+
         Returns:
             Sector name (simplified mapping for testing)
         """
         # Simple sector mapping for common test symbols
         sector_mapping = {
             "AAPL": "Technology",
-            "MSFT": "Technology", 
+            "MSFT": "Technology",
             "NVDA": "Technology",
             "GOOGL": "Technology",
             "GOOG": "Technology",
@@ -1552,7 +1895,7 @@ class RiskManager(AsyncRiskManager):
             "HD": "Consumer Discretionary",
             "V": "Financials"
         }
-        
+
         return sector_mapping.get(symbol, "Unknown")
 
 

@@ -4,10 +4,10 @@ Handles deterministic signal generation and retrieval operations.
 """
 
 import asyncio
-import time
-import uuid
 from datetime import datetime
-from typing import Any, Optional
+import time
+from typing import Any
+import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
@@ -93,7 +93,7 @@ class ActOnSignalResponse(BaseModel):
     symbol: str
     action: str  # "buy", "sell", "hold"
     signal: dict[str, Any]
-    order: Optional[dict[str, Any]] = None  # Order details if action is buy/sell
+    order: dict[str, Any] | None = None  # Order details if action is buy/sell
     timestamp: str
 
 
@@ -101,12 +101,12 @@ class ActOnSignalResponse(BaseModel):
 async def fetch_closes(symbol: str, client, lookback: int = 200) -> list[float]:
     """
     Fetch historical close prices for a symbol.
-    
+
     Args:
         symbol: Trading symbol
         client: Market data client (Alpaca or mock)
         lookback: Number of historical periods to fetch
-        
+
     Returns:
         List of close prices (oldest to newest)
     """
@@ -122,11 +122,11 @@ async def fetch_closes(symbol: str, client, lookback: int = 200) -> list[float]:
             price_data = await client.get_historical_data(
                 symbol, timeframe="1Day", limit=lookback
             )
-            
+
             if hasattr(price_data, 'empty') and price_data.empty:
                 logger.warning(f"No price data available for {symbol}")
                 return []
-            
+
             # Extract close prices as list
             if hasattr(price_data, 'close'):
                 close_prices = price_data['close'].tolist()
@@ -135,10 +135,10 @@ async def fetch_closes(symbol: str, client, lookback: int = 200) -> list[float]:
             else:
                 logger.warning(f"Unexpected price data format for {symbol}")
                 return []
-                
+
             logger.info(f"Fetched {len(close_prices)} close prices for {symbol} from mock")
             return close_prices
-        
+
     except Exception as e:
         logger.error(f"Error fetching close prices for {symbol}: {e}")
         return []
@@ -147,10 +147,10 @@ async def fetch_closes(symbol: str, client, lookback: int = 200) -> list[float]:
 def get_market_data_client():
     """Get market data client based on settings."""
     settings = get_settings()
-    
+
     # Check if we should use mock data (for testing or development)
     use_mock = getattr(settings, 'USE_MOCK_DATA', True)  # Default to mock for safety
-    
+
     if use_mock:
         return get_mock_alpaca_client()
     else:
@@ -167,36 +167,36 @@ def get_mock_alpaca_client():
     """Get mock Alpaca client with deterministic (but realistic) data."""
     import numpy as np
     import pandas as pd
-    
+
     class MockAlpacaClient:
         async def get_historical_data(self, symbol: str, timeframe: str, limit: int):
             """Generate deterministic price data based on symbol hash."""
             # Use symbol hash for deterministic but varied data per symbol
             seed = hash(symbol) % 1000000
             np.random.seed(seed)
-            
+
             # Generate realistic price movements
             base_price = 100 + (seed % 200)  # Price between 100-300
             dates = pd.date_range(end=datetime.now(), periods=limit, freq='D')
-            
+
             # Generate price series with realistic characteristics
             returns = np.random.normal(0, 0.02, limit)  # 2% daily volatility
             prices = [base_price]
-            
+
             for i in range(1, limit):
                 # Add momentum and mean reversion
                 momentum = 0.1 * returns[i-1] if i > 0 else 0
                 mean_reversion = -0.05 * (prices[-1] - base_price) / base_price
-                
+
                 price_change = returns[i] + momentum + mean_reversion
                 new_price = prices[-1] * (1 + price_change)
                 prices.append(max(new_price, 1.0))  # Ensure positive prices
-            
+
             # Create OHLC data
             highs = [p * (1 + abs(np.random.normal(0, 0.01))) for p in prices]
             lows = [p * (1 - abs(np.random.normal(0, 0.01))) for p in prices]
             volumes = [1000 + int(abs(np.random.normal(0, 500))) for _ in prices]
-            
+
             data = pd.DataFrame({
                 'open': prices,
                 'high': highs,
@@ -204,9 +204,9 @@ def get_mock_alpaca_client():
                 'close': prices,
                 'volume': volumes
             }, index=dates)
-            
+
             return data
-    
+
     return MockAlpacaClient()
 
 
@@ -237,7 +237,7 @@ async def get_order_service(request: Request):
     try:
         # Get sessionmaker from app state
         sessionmaker = getattr(request.app.state, 'sessionmaker', None)
-        
+
         if not sessionmaker:
             # Check if we're in testing mode
             from backend.config import get_settings
@@ -249,26 +249,26 @@ async def get_order_service(request: Request):
                 return OrderService(
                     orders_repo=OrdersRepo(None),
                     outbox_repo=OutboxRepo(None)
-                )  
+                )
             else:
                 raise HTTPException(
-                    status_code=500, 
+                    status_code=500,
                     detail="Database session not configured"
                 )
-        
+
         # Create OrderService with sessionmaker - session will be created per operation
         # Import required repositories
         from backend.infrastructure.database.repositories.orders_repo import OrdersRepo
         from backend.infrastructure.database.repositories.outbox_repo import OutboxRepo
-        
+
         service = OrderService(
             sessionmaker=sessionmaker,
             orders_repo=OrdersRepo,  # Class reference - will be instantiated per session
             outbox_repo=OutboxRepo   # Class reference - will be instantiated per session
         )
-        
+
         return service
-            
+
     except Exception as e:
         logger.error(f"Failed to create OrderService: {e}")
         # Fallback for production reliability - create with proper repositories
@@ -282,8 +282,8 @@ async def get_order_service(request: Request):
 
 # Route Handlers
 @router.get(
-    "/{symbol}", 
-    response_model=SignalResponse, 
+    "/{symbol}",
+    response_model=SignalResponse,
     tags=["Trading Signals"]
 )
 async def get_trading_signal(
@@ -291,18 +291,18 @@ async def get_trading_signal(
     current_user=Depends(get_authenticated_user),
 ):
     """Get deterministic trading signal for a specific symbol"""
-    start_time = time.time()
+    time.time()
 
     try:
         # Get market data client
         client = get_market_data_client()
-        
+
         # Fetch close prices
         close_prices = await fetch_closes(symbol, client, lookback=200)
-        
+
         if not close_prices:
             raise HTTPException(
-                status_code=404, 
+                status_code=404,
                 detail=f"No market data available for {symbol}"
             )
 
@@ -344,7 +344,7 @@ async def get_all_signals(
     try:
         # Parse symbol list
         symbol_list = [s.strip().upper() for s in symbols.split(",") if s.strip()]
-        
+
         if not symbol_list:
             raise HTTPException(status_code=400, detail="No valid symbols provided")
 
@@ -354,32 +354,32 @@ async def get_all_signals(
 
         # Fetch closes for all symbols concurrently
         close_price_tasks = [
-            fetch_closes(symbol, client, lookback=200) 
+            fetch_closes(symbol, client, lookback=200)
             for symbol in symbol_list
         ]
-        
+
         # Wait for all data fetching to complete
         close_prices_results = await asyncio.gather(*close_price_tasks, return_exceptions=True)
 
         # Process signals for each symbol
         signals_map: dict[str, Any] = {}
-        
+
         for i, symbol in enumerate(symbol_list):
             try:
                 close_prices = close_prices_results[i]
-                
+
                 if isinstance(close_prices, Exception):
                     logger.warning(f"Data fetch failed for {symbol}: {close_prices}")
                     signals_map[symbol] = {"error": "data_fetch_failed"}
                     continue
-                
+
                 if not close_prices:
                     signals_map[symbol] = {"error": "no_data_available"}
                     continue
-                
+
                 # Generate signal
                 decision = strategy.decide(close_prices=close_prices)
-                
+
                 signals_map[symbol] = {
                     "action": decision["action"],
                     "confidence": decision["confidence"],
@@ -387,7 +387,7 @@ async def get_all_signals(
                     "sl_pct": decision["sl_pct"],
                     "reason": decision["reason"]
                 }
-                
+
                 # Log each signal decision using standardized logger
                 event_logger.signal_decided(
                     symbol=symbol,
@@ -399,7 +399,7 @@ async def get_all_signals(
                     endpoint="batch_symbols",
                     batch=True
                 )
-                
+
             except Exception as e:
                 logger.error(f"Error processing signal for {symbol}: {e}")
                 signals_map[symbol] = {"error": str(e)}
@@ -429,7 +429,7 @@ async def get_batch_signals(
     """
     try:
         symbol_list = [s.strip().upper() for s in request.symbols if s.strip()]
-        
+
         if not symbol_list:
             raise HTTPException(status_code=400, detail="No valid symbols provided")
 
@@ -442,35 +442,35 @@ async def get_batch_signals(
 
         # Fetch closes for all symbols concurrently
         close_price_tasks = [
-            fetch_closes(symbol, client, lookback=request.lookback) 
+            fetch_closes(symbol, client, lookback=request.lookback)
             for symbol in symbol_list
         ]
-        
+
         # Wait for all data fetching to complete
         close_prices_results = await asyncio.gather(*close_price_tasks, return_exceptions=True)
 
         # Process signals for each symbol
         signals_map: dict[str, Any] = {}
-        
+
         for i, symbol in enumerate(symbol_list):
             try:
                 close_prices = close_prices_results[i]
-                
+
                 if isinstance(close_prices, Exception):
                     logger.warning(f"Data fetch failed for {symbol}: {close_prices}")
                     signals_map[symbol] = {"error": "data_fetch_failed"}
                     continue
-                
+
                 if not close_prices:
                     signals_map[symbol] = {"error": "no_data_available"}
                     continue
-                
+
                 # Generate signal and create SignalResponse
                 decision = strategy.decide(close_prices=close_prices)
-                
+
                 # Create SignalResponse using from_decision method
                 signals_map[symbol] = SignalResponse.from_decision(symbol, decision)
-                
+
                 # Log each signal decision using standardized logger
                 event_logger.signal_decided(
                     symbol=symbol,
@@ -483,7 +483,7 @@ async def get_batch_signals(
                     endpoint="batch_advanced",
                     batch=True
                 )
-                
+
             except Exception as e:
                 logger.error(f"Error processing signal for {symbol}: {e}")
                 # For errors, create a hold signal with low confidence
@@ -512,7 +512,7 @@ async def create_signal(
     try:
         # Generate signal ID
         signal_id = str(uuid.uuid4())
-        
+
         # Log signal creation
         logger.info(
             "SIGNAL_CREATED",
@@ -523,7 +523,7 @@ async def create_signal(
                 "user_id": getattr(current_user, 'id', None)
             }
         )
-        
+
         # Convert signal_request to decision format and return SignalResponse
         decision_dict = {
             "action": signal_request.signal_type.lower(),  # Convert BUY/SELL/HOLD to lowercase
@@ -533,9 +533,9 @@ async def create_signal(
             "timestamp": signal_request.timestamp or datetime.utcnow().isoformat(),
             "reason": f"User submitted signal {signal_id}"
         }
-        
+
         return SignalResponse.from_decision(signal_request.symbol, decision_dict)
-        
+
     except Exception as e:
         logger.error(f"Error creating signal: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -549,13 +549,13 @@ async def act_on_signal(
 ) -> ActOnSignalResponse:
     """
     Generate signal and act on it by submitting orders.
-    
+
     This endpoint bridges the strategy layer with the order execution layer:
     1. Fetches historical data for the symbol
-    2. Runs BasicStrategy.decide() to get trading signal  
+    2. Runs BasicStrategy.decide() to get trading signal
     3. If action is buy/sell, calculates position size and submits order
     4. Returns both signal and order details in response
-    
+
     Size modes:
     - 'fixed': Use request.fixed_qty directly
     - 'risk': Calculate quantity based on risk_budget_pct and stop loss
@@ -563,21 +563,21 @@ async def act_on_signal(
     try:
         symbol = request.symbol.upper().strip()
         timestamp = datetime.now().isoformat()
-        
+
         # Get market data client and fetch historical closes
         client = get_market_data_client()
         closes = await fetch_closes(symbol, client, request.lookback)
-        
+
         if not closes or len(closes) < 50:
             raise HTTPException(
-                status_code=400, 
+                status_code=400,
                 detail=f"Insufficient historical data for {symbol}"
             )
-        
+
         # Run strategy to get signal
         strategy = get_basic_strategy()
         decision = strategy.decide(closes=closes)
-        
+
         signal_data = {
             "symbol": symbol,
             "action": decision["action"],
@@ -586,7 +586,7 @@ async def act_on_signal(
             "indicators": decision.get("indicators", {}),
             "lookback": request.lookback
         }
-        
+
         # Log signal decision
         event_logger.signal_decided(
             symbol=symbol,
@@ -598,17 +598,17 @@ async def act_on_signal(
             lookback=request.lookback,
             endpoint="act_on_signal"
         )
-        
+
         # If signal is hold, return without creating order
         if decision["action"] == "hold":
             return ActOnSignalResponse(
                 symbol=symbol,
-                action="hold", 
+                action="hold",
                 signal=signal_data,
                 order=None,
                 timestamp=timestamp
             )
-        
+
         # Calculate position size based on size_mode
         if request.size_mode == "fixed":
             quantity = request.fixed_qty
@@ -617,10 +617,10 @@ async def act_on_signal(
             # Use stop loss percentage from strategy and risk budget
             sl_pct = strategy.sl_pct / 100.0  # Convert to decimal
             risk_amount = request.portfolio_value * request.risk_budget_pct
-            
+
             # Estimate current price (use last close)
             current_price = closes[-1]
-            
+
             # Calculate quantity: risk_amount / (price * sl_pct)
             quantity = risk_amount / (current_price * sl_pct)
             quantity = max(1.0, round(quantity, 2))  # Minimum 1 share
@@ -629,16 +629,17 @@ async def act_on_signal(
                 status_code=400,
                 detail=f"Invalid size_mode: {request.size_mode}. Must be 'fixed' or 'risk'"
             )
-        
+
         # Apply production guardrails before order submission
         try:
-            from backend.infra.guardrails import validate_order_guardrails
             from decimal import Decimal
-            
+
+            from backend.infra.guardrails import validate_order_guardrails
+
             # Check if current user is admin (simplified check)
             user_id = getattr(current_user, 'id', 'system')
             is_admin = getattr(current_user, 'username', '') == 'admin'  # Simplified admin check
-            
+
             # Validate against guardrails
             guardrail_result = await validate_order_guardrails(
                 symbol=symbol,
@@ -649,7 +650,7 @@ async def act_on_signal(
                 is_admin=is_admin,
                 risk_override=False  # Not exposed in this endpoint yet
             )
-            
+
             if not guardrail_result.allowed:
                 # Log guardrail violation
                 violation_codes = [v['code'] for v in guardrail_result.violations]
@@ -658,7 +659,7 @@ async def act_on_signal(
                               side="buy" if decision["action"] == "buy" else "sell",
                               qty=quantity,
                               violations=violation_codes)
-                
+
                 # Return error response
                 raise HTTPException(
                     status_code=422,
@@ -669,20 +670,20 @@ async def act_on_signal(
                         "details": guardrail_result.details
                     }
                 )
-            
+
             # Log any warnings (admin overrides)
             if guardrail_result.warnings:
                 warning_codes = [w['code'] for w in guardrail_result.warnings]
                 logger.info("Order allowed with guardrail warnings",
                            symbol=symbol,
                            warnings=warning_codes)
-            
+
         except ImportError:
             logger.warning("Guardrails module not available, proceeding without validation")
-        
+
         # Generate idempotency key
         idempotency_key = f"act-{symbol}-{int(time.time())}-{uuid.uuid4().hex[:8]}"
-        
+
         # Prepare order data
         side = "buy" if decision["action"] == "buy" else "sell"
         order_data = {
@@ -701,7 +702,7 @@ async def act_on_signal(
                 "risk_budget_pct": request.risk_budget_pct if request.size_mode == "risk" else None
             }
         }
-        
+
         # Create OrderService with session and repositories
         try:
             orders_repo = OrdersRepo(db)
@@ -711,22 +712,23 @@ async def act_on_signal(
                 orders_repo=orders_repo,
                 outbox_repo=outbox_repo
             )
-            
+
             # Submit order through OrderService
             order_result = await order_service.submit_order_async(order_data)
-            
+
             # Check if order submission failed or returned None
             if not order_result:
                 raise HTTPException(
                     status_code=500,
                     detail="Order submission failed - no result returned from order service"
                 )
-            
+
             # Record order in guardrails for daily tracking
             try:
-                from backend.infra.guardrails import get_guardrails, OrderRequest
                 from decimal import Decimal
-                
+
+                from backend.infra.guardrails import OrderRequest, get_guardrails
+
                 guardrails = get_guardrails()
                 order_request = OrderRequest(
                     symbol=symbol,
@@ -736,24 +738,24 @@ async def act_on_signal(
                     user_id=user_id,
                     is_admin=is_admin
                 )
-                
+
                 # Estimate notional value for tracking
                 estimated_price = await guardrails._get_estimated_price(symbol)
                 estimated_notional = Decimal(str(quantity)) * estimated_price
-                
+
                 guardrails.record_order_submitted(order_request, estimated_notional)
-                
+
             except Exception as e:
                 logger.warning("Failed to record order in guardrails tracking",
                               error=str(e),
                               order_id=order_result.get("order_id"))
-                
+
         except Exception as order_error:
             # Log detailed error information for debugging
             logger.error(f"OrderService creation or order submission failed: {order_error}")
             logger.error(f"OrderService error type: {type(order_error).__name__}")
             logger.error(f"Database session state: {db}")
-            
+
             # Return a mock order_result to prevent Pydantic validation error
             # This allows us to see the actual error instead of validation error
             order_result = {
@@ -766,7 +768,7 @@ async def act_on_signal(
                 "submitted_at": timestamp,
                 "error": str(order_error)
             }
-        
+
         # Log order submission
         log_order_submitted(
             order_id=order_result.get("order_id"),
@@ -778,7 +780,7 @@ async def act_on_signal(
             status=order_result.get("status"),
             endpoint="act_on_signal"
         )
-        
+
         order_details = {
             "order_id": order_result.get("order_id"),
             "status": order_result.get("status"),
@@ -791,7 +793,7 @@ async def act_on_signal(
             "submitted_at": order_result.get("submitted_at", timestamp),
             "size_mode": request.size_mode
         }
-        
+
         return ActOnSignalResponse(
             symbol=symbol,
             action=decision["action"],
@@ -799,12 +801,12 @@ async def act_on_signal(
             order=order_details,
             timestamp=timestamp
         )
-        
+
     except HTTPException:
         raise
     except Exception as e:
-        import traceback
         import os
+        import traceback
         logger.error(f"Error in act_on_signal for {request.symbol}: {e}")
         logger.error(f"Full traceback: {traceback.format_exc()}")
         logger.error(f"Environment check - ALPACA_API_KEY_ID present: {bool(os.getenv('ALPACA_API_KEY_ID'))}")

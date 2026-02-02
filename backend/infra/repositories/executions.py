@@ -3,11 +3,11 @@ Executions repository - tracks order fills and trades.
 Implements async CRUD operations with proper error handling.
 """
 
-import logging
-import uuid
 from datetime import UTC, datetime
 from decimal import Decimal
+import logging
 from typing import Any
+import uuid
 
 from sqlalchemy import and_, select
 from sqlalchemy.exc import IntegrityError

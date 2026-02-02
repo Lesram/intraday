@@ -1,0 +1,117 @@
+/* Kill Switch Button Styles */
+
+.kill-switch-button {
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  box-shadow: 0 4px 12px rgba(255, 77, 79, 0.3);
+  border: none;
+  transition: all 0.3s ease;
+}
+
+.kill-switch-button:hover {
+  box-shadow: 0 6px 16px rgba(255, 77, 79, 0.4);
+  transform: translateY(-2px);
+}
+
+.kill-switch-button:active {
+  transform: translateY(0);
+}
+
+.kill-switch-button.ant-btn-large {
+  height: 48px;
+  padding: 0 32px;
+  font-size: 16px;
+  border-radius: 6px;
+}
+
+.kill-switch-button.ant-btn-middle {
+  height: 40px;
+  padding: 0 24px;
+  font-size: 14px;
+}
+
+.kill-switch-button.ant-btn-small {
+  height: 32px;
+  padding: 0 16px;
+  font-size: 12px;
+}
+
+/* Modal styling */
+.kill-switch-modal .ant-modal-header {
+  background: linear-gradient(135deg, #ff4d4f, #ff7875);
+  border-bottom: none;
+  border-radius: 8px 8px 0 0;
+}
+
+.kill-switch-modal .ant-modal-title {
+  color: white !important;
+  font-weight: 600;
+  font-size: 18px;
+}
+
+.kill-switch-modal .ant-modal-close {
+  display: none;
+}
+
+.kill-switch-modal .ant-modal-body {
+  padding: 24px;
+}
+
+.kill-switch-modal .ant-alert {
+  border-radius: 6px;
+  margin-bottom: 0;
+}
+
+.kill-switch-modal .ant-alert-error {
+  background: #fff2f0;
+  border: 1px solid #ffccc7;
+}
+
+.kill-switch-modal .ant-alert-message {
+  font-weight: 600;
+  font-size: 16px;
+  color: #cf1322;
+}
+
+.kill-switch-modal .ant-alert-description {
+  color: #262626;
+  line-height: 1.6;
+}
+
+.kill-switch-modal .ant-alert-description ul {
+  margin: 12px 0;
+  padding-left: 20px;
+}
+
+.kill-switch-modal .ant-alert-description li {
+  margin: 4px 0;
+}
+
+.kill-switch-modal textarea {
+  resize: vertical;
+  font-family: inherit;
+}
+
+.kill-switch-modal textarea:focus {
+  border-color: #ff4d4f;
+  box-shadow: 0 0 0 2px rgba(255, 77, 79, 0.2);
+  outline: none;
+}
+
+.kill-switch-modal .ant-btn-primary {
+  background: #ff4d4f;
+  border-color: #ff4d4f;
+  font-weight: 600;
+}
+
+.kill-switch-modal .ant-btn-primary:hover {
+  background: #ff7875;
+  border-color: #ff7875;
+}
+
+.kill-switch-modal .ant-btn-primary:disabled {
+  background: #f5f5f5;
+  border-color: #d9d9d9;
+  color: #bfbfbf;
+}

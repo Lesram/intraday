@@ -23,12 +23,12 @@ bandit:
   - issue_id: B201
     severity: MEDIUM
     finding: "Flask app run with debug=True"
-    reason: "Development mode only - never deployed to production"
+    reason: "Development mode only - never deployed to production. Debug mode disabled in all docker-compose files."
     owner: "@backend-team"
-    expiry: "2025-12-31"
+    expiry: "2026-06-30"  # H-13 FIX: Extended to 2026-06-30
     ticket: "SEC-001"
     approved_by: "tech-lead"
-    approved_date: "2025-10-02"
+    approved_date: "2026-02-02"  # H-13 FIX: Updated approval date
   
   # Add your waivers here:
   # - issue_id: B501

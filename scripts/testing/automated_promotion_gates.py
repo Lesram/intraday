@@ -590,51 +590,177 @@ class AutomatedPromotionGates:
             ))
             return gates
         
-        try:
-            # Check SLO monitoring endpoint
-            async with aiohttp.ClientSession() as session:
-                async with session.get(f"{self.base_url}/api/v1/monitoring/slo-status") as resp:
-                    if resp.status == 200:
-                        slo_data = await resp.json()
-                    else:
-                        return self._generate_synthetic_slo_gates()
-        except Exception:
-            return self._generate_synthetic_slo_gates()
+        # Try to get SLO data from monitoring endpoint
+        slo_data = await self._get_slo_data()
+        
+        if slo_data is None:
+            # Fallback: Calculate SLO from burn-in and SLI metrics
+            logger.info("📊 SLO endpoint unavailable, calculating from SLI metrics...")
+            return await self._calculate_slo_from_metrics()
+        
+        # Extract metrics from the nested structure returned by the endpoint
+        # The endpoint returns: {"compliance": {...}, "error_budget": {...}}
+        compliance = slo_data.get('compliance', {})
+        error_budget = slo_data.get('error_budget', {})
+        
+        # Get availability from compliance.availability.current (percentage like 99.95)
+        availability_data = compliance.get('availability', {})
+        availability = availability_data.get('current', 0) / 100.0  # Convert from percentage to decimal
+        
+        # Get error budget remaining percentage
+        error_budget_remaining = error_budget.get('remaining_percentage', 0) / 100.0  # Convert to decimal
         
         # Gate: Overall Availability SLO
-        availability = slo_data.get('availability', 0)
         gates.append(PromotionGateResult(
             gate_name="slo_availability",
             passed=availability >= self.criteria.slo_availability_min,
             actual_value=f"{availability:.4f}",
             expected_value=f">={self.criteria.slo_availability_min}",
-            details=f"Platform availability: {availability:.3%}",
+            details=f"Platform availability (from endpoint): {availability:.3%}",
             severity="critical"
         ))
         
         # Gate: Error Budget Remaining
-        error_budget_remaining = slo_data.get('error_budget_remaining', 0)
         gates.append(PromotionGateResult(
             gate_name="slo_error_budget",
             passed=error_budget_remaining >= self.criteria.slo_error_budget_remaining_min,
             actual_value=f"{error_budget_remaining:.3f}",
             expected_value=f">={self.criteria.slo_error_budget_remaining_min}",
-            details=f"Error budget remaining: {error_budget_remaining:.3%}",
+            details=f"Error budget remaining (from endpoint): {error_budget_remaining:.3%}",
             severity="high"
         ))
         
+        logger.info(f"✅ Using SLO data from endpoint: Availability={availability:.3%}, Error Budget={error_budget_remaining:.3%}")
+        
         return gates
     
+    async def _get_slo_data(self) -> Optional[Dict[str, Any]]:
+        """Try to fetch SLO data from monitoring endpoint"""
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(f"{self.base_url}/api/v1/monitoring/slo-status") as resp:
+                    if resp.status == 200:
+                        data = await resp.json()
+                        # Check if data is actually useful (not empty or missing key fields)
+                        # Fixed: Check for actual keys returned by the endpoint ('compliance' and 'error_budget')
+                        if data and ('compliance' in data or 'error_budget' in data):
+                            logger.info("✅ Got SLO data from monitoring endpoint")
+                            return data
+                        else:
+                            logger.warning("⚠️  SLO endpoint returned empty/incomplete data")
+                            return None
+        except Exception as e:
+            logger.debug(f"SLO endpoint unavailable: {str(e)}")
+        return None
+    
+    async def _calculate_slo_from_metrics(self) -> List[PromotionGateResult]:
+        """Calculate SLO metrics from burn-in test results and SLI metrics"""
+        gates = []
+        
+        try:
+            # Get burn-in report if available
+            burn_in_report = await self._load_latest_burn_in_report()
+            
+            if burn_in_report is None:
+                logger.warning("⚠️  No burn-in report found, using synthetic SLO gates")
+                return self._generate_synthetic_slo_gates()
+            
+            # Calculate availability from burn-in data
+            agg_metrics = burn_in_report.get('aggregate_metrics', {})
+            if not agg_metrics:
+                logger.error("❌ No aggregate_metrics in burn-in report")
+                return self._generate_synthetic_slo_gates()
+            
+            success_rate = agg_metrics.get('average_success_rate')
+            if success_rate is None:
+                logger.error(f"❌ No 'average_success_rate' in aggregate_metrics. Available keys: {list(agg_metrics.keys())}")
+                return self._generate_synthetic_slo_gates()
+            
+            # Availability is essentially the success rate
+            availability = success_rate
+            logger.info(f"📊 Loaded burn-in success rate: {success_rate:.3%}")
+            
+            # Calculate error budget remaining
+            # Error budget = (actual_availability - slo_target) / (1 - slo_target)
+            slo_target = self.criteria.slo_availability_min
+            if availability >= slo_target:
+                # We're above target, calculate remaining budget
+                error_budget_remaining = (availability - slo_target) / (1 - slo_target)
+            else:
+                # We're below target, budget exhausted
+                error_budget_remaining = 0.0
+            
+            # Gate: Availability calculated from burn-in
+            gates.append(PromotionGateResult(
+                gate_name="slo_availability",
+                passed=availability >= slo_target,
+                actual_value=f"{availability:.4f}",
+                expected_value=f">={slo_target}",
+                details=f"Platform availability (calculated from burn-in): {availability:.3%}",
+                severity="critical"
+            ))
+            
+            # Gate: Error budget
+            gates.append(PromotionGateResult(
+                gate_name="slo_error_budget",
+                passed=error_budget_remaining >= self.criteria.slo_error_budget_remaining_min,
+                actual_value=f"{error_budget_remaining:.3f}",
+                expected_value=f">={self.criteria.slo_error_budget_remaining_min}",
+                details=f"Error budget remaining (calculated): {error_budget_remaining:.3%}",
+                severity="high"
+            ))
+            
+            logger.info(f"✅ Calculated SLO from metrics: Availability={availability:.3%}, Error Budget={error_budget_remaining:.3%}")
+                
+        except Exception as e:
+            logger.error(f"❌ Failed to calculate SLO from metrics: {str(e)}", exc_info=True)
+            return self._generate_synthetic_slo_gates()
+        
+        return gates
+    
+    async def _load_latest_burn_in_report(self) -> Optional[Dict[str, Any]]:
+        """Load the most recent burn-in test report"""
+        try:
+            burn_in_reports = list(self.burn_in_results_dir.glob("burn_in_report_*.json"))
+            if not burn_in_reports:
+                logger.warning("No burn-in reports found in test_results/burn_in/")
+                return None
+            
+            # Get most recent report
+            latest_report_file = max(burn_in_reports, key=lambda p: p.stat().st_mtime)
+            logger.info(f"Loading burn-in report: {latest_report_file.name}")
+            
+            with open(latest_report_file) as f:
+                return json.load(f)
+                
+        except Exception as e:
+            logger.error(f"Failed to load burn-in report: {str(e)}")
+            return None
+    
     def _generate_synthetic_slo_gates(self) -> List[PromotionGateResult]:
-        """Generate synthetic SLO gates when monitoring unavailable (REQUIRED mode only)"""
+        """Generate synthetic SLO gates when monitoring unavailable AND no burn-in data"""
+        logger.error("❌ CRITICAL: No SLO monitoring endpoint AND no burn-in data - generating failure gates")
+        logger.error("❌ This indicates either:")
+        logger.error("   1. Burn-in tests were not run")
+        logger.error("   2. Burn-in report is missing or corrupted")
+        logger.error("   3. SLO monitoring endpoint not implemented")
+        logger.error("❌ ACTION REQUIRED: Run burn-in tests or implement SLO endpoint")
         return [
             PromotionGateResult(
-                gate_name="slo_monitoring_availability",
+                gate_name="slo_availability",
                 passed=False,
-                actual_value="unavailable",
-                expected_value="active",
-                details="SLO monitoring endpoint not responding (required but unavailable)",
+                actual_value="0.0000",
+                expected_value=f">={self.criteria.slo_availability_min}",
+                details="SLO monitoring endpoint not responding and no burn-in data available",
                 severity="critical"
+            ),
+            PromotionGateResult(
+                gate_name="slo_error_budget",
+                passed=False,
+                actual_value="0.000",
+                expected_value=f">={self.criteria.slo_error_budget_remaining_min}",
+                details="Error budget unavailable (no monitoring data or burn-in results)",
+                severity="high"
             )
         ]
     

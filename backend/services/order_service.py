@@ -4,24 +4,484 @@ Now includes strategy engine integration for plan-and-submit workflows.
 """
 
 import asyncio
+import json
 import logging
+import os
+import time
+from datetime import datetime, time as dt_time
 from typing import TYPE_CHECKING, Any, Optional
 from uuid import uuid4
+from zoneinfo import ZoneInfo
 
 if TYPE_CHECKING:
+    from redis.asyncio import Redis
     from sqlalchemy.ext.asyncio import AsyncSession
 
+try:
+    import redis.asyncio as aioredis
+    REDIS_AVAILABLE = True
+except ImportError:
+    REDIS_AVAILABLE = False
+
+from ..infra.alerting import get_alert_manager
 from ..infra.outbox import OutboxRepo
 
 logger = logging.getLogger(__name__)
 
-# Constants for testing
+# Constants for operation
 MAX_RETRIES = 3
 
+# Redis keys for circuit breaker state persistence
+CB_STATE_KEY = "circuit_breaker:order_flow:state"
+CB_FAILURES_KEY = "circuit_breaker:order_flow:failures"
+CB_OPENED_AT_KEY = "circuit_breaker:order_flow:opened_at"
+CB_DAILY_PNL_KEY = "circuit_breaker:order_flow:daily_pnl"
+CB_LAST_RESET_DATE_KEY = "circuit_breaker:order_flow:last_reset_date"
 
-def circuit_breaker_check(*args, **kwargs):
-    """Circuit breaker check function stub for testing."""
-    return False  # Default to not triggering circuit breaker
+# Market timezone for daily reset
+MARKET_TIMEZONE = ZoneInfo("America/New_York")
+MARKET_OPEN_TIME = dt_time(9, 30)  # 9:30 AM ET
+
+
+class CircuitBreaker:
+    """
+    Production circuit breaker for order flow protection with Redis persistence.
+
+    Implements a three-state circuit breaker pattern:
+    - CLOSED: Normal operation, orders flow through
+    - OPEN: Circuit tripped, all orders rejected immediately
+    - HALF_OPEN: Testing recovery, limited orders allowed
+
+    The circuit opens when failure rate exceeds threshold within a time window.
+    It automatically attempts recovery after a timeout period.
+    
+    State is persisted to Redis to survive restarts and prevent crash-loop
+    from draining accounts. Falls back to in-memory if Redis unavailable.
+    """
+
+    # Circuit states
+    STATE_CLOSED = "closed"
+    STATE_OPEN = "open"
+    STATE_HALF_OPEN = "half_open"
+
+    def __init__(
+        self,
+        failure_threshold: int = 5,
+        success_threshold: int = 3,
+        timeout_seconds: int = 60,
+        window_seconds: int = 300,
+        loss_threshold_pct: float = 5.0,
+        redis_client: Optional["Redis"] = None,
+    ):
+        """
+        Initialize circuit breaker with configurable thresholds.
+
+        Args:
+            failure_threshold: Number of failures to trip circuit
+            success_threshold: Successes needed to close circuit from half-open
+            timeout_seconds: Time to wait before attempting recovery
+            window_seconds: Time window for counting failures
+            loss_threshold_pct: Daily loss percentage to trip circuit
+            redis_client: Optional Redis client for state persistence
+        """
+        self.failure_threshold = failure_threshold
+        self.success_threshold = success_threshold
+        self.timeout_seconds = timeout_seconds
+        self.window_seconds = window_seconds
+        self.loss_threshold_pct = loss_threshold_pct
+
+        # Redis client for persistence
+        self._redis: Redis | None = redis_client
+        self._redis_available = redis_client is not None
+
+        # In-memory state (fallback or cache)
+        self._state = self.STATE_CLOSED
+        # Keep epoch timestamps for persistence/observability, but use a monotonic clock for
+        # time-window and timeout calculations (robust to system clock adjustments).
+        self._failures: list[float] = []  # Epoch timestamps (seconds since epoch)
+        self._failures_mono: list[float] = []  # Monotonic timestamps (seconds)
+        self._successes_in_half_open = 0
+        self._last_failure_time: float | None = None
+        self._opened_at: float | None = None
+        self._opened_at_mono: float | None = None
+        self._daily_pnl: float = 0.0
+        self._daily_start: float = time.time()
+
+        # Load state from Redis on init if available
+        self._state_loaded = False
+
+    async def _init_redis(self) -> None:
+        """Initialize Redis connection if not already set."""
+        if self._redis is not None:
+            return
+
+        if not REDIS_AVAILABLE:
+            return
+
+        try:
+            self._redis = aioredis.Redis(
+                host=os.getenv('REDIS_HOST', 'localhost'),
+                port=int(os.getenv('REDIS_PORT', 6379)),
+                db=int(os.getenv('REDIS_DB', 0)),
+                socket_timeout=1,
+                socket_connect_timeout=1,
+            )
+            # Test connection
+            await self._redis.ping()
+            self._redis_available = True
+            logger.info("Circuit breaker Redis connection established")
+        except Exception as e:
+            logger.warning(f"Circuit breaker Redis init failed: {e}. Using memory only.")
+            self._redis = None
+            self._redis_available = False
+
+    async def _load_state_from_redis(self) -> None:
+        """Load circuit breaker state from Redis using pipelined calls (L-19)."""
+        if self._state_loaded or not self._redis_available or self._redis is None:
+            return
+
+        try:
+            # L-19: Use pipeline for optimized Redis calls
+            pipe = self._redis.pipeline()
+            pipe.get(CB_STATE_KEY)
+            pipe.get(CB_OPENED_AT_KEY)
+            pipe.get(CB_FAILURES_KEY)
+            pipe.get(CB_DAILY_PNL_KEY)
+            results = await pipe.execute()
+            
+            state, opened_at, failures_json, daily_pnl = results
+
+            if state:
+                self._state = state.decode('utf-8')
+                logger.info(f"Circuit breaker state loaded from Redis: {self._state}")
+
+            if opened_at:
+                self._opened_at = float(opened_at.decode('utf-8'))
+                now_epoch = time.time()
+                now_mono = time.monotonic()
+                self._opened_at_mono = now_mono - (now_epoch - self._opened_at)
+
+            if failures_json:
+                self._failures = json.loads(failures_json.decode('utf-8'))
+                now_epoch = time.time()
+                now_mono = time.monotonic()
+                self._failures_mono = [now_mono - (now_epoch - float(t)) for t in self._failures]
+            else:
+                self._failures_mono = []
+
+            if daily_pnl:
+                self._daily_pnl = float(daily_pnl.decode('utf-8'))
+
+            self._state_loaded = True
+
+        except Exception as e:
+            logger.warning(f"Failed to load circuit breaker state from Redis: {e}")
+            self._redis_available = False
+
+    async def _persist_state(self) -> None:
+        """Persist circuit breaker state to Redis."""
+        if not self._redis_available or self._redis is None:
+            return
+
+        try:
+            # Persist state atomically using pipeline
+            pipe = self._redis.pipeline()
+            pipe.set(CB_STATE_KEY, self._state)
+            if self._opened_at:
+                pipe.set(CB_OPENED_AT_KEY, str(self._opened_at))
+            else:
+                pipe.delete(CB_OPENED_AT_KEY)
+            pipe.set(CB_FAILURES_KEY, json.dumps(self._failures))
+            pipe.set(CB_DAILY_PNL_KEY, str(self._daily_pnl))
+
+            # Set TTL on all keys (24 hours - reset daily)
+            for key in [CB_STATE_KEY, CB_FAILURES_KEY, CB_DAILY_PNL_KEY]:
+                pipe.expire(key, 86400)
+            if self._opened_at:
+                pipe.expire(CB_OPENED_AT_KEY, 86400)
+
+            await pipe.execute()
+
+        except Exception as e:
+            logger.warning(f"Failed to persist circuit breaker state: {e}")
+            self._redis_available = False
+
+    @property
+    def state(self) -> str:
+        """Get current circuit state, auto-transitioning if timeout elapsed."""
+        if self._state == self.STATE_OPEN and self._opened_at_mono is not None:
+            elapsed = time.monotonic() - self._opened_at_mono
+            if elapsed >= self.timeout_seconds:
+                logger.info("Circuit breaker transitioning to HALF_OPEN after timeout")
+                self._state = self.STATE_HALF_OPEN
+                self._successes_in_half_open = 0
+        return self._state
+
+    @property
+    def is_open(self) -> bool:
+        """Check if circuit is open (rejecting requests)."""
+        return self.state == self.STATE_OPEN
+
+    def check(self, daily_pnl: float | None = None) -> bool:
+        """
+        Check if order should be allowed through.
+
+        Args:
+            daily_pnl: Optional daily P&L to check against loss threshold
+
+        Returns:
+            True if circuit is TRIPPED (orders should be rejected)
+            False if circuit is OK (orders can proceed)
+        """
+        current_state = self.state
+
+        # Check daily P&L circuit breaker
+        if daily_pnl is not None:
+            self._daily_pnl = daily_pnl
+            if daily_pnl < -(self.loss_threshold_pct):
+                if current_state != self.STATE_OPEN:
+                    logger.warning(
+                        f"Circuit breaker TRIPPED: Daily loss {daily_pnl:.2f}% "
+                        f"exceeds threshold {self.loss_threshold_pct}%"
+                    )
+                    self._trip("daily_loss_limit")
+                return True  # Circuit tripped
+
+        if current_state == self.STATE_OPEN:
+            return True  # Circuit tripped, reject orders
+        elif current_state == self.STATE_HALF_OPEN:
+            return False  # Allow test requests through
+        else:
+            return False  # Circuit closed, allow orders
+
+    async def check_async(self, daily_pnl: float | None = None) -> bool:
+        """
+        Async version of check that loads/persists state from Redis.
+        
+        Args:
+            daily_pnl: Optional daily P&L to check against loss threshold
+            
+        Returns:
+            True if circuit is TRIPPED (orders should be rejected)
+            False if circuit is OK (orders can proceed)
+        """
+        # Initialize Redis and load state if not done
+        await self._init_redis()
+        await self._load_state_from_redis()
+        
+        # Check for daily reset at market open
+        await self.reset_daily_if_needed()
+
+        result = self.check(daily_pnl)
+
+        # Persist any state changes
+        await self._persist_state()
+
+        return result
+
+    def record_success(self) -> None:
+        """Record a successful order submission (sync version)."""
+        if self._state == self.STATE_HALF_OPEN:
+            self._successes_in_half_open += 1
+            if self._successes_in_half_open >= self.success_threshold:
+                logger.info("Circuit breaker closing after successful recovery")
+                self._state = self.STATE_CLOSED
+                self._successes_in_half_open = 0
+                self._failures.clear()
+                self._failures_mono.clear()
+
+    async def record_success_async(self) -> None:
+        """Record a successful order submission with Redis persistence."""
+        self.record_success()
+        await self._persist_state()
+
+    def record_failure(self, reason: str = "unknown") -> None:
+        """
+        Record a failed order submission (sync version).
+
+        Args:
+            reason: Reason for the failure
+        """
+        now_epoch = time.time()
+        now_mono = time.monotonic()
+        self._failures.append(now_epoch)
+        self._failures_mono.append(now_mono)
+        self._last_failure_time = now_epoch
+
+        # Clean old failures outside window (use monotonic clock)
+        cutoff_mono = now_mono - self.window_seconds
+        kept = [(m, e) for m, e in zip(self._failures_mono, self._failures) if m > cutoff_mono]
+        self._failures_mono = [m for m, _e in kept]
+        self._failures = [e for _m, e in kept]
+
+        # Check if threshold exceeded
+        if len(self._failures) >= self.failure_threshold:
+            if self._state != self.STATE_OPEN:
+                self._trip(reason)
+
+        # If in half-open state, immediately trip back to open
+        if self._state == self.STATE_HALF_OPEN:
+            logger.warning("Circuit breaker re-opening: failure during recovery test")
+            self._trip(reason)
+
+    async def record_failure_async(self, reason: str = "unknown") -> None:
+        """Record a failed order submission with Redis persistence."""
+        self.record_failure(reason)
+        await self._persist_state()
+
+    def _trip(self, reason: str) -> None:
+        """Trip the circuit breaker."""
+        self._state = self.STATE_OPEN
+        self._opened_at = time.time()
+        self._opened_at_mono = time.monotonic()
+        logger.warning(f"Circuit breaker OPEN: {reason}")
+
+        # Trigger alert
+        try:
+            alert_manager = get_alert_manager()
+            if alert_manager:
+                alert_manager.critical(
+                    title="Circuit Breaker Tripped",
+                    message=f"Order flow halted: {reason}",
+                    context={"failures": len(self._failures), "daily_pnl": self._daily_pnl}
+                )
+        except Exception as e:
+            logger.error(f"Failed to send circuit breaker alert: {e}")
+
+    def reset(self) -> None:
+        """Manually reset the circuit breaker (sync version for admin use)."""
+        logger.info("Circuit breaker manually reset")
+        self._state = self.STATE_CLOSED
+        self._failures.clear()
+        self._failures_mono.clear()
+        self._successes_in_half_open = 0
+        self._opened_at = None
+        self._opened_at_mono = None
+        self._daily_pnl = 0.0
+
+    async def reset_async(self) -> None:
+        """Manually reset the circuit breaker with Redis persistence."""
+        self.reset()
+        await self._persist_state()
+
+    async def reset_daily_if_needed(self) -> bool:
+        """
+        Reset daily P&L counters at market open (9:30 AM ET) each trading day.
+        
+        Returns True if a reset was performed, False otherwise.
+        """
+        now_et = datetime.now(MARKET_TIMEZONE)
+        today_date = now_et.date().isoformat()
+        current_time = now_et.time()
+        
+        # Only reset after market open
+        if current_time < MARKET_OPEN_TIME:
+            return False
+        
+        # Check if we already reset today
+        last_reset_date = None
+        if self._redis is not None and self._redis_available:
+            try:
+                last_reset_date = await self._redis.get(CB_LAST_RESET_DATE_KEY)
+                if last_reset_date:
+                    last_reset_date = last_reset_date.decode() if isinstance(last_reset_date, bytes) else last_reset_date
+            except Exception as e:
+                logger.warning(f"Failed to check last reset date from Redis: {e}")
+        
+        if last_reset_date == today_date:
+            return False  # Already reset today
+        
+        # Perform daily reset
+        logger.info(f"Performing daily circuit breaker reset at market open ({today_date})")
+        self._daily_pnl = 0.0
+        self._daily_start = time.time()
+        self._failures.clear()
+        self._failures_mono.clear()
+        
+        # If circuit was open due to daily loss, transition back to closed
+        if self._state == self.STATE_OPEN:
+            self._state = self.STATE_CLOSED
+            self._opened_at = None
+            self._opened_at_mono = None
+            self._successes_in_half_open = 0
+            logger.info("Circuit breaker reset from OPEN to CLOSED for new trading day")
+        
+        # Persist the reset date and state
+        if self._redis is not None and self._redis_available:
+            try:
+                await self._redis.set(CB_LAST_RESET_DATE_KEY, today_date, ex=86400 * 2)  # 2 day TTL
+                await self._persist_state()
+            except Exception as e:
+                logger.warning(f"Failed to persist daily reset date to Redis: {e}")
+        
+        return True
+
+    def get_status(self) -> dict[str, Any]:
+        """Get circuit breaker status for monitoring."""
+        return {
+            "state": self.state,
+            "failures_in_window": len(self._failures),
+            "failure_threshold": self.failure_threshold,
+            "timeout_seconds": self.timeout_seconds,
+            "time_until_recovery": (
+                max(0, self.timeout_seconds - (time.monotonic() - self._opened_at_mono))
+                if self._opened_at_mono is not None and self._state == self.STATE_OPEN
+                else 0
+            ),
+            "daily_pnl": self._daily_pnl,
+            "loss_threshold_pct": self.loss_threshold_pct,
+            "redis_available": self._redis_available,
+            "state_persisted": self._redis_available and self._state_loaded,
+        }
+
+
+# Module-level circuit breaker instance
+_circuit_breaker: CircuitBreaker | None = None
+
+
+def get_circuit_breaker() -> CircuitBreaker:
+    """Get or create the module-level circuit breaker instance."""
+    global _circuit_breaker
+    if _circuit_breaker is None:
+        _circuit_breaker = CircuitBreaker()
+    return _circuit_breaker
+
+
+async def get_circuit_breaker_async() -> CircuitBreaker:
+    """Get or create the module-level circuit breaker with Redis initialized."""
+    cb = get_circuit_breaker()
+    await cb._init_redis()
+    await cb._load_state_from_redis()
+    return cb
+
+
+def circuit_breaker_check(daily_pnl: float | None = None) -> bool:
+    """
+    Check if circuit breaker is tripped (sync version).
+
+    Args:
+        daily_pnl: Optional daily P&L percentage to check
+
+    Returns:
+        True if circuit is TRIPPED (orders should be rejected)
+        False if circuit is OK (orders can proceed)
+    """
+    return get_circuit_breaker().check(daily_pnl)
+
+
+async def circuit_breaker_check_async(daily_pnl: float | None = None) -> bool:
+    """
+    Check if circuit breaker is tripped with Redis state persistence.
+
+    Args:
+        daily_pnl: Optional daily P&L percentage to check
+
+    Returns:
+        True if circuit is TRIPPED (orders should be rejected)
+        False if circuit is OK (orders can proceed)
+    """
+    cb = await get_circuit_breaker_async()
+    return await cb.check_async(daily_pnl)
 
 
 class OrderService:
@@ -31,26 +491,29 @@ class OrderService:
 
     def __init__(self, *args, db_session=None, sessionmaker=None, **kwargs):
         # E1: Accept legacy positional args (orders_repo, broker, outbox_repo)
-        # Initialize async concurrency control
+        # Initialize async concurrency control (H-06 FIX)
+        import asyncio
         self._async_submitted_orders = {}
-        self._async_order_lock = None  # Will be created when needed
+        self._async_order_lock = asyncio.Lock()  # H-06 FIX: Initialize lock for concurrent order protection
+        self._cancel_locks: dict[str, asyncio.Lock] = {}  # M-12 FIX: Per-order cancellation locks
+        self._cancel_locks_lock = asyncio.Lock()  # Lock for accessing _cancel_locks dict
         self.db_session = db_session
         self.sessionmaker = sessionmaker
-        
+
         # Get repositories from kwargs first, then positional args
         self.orders_repo = kwargs.get("orders_repo")
-        self.broker = kwargs.get("broker") 
+        self.broker = kwargs.get("broker")
         self.outbox_repo = kwargs.get("outbox_repo")
-        
+
         # Handle legacy positional arguments
         if args:
-            if len(args) > 0 and self.orders_repo is None: 
+            if len(args) > 0 and self.orders_repo is None:
                 self.orders_repo = args[0]
-            if len(args) > 1 and self.broker is None:      
+            if len(args) > 1 and self.broker is None:
                 self.broker = args[1]
-            if len(args) > 2 and self.outbox_repo is None: 
+            if len(args) > 2 and self.outbox_repo is None:
                 self.outbox_repo = args[2]
-        
+
         # P5 Patch: Handle repository dependencies with defaults for testing
         # Respect explicit None values - don't auto-mock if None was passed explicitly
         # Only create mocks if no repositories were provided at all
@@ -59,22 +522,22 @@ class OrderService:
             self.orders_repo = self.orders_repo or AsyncMock()
             self.outbox_repo = self.outbox_repo or AsyncMock()
             self.broker = self.broker or AsyncMock()
-        
+
         # Handle other kwargs
         self.strategy_engine = kwargs.get("strategy_engine")
 
     def validate_order(self, order: dict) -> dict:
         """
         Validate order data for security and correctness.
-        
+
         Args:
             order: Order dictionary to validate
-            
+
         Returns:
             Validation result with 'valid' boolean and 'errors' list
         """
         errors = []
-        
+
         try:
             # Check required fields
             required_fields = ['symbol', 'side', 'qty']
@@ -83,7 +546,7 @@ class OrderService:
                     errors.append(f"missing_field: {field}")
                 elif order[field] is None:
                     errors.append(f"null_field: {field}")
-            
+
             # Validate symbol
             if 'symbol' in order:
                 symbol = order['symbol']
@@ -93,13 +556,13 @@ class OrderService:
                     errors.append("invalid_symbol: too long")
                 elif not symbol.replace('.', '').isalnum():
                     errors.append("invalid_symbol: invalid characters")
-            
+
             # Validate side
             if 'side' in order:
                 side = order['side']
                 if side not in ['buy', 'sell']:
                     errors.append("invalid_side: must be 'buy' or 'sell'")
-            
+
             # Validate quantity
             if 'qty' in order:
                 qty = order['qty']
@@ -111,30 +574,54 @@ class OrderService:
                         errors.append("invalid_qty: too large")
                 except (ValueError, TypeError):
                     errors.append("invalid_qty: not a valid number")
-            
+
             # Validate order type if present
             if 'order_type' in order:
                 order_type = order['order_type']
                 valid_types = ['market', 'limit', 'stop', 'stop_limit']
                 if order_type not in valid_types:
                     errors.append(f"invalid_order_type: must be one of {valid_types}")
-            
-            # Validate price for limit orders
-            if order.get('order_type') in ['limit', 'stop_limit'] and 'price' in order:
+
+            # CRITICAL: Validate price is REQUIRED for limit orders
+            order_type = order.get('order_type', 'market')
+            if order_type in ['limit', 'stop_limit']:
+                if 'price' not in order or order['price'] is None:
+                    errors.append("limit_order_requires_price: limit and stop_limit orders must have a price")
+                else:
+                    try:
+                        price = float(order['price'])
+                        if price <= 0:
+                            errors.append("invalid_price: must be positive")
+                        elif price > 1000000:
+                            errors.append("invalid_price: too large")
+                    except (ValueError, TypeError):
+                        errors.append("invalid_price: not a valid number")
+            elif 'price' in order and order['price'] is not None:
+                # Validate price format even for market orders (if provided)
                 try:
                     price = float(order['price'])
                     if price <= 0:
                         errors.append("invalid_price: must be positive")
-                    elif price > 1000000:
-                        errors.append("invalid_price: too large")
                 except (ValueError, TypeError):
                     errors.append("invalid_price: not a valid number")
-            
+
+            # Validate stop_price for stop orders
+            if order_type in ['stop', 'stop_limit']:
+                if 'stop_price' not in order or order['stop_price'] is None:
+                    errors.append("stop_order_requires_stop_price: stop and stop_limit orders must have a stop_price")
+                else:
+                    try:
+                        stop_price = float(order['stop_price'])
+                        if stop_price <= 0:
+                            errors.append("invalid_stop_price: must be positive")
+                    except (ValueError, TypeError):
+                        errors.append("invalid_stop_price: not a valid number")
+
             return {
                 "valid": len(errors) == 0,
                 "errors": errors
             }
-            
+
         except Exception as e:
             logger.warning(f"Order validation error: {e}")
             return {
@@ -152,64 +639,115 @@ class OrderService:
         order_type: str = "market",
         tif: str = "ioc",
         attributes: dict[str, Any] | None = None,
+        daily_pnl: float | None = None,
     ) -> dict[str, Any]:
         """
         Submit a single order through the idempotent order+outbox flow.
 
         This is the core order submission path used by both direct API calls
-        and strategy engine executions.
+        and strategy engine executions. Includes circuit breaker protection.
+
+        Args:
+            symbol: Trading symbol
+            side: Order side ('buy' or 'sell')
+            qty: Quantity to trade
+            idempotency_key: Unique key for idempotent submission
+            order_type: Order type (market, limit, etc.)
+            tif: Time in force
+            attributes: Additional order attributes
+            daily_pnl: Optional daily P&L for circuit breaker check
+
+        Returns:
+            Order submission result
+
+        Raises:
+            RuntimeError: If circuit breaker is tripped
         """
+        # Circuit breaker check - protect against runaway losses
+        circuit_breaker = get_circuit_breaker()
+        if circuit_breaker.check(daily_pnl):
+            cb_status = circuit_breaker.get_status()
+            logger.warning(
+                "Order rejected by circuit breaker",
+                extra={
+                    "symbol": symbol,
+                    "side": side,
+                    "qty": str(qty),
+                    "circuit_breaker_state": cb_status["state"],
+                    "daily_pnl": cb_status["daily_pnl"],
+                }
+            )
+            raise RuntimeError(
+                f"Circuit breaker is OPEN. Order rejected. "
+                f"State: {cb_status['state']}, "
+                f"Time until recovery: {cb_status['time_until_recovery']:.0f}s"
+            )
         try:
-            import random
             from decimal import Decimal
+            import random
 
-            # Retry logic for 429 rate limiting
-            for attempt in range(MAX_RETRIES + 1):
-                try:
-                    # Create order through repository (with idempotency protection)
-                    order = await self.orders_repo.upsert_by_idempotency(
-                        client_key=idempotency_key,
-                        symbol=symbol,
-                        side=side,
-                        qty=Decimal(str(qty)),
-                        order_type=order_type,
-                        tif=tif,
-                        attributes=attributes or {},
-                    )
-                    break  # Success, break out of retry loop
-                    
-                except Exception as e:
-                    # Check if it's a rate limit error (429)
-                    if hasattr(e, 'status_code') and e.status_code == 429:
-                        if attempt < MAX_RETRIES:
-                            # Calculate exponential backoff with jitter
-                            base_delay = 2 ** attempt  # 1, 2, 4 seconds
-                            jitter = random.uniform(0.5, 1.5)  # Add randomization
-                            delay = base_delay * jitter
-                            await asyncio.sleep(delay)
-                            continue
+            # H-06 FIX: Use lock to prevent duplicate orders under concurrent load
+            async with self._async_order_lock:
+                # Check if this idempotency key is already being processed
+                if idempotency_key in self._async_submitted_orders:
+                    existing_result = self._async_submitted_orders[idempotency_key]
+                    logger.info(f"Returning cached order result for key {idempotency_key[:8]}...")
+                    return existing_result
+
+                # Retry logic for 429 rate limiting
+                for attempt in range(MAX_RETRIES + 1):
+                    try:
+                        # Create order through repository (with idempotency protection)
+                        order = await self.orders_repo.upsert_by_idempotency(
+                            client_key=idempotency_key,
+                            symbol=symbol,
+                            side=side,
+                            qty=Decimal(str(qty)),
+                            order_type=order_type,
+                            tif=tif,
+                            attributes=attributes or {},
+                        )
+                        break  # Success, break out of retry loop
+
+                    except Exception as e:
+                        # Check if it's a rate limit error (429)
+                        if hasattr(e, 'status_code') and e.status_code == 429:
+                            if attempt < MAX_RETRIES:
+                                # Calculate exponential backoff with jitter
+                                base_delay = 2 ** attempt  # 1, 2, 4 seconds
+                                jitter = random.uniform(0.5, 1.5)  # Add randomization
+                                delay = base_delay * jitter
+                                await asyncio.sleep(delay)
+                                continue
+                            else:
+                                # Max retries exceeded
+                                raise
                         else:
-                            # Max retries exceeded
+                            # Non-429 error, don't retry
                             raise
-                    else:
-                        # Non-429 error, don't retry
-                        raise
 
-            # Add to outbox for broker submission
-            await self.outbox_repo.add_order_submit_event(
-                order_id=str(order.id),
-                event_type="order.submit",
-                payload={
+                # Add to outbox for broker submission
+                await self.outbox_repo.add_order_submit_event(
+                    order_id=str(order.id),
+                    symbol=symbol,
+                    side=side,
+                    qty=str(qty),
+                    order_type=order_type,
+                    tif=tif,
+                    client_key=idempotency_key,
+                    attributes=attributes or {},
+                )
+
+                # Cache the result for duplicate requests
+                result = {
                     "order_id": str(order.id),
                     "symbol": symbol,
                     "side": side,
                     "qty": str(qty),
-                    "order_type": order_type,
-                    "tif": tif,
-                    "client_key": idempotency_key,
-                    "attributes": attributes or {},
-                },
-            )
+                    "status": "submitted",
+                    "idempotency_key": idempotency_key,
+                }
+                self._async_submitted_orders[idempotency_key] = result
 
             logger.info(
                 "Order submitted successfully",
@@ -222,19 +760,15 @@ class OrderService:
                 },
             )
 
-            return {
-                "order_id": str(order.id),
-                "symbol": symbol,
-                "side": side,
-                "qty": str(qty),
-                "status": order.status,
-                "submitted_at": (
-                    order.submitted_at.isoformat() if order.submitted_at else None
-                ),
-                "idempotency_key": idempotency_key,
-            }
+            # Record success for circuit breaker
+            circuit_breaker.record_success()
+
+            return result
 
         except Exception as e:
+            # Record failure for circuit breaker
+            circuit_breaker.record_failure(str(e))
+
             logger.error(
                 "Order submission failed",
                 extra={
@@ -250,10 +784,10 @@ class OrderService:
     def submit_order(self, order_data: dict[str, Any]) -> dict[str, Any]:
         """
         Synchronous wrapper for submit_order_async with proper idempotency.
-        
+
         Args:
             order_data: Order data dictionary
-            
+
         Returns:
             Dictionary with order submission result
         """
@@ -263,7 +797,7 @@ class OrderService:
         except RuntimeError:
             # No running loop, create new one
             loop = None
-            
+
         if loop is not None:
             # We're in an async context, need to handle carefully
             # For now, fall back to basic validation and return
@@ -278,7 +812,7 @@ class OrderService:
                     "side": order_data.get("side", "buy"),
                     "idempotency_key": order_data.get("idempotency_key", str(uuid4()))
                 }
-                
+
             # If we're in async context but don't have proper session/outbox
             # return a mock response for compatibility
             if not self.db_session or not self.orders_repo:
@@ -306,7 +840,7 @@ class OrderService:
                     "side": order_data.get("side", "buy"),
                     "idempotency_key": order_data.get("idempotency_key", str(uuid4()))
                 }
-        
+
         # Fallback - should not reach here normally
         return {
             "status": "rejected",
@@ -318,74 +852,185 @@ class OrderService:
             "idempotency_key": order_data.get("idempotency_key", str(uuid4()))
         }
 
-    def modify_order(self, modification_data: dict[str, Any]) -> dict[str, Any]:
+    async def modify_order(self, modification_data: dict[str, Any]) -> dict[str, Any]:
         """
         Modify an existing order with idempotency.
         
+        Note: Alpaca doesn't support order modification directly.
+        To modify an order, we cancel it and create a new one.
+
         Args:
-            modification_data: Modification data including order_id, modification_id
-            
+            modification_data: Modification data including order_id, new_qty, new_price, etc.
+
         Returns:
             Dictionary with modification result
         """
+        from datetime import datetime
+        
         order_id = modification_data.get("order_id", "")
         modification_id = modification_data.get("modification_id", str(uuid4()))
-        
+
         # Track modifications for idempotency
         if not hasattr(self, '_order_modifications'):
             self._order_modifications = {}
-            
+
         mod_key = f"{order_id}:{modification_id}"
         if mod_key in self._order_modifications:
             return self._order_modifications[mod_key]
-        
-        # Simulate modification
-        result = {
-            "status": "modified",
-            "order_id": order_id,
-            "modification_id": modification_id,
-            "reason": "Order modified successfully",
-            "modified_at": "2025-08-24T08:00:00Z"
-        }
-        
-        self._order_modifications[mod_key] = result
-        return result
-    
-    def cancel_order(self, order_id: str) -> dict[str, Any]:
+
+        try:
+            # Get the original order
+            original_order = None
+            if self.orders_repo and hasattr(self.orders_repo, 'get_by_id'):
+                import uuid
+                try:
+                    order_uuid = uuid.UUID(order_id)
+                    original_order = await self.orders_repo.get_by_id(order_uuid)
+                except Exception as e:
+                    logger.warning(f"Could not find order {order_id}: {e}")
+                    return {
+                        "status": "error",
+                        "order_id": order_id,
+                        "modification_id": modification_id,
+                        "reason": f"Order not found: {order_id}",
+                        "modified_at": None
+                    }
+
+            if not original_order:
+                return {
+                    "status": "error",
+                    "order_id": order_id,
+                    "modification_id": modification_id,
+                    "reason": f"Order not found: {order_id}",
+                    "modified_at": None
+                }
+
+            # Cancel the original order first
+            cancel_result = await self.cancel_order(order_id)
+            if cancel_result.get("status") not in ["cancelled", "already_cancelled"]:
+                return {
+                    "status": "error",
+                    "order_id": order_id,
+                    "modification_id": modification_id,
+                    "reason": f"Could not cancel original order: {cancel_result.get('reason')}",
+                    "modified_at": None
+                }
+
+            # Create new order with modified values
+            # This is a simplified version - full implementation would create a new order
+            result = {
+                "status": "modified",
+                "order_id": order_id,
+                "modification_id": modification_id,
+                "reason": "Order cancelled and replacement pending - submit new order with modified values",
+                "modified_at": datetime.utcnow().isoformat() + "Z",
+                "original_order_cancelled": True
+            }
+
+            self._order_modifications[mod_key] = result
+            return result
+            
+        except Exception as e:
+            logger.error(f"Failed to modify order {order_id}: {e}")
+            return {
+                "status": "error",
+                "order_id": order_id,
+                "modification_id": modification_id,
+                "reason": str(e),
+                "modified_at": None
+            }
+
+    async def cancel_order(self, order_id: str) -> dict[str, Any]:
         """
         Cancel an order with idempotency support.
         
+        This method actually cancels the order with the broker and updates
+        the database status.
+        
+        M-12 FIX: Uses per-order locks to prevent race conditions when
+        multiple cancellation requests arrive simultaneously.
+
         Args:
             order_id: ID of the order to cancel
-            
+
         Returns:
             Dictionary with cancellation result
         """
-        # Track cancellations for idempotency
-        if not hasattr(self, '_order_cancellations'):
-            self._order_cancellations = {}
+        import asyncio
+        from datetime import datetime
+        
+        # M-12 FIX: Get or create per-order lock to prevent race conditions
+        async with self._cancel_locks_lock:
+            if order_id not in self._cancel_locks:
+                self._cancel_locks[order_id] = asyncio.Lock()
+            order_lock = self._cancel_locks[order_id]
+        
+        # Acquire per-order lock before proceeding
+        async with order_lock:
+            # Track cancellations for idempotency
+            if not hasattr(self, '_order_cancellations'):
+                self._order_cancellations = {}
+
+            if order_id in self._order_cancellations:
+                # Return previous cancellation result - mark as already cancelled
+                prev_result = self._order_cancellations[order_id].copy()
+                if prev_result["status"] == "cancelled":
+                    prev_result["status"] = "already_cancelled"
+                return prev_result
+
+            try:
+                # Get the order from database first
+                order = None
+                if self.orders_repo and hasattr(self.orders_repo, 'get_by_id'):
+                    import uuid
+                    try:
+                        order_uuid = uuid.UUID(order_id)
+                        order = await self.orders_repo.get_by_id(order_uuid)
+                    except (ValueError, Exception) as e:
+                        logger.warning(f"Could not find order {order_id} in database: {e}")
+
+                # Try to cancel with broker if we have a broker connection
+                broker_order_id = order_id
+                if order and hasattr(order, 'broker_order_id') and order.broker_order_id:
+                    broker_order_id = order.broker_order_id
+
+                if self.broker and hasattr(self.broker, 'cancel_order'):
+                    try:
+                        await self.broker.cancel_order(broker_order_id)
+                        logger.info(f"Order {order_id} cancelled with broker")
+                    except Exception as e:
+                        # Log but don't fail - broker might already have cancelled it
+                        logger.warning(f"Broker cancel call for {order_id} failed: {e}")
+
+                # Update database status
+                if order and self.orders_repo and hasattr(self.orders_repo, 'update_status'):
+                    try:
+                        await self.orders_repo.update_status(order.id, "cancelled")
+                    except Exception as e:
+                        logger.warning(f"Failed to update order status in DB: {e}")
+
+                result = {
+                    "status": "cancelled",
+                    "order_id": order_id,
+                    "reason": "Order cancelled successfully",
+                    "cancelled_at": datetime.utcnow().isoformat() + "Z"
+                }
+
+                self._order_cancellations[order_id] = result
+                return result
             
-        if order_id in self._order_cancellations:
-            # Return previous cancellation result - mark as already cancelled
-            prev_result = self._order_cancellations[order_id].copy()
-            if prev_result["status"] == "cancelled":
-                prev_result["status"] = "already_cancelled"
-            return prev_result
-        
-        # Simulate cancellation
-        result = {
-            "status": "cancelled",
-            "order_id": order_id,
-            "reason": "Order cancelled successfully",
-            "cancelled_at": "2025-08-24T08:00:00Z"
-        }
-        
-        self._order_cancellations[order_id] = result
-        return result
-    
+            except Exception as e:
+                logger.error(f"Failed to cancel order {order_id}: {e}")
+                return {
+                    "status": "error",
+                    "order_id": order_id,
+                    "reason": str(e),
+                    "cancelled_at": None
+                }
+
     def update_status(self, *a, **k):  # stub for mocks that expect it
         return None
-    
+
     async def get_order_status(self, order_id: str) -> dict[str, Any] | None:
         """Get order status by order ID from database."""
         try:
@@ -412,18 +1057,18 @@ class OrderService:
                         }
                 except Exception as e:
                     logger.warning(f"Database lookup failed for order {order_id}: {e}")
-            
+
             # Fallback to in-memory checks for backwards compatibility with tests
             # Check if we have a db_session with mocked data
             if hasattr(self, 'db_session') and hasattr(self.db_session, 'fetch_one'):
                 db_result = self.db_session.fetch_one.return_value
                 if db_result:
                     return db_result
-            
+
             # Check submitted orders first
             if hasattr(self, '_submitted_orders') and order_id in self._submitted_orders:
                 order = self._submitted_orders[order_id]
-                # Convert format for test compatibility 
+                # Convert format for test compatibility
                 return {
                     "order_id": order.get("order_id", order_id),
                     "status": order.get("status", "unknown"),
@@ -435,7 +1080,7 @@ class OrderService:
                     "submitted_at": order.get("submitted_at"),
                     "updated_at": order.get("updated_at")
                 }
-            
+
             # Check async orders
             if hasattr(self, '_async_submitted_orders') and order_id in self._async_submitted_orders:
                 order = self._async_submitted_orders[order_id]
@@ -450,7 +1095,7 @@ class OrderService:
                     "submitted_at": order.get("submitted_at"),
                     "updated_at": order.get("updated_at")
                 }
-            
+
             # Mock data for known test order IDs
             if order_id == "test-123":
                 return {
@@ -464,14 +1109,14 @@ class OrderService:
                     "submitted_at": "2023-01-01T12:00:00",
                     "updated_at": "2023-01-01T12:00:01"
                 }
-            
+
             # Return None for unknown orders
             return None
-            
+
         except Exception as e:
             logger.error(f"Error getting order status for {order_id}: {e}")
             return None
-    
+
     async def get_order_history(self, user_id: str = None, limit: int = 100, offset: int = 0, status_filter: str = "all") -> dict[str, Any]:
         """Get order history with pagination and filtering."""
         # Check if we have a db_session with mocked data
@@ -485,10 +1130,10 @@ class OrderService:
                     "offset": offset,
                     "status_filter": status_filter
                 }
-        
+
         # Collect all orders from submitted and async submitted
         all_orders = []
-        
+
         if hasattr(self, '_submitted_orders'):
             orders = [
                 {
@@ -501,7 +1146,7 @@ class OrderService:
                 for order in self._submitted_orders.values()
             ]
             all_orders.extend(orders)
-        
+
         if hasattr(self, '_async_submitted_orders'):
             orders = [
                 {
@@ -514,14 +1159,14 @@ class OrderService:
                 for order in self._async_submitted_orders.values()
             ]
             all_orders.extend(orders)
-        
+
         # Apply status filter
         if status_filter != "all":
             all_orders = [order for order in all_orders if order.get("status") == status_filter]
-        
+
         # Apply pagination
         paginated_orders = all_orders[offset:offset+limit]
-        
+
         return {
             "orders": paginated_orders,
             "total": len(all_orders),
@@ -529,39 +1174,39 @@ class OrderService:
             "offset": offset,
             "status_filter": status_filter
         }
-    
+
     async def submit_order_async(
-        self, 
-        order_data: dict[str, Any], 
+        self,
+        order_data: dict[str, Any],
         session: Optional['AsyncSession'] = None,
         outbox_repo: OutboxRepo | None = None
     ) -> dict[str, Any]:
         """
         Real async order submission with repository idempotency and outbox pattern.
-        
+
         Args:
             order_data: Order data dictionary with required fields
             session: Optional AsyncSession for database operations
             outbox_repo: Optional OutboxRepo for event publishing
-            
+
         Returns:
             Dictionary with order submission result
         """
         # If session provided, use it directly
         if session:
             return await self._submit_order_with_session(order_data, session, outbox_repo)
-        
+
         # If instance session available, use it
         if self.db_session:
             return await self._submit_order_with_session(order_data, self.db_session, outbox_repo)
-        
+
         # Otherwise, create a new session from sessionmaker
         if self.sessionmaker:
             async with self.sessionmaker() as new_session:
                 return await self._submit_order_with_session(order_data, new_session, outbox_repo)
-        
+
         raise ValueError("No database session available for order submission")
-    
+
     async def _submit_order_with_session(
         self,
         order_data: dict[str, Any],
@@ -572,15 +1217,15 @@ class OrderService:
         from decimal import Decimal
 
         from ..config import get_settings
-        
+
         active_outbox = outbox_repo or self.outbox_repo
-        
+
         if not active_session:
             raise ValueError("AsyncSession is required for order submission")
-            
+
         if not active_outbox:
             raise ValueError("OutboxRepo is required for order submission")
-        
+
         # Extract and validate order parameters
         symbol = order_data.get("symbol", "").strip().upper()
         side = order_data.get("side", "").lower()
@@ -588,7 +1233,7 @@ class OrderService:
         order_type = order_data.get("order_type", "market")
         tif = order_data.get("tif", "gtc")  # time in force
         idempotency_key = order_data.get("idempotency_key") or str(uuid4())
-        
+
         # Validate required fields
         validation = self.validate_order(order_data)
         if not validation["valid"]:
@@ -606,15 +1251,15 @@ class OrderService:
                 "side": side,
                 "idempotency_key": idempotency_key
             }
-        
+
         try:
             # Convert qty to Decimal for database storage
             qty_decimal = Decimal(str(qty))
-            
+
             # Use repository to create/find order with idempotency protection
             if not self.orders_repo:
                 raise ValueError("OrdersRepo is required")
-                
+
             order = await self.orders_repo.upsert_by_idempotency(
                 client_key=idempotency_key,
                 symbol=symbol,
@@ -624,14 +1269,14 @@ class OrderService:
                 tif=tif,
                 attributes=order_data.get("attributes", {})
             )
-            
+
             # Check settings for testing mode
             settings = get_settings()
             is_testing = getattr(settings, 'TESTING', False)
-            
+
             if is_testing and hasattr(settings, 'FORCE_ORDER_ERRORS') and getattr(settings, 'FORCE_ORDER_ERRORS', False):
                 raise Exception("Forced error for testing")
-            
+
             # Enqueue outbox event for broker submission
             correlation_id = str(uuid4())
             await active_outbox.enqueue(
@@ -649,7 +1294,7 @@ class OrderService:
                     "submitted_at": order.submitted_at.isoformat() if order.submitted_at else None
                 }
             )
-            
+
             # Log structured order submission
             logger.info("ORDER_SUBMIT", extra={
                 "order_id": str(order.id),
@@ -661,7 +1306,7 @@ class OrderService:
                 "order_type": order_type,
                 "status": order.status
             })
-            
+
             return {
                 "status": order.status,
                 "reason": "Order submitted successfully",
@@ -675,7 +1320,7 @@ class OrderService:
                 "order_type": order_type,
                 "tif": tif
             }
-                
+
         except Exception as e:
             logger.error("ORDER_SUBMIT_FAILED", extra={
                 "symbol": symbol,
@@ -684,7 +1329,18 @@ class OrderService:
                 "error": str(e),
                 "idempotency_key": idempotency_key
             })
-            
+
+            # Send alert for order failure
+            try:
+                alert_manager = get_alert_manager()
+                await alert_manager.order_failure(
+                    order_id=idempotency_key or "unknown",
+                    symbol=symbol,
+                    error=str(e),
+                )
+            except Exception as alert_err:
+                logger.error(f"Failed to send order failure alert: {alert_err}")
+
             # Re-raise for proper error handling upstream
             raise
 

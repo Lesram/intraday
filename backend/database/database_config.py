@@ -2,56 +2,65 @@
 Production Database Configuration with Connection Pooling and Backup Support
 """
 
-import os
-import asyncio
 from datetime import datetime
-from typing import Optional, Dict, Any
 import logging
+import os
 from pathlib import Path
+from typing import Any
 
-from sqlalchemy import create_engine, pool, text
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
-from sqlalchemy.pool import StaticPool, QueuePool
+from sqlalchemy import create_engine, text
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import sessionmaker
-import asyncpg
+from sqlalchemy.pool import QueuePool, StaticPool
 
 logger = logging.getLogger(__name__)
 
 
 class DatabaseConfig:
     """Production database configuration with connection pooling."""
-    
+
     def __init__(self):
-        # Use SQLite for local testing if no DATABASE_URL is provided
-        default_db_url = "sqlite:///./trading_platform.db"
-        self.database_url = os.getenv("DATABASE_URL", default_db_url)
-        
+        # DATABASE_URL must be set explicitly - no fallback
+        self.database_url = os.getenv("DATABASE_URL")
+
+        if not self.database_url:
+            raise RuntimeError(
+                "DATABASE_URL environment variable is required but not set.\\n\\n"
+                "For local development, start PostgreSQL with Docker:\\n"
+                "  docker-compose up -d db\\n\\n"
+                "Then set DATABASE_URL:\\n"
+                "  export DATABASE_URL='postgresql://trading:trading_password@localhost:5432/algotrading'\\n\\n"
+                "Or on Windows PowerShell:\\n"
+                "  $env:DATABASE_URL='postgresql://trading:trading_password@localhost:5432/algotrading'\\n"
+            )
+
         # Set up async database URL
         if self.database_url.startswith("postgresql://"):
             self.async_database_url = self.database_url.replace("postgresql://", "postgresql+asyncpg://")
         elif self.database_url.startswith("sqlite://"):
+            # Only for test environments
             self.async_database_url = self.database_url.replace("sqlite://", "sqlite+aiosqlite://")
         else:
             self.async_database_url = self.database_url
-        
+
         # Connection pool settings
         self.pool_size = int(os.getenv("DB_POOL_SIZE", "10"))
         self.max_overflow = int(os.getenv("DB_MAX_OVERFLOW", "20"))
         self.pool_timeout = int(os.getenv("DB_POOL_TIMEOUT", "30"))
         self.pool_recycle = int(os.getenv("DB_POOL_RECYCLE", "3600"))  # 1 hour
         self.pool_pre_ping = os.getenv("DB_POOL_PRE_PING", "true").lower() == "true"
-        
+
         # Backup settings
         self.backup_enabled = os.getenv("DB_BACKUP_ENABLED", "true").lower() == "true"
         self.backup_directory = Path(os.getenv("DB_BACKUP_DIR", "./backups"))
         self.backup_retention_days = int(os.getenv("DB_BACKUP_RETENTION_DAYS", "30"))
-        
+
         # Initialize engines
         self._async_engine = None
         self._sync_engine = None
         self._async_session_factory = None
         self._sync_session_factory = None
-        
+
     def get_async_engine(self):
         """Get or create async database engine with connection pooling."""
         if self._async_engine is None:
@@ -81,7 +90,7 @@ class DatabaseConfig:
                 f"max_overflow={self.max_overflow}, timeout={self.pool_timeout}s"
             )
         return self._async_engine
-    
+
     def get_sync_engine(self):
         """Get or create sync database engine with connection pooling."""
         if self._sync_engine is None:
@@ -101,7 +110,7 @@ class DatabaseConfig:
                 f"max_overflow={self.max_overflow}, timeout={self.pool_timeout}s"
             )
         return self._sync_engine
-    
+
     def get_async_session_factory(self):
         """Get async session factory."""
         if self._async_session_factory is None:
@@ -113,7 +122,7 @@ class DatabaseConfig:
                 autoflush=False
             )
         return self._async_session_factory
-    
+
     def get_sync_session_factory(self):
         """Get sync session factory."""
         if self._sync_session_factory is None:
@@ -124,20 +133,20 @@ class DatabaseConfig:
                 autoflush=False
             )
         return self._sync_session_factory
-    
-    async def check_connection_health(self) -> Dict[str, Any]:
+
+    async def check_connection_health(self) -> dict[str, Any]:
         """Check database connection health and pool status."""
         try:
             async_engine = self.get_async_engine()
-            
+
             # Test basic connectivity
             async with async_engine.begin() as conn:
                 result = await conn.execute(text("SELECT 1"))
                 connectivity = result.scalar() == 1
-            
+
             # Get pool status - handle different pool types
             pool = async_engine.pool
-            
+
             # SQLite uses StaticPool which has different methods
             if isinstance(pool, StaticPool):
                 pool_status = {
@@ -158,14 +167,14 @@ class DatabaseConfig:
                     "overflow": getattr(pool, 'overflow', lambda: 0)(),
                     "invalid": getattr(pool, 'invalid', lambda: 0)()
                 }
-            
+
             return {
                 "healthy": connectivity,
                 "connectivity": connectivity,
                 "pool_status": pool_status,
                 "timestamp": datetime.utcnow().isoformat()
             }
-            
+
         except Exception as e:
             logger.error(f"Database health check failed: {e}")
             return {
@@ -175,34 +184,34 @@ class DatabaseConfig:
                 "timestamp": datetime.utcnow().isoformat()
             }
 
-    async def get_health(self) -> Dict[str, Any]:
+    async def get_health(self) -> dict[str, Any]:
         """Alias for check_connection_health for backward compatibility."""
         return await self.check_connection_health()
-    
-    async def create_backup(self, backup_name: Optional[str] = None) -> Dict[str, Any]:
+
+    async def create_backup(self, backup_name: str | None = None) -> dict[str, Any]:
         """Create database backup using pg_dump."""
         if not self.backup_enabled:
             return {"success": False, "message": "Backup disabled in configuration"}
-        
+
         try:
             # Ensure backup directory exists
             self.backup_directory.mkdir(parents=True, exist_ok=True)
-            
+
             # Generate backup filename
             timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
             if backup_name is None:
                 backup_name = f"trading_db_backup_{timestamp}.sql"
-            
+
             backup_path = self.backup_directory / backup_name
-            
+
             # Parse database URL for pg_dump
             db_parts = self.database_url.replace("postgresql://", "").split("/")
             db_name = db_parts[-1]
             host_part = db_parts[0].split("@")[-1].split(":")[0]
-            
+
             # Run pg_dump (this is a simplified example - production should use proper credentials)
             import subprocess
-            
+
             cmd = [
                 "pg_dump",
                 "-h", host_part,
@@ -211,17 +220,17 @@ class DatabaseConfig:
                 "--no-password",
                 "--verbose"
             ]
-            
+
             # Note: In production, use proper authentication methods
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
-            
+
             if result.returncode == 0:
                 backup_size = backup_path.stat().st_size
                 logger.info(f"Database backup created: {backup_path} ({backup_size} bytes)")
-                
+
                 # Clean up old backups
                 await self._cleanup_old_backups()
-                
+
                 return {
                     "success": True,
                     "backup_path": str(backup_path),
@@ -235,7 +244,7 @@ class DatabaseConfig:
                     "error": result.stderr,
                     "message": "pg_dump command failed"
                 }
-                
+
         except Exception as e:
             logger.error(f"Backup creation failed: {e}")
             return {
@@ -243,27 +252,27 @@ class DatabaseConfig:
                 "error": str(e),
                 "message": "Backup process failed"
             }
-    
+
     async def _cleanup_old_backups(self):
         """Remove backups older than retention period."""
         try:
             cutoff_time = datetime.utcnow().timestamp() - (self.backup_retention_days * 24 * 3600)
-            
+
             for backup_file in self.backup_directory.glob("*.sql"):
                 if backup_file.stat().st_mtime < cutoff_time:
                     backup_file.unlink()
                     logger.info(f"Removed old backup: {backup_file}")
-                    
+
         except Exception as e:
             logger.warning(f"Failed to cleanup old backups: {e}")
-    
+
     async def close_connections(self):
         """Close all database connections and engines."""
         if self._async_engine:
             await self._async_engine.dispose()
             self._async_engine = None
             logger.info("Closed async database engine")
-            
+
         if self._sync_engine:
             self._sync_engine.dispose()
             self._sync_engine = None
@@ -288,11 +297,11 @@ async def get_db_session():
             await session.close()
 
 
-async def get_db_health() -> Dict[str, Any]:
+async def get_db_health() -> dict[str, Any]:
     """Get database health status."""
     return await db_config.check_connection_health()
 
 
-async def create_db_backup(backup_name: Optional[str] = None) -> Dict[str, Any]:
+async def create_db_backup(backup_name: str | None = None) -> dict[str, Any]:
     """Create database backup."""
     return await db_config.create_backup(backup_name)

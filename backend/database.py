@@ -3,9 +3,9 @@ Database connection and session management.
 """
 
 import asyncio
-import logging
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+import logging
 
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
@@ -14,13 +14,13 @@ logger = logging.getLogger(__name__)
 
 class DatabaseManager:
     """Manages database connections and sessions."""
-    
+
     def __init__(self, database_url: str):
         self.database_url = database_url
         self.engine = None
         self.session_maker = None
         self._is_healthy = False
-    
+
     async def initialize(self):
         """Initialize the database engine and session maker."""
         try:
@@ -40,13 +40,13 @@ class DatabaseManager:
         except Exception as e:
             logger.error(f"Failed to initialize database: {e}")
             raise
-    
+
     async def health_check(self) -> bool:
         """Check database health."""
         if not self.engine:
             self._is_healthy = False
             return False
-        
+
         try:
             async with self.engine.begin() as conn:
                 await conn.execute(text("SELECT 1"))
@@ -56,18 +56,18 @@ class DatabaseManager:
             logger.error(f"Database health check failed: {e}")
             self._is_healthy = False
             return False
-    
+
     @property
     def is_healthy(self) -> bool:
         """Get database health status."""
         return self._is_healthy
-    
+
     @asynccontextmanager
     async def get_session(self) -> AsyncGenerator[AsyncSession, None]:
         """Get a database session."""
         if not self.session_maker:
             raise RuntimeError("Database not initialized")
-        
+
         async with self.session_maker() as session:
             try:
                 yield session
@@ -76,7 +76,7 @@ class DatabaseManager:
                 raise
             finally:
                 await session.close()
-    
+
     async def close(self):
         """Close database connections."""
         if self.engine:
@@ -111,18 +111,18 @@ async def close_database():
 
 class Database:
     """Legacy database class for compatibility."""
-    
+
     def __init__(self):
         self.is_connected = False
-    
+
     async def connect(self):
         """Connect to database."""
         self.is_connected = True
-    
+
     async def disconnect(self):
         """Disconnect from database."""
         self.is_connected = False
-    
+
     async def health_check(self) -> bool:
         """Check database health."""
         return self.is_connected
@@ -157,9 +157,9 @@ class MigrationError(DatabaseError):
 # ---------------------------------------------------------------------------
 # Lightweight configuration / structural primitives
 # ---------------------------------------------------------------------------
-import time as _time
 from dataclasses import dataclass, field
 from enum import Enum
+import time as _time
 from typing import Any
 
 
@@ -173,12 +173,12 @@ class IsolationLevel(Enum):
 def _require_postgres_url() -> str:
     """
     Require PostgreSQL DATABASE_URL - no SQLite fallback.
-    
+
     Raises:
         DatabaseError: If DATABASE_URL not set or not PostgreSQL
     """
     import os
-    
+
     url = os.getenv("DATABASE_URL")
     if not url:
         raise DatabaseError(
@@ -188,7 +188,7 @@ def _require_postgres_url() -> str:
             "For local development, use docker-compose to start PostgreSQL:\n"
             "  docker-compose up -d postgres"
         )
-    
+
     # Validate it's PostgreSQL
     if not url.startswith("postgresql"):
         raise DatabaseError(
@@ -197,7 +197,7 @@ def _require_postgres_url() -> str:
             f"SQLite cannot validate production behavior (connection pooling, "
             f"locking, JSON types, SELECT FOR UPDATE)."
         )
-    
+
     return url
 
 
@@ -272,159 +272,6 @@ class ConnectionPool:
         finally:
             if conn in self._connections:
                 self._connections.remove(conn)
-
-class SessionFactory:
-    def __init__(self, engine: MockEngine):
-        self.engine = engine
-    def __call__(self):
-        return {"engine": self.engine, "objects": []}
-
-class AsyncSessionFactory(SessionFactory):
-    async def __call__(self):  # pragma: no cover - trivial
-        return super().__call__()
-
-Session = dict[str, Any]  # Loose alias for tests
-
-class SessionManager:
-    def __init__(self, factory: SessionFactory):
-        self.factory = factory
-        self._current: Session | None = None
-    def get_session(self):
-        if self._current is None:
-            self._current = self.factory()
-        return self._current
-    def close(self):
-        self._current = None
-
-class Transaction:
-    def __init__(self):
-        self._state = "active"
-    def commit(self):
-        self._state = "committed"
-    def rollback(self):
-        self._state = "rolled_back"
-
-class TransactionManager:
-    def __init__(self):
-        self._log: list[dict[str, Any]] = []
-    def begin_transaction(self):
-        tx = Transaction()
-        tx_id = f"tx_{len(self._log)}"
-        self._log.append({"id": tx_id, "transaction": tx, "status": "active", "started_at": _time.time()})
-        return tx, tx_id
-    def commit_transaction(self, tx_id: str):
-        for rec in self._log:
-            if rec["id"] == tx_id:
-                rec["transaction"].commit()
-                rec["status"] = "committed"
-                return True
-        return False
-    def rollback_transaction(self, tx_id: str):
-        for rec in self._log:
-            if rec["id"] == tx_id:
-                rec["transaction"].rollback()
-                rec["status"] = "rolled_back"
-                return True
-        return False
-    def get_transaction_stats(self):
-        stats = {"total": len(self._log)}
-        for st in ["active", "committed", "rolled_back"]:
-            stats[st] = sum(1 for r in self._log if r["status"] == st)
-        return stats
-
-DatabaseURL = str  # Alias for tests
-ModelBase = object  # Placeholder
-
-# Global singletons expected by tests
-_engine: MockEngine | None = None
-_pool: ConnectionPool | None = None
-_session_factory: SessionFactory | None = None
-_session_manager: SessionManager | None = None
-_tx_manager: TransactionManager | None = None
-
-def setup_database(config: DatabaseConfig | None = None):  # pragma: no cover - glue
-    global _engine, _pool, _session_factory, _session_manager, _tx_manager
-    config = config or DatabaseConfig()
-    _engine = MockEngine(config.url, pool_size=config.pool_size, max_overflow=config.max_overflow, echo=config.echo)
-    _pool = ConnectionPool(_engine)
-    _session_factory = SessionFactory(_engine)
-    _session_manager = SessionManager(_session_factory)
-    _tx_manager = TransactionManager()
-    return True
-
-def initialize_database():  # alias used by tests
-    return setup_database()
-
-def teardown_database():  # pragma: no cover - glue
-    global _engine, _pool, _session_factory, _session_manager, _tx_manager
-    _engine = _pool = _session_factory = _session_manager = _tx_manager = None
-    return True
-
-def get_connection_info():
-    return {"url": _engine.url if _engine else None}
-
-def get_database_stats():
-    return {"sessions": 1 if (_session_manager and _session_manager._current) else 0}
-
-def create_engine(database_url: str, **kwargs):
-    return MockEngine(database_url, **kwargs)
-
-def create_session(engine: MockEngine | None = None):
-    engine = engine or _engine or create_engine("sqlite:///:memory:")
-    return SessionFactory(engine)()
-
-def get_session():
-    global _session_manager
-    if _session_manager is None:
-        setup_database()
-    return _session_manager.get_session()
-
-def close_session(session):  # noqa: D401
-    # Stateless stub – just drop reference
-    return True
-
-def begin_transaction():
-    global _tx_manager
-    if _tx_manager is None:
-        setup_database()
-    return _tx_manager.begin_transaction()
-
-def commit_transaction(tx_id: str):
-    return _tx_manager.commit_transaction(tx_id) if _tx_manager else False
-
-def rollback_transaction(tx_id: str):
-    return _tx_manager.rollback_transaction(tx_id) if _tx_manager else False
-
-def execute_query(query: str, params: dict | None = None):
-    # Mimic invalid detection
-    if query.strip().upper().startswith("INVALID"):
-        raise DatabaseError("Invalid query")
-    return [{"query": query, "params": params or {}}]
-
-async def execute_async_query(query: str, params: dict | None = None):
-    await asyncio.sleep(0)  # yield control
-    return execute_query(query, params)
-
-def migrate_database():  # placeholder
-    return True
-
-def backup_database():
-    return True
-
-def restore_database():
-    return True
-
-def create_tables(*_a, **_kw):
-    return True
-
-def drop_tables(*_a, **_kw):
-    return True
-
-def test_connection():
-    return True
-
-def health_check():
-    return {"status": "healthy", "timestamp": _time.time()}
 
 class QueryBuilder:
     def __init__(self):
@@ -507,7 +354,7 @@ class DatabaseMigrator:
             for cmd in commands:
                 cmd_upper = cmd.strip().upper()
                 # Detect invalid SQL patterns that should cause migration failure
-                if ("INVALID" in cmd_upper or 
+                if ("INVALID" in cmd_upper or
                     cmd_upper.startswith("INVALID") or
                     cmd_upper == "INVALID SQL COMMAND"):
                     raise ValueError(f"Invalid SQL command: {cmd}")
@@ -577,7 +424,7 @@ class SessionFactory:
     """Mock session factory for compatibility."""
     def __init__(self, engine):
         self.engine = engine
-    
+
     def __call__(self):
         return MockConnection(self.engine)
 
@@ -585,7 +432,7 @@ class AsyncSessionFactory:
     """Mock async session factory for compatibility."""
     def __init__(self, engine):
         self.engine = engine
-    
+
     def __call__(self):
         return MockConnection(self.engine)
 
@@ -594,7 +441,7 @@ class DatabaseURL:
     """Mock database URL handler for compatibility."""
     def __init__(self, url: str):
         self.url = url
-    
+
     def __str__(self):
         return self.url
 

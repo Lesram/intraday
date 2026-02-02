@@ -764,9 +764,10 @@ class Layer5BusinessWorkflowSuite:
                     quote_request = StockLatestQuoteRequest(symbol_or_symbols=test_symbol)
                     quotes = data_client.get_stock_latest_quote(quote_request)
                     current_price = float(quotes[test_symbol].ask_price)
-                    limit_price = current_price * 0.5  # 50% below market - won't fill
+                    # 50% below market - won't fill, round to 2 decimals for valid price format
+                    limit_price = round(current_price * 0.5, 2)
                 except:
-                    limit_price = 1.0  # Fallback unrealistic price
+                    limit_price = 1.00  # Fallback unrealistic price (valid 2-decimal format)
                 
                 cancel_order_request = LimitOrderRequest(
                     symbol=test_symbol,
@@ -1558,9 +1559,9 @@ async def main():
                 for sub_test in result["sub_tests"][:3]:  # Show first 3 sub-tests
                     sub_name = sub_test.get('test', 'Unknown')
                     if sub_test.get("success", False):
-                        print(f"        {Colors.GREEN}└─ OK{Colors.RESET} {sub_name}")
+                        print(f"        {Colors.GREEN}+--> OK{Colors.RESET} {sub_name}")
                     else:
-                        print(f"        {Colors.RED}└─ FAIL{Colors.RESET} {sub_name}")
+                        print(f"        {Colors.RED}+--> FAIL{Colors.RESET} {sub_name}")
     
     # Performance Summary
     TestOutput.section_divider()

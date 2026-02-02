@@ -6,14 +6,14 @@ versioning, and tracking machine learning models in the algotrading platform.
 Includes model metadata management, versioning, lifecycle tracking, and artifact storage.
 """
 
-import hashlib
-import json
-import logging
-import shutil
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
+import hashlib
+import json
+import logging
 from pathlib import Path
+import shutil
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -95,35 +95,35 @@ class ModelInfo:
 
 class ModelRegistryStorage:
     """Backend storage for model registry."""
-    
+
     def __init__(self, storage_path: str = "models/registry"):
         self.storage_path = Path(storage_path)
         self.storage_path.mkdir(parents=True, exist_ok=True)
-        
+
         # Storage structure
         self.models_path = self.storage_path / "models"
         self.metadata_path = self.storage_path / "metadata"
         self.artifacts_path = self.storage_path / "artifacts"
-        
+
         for path in [self.models_path, self.metadata_path, self.artifacts_path]:
             path.mkdir(parents=True, exist_ok=True)
-    
+
     def _get_model_path(self, model_name: str) -> Path:
         """Get model storage path."""
         return self.models_path / model_name
-    
+
     def _get_metadata_file(self, model_name: str) -> Path:
         """Get model metadata file path."""
         return self.metadata_path / f"{model_name}.json"
-    
+
     def _get_version_metadata_file(self, model_name: str, version: str) -> Path:
         """Get version metadata file path."""
         return self.metadata_path / f"{model_name}_v{version}.json"
-    
+
     def _get_artifact_path(self, model_name: str, version: str, artifact_name: str) -> Path:
         """Get artifact storage path."""
         return self.artifacts_path / model_name / version / artifact_name
-    
+
     def _calculate_checksum(self, file_path: str) -> str:
         """Calculate file checksum."""
         hash_md5 = hashlib.md5()
@@ -135,7 +135,7 @@ class ModelRegistryStorage:
         except Exception as e:
             logger.error(f"Error calculating checksum for {file_path}: {e}")
             return ""
-    
+
     def save_model_info(self, model_info: ModelInfo) -> bool:
         """Save model information."""
         try:
@@ -156,17 +156,17 @@ class ModelRegistryStorage:
         except Exception as e:
             logger.error(f"Error saving model info: {e}")
             return False
-    
+
     def load_model_info(self, model_name: str) -> ModelInfo | None:
         """Load model information."""
         try:
             metadata_file = self._get_metadata_file(model_name)
             if not metadata_file.exists():
                 return None
-            
+
             with open(metadata_file) as f:
                 data = json.load(f)
-            
+
             return ModelInfo(
                 name=data['name'],
                 description=data['description'],
@@ -180,14 +180,14 @@ class ModelRegistryStorage:
         except Exception as e:
             logger.error(f"Error loading model info: {e}")
             return None
-    
+
     def save_model_version(self, model_version: ModelVersion) -> bool:
         """Save model version."""
         try:
             version_file = self._get_version_metadata_file(
                 model_version.model_name, model_version.version
             )
-            
+
             # Convert artifacts to serializable format
             artifacts_data = []
             for artifact in model_version.artifacts:
@@ -201,7 +201,7 @@ class ModelRegistryStorage:
                     'created_at': artifact.created_at.isoformat(),
                     'metadata': artifact.metadata
                 })
-            
+
             data = {
                 'model_name': model_version.model_name,
                 'version': model_version.version,
@@ -217,24 +217,24 @@ class ModelRegistryStorage:
                 'tags': model_version.tags,
                 'lineage': model_version.lineage
             }
-            
+
             with open(version_file, 'w') as f:
                 json.dump(data, f, indent=2)
             return True
         except Exception as e:
             logger.error(f"Error saving model version: {e}")
             return False
-    
+
     def load_model_version(self, model_name: str, version: str) -> ModelVersion | None:
         """Load model version."""
         try:
             version_file = self._get_version_metadata_file(model_name, version)
             if not version_file.exists():
                 return None
-            
+
             with open(version_file) as f:
                 data = json.load(f)
-            
+
             # Convert artifacts back to objects
             artifacts = []
             for artifact_data in data.get('artifacts', []):
@@ -249,7 +249,7 @@ class ModelRegistryStorage:
                     metadata=artifact_data.get('metadata', {})
                 )
                 artifacts.append(artifact)
-            
+
             return ModelVersion(
                 model_name=data['model_name'],
                 version=data['version'],
@@ -268,22 +268,22 @@ class ModelRegistryStorage:
         except Exception as e:
             logger.error(f"Error loading model version: {e}")
             return None
-    
-    def store_artifact(self, model_name: str, version: str, 
+
+    def store_artifact(self, model_name: str, version: str,
                       artifact_name: str, source_path: str) -> ModelArtifact | None:
         """Store model artifact."""
         try:
             # Create artifact storage path
             artifact_path = self._get_artifact_path(model_name, version, artifact_name)
             artifact_path.parent.mkdir(parents=True, exist_ok=True)
-            
+
             # Copy artifact file
             shutil.copy2(source_path, artifact_path)
-            
+
             # Calculate metadata
             size_bytes = artifact_path.stat().st_size
             checksum = self._calculate_checksum(str(artifact_path))
-            
+
             # Determine artifact type based on file extension
             file_ext = Path(source_path).suffix.lower()
             artifact_type = ArtifactType.MODEL  # Default
@@ -295,7 +295,7 @@ class ModelRegistryStorage:
                 artifact_type = ArtifactType.LOGS
             elif file_ext in ['.md', '.pdf', '.html']:
                 artifact_type = ArtifactType.DOCUMENTATION
-            
+
             return ModelArtifact(
                 artifact_id=f"{model_name}_{version}_{artifact_name}",
                 name=artifact_name,
@@ -308,7 +308,7 @@ class ModelRegistryStorage:
         except Exception as e:
             logger.error(f"Error storing artifact: {e}")
             return None
-    
+
     def list_models(self) -> list[str]:
         """List all registered models."""
         try:
@@ -320,7 +320,7 @@ class ModelRegistryStorage:
         except Exception as e:
             logger.error(f"Error listing models: {e}")
             return []
-    
+
     def list_versions(self, model_name: str) -> list[str]:
         """List all versions for a model."""
         try:
@@ -337,64 +337,64 @@ class ModelRegistryStorage:
 
 class ModelValidator:
     """Model validation service."""
-    
+
     def __init__(self):
         self.validation_rules = {}
-    
+
     def add_validation_rule(self, name: str, rule_func):
         """Add custom validation rule."""
         self.validation_rules[name] = rule_func
-    
+
     def validate_model_name(self, name: str) -> tuple[bool, str]:
         """Validate model name."""
         if not name:
             return False, "Model name cannot be empty"
-        
+
         if not name.replace("_", "").replace("-", "").isalnum():
             return False, "Model name can only contain alphanumeric characters, hyphens, and underscores"
-        
+
         if len(name) > 100:
             return False, "Model name cannot exceed 100 characters"
-        
+
         return True, ""
-    
+
     def validate_version(self, version: str) -> tuple[bool, str]:
         """Validate model version."""
         if not version:
             return False, "Version cannot be empty"
-        
+
         # Basic semver pattern
         import re
         pattern = r'^v?\d+\.\d+\.\d+(-[a-zA-Z0-9.-]+)?$'
         if not re.match(pattern, version):
             return False, "Version must follow semantic versioning (e.g., v1.0.0)"
-        
+
         return True, ""
-    
+
     def validate_model_version(self, model_version: ModelVersion) -> tuple[bool, list[str]]:
         """Validate complete model version."""
         errors = []
-        
+
         # Validate name
         name_valid, name_error = self.validate_model_name(model_version.model_name)
         if not name_valid:
             errors.append(f"Model name: {name_error}")
-        
+
         # Validate version
         version_valid, version_error = self.validate_version(model_version.version)
         if not version_valid:
             errors.append(f"Version: {version_error}")
-        
+
         # Validate description
         if not model_version.description:
             errors.append("Description is required")
         elif len(model_version.description) > 1000:
             errors.append("Description cannot exceed 1000 characters")
-        
+
         # Validate created_by
         if not model_version.created_by:
             errors.append("Created by field is required")
-        
+
         # Apply custom validation rules
         for rule_name, rule_func in self.validation_rules.items():
             try:
@@ -404,13 +404,13 @@ class ModelValidator:
             except Exception as e:
                 logger.error(f"Error in validation rule {rule_name}: {e}")
                 errors.append(f"Validation rule {rule_name} failed")
-        
+
         return len(errors) == 0, errors
 
 
 class ModelLifecycleManager:
     """Manages model lifecycle transitions."""
-    
+
     def __init__(self):
         self.transition_rules = {
             ModelStatus.DRAFT: [ModelStatus.REGISTERED, ModelStatus.ARCHIVED],
@@ -420,34 +420,34 @@ class ModelLifecycleManager:
             ModelStatus.DEPRECATED: [ModelStatus.ARCHIVED],
             ModelStatus.ARCHIVED: []  # No transitions from archived
         }
-    
+
     def can_transition(self, from_status: ModelStatus, to_status: ModelStatus) -> bool:
         """Check if status transition is allowed."""
         return to_status in self.transition_rules.get(from_status, [])
-    
+
     def get_allowed_transitions(self, current_status: ModelStatus) -> list[ModelStatus]:
         """Get allowed transitions from current status."""
         return self.transition_rules.get(current_status, [])
-    
-    def transition_status(self, model_version: ModelVersion, 
+
+    def transition_status(self, model_version: ModelVersion,
                          new_status: ModelStatus) -> tuple[bool, str]:
         """Transition model status."""
         if not self.can_transition(model_version.status, new_status):
             return False, f"Cannot transition from {model_version.status.value} to {new_status.value}"
-        
+
         old_status = model_version.status
         model_version.status = new_status
         model_version.updated_at = datetime.now()
-        
+
         logger.info(f"Model {model_version.model_name} v{model_version.version} "
                    f"transitioned from {old_status.value} to {new_status.value}")
-        
+
         return True, ""
 
 
 class ModelRegistry:
     """Main model registry service."""
-    
+
     def __init__(self, storage_path: str = "models/registry"):
         self.storage = ModelRegistryStorage(storage_path)
         self.validator = ModelValidator()
@@ -458,8 +458,8 @@ class ModelRegistry:
             'artifacts_stored': 0,
             'queries_executed': 0
         }
-    
-    async def register_model(self, name: str, description: str, 
+
+    async def register_model(self, name: str, description: str,
                            owner: str, tags: dict[str, str] | None = None) -> ModelInfo:
         """Register a new model."""
         try:
@@ -467,12 +467,12 @@ class ModelRegistry:
             name_valid, name_error = self.validator.validate_model_name(name)
             if not name_valid:
                 raise ValueError(f"Invalid model name: {name_error}")
-            
+
             # Check if model already exists
             existing_model = self.storage.load_model_info(name)
             if existing_model:
                 raise ValueError(f"Model '{name}' already exists")
-            
+
             # Create model info
             model_info = ModelInfo(
                 name=name,
@@ -482,19 +482,19 @@ class ModelRegistry:
                 updated_at=datetime.now(),
                 tags=tags or {}
             )
-            
+
             # Save to storage
             if not self.storage.save_model_info(model_info):
                 raise RuntimeError("Failed to save model info")
-            
+
             self.metrics['models_registered'] += 1
             logger.info(f"Model '{name}' registered successfully")
             return model_info
-            
+
         except Exception as e:
             logger.error(f"Error registering model: {e}")
             raise
-    
+
     async def create_model_version(self, model_name: str, version: str,
                                  description: str, created_by: str,
                                  stage: ModelStage = ModelStage.DEVELOPMENT,
@@ -507,12 +507,12 @@ class ModelRegistry:
             model_info = self.storage.load_model_info(model_name)
             if not model_info:
                 raise ValueError(f"Model '{model_name}' not found")
-            
+
             # Check if version already exists
             existing_version = self.storage.load_model_version(model_name, version)
             if existing_version:
                 raise ValueError(f"Version '{version}' already exists for model '{model_name}'")
-            
+
             # Create model version
             model_version = ModelVersion(
                 model_name=model_name,
@@ -525,31 +525,31 @@ class ModelRegistry:
                 parameters=parameters or {},
                 tags=tags or {}
             )
-            
+
             # Validate model version
             is_valid, errors = self.validator.validate_model_version(model_version)
             if not is_valid:
                 raise ValueError(f"Validation failed: {'; '.join(errors)}")
-            
+
             # Save version
             if not self.storage.save_model_version(model_version):
                 raise RuntimeError("Failed to save model version")
-            
+
             # Update model info
             model_info.latest_version = version
             if version not in model_info.versions:
                 model_info.versions.append(version)
             model_info.updated_at = datetime.now()
             self.storage.save_model_info(model_info)
-            
+
             self.metrics['versions_created'] += 1
             logger.info(f"Version '{version}' created for model '{model_name}'")
             return model_version
-            
+
         except Exception as e:
             logger.error(f"Error creating model version: {e}")
             raise
-    
+
     async def add_artifact(self, model_name: str, version: str,
                           artifact_name: str, source_path: str,
                           artifact_type: ArtifactType | None = None,
@@ -560,38 +560,38 @@ class ModelRegistry:
             model_version = self.storage.load_model_version(model_name, version)
             if not model_version:
                 raise ValueError(f"Model version '{model_name}' v'{version}' not found")
-            
+
             # Store artifact
             artifact = self.storage.store_artifact(
                 model_name, version, artifact_name, source_path
             )
             if not artifact:
                 raise RuntimeError("Failed to store artifact")
-            
+
             # Override type if provided
             if artifact_type:
                 artifact.type = artifact_type
-            
+
             # Add metadata
             if metadata:
                 artifact.metadata.update(metadata)
-            
+
             # Add to model version
             model_version.artifacts.append(artifact)
             model_version.updated_at = datetime.now()
-            
+
             # Save updated version
             if not self.storage.save_model_version(model_version):
                 raise RuntimeError("Failed to update model version")
-            
+
             self.metrics['artifacts_stored'] += 1
             logger.info(f"Artifact '{artifact_name}' added to {model_name} v{version}")
             return artifact
-            
+
         except Exception as e:
             logger.error(f"Error adding artifact: {e}")
             raise
-    
+
     async def transition_model_status(self, model_name: str, version: str,
                                     new_status: ModelStatus) -> bool:
         """Transition model version status."""
@@ -600,32 +600,32 @@ class ModelRegistry:
             model_version = self.storage.load_model_version(model_name, version)
             if not model_version:
                 raise ValueError(f"Model version '{model_name}' v'{version}' not found")
-            
+
             # Perform transition
             success, error = self.lifecycle_manager.transition_status(model_version, new_status)
             if not success:
                 raise ValueError(error)
-            
+
             # Save updated version
             if not self.storage.save_model_version(model_version):
                 raise RuntimeError("Failed to save status transition")
-            
+
             return True
-            
+
         except Exception as e:
             logger.error(f"Error transitioning status: {e}")
             raise
-    
+
     async def get_model_info(self, model_name: str) -> ModelInfo | None:
         """Get model information."""
         self.metrics['queries_executed'] += 1
         return self.storage.load_model_info(model_name)
-    
+
     async def get_model_version(self, model_name: str, version: str) -> ModelVersion | None:
         """Get specific model version."""
         self.metrics['queries_executed'] += 1
         return self.storage.load_model_version(model_name, version)
-    
+
     async def list_models(self) -> list[ModelInfo]:
         """List all registered models."""
         self.metrics['queries_executed'] += 1
@@ -635,7 +635,7 @@ class ModelRegistry:
             if model_info:
                 models.append(model_info)
         return models
-    
+
     async def list_model_versions(self, model_name: str) -> list[ModelVersion]:
         """List all versions of a model."""
         self.metrics['queries_executed'] += 1
@@ -645,40 +645,40 @@ class ModelRegistry:
             if model_version:
                 versions.append(model_version)
         return versions
-    
+
     async def search_models(self, query: str, tags: dict[str, str] | None = None) -> list[ModelInfo]:
         """Search models by name, description, or tags."""
         self.metrics['queries_executed'] += 1
         all_models = await self.list_models()
         matching_models = []
-        
+
         for model in all_models:
             matches = False
-            
+
             # Check name and description if query provided
             if query:
-                if (query.lower() in model.name.lower() or 
+                if (query.lower() in model.name.lower() or
                     query.lower() in model.description.lower()):
                     matches = True
-            
+
             # Check tags if provided
             if tags:
                 matches_tags = all(
-                    model.tags.get(key) == value 
+                    model.tags.get(key) == value
                     for key, value in tags.items()
                 )
                 if matches_tags:
                     matches = True
-            
+
             # If no query and no tags, match all (shouldn't happen in practice)
             if not query and not tags:
                 matches = True
-            
+
             if matches:
                 matching_models.append(model)
-        
+
         return matching_models
-    
+
     async def get_registry_metrics(self) -> dict[str, Any]:
         """Get registry metrics."""
         return {
@@ -686,17 +686,17 @@ class ModelRegistry:
             'total_models': len(self.storage.list_models()),
             'storage_path': str(self.storage.storage_path)
         }
-    
+
     async def cleanup_old_versions(self, model_name: str, keep_latest: int = 5) -> int:
         """Clean up old model versions."""
         try:
             versions = self.storage.list_versions(model_name)
             if len(versions) <= keep_latest:
                 return 0
-            
+
             versions_to_remove = versions[keep_latest:]
             removed_count = 0
-            
+
             for version in versions_to_remove:
                 model_version = self.storage.load_model_version(model_name, version)
                 if model_version and model_version.status == ModelStatus.ARCHIVED:
@@ -706,16 +706,16 @@ class ModelRegistry:
                         version_file.unlink()
                         removed_count += 1
                         logger.info(f"Removed old version {model_name} v{version}")
-            
+
             return removed_count
-            
+
         except Exception as e:
             logger.error(f"Error cleaning up versions: {e}")
             return 0
 
 
 # Convenience functions
-async def register_model(name: str, description: str, owner: str, 
+async def register_model(name: str, description: str, owner: str,
                         registry: ModelRegistry | None = None) -> ModelInfo:
     """Convenience function to register a model."""
     if registry is None:
@@ -723,7 +723,7 @@ async def register_model(name: str, description: str, owner: str,
     return await registry.register_model(name, description, owner)
 
 
-async def create_version(model_name: str, version: str, description: str, 
+async def create_version(model_name: str, version: str, description: str,
                         created_by: str, registry: ModelRegistry | None = None) -> ModelVersion:
     """Convenience function to create a model version."""
     if registry is None:

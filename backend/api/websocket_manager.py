@@ -4,14 +4,14 @@ Enhanced with backpressure handling, metrics, and test compatibility.
 """
 
 import asyncio
-import json
-import logging
-import time
-import weakref
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
+import json
+import logging
+import time
 from typing import Any
+import weakref
 
 from fastapi import WebSocket, WebSocketDisconnect
 
@@ -79,19 +79,19 @@ class WebSocketClientInfo:
     send_task: asyncio.Task | None = None
     last_ping: float = 0.0  # Unix timestamp
     subscriptions: set = None
-    
+
     def __post_init__(self):
         if self.subscriptions is None:
             self.subscriptions = set()
-    
+
     def __getitem__(self, key):
         """Allow dictionary-style access for backward compatibility with tests"""
         return getattr(self, key)
-    
+
     def __setitem__(self, key, value):
         """Allow dictionary-style assignment for backward compatibility with tests"""
         setattr(self, key, value)
-    
+
     def __contains__(self, key):
         """Allow 'in' operator for backward compatibility with tests"""
         return hasattr(self, key)
@@ -110,7 +110,7 @@ class PatchableDict(dict):
 
 class WebSocketClientManager:
     """Enhanced WebSocket client manager with backpressure and metrics."""
-    
+
     def __init__(
     self,
     queue_max: int = 100,
@@ -179,16 +179,16 @@ class WebSocketClientManager:
         if c is not None:
             self._prom_simple_counters[name] = c
         return c
-    
+
     async def register_client(self, client_id: str, websocket: WebSocket) -> bool:
         """Register new WebSocket client with backpressure-aware queue."""
         now_time = self.now()
         # Get timestamp for last_ping compatibility
         try:
             timestamp = asyncio.get_event_loop().time()
-        except:
+        except (RuntimeError, DeprecationWarning):
             timestamp = time.time()
-            
+
         # Use a public-facing test-inspectable queue and a separate internal send queue
         message_queue = asyncio.Queue(maxsize=self.queue_max)
         # Unbounded internal send queue so enqueue never raises QueueFull
@@ -249,7 +249,7 @@ class WebSocketClientManager:
         # Get the now function - use asyncio.get_event_loop().time() as per prompt
         now_func = kwargs.get("now", lambda: asyncio.get_event_loop().time())
         now_time = now_func()
-        
+
         # Create message queue with configurable max size
         queue_max = kwargs.get("queue_max", self.queue_max)
         message_queue = asyncio.Queue(maxsize=queue_max)
@@ -276,7 +276,7 @@ class WebSocketClientManager:
             last_heartbeat=self.now(),
             subscriptions=set(),
         )
-        
+
         # Store both the dict (for compatibility) and the object
         self.clients[client_id] = client_info
         self._clients = getattr(self, '_clients', {})
@@ -317,7 +317,7 @@ class WebSocketClientManager:
         """Remove WebSocket client and cleanup resources."""
         if client_id not in self.clients:
             return
-            
+
         client_info = self.clients[client_id]
 
         # Close the websocket first
@@ -341,21 +341,21 @@ class WebSocketClientManager:
                 await send_task
             except asyncio.CancelledError:
                 pass
-        
+
         # Remove from main clients dict
         del self.clients[client_id]
-        
+
         # Clean up test compatibility attributes
         self.active_connections.pop(client_id, None)
         self.connection_queues.pop(client_id, None)
         self.connection_info.pop(client_id, None)
-        
+
         # Also clean up _clients dict if it exists
         if hasattr(self, '_clients'):
             self._clients.pop(client_id, None)
-        
+
         audit_logger.info("websocket_client_removed", client_id=client_id)
-    
+
     async def unregister_client(self, client_id: str) -> bool:
         """Unregister client (alias for remove_client for test compatibility)."""
         if client_id not in self.clients:
@@ -369,14 +369,13 @@ class WebSocketClientManager:
         info = getattr(self, '_clients', {}).get(client_id)
         if not info:
             info = self.clients.get(client_id)
-        
+
         if info:
             # Clean up through existing remove_client method which now handles close()
             await self.remove_client(client_id)
-        else:
-            # Client not found in either location - just clean up _clients if it exists
-            if hasattr(self, '_clients'):
-                self._clients.pop(client_id, None)
+        # Client not found in either location - just clean up _clients if it exists
+        elif hasattr(self, '_clients'):
+            self._clients.pop(client_id, None)
 
     async def broadcast_message(
         self, message: dict[str, Any], subscription_filter: str | None = None
@@ -471,7 +470,7 @@ class WebSocketClientManager:
                 client_info = self.clients.get(client_id)
                 if not client_info:
                     break
-                    
+
                 # Prefer internal send queue so tests can inspect the public queue without it being drained
                 queue = getattr(client_info, "send_queue", None)
                 if queue is None and isinstance(client_info, dict):
@@ -485,7 +484,7 @@ class WebSocketClientManager:
                 try:
                     # Use wait_for with a timeout to avoid infinite blocking
                     message = await asyncio.wait_for(queue.get(), timeout=1.0)
-                    
+
                     # Serialize message to JSON if it's a dict/object
                     try:
                         if isinstance(message, dict):
@@ -497,7 +496,7 @@ class WebSocketClientManager:
                         logging.error(f"Error serializing message for client {client_id}: {e}")
                         queue.task_done()
                         continue
-                        
+
                     await websocket.send_text(message_text)
 
                     if PROMETHEUS_AVAILABLE and self.metrics_registry:
@@ -513,7 +512,7 @@ class WebSocketClientManager:
                             pass
 
                     queue.task_done()
-                    
+
                 except TimeoutError:
                     # Timeout is normal - just continue the loop to check if client still exists
                     continue
@@ -531,7 +530,7 @@ class WebSocketClientManager:
                         # Other errors (like send errors) - log but continue
                         logging.error(f"Error sending message to client {client_id}: {e}")
                         continue
-                    
+
         except asyncio.CancelledError:
             pass
         except Exception as e:
@@ -558,7 +557,7 @@ class WebSocketClientManager:
         while True:
             try:
                 await asyncio.sleep(self.heartbeat_interval)
-                
+
                 # Send ping to all clients
                 for client_id, client_info in list(self.clients.items()):
                     try:
@@ -567,10 +566,10 @@ class WebSocketClientManager:
                     except Exception as e:
                         logging.warning(f"Failed to ping client {client_id}: {e}")
                         await self.remove_client(client_id)
-                
+
                 # Clean up stale connections
                 await self.cleanup_stale_connections()
-                
+
                 if not self.clients:
                     break
             except Exception as e:
@@ -581,7 +580,7 @@ class WebSocketClientManager:
         """Clean up stale connections using injected clock"""
         now_time = self.now()
         stale_clients = []
-        
+
         for client_id, client_info in self.clients.items():
             # Support dataclass or dict-style client info
             last_heartbeat = getattr(client_info, "last_heartbeat", None)
@@ -593,10 +592,10 @@ class WebSocketClientManager:
                 time_since_heartbeat = now_time.timestamp() - last_heartbeat.timestamp()
             else:  # assume unix timestamp
                 time_since_heartbeat = now_time.timestamp() - last_heartbeat
-                
+
             if time_since_heartbeat > self.stale_connection_timeout:
                 stale_clients.append(client_id)
-        
+
         for client_id in stale_clients:
             await self.remove_client(client_id)
 
@@ -604,7 +603,7 @@ class WebSocketClientManager:
         """Send message to specific client, return True if successful"""
         if client_id not in self.clients:
             return False
-            
+
         client_info = self.clients[client_id]
         try:
             # For test compatibility, send directly to websocket
@@ -654,14 +653,14 @@ class WebSocketClientManager:
                     q_public.put_nowait(message)
                 if q_send is not None:
                     q_send.put_nowait(message)
-                
+
                 # Update drop metrics
                 if PROMETHEUS_AVAILABLE and self.metrics_registry:
                     self.metrics_registry.counter(
                         "ws_messages_dropped_total",
                         {"client_id": client_id, "reason": "queue_full"},
                     ).inc()
-                
+
                 return True
             except asyncio.QueueEmpty:
                 q_public = getattr(client_info, "queue", None)
@@ -691,11 +690,11 @@ class WebSocketClientManager:
     def list_clients(self) -> list[str]:
         """List all active client IDs."""
         return list(self.clients.keys())
-    
+
     def get_client_count(self) -> int:
         """Get count of active clients (test compatibility method)."""
         return len(self.clients)
-    
+
     def get_statistics(self) -> dict[str, Any]:
         """Get WebSocket manager statistics."""
         return {
@@ -706,7 +705,7 @@ class WebSocketClientManager:
             'heartbeat_interval': self.heartbeat_interval,
             'queue_max': self.queue_max
         }
-    
+
     async def broadcast_to_all(self, message: dict[str, Any]):
         """Broadcast message to all clients (test compatibility method)."""
         await self.broadcast_message(message)
@@ -736,11 +735,11 @@ class WebSocketClientManager:
     async def send_personal_message(self, message: str, client_id: str) -> bool:
         """
         Send a personal message to a specific client via queue (with backpressure handling).
-        
+
         Args:
             message: Message to send
             client_id: ID of the target client
-            
+
         Returns:
             True if message was queued successfully, False otherwise
         """
@@ -749,14 +748,14 @@ class WebSocketClientManager:
             if not client_info:
                 logging.warning(f"Client {client_id} not found")
                 return False
-            
+
             # IMPORTANT for tests: Use the public, bounded queue to simulate backpressure
             # Do not fall back to the unbounded internal send_queue here.
             queue = getattr(client_info, "queue", None)
             if not queue:
                 logging.warning(f"No queue found for client {client_id}")
                 return False
-            
+
             try:
                 # Try to put message in queue (non-blocking). If full, raise and report False.
                 queue.put_nowait(message)
@@ -764,7 +763,7 @@ class WebSocketClientManager:
             except asyncio.QueueFull:
                 logging.warning(f"Queue full for client {client_id}, dropping message")
                 return False
-            
+
         except Exception as e:
             logging.warning(f"Failed to send personal message to client {client_id}: {e}")
             return False
@@ -772,16 +771,16 @@ class WebSocketClientManager:
     async def broadcast(self, message: str) -> int:
         """
         Broadcast a text message to all connected clients.
-        
+
         Args:
             message: Message to broadcast
-            
+
         Returns:
             Number of clients that received the message
         """
         sent_count = 0
         failed_clients = []
-        
+
         for client_id, client_info in self.clients.items():
             try:
                 await client_info.websocket.send_text(message)
@@ -789,9 +788,9 @@ class WebSocketClientManager:
             except Exception as e:
                 logging.warning(f"Failed to broadcast to client {client_id}: {e}")
                 failed_clients.append(client_id)
-        
+
         # Clean up failed connections
         for client_id in failed_clients:
             await self.remove_client(client_id)
-            
+
         return sent_count
