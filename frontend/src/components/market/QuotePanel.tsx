@@ -49,37 +49,42 @@ export const QuotePanel: React.FC<QuotePanelProps> = ({ symbol, compact = false 
   // Track previous price for color indication
   React.useEffect(() => {
     if (quote?.last) {
-      previousPriceRef.current = displayQuote.last;
+      previousPriceRef.current = quote.last;
     }
   }, [quote?.last]);
   
-  // Use mock data if no quote available (not connected)
-  const displayQuote = React.useMemo(() => {
-    if (quote) return quote;
-    
-    // Generate mock quote for display when disconnected
-    const basePrice = 150 + Math.random() * 10;
-    return {
-      symbol: symbol.toUpperCase(),
-      bid: basePrice - 0.05,
-      ask: basePrice + 0.05,
-      bid_size: Math.floor(100 + Math.random() * 500),
-      ask_size: Math.floor(100 + Math.random() * 500),
-      last: basePrice,
-      mid: basePrice,
-      spread: 0.10,
-      timestamp: new Date().toISOString(),
-      updateCount: 0
-    };
-  }, [quote, symbol]);
+  // NO MOCK DATA - Only display real data or "No Data" state
+  // If quote is null/undefined, we show a disconnected state
+  const hasRealData = quote !== null && quote !== undefined;
   
-  const priceColor = getPriceColor(displayQuote.last, previousPriceRef.current);
-  const lastPrice = displayQuote.last || displayQuote.mid;
+  const priceColor = hasRealData ? getPriceColor(quote.last, previousPriceRef.current) : 'text.primary';
+  const lastPrice = hasRealData ? (quote.last || quote.mid) : undefined;
   const prevPrice = previousPriceRef.current;
   const priceIncreased = lastPrice && prevPrice ? lastPrice > prevPrice : false;
   const priceDecreased = lastPrice && prevPrice ? lastPrice < prevPrice : false;
   
   if (compact) {
+    // Compact view - No Data state
+    if (!hasRealData) {
+      return (
+        <Card size="small" style={{ borderRadius: 8, background: '#141414', border: '1px solid #303030' }}>
+          <Space direction="vertical" style={{ width: '100%' }} size="small">
+            <Row justify="space-between" align="middle">
+              <Col>
+                <Typography.Text strong style={{ color: '#fff' }}>{symbol}</Typography.Text>
+              </Col>
+              <Col>
+                <Tag color="error">No Data</Tag>
+              </Col>
+            </Row>
+            <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+              Waiting for real-time data connection...
+            </Typography.Text>
+          </Space>
+        </Card>
+      );
+    }
+
     return (
       <Card size="small" style={{ borderRadius: 8, background: '#141414', border: '1px solid #303030' }}>
         <Space direction="vertical" style={{ width: '100%' }} size="small">
@@ -98,10 +103,10 @@ export const QuotePanel: React.FC<QuotePanelProps> = ({ symbol, compact = false 
                 {formatPrice(lastPrice)}
               </Typography.Title>
             </Col>
-            {displayQuote.spread !== undefined && (
+            {quote.spread !== undefined && (
               <Col>
                 <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                  Spread: ${displayQuote.spread.toFixed(3)}
+                  Spread: ${quote.spread.toFixed(3)}
                 </Typography.Text>
               </Col>
             )}
@@ -113,10 +118,10 @@ export const QuotePanel: React.FC<QuotePanelProps> = ({ symbol, compact = false 
                 Bid
               </Typography.Text>
               <Typography.Text strong style={{ color: '#ff4d4f' }}>
-                {formatPrice(displayQuote.bid)}
+                {formatPrice(quote.bid)}
               </Typography.Text>
               <Typography.Text type="secondary" style={{ fontSize: 11, display: 'block' }}>
-                {formatSize(displayQuote.bid_size)}
+                {formatSize(quote.bid_size)}
               </Typography.Text>
             </Col>
             
@@ -125,10 +130,10 @@ export const QuotePanel: React.FC<QuotePanelProps> = ({ symbol, compact = false 
                 Ask
               </Typography.Text>
               <Typography.Text strong style={{ color: '#52c41a' }}>
-                {formatPrice(displayQuote.ask)}
+                {formatPrice(quote.ask)}
               </Typography.Text>
               <Typography.Text type="secondary" style={{ fontSize: 11, display: 'block' }}>
-                {formatSize(displayQuote.ask_size)}
+                {formatSize(quote.ask_size)}
               </Typography.Text>
             </Col>
           </Row>
@@ -137,6 +142,33 @@ export const QuotePanel: React.FC<QuotePanelProps> = ({ symbol, compact = false 
     );
   }
   
+  // Full view - No Data state
+  if (!hasRealData) {
+    return (
+      <Card title={null} style={{ borderRadius: 8, background: '#141414', border: '1px solid #303030' }}>
+        <Row justify="space-between" align="middle" style={{ marginBottom: 16 }}>
+          <Col>
+            <Typography.Title level={4} style={{ margin: 0, color: '#fff' }}>
+              {symbol}
+            </Typography.Title>
+          </Col>
+          <Col>
+            <Tag color="error">No Data</Tag>
+          </Col>
+        </Row>
+        <div style={{ textAlign: 'center', padding: '40px 0' }}>
+          <Typography.Text type="secondary" style={{ fontSize: 14 }}>
+            Waiting for real-time data connection...
+          </Typography.Text>
+          <br />
+          <Typography.Text type="secondary" style={{ fontSize: 12, marginTop: 8, display: 'block' }}>
+            Please check WebSocket connection status in the header.
+          </Typography.Text>
+        </div>
+      </Card>
+    );
+  }
+
   return (
     <Card title={null} style={{ borderRadius: 8, background: '#141414', border: '1px solid #303030' }}>
       {/* Header */}
@@ -148,17 +180,11 @@ export const QuotePanel: React.FC<QuotePanelProps> = ({ symbol, compact = false 
         </Col>
         <Col>
           <Space>
-            {quote ? (
-              <>
-                <Tag icon={<SignalFilled />} color="success">Live</Tag>
-                {displayQuote.updateCount && (
-                  <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                    {displayQuote.updateCount} updates
-                  </Typography.Text>
-                )}
-              </>
-            ) : (
-              <Tag color="default">Mock Data</Tag>
+            <Tag icon={<SignalFilled />} color="success">Live</Tag>
+            {quote.updateCount && (
+              <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                {quote.updateCount} updates
+              </Typography.Text>
             )}
           </Space>
         </Col>
@@ -181,9 +207,9 @@ export const QuotePanel: React.FC<QuotePanelProps> = ({ symbol, compact = false 
             ) : null
           )}
         </Space>
-        {displayQuote.timestamp && (
+        {quote.timestamp && (
           <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-            Updated: {new Date(displayQuote.timestamp).toLocaleTimeString()}
+            Updated: {new Date(quote.timestamp).toLocaleTimeString()}
           </Typography.Text>
         )}
       </div>
@@ -204,7 +230,7 @@ export const QuotePanel: React.FC<QuotePanelProps> = ({ symbol, compact = false 
               BID
             </Typography.Text>
             <Statistic
-              value={displayQuote.bid}
+              value={quote.bid}
               precision={2}
               prefix="$"
               valueStyle={{ color: '#ff4d4f', fontSize: 28 }}
@@ -214,7 +240,7 @@ export const QuotePanel: React.FC<QuotePanelProps> = ({ symbol, compact = false 
                 <Typography.Text type="secondary" style={{ fontSize: 12 }}>Size:</Typography.Text>
               </Col>
               <Col>
-                <Typography.Text strong>{formatSize(displayQuote.bid_size)}</Typography.Text>
+                <Typography.Text strong>{formatSize(quote.bid_size)}</Typography.Text>
               </Col>
             </Row>
           </Card>
@@ -234,7 +260,7 @@ export const QuotePanel: React.FC<QuotePanelProps> = ({ symbol, compact = false 
               ASK
             </Typography.Text>
             <Statistic
-              value={displayQuote.ask}
+              value={quote.ask}
               precision={2}
               prefix="$"
               valueStyle={{ color: '#52c41a', fontSize: 28 }}
@@ -244,7 +270,7 @@ export const QuotePanel: React.FC<QuotePanelProps> = ({ symbol, compact = false 
                 <Typography.Text type="secondary" style={{ fontSize: 12 }}>Size:</Typography.Text>
               </Col>
               <Col>
-                <Typography.Text strong>{formatSize(displayQuote.ask_size)}</Typography.Text>
+                <Typography.Text strong>{formatSize(quote.ask_size)}</Typography.Text>
               </Col>
             </Row>
           </Card>
@@ -258,7 +284,7 @@ export const QuotePanel: React.FC<QuotePanelProps> = ({ symbol, compact = false 
             Mid Price
           </Typography.Text>
           <Typography.Text strong style={{ fontSize: 16 }}>
-            {formatPrice(displayQuote.mid)}
+            {formatPrice(quote.mid)}
           </Typography.Text>
         </Col>
         
@@ -267,7 +293,7 @@ export const QuotePanel: React.FC<QuotePanelProps> = ({ symbol, compact = false 
             Spread
           </Typography.Text>
           <Typography.Text strong style={{ fontSize: 16 }}>
-            ${displayQuote.spread.toFixed(3)} ({((displayQuote.spread / displayQuote.mid) * 100).toFixed(2)}%)
+            ${quote.spread?.toFixed(3) ?? '--'} {quote.spread && quote.mid ? `(${((quote.spread / quote.mid) * 100).toFixed(2)}%)` : ''}
           </Typography.Text>
         </Col>
       </Row>

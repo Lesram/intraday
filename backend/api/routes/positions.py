@@ -38,38 +38,13 @@ class PositionDTO(BaseModel):
 
 
 def get_mock_positions() -> list[PositionDTO]:
-    """Return deterministic demo positions for testing and development."""
-    now = datetime.now(UTC)
-
-    return [
-        PositionDTO(
-            symbol="AAPL",
-            qty=10.0,
-            avg_price=180.0,
-            market_price=185.50,
-            market_value=1855.0,
-            unrealized_pl=55.0,
-            updated_at=now
-        ),
-        PositionDTO(
-            symbol="GOOGL",
-            qty=5.0,
-            avg_price=2750.0,
-            market_price=2800.25,
-            market_value=14001.25,
-            unrealized_pl=251.25,
-            updated_at=now
-        ),
-        PositionDTO(
-            symbol="MSFT",
-            qty=15.0,
-            avg_price=420.0,
-            market_price=415.75,
-            market_value=6236.25,
-            unrealized_pl=-63.75,
-            updated_at=now
-        ),
-    ]
+    """
+    DEPRECATED: Mock positions should NOT be used in production.
+    This function exists only for reference and should not be called.
+    All position data must come from real broker (Alpaca) or database.
+    """
+    # Return empty list - NO MOCK DATA
+    return []
 
 
 async def get_alpaca_positions() -> list[PositionDTO]:
@@ -94,13 +69,15 @@ async def get_alpaca_positions() -> list[PositionDTO]:
                     updated_at=now
                 ))
 
-        return positions if positions else get_mock_positions()  # Fallback if no positions
+        # Return actual positions (may be empty if no positions held)
+        return positions
 
     except Exception as e:
-        # Fallback to mock data if Alpaca unavailable
+        # Log error but return empty list - NO MOCK DATA
         import logging
-        logging.getLogger(__name__).warning(f"Alpaca API unavailable, using mock data: {e}")
-        return get_mock_positions()
+        logging.getLogger(__name__).error(f"Alpaca API error fetching positions: {e}")
+        # Return empty list, not mock data - frontend will show "no positions"
+        return []
 
 
 async def get_database_positions() -> list[PositionDTO]:
@@ -108,18 +85,14 @@ async def get_database_positions() -> list[PositionDTO]:
     Fetch positions from database.
 
     Note: This function is designed for future database integration.
-    Currently returns mock data. When implementing full database storage,
-    this would query the positions table and map to DTOs.
+    Currently returns empty list - NO MOCK DATA.
+    When implementing full database storage, this would query 
+    the positions table and map to DTOs.
     """
     try:
-        # For now, return mock data indicating database source
-        positions = get_mock_positions()
-
-        # Mark as database-sourced for identification
-        for position in positions:
-            position.symbol = f"{position.symbol}_DB"
-
-        return positions
+        # TODO: Implement actual database query for positions
+        # For now, return empty list - NO MOCK DATA
+        return []
 
     except Exception as e:
         raise HTTPException(
@@ -138,32 +111,29 @@ async def get_positions(
     Get current portfolio positions.
 
     Returns positions from different sources based on configuration:
-    - Mock data if USE_MOCK_DATA=true
-    - Alpaca API if USE_MOCK_BROKER=false
-    - Database if USE_MOCK_BROKER=true and database available
+    - Alpaca API if USE_MOCK_BROKER=false (default)
+    - Database if USE_MOCK_BROKER=true
+
+    NO MOCK DATA - Only real positions are returned.
+    Empty list returned if no positions exist.
 
     Requires authentication - returns 401 without valid token.
     """
     settings = get_settings()
 
-    # Check USE_MOCK_DATA setting first
-    use_mock_data = getattr(settings, 'USE_MOCK_DATA', False)
-    if use_mock_data:
-        positions = get_mock_positions()
-    else:
-        # Check USE_MOCK_BROKER setting - default to False (use real Alpaca)
-        use_mock_broker = getattr(settings, 'USE_MOCK_BROKER', False)
+    # Check USE_MOCK_BROKER setting - default to False (use real Alpaca)
+    use_mock_broker = getattr(settings, 'USE_MOCK_BROKER', False)
 
-        if not use_mock_broker:
-            # Use Alpaca API for real trading
-            positions = await get_alpaca_positions()
-        else:
-            # Use database or fallback to mock
-            try:
-                positions = await get_database_positions()
-            except HTTPException:
-                # Fallback to mock data if database unavailable
-                positions = get_mock_positions()
+    if not use_mock_broker:
+        # Use Alpaca API for real trading
+        positions = await get_alpaca_positions()
+    else:
+        # Use database (no fallback to mock)
+        try:
+            positions = await get_database_positions()
+        except HTTPException:
+            # Return empty list if database unavailable - NO MOCK DATA
+            positions = []
 
     # L-08: Add ETag support for cache validation on frequently-polled endpoint
     positions_data = [p.model_dump() for p in positions]

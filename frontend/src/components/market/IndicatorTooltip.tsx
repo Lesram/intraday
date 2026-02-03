@@ -172,10 +172,10 @@ export const IndicatorTooltip: React.FC<IndicatorTooltipProps> = ({
         minWidth: 120,
         boxShadow: '0 2px 8px rgba(0, 0, 0, 0.5)',
       }}
-      bodyStyle={{ padding: '8px 12px' }}
+      styles={{ body: { padding: '8px 12px' } }}
     >
-      {indicatorValues.map((ind) => (
-        <div key={ind.name} style={{ marginBottom: ind.additionalValues ? 4 : 0 }}>
+      {indicatorValues.map((ind, index) => (
+        <div key={`${ind.name}-${index}`} style={{ marginBottom: ind.additionalValues ? 4 : 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <div
               style={{

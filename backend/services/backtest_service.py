@@ -197,11 +197,31 @@ class BacktestService:
             f"({start_date} to {end_date}, capital=${initial_capital:,.2f})"
         )
 
+        # Convert user_id to UUID (required by database schema)
+        # Handles: string UUID, integer user IDs, UUID objects, or None
+        if user_id:
+            if isinstance(user_id, UUID):
+                user_uuid = user_id
+            elif isinstance(user_id, str):
+                user_uuid = UUID(user_id)
+            elif isinstance(user_id, int):
+                # Convert integer user_id to deterministic UUID using namespace
+                import uuid as uuid_module
+                NAMESPACE = uuid_module.UUID('6ba7b810-9dad-11d1-80b4-00c04fd430c8')
+                user_uuid = uuid_module.uuid5(NAMESPACE, f"user_{user_id}")
+                logger.warning(f"Converting integer user_id {user_id} to UUID {user_uuid}")
+            else:
+                # Fallback: try to convert to string then UUID
+                user_uuid = UUID(str(user_id))
+        else:
+            # Generate a default UUID for anonymous/system backtests
+            user_uuid = uuid4()
+
         # Create backtest record
         backtest = Backtest(
             id=uuid4(),
             strategy_id=strategy_id,
-            user_id=user_id if user_id else 0,
+            user_id=user_uuid,
             start_date=start_date,
             end_date=end_date,
             initial_capital=Decimal(str(initial_capital)),

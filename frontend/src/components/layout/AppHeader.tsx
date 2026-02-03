@@ -10,6 +10,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
 import { useLogout } from '@/hooks/useAuth';
 import { colors } from '../../styles/theme';
+import { GlobalStatusBar } from './GlobalStatusBar';
 
 const { Header } = Layout;
 
@@ -81,6 +82,9 @@ const AppHeader = () => {
         >
           AlgoTrading Platform
         </div>
+        
+        {/* Global Status Bar - Market, WebSocket, Broker Status */}
+        <GlobalStatusBar />
       </div>
 
       {/* Right Side - Notifications & User */}

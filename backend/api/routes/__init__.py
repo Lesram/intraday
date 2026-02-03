@@ -6,7 +6,7 @@ This package contains all API route handlers organized by domain:
 - orders: Order management endpoints  
 - positions: Position tracking endpoints
 - risk: Risk management and emergency controls
-- strategies: Strategy configuration endpoints
+- strategy: Strategy configuration endpoints
 - backtest: Backtesting endpoints
 - audit: Audit trail endpoints
 - market_data: Market data endpoints
@@ -20,7 +20,7 @@ from . import (
     orders,
     positions,
     risk,
-    strategies,
+    strategy,
     backtest,
     audit,
 )
@@ -30,7 +30,7 @@ __all__ = [
     "orders", 
     "positions",
     "risk",
-    "strategies",
+    "strategy",
     "backtest",
     "audit",
 ]

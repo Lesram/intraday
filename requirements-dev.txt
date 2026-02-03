@@ -52,7 +52,7 @@ factory-boy>=3.2.0            # Test fixture factories
 pytest-postgresql>=4.1.0     # PostgreSQL testing utilities
 
 # API testing
-httpx>=0.24.0                 # HTTP client for testing
+httpx[http2]>=0.24.0          # HTTP client for testing with HTTP/2 support
 
 # Time series testing utilities
 pandas-stubs>=2.0.0           # Type stubs for pandas

@@ -92,13 +92,16 @@ class AlpacaDataClient:
             url = f"{self.base_url}/stocks/{symbol.upper()}/bars"
 
             # API parameters
+            # Use IEX feed for paper/free accounts (SIP requires paid subscription)
+            feed = os.getenv("ALPACA_DATA_FEED", "iex")
             params = {
                 "start": start_str,
                 "end": end_str,
                 "timeframe": timeframe,
                 "adjustment": "raw",  # Use raw prices (no adjustments)
                 "limit": lookback * 2,  # Request more than needed to account for filtering
-                "sort": "asc"  # Chronological order (oldest first)
+                "sort": "asc",  # Chronological order (oldest first)
+                "feed": feed  # Use IEX for free/paper accounts
             }
 
             logger.info("Fetching historical data from Alpaca",

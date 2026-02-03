@@ -155,27 +155,23 @@ export const ChartContainer: React.FC<ChartContainerProps> = ({
           setBarsData(bars);
           fitContent();
         } else {
-          // Fallback to mock data if API returns empty
-          const mockBars: Bar[] = generateMockBars(100);
-          setBarsData(mockBars);
-          fitContent();
+          // NO MOCK DATA - Show error state instead of fake data
+          console.warn('[ChartContainer] API returned empty bars, no data available');
+          setError('No chart data available for this symbol and timeframe. Try a different date range or timeframe.');
         }
       } catch (err: unknown) {
         // Don't process errors if request was cancelled
         if (isCancelled) return;
         
-        // Silently fall back to mock data for auth errors (user not logged in)
-        const axiosError = err as { response?: { status?: number } };
+        // Handle auth errors - user must be logged in for real data
+        const axiosError = err as { response?: { status?: number; data?: { detail?: string } } };
         if (axiosError?.response?.status === 401) {
-          // Auth error - expected when not logged in, use mock data silently
+          setError('Please log in to view real-time chart data.');
         } else {
           console.error('Failed to fetch chart data:', err);
+          setError(`Failed to load chart data: ${axiosError?.response?.data?.detail || 'Unknown error'}`);
         }
-        // Use mock data as fallback
-        const mockBars: Bar[] = generateMockBars(100);
-        setBarsData(mockBars);
-        fitContent();
-        setError(null); // Don't show error, just use mock data
+        // NO MOCK DATA - Do not fallback to fake data
       } finally {
         if (!isCancelled) {
           setLoading(false);
@@ -330,40 +326,5 @@ export const ChartContainer: React.FC<ChartContainerProps> = ({
     </Card>
   );
 };
-
-/**
- * Generate mock OHLCV bars for testing
- * TODO: Replace with real data from API
- */
-function generateMockBars(count: number): Bar[] {
-  const bars: Bar[] = [];
-  const now = Math.floor(Date.now() / 1000);
-  const interval = 300; // 5 minutes in seconds
-  
-  let price = 150;
-  const volume = 1000000;
-
-  for (let i = 0; i < count; i++) {
-    const time = (now - (count - i) * interval) as unknown as import('lightweight-charts').Time;
-    const change = (Math.random() - 0.5) * 2;
-    const open = price;
-    const close = price + change;
-    const high = Math.max(open, close) + Math.random();
-    const low = Math.min(open, close) - Math.random();
-    
-    bars.push({
-      time,
-      open,
-      high,
-      low,
-      close,
-      volume: volume + (Math.random() - 0.5) * 200000,
-    });
-
-    price = close;
-  }
-
-  return bars;
-}
 
 export default ChartContainer;

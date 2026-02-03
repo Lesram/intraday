@@ -125,7 +125,7 @@ export const TradingPage: React.FC = () => {
             marginLeft: 8
           }} />
           <Text type="secondary" style={{ fontSize: 12 }}>
-            {connectionState === 'DISCONNECTED' ? 'Using Mock Data' : connectionState}
+            {connectionState === 'DISCONNECTED' ? 'Not Connected' : connectionState}
           </Text>
         </Space>
 

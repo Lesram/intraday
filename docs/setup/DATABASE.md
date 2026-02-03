@@ -126,23 +126,47 @@ JWT_EXPIRE_MINUTES=60
 
 ## Testing
 
-Tests use **in-memory SQLite** automatically. You don't need to configure anything.
+### Database Usage by Test Type
+
+| Test Type | Database | Location | Rationale |
+|-----------|----------|----------|-----------|
+| **Unit tests** | SQLite (in-memory) | `tests/` | Fast, isolated, no Docker needed |
+| **Real integration tests** | PostgreSQL | `tests/real_tests/` | Production-like behavior required |
+| **Production** | PostgreSQL | Docker/K8s | Required |
+
+### Unit Tests (SQLite)
+
+Unit tests use in-memory SQLite automatically for speed and isolation:
 
 ```powershell
-# Run tests (uses SQLite automatically)
-pytest
-
-# Run specific test file
-pytest tests/test_user_service.py
+# Run unit tests (uses SQLite automatically)
+pytest tests/ --ignore=tests/real_tests
 
 # Run with coverage
-pytest --cov=backend --cov-report=html
+pytest tests/ --ignore=tests/real_tests --cov=backend --cov-report=html
 ```
 
-The test configuration in `test/conftest.py` automatically sets:
+The test configuration in `tests/conftest.py` automatically sets:
 ```python
 DATABASE_URL = "sqlite+aiosqlite:///:memory:"
 ```
+
+### Real Integration Tests (PostgreSQL Required)
+
+Real integration tests require PostgreSQL to test actual database behavior:
+
+```powershell
+# 1. Start PostgreSQL via Docker
+docker-compose up -d db redis
+
+# 2. Install required drivers
+pip install psycopg2-binary "httpx[http2]"
+
+# 3. Run real tests
+pytest tests/real_tests/ -v
+```
+
+The real tests load `DATABASE_URL` from `.env` and will skip if PostgreSQL is not available.
 
 ---
 
