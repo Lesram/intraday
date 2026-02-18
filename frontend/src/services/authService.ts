@@ -66,6 +66,7 @@ const normalizeLoginResponse = (raw: unknown): AuthResponse => {
     access_token: data.access_token,
     refresh_token: data.refresh_token || '', // M-30 FIX: Use typed property
     token_type: data.token_type ?? 'bearer',
+    expires_in: data.expires_in ?? 3600,
     user: {
       id: username,
       email: username,
@@ -122,9 +123,9 @@ export const authService = {
   /**
    * Validate a token
    */
-  validateToken: async (token: string): Promise<boolean> => {
+  validateToken: async (_token: string): Promise<boolean> => {
     try {
-      const response = await apiClient.post('/auth/validate', { token });
+      const response = await apiClient.post('/auth/token/validate');
       return response.data.valid;
     } catch {
       return false;

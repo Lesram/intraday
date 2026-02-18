@@ -5,6 +5,8 @@ Handles order submission, status, and cancellation operations.
 
 import hashlib
 import json
+import time
+from collections import defaultdict
 from datetime import datetime
 from decimal import Decimal
 from typing import Any
@@ -32,6 +34,33 @@ event_logger = StandardEventLogger(__name__)
 router = APIRouter(prefix="/orders", tags=["Trading", "Protected", "Outbox"])
 
 
+# ============================================================================
+# §9.5 FIX: Per-user rate limit on order submission
+# ============================================================================
+_ORDER_RATE_WINDOW = 1.0  # 1-second sliding window
+_ORDER_RATE_MAX = 10      # Max 10 orders per user per second
+_user_order_timestamps: dict[str, list[float]] = defaultdict(list)
+
+
+def _check_order_rate_limit(user_id: str) -> None:
+    """Enforce per-user order submission rate limit.
+
+    Raises HTTPException 429 if the user exceeds MAX orders per second.
+    """
+    now = time.monotonic()
+    # Prune timestamps older than the window
+    timestamps = _user_order_timestamps[user_id]
+    _user_order_timestamps[user_id] = [
+        ts for ts in timestamps if now - ts < _ORDER_RATE_WINDOW
+    ]
+    if len(_user_order_timestamps[user_id]) >= _ORDER_RATE_MAX:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=f"Order rate limit exceeded: max {_ORDER_RATE_MAX} orders per second",
+        )
+    _user_order_timestamps[user_id].append(now)
+
+
 def _compute_etag(data: Any) -> str:
     """Compute ETag from response data for cache validation (L-08)."""
     content = json.dumps(data, sort_keys=True, default=str)
@@ -43,6 +72,7 @@ async def get_orders(
     request: Request,
     response: Response,
     limit: int = 100,
+    offset: int = 0,
     db: AsyncSession = Depends(get_db_session),
     user=Depends(get_current_user)
 ) -> list[dict[str, Any]]:
@@ -58,6 +88,7 @@ async def get_orders(
             select(Order)
             .where(Order.user_id == user.username)
             .order_by(Order.created_at.desc())
+            .offset(offset)
             .limit(limit)
         )
         result = await db.execute(stmt)
@@ -106,8 +137,10 @@ async def get_orders(
         logger.error(f"Failed to fetch orders: {e}")
         import traceback
         traceback.print_exc()
-        # Return empty list on error to avoid breaking the UI
-        return []
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to fetch orders: {str(e)}"
+        )
 
 
 # Request/Response Models
@@ -137,14 +170,23 @@ class OrderSubmissionRequest(BaseModel):
 
 
 class OrderSubmissionResponse(BaseModel):
-    """Order submission response."""
+    """§13.5 FIX: Order submission response matching frontend BackendOrder shape."""
     order_id: str
     client_order_id: str | None = None
     status: str
     symbol: str
     side: str
     qty: float
-    submitted_at: str
+    order_type: str = "market"
+    filled_qty: float = 0.0
+    limit_price: float | None = None
+    stop_price: float | None = None
+    avg_fill_price: float | None = None
+    time_in_force: str = "day"
+    submitted_at: str = ""
+    updated_at: str = ""
+    user_id: str | None = None
+    strategy_id: str | None = None
     risk_override: bool | None = Field(default=None, description="Whether admin risk override was used")
 
 
@@ -205,234 +247,20 @@ from backend.infra.db import get_db_session
 
 
 async def get_risk_manager(request: Request):
-    """Get risk manager with real risk limit enforcement."""
+    """
+    Get risk manager — delegates to the singleton ``app.state.risk_manager``
+    created at startup in ``factory.py`` (§5.2 / §10.2 consolidation).
 
-    from backend.infra.repositories.positions import PositionsRepo
-    from backend.risk.position_limits import PositionLimits
+    Falls back to a thin DB-aware wrapper only when the app-level risk
+    manager is not available (e.g. in some test setups).
+    """
+    rm = getattr(request.app.state, "risk_manager", None)
+    if rm is not None:
+        return rm
 
-    class ProductionRiskManager:
-        def __init__(self, session: AsyncSession = None):
-            self.session = session
-            self.position_limits = PositionLimits(
-                max_position_size=Decimal('100000'),  # $100K max per position
-                max_symbol_concentration=Decimal('0.15'),  # 15% max per symbol
-                max_daily_loss=Decimal('10000'),  # $10K daily loss limit
-                circuit_breaker_pct=Decimal('0.05'),  # 5% circuit breaker
-                max_position_value=Decimal('500000')  # $500K total position value limit
-            )
-
-        def check_risk(self, symbol: str, quantity: float, price: float = None):
-            """
-            Synchronous risk check for validation endpoint.
-
-            Args:
-                symbol: Stock symbol
-                quantity: Quantity to trade (positive for buy, negative for sell)
-                price: Optional price for estimation
-
-            Returns:
-                dict with allowed, risk_score, and reason
-            """
-            try:
-                # Basic validation
-                if abs(quantity) <= 0:
-                    return {
-                        "allowed": False,
-                        "risk_score": 1.0,
-                        "reason": "Invalid quantity"
-                    }
-
-                # Estimate value
-                est_price = price or 100.0  # Default estimation if no price
-                trade_value = abs(quantity) * est_price
-
-                # Check against position size limit
-                if trade_value > float(self.position_limits.max_position_size):
-                    return {
-                        "allowed": False,
-                        "risk_score": 1.0,
-                        "reason": f"Trade value ${trade_value:,.2f} exceeds max position ${float(self.position_limits.max_position_size):,.2f}"
-                    }
-
-                # Calculate basic risk score
-                risk_score = min(trade_value / 50000, 1.0)  # Higher value = higher risk
-
-                return {
-                    "allowed": True,
-                    "risk_score": risk_score,
-                    "reason": None
-                }
-
-            except Exception as e:
-                logger.error(f"Risk check error: {e}")
-                return {
-                    "allowed": False,
-                    "risk_score": 1.0,
-                    "reason": f"Risk system error: {str(e)}"
-                }
-
-        async def assess_order(
-            self,
-            order,  # OrderSpec object
-            current_user=None,
-            risk_override=False,
-            request_id=None
-        ):
-            """Risk assessment method compatible with route expectations."""
-            # Convert OrderSpec to legacy parameters
-            symbol = order.symbol
-            side = "buy" if order.side.value.lower() == "buy" else "sell"
-            qty = float(order.qty)
-
-            # Use existing check_trade_risk logic
-            risk_result = await self.check_trade_risk(
-                symbol=symbol,
-                side=side,
-                qty=qty,
-                user_id=getattr(current_user, 'get', lambda k, d: d)('user_id', 'anonymous')
-            )
-
-            # Convert to expected format
-            return {
-                "allowed": risk_result.get("approved", True),
-                "reasons": risk_result.get("issues", []),
-                "risk_override_used": risk_override and risk_result.get("approved", True)
-            }
-
-        async def check_trade_risk(
-            self,
-            symbol: str,
-            side: str,
-            qty: float,
-            user_id: str = None,
-            price: float = 100.0  # Default price for estimation
-        ):
-            """
-            Comprehensive risk checks before order submission.
-
-            Implements:
-            - max_position_value: total portfolio value limit
-            - max_symbol_exposure: per-symbol concentration limit
-            - circuit_breaker_pct: session P&L drawdown protection
-            """
-            issues = []
-            warnings = []
-
-            try:
-                # Basic validation
-                if qty <= 0:
-                    issues.append("Quantity must be positive")
-
-                if not symbol or len(symbol.strip()) == 0:
-                    issues.append("Invalid symbol")
-
-                # Convert to Decimal for precise calculations
-                qty_decimal = Decimal(str(qty))
-                price_decimal = Decimal(str(price))
-                trade_value = qty_decimal * price_decimal
-
-                # Check individual position size limit
-                if trade_value > self.position_limits.max_position_size:
-                    issues.append(f"Trade value ${trade_value:,.2f} exceeds max position size ${self.position_limits.max_position_size:,.2f}")
-
-                # Get current positions if session available
-                current_positions = {}
-                portfolio_value = Decimal('0')
-                session_pnl = Decimal('0')
-
-                if self.session:
-                    try:
-                        PositionsRepo(self.session)
-                        # TODO: Replace with actual position queries when implementing full position tracking
-                        # For now, use conservative estimates for risk calculations
-
-                        # Conservative portfolio estimates for risk calculations
-                        portfolio_value = Decimal('250000')  # Conservative $250K portfolio assumption
-                        session_pnl = Decimal('0')  # Start with neutral P&L for testing
-
-                        # Start with empty positions for testing - real positions will come from database
-                        # Previously had mock positions for AAPL/MSFT/GOOGL - removed for clean testing
-
-                    except Exception as e:
-                        logger.warning(f"Could not fetch positions for risk check: {e}")
-                        # Continue with basic checks if position lookup fails
-
-                # Check maximum position value limit
-                total_position_value = portfolio_value + trade_value
-                if hasattr(self.position_limits, 'max_position_value'):
-                    max_total = getattr(self.position_limits, 'max_position_value', Decimal('500000'))
-                    if total_position_value > max_total:
-                        issues.append(f"Total position value ${total_position_value:,.2f} would exceed limit ${max_total:,.2f}")
-
-                # Check symbol concentration limit
-                existing_symbol_value = current_positions.get(symbol, {}).get('market_value', Decimal('0'))
-                new_symbol_value = existing_symbol_value + trade_value
-
-                if portfolio_value > 0:
-                    symbol_concentration = new_symbol_value / portfolio_value
-                    if symbol_concentration > self.position_limits.max_symbol_concentration:
-                        issues.append(f"Symbol concentration {symbol_concentration:.2%} exceeds limit {self.position_limits.max_symbol_concentration:.2%}")
-
-                # Check circuit breaker (session P&L drawdown)
-                circuit_breaker_pct = getattr(self.position_limits, 'circuit_breaker_pct', Decimal('0.05'))
-                if portfolio_value > 0:
-                    drawdown_pct = abs(session_pnl) / portfolio_value
-                    if session_pnl < 0 and drawdown_pct >= circuit_breaker_pct:
-                        issues.append(f"Circuit breaker triggered: session drawdown {drawdown_pct:.2%} >= {circuit_breaker_pct:.2%}")
-
-                # Risk score calculation
-                risk_factors = []
-                risk_factors.append(min(float(trade_value) / 50000, 1.0))  # Size factor
-                if symbol_concentration:
-                    risk_factors.append(float(symbol_concentration) * 2)  # Concentration factor
-                if drawdown_pct:
-                    risk_factors.append(min(float(drawdown_pct) * 5, 1.0))  # Drawdown factor
-
-                risk_score = min(sum(risk_factors) / len(risk_factors) if risk_factors else 0.3, 1.0)
-
-                # Additional warnings for high risk
-                if risk_score > 0.8:
-                    warnings.append("High risk trade")
-                if trade_value > Decimal('50000'):
-                    warnings.append("Large position size")
-
-                return {
-                    "approved": len(issues) == 0,
-                    "issues": issues,
-                    "warnings": warnings,
-                    "risk_score": risk_score,
-                    "details": {
-                        "trade_value": float(trade_value),
-                        "portfolio_value": float(portfolio_value),
-                        "symbol_concentration": float(symbol_concentration) if portfolio_value > 0 else 0,
-                        "session_pnl": float(session_pnl),
-                        "drawdown_pct": float(drawdown_pct) if portfolio_value > 0 else 0,
-                        "existing_positions": len(current_positions)
-                    }
-                }
-
-            except Exception as e:
-                logger.error(f"Risk check error for {symbol}: {e}")
-                # Fail safe - reject on error
-                return {
-                    "approved": False,
-                    "issues": [f"Risk system error: {str(e)}"],
-                    "warnings": [],
-                    "risk_score": 1.0,
-                    "details": {}
-                }
-
-    try:
-        # Get session if available
-        sessionmaker = getattr(request.app.state, 'sessionmaker', None)
-        if sessionmaker:
-            async with sessionmaker() as session:
-                return ProductionRiskManager(session)
-        else:
-            return ProductionRiskManager()
-    except Exception as e:
-        logger.error(f"Failed to create risk manager: {e}")
-        return ProductionRiskManager()
+    # Fallback: lightweight risk manager when app.state is empty (tests)
+    from backend.risk.risk_manager import RiskManager
+    return RiskManager()
 
 
 def require_trader(current_user=Depends(get_current_user)):
@@ -445,6 +273,18 @@ def require_trader(current_user=Depends(get_current_user)):
 
     # In production, would check roles/permissions
     return current_user
+
+
+def _current_user_identity(current_user: Any) -> str:
+    """Best-effort stable user identity for order ownership checks."""
+    from backend.infra.security import get_user_attribute
+
+    return (
+        get_user_attribute(current_user, "username", None)
+        or get_user_attribute(current_user, "user_id", None)
+        or get_user_attribute(current_user, "sub", None)
+        or "anonymous"
+    )
 
 
 # ============================================================================
@@ -970,6 +810,10 @@ async def submit_order(
     """
     from backend.infra.security import get_user_attribute
 
+    # §9.5 FIX: Per-user order submission rate limit
+    user_id = getattr(current_user, "username", None) or str(current_user)
+    _check_order_rate_limit(user_id)
+
     try:
         # Extract and validate order data
         data = body or {}
@@ -1004,11 +848,21 @@ async def submit_order(
         except (ValueError, TypeError):
             errors.append({"field": "qty", "message": "Quantity must be a valid number"})
 
+        if not idempotency_key:
+            errors.append({
+                "field": "idempotency_key",
+                "message": "Idempotency key is required (Idempotency-Key header or client_order_id)",
+            })
+
         if errors:
             raise HTTPException(status_code=422, detail=errors)
 
         # Risk management check using new assess_order method
-        user_id = get_user_attribute(current_user, "user_id", "anonymous")
+        user_id = (
+            get_user_attribute(current_user, "username", None)
+            or get_user_attribute(current_user, "user_id", None)
+            or "anonymous"
+        )
 
         # Create OrderSpec for risk assessment
         from decimal import Decimal
@@ -1060,6 +914,7 @@ async def submit_order(
             "order_type": order_type,
             "tif": tif,
             "idempotency_key": idempotency_key,
+            "user_id": user_id,
             "attributes": {
                 "user_id": user_id,
                 "source": "api",
@@ -1119,7 +974,7 @@ async def submit_order(
             endpoint="submit_order"
         )
 
-        # Convert to response format
+        # Convert to response format — include all fields frontend expects (§13.5)
         response_data = {
             "order_id": result["order_id"],
             "client_order_id": idempotency_key,
@@ -1127,7 +982,15 @@ async def submit_order(
             "symbol": result["symbol"],
             "side": result["side"],
             "qty": result["qty"],
-            "submitted_at": result.get("submitted_at", datetime.now().isoformat())
+            "order_type": order_type,
+            "filled_qty": 0.0,
+            "limit_price": data.get("limit_price"),
+            "stop_price": data.get("stop_price"),
+            "time_in_force": tif,
+            "submitted_at": result.get("submitted_at", datetime.now().isoformat()),
+            "updated_at": result.get("submitted_at", datetime.now().isoformat()),
+            "user_id": user_id,
+            "strategy_id": data.get("strategy_id"),
         }
 
         # Add risk override flag if it was used
@@ -1332,9 +1195,25 @@ async def update_order(
             )
 
         logger.info(f"Order update requested for {order_id} with updates: {updates}")
-        # TODO: Implement actual order modification logic
 
-        return order_status
+        # Apply modification via OrderService cancel-and-replace pattern
+        modification_data = {
+            "order_id": order_id,
+            **updates,
+        }
+        modification_result = await order_service.modify_order(modification_data)
+
+        if modification_result.get("status") == "error":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=modification_result.get("reason", "Order modification failed"),
+            )
+
+        # Re-fetch the updated order status
+        updated_status = await order_service.get_order_status(
+            modification_result.get("new_order_id", order_id)
+        )
+        return updated_status or modification_result
 
     except HTTPException:
         raise
@@ -1361,14 +1240,44 @@ async def cancel_all_orders(
         symbol: Optional symbol filter to cancel only orders for specific symbol
     """
     try:
-        # TODO: Implement bulk order cancellation
-        logger.info(f"Cancel all orders requested for user {current_user.get('sub')}" +
+        # Get all open orders for user (admin can cancel globally)
+        from sqlalchemy import select, and_
+        from backend.infra.schemas import Order
+        requester = _current_user_identity(current_user)
+        roles = set(getattr(current_user, "roles", []) or [])
+        is_admin = "admin" in roles
+
+        query = select(Order).where(
+            and_(
+                Order.status.in_(["pending", "submitted", "new", "partial"]),
+            )
+        )
+        if not is_admin:
+            query = query.where(Order.user_id == requester)
+        if symbol:
+            query = query.where(Order.symbol == symbol)
+
+        result = await db.execute(query)
+        open_orders = result.scalars().all()
+
+        cancelled_count = 0
+        for order in open_orders:
+            try:
+                order.status = "cancelled"
+                cancelled_count += 1
+            except Exception as cancel_err:
+                logger.warning(f"Failed to cancel order {order.id}: {cancel_err}")
+
+        if cancelled_count > 0:
+            await db.commit()
+
+        logger.info(f"Cancelled {cancelled_count} orders for user {requester}" +
                    (f" and symbol {symbol}" if symbol else ""))
 
         return {
             "status": "success",
-            "message": "All orders cancelled",
-            "cancelled_count": 0
+            "message": f"{cancelled_count} orders cancelled",
+            "cancelled_count": cancelled_count
         }
 
     except Exception as e:
@@ -1491,29 +1400,55 @@ async def get_order_audit_trail(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Order not found",
         )
-    # TODO: Replace with actual database audit log queries when implementing full audit system
-    # This is a placeholder implementation for API contract compliance
 
-    audit_entries = [
-        AuditEntry(
-            timestamp=datetime.now().isoformat(),
-            event_type="order_received",
-            order_id=order_id,
-            details={"source": "api", "status": "received"}
-        ),
-        AuditEntry(
-            timestamp=datetime.now().isoformat(),
-            event_type="risk_check_completed",
-            order_id=order_id,
-            details={"result": "approved"}
-        ),
-        AuditEntry(
-            timestamp=datetime.now().isoformat(),
-            event_type="order_submitted",
-            order_id=order_id,
-            details={"status": "submitted", "broker": "alpaca"}
+    # Query real order events from the database
+    try:
+        import uuid as uuid_module
+        from sqlalchemy import select
+        from backend.infra.schemas import OrderEvent
+
+        order_uuid = uuid_module.UUID(order_id)
+        stmt = (
+            select(OrderEvent)
+            .where(OrderEvent.order_id == order_uuid)
+            .order_by(OrderEvent.event_time.asc())
         )
-    ]
+        result = await db.execute(stmt)
+        events = result.scalars().all()
+
+        audit_entries = [
+            AuditEntry(
+                timestamp=ev.event_time.isoformat() if ev.event_time else ev.created_at.isoformat(),
+                event_type=ev.event_type,
+                order_id=order_id,
+                details=ev.event_data or {"broker_order_id": ev.broker_order_id},
+            )
+            for ev in events
+        ]
+
+        # If no events recorded yet, return the order's creation as a minimal entry
+        if not audit_entries:
+            order_created_at = order_status.get("created_at") if isinstance(order_status, dict) else getattr(order_status, "created_at", None)
+            audit_entries = [
+                AuditEntry(
+                    timestamp=order_created_at.isoformat() if order_created_at else datetime.now().isoformat(),
+                    event_type="order_received",
+                    order_id=order_id,
+                    details={"source": "api", "status": "received", "note": "No broker events recorded yet"},
+                )
+            ]
+
+    except Exception as e:
+        logger.warning(f"Could not query order events for {order_id}: {e}")
+        # Graceful degradation — return minimal entry from order status
+        audit_entries = [
+            AuditEntry(
+                timestamp=datetime.now().isoformat(),
+                event_type="order_received",
+                order_id=order_id,
+                details={"source": "api", "note": "Audit events unavailable"},
+            )
+        ]
 
     return AuditResponse(entries=audit_entries)
 
@@ -1557,6 +1492,12 @@ async def close_position_from_order(
         if not original_order:
             raise HTTPException(404, "Original order not found")
 
+        requester = _current_user_identity(user)
+        roles = set(getattr(user, "roles", []) or [])
+        is_admin = "admin" in roles
+        if not is_admin and str(original_order.user_id) != requester:
+            raise HTTPException(403, "Not authorized to close this order's position")
+
         if original_order.side != "buy":
             raise HTTPException(400, "Can only close positions from buy orders")
 
@@ -1598,6 +1539,7 @@ async def close_position_from_order(
             side="sell",
             qty=current_qty,
             idempotency_key=client_order_id,
+            user_id=requester,
             order_type="market",
             tif="day",
             attributes={

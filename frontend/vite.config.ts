@@ -35,8 +35,13 @@ export default defineConfig({
       '/api': {
         target: 'http://localhost:8000',
         changeOrigin: true,
+        ws: true, // Enable WebSocket proxying for /api/v1/market-data/ws
       },
       '/ws': {
+        target: 'ws://localhost:8000',
+        ws: true,
+      },
+      '/socket.io': {
         target: 'ws://localhost:8000',
         ws: true,
       },

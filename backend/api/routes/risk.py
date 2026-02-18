@@ -274,6 +274,12 @@ async def trigger_emergency_stop(
 
     Use only when immediate trading halt is required.
     """
+    # Only admin users can trigger emergency stop
+    if "admin" not in user.roles:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only administrators can trigger emergency stop"
+        )
     user_id = await get_user_id_from_username(db, user.username)
     risk_mgr = RiskManager(db)
 

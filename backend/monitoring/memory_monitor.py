@@ -43,16 +43,16 @@ class MemoryMonitor:
     Tracks both process-specific and system-wide memory patterns.
     """
 
-    def __init__(self, monitoring_duration_hours: int = 24):
+    def __init__(self, monitoring_duration_hours: int = 24, enable_tracemalloc: bool = False):
         self.monitoring_duration_hours = monitoring_duration_hours
         self.monitoring_interval_seconds = 300  # 5 minutes
         self.memory_snapshots: list[MemorySnapshot] = []
 
-        # Start tracemalloc for Python-level memory tracking
-        if not tracemalloc.is_tracing():
+        # Start tracemalloc only when explicitly requested (10-20% overhead)
+        if enable_tracemalloc and not tracemalloc.is_tracing():
             tracemalloc.start()
             logger.info("Started tracemalloc for Python memory tracking")
-        else:
+        elif tracemalloc.is_tracing():
             logger.info("tracemalloc already running")
         self.monitoring_active = False
         self.monitoring_thread: threading.Thread | None = None

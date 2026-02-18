@@ -3,7 +3,7 @@
 This provides an admin-controlled, in-process override for TRADING_EXECUTION_MODE.
 
 Notes:
-- The default mode still comes from backend.config.unified.UnifiedSettings.
+- The default mode comes from the canonical settings (AppSettings.trading_execution_mode).
 - The override is process-local (per worker). In multi-worker deployments, use a
   shared store (DB/Redis) or restart all workers with updated env.
 """
@@ -15,7 +15,8 @@ from datetime import UTC, datetime
 import os
 import threading
 
-from backend.config.unified import UnifiedSettings, get_unified_settings
+# §2.1 FIX: Use canonical config instead of separate UnifiedSettings
+from backend.config.settings import get_settings
 from backend.utils.logger import get_structured_logger
 
 logger = get_structured_logger(__name__)
@@ -49,17 +50,20 @@ def _bool_env(name: str, default: str = "false") -> bool:
 
 
 def _normalize_mode(mode: str) -> str:
-    # Reuse the canonical validator (also normalizes paper/live -> execute).
-    normalized = UnifiedSettings.validate_trading_execution_mode(mode)
-    if normalized not in ALLOWED_EFFECTIVE_MODES:
+    """Normalize and validate the trading execution mode."""
+    mode = (mode or "").strip().lower()
+    # Normalize aliases
+    if mode in {"paper", "live"}:
+        mode = "execute"
+    if mode not in ALLOWED_EFFECTIVE_MODES:
         raise ValueError(
             f"Unsupported trading execution mode '{mode}'. Allowed: {ALLOWED_EFFECTIVE_MODES}"
         )
-    return normalized
+    return mode
 
 
 def _build_state(effective_mode: str) -> TradingExecutionModeState:
-    settings = get_unified_settings()
+    settings = get_settings()
     default_mode = getattr(settings, "trading_execution_mode", "execute")
     try:
         default_mode = _normalize_mode(default_mode)
@@ -89,7 +93,7 @@ def _build_state(effective_mode: str) -> TradingExecutionModeState:
 
 def get_trading_execution_mode() -> TradingExecutionModeState:
     """Return the current effective trading execution mode."""
-    settings = get_unified_settings()
+    settings = get_settings()
     default_mode = getattr(settings, "trading_execution_mode", "execute")
     try:
         default_mode = _normalize_mode(default_mode)

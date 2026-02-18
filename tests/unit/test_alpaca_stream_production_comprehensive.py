@@ -908,7 +908,7 @@ class TestRobustAlpacaStreamConnectAndListen:
         
         mock_websocket.__aiter__ = lambda self: mock_iter()
         
-        with patch("backend.integrations.alpaca_stream_production.websockets.client.connect") as mock_connect, \
+        with patch("backend.integrations.alpaca_stream_production.websockets.connect") as mock_connect, \
              patch.object(stream, "_subscribe_to_trade_updates", new_callable=AsyncMock), \
              patch.object(stream, "_process_message", new_callable=AsyncMock), \
              patch("backend.integrations.alpaca_stream_production.slo_monitor") as mock_slo:

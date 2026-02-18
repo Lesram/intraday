@@ -651,8 +651,11 @@ def _seed_dev_users():
                 "password_hint": "Check startup logs or use reset_admin.py"
             }
         )
-        # Only print password in dev mode startup
-        print(f"[DEV] Admin user created - username: admin, password: {admin_password}")
+        # Log password through structured logging (never print to stdout)
+        logger.debug(
+            "Dev admin credentials generated — use reset_admin.py to retrieve",
+            extra={"username": "admin"},
+        )
     except ValueError:
         # User already exists
         pass
@@ -664,7 +667,7 @@ def _seed_dev_users():
             username="trader", password=trader_password, roles=["trader"]
         )
         logger.info("Created dev trader user", extra={"username": trader_user.username})
-        print(f"[DEV] Trader user created - username: trader, password: {trader_password}")
+        logger.debug("Dev trader credentials generated — use reset_admin.py to retrieve", extra={"username": "trader"})
     except ValueError:
         # User already exists
         pass
@@ -676,7 +679,7 @@ def _seed_dev_users():
             username="viewer", password=viewer_password, roles=["read-only"]
         )
         logger.info("Created dev read-only user", extra={"username": readonly_user.username})
-        print(f"[DEV] Viewer user created - username: viewer, password: {viewer_password}")
+        logger.debug("Dev viewer credentials generated — use reset_admin.py to retrieve", extra={"username": "viewer"})
     except ValueError:
         # User already exists
         pass

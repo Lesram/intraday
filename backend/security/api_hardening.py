@@ -49,10 +49,10 @@ class InputSanitizer:
     # Dangerous patterns to block
     BLOCKED_PATTERNS = [
         re.compile(r'[<>"\';()&+]'),  # HTML/SQL injection
-        re.compile(r'(script|javascript|vbscript)', re.IGNORECASE),
-        re.compile(r'(union|select|insert|delete|drop|create)', re.IGNORECASE),
+        re.compile(r'\b(script|javascript|vbscript)\b', re.IGNORECASE),
+        re.compile(r'\b(union\s+select|insert\s+into|delete\s+from|drop\s+table|create\s+table)\b', re.IGNORECASE),
         re.compile(r'(\.\./|\\\.\\)', re.IGNORECASE),  # Path traversal
-        re.compile(r'(eval|exec|system|shell)', re.IGNORECASE)  # Code execution
+        re.compile(r'\b(eval|exec|system|shell)\b', re.IGNORECASE)  # Code execution
     ]
 
     @classmethod
@@ -89,8 +89,41 @@ class InputSanitizer:
 
         return value
 
+    # Legacy compatibility wrappers used by older tests/modules.
+    def sanitize(self, value: str) -> str:
+        """Backward-compatible sanitize alias.
+
+        Legacy behavior expects sanitization (best-effort neutralization)
+        rather than raising on dangerous input.
+        """
+        try:
+            return self.sanitize_string(value)
+        except ValueError:
+            text = str(value)
+            text = re.sub(
+                r"\b(union\s+select|insert\s+into|delete\s+from|drop\s+table|create\s+table|drop|table|select|insert|delete|update)\b",
+                "",
+                text,
+                flags=re.IGNORECASE,
+            )
+            text = text.replace("--", "")
+            text = text.replace(";", "")
+            return self.sanitize_string(text, allow_special=True)
+
+    def validate_email(self, email: str) -> bool:
+        """Backward-compatible boolean email validation."""
+        if not isinstance(email, str) or not email:
+            return False
+        return bool(self.PATTERNS["email"].match(email.strip()))
+
+    def validate_symbol(self, symbol: str) -> bool:
+        """Backward-compatible boolean symbol validation."""
+        if not isinstance(symbol, str) or not symbol:
+            return False
+        return bool(self.PATTERNS["symbol"].match(symbol.strip().upper()))
+
     @classmethod
-    def validate_symbol(cls, symbol: str) -> str:
+    def validate_symbol_strict(cls, symbol: str) -> str:
         """Validate trading symbol"""
 
         symbol = cls.sanitize_string(symbol, max_length=10).upper()
@@ -269,7 +302,7 @@ class RequestValidator:
 
             # Validate symbol
             try:
-                sanitized['symbol'] = InputSanitizer.validate_symbol(data['symbol'])
+                 sanitized['symbol'] = InputSanitizer.validate_symbol_strict(data['symbol'])
             except ValueError as e:
                 errors.append(f"Symbol validation failed: {str(e)}")
 
@@ -368,26 +401,30 @@ class RequestValidator:
                     'security_level': SecurityLevel.PUBLIC
                 }
 
-            # In production, validate against database
-            # For now, simulate validation
-            if api_key.startswith('demo_'):
-                return {
-                    'authenticated': True,
-                    'user_id': 'demo_user',
-                    'security_level': SecurityLevel.AUTHENTICATED
-                }
-            elif api_key.startswith('admin_'):
-                return {
-                    'authenticated': True,
-                    'user_id': 'admin_user',
-                    'security_level': SecurityLevel.ADMIN
-                }
-            else:
-                return {
-                    'authenticated': False,
-                    'reason': 'invalid_api_key',
-                    'security_level': SecurityLevel.PUBLIC
-                }
+            # In production, validate against database / JWT verification
+            # SECURITY: No magic prefix bypass - all tokens must be properly validated
+            import os as _os
+            if _os.getenv("ENVIRONMENT", "development") == "development" and _os.getenv("ALLOW_DEMO_TOKENS", "").lower() in ("1", "true"):
+                # Only in development with explicit opt-in
+                if api_key.startswith('demo_') and len(api_key) >= 32:
+                    return {
+                        'authenticated': True,
+                        'user_id': 'demo_user',
+                        'security_level': SecurityLevel.AUTHENTICATED
+                    }
+                elif api_key.startswith('admin_') and len(api_key) >= 32:
+                    return {
+                        'authenticated': True,
+                        'user_id': 'admin_user',
+                        'security_level': SecurityLevel.ADMIN
+                    }
+
+            # Default: reject unrecognized tokens
+            return {
+                'authenticated': False,
+                'reason': 'invalid_api_key',
+                'security_level': SecurityLevel.PUBLIC
+            }
 
         return {
             'authenticated': False,
@@ -603,8 +640,8 @@ def secure_endpoint(security_level: SecurityLevel = SecurityLevel.AUTHENTICATED)
                 body_data=kwargs.get('body_data', {})
             )
 
-            # Process security
-            security_middleware = SecurityMiddleware()
+            # Process security (use singleton to preserve rate-limiter state)
+            security_middleware = get_security_middleware()
             security_result = security_middleware.process_request(api_request, security_level)
 
             if not security_result['success']:

@@ -4,7 +4,7 @@
  */
 
 import React from 'react';
-import { Card, Typography, Space, Row, Col, Button, Tooltip } from 'antd';
+import { Card, Typography, Space, Row, Col, Button, Tooltip, Tag } from 'antd';
 import {
   PlayCircleOutlined,
   PauseCircleOutlined,
@@ -43,6 +43,14 @@ export const StrategyCard: React.FC<StrategyCardProps> = ({
 }) => {
   const navigate = useNavigate();
   const typeConfig = getStrategyTypeConfig(strategy.strategyType);
+  const parameters = (strategy.parameters || {}) as Record<string, unknown>;
+  const origin = typeof parameters._origin === 'string' ? parameters._origin : 'ui';
+  const originTag = (() => {
+    const normalized = origin.toLowerCase();
+    if (normalized === 'optuna') return { label: 'Optuna', color: 'purple' };
+    if (normalized === 'backend') return { label: 'Backend', color: 'geekblue' };
+    return { label: 'UI', color: 'green' };
+  })();
 
   const handleCardClick = (e: React.MouseEvent) => {
     // Only navigate if not clicking on a button
@@ -93,6 +101,7 @@ export const StrategyCard: React.FC<StrategyCardProps> = ({
                   {typeConfig.label}
                 </Text>
               </Tooltip>
+              <Tag color={originTag.color}>{originTag.label}</Tag>
             </Space>
           </Col>
           <Col>

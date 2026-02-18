@@ -73,6 +73,7 @@ def pytest_configure(config):
 
     # Ensure JWT secret exists for token creation in tests
     os.environ.setdefault("SECURITY_JWT_SECRET", "test-jwt-secret-not-for-production")
+    os.environ.setdefault("PICKLE_HMAC_SECRET", "test-pickle-hmac-secret-not-for-production")
 
     # Default test DB to SQLite unless explicitly provided.
     # Use a session-unique database to avoid conflicts between test runs

@@ -195,7 +195,7 @@ class TestNoOpModelManager:
         """Test predict returns mock prediction."""
         manager = _NoOpModelManager()
         result = manager.predict([1, 2, 3])
-        assert result == {"prediction": 0.5, "confidence": 0.8}
+        assert result == {"prediction": 0.5, "confidence": 0.0}
 
     def test_set_reference_data(self):
         """Test set_reference_data does nothing."""
@@ -1485,10 +1485,10 @@ class TestCompatibilityFunctions:
     def test_get_model_metrics(self):
         """Test getting model metrics."""
         metrics = get_model_metrics("any_model")
-        
-        assert "accuracy" in metrics
-        assert "precision" in metrics
-        assert "recall" in metrics
+
+        # When no trained model exists, returns warning dict
+        assert "warning" in metrics
+        assert "model_name" in metrics
 
     def test_validate_model(self):
         """Test model validation."""

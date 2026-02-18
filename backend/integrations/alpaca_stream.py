@@ -19,7 +19,7 @@ import os
 import time
 from typing import Any
 
-import websockets.client
+import websockets
 from websockets.exceptions import ConnectionClosed, WebSocketException
 
 from backend.config import get_settings
@@ -43,8 +43,9 @@ class AlpacaStreamClient:
         self.settings = get_settings()
 
         # Alpaca WebSocket configuration
-        self.api_key = os.getenv("ALPACA_API_KEY_ID")
-        self.api_secret = os.getenv("ALPACA_API_SECRET_KEY")
+        # §12.8 FIX: Accept both ALPACA_API_KEY_ID and ALPACA_API_KEY for compatibility
+        self.api_key = os.getenv("ALPACA_API_KEY_ID") or os.getenv("ALPACA_API_KEY") or os.getenv("APCA_API_KEY_ID")
+        self.api_secret = os.getenv("ALPACA_API_SECRET_KEY") or os.getenv("ALPACA_SECRET_KEY") or os.getenv("APCA_API_SECRET_KEY")
         self.is_paper = os.getenv("ALPACA_PAPER", "true").lower() in ("true", "1", "yes")
 
         # WebSocket URL
@@ -54,7 +55,7 @@ class AlpacaStreamClient:
             self.ws_url = os.getenv("ALPACA_STREAM_URL", "wss://api.alpaca.markets/stream")
 
         # Connection management
-        self.websocket = None
+        self.websocket: websockets.WebSocketClientProtocol | None = None
         self.is_connected = False
         self.is_authenticated = False
         self.should_reconnect = True
@@ -94,7 +95,7 @@ class AlpacaStreamClient:
             logger.info("Connecting to Alpaca WebSocket stream", url=self.ws_url)
 
             # Connect to WebSocket
-            self.websocket = await websockets.client.connect(
+            self.websocket = await websockets.connect(
                 self.ws_url,
                 ping_interval=30,
                 ping_timeout=10,
@@ -556,6 +557,8 @@ class AlpacaStreamClient:
                     # Reset reconnection delay on successful connect
                     self.reconnect_delay = 1.0
                     self.reconnect_attempts = 0
+                    # P&L-033: Reset slow-retry counter on successful connection
+                    self._slow_retry_cycles = 0
 
                     # Listen for messages
                     await self.listen()
@@ -565,10 +568,25 @@ class AlpacaStreamClient:
                     self.reconnect_attempts += 1
 
                     if self.reconnect_attempts >= self.max_reconnect_attempts:
-                        logger.error("Max reconnection attempts reached, stopping")
+                        logger.error("Max reconnection attempts reached, entering cooldown before retry cycle")
                         # H-09 FIX: Emit critical alert when max reconnects reached
                         await self._emit_max_reconnect_alert()
-                        break
+                        # P&L-033: Slow-retry mode — after exhausting fast retries,
+                        # switch to progressively longer cooldowns (5m → 10m → 20m,
+                        # capped at 30m).  This avoids hammering a flaky endpoint
+                        # while still eventually recovering.
+                        slow_cycles = getattr(self, "_slow_retry_cycles", 0)
+                        slow_delay = min(1800, 300 * (2 ** slow_cycles))  # 5m, 10m, 20m, 30m
+                        self._slow_retry_cycles = slow_cycles + 1
+                        logger.info(
+                            "Slow-retry cooldown activated",
+                            extra={"delay_s": slow_delay, "cycle": self._slow_retry_cycles},
+                        )
+                        await asyncio.sleep(slow_delay)
+                        self.reconnect_attempts = 0
+                        self.reconnect_delay = 1.0
+                        logger.info("Cooldown complete, restarting reconnection cycle")
+                        continue
 
                     logger.info("Attempting reconnection",
                               attempt=self.reconnect_attempts,

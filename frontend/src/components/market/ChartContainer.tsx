@@ -7,7 +7,7 @@ import React, { useRef, useEffect, useState, useMemo } from 'react';
 import { Card, Space, Select, Button, Spin, DatePicker } from 'antd';
 import { FullscreenOutlined, SettingOutlined } from '@ant-design/icons';
 import { useChart } from '../../hooks/useChart';
-import type { Timeframe, Bar } from '../../types/chart.types';
+import type { Timeframe } from '../../types/chart.types';
 import type { IChartApi } from 'lightweight-charts';
 import dayjs, { Dayjs } from 'dayjs';
 

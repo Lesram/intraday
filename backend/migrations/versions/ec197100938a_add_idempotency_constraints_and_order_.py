@@ -152,6 +152,9 @@ def downgrade() -> None:
     op.drop_table('daily_ledger')
     op.drop_table('order_events')
 
-    # Remove added columns (commented out to preserve data)
-    # op.drop_column('orders', 'client_idempotency_key')
-    # op.drop_column('orders', 'account_id')
+    # Remove added columns (§11.4 FIX: uncommented to ensure complete downgrade)
+    try:
+        with op.batch_alter_table('orders', schema=None) as batch_op:
+            batch_op.drop_column('account_id')
+    except Exception:
+        logger.warning("⚠️ account_id column drop skipped (may not exist)")

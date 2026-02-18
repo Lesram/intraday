@@ -8,6 +8,7 @@ import asyncio
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
+import os
 import time
 from typing import Any
 
@@ -137,9 +138,9 @@ class AlpacaClient:
 
     # Connection status is determined during client initialization
 
-        # Rate limiting
+        # Rate limiting — 50ms for HFT with Algo Trader Plus SIP feed
         self.last_request_time = 0
-        self.min_request_interval = 0.2  # 200ms between requests
+        self.min_request_interval = float(os.getenv("ALPACA_MIN_REQUEST_INTERVAL", "0.05"))
 
         self.logger.info(
             "Alpaca client initialized",
@@ -223,10 +224,11 @@ class AlpacaClient:
 
             # Stock data stream
             if stock_symbols:
+                _feed = os.getenv("ALPACA_DATA_FEED", "sip")
                 self.stock_stream = StockDataStream(
                     api_key=self.api_key,
                     secret_key=self.secret_key,
-                    feed="iex",  # or 'sip' for more comprehensive data
+                    feed=_feed,
                 )
 
                 if on_bar:
@@ -842,6 +844,45 @@ class AlpacaClient:
             await asyncio.sleep(sleep_time)
 
         self.last_request_time = time.time()
+
+    async def _api_call_with_retry(self, func, *args, operation: str = "api_call", **kwargs):
+        """
+        §14.3 FIX: Retry wrapper for Alpaca API calls with exponential backoff.
+
+        Retries transient errors (network, 429, 500, 502, 503, 504) up to 3
+        times with exponential backoff (1s → 2s → 4s) plus jitter.
+        """
+        import random
+
+        max_retries = 3
+        base_delay = 1.0
+
+        for attempt in range(max_retries + 1):
+            try:
+                await self._async_rate_limit()
+                if asyncio.iscoroutinefunction(func):
+                    return await func(*args, **kwargs)
+                else:
+                    return await asyncio.to_thread(func, *args, **kwargs)
+            except Exception as exc:
+                exc_str = str(exc).lower()
+                status = getattr(exc, "status_code", None) or getattr(exc, "code", None)
+                is_transient = (
+                    status in (429, 500, 502, 503, 504)
+                    or "timeout" in exc_str
+                    or "connection" in exc_str
+                    or "rate" in exc_str
+                )
+                if is_transient and attempt < max_retries:
+                    delay = base_delay * (2 ** attempt) + random.uniform(0, 0.5)
+                    self.logger.warning(
+                        f"Retrying {operation} (attempt {attempt + 1}/{max_retries})",
+                        error=str(exc)[:200],
+                        delay=delay,
+                    )
+                    await asyncio.sleep(delay)
+                    continue
+                raise
 
     def add_data_callback(self, callback: Callable):
         """Add a callback for real-time data updates."""

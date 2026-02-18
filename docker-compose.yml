@@ -35,10 +35,10 @@ services:
       # Security Settings - MUST be overridden in production via .env file
       # Generate a secure key: python -c "import secrets; print(secrets.token_urlsafe(32))"
       # For local dev this defaults to an insecure value; override in .env for anything beyond local.
-      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-dev-insecure-jwt-secret-change-me}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:?JWT_SECRET_KEY must be set in .env}
       - JWT_ALGORITHM=HS256
       - JWT_EXPIRE_MINUTES=60
-      - SECURITY_JWT_SECRET=${JWT_SECRET_KEY:-dev-insecure-jwt-secret-change-me}
+      - SECURITY_JWT_SECRET=${JWT_SECRET_KEY:?JWT_SECRET_KEY must be set}
 
       # Observability Settings
       - OTEL_SERVICE_NAME=algotrading-api
@@ -52,6 +52,9 @@ services:
       - ENABLE_OUTBOX_PATTERN=true
       - ENABLE_BACKGROUND_TASKS=true
       - ENABLE_WEBSOCKET=true
+
+      # Redis Configuration
+      - REDIS_URL=redis://:${REDIS_PASSWORD:-changeme_redis}@redis:6379/0
 
       # Container-specific
       - PYTHONPATH=/app
@@ -82,7 +85,7 @@ services:
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-algotrading}
       POSTGRES_USER: ${POSTGRES_USER:-trading}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-trading_password}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env}
       POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --lc-collate=C --lc-ctype=C"
     command:
       - "postgres"
@@ -103,7 +106,7 @@ services:
       - "-c"
       - "idle_in_transaction_session_timeout=60000"
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"  # Bind to localhost only for security
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./scripts/db:/docker-entrypoint-initdb.d
@@ -120,12 +123,12 @@ services:
   redis:
     image: redis:7-alpine
     ports:
-      - "6379:6379"
-    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+      - "127.0.0.1:6379:6379"
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru --requirepass ${REDIS_PASSWORD:-changeme_redis}
     volumes:
       - redis_data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-changeme_redis}", "ping"]
       interval: 10s
       timeout: 5s
       retries: 3
@@ -179,7 +182,7 @@ services:
       - "3000:3000"
     environment:
       # SECURITY FIX (H-10): Password must be set via environment variable
-      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:?GRAFANA_ADMIN_PASSWORD must be set}
       - GF_USERS_ALLOW_SIGN_UP=false
     volumes:
       - grafana_data:/var/lib/grafana

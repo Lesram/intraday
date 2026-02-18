@@ -166,9 +166,15 @@ class PortfolioService:
 
                 logger.info(f"Built portfolio data with {len(positions_data)} positions using real-time Alpaca prices")
 
-                # Calculate P&L metrics
-                total_pl = total_equity - self.default_cash
-                total_pl_percent = (total_pl / self.default_cash * 100) if self.default_cash > 0 else 0.0
+                # Calculate P&L metrics from actual position data
+                total_unrealized_pl = sum(
+                    Decimal(str(p.get('unrealizedPnL', 0) or 0)) for p in positions_data
+                )
+                total_cost_basis = sum(
+                    Decimal(str(p.get('costBasis', 0) or 0)) for p in positions_data
+                )
+                total_pl = total_unrealized_pl
+                total_pl_percent = (total_pl / total_cost_basis * 100) if total_cost_basis > 0 else Decimal(0)
 
                 portfolio_data = {
                     'totalEquity': float(total_equity),

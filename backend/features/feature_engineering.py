@@ -108,6 +108,12 @@ class FeatureEngineer:
         self.logger = get_structured_logger("feature_engineer")
         self.settings = get_settings()
 
+        trading_settings = getattr(self.settings, "trading", None)
+        max_rolling_window = getattr(trading_settings, "max_rolling_window", 252)
+        feature_mode = getattr(trading_settings, "feature_mode", "lightweight")
+        enable_heavy_features = getattr(trading_settings, "enable_heavy_features", False)
+        enable_autocorr_features = getattr(trading_settings, "enable_autocorr_features", False)
+
         # Default configuration with settings awareness
         self.config = {
             # Moving average periods
@@ -136,16 +142,16 @@ class FeatureEngineer:
             "lookback_periods": [
                 5,
                 10,
-                min(20, self.settings.trading.max_rolling_window),
+                min(20, max_rolling_window),
             ],
             # Feature normalization
             "normalize_features": True,
             "normalization_method": "zscore",  # 'zscore', 'minmax', 'robust'
-            "normalization_window": min(252, self.settings.trading.max_rolling_window),
+            "normalization_window": min(252, max_rolling_window),
             # Performance settings from config
-            "feature_mode": self.settings.trading.feature_mode,
-            "enable_heavy_features": self.settings.trading.enable_heavy_features,
-            "enable_autocorr_features": self.settings.trading.enable_autocorr_features,
+            "feature_mode": feature_mode,
+            "enable_heavy_features": enable_heavy_features,
+            "enable_autocorr_features": enable_autocorr_features,
         }
 
         # Update with provided config

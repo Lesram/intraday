@@ -10,8 +10,11 @@
 /**
  * Backtest request parameters
  */
+export type BacktestEngine = 'platform' | 'research';
+
 export interface BacktestRequest {
   strategy_id: string;
+  engine?: BacktestEngine;
   start_date: string;  // ISO date format: YYYY-MM-DD
   end_date: string;    // ISO date format: YYYY-MM-DD
   initial_capital: number;
@@ -42,6 +45,7 @@ export interface Trade {
   pnl?: number | null;
   pnl_percent?: number | null;
   duration_days?: number | null;
+  exit_reason?: string | null;
   commission: number | null;
 }
 
@@ -113,6 +117,7 @@ export interface BacktestResult {
   id: string;
   strategy_id: string;
   strategy_name: string;
+  engine?: BacktestEngine;
   start_date: string;
   end_date: string;
   initial_capital: number;
@@ -130,6 +135,7 @@ export interface BacktestResult {
   status: BacktestStatus;
   error_message?: string;
   progress: number;  // 0-100
+  origin?: string;
   
   created_at: string;
   started_at?: string;
@@ -143,6 +149,7 @@ export interface BacktestSummary {
   id: string;
   strategy_id: string;
   strategy_name: string;
+  engine?: BacktestEngine;
   start_date: string;
   end_date: string;
   initial_capital: number;
@@ -159,6 +166,7 @@ export interface BacktestSummary {
   error_message?: string;
   created_at: string;
   completed_at?: string;
+  origin?: string;
 }
 
 /**

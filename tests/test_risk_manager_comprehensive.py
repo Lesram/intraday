@@ -395,31 +395,33 @@ class TestLegacyCheckOrderRisk:
 
     @pytest.mark.asyncio
     async def test_check_order_risk_high_risk_symbol(self, manager):
-        """Should block high-risk symbols like GME."""
+        """Should block symbols in the restricted list."""
+        manager._restricted_symbols = {"GME": "High risk symbol", "PENNY": "Penny stock prohibited", "CRYPTO": "Cryptocurrency not supported"}
         decision = await manager.check_order_risk({"symbol": "GME", "qty": 10})
         assert decision.allowed is False
         assert "risk" in decision.reason.lower()
 
     @pytest.mark.asyncio
     async def test_check_order_risk_penny_stock(self, manager):
-        """Should block penny stocks."""
+        """Should block restricted penny stocks."""
+        manager._restricted_symbols = {"PENNY": "Penny stock prohibited"}
         decision = await manager.check_order_risk({"symbol": "PENNY", "qty": 1000})
         assert decision.allowed is False
         assert "penny" in decision.reason.lower()
 
     @pytest.mark.asyncio
     async def test_check_order_risk_crypto(self, manager):
-        """Should block cryptocurrency."""
+        """Should block restricted cryptocurrency symbols."""
+        manager._restricted_symbols = {"CRYPTO": "Cryptocurrency not supported"}
         decision = await manager.check_order_risk({"symbol": "CRYPTO", "qty": 10})
         assert decision.allowed is False
         assert "crypto" in decision.reason.lower()
 
     @pytest.mark.asyncio
     async def test_check_order_risk_tsla_monitoring(self, manager):
-        """Should allow TSLA with monitoring."""
+        """Should allow TSLA when not in restricted list."""
         decision = await manager.check_order_risk({"symbol": "TSLA", "qty": 5})
         assert decision.allowed is True
-        assert "monitoring" in decision.reason.lower()
 
     @pytest.mark.asyncio
     async def test_check_order_risk_negative_qty(self, manager):

@@ -1,9 +1,20 @@
 """
-Unified Database Manager - Single Database Access Pattern
+Unified Database Manager — DEPRECATED
 
-This module consolidates all database access chaos into a single, consistent system.
-Eliminates direct SQL usage and ensures all access goes through proper ORM patterns.
+.. deprecated::
+    All production callers have migrated to ``backend.infra.db``.
+    Use ``get_db_session()`` / ``get_session_context()`` from ``backend.infra.db`` instead.
+    This module is retained for backward compatibility and will be removed in a future release.
 """
+
+import warnings
+
+warnings.warn(
+    "backend.infra.unified_database is deprecated. "
+    "Use backend.infra.db.get_db_session / get_session_context instead.",
+    DeprecationWarning,
+    stacklevel=2,
+)
 
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
@@ -18,7 +29,8 @@ from sqlalchemy.ext.asyncio import (
 )
 from sqlalchemy.pool import StaticPool
 
-from backend.config.unified import get_unified_settings
+# §2.1 / §3.1 FIX: Use canonical config instead of separate UnifiedSettings
+from backend.config.settings import get_settings
 from backend.utils.logger import get_structured_logger
 
 logger = get_structured_logger(__name__)
@@ -38,7 +50,7 @@ class UnifiedDatabaseManager:
     def __init__(self):
         self._engine: AsyncEngine | None = None
         self._sessionmaker: async_sessionmaker[AsyncSession] | None = None
-        self._settings = get_unified_settings()
+        self._settings = get_settings()
         self._is_initialized = False
 
     async def initialize(self) -> None:
@@ -48,7 +60,7 @@ class UnifiedDatabaseManager:
             return
 
         try:
-            database_url = self._settings.get_database_url()
+            database_url = self._settings.database.url
             logger.info(f"Initializing database with URL: {self._mask_url(database_url)}")
 
             # Create engine with appropriate pool settings
@@ -77,7 +89,7 @@ class UnifiedDatabaseManager:
     def _create_engine(self, database_url: str) -> AsyncEngine:
         """Create async engine with appropriate configuration."""
         engine_kwargs = {
-            "echo": self._settings.debug,
+            "echo": getattr(self._settings, 'debug', False),
             "future": True,
             "pool_pre_ping": True
         }
@@ -96,12 +108,12 @@ class UnifiedDatabaseManager:
                 }
             })
         else:
-            # PostgreSQL configuration - use safe defaults if settings.database not available
-            pool_size = getattr(getattr(self._settings, 'database', None), 'pool_size', 20)
-            max_overflow = getattr(getattr(self._settings, 'database', None), 'max_overflow', 10)
-            pool_timeout = getattr(getattr(self._settings, 'database', None), 'pool_timeout', 30)
-            pool_recycle = getattr(getattr(self._settings, 'database', None), 'pool_recycle', 3600)
-
+            # PostgreSQL configuration — §3.3 FIX: read from canonical DatabaseSettings
+            db = getattr(self._settings, 'database', None)
+            pool_size = getattr(db, 'pool_size', 20) if db else 20
+            max_overflow = getattr(db, 'max_overflow', 10) if db else 10
+            pool_timeout = getattr(db, 'pool_timeout', 30) if db else 30
+            pool_recycle = getattr(db, 'pool_recycle', 3600) if db else 3600
             # For async engines, don't specify poolclass - SQLAlchemy will use NullPool by default
             # which is appropriate for async operations
             engine_kwargs.update({

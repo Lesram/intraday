@@ -17,7 +17,7 @@ from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
-import websockets.client
+import websockets
 from websockets.exceptions import ConnectionClosed, InvalidURI
 
 from backend.database.models_production import OrderEvent
@@ -69,7 +69,7 @@ class RobustAlpacaStream:
     def __init__(self,
                  api_key: str,
                  api_secret: str,
-                 base_url: str = "wss://stream.data.alpaca.markets/v2/iex",
+                 base_url: str = "wss://stream.data.alpaca.markets/v2/sip",
                  paper: bool = True):
 
         self.api_key = api_key
@@ -77,7 +77,7 @@ class RobustAlpacaStream:
         self.base_url = base_url
         self.paper = paper
 
-        self.websocket: websockets.WebSocketServerProtocol | None = None
+        self.websocket: websockets.WebSocketClientProtocol | None = None
         self.is_running = False
         self.should_stop = False
 
@@ -88,8 +88,8 @@ class RobustAlpacaStream:
         self.jitter_factor = 0.1    # ±10% jitter
         self.current_backoff = self.min_backoff
 
-        # Dependencies
-        self.orders_repo = OrdersRepo()
+        # Dependencies — defer OrdersRepo creation until we have a session
+        self.orders_repo: OrdersRepo | None = None
         self.alpaca_client = AlpacaBrokerClient(api_key, api_secret, paper=paper)
         self.stream_state = StreamState()
         self.guardrails: TransactionalGuardrails | None = None
@@ -155,7 +155,7 @@ class RobustAlpacaStream:
         self.current_backoff = self.min_backoff
         self.connect_time = datetime.now(UTC)
 
-        async with websockets.client.connect(
+        async with websockets.connect(
             self.base_url,
             extra_headers={"Authorization": f"Bearer {self.api_key}"}
         ) as websocket:

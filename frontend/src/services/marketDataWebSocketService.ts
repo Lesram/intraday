@@ -27,7 +27,7 @@ import type {
  * Default configuration
  */
 const DEFAULT_CONFIG: Required<MarketDataConfig> = {
-  wsUrl: `ws://${window.location.hostname}:8000/api/v1/market-data/ws`, // Fixed: removed duplicate /market-data
+  wsUrl: `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.hostname}:${window.location.port || '8000'}/api/v1/market-data/ws`,
   reconnectInterval: 1000, // Start at 1 second
   maxReconnectAttempts: 10,
   heartbeatInterval: 30000 // 30 seconds

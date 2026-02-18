@@ -758,8 +758,19 @@ async def scanner_websocket(
     # Generate client ID
     client_id = f"scanner_{id(websocket)}"
 
-    # TODO: Validate JWT token if provided
-    # For now, accept all connections
+    # SECURITY FIX: Validate JWT token before accepting WebSocket connections
+    if not token:
+        await websocket.close(code=4001, reason="Authentication required: provide ?token=<jwt>")
+        return
+
+    try:
+        from backend.infra.security import decode_token
+        claims = decode_token(token)
+        user_id = claims.get("sub", "anonymous")
+        client_id = f"scanner_{user_id}_{id(websocket)}"
+    except Exception:
+        await websocket.close(code=4003, reason="Invalid or expired token")
+        return
 
     await scanner_manager.connect(websocket, client_id)
 
@@ -964,7 +975,14 @@ async def export_scan_results_json(
 # ============================================================================
 
 # In-memory storage for custom presets (per user)
-# TODO: Move to database in production
+# WARNING: Data is lost on restart. Must be migrated to database for production.
+import warnings as _scanner_warnings
+_scanner_warnings.warn(
+    "Scanner custom_presets uses in-memory storage — data will be lost on restart. "
+    "Wire to database before production deployment.",
+    RuntimeWarning,
+    stacklevel=1,
+)
 user_custom_presets: dict[str, list[dict[str, Any]]] = {}
 
 class CustomPreset(BaseModel):

@@ -15,7 +15,7 @@ from datetime import datetime
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Query
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.api.dependencies import get_db_session as get_db
@@ -43,8 +43,7 @@ class AuditLogResponse(BaseModel):
     payload: dict[str, Any] | None = None
     hash: str | None = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class AuditTrailResponse(BaseModel):

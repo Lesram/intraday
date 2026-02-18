@@ -6,7 +6,7 @@ strategy netting, throttling, and risk gating.
 """
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime
 from decimal import Decimal
 from enum import Enum
 
@@ -39,6 +39,10 @@ class TradingSignal:
     target_exposure: float  # [-1.0, 1.0]
     confidence: float  # [0, 1]
     metadata: dict[str, object] | None = None
+    # P&L-014: Stop-loss and take-profit prices flow from strategies
+    # through the engine into execution plans for broker-side enforcement.
+    stop_loss: float | None = None      # absolute price level
+    take_profit: float | None = None    # absolute price level
 
     def __post_init__(self) -> None:
         """Validate signal constraints."""
@@ -80,11 +84,14 @@ class ExecutionPlan:
     reason: str = ""
     risk_allowed: bool = True
     risk_reason: str | None = None
-
+    # P&L-014: Stop-loss and take-profit for broker-side bracket orders.
+    # When set, OrderService should submit OCO/bracket after the main fill.
+    stop_loss: float | None = None
+    take_profit: float | None = None
     def __post_init__(self):
         # Timestamp default
         if self.ts is None:
-            object.__setattr__(self, "ts", datetime.utcnow())
+            object.__setattr__(self, "ts", datetime.now(UTC))
 
         # Normalise decimal types
         def _to_decimal(v):

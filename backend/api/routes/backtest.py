@@ -136,12 +136,23 @@ async def run_backtest(
             f"capital=${request.initial_capital:,.2f}"
         )
 
+        # IMPORTANT:
+        # - If request.parameters is omitted, do NOT override the strategy's stored parameters.
+        # - If request.parameters is provided, treat it as an override and merge on top of
+        #   the strategy's parameters so Optuna-imported metadata is preserved.
+        merged_parameters = None
+        if request.parameters is not None:
+            base_params = getattr(strategy_obj, "parameters", None)
+            merged_parameters = dict(base_params or {})
+            merged_parameters.update(dict(request.parameters))
+
         result = await backtest_service.run_backtest(
             strategy=strategy_obj,
             start_date=request.start_date,
             end_date=request.end_date,
             initial_capital=request.initial_capital,
-            parameters=request.parameters,
+            parameters=merged_parameters,
+            engine=request.engine,
             user_id=user_id,
         )
 

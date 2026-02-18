@@ -645,10 +645,9 @@ async def predict(
                 raise HTTPException(status_code=500, detail=f"Model feature mismatch (missing columns): {missing[:10]}")
             X_last = X_last[feature_columns]
 
-        import pickle
+        from backend.utils.secure_pickle import secure_load_from_path
 
-        with open(model_path, "rb") as f:
-            model = pickle.load(f)
+        model = secure_load_from_path(model_path, allow_unsigned=True)
 
         # Prediction
         pred_value: float

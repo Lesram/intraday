@@ -223,8 +223,8 @@ class TestBaseStrategy:
         assert strategy.risk_manager == mock_risk_manager
         assert strategy.is_active is True
         assert strategy.max_risk_per_trade == 0.02
-        assert strategy.stop_loss_pct == 0.05
-        assert strategy.take_profit_pct == 0.02
+        assert strategy.stop_loss_pct == 0.02
+        assert strategy.take_profit_pct == 0.05
 
     def test_init_with_custom_params(self, mock_risk_manager):
         """Test initialization with custom risk parameters"""
@@ -242,7 +242,8 @@ class TestBaseStrategy:
         assert strategy.stop_loss_pct == 0.10
         assert strategy.take_profit_pct == 0.03
 
-    def test_calculate_position_size(self, mock_risk_manager):
+    @pytest.mark.asyncio
+    async def test_calculate_position_size(self, mock_risk_manager):
         """Test position size calculation"""
         with patch("backend.strategies.trading_strategies.get_settings") as mock_get:
             settings = MagicMock()
@@ -252,11 +253,12 @@ class TestBaseStrategy:
             strategy = ConcreteStrategy("TestStrategy", mock_risk_manager)
 
             # Calculate position size
-            size = strategy.calculate_position_size("AAPL", 150.0, 0.8)
+            size = await strategy.calculate_position_size("AAPL", 150.0, 0.8)
 
             assert size > 0
 
-    def test_calculate_position_size_risk_limit(self, mock_risk_manager):
+    @pytest.mark.asyncio
+    async def test_calculate_position_size_risk_limit(self, mock_risk_manager):
         """Test position size limited by risk"""
         mock_risk_manager.get_portfolio_value.return_value = 10000
 
@@ -268,7 +270,7 @@ class TestBaseStrategy:
             strategy = ConcreteStrategy("TestStrategy", mock_risk_manager)
             strategy.max_risk_per_trade = 0.01  # 1% max risk = $100
 
-            size = strategy.calculate_position_size("AAPL", 150.0, 1.0)
+            size = await strategy.calculate_position_size("AAPL", 150.0, 1.0)
 
             # Position value should not exceed $100
             assert size * 150.0 <= 100

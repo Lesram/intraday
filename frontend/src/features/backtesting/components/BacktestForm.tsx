@@ -5,7 +5,7 @@
  * Allows users to set date ranges, initial capital, and optional parameter overrides.
  */
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
   Form, 
   Select, 
@@ -16,11 +16,13 @@ import {
   Space,
   Switch,
   Collapse,
-  Alert
+  Alert,
+  Divider
 } from 'antd';
 import { PlayCircleOutlined, SettingOutlined } from '@ant-design/icons';
 import dayjs, { Dayjs } from 'dayjs';
 import type { BacktestRequest } from '../../../types/backtest';
+import { useStrategy } from '@/hooks/useData';
 
 const { RangePicker } = DatePicker;
 
@@ -38,6 +40,41 @@ export const BacktestForm: React.FC<BacktestFormProps> = ({
   const [form] = Form.useForm();
   const [selectedStrategy, setSelectedStrategy] = useState<string | null>(null);
   const [useCustomParams, setUseCustomParams] = useState(false);
+  const [overrideFeatureToggles, setOverrideFeatureToggles] = useState(false);
+  const [engine, setEngine] = useState<'platform' | 'research'>('platform');
+  const [overlayEnabled, setOverlayEnabled] = useState(false);
+
+  const { data: strategyDetails } = useStrategy(selectedStrategy || '');
+
+  useEffect(() => {
+    if (!strategyDetails) return;
+    const params = strategyDetails.parameters || {};
+
+    form.setFieldsValue({
+      useOptunaLeverage: Boolean(params.use_optuna_leverage ?? params.allow_leverage),
+      maxGrossExposure: Number(params.max_gross_exposure ?? 1),
+      useOptunaPositionSize: Boolean(params.use_optuna_position_size),
+      positionSizePct: Number(params.position_size_pct ?? 0.1),
+      useOptunaMaxPositions: Boolean(params.use_optuna_max_positions),
+      maxPositions: Number(params.max_positions ?? 10),
+      useOptunaMinPositionDollars: Boolean(params.use_optuna_min_position_dollars),
+      minPositionDollars: Number(params.min_position_dollars ?? 0),
+      overlayKillSwitch: Boolean(params.overlay_kill_switch ?? 0),
+      overlayKillDdPct: Number(params.overlay_kill_dd_pct ?? 0.18),
+      overlayKillCooldownDays: Number(params.overlay_kill_cooldown_days ?? 10),
+      overlayKillForceExit: Boolean(params.overlay_kill_force_exit ?? 1),
+      overlayVolEnabled: Boolean(params.overlay_vol_enabled ?? 0),
+      overlayVolTarget: Number(params.overlay_vol_target ?? 0.18),
+      overlayVolWindow: Number(params.overlay_vol_window ?? 20),
+      overlayVolMinMult: Number(params.overlay_vol_min_mult ?? 0.5),
+      overlayVolMaxMult: Number(params.overlay_vol_max_mult ?? 1.5),
+      overlayGapEnabled: Boolean(params.overlay_gap_enabled ?? 0),
+      overlayGapMaxPct: Number(params.overlay_gap_max_pct ?? 0.04),
+      overlayRiskOffAdjust: Boolean(params.overlay_risk_off_adjust ?? 0),
+      overlayRiskOffStopMult: Number(params.overlay_risk_off_stop_mult ?? 0.7),
+      overlayRiskOffTakeMult: Number(params.overlay_risk_off_take_mult ?? 0.8),
+    });
+  }, [strategyDetails, form]);
 
   const handleSubmit = (values: Record<string, unknown>) => {
     const dateRange = values.dateRange as [Dayjs, Dayjs];
@@ -45,13 +82,52 @@ export const BacktestForm: React.FC<BacktestFormProps> = ({
     
     const request: BacktestRequest = {
       strategy_id: values.strategyId as string,
+      engine: (values.engine as 'platform' | 'research') || 'platform',
       start_date: startDate.format('YYYY-MM-DD'),
       end_date: endDate.format('YYYY-MM-DD'),
       initial_capital: values.initialCapital as number,
     };
 
+    const overrideParams: Record<string, unknown> = {};
+
+    if (overrideFeatureToggles) {
+      overrideParams.use_optuna_leverage = Boolean(values.useOptunaLeverage);
+      overrideParams.allow_leverage = Boolean(values.useOptunaLeverage);
+      overrideParams.max_gross_exposure = values.maxGrossExposure;
+
+      overrideParams.use_optuna_position_size = Boolean(values.useOptunaPositionSize);
+      overrideParams.position_size_pct = values.positionSizePct;
+
+      overrideParams.use_optuna_max_positions = Boolean(values.useOptunaMaxPositions);
+      overrideParams.max_positions = values.maxPositions;
+
+      overrideParams.use_optuna_min_position_dollars = Boolean(values.useOptunaMinPositionDollars);
+      overrideParams.min_position_dollars = values.minPositionDollars;
+    }
+
     if (useCustomParams && values.customParameters) {
-      request.parameters = values.customParameters as Record<string, unknown>;
+      Object.assign(overrideParams, values.customParameters as Record<string, unknown>);
+    }
+
+    if (overlayEnabled) {
+      overrideParams.overlay_kill_switch = Number(Boolean(values.overlayKillSwitch));
+      overrideParams.overlay_kill_dd_pct = values.overlayKillDdPct;
+      overrideParams.overlay_kill_cooldown_days = values.overlayKillCooldownDays;
+      overrideParams.overlay_kill_force_exit = Number(Boolean(values.overlayKillForceExit));
+      overrideParams.overlay_vol_enabled = Number(Boolean(values.overlayVolEnabled));
+      overrideParams.overlay_vol_target = values.overlayVolTarget;
+      overrideParams.overlay_vol_window = values.overlayVolWindow;
+      overrideParams.overlay_vol_min_mult = values.overlayVolMinMult;
+      overrideParams.overlay_vol_max_mult = values.overlayVolMaxMult;
+      overrideParams.overlay_gap_enabled = Number(Boolean(values.overlayGapEnabled));
+      overrideParams.overlay_gap_max_pct = values.overlayGapMaxPct;
+      overrideParams.overlay_risk_off_adjust = Number(Boolean(values.overlayRiskOffAdjust));
+      overrideParams.overlay_risk_off_stop_mult = values.overlayRiskOffStopMult;
+      overrideParams.overlay_risk_off_take_mult = values.overlayRiskOffTakeMult;
+    }
+
+    if (Object.keys(overrideParams).length > 0) {
+      request.parameters = overrideParams;
     }
 
     onSubmit(values.strategyId as string, request);
@@ -84,6 +160,17 @@ export const BacktestForm: React.FC<BacktestFormProps> = ({
         initialValues={{
           dateRange: defaultDateRange,
           initialCapital: 100000,
+          engine: 'platform',
+          overlayKillDdPct: 0.18,
+          overlayKillCooldownDays: 10,
+          overlayKillForceExit: true,
+          overlayVolTarget: 0.18,
+          overlayVolWindow: 20,
+          overlayVolMinMult: 0.5,
+          overlayVolMaxMult: 1.5,
+          overlayGapMaxPct: 0.04,
+          overlayRiskOffStopMult: 0.7,
+          overlayRiskOffTakeMult: 0.8,
         }}
       >
         {/* Strategy Selection */}
@@ -162,6 +249,26 @@ export const BacktestForm: React.FC<BacktestFormProps> = ({
               ),
               children: (
                 <Space direction="vertical" style={{ width: '100%' }}>
+                  <Form.Item label="Engine" name="engine" style={{ marginBottom: 8 }}>
+                    <Select
+                      onChange={(v) => setEngine(v as 'platform' | 'research')}
+                      options={[
+                        { value: 'platform', label: 'Platform (live-parity)' },
+                        { value: 'research', label: 'Research (experimental)' },
+                      ]}
+                    />
+                  </Form.Item>
+
+                  {engine === 'research' && (
+                    <Alert
+                      message="Research engine is experimental"
+                      description="This mode uses the research harness simulator and may not match live execution semantics. Use for exploration/compare only."
+                      type="warning"
+                      showIcon
+                      style={{ marginBottom: 16 }}
+                    />
+                  )}
+
                   {/* Custom Parameters Toggle */}
                   <Form.Item label="Use Custom Parameters" style={{ marginBottom: 8 }}>
                     <Switch 
@@ -179,11 +286,232 @@ export const BacktestForm: React.FC<BacktestFormProps> = ({
                       style={{ marginBottom: 16 }}
                     />
                   )}
+
+                  <Divider style={{ margin: '8px 0 12px' }} />
+
+                  <Form.Item label="Override Strategy Feature Toggles" style={{ marginBottom: 8 }}>
+                    <Switch
+                      checked={overrideFeatureToggles}
+                      onChange={setOverrideFeatureToggles}
+                    />
+                  </Form.Item>
+
+                  {!overrideFeatureToggles && (
+                    <Alert
+                      message="Defaults Applied"
+                      description="By default, backtests follow the strategy's stored settings exactly (including Optuna toggles). Turn this on only to override them for this run."
+                      type="info"
+                      showIcon
+                      style={{ marginBottom: 16 }}
+                    />
+                  )}
+
+                  {overrideFeatureToggles && (
+                    <Space direction="vertical" style={{ width: '100%' }}>
+                      <Form.Item label="Use Leverage" name="useOptunaLeverage" valuePropName="checked">
+                        <Switch />
+                      </Form.Item>
+
+                      <Form.Item label="Max Gross Exposure" name="maxGrossExposure">
+                        <InputNumber<number>
+                          style={{ width: '100%' }}
+                          min={1}
+                          step={0.1}
+                        />
+                      </Form.Item>
+
+                      <Form.Item label="Use Optuna Position Size" name="useOptunaPositionSize" valuePropName="checked">
+                        <Switch />
+                      </Form.Item>
+
+                      <Form.Item label="Position Size %" name="positionSizePct">
+                        <InputNumber<number>
+                          style={{ width: '100%' }}
+                          min={0.01}
+                          max={5}
+                          step={0.05}
+                        />
+                      </Form.Item>
+
+                      <Form.Item label="Use Optuna Max Positions" name="useOptunaMaxPositions" valuePropName="checked">
+                        <Switch />
+                      </Form.Item>
+
+                      <Form.Item label="Max Positions" name="maxPositions">
+                        <InputNumber<number>
+                          style={{ width: '100%' }}
+                          min={1}
+                          step={1}
+                        />
+                      </Form.Item>
+
+                      <Form.Item label="Use Optuna Min Position Dollars" name="useOptunaMinPositionDollars" valuePropName="checked">
+                        <Switch />
+                      </Form.Item>
+
+                      <Form.Item label="Min Position Dollars" name="minPositionDollars">
+                        <InputNumber<number>
+                          style={{ width: '100%' }}
+                          min={0}
+                          step={50}
+                        />
+                      </Form.Item>
+                    </Space>
+                  )}
                 </Space>
               ),
             },
           ]}
         />
+
+        <Divider style={{ margin: '8px 0 12px' }} />
+
+        <Form.Item label="Enable Risk Overlays" style={{ marginBottom: 8 }}>
+          <Switch
+            checked={overlayEnabled}
+            onChange={setOverlayEnabled}
+          />
+        </Form.Item>
+
+        {overlayEnabled && (
+          <Space direction="vertical" style={{ width: '100%' }}>
+            <Form.Item label="Kill Switch" name="overlayKillSwitch" valuePropName="checked">
+              <Switch />
+            </Form.Item>
+
+            <Form.Item
+              label="Kill DD % (decimal)"
+              name="overlayKillDdPct"
+              rules={[
+                { type: 'number', min: 0.05, max: 0.5, message: 'Must be between 5% and 50%' },
+              ]}
+            >
+              <InputNumber<number> style={{ width: '100%' }} min={0.05} max={0.5} step={0.01} />
+            </Form.Item>
+
+            <Form.Item
+              label="Kill Cooldown Days"
+              name="overlayKillCooldownDays"
+              rules={[
+                { type: 'number', min: 1, max: 30, message: 'Must be between 1 and 30 days' },
+              ]}
+            >
+              <InputNumber<number> style={{ width: '100%' }} min={1} max={30} step={1} />
+            </Form.Item>
+
+            <Form.Item label="Kill Force Exit" name="overlayKillForceExit" valuePropName="checked">
+              <Switch />
+            </Form.Item>
+
+            <Divider style={{ margin: '8px 0 12px' }} />
+
+            <Form.Item label="Vol Targeting" name="overlayVolEnabled" valuePropName="checked">
+              <Switch />
+            </Form.Item>
+
+            <Form.Item
+              label="Vol Target (annualized)"
+              name="overlayVolTarget"
+              rules={[
+                { type: 'number', min: 0.05, max: 0.5, message: 'Must be between 5% and 50%' },
+              ]}
+            >
+              <InputNumber<number> style={{ width: '100%' }} min={0.05} max={0.5} step={0.01} />
+            </Form.Item>
+
+            <Form.Item
+              label="Vol Window"
+              name="overlayVolWindow"
+              rules={[
+                { type: 'number', min: 5, max: 60, message: 'Must be between 5 and 60 days' },
+              ]}
+            >
+              <InputNumber<number> style={{ width: '100%' }} min={5} max={60} step={1} />
+            </Form.Item>
+
+            <Form.Item
+              label="Vol Min Mult"
+              name="overlayVolMinMult"
+              dependencies={['overlayVolMaxMult']}
+              rules={[
+                { type: 'number', min: 0.1, max: 1.0, message: 'Must be between 0.1 and 1.0' },
+                ({ getFieldValue }) => ({
+                  validator(_, value) {
+                    const max = getFieldValue('overlayVolMaxMult');
+                    if (value === undefined || max === undefined || value <= max) {
+                      return Promise.resolve();
+                    }
+                    return Promise.reject(new Error('Min multiplier cannot exceed max multiplier'));
+                  },
+                }),
+              ]}
+            >
+              <InputNumber<number> style={{ width: '100%' }} min={0.1} max={1.0} step={0.1} />
+            </Form.Item>
+
+            <Form.Item
+              label="Vol Max Mult"
+              name="overlayVolMaxMult"
+              dependencies={['overlayVolMinMult']}
+              rules={[
+                { type: 'number', min: 1.0, max: 3.0, message: 'Must be between 1.0 and 3.0' },
+                ({ getFieldValue }) => ({
+                  validator(_, value) {
+                    const min = getFieldValue('overlayVolMinMult');
+                    if (value === undefined || min === undefined || value >= min) {
+                      return Promise.resolve();
+                    }
+                    return Promise.reject(new Error('Max multiplier cannot be below min multiplier'));
+                  },
+                }),
+              ]}
+            >
+              <InputNumber<number> style={{ width: '100%' }} min={1.0} max={3.0} step={0.1} />
+            </Form.Item>
+
+            <Divider style={{ margin: '8px 0 12px' }} />
+
+            <Form.Item label="Gap Guard" name="overlayGapEnabled" valuePropName="checked">
+              <Switch />
+            </Form.Item>
+
+            <Form.Item
+              label="Max Gap % (decimal)"
+              name="overlayGapMaxPct"
+              rules={[
+                { type: 'number', min: 0.01, max: 0.15, message: 'Must be between 1% and 15%' },
+              ]}
+            >
+              <InputNumber<number> style={{ width: '100%' }} min={0.01} max={0.15} step={0.01} />
+            </Form.Item>
+
+            <Divider style={{ margin: '8px 0 12px' }} />
+
+            <Form.Item label="Risk-Off Stop/TP Adjust" name="overlayRiskOffAdjust" valuePropName="checked">
+              <Switch />
+            </Form.Item>
+
+            <Form.Item
+              label="Risk-Off Stop Mult"
+              name="overlayRiskOffStopMult"
+              rules={[
+                { type: 'number', min: 0.3, max: 1.0, message: 'Must be between 0.3 and 1.0' },
+              ]}
+            >
+              <InputNumber<number> style={{ width: '100%' }} min={0.3} max={1.0} step={0.1} />
+            </Form.Item>
+
+            <Form.Item
+              label="Risk-Off Take Mult"
+              name="overlayRiskOffTakeMult"
+              rules={[
+                { type: 'number', min: 0.3, max: 1.0, message: 'Must be between 0.3 and 1.0' },
+              ]}
+            >
+              <InputNumber<number> style={{ width: '100%' }} min={0.3} max={1.0} step={0.1} />
+            </Form.Item>
+          </Space>
+        )}
 
         {/* Submit Button */}
         <Form.Item style={{ marginTop: 24, marginBottom: 0 }}>

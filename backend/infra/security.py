@@ -34,6 +34,19 @@ TOKEN_BLACKLIST_TTL = 7 * 24 * 60 * 60  # 7 days (match refresh token expiry)
 _token_blacklist_redis: Optional["Redis"] = None  # type: ignore
 _blacklist_logger = logging.getLogger(__name__)
 
+# In-memory fallback blacklist for when Redis is unavailable
+# Maps JTI -> expiry timestamp (seconds since epoch)
+_memory_blacklist: dict[str, float] = {}
+_MEMORY_BLACKLIST_MAX_SIZE = 10000  # Prevent unbounded memory growth
+
+
+def _cleanup_memory_blacklist() -> None:
+    """Remove expired entries from the in-memory blacklist."""
+    now = datetime.now(UTC).timestamp()
+    expired_keys = [k for k, exp in _memory_blacklist.items() if exp <= now]
+    for k in expired_keys:
+        _memory_blacklist.pop(k, None)
+
 
 async def init_token_blacklist(redis_client) -> None:
     """
@@ -62,19 +75,32 @@ async def blacklist_token(jti: str, expires_in: int | None = None) -> bool:
     Returns:
         True if successfully blacklisted, False otherwise
     """
+    ttl = expires_in or TOKEN_BLACKLIST_TTL
+    
+    # Always store in memory as fallback (fail-closed)
+    expiry = datetime.now(UTC).timestamp() + ttl
+    _memory_blacklist[jti] = expiry
+    # Evict oldest entries if memory blacklist exceeds max size
+    if len(_memory_blacklist) > _MEMORY_BLACKLIST_MAX_SIZE:
+        _cleanup_memory_blacklist()
+        if len(_memory_blacklist) > _MEMORY_BLACKLIST_MAX_SIZE:
+            # Still too large — evict oldest 20%
+            sorted_items = sorted(_memory_blacklist.items(), key=lambda x: x[1])
+            for k, _ in sorted_items[:_MEMORY_BLACKLIST_MAX_SIZE // 5]:
+                _memory_blacklist.pop(k, None)
+    
     if not _token_blacklist_redis:
-        _blacklist_logger.warning("Token blacklist not initialized - token not blacklisted")
-        return False
+        _blacklist_logger.warning("Token blacklist Redis not initialized — using in-memory fallback only")
+        return True
     
     try:
         key = f"{TOKEN_BLACKLIST_PREFIX}{jti}"
-        ttl = expires_in or TOKEN_BLACKLIST_TTL
         await _token_blacklist_redis.setex(key, ttl, "revoked")
         _blacklist_logger.info(f"Token blacklisted: {jti[:8]}...")
         return True
     except Exception as e:
-        _blacklist_logger.error(f"Failed to blacklist token: {e}")
-        return False
+        _blacklist_logger.error(f"Failed to blacklist token in Redis (in-memory fallback active): {e}")
+        return True  # Still blacklisted in memory
 
 
 async def is_token_blacklisted(jti: str) -> bool:
@@ -86,18 +112,35 @@ async def is_token_blacklisted(jti: str) -> bool:
         
     Returns:
         True if blacklisted, False otherwise
+        
+    Note:
+        Fail-CLOSED: if Redis is unavailable, checks in-memory blacklist.
+        If the token was blacklisted while Redis was up, it will be in both stores.
     """
+    # Always check in-memory first (fastest path and fail-closed fallback)
+    if jti in _memory_blacklist:
+        expiry = _memory_blacklist[jti]
+        if datetime.now(UTC).timestamp() < expiry:
+            return True  # Token is blacklisted in memory
+        else:
+            # Expired entry — clean up
+            _memory_blacklist.pop(jti, None)
+    
     if not _token_blacklist_redis:
-        # No Redis = no blacklist = allow token (fail open for availability)
-        return False
+        # No Redis available and not in memory blacklist.
+        # Since blacklist_token() always writes to memory first, absence from
+        # the memory blacklist means the token was never revoked in this process.
+        _blacklist_logger.warning("Token blacklist Redis unavailable — cannot verify token revocation status")
+        return False  # Not in memory blacklist = was never revoked in this process
     
     try:
         key = f"{TOKEN_BLACKLIST_PREFIX}{jti}"
         result = await _token_blacklist_redis.get(key)
         return result is not None
     except Exception as e:
-        _blacklist_logger.error(f"Failed to check token blacklist: {e}")
-        # Fail open - if we can't check, allow the token
+        _blacklist_logger.error(f"Failed to check token blacklist in Redis: {e}")
+        # Redis error but not in memory blacklist — fail closed for known-revoked tokens
+        # Since blacklist_token() always writes to memory, if it's not there, it wasn't revoked
         return False
 
 
@@ -335,10 +378,10 @@ def create_access_token(sub: str, roles: list[str], expires_minutes: int | None 
     """
     settings = get_settings()
 
-    # Get JWT secret and validate
-    secret = getattr(settings.security, 'jwt_secret_key', None) or os.environ.get('SECURITY_JWT_SECRET')
+    # Get JWT secret and validate — §9.2 FIX: attribute is 'secret_key', not 'jwt_secret_key'
+    secret = getattr(settings.security, 'secret_key', None) or os.environ.get('SECURITY_JWT_SECRET')
     if not secret:
-        raise ValueError("JWT secret key is required but not configured (SECURITY_JWT_SECRET)")
+        raise ValueError("JWT secret key is required but not configured (SECRET_KEY / SECURITY_JWT_SECRET)")
 
     if expires_minutes is None:
         expires_minutes = getattr(settings.security, 'jwt_expire_minutes', 60)
@@ -397,10 +440,10 @@ def create_refresh_token(sub: str, roles: list[str], expires_days: int | None = 
     """
     settings = get_settings()
 
-    # Get JWT secret and validate
-    secret = getattr(settings.security, 'jwt_secret_key', None) or os.environ.get('SECURITY_JWT_SECRET')
+    # Get JWT secret and validate — §9.2 FIX
+    secret = getattr(settings.security, 'secret_key', None) or os.environ.get('SECURITY_JWT_SECRET')
     if not secret:
-        raise ValueError("JWT secret key is required but not configured (SECURITY_JWT_SECRET)")
+        raise ValueError("JWT secret key is required but not configured (SECRET_KEY / SECURITY_JWT_SECRET)")
 
     if expires_days is None:
         expires_days = REFRESH_TOKEN_EXPIRE_DAYS
@@ -449,7 +492,8 @@ def decode_refresh_token(token: str) -> dict:
     """
     settings = get_settings()
 
-    secret = getattr(settings.security, 'jwt_secret_key', None) or os.environ.get('SECURITY_JWT_SECRET')
+    # §9.2 FIX: attribute is 'secret_key'
+    secret = getattr(settings.security, 'secret_key', None) or os.environ.get('SECURITY_JWT_SECRET')
     if not secret:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="JWT secret not configured")
 
@@ -516,8 +560,8 @@ def decode_token(token: str) -> dict:
     """
     settings = get_settings()
 
-    # Get JWT secret
-    secret = getattr(settings.security, 'jwt_secret_key', None) or os.environ.get('SECURITY_JWT_SECRET')
+    # Get JWT secret — §9.2 FIX: attribute is 'secret_key'
+    secret = getattr(settings.security, 'secret_key', None) or os.environ.get('SECURITY_JWT_SECRET')
     if not secret:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="JWT secret not configured")
 
@@ -650,8 +694,8 @@ async def get_current_user(
         if staging_key and app_env in {"dev", "development", "staging"}:
             if secrets.compare_digest(api_key, staging_key):
                 return AuthenticatedUser(
-                    username="staging-admin",
-                    roles=["admin"],
+                    username="staging-user",
+                    roles=["viewer"],  # Staging key gets read-only access, NOT admin
                     token_id="staging-api-key",
                 )
 

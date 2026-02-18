@@ -160,7 +160,7 @@ class DataProcessor:
         for col in price_columns:
             if col in cleaned.columns:
                 # Forward fill then backward fill
-                cleaned[col] = cleaned[col].fillna(method='ffill').fillna(method='bfill')
+                cleaned[col] = cleaned[col].ffill().bfill()
 
         # Remove rows with negative prices
         for col in ['open', 'high', 'low', 'close']:

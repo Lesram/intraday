@@ -15,6 +15,7 @@ import {
   App,
   Popconfirm,
   Typography,
+  Tag,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import {
@@ -31,9 +32,10 @@ import {
   CopyOutlined,
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useStrategiesStore } from '@/store/strategiesStore';
 import { strategiesService } from '@/services/strategiesService';
+import { optimizationsService } from '@/services/optimizationsService';
 import type { Strategy, StrategyStatus, StrategyType } from '@/types/strategy';
 import type { StrategyUpdateMessage } from '@/types/websocket';
 import { useWebSocket } from '@/hooks/useWebSocket';
@@ -61,6 +63,13 @@ export const StrategiesList: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<StrategyStatus | 'all'>('all');
   const [typeFilter, setTypeFilter] = useState<StrategyType | 'all'>('all');
   const [loadingIds, setLoadingIds] = useState<Set<string>>(new Set());
+  const [selectedOptimizationId, setSelectedOptimizationId] = useState<string | undefined>();
+
+  const { data: optimizationRuns = [], isLoading: optimizationsLoading } = useQuery({
+    queryKey: ['optimizationRuns'],
+    queryFn: () => optimizationsService.getRuns(),
+    staleTime: 60000,
+  });
 
   // WebSocket handler for real-time strategy updates
   const handleStrategyUpdate = React.useCallback((wsMessage: StrategyUpdateMessage) => {
@@ -193,6 +202,42 @@ export const StrategiesList: React.FC = () => {
     },
   });
 
+  const createFromOptimization = useMutation({
+    mutationFn: (runId: string) => optimizationsService.createStrategyFromRun(runId),
+    onSuccess: (created) => {
+      message.success(`Strategy "${created.name}" created from optimization run`);
+      queryClient.invalidateQueries({ queryKey: ['strategies'] });
+      setSelectedOptimizationId(undefined);
+      navigate(`/strategies/${created.strategyId}`);
+    },
+    onError: (error: unknown) => {
+      const axiosError = error as { response?: { data?: { detail?: string } } };
+      message.error(axiosError?.response?.data?.detail || 'Failed to create strategy from optimization');
+    },
+  });
+
+  const getOriginTag = (strategy: Strategy) => {
+    const parameters = (strategy.parameters || {}) as Record<string, unknown>;
+    const origin = typeof parameters._origin === 'string' ? parameters._origin : 'ui';
+    const normalized = origin.toLowerCase();
+
+    if (normalized === 'optuna') {
+      return { label: 'Optuna', color: 'purple' };
+    }
+    if (normalized === 'backend') {
+      return { label: 'Backend', color: 'geekblue' };
+    }
+    return { label: 'UI', color: 'green' };
+  };
+
+  const handleCreateFromOptimization = () => {
+    if (!selectedOptimizationId) {
+      message.warning('Select an optimization run first');
+      return;
+    }
+    createFromOptimization.mutate(selectedOptimizationId);
+  };
+
   // Action handlers
   const handleStart = (strategyId: string) => {
     setLoadingIds((prev) => new Set(prev).add(strategyId));
@@ -293,6 +338,15 @@ export const StrategiesList: React.FC = () => {
       ],
       onFilter: (value, record) => record.status === value,
       render: (status: StrategyStatus) => <StrategyStatusBadge status={status} />,
+    },
+    {
+      title: 'Origin',
+      key: 'origin',
+      width: 110,
+      render: (_, record: Strategy) => {
+        const tag = getOriginTag(record);
+        return <Tag color={tag.color}>{tag.label}</Tag>;
+      },
     },
     {
       title: 'Description',
@@ -461,6 +515,36 @@ export const StrategiesList: React.FC = () => {
 
   return (
     <div>
+      {optimizationRuns.length > 0 && (
+        <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+          <Col xs={24} md={10}>
+            <Select
+              placeholder={optimizationsLoading ? 'Loading optimization runs...' : 'Select an optimization run'}
+              value={selectedOptimizationId}
+              onChange={setSelectedOptimizationId}
+              style={{ width: '100%' }}
+              loading={optimizationsLoading}
+              options={optimizationRuns.map((run) => ({
+                label: `${run.name} (${run.origin})`,
+                value: run.id,
+              }))}
+            />
+          </Col>
+          <Col xs={24} md={8}>
+            <Button
+              type="primary"
+              icon={<CopyOutlined />}
+              onClick={handleCreateFromOptimization}
+              loading={createFromOptimization.isPending}
+              disabled={!selectedOptimizationId}
+              style={{ width: '100%' }}
+            >
+              Create Strategy from Optimization
+            </Button>
+          </Col>
+        </Row>
+      )}
+
       {/* Filters and Actions */}
       <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
         <Col xs={24} sm={12} md={8}>

@@ -156,13 +156,16 @@ class TestCircuitBreakerRedisIntegration:
     @pytest.mark.asyncio
     async def test_load_state_from_redis(self, mock_redis):
         """Loads circuit breaker state from Redis on startup."""
-        # Set up Redis to return OPEN state
-        mock_redis.get = AsyncMock(side_effect=lambda key: {
-            CB_STATE_KEY: b"open",
-            CB_OPENED_AT_KEY: b"1234567890.123",
-            CB_FAILURES_KEY: json.dumps([1234567890.0, 1234567891.0]).encode(),
-            CB_DAILY_PNL_KEY: b"-3.5",
-        }.get(key))
+        # Set up the pipeline to return 4 values matching the 4 pipe.get() calls
+        pipeline = AsyncMock()
+        pipeline.get = MagicMock(return_value=pipeline)
+        pipeline.execute = AsyncMock(return_value=[
+            b"open",                                                     # CB_STATE_KEY
+            b"1234567890.123",                                           # CB_OPENED_AT_KEY
+            json.dumps([1234567890.0, 1234567891.0]).encode(),           # CB_FAILURES_KEY
+            b"-3.5",                                                     # CB_DAILY_PNL_KEY
+        ])
+        mock_redis.pipeline = MagicMock(return_value=pipeline)
         
         cb = CircuitBreaker(redis_client=mock_redis)
         cb._redis_available = True
@@ -257,13 +260,17 @@ class TestCircuitBreakerCrashRecovery:
         
         assert cb1.is_open
         
-        # Simulate "restart" - new instance
-        mock_redis.get = AsyncMock(side_effect=lambda key: {
-            CB_STATE_KEY: b"open",
-            CB_OPENED_AT_KEY: str(cb1._opened_at).encode(),
-            CB_FAILURES_KEY: json.dumps(cb1._failures).encode(),
-            CB_DAILY_PNL_KEY: b"0.0",
-        }.get(key))
+        # Simulate "restart" - new instance  
+        # Set up pipeline to return the persisted state (4 values for 4 pipe.get calls)
+        pipeline = AsyncMock()
+        pipeline.get = MagicMock(return_value=pipeline)
+        pipeline.execute = AsyncMock(return_value=[
+            b"open",
+            str(cb1._opened_at).encode(),
+            json.dumps(cb1._failures).encode(),
+            b"0.0",
+        ])
+        mock_redis.pipeline = MagicMock(return_value=pipeline)
         
         cb2 = CircuitBreaker(
             failure_threshold=2,

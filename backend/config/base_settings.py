@@ -166,8 +166,8 @@ class AlpacaConfig(BaseSettings):
         default="https://paper-api.alpaca.markets", description="Alpaca API base URL"
     )
     websocket_url: str = Field(
-        default="wss://stream.data.alpaca.markets/v2/iex",
-        description="Alpaca WebSocket URL",
+        default="wss://stream.data.alpaca.markets/v2/sip",
+        description="Alpaca WebSocket URL (sip=full consolidated, iex=free single exchange)",
     )
     paper: bool = Field(default=True, description="Use Alpaca paper trading environment")
     use_mock_broker: bool = Field(default=False, description="Use mock broker instead of real Alpaca API")
@@ -501,7 +501,7 @@ class TradingConfig(BaseSettings):
     )
 
     # Risk management configuration
-    allow_mock_fallbacks: bool = Field(default=True, description="Allow mock fallbacks")
+    allow_mock_fallbacks: bool = Field(default=False, description="Allow mock fallbacks (MUST be False in production)")
     mock_fallback_warning: bool = Field(
         default=True, description="Show mock fallback warnings"
     )

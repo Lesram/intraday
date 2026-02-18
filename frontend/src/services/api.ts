@@ -78,9 +78,8 @@ apiClient.interceptors.response.use(
       const refreshToken = useAuthStore.getState().refreshToken;
 
       if (!refreshToken) {
-        // No refresh token, redirect to login
+        // No refresh token — clearing auth will trigger ProtectedRoute redirect
         useAuthStore.getState().clearAuth();
-        window.location.href = '/login';
         return Promise.reject(error);
       }
 
@@ -90,10 +89,13 @@ apiClient.interceptors.response.use(
           refresh_token: refreshToken,
         });
 
-        const { access_token } = response.data;
+        const { access_token, refresh_token: new_refresh_token } = response.data;
 
-        // Update the access token in store
+        // Update tokens in store (backend rotates refresh_token)
         useAuthStore.getState().setAccessToken(access_token);
+        if (new_refresh_token) {
+          useAuthStore.getState().setRefreshToken(new_refresh_token);
+        }
 
         // Update the authorization header
         if (originalRequest.headers) {
@@ -106,10 +108,9 @@ apiClient.interceptors.response.use(
         // Retry the original request
         return apiClient(originalRequest);
       } catch (refreshError) {
-        // Refresh failed, clear auth and redirect to login
+        // Refresh failed — clearing auth triggers ProtectedRoute redirect
         processQueue(refreshError as AxiosError);
         useAuthStore.getState().clearAuth();
-        window.location.href = '/login';
         return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;

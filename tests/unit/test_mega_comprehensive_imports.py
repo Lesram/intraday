@@ -42,7 +42,7 @@ def test_import_all_api_routes():
     routes = [
         'admin_trading', 'audit', 'auth', 'backtest', 'chart_templates',
         'drawings', 'health', 'indicators', 'lots', 'market_data', 'models',
-        'models_old', 'monitoring', 'observability', 'orders', 'position_import',
+        'monitoring', 'observability', 'orders', 'position_import',
         'positions', 'risk', 'scanner', 'signals', 'strategy', 'system',
         'dev_testing_routes', 'trades', 'watchlists'
     ]
@@ -95,7 +95,7 @@ def test_import_all_ml():
     modules = [
         'active_model_pointer', 'data_processing', 'drift', 'ensemble_framework',
         'feature_engineering', 'lifecycle', 'lifecycle_scheduler',
-        'model_management', 'model_manager', 'model_manager_stub_backup',
+        'model_management', 'model_manager',
         'model_selection', 'monitoring', 'pipeline', 'prediction_service',
         'sentiment', 'training', 'validation'
     ]

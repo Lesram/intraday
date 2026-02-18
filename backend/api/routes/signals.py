@@ -145,11 +145,15 @@ async def fetch_closes(symbol: str, client, lookback: int = 200) -> list[float]:
 
 
 def get_market_data_client():
-    """Get market data client based on settings."""
+    """Get market data client based on settings.
+
+    Defaults to real Alpaca data. Mock client is used only when
+    USE_MOCK_DATA is explicitly set to True (e.g. in CI/testing).
+    """
     settings = get_settings()
 
-    # Check if we should use mock data (for testing or development)
-    use_mock = getattr(settings, 'USE_MOCK_DATA', True)  # Default to mock for safety
+    # Use real data by default; mock only when explicitly requested
+    use_mock = getattr(settings, 'USE_MOCK_DATA', False)
 
     if use_mock:
         return get_mock_alpaca_client()
@@ -164,57 +168,58 @@ def get_market_data_client():
 
 
 def get_mock_alpaca_client():
-    """Get mock Alpaca client with deterministic (but realistic) data."""
+    """Get mock Alpaca client with deterministic (but realistic) data.
+
+    Used ONLY when USE_MOCK_DATA=True (CI/testing) or when the real
+    Alpaca integration is unavailable.  All randomness is seeded from
+    the symbol hash so results are reproducible.
+    """
     import numpy as np
     import pandas as pd
 
     class MockAlpacaClient:
-        async def get_historical_data(self, symbol: str, timeframe: str, limit: int):
-            """Generate deterministic price data based on symbol hash."""
-            # Use symbol hash for deterministic but varied data per symbol
-            seed = hash(symbol) % 1000000
-            np.random.seed(seed)
+        """Deterministic mock market-data client for CI/testing."""
 
-            # Generate realistic price movements
-            base_price = 100 + (seed % 200)  # Price between 100-300
+        async def get_historical_data(self, symbol: str, timeframe: str, limit: int):
+            """Generate deterministic OHLCV data seeded by symbol hash."""
+            seed = hash(symbol) % 1000000
+            rng = np.random.default_rng(seed)
+
+            base_price = 100 + (seed % 200)
             dates = pd.date_range(end=datetime.now(), periods=limit, freq='D')
 
-            # Generate price series with realistic characteristics
-            returns = np.random.normal(0, 0.02, limit)  # 2% daily volatility
-            prices = [base_price]
+            # Geometric Brownian Motion with mean-reversion (Ornstein–Uhlenbeck)
+            mu = 0.0002        # slight daily drift
+            sigma = 0.015      # 1.5% daily vol (realistic equity)
+            theta = 0.05       # mean-reversion speed
+            prices = [float(base_price)]
 
             for i in range(1, limit):
-                # Add momentum and mean reversion
-                momentum = 0.1 * returns[i-1] if i > 0 else 0
-                mean_reversion = -0.05 * (prices[-1] - base_price) / base_price
+                log_ret = mu - theta * (np.log(prices[-1] / base_price)) + sigma * rng.standard_normal()
+                prices.append(prices[-1] * np.exp(log_ret))
 
-                price_change = returns[i] + momentum + mean_reversion
-                new_price = prices[-1] * (1 + price_change)
-                prices.append(max(new_price, 1.0))  # Ensure positive prices
+            prices_arr = np.array(prices)
+            intraday_spread = rng.uniform(0.002, 0.008, size=limit)
+            highs = prices_arr * (1 + intraday_spread)
+            lows = prices_arr * (1 - intraday_spread)
+            volumes = rng.integers(50_000, 500_000, size=limit)
 
-            # Create OHLC data
-            highs = [p * (1 + abs(np.random.normal(0, 0.01))) for p in prices]
-            lows = [p * (1 - abs(np.random.normal(0, 0.01))) for p in prices]
-            volumes = [1000 + int(abs(np.random.normal(0, 500))) for _ in prices]
-
-            data = pd.DataFrame({
-                'open': prices,
+            return pd.DataFrame({
+                'open': prices_arr * (1 + rng.normal(0, 0.001, limit)),
                 'high': highs,
                 'low': lows,
-                'close': prices,
-                'volume': volumes
+                'close': prices_arr,
+                'volume': volumes,
             }, index=dates)
-
-            return data
 
     return MockAlpacaClient()
 
 
 def get_basic_strategy() -> BasicStrategy:
-    """Get configured BasicStrategy instance - TEMPORARY AGGRESSIVE SETTINGS FOR TESTING."""
+    """Get configured BasicStrategy instance with production-grade thresholds."""
     return BasicStrategy(
-        rsi_buy=45,    # More aggressive: was 30, now 45 (triggers buy more often)
-        rsi_sell=55,   # More aggressive: was 70, now 55 (triggers sell more often)
+        rsi_buy=30,    # Standard oversold threshold
+        rsi_sell=70,   # Standard overbought threshold
         sma_fast=20,
         sma_slow=50,
         tp_pct=2.0,
@@ -233,51 +238,27 @@ def get_authenticated_user(current_user=Depends(get_current_user)):
 
 
 async def get_order_service(request: Request):
-    """Get OrderService with dependency injection and proper session management."""
-    try:
-        # Get sessionmaker from app state
-        sessionmaker = getattr(request.app.state, 'sessionmaker', None)
+    """FastAPI dependency that provides an OrderService bound to a request-scoped DB session."""
+    # Get sessionmaker from app state (configured during app lifespan)
+    sessionmaker = getattr(request.app.state, 'sessionmaker', None)
 
-        if not sessionmaker:
-            # Check if we're in testing mode
-            from backend.config import get_settings
-            settings = get_settings()
-            if getattr(settings, 'TESTING', False):
-                # In testing mode, return service with proper repositories
-                from backend.infrastructure.database.repositories.orders_repo import OrdersRepo
-                from backend.infrastructure.database.repositories.outbox_repo import OutboxRepo
-                return OrderService(
-                    orders_repo=OrdersRepo(None),
-                    outbox_repo=OutboxRepo(None)
-                )
-            else:
-                raise HTTPException(
-                    status_code=500,
-                    detail="Database session not configured"
-                )
+    if not sessionmaker:
+        raise HTTPException(status_code=500, detail="Database session not configured")
 
-        # Create OrderService with sessionmaker - session will be created per operation
-        # Import required repositories
-        from backend.infrastructure.database.repositories.orders_repo import OrdersRepo
-        from backend.infrastructure.database.repositories.outbox_repo import OutboxRepo
-
+    # Normal path: create a session per request and bind real repositories.
+    async with sessionmaker() as session:
         service = OrderService(
+            db_session=session,
             sessionmaker=sessionmaker,
-            orders_repo=OrdersRepo,  # Class reference - will be instantiated per session
-            outbox_repo=OutboxRepo   # Class reference - will be instantiated per session
+            orders_repo=OrdersRepo(session),
+            outbox_repo=OutboxRepo(session),
         )
-
-        return service
-
-    except Exception as e:
-        logger.error(f"Failed to create OrderService: {e}")
-        # Fallback for production reliability - create with proper repositories
-        from backend.infrastructure.database.repositories.orders_repo import OrdersRepo
-        from backend.infrastructure.database.repositories.outbox_repo import OutboxRepo
-        return OrderService(
-            orders_repo=OrdersRepo(None),
-            outbox_repo=OutboxRepo(None)
-        )
+        try:
+            yield service
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            raise
 
 
 # Route Handlers

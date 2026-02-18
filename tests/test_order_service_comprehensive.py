@@ -1216,16 +1216,15 @@ class TestOrderServiceGetOrderStatus:
 
     @pytest.mark.asyncio
     async def test_get_order_status_test_order(self):
-        """Test get_order_status returns mock data for test-123."""
+        """Test get_order_status returns None for unknown orders (no hardcoded fixtures)."""
         from backend.services.order_service import OrderService
         
         service = OrderService()
         
         result = await service.get_order_status("test-123")
         
-        assert result is not None
-        assert result["order_id"] == "test-123"
-        assert result["status"] == "filled"
+        # No hardcoded test fixtures in production code
+        assert result is None
 
 
 # ============================================================================

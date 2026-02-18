@@ -1,14 +1,55 @@
 """
 Tests for positions API routes.
 Validates authentication requirements and response schema.
+
+The positions endpoint fetches data from Alpaca API or database depending on
+USE_MOCK_BROKER setting.  In tests we mock the underlying fetch functions
+(get_alpaca_positions / get_database_positions) so that we get deterministic
+data without needing real broker credentials.
 """
 
 import pytest
+from datetime import UTC, datetime
 from fastapi import FastAPI, status
 from fastapi.testclient import TestClient
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
-from backend.api.routes.positions import router as positions_router
+from backend.api.routes.positions import PositionDTO, router as positions_router
+
+
+# ---------------------------------------------------------------------------
+# Fixtures
+# ---------------------------------------------------------------------------
+
+MOCK_POSITIONS = [
+    PositionDTO(
+        symbol="AAPL",
+        qty=10.0,
+        avg_price=180.0,
+        market_price=185.50,
+        market_value=1855.0,
+        unrealized_pl=55.0,
+        updated_at=datetime(2026, 1, 1, tzinfo=UTC),
+    ),
+    PositionDTO(
+        symbol="GOOGL",
+        qty=5.0,
+        avg_price=140.0,
+        market_price=145.0,
+        market_value=725.0,
+        unrealized_pl=25.0,
+        updated_at=datetime(2026, 1, 1, tzinfo=UTC),
+    ),
+    PositionDTO(
+        symbol="MSFT",
+        qty=8.0,
+        avg_price=370.0,
+        market_price=380.0,
+        market_value=3040.0,
+        unrealized_pl=80.0,
+        updated_at=datetime(2026, 1, 1, tzinfo=UTC),
+    ),
+]
 
 
 @pytest.fixture
@@ -19,10 +60,29 @@ def app():
     return app
 
 
-@pytest.fixture 
+@pytest.fixture
 def client(app):
     """Create test client."""
     return TestClient(app)
+
+
+def _override_auth(client):
+    """Install a dependency override that bypasses real authentication."""
+    from backend.infra.security import AuthenticatedUser, get_authenticated_user
+
+    def mock_auth():
+        return AuthenticatedUser(
+            username="test_user",
+            roles=["trader"],
+            token_id="test-token",
+        )
+
+    client.app.dependency_overrides[get_authenticated_user] = mock_auth
+
+
+# ---------------------------------------------------------------------------
+# Tests
+# ---------------------------------------------------------------------------
 
 
 def test_positions_without_auth_returns_401(client):
@@ -33,54 +93,29 @@ def test_positions_without_auth_returns_401(client):
 
 def test_positions_with_auth_returns_200(client):
     """Test that positions endpoint returns 200 with valid authentication."""
-    from backend.infra.security import AuthenticatedUser, get_authenticated_user
-    
-    # Mock authenticated user using dependency override
-    def mock_auth():
-        return AuthenticatedUser(
-            username="test_user",
-            roles=["trader"],
-            token_id="test-token"
-        )
-    
-    # Override the dependency
-    client.app.dependency_overrides[get_authenticated_user] = mock_auth
-    
+    _override_auth(client)
     try:
         response = client.get("/api/v1/positions/")
         assert response.status_code == status.HTTP_200_OK
     finally:
-        # Clean up
         client.app.dependency_overrides.clear()
 
 
+@patch("backend.api.routes.positions.get_alpaca_positions", new_callable=AsyncMock, return_value=MOCK_POSITIONS)
 @patch("backend.api.routes.positions.get_settings")
-def test_positions_response_schema_mock_data(mock_settings, client):
+def test_positions_response_schema_mock_data(mock_settings, mock_alpaca, client):
     """Test positions response contains all required DTO fields with mock data."""
-    from backend.infra.security import AuthenticatedUser, get_authenticated_user
-    
-    # Mock authenticated user using dependency override
-    def mock_auth():
-        return AuthenticatedUser(
-            username="test_user",
-            roles=["trader"], 
-            token_id="test-token"
-        )
-    
-    # Mock settings to use mock data
-    mock_settings.return_value.USE_MOCK_DATA = True
-    
-    # Override the dependency
-    client.app.dependency_overrides[get_authenticated_user] = mock_auth
-    
+    mock_settings.return_value.USE_MOCK_BROKER = False
+
+    _override_auth(client)
     try:
         response = client.get("/api/v1/positions/")
         assert response.status_code == status.HTTP_200_OK
-        
+
         positions = response.json()
         assert isinstance(positions, list)
         assert len(positions) > 0
-        
+
         # Validate schema for each position
         for position in positions:
             assert "symbol" in position
@@ -90,131 +125,90 @@ def test_positions_response_schema_mock_data(mock_settings, client):
             assert "market_value" in position
             assert "unrealized_pl" in position
             assert "updated_at" in position
-            
+
             # Type validation
             assert isinstance(position["symbol"], str)
             assert isinstance(position["qty"], (int, float))
             assert isinstance(position["avg_price"], (int, float))
             assert isinstance(position["updated_at"], str)
-            
+
             # Optional fields can be None
             assert position["market_price"] is None or isinstance(position["market_price"], (int, float))
             assert position["market_value"] is None or isinstance(position["market_value"], (int, float))
             assert position["unrealized_pl"] is None or isinstance(position["unrealized_pl"], (int, float))
     finally:
-        # Clean up
         client.app.dependency_overrides.clear()
 
 
+@patch("backend.api.routes.positions.get_alpaca_positions", new_callable=AsyncMock, return_value=MOCK_POSITIONS)
 @patch("backend.api.routes.positions.get_settings")
-def test_positions_mock_data_content(mock_settings, client):
-    """Test that mock data returns expected deterministic positions."""
-    from backend.infra.security import AuthenticatedUser, get_authenticated_user
-    
-    # Mock authenticated user using dependency override
-    def mock_auth():
-        return AuthenticatedUser(
-            username="test_user",
-            roles=["trader"],
-            token_id="test-token"
-        )
-    
-    # Mock settings to use mock data
-    mock_settings.return_value.USE_MOCK_DATA = True
-    
-    # Override the dependency
-    client.app.dependency_overrides[get_authenticated_user] = mock_auth
-    
+def test_positions_mock_data_content(mock_settings, mock_alpaca, client):
+    """Test that mocked positions return expected deterministic data."""
+    mock_settings.return_value.USE_MOCK_BROKER = False
+
+    _override_auth(client)
     try:
         response = client.get("/api/v1/positions/")
         positions = response.json()
-        
+
         # Should have deterministic mock positions
         symbols = [pos["symbol"] for pos in positions]
         assert "AAPL" in symbols
         assert "GOOGL" in symbols
         assert "MSFT" in symbols
-        
-        # Verify AAPL position details (from mock data)
+
+        # Verify AAPL position details
         aapl_position = next(pos for pos in positions if pos["symbol"] == "AAPL")
         assert aapl_position["qty"] == 10.0
         assert aapl_position["avg_price"] == 180.0
         assert aapl_position["market_price"] == 185.50
         assert aapl_position["unrealized_pl"] == 55.0
     finally:
-        # Clean up
         client.app.dependency_overrides.clear()
 
 
+@patch("backend.api.routes.positions.get_alpaca_positions", new_callable=AsyncMock, return_value=MOCK_POSITIONS)
 @patch("backend.api.routes.positions.get_settings")
-def test_positions_alpaca_mode(mock_settings, client):
+def test_positions_alpaca_mode(mock_settings, mock_alpaca, client):
     """Test positions endpoint in Alpaca mode.
-    
-    When Alpaca trading client is not available (no credentials), 
-    the service gracefully falls back to mock data.
+
+    When USE_MOCK_BROKER is False the endpoint delegates to get_alpaca_positions.
+    We mock that function so no real credentials are needed.
     """
-    from backend.infra.security import AuthenticatedUser, get_authenticated_user
-    
-    # Mock authenticated user using dependency override
-    def mock_auth():
-        return AuthenticatedUser(
-            username="test_user",
-            roles=["trader"],
-            token_id="test-token"
-        )
-    
-    # Mock settings for Alpaca mode
-    mock_settings.return_value.USE_MOCK_DATA = False
     mock_settings.return_value.USE_MOCK_BROKER = False
-    
-    # Override the dependency
-    client.app.dependency_overrides[get_authenticated_user] = mock_auth
-    
+
+    _override_auth(client)
     try:
         response = client.get("/api/v1/positions/")
         assert response.status_code == status.HTTP_200_OK
-        
+
         positions = response.json()
-        # Should still return positions (falls back to mock when Alpaca unavailable)
         assert len(positions) > 0
-        
-        # Verify positions have required fields (real or mock)
+
         for position in positions:
             assert "symbol" in position
             assert "qty" in position
             assert "avg_price" in position
     finally:
-        # Clean up
         client.app.dependency_overrides.clear()
 
 
+@patch("backend.api.routes.positions.get_database_positions", new_callable=AsyncMock, return_value=MOCK_POSITIONS)
 @patch("backend.api.routes.positions.get_settings")
-def test_positions_database_mode(mock_settings, client):
-    """Test positions endpoint in database mode."""
-    from backend.infra.security import AuthenticatedUser, get_authenticated_user
-    
-    # Mock authenticated user using dependency override
-    def mock_auth():
-        return AuthenticatedUser(
-            username="test_user",
-            roles=["trader"],
-            token_id="test-token"
-        )
-    
-    # Mock settings for database mode
-    mock_settings.return_value.USE_MOCK_DATA = False
+def test_positions_database_mode(mock_settings, mock_db, client):
+    """Test positions endpoint in database mode.
+
+    When USE_MOCK_BROKER is True the endpoint delegates to
+    get_database_positions.  We mock that function to return test data.
+    """
     mock_settings.return_value.USE_MOCK_BROKER = True
-    
-    # Override the dependency
-    client.app.dependency_overrides[get_authenticated_user] = mock_auth
-    
+
+    _override_auth(client)
     try:
         response = client.get("/api/v1/positions/")
         assert response.status_code == status.HTTP_200_OK
-        
+
         positions = response.json()
-        # Should return positions (database or fallback to mock)
         assert len(positions) > 0
     finally:
-        # Clean up
         client.app.dependency_overrides.clear()

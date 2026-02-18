@@ -3,7 +3,7 @@ Watchlist schemas for API requests/responses
 """
 from datetime import datetime
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class WatchlistSymbolAdd(BaseModel):
@@ -36,8 +36,7 @@ class WatchlistSymbolResponse(BaseModel):
     symbol: str
     order: int
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class WatchlistResponse(BaseModel):
@@ -51,5 +50,4 @@ class WatchlistResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

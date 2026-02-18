@@ -1,14 +1,26 @@
 """
 Core configuration module stub for infrastructure compatibility.
 Provides configuration management that tests expect to find.
+
+.. deprecated::
+    Use ``backend.config.settings.get_settings()`` instead.
+    This module will be removed in a future release.
 """
 
 import os
+import warnings
 from typing import Any
+
+if os.getenv("BACKEND_EMIT_DEPRECATION_WARNINGS", "0") == "1":
+    warnings.warn(
+        "backend.config.config is deprecated. Use backend.config.settings.get_settings() instead.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
 
 
 class Config:
-    """Configuration class stub."""
+    """Configuration class stub (deprecated)."""
 
     def __init__(self):
         self.data = {}
@@ -17,9 +29,9 @@ class Config:
     def _load_defaults(self) -> None:
         """Load default configuration values."""
         self.data = {
-            # Database configuration
+            # §2.3 FIX: No hardcoded SQLite or insecure defaults
             "database": {
-                "url": "sqlite:///test.db",
+                "url": os.getenv("DATABASE_URL", ""),
                 "pool_size": 10,
                 "max_overflow": 20,
                 "echo": False
@@ -98,7 +110,7 @@ class Config:
 
     def get_database_url(self) -> str:
         """Get database URL."""
-        return self.get("database.url", "sqlite:///test.db")
+        return self.get("database.url", "")
 
     def get_api_config(self) -> dict[str, Any]:
         """Get API configuration."""

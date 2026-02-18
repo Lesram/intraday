@@ -18,7 +18,7 @@ import logging
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from backend.infra.security import get_current_user
 
@@ -72,23 +72,30 @@ class DrawingResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 # ============================================================================
-# IN-MEMORY STORAGE (for now - migrate to DB later)
+# STORAGE LAYER — Database-first with in-memory fallback
 # ============================================================================
 
-# TODO: Replace with database table
-# Format: {user_id: {symbol: [drawings]}}
+# In-memory fallback (used when no database session is available)
 _drawings_store: dict = {}
 
+_DB_AVAILABLE = False
+try:
+    from backend.infra.schemas import Drawing as DrawingModel
+    from backend.database.connection import get_database_session
+    _DB_AVAILABLE = True
+except ImportError:
+    DrawingModel = None  # type: ignore[assignment,misc]
+    get_database_session = None  # type: ignore[assignment]
+
 def _username_to_id(username: str) -> int:
-    """Convert username to stable integer ID for in-memory storage"""
-    return abs(hash(username)) % (10 ** 8)  # 8-digit positive integer
+    """Convert username to stable integer ID."""
+    return abs(hash(username)) % (10 ** 8)
 
 def _get_user_drawings(user_id: int, symbol: str) -> list[dict]:
-    """Get all drawings for a user and symbol"""
+    """Get all drawings for a user and symbol (in-memory fallback)."""
     if user_id not in _drawings_store:
         _drawings_store[user_id] = {}
     if symbol not in _drawings_store[user_id]:
@@ -96,7 +103,7 @@ def _get_user_drawings(user_id: int, symbol: str) -> list[dict]:
     return _drawings_store[user_id][symbol]
 
 def _find_drawing(user_id: int, drawing_id: str) -> dict | None:
-    """Find a drawing by ID"""
+    """Find a drawing by ID (in-memory fallback)."""
     if user_id not in _drawings_store:
         return None
     for symbol_drawings in _drawings_store[user_id].values():

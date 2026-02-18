@@ -598,8 +598,8 @@ class TestTemporalFeaturesLeads:
     """Tests for TemporalFeatures.create_leads method."""
 
     def test_create_leads_basic(self, sample_price_series):
-        """Test basic lead creation."""
-        result = TemporalFeatures.create_leads(sample_price_series, leads=[1, 5])
+        """Test basic lead creation with _training_target_only=True."""
+        result = TemporalFeatures.create_leads(sample_price_series, leads=[1, 5], _training_target_only=True)
 
         assert isinstance(result, pd.DataFrame)
         assert "close_lead_1" in result.columns
@@ -607,13 +607,18 @@ class TestTemporalFeaturesLeads:
 
     def test_leads_values_correct(self, sample_price_series):
         """Test lead values are correct."""
-        result = TemporalFeatures.create_leads(sample_price_series, leads=[1])
+        result = TemporalFeatures.create_leads(sample_price_series, leads=[1], _training_target_only=True)
 
         # Lead 1 should equal shifted series (negative shift)
         expected = sample_price_series.shift(-1)
         pd.testing.assert_series_equal(
             result["close_lead_1"], expected, check_names=False
         )
+
+    def test_create_leads_raises_without_flag(self, sample_price_series):
+        """P&L-023: Calling create_leads without _training_target_only=True must raise."""
+        with pytest.raises(ValueError, match="P&L-023"):
+            TemporalFeatures.create_leads(sample_price_series, leads=[1])
 
 
 # ==============================================================================
@@ -880,20 +885,18 @@ class TestFeatureEngineerTransform:
         assert "hour" not in result.columns
 
     def test_transform_handles_errors(self):
-        """Test transform handles errors gracefully."""
+        """Test transform raises RuntimeError on transformation failure (fail-fast for ML safety)."""
         engineer = FeatureEngineer()
         # Data without 'close' will fail technical features
         data = pd.DataFrame({"open": [1, 2, 3]})
 
-        result = engineer.transform(
-            data,
-            include_technical=True,
-            include_statistical=False,
-            include_temporal=False,
-        )
-
-        # Should return original data on error
-        assert "open" in result.columns
+        with pytest.raises(RuntimeError, match="Feature transformation failed"):
+            engineer.transform(
+                data,
+                include_technical=True,
+                include_statistical=False,
+                include_temporal=False,
+            )
 
 
 class TestFeatureEngineerFitTransform:

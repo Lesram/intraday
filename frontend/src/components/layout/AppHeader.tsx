@@ -90,7 +90,7 @@ const AppHeader = () => {
       {/* Right Side - Notifications & User */}
       <Space size="large">
         {/* Notifications */}
-        <Badge count={5} offset={[-5, 5]}>
+        <Badge count={0} offset={[-5, 5]}>
           <button
             style={{
               background: 'none',
@@ -100,7 +100,7 @@ const AppHeader = () => {
               display: 'flex',
               alignItems: 'center',
             }}
-            aria-label="Notifications (5 unread)"
+            aria-label="Notifications"
             onClick={() => navigate('/notifications')}
           >
             <BellOutlined

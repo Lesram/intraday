@@ -9,7 +9,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Request, Response, status
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.config import get_settings
@@ -27,14 +27,20 @@ def _compute_etag(data: Any) -> str:
 
 
 class PositionDTO(BaseModel):
-    """Position data transfer object."""
+    """§13.4 FIX: Position DTO aligned with frontend Position interface."""
+    model_config = ConfigDict(populate_by_name=True)
+
     symbol: str
-    qty: float
-    avg_price: float
-    market_price: float | None = None
+    quantity: float = Field(default=0.0, alias="qty")
+    average_entry_price: float = Field(default=0.0, alias="avg_price")
+    current_price: float = Field(default=0.0, alias="market_price")
     market_value: float | None = None
     unrealized_pl: float | None = None
-    updated_at: datetime
+    unrealized_pl_percent: float = 0.0
+    cost_basis: float = 0.0
+    side: str = "long"
+    opened_at: str = ""
+    updated_at: datetime | str = ""
 
 
 def get_mock_positions() -> list[PositionDTO]:

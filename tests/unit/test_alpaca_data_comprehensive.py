@@ -153,15 +153,15 @@ class TestAlpacaDataClientGetHistoricalCloses:
     async def test_get_historical_closes_success(self, mock_env_vars, mock_http_client, sample_bars_response):
         """Test successful historical closes retrieval."""
         from backend.integrations.alpaca_data import AlpacaDataClient
-        
+
         client = AlpacaDataClient()
         client.client = mock_http_client
-        
+
         # Mock successful response
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.json.return_value = sample_bars_response
-        mock_http_client.get.return_value = mock_response
+        mock_http_client.request = AsyncMock(return_value=mock_response)
         
         closes = await client.get_historical_closes("AAPL", lookback=5)
         
@@ -172,66 +172,67 @@ class TestAlpacaDataClientGetHistoricalCloses:
     async def test_get_historical_closes_default_params(self, mock_env_vars, mock_http_client, sample_bars_response):
         """Test get_historical_closes with default parameters."""
         from backend.integrations.alpaca_data import AlpacaDataClient
-        
+
         client = AlpacaDataClient()
         client.client = mock_http_client
-        
+
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.json.return_value = sample_bars_response
-        mock_http_client.get.return_value = mock_response
-        
+        mock_http_client.request = AsyncMock(return_value=mock_response)
+
         await client.get_historical_closes("MSFT")
-        
+
         # Check API was called with correct URL pattern
-        call_args = mock_http_client.get.call_args
-        assert "/stocks/MSFT/bars" in call_args[0][0]
+        call_args = mock_http_client.request.call_args
+        assert "/stocks/MSFT/bars" in call_args[0][1]
 
     @pytest.mark.asyncio
     async def test_get_historical_closes_custom_timeframe(self, mock_env_vars, mock_http_client, sample_bars_response):
         """Test get_historical_closes with custom timeframe."""
         from backend.integrations.alpaca_data import AlpacaDataClient
-        
+
         client = AlpacaDataClient()
         client.client = mock_http_client
-        
+
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.json.return_value = sample_bars_response
-        mock_http_client.get.return_value = mock_response
-        
+        mock_http_client.request = AsyncMock(return_value=mock_response)
+
         await client.get_historical_closes("AAPL", timeframe="1Hour")
-        
+
         # Verify params include timeframe
-        call_args = mock_http_client.get.call_args
-        assert call_args[1]["params"]["timeframe"] == "1Hour"
+        call_args = mock_http_client.request.call_args
+        assert call_args.kwargs["params"]["timeframe"] == "1Hour"
 
     @pytest.mark.asyncio
     async def test_get_historical_closes_symbol_uppercase(self, mock_env_vars, mock_http_client, sample_bars_response):
         """Test symbol is converted to uppercase."""
         from backend.integrations.alpaca_data import AlpacaDataClient
-        
+
         client = AlpacaDataClient()
         client.client = mock_http_client
-        
+
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.json.return_value = sample_bars_response
-        mock_http_client.get.return_value = mock_response
-        
+        mock_http_client.request = AsyncMock(return_value=mock_response)
+
         await client.get_historical_closes("aapl")
-        
-        call_args = mock_http_client.get.call_args
-        assert "/stocks/AAPL/bars" in call_args[0][0]
+
+        call_args = mock_http_client.request.call_args
+        # Second positional arg is the URL
+        assert "/stocks/AAPL/bars" in call_args[0][1]
 
     @pytest.mark.asyncio
     async def test_get_historical_closes_limits_to_lookback(self, mock_env_vars, mock_http_client):
         """Test result is limited to lookback count."""
         from backend.integrations.alpaca_data import AlpacaDataClient
-        
+
         client = AlpacaDataClient()
         client.client = mock_http_client
-        
+
         # Response with more bars than requested
         many_bars = {
             "bars": [
@@ -239,14 +240,14 @@ class TestAlpacaDataClientGetHistoricalCloses:
                 for i in range(1, 11)  # 10 bars
             ]
         }
-        
+
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.json.return_value = many_bars
-        mock_http_client.get.return_value = mock_response
-        
+        mock_http_client.request = AsyncMock(return_value=mock_response)
+
         closes = await client.get_historical_closes("AAPL", lookback=5)
-        
+
         # Should return only last 5
         assert len(closes) == 5
 
@@ -254,34 +255,34 @@ class TestAlpacaDataClientGetHistoricalCloses:
     async def test_get_historical_closes_empty_response(self, mock_env_vars, mock_http_client):
         """Test handling of empty bars response."""
         from backend.integrations.alpaca_data import AlpacaDataClient
-        
+
         client = AlpacaDataClient()
         client.client = mock_http_client
-        
+
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.json.return_value = {"bars": []}
-        mock_http_client.get.return_value = mock_response
-        
+        mock_http_client.request = AsyncMock(return_value=mock_response)
+
         closes = await client.get_historical_closes("AAPL")
-        
+
         assert closes == []
 
     @pytest.mark.asyncio
     async def test_get_historical_closes_no_bars_key(self, mock_env_vars, mock_http_client):
         """Test handling of response without bars key."""
         from backend.integrations.alpaca_data import AlpacaDataClient
-        
+
         client = AlpacaDataClient()
         client.client = mock_http_client
-        
+
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.json.return_value = {}  # No bars key
-        mock_http_client.get.return_value = mock_response
-        
+        mock_http_client.request = AsyncMock(return_value=mock_response)
+
         closes = await client.get_historical_closes("AAPL")
-        
+
         assert closes == []
 
 
@@ -296,73 +297,75 @@ class TestAlpacaDataClientErrors:
     async def test_get_historical_closes_api_error(self, mock_env_vars, mock_http_client):
         """Test handling of API error response."""
         from backend.integrations.alpaca_data import AlpacaDataClient
-        
+
         client = AlpacaDataClient()
         client.client = mock_http_client
-        
+
         mock_response = MagicMock()
         mock_response.status_code = 400
         mock_response.text = "Bad Request"
         mock_response.json.return_value = {"message": "Invalid symbol"}
-        mock_http_client.get.return_value = mock_response
-        
+        mock_http_client.request = AsyncMock(return_value=mock_response)
+
         with pytest.raises(HTTPException) as exc_info:
             await client.get_historical_closes("INVALID")
-        
+
         assert exc_info.value.status_code == 502
         assert "Alpaca API error: 400" in exc_info.value.detail
 
     @pytest.mark.asyncio
-    async def test_get_historical_closes_server_error(self, mock_env_vars, mock_http_client):
+    @patch("backend.integrations.alpaca_data.asyncio.sleep", new_callable=AsyncMock)
+    async def test_get_historical_closes_server_error(self, mock_sleep, mock_env_vars, mock_http_client):
         """Test handling of 500 server error."""
         from backend.integrations.alpaca_data import AlpacaDataClient
-        
+
         client = AlpacaDataClient()
         client.client = mock_http_client
-        
+
         mock_response = MagicMock()
         mock_response.status_code = 500
         mock_response.text = "Internal Server Error"
         mock_response.json.side_effect = Exception("Not JSON")
-        mock_http_client.get.return_value = mock_response
-        
+        mock_http_client.request = AsyncMock(return_value=mock_response)
+
         with pytest.raises(HTTPException) as exc_info:
             await client.get_historical_closes("AAPL")
-        
+
         assert exc_info.value.status_code == 502
 
     @pytest.mark.asyncio
-    async def test_get_historical_closes_rate_limit_error(self, mock_env_vars, mock_http_client):
+    @patch("backend.integrations.alpaca_data.asyncio.sleep", new_callable=AsyncMock)
+    async def test_get_historical_closes_rate_limit_error(self, mock_sleep, mock_env_vars, mock_http_client):
         """Test handling of rate limit (429) error."""
         from backend.integrations.alpaca_data import AlpacaDataClient
-        
+
         client = AlpacaDataClient()
         client.client = mock_http_client
-        
+
         mock_response = MagicMock()
         mock_response.status_code = 429
         mock_response.text = "Too Many Requests"
         mock_response.json.return_value = {"message": "Rate limit exceeded"}
-        mock_http_client.get.return_value = mock_response
-        
+        mock_http_client.request = AsyncMock(return_value=mock_response)
+
         with pytest.raises(HTTPException) as exc_info:
             await client.get_historical_closes("AAPL")
-        
+
         assert exc_info.value.status_code == 502
 
     @pytest.mark.asyncio
     async def test_get_historical_closes_network_error(self, mock_env_vars, mock_http_client):
         """Test handling of network error."""
         from backend.integrations.alpaca_data import AlpacaDataClient
-        
+
         client = AlpacaDataClient()
         client.client = mock_http_client
-        
-        mock_http_client.get.side_effect = Exception("Network error")
-        
+
+        mock_http_client.request = AsyncMock(side_effect=Exception("Network error"))
+
         with pytest.raises(HTTPException) as exc_info:
             await client.get_historical_closes("AAPL")
-        
+
         assert exc_info.value.status_code == 502
         assert "Failed to fetch historical data" in exc_info.value.detail
 
@@ -386,38 +389,38 @@ class TestAlpacaDataClientErrors:
     async def test_get_historical_closes_unauthorized(self, mock_env_vars, mock_http_client):
         """Test handling of 401 unauthorized error."""
         from backend.integrations.alpaca_data import AlpacaDataClient
-        
+
         client = AlpacaDataClient()
         client.client = mock_http_client
-        
+
         mock_response = MagicMock()
         mock_response.status_code = 401
         mock_response.text = "Unauthorized"
         mock_response.json.return_value = {"message": "Invalid API key"}
-        mock_http_client.get.return_value = mock_response
-        
+        mock_http_client.request = AsyncMock(return_value=mock_response)
+
         with pytest.raises(HTTPException) as exc_info:
             await client.get_historical_closes("AAPL")
-        
+
         assert exc_info.value.status_code == 502
 
     @pytest.mark.asyncio
     async def test_get_historical_closes_forbidden(self, mock_env_vars, mock_http_client):
         """Test handling of 403 forbidden error."""
         from backend.integrations.alpaca_data import AlpacaDataClient
-        
+
         client = AlpacaDataClient()
         client.client = mock_http_client
-        
+
         mock_response = MagicMock()
         mock_response.status_code = 403
         mock_response.text = "Forbidden"
         mock_response.json.return_value = {"message": "Access denied"}
-        mock_http_client.get.return_value = mock_response
-        
+        mock_http_client.request = AsyncMock(return_value=mock_response)
+
         with pytest.raises(HTTPException) as exc_info:
             await client.get_historical_closes("AAPL")
-        
+
         assert exc_info.value.status_code == 502
 
 
@@ -536,75 +539,75 @@ class TestAlpacaDataClientParamValidation:
     async def test_lookback_calculation(self, mock_env_vars, mock_http_client, sample_bars_response):
         """Test lookback affects request parameters."""
         from backend.integrations.alpaca_data import AlpacaDataClient
-        
+
         client = AlpacaDataClient()
         client.client = mock_http_client
-        
+
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.json.return_value = sample_bars_response
-        mock_http_client.get.return_value = mock_response
-        
+        mock_http_client.request = AsyncMock(return_value=mock_response)
+
         await client.get_historical_closes("AAPL", lookback=50)
-        
-        call_args = mock_http_client.get.call_args
+
+        call_args = mock_http_client.request.call_args
         # Limit should be lookback * 2
-        assert call_args[1]["params"]["limit"] == 100
+        assert call_args.kwargs["params"]["limit"] == 100
 
     @pytest.mark.asyncio
     async def test_different_timeframes(self, mock_env_vars, mock_http_client, sample_bars_response):
         """Test different timeframe values."""
         from backend.integrations.alpaca_data import AlpacaDataClient
-        
+
         client = AlpacaDataClient()
         client.client = mock_http_client
-        
+
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.json.return_value = sample_bars_response
-        mock_http_client.get.return_value = mock_response
-        
+        mock_http_client.request = AsyncMock(return_value=mock_response)
+
         for timeframe in ["1Day", "1Hour", "5Min", "15Min"]:
             await client.get_historical_closes("AAPL", timeframe=timeframe)
-            
-            call_args = mock_http_client.get.call_args
-            assert call_args[1]["params"]["timeframe"] == timeframe
+
+            call_args = mock_http_client.request.call_args
+            assert call_args.kwargs["params"]["timeframe"] == timeframe
 
     @pytest.mark.asyncio
     async def test_sort_is_ascending(self, mock_env_vars, mock_http_client, sample_bars_response):
         """Test sort parameter is set to asc."""
         from backend.integrations.alpaca_data import AlpacaDataClient
-        
+
         client = AlpacaDataClient()
         client.client = mock_http_client
-        
+
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.json.return_value = sample_bars_response
-        mock_http_client.get.return_value = mock_response
-        
+        mock_http_client.request = AsyncMock(return_value=mock_response)
+
         await client.get_historical_closes("AAPL")
-        
-        call_args = mock_http_client.get.call_args
-        assert call_args[1]["params"]["sort"] == "asc"
+
+        call_args = mock_http_client.request.call_args
+        assert call_args.kwargs["params"]["sort"] == "asc"
 
     @pytest.mark.asyncio
-    async def test_adjustment_is_raw(self, mock_env_vars, mock_http_client, sample_bars_response):
-        """Test adjustment parameter is set to raw."""
+    async def test_adjustment_is_split(self, mock_env_vars, mock_http_client, sample_bars_response):
+        """Test adjustment parameter is set to split."""
         from backend.integrations.alpaca_data import AlpacaDataClient
-        
+
         client = AlpacaDataClient()
         client.client = mock_http_client
-        
+
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.json.return_value = sample_bars_response
-        mock_http_client.get.return_value = mock_response
-        
+        mock_http_client.request = AsyncMock(return_value=mock_response)
+
         await client.get_historical_closes("AAPL")
-        
-        call_args = mock_http_client.get.call_args
-        assert call_args[1]["params"]["adjustment"] == "raw"
+
+        call_args = mock_http_client.request.call_args
+        assert call_args.kwargs["params"]["adjustment"] == "split"
 
 
 # ============================================================================
@@ -618,20 +621,20 @@ class TestAlpacaDataClientDateRange:
     async def test_date_range_format(self, mock_env_vars, mock_http_client, sample_bars_response):
         """Test date range is properly formatted."""
         from backend.integrations.alpaca_data import AlpacaDataClient
-        
+
         client = AlpacaDataClient()
         client.client = mock_http_client
-        
+
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.json.return_value = sample_bars_response
-        mock_http_client.get.return_value = mock_response
-        
+        mock_http_client.request = AsyncMock(return_value=mock_response)
+
         await client.get_historical_closes("AAPL", lookback=200)
-        
-        call_args = mock_http_client.get.call_args
-        params = call_args[1]["params"]
-        
+
+        call_args = mock_http_client.request.call_args
+        params = call_args.kwargs["params"]
+
         # Start and end should be date strings
         assert "start" in params
         assert "end" in params
@@ -643,24 +646,24 @@ class TestAlpacaDataClientDateRange:
     async def test_buffer_days_for_weekends(self, mock_env_vars, mock_http_client, sample_bars_response):
         """Test buffer days account for weekends/holidays."""
         from backend.integrations.alpaca_data import AlpacaDataClient
-        
+
         client = AlpacaDataClient()
         client.client = mock_http_client
-        
+
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.json.return_value = sample_bars_response
-        mock_http_client.get.return_value = mock_response
-        
+        mock_http_client.request = AsyncMock(return_value=mock_response)
+
         await client.get_historical_closes("AAPL", lookback=100)
-        
-        call_args = mock_http_client.get.call_args
-        params = call_args[1]["params"]
-        
+
+        call_args = mock_http_client.request.call_args
+        params = call_args.kwargs["params"]
+
         # Start date should be well before lookback trading days
         start_date = datetime.strptime(params["start"], "%Y-%m-%d")
         end_date = datetime.strptime(params["end"], "%Y-%m-%d")
-        
+
         # With 1.4 buffer factor, should request ~140 days for 100 lookback
         days_diff = (end_date - start_date).days
         assert days_diff >= 100  # At least lookback days
@@ -677,45 +680,45 @@ class TestAlpacaDataClientResponseParsing:
     async def test_parse_closing_prices(self, mock_env_vars, mock_http_client):
         """Test closing prices are correctly extracted."""
         from backend.integrations.alpaca_data import AlpacaDataClient
-        
+
         client = AlpacaDataClient()
         client.client = mock_http_client
-        
+
         response_data = {
             "bars": [
                 {"t": "2025-01-01", "c": 150.50, "o": 149, "h": 151, "l": 148, "v": 1000},
                 {"t": "2025-01-02", "c": 151.25, "o": 150, "h": 152, "l": 149, "v": 1100},
             ]
         }
-        
+
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.json.return_value = response_data
-        mock_http_client.get.return_value = mock_response
-        
+        mock_http_client.request = AsyncMock(return_value=mock_response)
+
         closes = await client.get_historical_closes("AAPL", lookback=10)
-        
+
         assert closes == [150.50, 151.25]
 
     @pytest.mark.asyncio
     async def test_parse_with_float_conversion(self, mock_env_vars, mock_http_client):
         """Test closing prices are converted to float."""
         from backend.integrations.alpaca_data import AlpacaDataClient
-        
+
         client = AlpacaDataClient()
         client.client = mock_http_client
-        
+
         response_data = {
             "bars": [
                 {"t": "2025-01-01", "c": 150, "o": 149, "h": 151, "l": 148, "v": 1000},  # Integer
             ]
         }
-        
+
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.json.return_value = response_data
-        mock_http_client.get.return_value = mock_response
-        
+        mock_http_client.request = AsyncMock(return_value=mock_response)
+
         closes = await client.get_historical_closes("AAPL")
-        
+
         assert all(isinstance(c, float) for c in closes)

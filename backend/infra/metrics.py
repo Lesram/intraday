@@ -133,7 +133,16 @@ LABEL_VALUE_ALLOWLIST: Final[dict[str, tuple[str, ...]]] = {
     "message_type": ("signal", "portfolio", "heartbeat", "error", "any", "test"),
     "direction": ("inbound", "outbound", "sent"),
     # Strategy engine label values
-    "source": ("momentum", "mean_reversion", "ml_ensemble", "sentiment", "other"),
+    "source": (
+        "momentum",
+        "mean_reversion",
+        "stat_arb",
+        "regime_momentum",
+        "breakout",
+        "ml_ensemble",
+        "sentiment",
+        "other",
+    ),
     "symbol_bucket": ("A-F", "G-M", "N-S", "T-Z", "other"),
     # Risk manager label values (bounded reasons)
     "reason": (
@@ -152,6 +161,7 @@ LABEL_VALUE_ALLOWLIST: Final[dict[str, tuple[str, ...]]] = {
         "risk_limit",
         "position_limit",
         "volatility",
+        "risk_error",
         "other",
         # WebSocket queue reasons
         "queue_full",
@@ -265,11 +275,15 @@ class MetricsRegistry:
             if key in LABEL_VALUE_ALLOWLIST:
                 allowed_values = LABEL_VALUE_ALLOWLIST[key]
                 if value not in allowed_values:
-                    # Log warning but allow - might be a new valid value
-                    logger.warning(
-                        f"Label '{key}' has unexpected value '{value}'. "
-                        f"Expected one of: {allowed_values}"
-                    )
+                    # Keep cardinality bounded: coerce to 'other' when possible.
+                    # Only warn when coercion isn't available.
+                    if "other" in allowed_values:
+                        value = "other"
+                    else:
+                        logger.warning(
+                            f"Label '{key}' has unexpected value '{value}'. "
+                            f"Expected one of: {allowed_values}"
+                        )
             validated_labels[key] = str(value)  # Ensure string type
 
         return validated_labels

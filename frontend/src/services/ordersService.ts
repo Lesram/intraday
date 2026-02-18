@@ -111,7 +111,7 @@ export const ordersService = {
    * Cancel order
    */
   cancelOrder: async (orderId: string): Promise<Order> => {
-    const response = await apiClient.delete<BackendOrder>(`/orders/${orderId}/cancel`);
+    const response = await apiClient.post<BackendOrder>(`/orders/${orderId}/cancel`);
     return transformBackendOrder(response.data);
   },
 

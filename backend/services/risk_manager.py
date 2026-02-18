@@ -177,10 +177,30 @@ class RiskManager:
             return None
 
         # Calculate today's P&L
-        datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+        today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
 
-        # Query today's realized P&L from trades (simplified - would integrate with TradeService)
-        current_loss = Decimal(0)  # Placeholder
+        # Query today's realized P&L from trades table
+        try:
+            from backend.infra.schemas import Order
+            result = await self.db.execute(
+                select(Order).where(
+                    and_(
+                        Order.user_id == user_id,
+                        Order.status == "filled",
+                        Order.updated_at >= today_start,
+                    )
+                )
+            )
+            filled_orders = result.scalars().all()
+            current_loss = sum(
+                Decimal(str(getattr(o, 'realized_pnl', 0) or 0))
+                for o in filled_orders
+            )
+            # daily_loss is expressed as a positive value when losing
+            current_loss = abs(min(current_loss, Decimal(0)))
+        except Exception as e:
+            logger.warning(f"Could not calculate daily loss for user {user_id}: {e}")
+            current_loss = Decimal(0)
 
         # Calculate percentage and status
         percent_used = (current_loss / limit * 100) if limit > 0 else Decimal(0)
@@ -204,8 +224,26 @@ class RiskManager:
         if not limit:
             return None
 
-        # Calculate current drawdown (placeholder - would integrate with portfolio service)
-        current_drawdown = Decimal(0)
+        # Calculate current drawdown from portfolio history
+        try:
+            from backend.infra.schemas import PortfolioHistory
+            result = await self.db.execute(
+                select(PortfolioHistory)
+                .where(PortfolioHistory.user_id == user_id)
+                .order_by(PortfolioHistory.timestamp.desc())
+                .limit(252)  # ~1 year of trading days
+            )
+            history = result.scalars().all()
+            if history:
+                equity_values = [float(h.total_equity) for h in reversed(history)]
+                peak = max(equity_values)
+                current = equity_values[-1]
+                current_drawdown = Decimal(str(max(0, (peak - current) / peak * 100))) if peak > 0 else Decimal(0)
+            else:
+                current_drawdown = Decimal(0)
+        except Exception as e:
+            logger.warning(f"Could not calculate max drawdown for user {user_id}: {e}")
+            current_drawdown = Decimal(0)
 
         percent_used = (current_drawdown / limit * 100) if limit > 0 else Decimal(0)
         status = await self._get_status_from_percent(user_id, self.MAX_DRAWDOWN, percent_used)
@@ -319,8 +357,17 @@ class RiskManager:
         if not limit:
             return None
 
-        # Get buying power from portfolio service (placeholder)
-        current_buying_power_used = Decimal(0)
+        # Get buying power from portfolio service
+        try:
+            from backend.services.portfolio_service import PortfolioService
+            portfolio_svc = PortfolioService()
+            portfolio = await portfolio_svc.get_portfolio_data(str(user_id))
+            total_equity = Decimal(str(portfolio.get('totalEquity', 0)))
+            buying_power = Decimal(str(portfolio.get('buyingPower', 0)))
+            current_buying_power_used = total_equity - buying_power if total_equity > buying_power else Decimal(0)
+        except Exception as e:
+            logger.warning(f"Could not calculate buying power for user {user_id}: {e}")
+            current_buying_power_used = Decimal(0)
 
         percent_used = (
             (current_buying_power_used / limit * 100) if limit > 0 else Decimal(0)
@@ -513,7 +560,7 @@ class RiskManager:
                 and_(
                     DBRiskViolation.user_id == user_id,
                     or_(
-                        not DBRiskViolation.resolved,
+                        ~DBRiskViolation.resolved,
                         DBRiskViolation.created_at >= cutoff,
                     ),
                 )

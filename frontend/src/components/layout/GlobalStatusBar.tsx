@@ -67,10 +67,11 @@ export const GlobalStatusBar: React.FC = () => {
     }) + ' EST';
   }, []);
 
-  // Check broker connection - only if authenticated
+  // Check broker connection - only if authenticated with valid token
   const checkBrokerConnection = useCallback(async () => {
-    // Skip check if not authenticated
-    if (!isAuthenticated) {
+    // Skip check if not authenticated or token is expired/missing
+    const authState = useAuthStore.getState();
+    if (!isAuthenticated || !authState.accessToken || authState.isTokenExpired()) {
       setBrokerStatus({
         connected: false,
         lastCheck: new Date(),

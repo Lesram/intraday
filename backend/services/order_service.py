@@ -4,11 +4,12 @@ Now includes strategy engine integration for plan-and-submit workflows.
 """
 
 import asyncio
+import inspect
 import json
 import logging
 import os
 import time
-from datetime import datetime, time as dt_time
+from datetime import UTC, datetime, time as dt_time
 from typing import TYPE_CHECKING, Any, Optional
 from uuid import uuid4
 from zoneinfo import ZoneInfo
@@ -24,6 +25,7 @@ except ImportError:
     REDIS_AVAILABLE = False
 
 from ..infra.alerting import get_alert_manager
+from ..infra.observability import record_latency, trace_span
 from ..infra.outbox import OutboxRepo
 
 logger = logging.getLogger(__name__)
@@ -143,10 +145,18 @@ class CircuitBreaker:
         try:
             # L-19: Use pipeline for optimized Redis calls
             pipe = self._redis.pipeline()
-            pipe.get(CB_STATE_KEY)
-            pipe.get(CB_OPENED_AT_KEY)
-            pipe.get(CB_FAILURES_KEY)
-            pipe.get(CB_DAILY_PNL_KEY)
+            state_call = pipe.get(CB_STATE_KEY)
+            if inspect.isawaitable(state_call):
+                await state_call
+            opened_at_call = pipe.get(CB_OPENED_AT_KEY)
+            if inspect.isawaitable(opened_at_call):
+                await opened_at_call
+            failures_call = pipe.get(CB_FAILURES_KEY)
+            if inspect.isawaitable(failures_call):
+                await failures_call
+            daily_pnl_call = pipe.get(CB_DAILY_PNL_KEY)
+            if inspect.isawaitable(daily_pnl_call):
+                await daily_pnl_call
             results = await pipe.execute()
             
             state, opened_at, failures_json, daily_pnl = results
@@ -186,19 +196,33 @@ class CircuitBreaker:
         try:
             # Persist state atomically using pipeline
             pipe = self._redis.pipeline()
-            pipe.set(CB_STATE_KEY, self._state)
+            set_state_call = pipe.set(CB_STATE_KEY, self._state)
+            if inspect.isawaitable(set_state_call):
+                await set_state_call
             if self._opened_at:
-                pipe.set(CB_OPENED_AT_KEY, str(self._opened_at))
+                set_opened_at_call = pipe.set(CB_OPENED_AT_KEY, str(self._opened_at))
+                if inspect.isawaitable(set_opened_at_call):
+                    await set_opened_at_call
             else:
-                pipe.delete(CB_OPENED_AT_KEY)
-            pipe.set(CB_FAILURES_KEY, json.dumps(self._failures))
-            pipe.set(CB_DAILY_PNL_KEY, str(self._daily_pnl))
+                delete_opened_at_call = pipe.delete(CB_OPENED_AT_KEY)
+                if inspect.isawaitable(delete_opened_at_call):
+                    await delete_opened_at_call
+            set_failures_call = pipe.set(CB_FAILURES_KEY, json.dumps(self._failures))
+            if inspect.isawaitable(set_failures_call):
+                await set_failures_call
+            set_daily_pnl_call = pipe.set(CB_DAILY_PNL_KEY, str(self._daily_pnl))
+            if inspect.isawaitable(set_daily_pnl_call):
+                await set_daily_pnl_call
 
             # Set TTL on all keys (24 hours - reset daily)
             for key in [CB_STATE_KEY, CB_FAILURES_KEY, CB_DAILY_PNL_KEY]:
-                pipe.expire(key, 86400)
+                expire_call = pipe.expire(key, 86400)
+                if inspect.isawaitable(expire_call):
+                    await expire_call
             if self._opened_at:
-                pipe.expire(CB_OPENED_AT_KEY, 86400)
+                expire_opened_at_call = pipe.expire(CB_OPENED_AT_KEY, 86400)
+                if inspect.isawaitable(expire_opened_at_call):
+                    await expire_opened_at_call
 
             await pipe.execute()
 
@@ -489,14 +513,19 @@ class OrderService:
     Service for order operations including strategy-driven workflows.
     """
 
+    # §4.8 FIX: TTL for idempotency caches (seconds)
+    IDEMPOTENCY_TTL: int = 3600  # 1 hour — entries older than this are evicted
+
     def __init__(self, *args, db_session=None, sessionmaker=None, **kwargs):
         # E1: Accept legacy positional args (orders_repo, broker, outbox_repo)
         # Initialize async concurrency control (H-06 FIX)
         import asyncio
-        self._async_submitted_orders = {}
-        self._async_order_lock = asyncio.Lock()  # H-06 FIX: Initialize lock for concurrent order protection
+        self._async_submitted_orders: dict[str, tuple[float, Any]] = {}   # key → (timestamp, value)
+        self._symbol_locks: dict[str, asyncio.Lock] = {}  # Per-symbol locks to avoid cross-symbol blocking
+        self._symbol_locks_lock = asyncio.Lock()  # Lock for accessing _symbol_locks dict
         self._cancel_locks: dict[str, asyncio.Lock] = {}  # M-12 FIX: Per-order cancellation locks
         self._cancel_locks_lock = asyncio.Lock()  # Lock for accessing _cancel_locks dict
+        self._max_cache_size = 10000  # Prevent unbounded memory growth
         self.db_session = db_session
         self.sessionmaker = sessionmaker
 
@@ -514,17 +543,44 @@ class OrderService:
             if len(args) > 2 and self.outbox_repo is None:
                 self.outbox_repo = args[2]
 
-        # P5 Patch: Handle repository dependencies with defaults for testing
-        # Respect explicit None values - don't auto-mock if None was passed explicitly
-        # Only create mocks if no repositories were provided at all
+        # P5 Patch: Fail fast if critical dependencies are missing in production
+        # Only create mocks if explicitly running tests
+        import os as _os
         if not args and not any(k in kwargs for k in ['orders_repo', 'broker', 'outbox_repo']):
-            from unittest.mock import AsyncMock
-            self.orders_repo = self.orders_repo or AsyncMock()
-            self.outbox_repo = self.outbox_repo or AsyncMock()
-            self.broker = self.broker or AsyncMock()
+            import logging as _log
+            env = _os.getenv("ENVIRONMENT", "development")
+            if env == "production":
+                _log.getLogger(__name__).error(
+                    "OrderService created without repositories in PRODUCTION. "
+                    "Orders will be rejected. Pass orders_repo, outbox_repo, and broker."
+                )
+            else:
+                _log.getLogger(__name__).warning(
+                    "OrderService created without repositories — orders will fail. "
+                    "Pass orders_repo, outbox_repo, and broker explicitly."
+                )
 
         # Handle other kwargs
         self.strategy_engine = kwargs.get("strategy_engine")
+
+    def _evict_stale_cache(self, cache: dict, *, ttl: int | None = None) -> None:
+        """
+        §4.8: Evict entries older than *ttl* seconds, then trim by max size.
+
+        Entries must be stored as ``{key: (timestamp, value)}``.
+        """
+        import time as _time
+
+        ttl = ttl or self.IDEMPOTENCY_TTL
+        now = _time.monotonic()
+        stale = [k for k, v in cache.items() if isinstance(v, tuple) and now - v[0] > ttl]
+        for k in stale:
+            cache.pop(k, None)
+        # Also enforce max size
+        if len(cache) > self._max_cache_size:
+            oldest_keys = list(cache.keys())[: len(cache) - self._max_cache_size]
+            for k in oldest_keys:
+                cache.pop(k, None)
 
     def validate_order(self, order: dict) -> dict:
         """
@@ -636,6 +692,7 @@ class OrderService:
         side: str,
         qty: float,
         idempotency_key: str,
+        user_id: str | None = None,
         order_type: str = "market",
         tif: str = "ioc",
         attributes: dict[str, Any] | None = None,
@@ -663,6 +720,13 @@ class OrderService:
         Raises:
             RuntimeError: If circuit breaker is tripped
         """
+        # If repos are missing but sessionmaker is available, use per-call session
+        if self.orders_repo is None and self.sessionmaker is not None:
+            return await self._submit_symbol_order_with_session(
+                symbol=symbol, side=side, qty=qty, idempotency_key=idempotency_key,
+                user_id=user_id, order_type=order_type, tif=tif,
+                attributes=attributes, daily_pnl=daily_pnl,
+            )
         # Circuit breaker check - protect against runaway losses
         circuit_breaker = get_circuit_breaker()
         if circuit_breaker.check(daily_pnl):
@@ -686,17 +750,28 @@ class OrderService:
             from decimal import Decimal
             import random
 
-            # H-06 FIX: Use lock to prevent duplicate orders under concurrent load
-            async with self._async_order_lock:
+            # H-06 FIX: Use per-symbol lock to prevent duplicate orders without cross-symbol blocking
+            async with self._symbol_locks_lock:
+                if symbol not in self._symbol_locks:
+                    self._symbol_locks[symbol] = asyncio.Lock()
+                symbol_lock = self._symbol_locks[symbol]
+
+            async with symbol_lock:
                 # Check if this idempotency key is already being processed
                 if idempotency_key in self._async_submitted_orders:
-                    existing_result = self._async_submitted_orders[idempotency_key]
+                    entry = self._async_submitted_orders[idempotency_key]
+                    existing_result = entry[1] if isinstance(entry, tuple) else entry
                     logger.info(f"Returning cached order result for key {idempotency_key[:8]}...")
                     return existing_result
 
                 # Retry logic for 429 rate limiting
                 for attempt in range(MAX_RETRIES + 1):
                     try:
+                        owner_id = (
+                            user_id
+                            or (attributes or {}).get("user_id")
+                            or "system"
+                        )
                         # Create order through repository (with idempotency protection)
                         order = await self.orders_repo.upsert_by_idempotency(
                             client_key=idempotency_key,
@@ -706,6 +781,7 @@ class OrderService:
                             order_type=order_type,
                             tif=tif,
                             attributes=attributes or {},
+                            user_id=owner_id,
                         )
                         break  # Success, break out of retry loop
 
@@ -747,7 +823,9 @@ class OrderService:
                     "status": "submitted",
                     "idempotency_key": idempotency_key,
                 }
-                self._async_submitted_orders[idempotency_key] = result
+                import time as _time
+                self._async_submitted_orders[idempotency_key] = (_time.monotonic(), result)
+                self._evict_stale_cache(self._async_submitted_orders)
 
             logger.info(
                 "Order submitted successfully",
@@ -781,9 +859,56 @@ class OrderService:
             )
             raise
 
+    async def _submit_symbol_order_with_session(
+        self,
+        *,
+        symbol: str,
+        side: str,
+        qty: float,
+        idempotency_key: str,
+        user_id: str | None = None,
+        order_type: str = "market",
+        tif: str = "ioc",
+        attributes: dict[str, Any] | None = None,
+        daily_pnl: float | None = None,
+    ) -> dict[str, Any]:
+        """Fallback path: create a fresh DB session and repos per order call.
+
+        Used when OrderService is constructed with only a sessionmaker (e.g. by
+        the organism scheduler) and no pre-built repos.
+        """
+        from backend.infra.repositories.orders import OrdersRepo
+        from backend.infra.outbox import OutboxRepo
+
+        async with self.sessionmaker() as session:
+            async with session.begin():
+                _saved_orders_repo = self.orders_repo
+                _saved_outbox_repo = self.outbox_repo
+                try:
+                    self.orders_repo = OrdersRepo(session)
+                    self.outbox_repo = OutboxRepo(session)
+                    result = await self.submit_symbol_order(
+                        symbol=symbol,
+                        side=side,
+                        qty=qty,
+                        idempotency_key=idempotency_key,
+                        user_id=user_id,
+                        order_type=order_type,
+                        tif=tif,
+                        attributes=attributes,
+                        daily_pnl=daily_pnl,
+                    )
+                    return result
+                finally:
+                    self.orders_repo = _saved_orders_repo
+                    self.outbox_repo = _saved_outbox_repo
+
     def submit_order(self, order_data: dict[str, Any]) -> dict[str, Any]:
         """
         Synchronous wrapper for submit_order_async with proper idempotency.
+
+        DEPRECATED: Use submit_order_async() directly. This wrapper exists only
+        for backward compatibility and will be removed in a future version.
 
         Args:
             order_data: Order data dictionary
@@ -791,6 +916,14 @@ class OrderService:
         Returns:
             Dictionary with order submission result
         """
+        import warnings
+        warnings.warn(
+            "submit_order() is deprecated. Use submit_order_async() directly.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        logger.warning("Deprecated sync submit_order() called — use submit_order_async()")
+
         try:
             # Check if we have async event loop
             loop = asyncio.get_running_loop()
@@ -799,8 +932,8 @@ class OrderService:
             loop = None
 
         if loop is not None:
-            # We're in an async context, need to handle carefully
-            # For now, fall back to basic validation and return
+            # We're in an async context — cannot run async code here
+            # Reject the order: sync wrapper cannot safely bridge async contexts
             validation = self.validate_order(order_data)
             if not validation["valid"]:
                 return {
@@ -813,18 +946,20 @@ class OrderService:
                     "idempotency_key": order_data.get("idempotency_key", str(uuid4()))
                 }
 
-            # If we're in async context but don't have proper session/outbox
-            # return a mock response for compatibility
-            if not self.db_session or not self.orders_repo:
-                return {
-                    "status": "accepted",  # Use accepted instead of submitted for mock
-                    "reason": "Order accepted (mock mode)",
-                    "order_id": order_data.get("order_id", str(uuid4())),
-                    "symbol": order_data.get("symbol", "UNKNOWN"),
-                    "qty": order_data.get("qty", 0),
-                    "side": order_data.get("side", "buy"),
-                    "idempotency_key": order_data.get("idempotency_key", str(uuid4()))
-                }
+            # Always reject in async context — cannot safely process
+            logger.error(
+                "sync submit_order() called from async context — order rejected. "
+                "Caller must use submit_order_async() instead."
+            )
+            return {
+                "status": "rejected",
+                "reason": "Cannot process order: sync submit_order() called from async context. Use submit_order_async().",
+                "order_id": order_data.get("order_id", str(uuid4())),
+                "symbol": order_data.get("symbol", "UNKNOWN"),
+                "qty": order_data.get("qty", 0),
+                "side": order_data.get("side", "buy"),
+                "idempotency_key": order_data.get("idempotency_key", str(uuid4()))
+            }
         else:
             # No event loop, we can run async function
             try:
@@ -841,17 +976,6 @@ class OrderService:
                     "idempotency_key": order_data.get("idempotency_key", str(uuid4()))
                 }
 
-        # Fallback - should not reach here normally
-        return {
-            "status": "rejected",
-            "reason": "Unable to process order",
-            "order_id": order_data.get("order_id", str(uuid4())),
-            "symbol": order_data.get("symbol", "UNKNOWN"),
-            "qty": order_data.get("qty", 0),
-            "side": order_data.get("side", "buy"),
-            "idempotency_key": order_data.get("idempotency_key", str(uuid4()))
-        }
-
     async def modify_order(self, modification_data: dict[str, Any]) -> dict[str, Any]:
         """
         Modify an existing order with idempotency.
@@ -865,8 +989,6 @@ class OrderService:
         Returns:
             Dictionary with modification result
         """
-        from datetime import datetime
-        
         order_id = modification_data.get("order_id", "")
         modification_id = modification_data.get("modification_id", str(uuid4()))
 
@@ -876,7 +998,8 @@ class OrderService:
 
         mod_key = f"{order_id}:{modification_id}"
         if mod_key in self._order_modifications:
-            return self._order_modifications[mod_key]
+            entry = self._order_modifications[mod_key]
+            return entry[1] if isinstance(entry, tuple) else entry
 
         try:
             # Get the original order
@@ -916,18 +1039,41 @@ class OrderService:
                     "modified_at": None
                 }
 
-            # Create new order with modified values
-            # This is a simplified version - full implementation would create a new order
+            # §4.5 FIX: Atomically submit replacement order after cancel
+            replacement_order = {
+                "symbol": getattr(original_order, "symbol", modification_data.get("symbol")),
+                "side": modification_data.get("side", getattr(original_order, "side", "buy")),
+                "qty": modification_data.get("new_qty", modification_data.get("qty", getattr(original_order, "qty", None))),
+                "order_type": modification_data.get("order_type", getattr(original_order, "order_type", "market")),
+                "time_in_force": modification_data.get("time_in_force", getattr(original_order, "time_in_force", "day")),
+            }
+            new_price = modification_data.get("new_price", modification_data.get("limit_price"))
+            if new_price is not None:
+                replacement_order["limit_price"] = new_price
+
+            # Try to submit replacement via the same path as a normal order
+            new_order_result = None
+            try:
+                new_order_result = await self.submit_order(replacement_order)
+            except Exception as repl_err:
+                logger.error(
+                    f"Replacement order failed after cancel for {order_id}: {repl_err}. "
+                    "Original order was already cancelled — manual intervention needed."
+                )
+
             result = {
                 "status": "modified",
                 "order_id": order_id,
                 "modification_id": modification_id,
-                "reason": "Order cancelled and replacement pending - submit new order with modified values",
-                "modified_at": datetime.utcnow().isoformat() + "Z",
-                "original_order_cancelled": True
+                "reason": "Order cancelled and replacement submitted",
+                "modified_at": datetime.now(UTC).isoformat(),
+                "original_order_cancelled": True,
+                "replacement_order": new_order_result,
             }
 
-            self._order_modifications[mod_key] = result
+            import time as _time
+            self._order_modifications[mod_key] = (_time.monotonic(), result)
+            self._evict_stale_cache(self._order_modifications)
             return result
             
         except Exception as e:
@@ -973,7 +1119,8 @@ class OrderService:
 
             if order_id in self._order_cancellations:
                 # Return previous cancellation result - mark as already cancelled
-                prev_result = self._order_cancellations[order_id].copy()
+                entry = self._order_cancellations[order_id]
+                prev_result = (entry[1] if isinstance(entry, tuple) else entry).copy()
                 if prev_result["status"] == "cancelled":
                     prev_result["status"] = "already_cancelled"
                 return prev_result
@@ -988,6 +1135,15 @@ class OrderService:
                         order = await self.orders_repo.get_by_id(order_uuid)
                     except (ValueError, Exception) as e:
                         logger.warning(f"Could not find order {order_id} in database: {e}")
+
+                # Reject cancellation of already-filled orders
+                if order and hasattr(order, 'status') and order.status in ('filled', 'partially_filled'):
+                    return {
+                        "status": "rejected",
+                        "order_id": order_id,
+                        "reason": f"Cannot cancel order with status '{order.status}'",
+                        "cancelled_at": None
+                    }
 
                 # Try to cancel with broker if we have a broker connection
                 broker_order_id = order_id
@@ -1013,10 +1169,12 @@ class OrderService:
                     "status": "cancelled",
                     "order_id": order_id,
                     "reason": "Order cancelled successfully",
-                    "cancelled_at": datetime.utcnow().isoformat() + "Z"
+                    "cancelled_at": datetime.now(UTC).isoformat()
                 }
 
-                self._order_cancellations[order_id] = result
+                import time as _time
+                self._order_cancellations[order_id] = (_time.monotonic(), result)
+                self._evict_stale_cache(self._order_cancellations)
                 return result
             
             except Exception as e:
@@ -1083,7 +1241,8 @@ class OrderService:
 
             # Check async orders
             if hasattr(self, '_async_submitted_orders') and order_id in self._async_submitted_orders:
-                order = self._async_submitted_orders[order_id]
+                entry = self._async_submitted_orders[order_id]
+                order = entry[1] if isinstance(entry, tuple) else entry
                 return {
                     "order_id": order.get("order_id", order_id),
                     "status": order.get("status", "unknown"),
@@ -1097,19 +1256,6 @@ class OrderService:
                 }
 
             # Mock data for known test order IDs
-            if order_id == "test-123":
-                return {
-                    "order_id": order_id,
-                    "status": "filled",
-                    "symbol": "AAPL",
-                    "side": "buy",
-                    "qty": 100.0,
-                    "filled_qty": 100.0,
-                    "avg_fill_price": 150.0,
-                    "submitted_at": "2023-01-01T12:00:00",
-                    "updated_at": "2023-01-01T12:00:01"
-                }
-
             # Return None for unknown orders
             return None
 
@@ -1150,13 +1296,13 @@ class OrderService:
         if hasattr(self, '_async_submitted_orders'):
             orders = [
                 {
-                    "id": order.get("order_id", "unknown"),
-                    "symbol": order.get("symbol", ""),
-                    "status": order.get("status", "unknown"),
-                    "side": order.get("side", ""),
-                    "qty": order.get("qty", 0)
+                    "id": (v[1] if isinstance(v, tuple) else v).get("order_id", "unknown"),
+                    "symbol": (v[1] if isinstance(v, tuple) else v).get("symbol", ""),
+                    "status": (v[1] if isinstance(v, tuple) else v).get("status", "unknown"),
+                    "side": (v[1] if isinstance(v, tuple) else v).get("side", ""),
+                    "qty": (v[1] if isinstance(v, tuple) else v).get("qty", 0)
                 }
-                for order in self._async_submitted_orders.values()
+                for v in self._async_submitted_orders.values()
             ]
             all_orders.extend(orders)
 
@@ -1233,24 +1379,31 @@ class OrderService:
         order_type = order_data.get("order_type", "market")
         tif = order_data.get("tif", "gtc")  # time in force
         idempotency_key = order_data.get("idempotency_key") or str(uuid4())
+        owner_id = (
+            order_data.get("user_id")
+            or (order_data.get("attributes") or {}).get("user_id")
+            or "system"
+        )
 
         # Validate required fields
-        validation = self.validate_order(order_data)
-        if not validation["valid"]:
-            logger.error("Order validation failed", extra={
-                "symbol": symbol,
-                "errors": validation["errors"],
-                "idempotency_key": idempotency_key
-            })
-            return {
-                "status": "rejected",
-                "reason": f"Validation failed: {', '.join(validation['errors'])}",
-                "order_id": None,
-                "symbol": symbol,
-                "qty": qty,
-                "side": side,
-                "idempotency_key": idempotency_key
-            }
+        with trace_span("order.validate", {"symbol": symbol, "side": side}) as val_span:
+            validation = self.validate_order(order_data)
+            if not validation["valid"]:
+                val_span.set_attribute("order.rejected", True)
+                logger.error("Order validation failed", extra={
+                    "symbol": symbol,
+                    "errors": validation["errors"],
+                    "idempotency_key": idempotency_key
+                })
+                return {
+                    "status": "rejected",
+                    "reason": f"Validation failed: {', '.join(validation['errors'])}",
+                    "order_id": None,
+                    "symbol": symbol,
+                    "qty": qty,
+                    "side": side,
+                    "idempotency_key": idempotency_key
+                }
 
         try:
             # Convert qty to Decimal for database storage
@@ -1260,15 +1413,17 @@ class OrderService:
             if not self.orders_repo:
                 raise ValueError("OrdersRepo is required")
 
-            order = await self.orders_repo.upsert_by_idempotency(
-                client_key=idempotency_key,
-                symbol=symbol,
-                side=side,
-                qty=qty_decimal,
-                order_type=order_type,
-                tif=tif,
-                attributes=order_data.get("attributes", {})
-            )
+            with trace_span("order.persist", {"symbol": symbol, "idempotency_key": idempotency_key}):
+                order = await self.orders_repo.upsert_by_idempotency(
+                    client_key=idempotency_key,
+                    symbol=symbol,
+                    side=side,
+                    qty=qty_decimal,
+                    order_type=order_type,
+                    tif=tif,
+                    attributes=order_data.get("attributes", {}),
+                    user_id=owner_id,
+                )
 
             # Check settings for testing mode
             settings = get_settings()
@@ -1279,21 +1434,22 @@ class OrderService:
 
             # Enqueue outbox event for broker submission
             correlation_id = str(uuid4())
-            await active_outbox.enqueue(
-                topic="order.submitted",
-                payload={
-                    "order_id": str(order.id),
-                    "symbol": symbol,
-                    "side": side,
-                    "qty": str(qty_decimal),
-                    "order_type": order_type,
-                    "tif": tif,
-                    "client_key": idempotency_key,
-                    "correlation_id": correlation_id,
-                    "attributes": order_data.get("attributes", {}),
-                    "submitted_at": order.submitted_at.isoformat() if order.submitted_at else None
-                }
-            )
+            with trace_span("order.outbox_enqueue", {"order_id": str(order.id), "correlation_id": correlation_id}):
+                await active_outbox.enqueue(
+                    topic="order.submitted",
+                    payload={
+                        "order_id": str(order.id),
+                        "symbol": symbol,
+                        "side": side,
+                        "qty": str(qty_decimal),
+                        "order_type": order_type,
+                        "tif": tif,
+                        "client_key": idempotency_key,
+                        "correlation_id": correlation_id,
+                        "attributes": order_data.get("attributes", {}),
+                        "submitted_at": order.submitted_at.isoformat() if order.submitted_at else None
+                    }
+                )
 
             # Log structured order submission
             logger.info("ORDER_SUBMIT", extra={
@@ -1479,6 +1635,55 @@ class OrderService:
                 },
             )
             raise
+
+    # ------------------------------------------------------------------
+    # P&L-035: Post-trade slippage measurement
+    # ------------------------------------------------------------------
+    def measure_fill_slippage(
+        self,
+        *,
+        symbol: str,
+        expected_price: float,
+        fill_price: float,
+        side: str,
+        qty: float,
+    ) -> float | None:
+        """Compute realized slippage and feed it back to the slippage model.
+
+        Call after a fill is confirmed.  Returns realized slippage in basis
+        points (positive = worse than expected).
+        """
+        if expected_price <= 0:
+            return None
+        if side in ("buy", "BUY"):
+            realized_bps = ((fill_price - expected_price) / expected_price) * 10_000
+        else:
+            realized_bps = ((expected_price - fill_price) / expected_price) * 10_000
+
+        try:
+            from backend.services.slippage_model import get_slippage_model
+            model = get_slippage_model()
+            est = model.estimate(
+                symbol=symbol,
+                side=side,
+                quantity=qty,
+                current_price=expected_price,
+            )
+            model.record_actual_slippage(est.total_slippage_bps, realized_bps)
+            logger.info(
+                "Slippage measured",
+                extra={
+                    "symbol": symbol,
+                    "side": side,
+                    "expected_bps": round(est.total_slippage_bps, 2),
+                    "actual_bps": round(realized_bps, 2),
+                    "diff_bps": round(realized_bps - est.total_slippage_bps, 2),
+                },
+            )
+        except Exception as e:
+            logger.debug("Slippage model feedback skipped: %s", e)
+
+        return realized_bps
 
 
 # Module-level function for tests to monkey-patch

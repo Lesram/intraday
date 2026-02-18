@@ -11,7 +11,6 @@ import { useTradeHistory, useTradeAnalytics } from './hooks/useTradeHistory';
 import { tradesService } from '@/services/tradesService';
 import { TradeDetailModal } from './components/TradeDetailModal';
 import { InstitutionalMetricsDisplay } from './components/InstitutionalMetricsDisplay';
-import { useAuthStore } from '@/store/authStore';
 import type { Trade, TradeFilters } from '@/types/trades';
 import dayjs from 'dayjs';
 
@@ -94,29 +93,9 @@ export const TradesPage: React.FC = () => {
     try {
       message.loading({ content: `Submitting sell order for ${quantity} ${symbol}...`, key: 'close' });
       
-      // Get token from Zustand store (same way as api.ts does it)
-      const token = useAuthStore.getState().accessToken;
-      
-      if (!token) {
-        throw new Error('Not authenticated. Please login again.');
-      }
-      
-      // Use environment-aware API URL instead of hardcoded localhost
-      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
-      const response = await fetch(`${apiBaseUrl}/api/v1/orders/${orderId}/close-position`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.detail || 'Failed to close position');
-      }
-      
-      const data = await response.json();
+      // Use centralized apiClient for auth interceptors and token refresh
+      const { apiClient: apiClientImport } = await import('@/services/api');
+      const { data } = await apiClientImport.post(`/orders/${orderId}/close-position`);
       
       if (data.success) {
         message.success({ 

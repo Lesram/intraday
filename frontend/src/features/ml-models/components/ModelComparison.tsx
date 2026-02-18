@@ -71,25 +71,10 @@ export const ModelComparison: React.FC<ModelComparisonProps> = ({ preselectedMod
     enabled: selectedModelIds.length >= 2,
   });
 
-  // Debug: Log the comparison data structure
+  // Log comparison data in development only
   React.useEffect(() => {
-    if (comparisonData) {
-      console.log('=== COMPARISON DEBUG ===');
-      console.log('Full Comparison Data:', comparisonData);
-      console.log('Number of models:', comparisonData.models?.length);
-      
-      comparisonData.models?.forEach((model: ModelInfo, index: number) => {
-        console.log(`\nModel ${index + 1}:`, model.name);
-        console.log('  ID:', model.id);
-        console.log('  Metrics Object:', model.metrics);
-        console.log('  Metrics Keys:', model.metrics ? Object.keys(model.metrics) : 'NO METRICS');
-        console.log('  Accuracy:', model.metrics?.accuracy);
-        console.log('  Precision:', model.metrics?.precision);
-        console.log('  Recall:', model.metrics?.recall);
-        console.log('  F1 Score:', model.metrics?.f1_score);
-      });
-      
-      console.log('=== END DEBUG ===');
+    if (comparisonData && import.meta.env.DEV) {
+      console.log('[ModelComparison] Loaded', comparisonData.models?.length, 'models');
     }
   }, [comparisonData]);
 

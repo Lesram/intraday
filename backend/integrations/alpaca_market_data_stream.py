@@ -63,7 +63,7 @@ class AlpacaMarketDataStream:
         api_key: str,
         api_secret: str,
         paper: bool = True,
-        feed: str = "iex"  # "iex" or "sip"
+        feed: str = "sip"  # "sip" (full consolidated) or "iex" (single exchange)
     ):
         """
         Initialize Alpaca market data stream.

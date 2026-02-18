@@ -84,12 +84,12 @@ class TechnicalIndicators:
         gain = delta.where(delta > 0, 0)
         loss = -delta.where(delta < 0, 0)
 
-        # Calculate average gain and loss
-        avg_gain = gain.rolling(window=period).mean()
-        avg_loss = loss.rolling(window=period).mean()
+        # Calculate average gain and loss using Wilder's smoothing (EMA with alpha=1/period)
+        avg_gain = gain.ewm(alpha=1.0/period, adjust=False).mean()
+        avg_loss = loss.ewm(alpha=1.0/period, adjust=False).mean()
 
-        # Calculate RS and RSI
-        rs = avg_gain / avg_loss
+        # Calculate RS and RSI (guard against zero avg_loss)
+        rs = avg_gain / avg_loss.replace(0, np.nan)
         rsi = 100 - (100 / (1 + rs))
 
         return rsi.tolist()
@@ -209,8 +209,8 @@ class TechnicalIndicators:
         df['tr3'] = abs(df['low'] - df['close'].shift())
         df['tr'] = df[['tr1', 'tr2', 'tr3']].max(axis=1)
 
-        # Calculate ATR (EMA of TR)
-        df['atr'] = df['tr'].ewm(span=period, adjust=False).mean()
+        # Calculate ATR using Wilder's smoothing (alpha=1/period)
+        df['atr'] = df['tr'].ewm(alpha=1.0/period, adjust=False).mean()
 
         return df['atr'].tolist()
 
@@ -245,10 +245,11 @@ class TechnicalIndicators:
             'close': closes
         })
 
-        # Calculate %K
+        # Calculate %K (guard against zero range)
         df['lowest_low'] = df['low'].rolling(window=k_period).min()
         df['highest_high'] = df['high'].rolling(window=k_period).max()
-        df['k'] = 100 * (df['close'] - df['lowest_low']) / (df['highest_high'] - df['lowest_low'])
+        denom = df['highest_high'] - df['lowest_low']
+        df['k'] = np.where(denom.abs() < 1e-12, 50.0, 100 * (df['close'] - df['lowest_low']) / denom)
 
         # Calculate %D (SMA of %K)
         df['d'] = df['k'].rolling(window=d_period).mean()
@@ -309,14 +310,14 @@ class TechnicalIndicators:
             0
         )
 
-        # Smooth the values
-        df['atr'] = df['tr'].ewm(span=period, adjust=False).mean()
-        df['plus_di'] = 100 * (df['plus_dm'].ewm(span=period, adjust=False).mean() / df['atr'])
-        df['minus_di'] = 100 * (df['minus_dm'].ewm(span=period, adjust=False).mean() / df['atr'])
+        # Smooth the values using Wilder's smoothing (alpha=1/period)
+        df['atr'] = df['tr'].ewm(alpha=1.0/period, adjust=False).mean()
+        df['plus_di'] = 100 * (df['plus_dm'].ewm(alpha=1.0/period, adjust=False).mean() / df['atr'])
+        df['minus_di'] = 100 * (df['minus_dm'].ewm(alpha=1.0/period, adjust=False).mean() / df['atr'])
 
         # Calculate DX and ADX
         df['dx'] = 100 * abs(df['plus_di'] - df['minus_di']) / (df['plus_di'] + df['minus_di'])
-        df['adx'] = df['dx'].ewm(span=period, adjust=False).mean()
+        df['adx'] = df['dx'].ewm(alpha=1.0/period, adjust=False).mean()
 
         return df['adx'].tolist()
 
@@ -340,9 +341,9 @@ class TechnicalIndicators:
             'volume': volumes
         })
 
-        # Calculate OBV
+        # Calculate OBV (vectorized)
         df['price_change'] = df['close'].diff()
-        df['direction'] = df['price_change'].apply(lambda x: 1 if x > 0 else (-1 if x < 0 else 0))
+        df['direction'] = np.sign(df['price_change'])
         df['obv'] = (df['volume'] * df['direction']).cumsum()
 
         return df['obv'].tolist()
@@ -379,9 +380,18 @@ class TechnicalIndicators:
         # Calculate typical price
         df['typical_price'] = (df['high'] + df['low'] + df['close']) / 3
 
-        # Calculate VWAP
+        # Detect daily boundaries for proper VWAP reset
+        # If a DatetimeIndex is available, reset cumulative sums each day;
+        # otherwise fall back to a single running cumsum.
         df['tp_volume'] = df['typical_price'] * df['volume']
-        df['vwap'] = df['tp_volume'].cumsum() / df['volume'].cumsum()
+        if isinstance(df.index, pd.DatetimeIndex):
+            df['date'] = df.index.date
+            df['vwap'] = df.groupby('date').apply(
+                lambda g: g['tp_volume'].cumsum() / g['volume'].cumsum()
+            ).droplevel(0)
+            df.drop(columns=['date'], inplace=True)
+        else:
+            df['vwap'] = df['tp_volume'].cumsum() / df['volume'].cumsum()
 
         return df['vwap'].tolist()
 
@@ -419,13 +429,15 @@ class TechnicalIndicators:
         # Calculate SMA of typical price
         df['tp_sma'] = df['tp'].rolling(window=period).mean()
 
-        # Calculate mean deviation
-        df['mean_dev'] = df['tp'].rolling(window=period).apply(
-            lambda x: np.abs(x - x.mean()).mean()
-        )
+        # Calculate mean deviation (vectorized: subtract rolling mean, take abs, then rolling mean of that)
+        rolling_mean = df['tp'].rolling(window=period).mean()
+        df['mean_dev'] = (df['tp'] - rolling_mean).abs().rolling(window=period).mean()
 
-        # Calculate CCI
-        df['cci'] = (df['tp'] - df['tp_sma']) / (0.015 * df['mean_dev'])
+        # Calculate CCI (guard against zero mean deviation)
+        df['cci'] = np.where(
+            df['mean_dev'].abs() < 1e-12, 0.0,
+            (df['tp'] - df['tp_sma']) / (0.015 * df['mean_dev'])
+        )
 
         return df['cci'].tolist()
 
@@ -457,10 +469,11 @@ class TechnicalIndicators:
             'close': closes
         })
 
-        # Calculate Williams %R
+        # Calculate Williams %R (guard against zero range)
         df['highest_high'] = df['high'].rolling(window=period).max()
         df['lowest_low'] = df['low'].rolling(window=period).min()
-        df['williams_r'] = -100 * (df['highest_high'] - df['close']) / (df['highest_high'] - df['lowest_low'])
+        denom = df['highest_high'] - df['lowest_low']
+        df['williams_r'] = np.where(denom.abs() < 1e-12, -50.0, -100 * (df['highest_high'] - df['close']) / denom)
 
         return df['williams_r'].tolist()
 
@@ -509,10 +522,15 @@ class TechnicalIndicators:
         # Calculate money flow ratio
         df['pos_mf_sum'] = df['pos_mf'].rolling(window=period).sum()
         df['neg_mf_sum'] = df['neg_mf'].rolling(window=period).sum()
-        df['mf_ratio'] = df['pos_mf_sum'] / df['neg_mf_sum']
+        df['mf_ratio'] = df['pos_mf_sum'] / df['neg_mf_sum'].replace(0, np.nan)
 
-        # Calculate MFI
+        # Calculate MFI (when neg_mf_sum is 0, money flow is 100% positive => MFI=100)
         df['mfi'] = 100 - (100 / (1 + df['mf_ratio']))
+        # Handle edge case: both pos and neg are 0 => neutral 50; only pos > 0 => 100
+        both_zero = (df['pos_mf_sum'] == 0) & (df['neg_mf_sum'] == 0)
+        pos_only = (df['pos_mf_sum'] > 0) & (df['neg_mf_sum'] == 0)
+        df.loc[both_zero, 'mfi'] = 50.0
+        df.loc[pos_only, 'mfi'] = 100.0
 
         return df['mfi'].tolist()
 
@@ -616,12 +634,12 @@ class TechnicalIndicators:
 
         # Find position of max/min within rolling window
         # argmax/argmin returns position relative to the start of the window
-        df['periods_since_high'] = period - 1 - df['high'].rolling(window=period).apply(
+        df['periods_since_high'] = period - df['high'].rolling(window=period).apply(
             lambda x: np.argmax(x), raw=True
-        )
-        df['periods_since_low'] = period - 1 - df['low'].rolling(window=period).apply(
+        ) - 1
+        df['periods_since_low'] = period - df['low'].rolling(window=period).apply(
             lambda x: np.argmin(x), raw=True
-        )
+        ) - 1
 
         df['aroon_up'] = ((period - df['periods_since_high']) / period) * 100
         df['aroon_down'] = ((period - df['periods_since_low']) / period) * 100
@@ -1133,6 +1151,93 @@ class TechnicalIndicators:
 
 # Export singleton instance
 _indicators_instance = TechnicalIndicators()
+
+
+# ---------------------------------------------------------------------------
+# Bollinger-Keltner Squeeze Detector
+# ---------------------------------------------------------------------------
+class SqueezeDetector:
+    """Detect Bollinger Band / Keltner Channel squeeze and expansion.
+
+    When Bollinger Bands contract INSIDE the Keltner Channel the market is
+    in a "squeeze" — a period of compressed volatility that typically precedes
+    a large directional move.  The squeeze *fires* (releases) when the
+    Bollinger Bands expand back outside the Keltner Channel.
+
+    This implementation adds a *momentum histogram* (deviation from the
+    mean of the squeeze range) so the direction of the forthcoming
+    breakout can be anticipated before it happens.
+
+    Reference: John Carter's TTM Squeeze methodology.
+    """
+
+    @staticmethod
+    def calculate(
+        highs: list[float],
+        lows: list[float],
+        closes: list[float],
+        bb_period: int = 20,
+        bb_mult: float = 2.0,
+        kc_period: int = 20,
+        kc_mult: float = 1.5,
+    ) -> dict[str, list[float | None]]:
+        """Return squeeze state, momentum, and band data.
+
+        Returns dict with keys:
+            squeeze_on   — 1.0 when Bollinger is inside Keltner (squeeze active), else 0.0
+            squeeze_off  — 1.0 when squeeze has just released this bar
+            momentum     — deviation of price from midline, positive = bullish
+            bb_upper, bb_lower, kc_upper, kc_lower — band values
+        """
+        n = len(closes)
+        min_len = max(bb_period, kc_period) + 1
+        if n < min_len:
+            empty = [None] * n
+            return {
+                "squeeze_on": empty, "squeeze_off": empty,
+                "momentum": empty,
+                "bb_upper": empty, "bb_lower": empty,
+                "kc_upper": empty, "kc_lower": empty,
+            }
+
+        df = pd.DataFrame({"high": highs, "low": lows, "close": closes})
+
+        # Bollinger Bands
+        bb_mid = df["close"].rolling(bb_period).mean()
+        bb_std = df["close"].rolling(bb_period).std()
+        bb_upper = bb_mid + bb_mult * bb_std
+        bb_lower = bb_mid - bb_mult * bb_std
+
+        # Keltner Channel (based on ATR with Wilder's smoothing)
+        tr = pd.concat([
+            df["high"] - df["low"],
+            (df["high"] - df["close"].shift()).abs(),
+            (df["low"] - df["close"].shift()).abs(),
+        ], axis=1).max(axis=1)
+        atr = tr.ewm(alpha=1.0 / kc_period, adjust=False).mean()
+        kc_mid = df["close"].ewm(span=kc_period, adjust=False).mean()
+        kc_upper = kc_mid + kc_mult * atr
+        kc_lower = kc_mid - kc_mult * atr
+
+        # Squeeze state: BB inside KC
+        squeeze_on = ((bb_lower > kc_lower) & (bb_upper < kc_upper)).astype(float)
+        squeeze_off = ((squeeze_on.shift(1) == 1.0) & (squeeze_on == 0.0)).astype(float)
+
+        # Momentum: linear regression deviation of close from midline
+        # Simplified as (close - average of highest high and lowest low over squeeze period) / midline
+        hl_mid = (df["high"].rolling(kc_period).max() + df["low"].rolling(kc_period).min()) / 2
+        overall_mid = (hl_mid + bb_mid) / 2
+        momentum = df["close"] - overall_mid
+
+        return {
+            "squeeze_on": squeeze_on.tolist(),
+            "squeeze_off": squeeze_off.tolist(),
+            "momentum": momentum.tolist(),
+            "bb_upper": bb_upper.tolist(),
+            "bb_lower": bb_lower.tolist(),
+            "kc_upper": kc_upper.tolist(),
+            "kc_lower": kc_lower.tolist(),
+        }
 
 
 def get_indicators_service() -> TechnicalIndicators:

@@ -3,6 +3,11 @@
  * Phase 6 Implementation
  */
 
+// §13.6 FIX: Single ModelStatus definition — import + re-export from index.ts
+// The canonical definition lives in index.ts as a superset of all statuses.
+import type { ModelStatus } from './index';
+export type { ModelStatus };
+
 export const ModelType = {
   ENSEMBLE: 'ensemble',
   LSTM: 'lstm',
@@ -14,15 +19,16 @@ export const ModelType = {
 
 export type ModelType = typeof ModelType[keyof typeof ModelType];
 
-export const ModelStatus = {
+// ModelStatus values kept as a const object for runtime use
+export const ModelStatusValues = {
   TRAINING: 'training',
   READY: 'ready',
   FAILED: 'failed',
   INACTIVE: 'inactive',
   DEPRECATED: 'deprecated',
+  ACTIVE: 'active',
+  ERROR: 'error',
 } as const;
-
-export type ModelStatus = typeof ModelStatus[keyof typeof ModelStatus];
 
 export const TrainingStatus = {
   PENDING: 'pending',

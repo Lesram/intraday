@@ -96,23 +96,23 @@ class TestInputSanitizer:
     def test_validate_symbol_valid(self):
         """Test valid symbol validation."""
         from backend.security.api_hardening import InputSanitizer
-        
-        assert InputSanitizer.validate_symbol("AAPL") == "AAPL"
-        assert InputSanitizer.validate_symbol("msft") == "MSFT"
-        assert InputSanitizer.validate_symbol("a") == "A"
+
+        assert InputSanitizer.validate_symbol_strict("AAPL") == "AAPL"
+        assert InputSanitizer.validate_symbol_strict("msft") == "MSFT"
+        assert InputSanitizer.validate_symbol_strict("a") == "A"
     
     def test_validate_symbol_invalid_format(self):
         """Test invalid symbol format."""
         from backend.security.api_hardening import InputSanitizer
-        
+
         with pytest.raises(ValueError, match="Invalid symbol format"):
-            InputSanitizer.validate_symbol("TOOLONG")
-        
+            InputSanitizer.validate_symbol_strict("TOOLONG")
+
         with pytest.raises(ValueError, match="Invalid symbol format"):
-            InputSanitizer.validate_symbol("123")
-        
+            InputSanitizer.validate_symbol_strict("123")
+
         with pytest.raises(ValueError, match="Invalid symbol format"):
-            InputSanitizer.validate_symbol("AA-PL")
+            InputSanitizer.validate_symbol_strict("AA-PL")
     
     def test_validate_quantity_valid(self):
         """Test valid quantity validation."""
@@ -540,6 +540,7 @@ class TestRequestValidator:
         assert result["authenticated"] is False
         assert result["reason"] == "invalid_api_key_format"
     
+    @patch.dict('os.environ', {'ENVIRONMENT': 'development', 'ALLOW_DEMO_TOKENS': 'true'})
     def test_validate_authentication_demo_key(self):
         """Test authentication with demo API key."""
         from backend.security.api_hardening import RequestValidator, APIRequest, SecurityLevel
@@ -562,6 +563,7 @@ class TestRequestValidator:
         assert result["user_id"] == "demo_user"
         assert result["security_level"] == SecurityLevel.AUTHENTICATED
     
+    @patch.dict('os.environ', {'ENVIRONMENT': 'development', 'ALLOW_DEMO_TOKENS': 'true'})
     def test_validate_authentication_admin_key(self):
         """Test authentication with admin API key."""
         from backend.security.api_hardening import RequestValidator, APIRequest, SecurityLevel
@@ -601,6 +603,7 @@ class TestSecurityMiddleware:
         assert middleware.validator is not None
         assert middleware.suspicious_activity == {}
     
+    @patch.dict('os.environ', {'ENVIRONMENT': 'development', 'ALLOW_DEMO_TOKENS': 'true'})
     def test_process_request_success(self):
         """Test processing valid request."""
         from backend.security.api_hardening import SecurityMiddleware, APIRequest, SecurityLevel
@@ -673,6 +676,7 @@ class TestSecurityMiddleware:
         assert result["success"] is False
         assert "insufficient_permissions" in result["error"]["code"]
     
+    @patch.dict('os.environ', {'ENVIRONMENT': 'development', 'ALLOW_DEMO_TOKENS': 'true'})
     def test_process_request_invalid_body(self):
         """Test processing request with invalid body data."""
         from backend.security.api_hardening import SecurityMiddleware, APIRequest, SecurityLevel

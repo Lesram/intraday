@@ -78,11 +78,11 @@ export interface Position {
   market_value: number;
   unrealized_pl: number;
   unrealized_pl_percent: number;
-  realized_pl: number;
+  realized_pl?: number;
   cost_basis: number;
   side: PositionSide;
-  opened_at: string;
-  updated_at: string;
+  opened_at?: string;
+  updated_at?: string;
   strategy_id?: string;
 }
 
@@ -196,7 +196,8 @@ export interface MLModel {
   last_trained?: string;
 }
 
-export type ModelStatus = 'active' | 'training' | 'inactive' | 'error';
+// §13.6 FIX: Consolidated ModelStatus — superset of both prior definitions
+export type ModelStatus = 'active' | 'training' | 'inactive' | 'error' | 'ready' | 'failed' | 'deprecated';
 
 export interface Prediction {
   prediction: number;

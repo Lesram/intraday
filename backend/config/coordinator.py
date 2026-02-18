@@ -1,13 +1,21 @@
 """
 Configuration Coordinator - Single Point of Configuration Access
 
-This module provides a unified interface to all configuration systems,
-eliminating fragmentation and providing clear migration path.
+.. deprecated::
+    Use ``backend.config.settings.get_settings()`` directly.
+    This module will be removed in a future release.
 """
 
+import warnings
 from functools import lru_cache
 import os
 from typing import Any
+
+warnings.warn(
+    "backend.config.coordinator is deprecated. Use backend.config.settings.get_settings() instead.",
+    DeprecationWarning,
+    stacklevel=2,
+)
 
 # Import all configuration systems
 try:
@@ -103,8 +111,11 @@ class ConfigurationCoordinator:
             if hasattr(db_config, 'database_url'):
                 return db_config.database_url
 
-        # Environment variable fallback
-        return os.getenv('DATABASE_URL', 'postgresql+asyncpg://trading:trading_password@localhost:5432/algotrading')
+        # Environment variable fallback (no hardcoded credentials)
+        db_url = os.getenv('DATABASE_URL')
+        if not db_url:
+            raise ValueError("DATABASE_URL environment variable is required")
+        return db_url
 
     def get_jwt_secret(self) -> str:
         """Get JWT secret from any available config system"""

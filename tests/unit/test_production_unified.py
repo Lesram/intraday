@@ -105,13 +105,11 @@ class TestMLSentiment:
 class TestMLModelManagerStub:
     """Test ML model manager stub"""
     
-    def test_ml_model_manager_stub_import(self):
-        """Test ML model manager stub can be imported"""
-        try:
-            from backend.ml import model_manager_stub_backup
-            assert model_manager_stub_backup is not None
-        except ImportError:
-            pytest.skip("Module not available")
+    def test_ml_model_manager_stub_removed(self):
+        """Confirm dead stub backup file has been deleted"""
+        import importlib
+        with pytest.raises((ImportError, ModuleNotFoundError)):
+            importlib.import_module('backend.ml.model_manager_stub_backup')
 
 
 class TestMLOpsNoop:

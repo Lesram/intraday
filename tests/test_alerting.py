@@ -133,6 +133,7 @@ class TestAlertManager:
                 title="Test Alert",
                 description="Test description",
                 dedup=False,  # Disable dedup for test
+                respect_market_hours=False,  # Don't suppress in test
             )
             
             assert result is True
@@ -210,6 +211,7 @@ class TestAlertManager:
                 title="Duplicate Test",
                 description="Test",
                 dedup=True,
+                respect_market_hours=False,
             )
             
             # Second alert (same content) blocked
@@ -219,6 +221,7 @@ class TestAlertManager:
                 title="Duplicate Test",
                 description="Test",
                 dedup=True,
+                respect_market_hours=False,
             )
             
             # Only called once due to dedup

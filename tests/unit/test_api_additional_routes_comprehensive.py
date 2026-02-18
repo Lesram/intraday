@@ -27,7 +27,7 @@ class TestPositionsModels:
     def test_position_dto_model(self):
         """Test PositionDTO model."""
         from backend.api.routes.positions import PositionDTO
-        
+
         dto = PositionDTO(
             symbol="AAPL",
             qty=10.0,
@@ -38,20 +38,22 @@ class TestPositionsModels:
             updated_at=datetime.now(UTC)
         )
         assert dto.symbol == "AAPL"
-        assert dto.qty == 10.0
+        assert dto.quantity == 10.0
         assert dto.unrealized_pl == 50.0
 
     def test_position_dto_optional_fields(self):
-        """Test PositionDTO with optional fields as None."""
+        """Test PositionDTO with optional fields defaulting correctly."""
         from backend.api.routes.positions import PositionDTO
-        
+
         dto = PositionDTO(
             symbol="MSFT",
             qty=5.0,
             avg_price=400.0,
             updated_at=datetime.now(UTC)
         )
-        assert dto.market_price is None
+        # current_price defaults to 0.0 (not None) via alias "market_price"
+        assert dto.current_price == 0.0
+        # market_value is truly optional (None default)
         assert dto.market_value is None
 
 
@@ -59,16 +61,14 @@ class TestPositionsHelperFunctions:
     """Test helper functions in positions routes."""
 
     def test_get_mock_positions(self):
-        """Test get_mock_positions returns demo positions."""
+        """Test get_mock_positions returns empty list (deprecated - no mock data)."""
         from backend.api.routes.positions import get_mock_positions
-        
+
         positions = get_mock_positions()
-        
-        assert len(positions) == 3
-        symbols = [p.symbol for p in positions]
-        assert "AAPL" in symbols
-        assert "GOOGL" in symbols
-        assert "MSFT" in symbols
+
+        # get_mock_positions is deprecated and returns empty list
+        # All position data must come from Alpaca API or database
+        assert len(positions) == 0
 
     def test_mock_positions_have_all_fields(self):
         """Test mock positions have all required fields."""

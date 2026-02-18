@@ -95,7 +95,7 @@ export const StrategyBuilderPage: React.FC = () => {
         },
       };
       
-      console.log('Submitting strategy:', payload); // Debug log
+      if (import.meta.env.DEV) console.log('Submitting strategy:', payload);
       
       const response = await apiClient.post('/strategies', payload);
       return response.data;

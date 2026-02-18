@@ -162,8 +162,14 @@ class ProductionAlpacaClient:
                 api_version='v2'
             )
         else:
+            import os as _os
+            if _os.getenv("ENVIRONMENT", "development") == "production":
+                raise RuntimeError(
+                    "Alpaca SDK (alpaca-trade-api) is not installed. "
+                    "Cannot start broker in production without real SDK."
+                )
             self.alpaca_api = MockAlpacaAPI()
-            self.logger.warning("Alpaca SDK not available, using mock client")
+            self.logger.warning("Alpaca SDK not available, using mock client (non-production only)")
 
         # SLO Integration
         try:
@@ -501,7 +507,10 @@ class ProductionAlpacaClient:
             if ALPACA_AVAILABLE and hasattr(self.alpaca_api, 'get_account'):
                 return self.alpaca_api.get_account()
             else:
-                # Return mock account for testing
+                import os as _os
+                if _os.getenv("ENVIRONMENT", "development") == "production":
+                    raise RuntimeError("Alpaca SDK not available — cannot get account in production")
+                self.logger.warning("Returning mock account (non-production)")
                 class MockAccount:
                     def __init__(self):
                         self.status = "ACTIVE"
@@ -509,6 +518,8 @@ class ProductionAlpacaClient:
                         self.paper_trading = True
 
                 return MockAccount()
+        except RuntimeError:
+            raise
         except Exception as e:
             self.logger.error(f"Failed to get account info: {e}")
             return None
@@ -519,7 +530,10 @@ class ProductionAlpacaClient:
             if ALPACA_AVAILABLE and hasattr(self.alpaca_api, 'get_latest_quote'):
                 return self.alpaca_api.get_latest_quote(symbol)
             else:
-                # Return mock quote for testing
+                import os as _os
+                if _os.getenv("ENVIRONMENT", "development") == "production":
+                    raise RuntimeError(f"Alpaca SDK not available — cannot get quote for {symbol} in production")
+                self.logger.warning(f"Returning mock quote for {symbol} (non-production)")
                 class MockQuote:
                     def __init__(self, symbol):
                         self.symbol = symbol
@@ -528,6 +542,8 @@ class ProductionAlpacaClient:
                         self.timestamp = datetime.now()
 
                 return MockQuote(symbol)
+        except RuntimeError:
+            raise
         except Exception as e:
             self.logger.error(f"Failed to get quote for {symbol}: {e}")
             return None
@@ -584,15 +600,8 @@ class ProductionAlpacaClient:
 
         except Exception as e:
             self.logger.error(f"Failed to submit order: {e}")
-            # Return mock order for testing
-            class MockOrderResponse:
-                def __init__(self):
-                    self.id = str(uuid.uuid4())
-                    self.status = "submitted"
-                    self.filled_qty = 0
-                    self.filled_avg_price = None
-
-            return MockOrderResponse()
+            self.stats['orders_failed'] = self.stats.get('orders_failed', 0) + 1
+            raise  # Propagate error — caller must know the order was NOT submitted
 
     def get_client_statistics(self) -> dict[str, Any]:
         """Get client performance statistics"""
@@ -680,8 +689,14 @@ def get_production_alpaca_client(
         # Use provided credentials or environment variables
         if not api_key or not api_secret:
             import os
-            api_key = api_key or os.getenv('ALPACA_API_KEY_ID', 'demo_key')
-            api_secret = api_secret or os.getenv('ALPACA_API_SECRET_KEY', 'demo_secret')
+            api_key = api_key or os.getenv('ALPACA_API_KEY_ID')
+            api_secret = api_secret or os.getenv('ALPACA_API_SECRET_KEY')
+
+        if not api_key or not api_secret:
+            raise ValueError(
+                "Alpaca API credentials not provided. Set ALPACA_API_KEY_ID "
+                "and ALPACA_API_SECRET_KEY environment variables."
+            )
 
         _alpaca_client = ProductionAlpacaClient(
             api_key=api_key,

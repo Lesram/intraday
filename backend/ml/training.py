@@ -204,40 +204,140 @@ except ImportError:
         return X_train, X_test, y_train, y_test
 
     def cross_val_score(estimator, X, y, cv=5, scoring='accuracy'):
-        # Handle cv object or integer
+        """Fallback cross-validation when sklearn is unavailable.
+
+        Performs actual train/test splits and evaluates with the
+        estimator's own predict method rather than returning random numbers.
+        """
         if hasattr(cv, 'n_splits'):
             n_splits = cv.n_splits
         else:
             n_splits = cv
-        return np.random.rand(n_splits) * 0.3 + 0.7  # Mock scores between 0.7-1.0
 
-    # Mock metric functions
+        n_samples = len(X) if hasattr(X, '__len__') else 0
+        if n_samples < n_splits or n_samples == 0:
+            return np.zeros(n_splits)
+
+        fold_size = n_samples // n_splits
+        scores = []
+        for i in range(n_splits):
+            test_start = i * fold_size
+            test_end = test_start + fold_size if i < n_splits - 1 else n_samples
+
+            # Split data
+            if hasattr(X, 'iloc'):
+                X_train = pd.concat([X.iloc[:test_start], X.iloc[test_end:]])
+                X_test = X.iloc[test_start:test_end]
+            else:
+                X_arr = np.array(X)
+                X_train = np.concatenate([X_arr[:test_start], X_arr[test_end:]])
+                X_test = X_arr[test_start:test_end]
+
+            if hasattr(y, 'iloc'):
+                y_train = pd.concat([y.iloc[:test_start], y.iloc[test_end:]])
+                y_test = y.iloc[test_start:test_end]
+            else:
+                y_arr = np.array(y)
+                y_train = np.concatenate([y_arr[:test_start], y_arr[test_end:]])
+                y_test = y_arr[test_start:test_end]
+
+            try:
+                estimator.fit(X_train, y_train)
+                preds = estimator.predict(X_test)
+                # Compute accuracy
+                correct = np.sum(np.array(preds).flatten() == np.array(y_test).flatten())
+                score = correct / len(y_test) if len(y_test) > 0 else 0.0
+            except Exception:
+                score = 0.0
+            scores.append(score)
+        return np.array(scores)
+
+    # Real metric implementations (sklearn API-compatible)
     def accuracy_score(y_true, y_pred):
-        return 0.85
+        y_true, y_pred = np.array(y_true).flatten(), np.array(y_pred).flatten()
+        if len(y_true) == 0:
+            return 0.0
+        return float(np.mean(y_true == y_pred))
 
     def precision_score(y_true, y_pred, average='weighted', zero_division=0):
-        return 0.83
+        y_true, y_pred = np.array(y_true).flatten(), np.array(y_pred).flatten()
+        classes = np.unique(np.concatenate([y_true, y_pred]))
+        if len(classes) == 0 or len(y_true) == 0:
+            return float(zero_division)
+        precisions, supports = [], []
+        for c in classes:
+            tp = np.sum((y_pred == c) & (y_true == c))
+            fp = np.sum((y_pred == c) & (y_true != c))
+            p = tp / (tp + fp) if (tp + fp) > 0 else float(zero_division)
+            precisions.append(p)
+            supports.append(np.sum(y_true == c))
+        supports = np.array(supports, dtype=float)
+        total = supports.sum()
+        if total == 0:
+            return float(zero_division)
+        return float(np.average(precisions, weights=supports))
 
     def recall_score(y_true, y_pred, average='weighted', zero_division=0):
-        return 0.82
+        y_true, y_pred = np.array(y_true).flatten(), np.array(y_pred).flatten()
+        classes = np.unique(np.concatenate([y_true, y_pred]))
+        if len(classes) == 0 or len(y_true) == 0:
+            return float(zero_division)
+        recalls, supports = [], []
+        for c in classes:
+            tp = np.sum((y_pred == c) & (y_true == c))
+            fn = np.sum((y_pred != c) & (y_true == c))
+            r = tp / (tp + fn) if (tp + fn) > 0 else float(zero_division)
+            recalls.append(r)
+            supports.append(np.sum(y_true == c))
+        supports = np.array(supports, dtype=float)
+        total = supports.sum()
+        if total == 0:
+            return float(zero_division)
+        return float(np.average(recalls, weights=supports))
 
     def f1_score(y_true, y_pred, average='weighted', zero_division=0):
-        return 0.84
+        p = precision_score(y_true, y_pred, average=average, zero_division=zero_division)
+        r = recall_score(y_true, y_pred, average=average, zero_division=zero_division)
+        if p + r == 0:
+            return float(zero_division)
+        return float(2 * p * r / (p + r))
 
     def mean_squared_error(y_true, y_pred):
-        return 0.15
+        y_true, y_pred = np.array(y_true, dtype=float).flatten(), np.array(y_pred, dtype=float).flatten()
+        return float(np.mean((y_true - y_pred) ** 2))
 
     def mean_absolute_error(y_true, y_pred):
-        return 0.12
+        y_true, y_pred = np.array(y_true, dtype=float).flatten(), np.array(y_pred, dtype=float).flatten()
+        return float(np.mean(np.abs(y_true - y_pred)))
 
     def r2_score(y_true, y_pred):
-        return 0.88
+        y_true, y_pred = np.array(y_true, dtype=float).flatten(), np.array(y_pred, dtype=float).flatten()
+        ss_res = np.sum((y_true - y_pred) ** 2)
+        ss_tot = np.sum((y_true - np.mean(y_true)) ** 2)
+        if ss_tot == 0:
+            return 0.0
+        return float(1 - ss_res / ss_tot)
 
     def classification_report(y_true, y_pred):
-        return "Mock classification report"
+        acc = accuracy_score(y_true, y_pred)
+        prec = precision_score(y_true, y_pred)
+        rec = recall_score(y_true, y_pred)
+        f1 = f1_score(y_true, y_pred)
+        return (
+            f"              precision    recall  f1-score   support\n"
+            f"   weighted      {prec:.2f}      {rec:.2f}      {f1:.2f}      {len(y_true)}\n"
+            f"   accuracy                        {acc:.2f}      {len(y_true)}\n"
+        )
 
     def confusion_matrix(y_true, y_pred):
-        return np.array([[10, 2], [1, 12]])
+        y_true, y_pred = np.array(y_true).flatten(), np.array(y_pred).flatten()
+        classes = np.unique(np.concatenate([y_true, y_pred]))
+        n = len(classes)
+        cm = np.zeros((n, n), dtype=int)
+        class_to_idx = {c: i for i, c in enumerate(classes)}
+        for t, p in zip(y_true, y_pred):
+            cm[class_to_idx[t], class_to_idx[p]] += 1
+        return cm
 
 
 class TrainingStatus(Enum):

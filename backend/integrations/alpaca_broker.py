@@ -455,7 +455,8 @@ class AlpacaBrokerClient:
                     error_data = response.json()
                     if "message" in error_data:
                         error_msg += f" - {error_data['message']}"
-                except Exception:
+                except Exception as parse_err:
+                    logger.debug(f"Failed to parse Alpaca error response as JSON: {parse_err}")
                     error_msg += f" - {response.text[:200]}"
 
                 logger.error("Order placement failed",
@@ -540,7 +541,8 @@ class AlpacaBrokerClient:
                     error_data = response.json()
                     if "message" in error_data:
                         error_msg += f" - {error_data['message']}"
-                except Exception:
+                except Exception as parse_err:
+                    logger.debug(f"Failed to parse Alpaca error response as JSON: {parse_err}")
                     error_msg += f" - {response.text[:200]}"
 
                 logger.error("Failed to retrieve order",
@@ -602,7 +604,8 @@ class AlpacaBrokerClient:
                     error_data = response.json()
                     if "message" in error_data:
                         error_msg += f" - {error_data['message']}"
-                except Exception:
+                except Exception as parse_err:
+                    logger.debug(f"Failed to parse Alpaca error response as JSON: {parse_err}")
                     error_msg += f" - {response.text[:200]}"
 
                 logger.error("Order cancellation failed",
@@ -665,7 +668,8 @@ class AlpacaBrokerClient:
                     error_data = response.json()
                     if "message" in error_data:
                         error_msg += f" - {error_data['message']}"
-                except Exception:
+                except Exception as parse_err:
+                    logger.debug(f"Failed to parse Alpaca error response as JSON: {parse_err}")
                     error_msg += f" - {response.text[:200]}"
 
                 logger.error("Failed to retrieve account data",
@@ -723,7 +727,8 @@ class AlpacaBrokerClient:
                     error_data = response.json()
                     if "message" in error_data:
                         error_msg += f" - {error_data['message']}"
-                except Exception:
+                except Exception as parse_err:
+                    logger.debug(f"Failed to parse Alpaca error response as JSON: {parse_err}")
                     error_msg += f" - {response.text[:200]}"
 
                 logger.error("Failed to retrieve positions",
@@ -797,7 +802,8 @@ class AlpacaBrokerClient:
                     error_data = response.json()
                     if "message" in error_data:
                         error_msg += f" - {error_data['message']}"
-                except Exception:
+                except Exception as parse_err:
+                    logger.debug(f"Failed to parse Alpaca error response as JSON: {parse_err}")
                     error_msg += f" - {response.text[:200]}"
 
                 logger.error(f"Failed to retrieve position for {symbol}",

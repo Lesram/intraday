@@ -89,15 +89,19 @@ class WebSocketClientManager:
             logger.debug(f"Client {client_id} unsubscribed from {topic}")
 
     async def broadcast_to_all(self, message: dict[str, Any]):
-        """Broadcast message to all connected clients."""
+        """Broadcast message to all connected clients with backpressure."""
         if not self.clients:
             return
 
         message_str = json.dumps(message)
         disconnected_clients = []
 
-        for client_id, client in self.clients.items():
+        async def _send(client_id: str, client):
             try:
+                # Backpressure: check queue size before sending
+                if len(client.message_queue) >= client.queue_size:
+                    client.message_queue.pop(0)
+                    self.metrics['messages_dropped_total'] += 1
                 await client.websocket.send_text(message_str)
                 client.last_seen = datetime.now(UTC)
                 self.metrics['messages_sent_total'] += 1
@@ -106,6 +110,13 @@ class WebSocketClientManager:
             except Exception as e:
                 logger.error(f"Error sending message to client {client_id}: {e}")
                 disconnected_clients.append(client_id)
+
+        # Send to all clients concurrently instead of sequentially
+        import asyncio
+        await asyncio.gather(
+            *(_send(cid, c) for cid, c in self.clients.items()),
+            return_exceptions=True,
+        )
 
         # Clean up disconnected clients
         for client_id in disconnected_clients:

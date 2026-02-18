@@ -194,5 +194,6 @@ class RiskViolationAlert(BaseModel):
 class EmergencyStopEvent(BaseModel):
     """WebSocket event for emergency stop"""
 
-    type: str = "emergency_stop_triggered"
+    # §13.3 FIX: Match frontend type string exactly
+    type: str = "emergency_stop_event"
     data: EmergencyStop

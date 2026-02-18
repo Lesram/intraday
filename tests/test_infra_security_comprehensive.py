@@ -89,13 +89,12 @@ class TestHashPassword:
         assert hash1 != hash2
 
     def test_hash_long_password_logs_warning(self):
-        """Test long password (>72 bytes) logs warning."""
+        """Test long password (>72 bytes) raises ValueError."""
         long_password = "a" * 100  # Over 72 bytes
         
-        # Should not raise, just log warning
-        result = hash_password(long_password)
-        
-        assert isinstance(result, str)
+        # Should raise ValueError for exceeding bcrypt's 72-byte limit
+        with pytest.raises(ValueError, match="72-byte limit"):
+            hash_password(long_password)
 
 
 class TestVerifyPassword:
@@ -146,7 +145,7 @@ class TestCreateAccessToken:
     def mock_settings(self):
         """Create mock settings."""
         mock = MagicMock()
-        mock.security.jwt_secret_key = "test-secret-key-12345"
+        mock.security.secret_key = "test-secret-key-12345"
         mock.security.jwt_expire_minutes = 60
         return mock
 
@@ -199,7 +198,7 @@ class TestCreateAccessToken:
     def test_create_token_no_secret_raises(self):
         """Test token creation without secret raises ValueError."""
         mock_settings = MagicMock()
-        mock_settings.security.jwt_secret_key = None
+        mock_settings.security.secret_key = None
         
         with patch('backend.infra.security.get_settings', return_value=mock_settings):
             with patch.dict(os.environ, {}, clear=True):

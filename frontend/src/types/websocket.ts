@@ -19,7 +19,8 @@ export type WebSocketTopic =
   | 'signals'
   | 'strategies'
   | 'alerts'
-  | 'risk';
+  | 'risk'
+  | 'organism';
 
 export interface SubscribeMessage {
   type: 'subscribe';
@@ -187,5 +188,25 @@ export interface RiskUpdateMessage extends WebSocketMessage {
     risk_score: number;
     warnings: string[];
     timestamp: string;
+  };
+}
+
+export interface OrganismTickMessage extends WebSocketMessage {
+  type: 'organism_tick';
+  topic: 'organism';
+  data: {
+    timestamp?: string;
+    regime?: string;
+    signals_generated?: number;
+    orders_submitted?: number;
+    exits_checked?: number;
+    trades_closed?: number;
+    brain_saved?: boolean;
+    errors?: string[];
+    duration_s?: number;
+    // Phase 5: Scanner & Universe metadata
+    universe_size?: number;
+    scanner_candidates_count?: number;
+    scanner_ran?: boolean;
   };
 }

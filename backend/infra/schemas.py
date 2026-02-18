@@ -1367,3 +1367,48 @@ class ChartTemplate(Base):
             "created_at": self.created_at,
             "updated_at": self.updated_at,
         }
+
+
+class Drawing(Base):
+    """
+    Chart drawing model (trendlines, shapes, annotations).
+
+    Persists user-created chart annotations so they survive across
+    browser sessions and server restarts.
+    """
+
+    __tablename__ = "drawings"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    user_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    symbol: Mapped[str] = mapped_column(String(20), nullable=False, index=True)
+    type: Mapped[str] = mapped_column(String(32), nullable=False)
+    points: Mapped[dict] = mapped_column(get_json_type(), nullable=False)
+    style: Mapped[dict] = mapped_column(get_json_type(), nullable=False, default=dict)
+    text: Mapped[str | None] = mapped_column(Text, nullable=True)
+    timeframe: Mapped[str] = mapped_column(String(10), nullable=False, default="1D")
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=sa.func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=sa.func.now(), onupdate=sa.func.now(), nullable=False
+    )
+
+    __table_args__ = (
+        Index("ix_drawings_user_symbol", "user_id", "symbol"),
+    )
+
+    def to_dict(self) -> dict:
+        """Convert to dictionary for API response."""
+        return {
+            "id": self.id,
+            "user_id": self.user_id,
+            "symbol": self.symbol,
+            "type": self.type,
+            "points": self.points,
+            "style": self.style,
+            "text": self.text,
+            "timeframe": self.timeframe,
+            "created_at": self.created_at,
+            "updated_at": self.updated_at,
+        }

@@ -21,9 +21,12 @@ DISABLE_ML = os.environ.get("DISABLE_ML", "0") == "1"
 
 # Some legacy paths return mock predictions for test compatibility.
 # Keep these strictly opt-in so production never silently produces fake outputs.
+# ALLOW_MOCK_ML must be explicitly opted into — never auto-enabled.
+# The old PYTEST_CURRENT_TEST gate was removed because it could leak
+# into CI/CD processes that also start the app, silently returning
+# fake predictions in production.
 ALLOW_MOCK_ML = (
     os.environ.get("ALLOW_MOCK_ML", "0").lower() in {"1", "true", "yes"}
-    or ("PYTEST_CURRENT_TEST" in os.environ)
 )
 
 # Import real pandas and numpy - they're lightweight and needed
@@ -170,8 +173,9 @@ class _NoOpModelManager:
         return _NoOpModel()
 
     def predict(self, *args, **kwargs):
-        """No-op prediction"""
-        return {"prediction": 0.5, "confidence": 0.8}
+        """No-op prediction — P&L-021 FIX: confidence=0.0 so ensemble
+        contributes nothing to signal netting when ML is disabled."""
+        return {"prediction": 0.5, "confidence": 0.0}
 
     def set_reference_data(self, *args, **kwargs):
         """No-op reference data setting"""
@@ -376,13 +380,14 @@ class ModelManager:
             # Try to get from registry first
             if hasattr(self.registry, 'get_model'):
                 return self.registry.get_model(model_id, version)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("Registry get_model failed for %s: %s", model_id, e)
 
         # Fallback to load_model for backward compatibility
         try:
             return self.load_model(model_id)
-        except Exception:
+        except Exception as e:
+            logger.warning("load_model fallback failed for %s: %s", model_id, e)
             return None
 
     def list_models(self) -> list[str]:
@@ -499,6 +504,9 @@ class ModelManager:
                 self.metrics = {"accuracy": 0.95, "precision": 0.92, "recall": 0.93}  # Mock metrics
 
         mock_version = MockVersion(model_name)
+        # NOTE: mock_version.metrics are placeholders — real metrics should
+        # come from actual model evaluation during training pipelines.
+        # These exist only to satisfy interface contracts for test harnesses.
 
         # Register the model if possible
         try:
@@ -512,8 +520,8 @@ class ModelManager:
                 creator="automated_training",
             )
             self.register_model(mock_model, metadata=metadata, version=version)
-        except Exception:
-            pass  # Don't fail if registration fails
+        except Exception as e:
+            logger.warning("Model registration failed for %s: %s", model_name, e)
 
         return mock_version
 
@@ -1458,7 +1466,8 @@ class ModelRegistry:
             if hasattr(self, 'metrics') and self.metrics:
                 self.metrics.increment("model_predictions_total", {"model_id": model_id, "status": "error"})
             if ALLOW_MOCK_ML:
-                return {"signal": "sell", "confidence": 0.3}
+                logger.warning(f"ALLOW_MOCK_ML: returning neutral no-op prediction for {model_id}")
+                return {"signal": "hold", "confidence": 0.0, "mock": True}
             raise
 
     def get_model(self, model_id: str, version: str = None) -> ModelVersion:
@@ -1775,6 +1784,7 @@ class DriftDetector:
 
             if severity:
                 drift_detection = DriftDetection(
+                    model_id=model_id,
                     drift_type=DriftType.DATA_DRIFT,
                     severity=max_psi / self.drift_psi_alert,  # Normalize severity
                     detected_at=datetime.now(),
@@ -1855,7 +1865,8 @@ class DriftDetector:
             psi = sum((live_props - ref_props) * np.log(live_props / ref_props))
             return float(psi)
 
-        except Exception:
+        except Exception as e:
+            logger.error("PSI computation failed — returning 0.0 (no-drift assumed): %s", e)
             return 0.0
 
     def compute_feature_importance(self, model_id: str, version: str = None) -> dict:
@@ -1945,14 +1956,13 @@ def create_model_registry():
     return ModelRegistry()
 
 def load_model_from_registry(name: str):
-    """Load model from registry - compatibility stub."""
+    """Load model from registry."""
     try:
         registry = ModelRegistry()
         return registry.load_model(name)
     except (ModelNotFoundError, FileNotFoundError, OSError, Exception) as e:
         logging.debug(f"Could not load model from registry: {e}")
-        from unittest.mock import Mock
-        return Mock()
+        return _NoOpModel()
 
 def save_model_to_registry(name: str, model):
     """Save model to registry - compatibility stub."""
@@ -1965,14 +1975,23 @@ def save_model_to_registry(name: str, model):
         return False
 
 def get_model_metrics(model_name: str):
-    """Get model performance metrics - compatibility stub."""
-    return {
-        "accuracy": 0.85,
-        "precision": 0.83,
-        "recall": 0.87,
-        "f1_score": 0.85,
-        "auc": 0.89
-    }
+    """Get model performance metrics from the registry.
+
+    Attempts to retrieve real metrics from the model registry.
+    Returns empty dict with a warning if no metrics are available.
+    """
+    try:
+        mgr = _get_global_model_manager()
+        if hasattr(mgr, 'models') and model_name in getattr(mgr, 'models', {}):
+            versions = mgr.models[model_name]
+            if versions:
+                latest = versions[-1] if isinstance(versions, list) else versions
+                if hasattr(latest, 'metrics') and latest.metrics:
+                    return latest.metrics
+    except Exception:
+        pass
+    logging.warning(f"No real metrics available for model '{model_name}' — returning empty")
+    return {"warning": "No trained model metrics available", "model_name": model_name}
 
 def validate_model(model):
     """Validate model - compatibility stub."""

@@ -175,24 +175,24 @@ class TestAlpacaStreamClientConnect:
     async def test_connect_success(self, mock_env_vars, mock_websocket):
         """Test successful connection."""
         with patch("backend.integrations.alpaca_stream.get_settings") as mock_get, \
-             patch("backend.integrations.alpaca_stream.websockets.client.connect", new_callable=AsyncMock) as mock_connect:
+             patch("backend.integrations.alpaca_stream.websockets.connect", new_callable=AsyncMock) as mock_connect:
             mock_get.return_value = MagicMock()
             mock_connect.return_value = mock_websocket
-            
+
             # Mock authentication response (old format)
             mock_websocket.recv.side_effect = [
                 json.dumps({"T": "success", "msg": "authenticated"}),
                 json.dumps({"T": "listening", "data": {"streams": ["trade_updates"]}})
             ]
-            
+
             from backend.integrations.alpaca_stream import AlpacaStreamClient
-            
+
             client = AlpacaStreamClient()
-            
+
             # Mock background tasks
             with patch.object(client, "_start_background_tasks", new_callable=AsyncMock):
                 result = await client.connect()
-            
+
             assert result is True
             assert client.is_connected is True
             assert client.reconnect_attempts == 0
@@ -201,7 +201,7 @@ class TestAlpacaStreamClientConnect:
     async def test_connect_exception_handling(self, mock_env_vars):
         """Test connection handles exceptions gracefully."""
         with patch("backend.integrations.alpaca_stream.get_settings") as mock_get, \
-             patch("backend.integrations.alpaca_stream.websockets.client.connect", new_callable=AsyncMock) as mock_connect:
+             patch("backend.integrations.alpaca_stream.websockets.connect", new_callable=AsyncMock) as mock_connect:
             mock_get.return_value = MagicMock()
             mock_connect.side_effect = Exception("Connection failed")
             
@@ -722,7 +722,7 @@ class TestAlpacaStreamClientReconnection:
     async def test_start_with_reconnect_success(self, mock_env_vars, mock_websocket):
         """Test start_with_reconnect on successful connection."""
         with patch("backend.integrations.alpaca_stream.get_settings") as mock_get, \
-             patch("backend.integrations.alpaca_stream.websockets.client.connect", new_callable=AsyncMock) as mock_connect:
+             patch("backend.integrations.alpaca_stream.websockets.connect", new_callable=AsyncMock) as mock_connect:
             mock_get.return_value = MagicMock()
             mock_connect.return_value = mock_websocket
             
@@ -747,7 +747,7 @@ class TestAlpacaStreamClientReconnection:
     async def test_max_reconnect_attempts_reached(self, mock_env_vars):
         """Test reconnection stops after max attempts."""
         with patch("backend.integrations.alpaca_stream.get_settings") as mock_get, \
-             patch("backend.integrations.alpaca_stream.websockets.client.connect", new_callable=AsyncMock) as mock_connect:
+             patch("backend.integrations.alpaca_stream.websockets.connect", new_callable=AsyncMock) as mock_connect:
             mock_get.return_value = MagicMock()
             mock_connect.side_effect = Exception("Connection failed")
             
@@ -1136,7 +1136,7 @@ class TestAlpacaStreamStartWithReconnectLoop:
     async def test_start_with_reconnect_exception_handling(self, mock_env_vars):
         """Test start_with_reconnect handles unexpected exceptions."""
         with patch("backend.integrations.alpaca_stream.get_settings") as mock_get, \
-             patch("backend.integrations.alpaca_stream.websockets.client.connect", new_callable=AsyncMock) as mock_connect, \
+             patch("backend.integrations.alpaca_stream.websockets.connect", new_callable=AsyncMock) as mock_connect, \
              patch("asyncio.sleep", new_callable=AsyncMock):
             mock_get.return_value = MagicMock()
             mock_connect.side_effect = Exception("Unexpected error")

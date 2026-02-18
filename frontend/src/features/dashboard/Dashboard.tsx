@@ -360,7 +360,7 @@ const Dashboard = () => {
             style={{ background: colors.backgrounds.secondary }}
           >
             <div style={{ height: '300px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <span style={{ color: colors.text.tertiary }}>Activity feed will be implemented in Phase 3</span>
+              <span style={{ color: colors.text.tertiary }}>No recent activity</span>
             </div>
           </Card>
         </Col>

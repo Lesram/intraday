@@ -25,7 +25,7 @@ import os
 from datetime import datetime, timezone
 from typing import Any
 
-from backend.database import get_async_session_maker
+from backend.infra.db import get_sessionmaker
 from backend.integrations.alpaca_broker import AlpacaBrokerClient
 from backend.services.position_reconciliation_service import PositionReconciliationService
 from backend.utils.logger import get_logger
@@ -47,7 +47,7 @@ async def run_scheduled_reconciliation() -> dict[str, Any]:
         logger.info("H-20: Starting scheduled position reconciliation")
         
         # Create database session
-        async_session_maker = get_async_session_maker()
+        async_session_maker = get_sessionmaker()
         async with async_session_maker() as session:
             # Create Alpaca client
             alpaca_client = AlpacaBrokerClient()

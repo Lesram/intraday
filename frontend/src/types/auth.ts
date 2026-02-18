@@ -11,13 +11,13 @@ export interface LoginRequest {
 export interface RegisterRequest {
   email: string;
   password: string;
-  name: string;
 }
 
 export interface AuthResponse {
   access_token: string;
   refresh_token: string;
   token_type: string;
+  expires_in: number;
   user: User;
 }
 
@@ -39,6 +39,7 @@ export interface TokenRefreshRequest {
 
 export interface TokenRefreshResponse {
   access_token: string;
+  refresh_token: string;
   token_type: string;
 }
 

@@ -28,55 +28,58 @@ from backend.websocket import (
 # ============================================================================
 
 class TestSignalService:
-    """Tests for SignalService"""
-    
+    """Tests for SignalService (cache layer)."""
+
     @pytest.fixture
     def service(self):
         """Create a fresh SignalService instance"""
         return SignalService()
-    
+
     def test_init(self, service):
-        """Test service initialization"""
-        assert service.signals == {}
-        
+        """Test service initialization — empty cache."""
+        assert service._last_signals == []
+
     @pytest.mark.asyncio
     async def test_get_signals_with_symbol(self, service):
-        """Test getting signals for a specific symbol"""
+        """Test getting signals for a specific symbol after cache update."""
+        service.update_signals([
+            {"symbol": "GOOG", "signal": "BUY", "confidence": 0.75, "timestamp": "2026-01-01T00:00:00"},
+            {"symbol": "AAPL", "signal": "HOLD", "confidence": 0.5, "timestamp": "2026-01-01T00:00:00"},
+        ])
         signals = await service.get_signals(symbol="GOOG")
-        
+
         assert len(signals) == 1
         assert signals[0]["symbol"] == "GOOG"
-        assert signals[0]["signal"] == "BUY"
-        assert signals[0]["confidence"] == 0.75
-        assert "timestamp" in signals[0]
-        
+
     @pytest.mark.asyncio
     async def test_get_signals_without_symbol(self, service):
-        """Test getting signals without specifying symbol"""
+        """Test getting all cached signals."""
+        service.update_signals([
+            {"symbol": "AAPL", "signal": "BUY", "confidence": 0.8},
+        ])
         signals = await service.get_signals()
-        
+
         assert len(signals) == 1
         assert signals[0]["symbol"] == "AAPL"
-        assert signals[0]["confidence"] == 0.8
-        
+
     @pytest.mark.asyncio
     async def test_generate_signal(self, service):
-        """Test generating a trading signal"""
+        """Test generate_signal returns HOLD when cache is empty."""
         data = {"price": 150.0, "volume": 1000000}
-        
+
         signal = await service.generate_signal("MSFT", data)
-        
+
         assert signal["symbol"] == "MSFT"
-        assert signal["signal"] == "BUY"
-        assert signal["confidence"] == 0.75
+        assert signal["signal"] == "HOLD"
+        assert signal["confidence"] == 0.0
         assert signal["data"] == data
         assert "timestamp" in signal
-        
+
     @pytest.mark.asyncio
     async def test_generate_signal_with_empty_data(self, service):
         """Test generating signal with empty data"""
         signal = await service.generate_signal("TSLA", {})
-        
+
         assert signal["symbol"] == "TSLA"
         assert signal["data"] == {}
 

@@ -156,6 +156,10 @@ class WebSocketManager {
       this.handleMessage({ type: 'risk_update', topic: 'risk', data, timestamp: Date.now() });
     });
 
+    this.socket.on('organism_tick', (data) => {
+      this.handleMessage({ type: 'organism_tick', topic: 'organism', data, timestamp: Date.now() });
+    });
+
     this.socket.on('error', (error) => {
       logger.error('[WebSocket] Error:', error);
     });

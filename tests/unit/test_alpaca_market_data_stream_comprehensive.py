@@ -122,7 +122,7 @@ class TestAlpacaMarketDataStreamInit:
         )
         
         assert stream.paper is True
-        assert stream.feed == "iex"
+        assert stream.feed == "sip"
         assert stream.is_connected is False
         assert stream.is_authenticated is False
 

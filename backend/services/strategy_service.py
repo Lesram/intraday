@@ -76,6 +76,7 @@ IMPLEMENTATION_TYPES = [
     "ensemble_model",  # Template uses this
     "stat_arb",
     "statistical_arbitrage",  # Template uses this
+    "optuna_meta",
 ]
 # Classification types (trading philosophy)
 CLASSIFICATION_TYPES = [
@@ -349,6 +350,11 @@ class StrategyService:
             parameters = strategy_data.get("parameters", {})
             if not isinstance(parameters, dict):
                 raise ValueError("Parameters must be a dictionary")
+
+            # Default creation origin for UI-created strategies
+            if "_origin" not in parameters:
+                parameters["_origin"] = "ui"
+            strategy_data["parameters"] = parameters
 
             # Set default status if not provided
             if "status" not in strategy_data:

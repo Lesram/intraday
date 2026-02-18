@@ -53,7 +53,6 @@ const getSideColor = (side: OrderSide): string => {
 export const ActiveOrdersTable: React.FC = () => {
   const orders = useOrdersStore((state) => state.orders);
   const updateOrder = useOrdersStore((state) => state.updateOrder);
-  const _removeOrder = useOrdersStore((state) => state.removeOrder);
   const queryClient = useQueryClient();
 
   // Only show active orders (pending, submitted, partially_filled)

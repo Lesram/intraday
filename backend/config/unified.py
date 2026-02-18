@@ -1,9 +1,19 @@
 """
 Unified Configuration System
-Provides single source of truth for all platform configuration
+
+.. deprecated::
+    All production callers have migrated to ``backend.config.settings.get_settings()``.
+    This module is retained for backward compatibility and will be removed in a future release.
 """
 import os
+import warnings
 from typing import Any
+
+warnings.warn(
+    "backend.config.unified is deprecated. Use backend.config.settings.get_settings() instead.",
+    DeprecationWarning,
+    stacklevel=2,
+)
 
 from dotenv import load_dotenv
 from pydantic import Field, field_validator, model_validator
@@ -27,8 +37,8 @@ class UnifiedSettings(BaseSettings):
 
     # Database settings
     database_url: str = Field(
-        default="postgresql+asyncpg://trading:trading_password@localhost:5432/algotrading",
-        description="PostgreSQL database URL (required for production)"
+        default="",
+        description="PostgreSQL database URL (required — set DATABASE_URL environment variable)"
     )
     database_echo: bool = Field(default=False, alias="db_echo")
     database_pool_size: int = Field(default=20, alias="db_pool_size")

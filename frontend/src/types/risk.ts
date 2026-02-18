@@ -37,7 +37,7 @@ export enum EmergencyStopStatus {
 
 export interface RiskMetric {
   id: string;
-  user_id: string;
+  user_id: number;
   metric_name: string;
   current_value: number;
   limit_value: number;
@@ -49,7 +49,7 @@ export interface RiskMetric {
 
 export interface RiskViolation {
   id: string;
-  user_id: string;
+  user_id: number;
   metric_name: string;
   violation_type: ViolationType;
   current_value: number;
@@ -63,7 +63,7 @@ export interface RiskViolation {
 
 export interface RiskLimit {
   id: string;
-  user_id: string;
+  user_id: number;
   limit_name: string;
   limit_value: number;
   warning_threshold: number;
@@ -71,20 +71,20 @@ export interface RiskLimit {
   enabled: boolean;
   created_at: string;
   updated_at: string;
-  updated_by?: string;
+  updated_by?: number;
 }
 
 export interface EmergencyStop {
   id: string;
-  user_id: string;
-  triggered_by: string;
+  user_id: number;
+  triggered_by: number;
   reason: string;
   strategies_stopped: number;
   orders_cancelled: number;
   status: EmergencyStopStatus;
   triggered_at: string;
   resolved_at?: string;
-  resolved_by?: string;
+  resolved_by?: number;
 }
 
 // ===========================

@@ -515,8 +515,9 @@ class TestRiskManagerDependency:
         """Test risk check for buy order."""
         from backend.api.routes.orders import get_risk_manager
         from unittest.mock import MagicMock
-        
+
         mock_request = MagicMock()
+        mock_request.app.state.risk_manager = None
         risk_manager = await get_risk_manager(mock_request)
         result = risk_manager.check_risk("AAPL", 10, 150.0)
         
@@ -529,8 +530,9 @@ class TestRiskManagerDependency:
         """Test risk check for sell order (negative quantity)."""
         from backend.api.routes.orders import get_risk_manager
         from unittest.mock import MagicMock
-        
+
         mock_request = MagicMock()
+        mock_request.app.state.risk_manager = None
         risk_manager = await get_risk_manager(mock_request)
         result = risk_manager.check_risk("AAPL", -10, 150.0)
         
@@ -541,8 +543,9 @@ class TestRiskManagerDependency:
         """Test risk check for large position."""
         from backend.api.routes.orders import get_risk_manager
         from unittest.mock import MagicMock
-        
+
         mock_request = MagicMock()
+        mock_request.app.state.risk_manager = None
         risk_manager = await get_risk_manager(mock_request)
         # Try to buy large position exceeding limit
         result = risk_manager.check_risk("AAPL", 10000, 150.0)
@@ -555,8 +558,9 @@ class TestRiskManagerDependency:
         """Test risk check with None price."""
         from backend.api.routes.orders import get_risk_manager
         from unittest.mock import MagicMock
-        
+
         mock_request = MagicMock()
+        mock_request.app.state.risk_manager = None
         risk_manager = await get_risk_manager(mock_request)
         result = risk_manager.check_risk("AAPL", 10, None)
         
@@ -568,8 +572,9 @@ class TestRiskManagerDependency:
         """Test assess_order async method."""
         from backend.api.routes.orders import get_risk_manager
         from unittest.mock import MagicMock
-        
+
         mock_request = MagicMock()
+        mock_request.app.state.risk_manager = None
         risk_manager = await get_risk_manager(mock_request)
         
         order = OrderSpec(
@@ -592,13 +597,17 @@ class TestRiskManagerDependency:
         """Test risk check with zero quantity."""
         from backend.api.routes.orders import get_risk_manager
         from unittest.mock import MagicMock
-        
+
         mock_request = MagicMock()
+        mock_request.app.state.risk_manager = None
         risk_manager = await get_risk_manager(mock_request)
         result = risk_manager.check_risk("AAPL", 0, 150.0)
-        
-        # Should reject
+
+        # Zero quantity triggers OrderSpec creation error (qty=Decimal("0") is
+        # falsy, so OrderSpec resolves qty as None which fails validation).
+        # The error handler returns allowed=False.
         assert result["allowed"] is False
+        assert result["risk_score"] == 1.0
 
 
 # ==============================================================================

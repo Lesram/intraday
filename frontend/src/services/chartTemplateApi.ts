@@ -1,12 +1,9 @@
 /**
  * Chart Template API Service
- * Handles all chart template-related API calls
+ * Handles all chart template-related API calls using the centralized apiClient
  */
 
-import axios from 'axios';
-import { useAuthStore } from '@/store/authStore';
-
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+import { apiClient } from './api';
 
 export interface ChartTemplate {
   id: number;
@@ -63,23 +60,10 @@ export interface UpdateTemplateRequest {
 }
 
 /**
- * Get authorization headers
- */
-const getAuthHeaders = () => {
-  const token = useAuthStore.getState().accessToken;
-  return {
-    headers: {
-      Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/json',
-    },
-  };
-};
-
-/**
  * Get preset templates (no auth required)
  */
 export const getPresetTemplates = async (): Promise<ChartTemplate[]> => {
-  const response = await axios.get(`${API_BASE_URL}/api/v1/chart-templates/presets/`);
+  const response = await apiClient.get<ChartTemplate[]>('/chart-templates/presets/');
   return response.data;
 };
 
@@ -87,10 +71,7 @@ export const getPresetTemplates = async (): Promise<ChartTemplate[]> => {
  * List all user templates
  */
 export const listTemplates = async (): Promise<ChartTemplate[]> => {
-  const response = await axios.get(
-    `${API_BASE_URL}/api/v1/chart-templates/`,
-    getAuthHeaders()
-  );
+  const response = await apiClient.get<ChartTemplate[]>('/chart-templates/');
   return response.data;
 };
 
@@ -100,11 +81,7 @@ export const listTemplates = async (): Promise<ChartTemplate[]> => {
 export const createTemplate = async (
   data: CreateTemplateRequest
 ): Promise<ChartTemplate> => {
-  const response = await axios.post(
-    `${API_BASE_URL}/api/v1/chart-templates`,
-    data,
-    getAuthHeaders()
-  );
+  const response = await apiClient.post<ChartTemplate>('/chart-templates', data);
   return response.data;
 };
 
@@ -112,10 +89,7 @@ export const createTemplate = async (
  * Get a specific template by ID
  */
 export const getTemplate = async (id: number): Promise<ChartTemplate> => {
-  const response = await axios.get(
-    `${API_BASE_URL}/api/v1/chart-templates/${id}`,
-    getAuthHeaders()
-  );
+  const response = await apiClient.get<ChartTemplate>(`/chart-templates/${id}`);
   return response.data;
 };
 
@@ -126,11 +100,7 @@ export const updateTemplate = async (
   id: number,
   data: UpdateTemplateRequest
 ): Promise<ChartTemplate> => {
-  const response = await axios.put(
-    `${API_BASE_URL}/api/v1/chart-templates/${id}`,
-    data,
-    getAuthHeaders()
-  );
+  const response = await apiClient.put<ChartTemplate>(`/chart-templates/${id}`, data);
   return response.data;
 };
 
@@ -138,20 +108,13 @@ export const updateTemplate = async (
  * Delete a template
  */
 export const deleteTemplate = async (id: number): Promise<void> => {
-  await axios.delete(
-    `${API_BASE_URL}/api/v1/chart-templates/${id}`,
-    getAuthHeaders()
-  );
+  await apiClient.delete(`/chart-templates/${id}`);
 };
 
 /**
  * Apply a template (tracks usage)
  */
 export const applyTemplate = async (id: number): Promise<ChartTemplate> => {
-  const response = await axios.post(
-    `${API_BASE_URL}/api/v1/chart-templates/${id}/apply`,
-    {},
-    getAuthHeaders()
-  );
+  const response = await apiClient.post<ChartTemplate>(`/chart-templates/${id}/apply`, {});
   return response.data;
 };

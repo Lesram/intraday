@@ -4,13 +4,12 @@ API v1 Portfolio endpoints.
 
 import asyncio
 from datetime import UTC, datetime
-from decimal import Decimal
 import logging
 import traceback
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from pydantic import BaseModel, ConfigDict, field_serializer
+from pydantic import BaseModel, ConfigDict, Field
 
 from backend.infra.repositories import get_portfolio_repo
 from backend.infra.security import (
@@ -121,17 +120,22 @@ async def get_portfolio_history(
 
 
 class PositionResponse(BaseModel):
-    model_config = ConfigDict()
+    """§13.4 FIX: Consolidated position DTO matching frontend Position interface."""
+    model_config = ConfigDict(populate_by_name=True)
 
     symbol: str
-    qty: Decimal
-    avg_price: Decimal
-    market_value: Decimal
-    unrealized_pnl: Decimal
-
-    @field_serializer('qty', 'avg_price', 'market_value', 'unrealized_pnl')
-    def serialize_decimal(self, value: Decimal) -> str:
-        return str(value)
+    quantity: float = Field(default=0.0, alias="qty")
+    average_entry_price: float = Field(default=0.0, alias="avg_price")
+    current_price: float = 0.0
+    market_value: float = 0.0
+    unrealized_pl: float = Field(default=0.0, alias="unrealized_pnl")
+    unrealized_pl_percent: float = 0.0
+    realized_pl: float = 0.0
+    cost_basis: float = 0.0
+    side: str = "long"
+    opened_at: str = ""
+    updated_at: str = ""
+    strategy_id: str | None = None
 
 
 @router.get("/positions/{symbol}", response_model=PositionResponse)
@@ -156,10 +160,15 @@ async def get_position_by_symbol(
 
         return PositionResponse(
             symbol=position['symbol'],
-            qty=Decimal(str(position['qty'])),
-            avg_price=Decimal(position['avg_price']),
-            market_value=Decimal(position['market_value']),
-            unrealized_pnl=Decimal(position['unrealized_pnl'])
+            qty=float(position.get('qty', 0)),
+            avg_price=float(position.get('avg_price', 0)),
+            current_price=float(position.get('current_price', 0)),
+            market_value=float(position.get('market_value', 0)),
+            unrealized_pnl=float(position.get('unrealized_pnl', position.get('unrealized_pl', 0))),
+            unrealized_pl_percent=float(position.get('unrealized_pl_percent', 0)),
+            cost_basis=float(position.get('cost_basis', 0)),
+            side=position.get('side', 'long'),
+            updated_at=str(position.get('updated_at', '')),
         )
     except HTTPException:
         raise
@@ -172,32 +181,13 @@ async def get_positions(
     request: Request,
     user=Depends(get_authenticated_user),
 ) -> Any:
-    # If a summary provider is available (tests patch backend.api.main.get_positions_summary), use it
-    try:
-        from backend.api.main import get_positions_summary  # type: ignore
-        func = get_positions_summary
-        # Only call if it's been monkeypatched to a Mock/MagicMock/AsyncMock
-        try:
-            from unittest.mock import AsyncMock, MagicMock, Mock
-            if isinstance(func, (Mock, MagicMock, AsyncMock)):
-                result = func()
-                # Ensure result is JSON-safe and not a Mock with circular references
-                if isinstance(result, (Mock, MagicMock, AsyncMock)):
-                    return []  # Return empty list instead of Mock
-                return result
-        except Exception:
-            pass
-    except Exception:
-        pass
-    # Resolve repo only via dependency overrides to avoid DB session in tests
+    # Resolve repo via dependency overrides (for testing) or real injection
     repo = None
     if get_portfolio_repo in request.app.dependency_overrides:
         provider = request.app.dependency_overrides[get_portfolio_repo]
-        # Provider might be sync or async
-        repo = provider()  # tests use sync provider returning a fake repo
+        repo = provider()
     if repo is None:
-        # If no repo is available, return empty positions for testing instead of 500
-        # This prevents RecursionError during JSON serialization of HTTPException
+        # No repo available — return empty positions instead of 500
         return []
     # Determine user_id using normalized extraction
     from backend.infra.security import get_user_attribute, get_user_id
@@ -213,17 +203,12 @@ async def get_positions(
         result = repo.get_all_positions()
         positions = result if result is not None else []
 
-    # Ensure positions are JSON-safe - convert any Mock objects to empty dicts
+    # Convert to response models, skipping any invalid entries
     safe_positions = []
     for p in positions:
         try:
-            from unittest.mock import AsyncMock, MagicMock, Mock
-            if isinstance(p, (Mock, MagicMock, AsyncMock)):
-                # Skip Mock objects to avoid circular references
-                continue
             safe_positions.append(PositionResponse(**p))
         except Exception:
-            # Skip any position that can't be converted to PositionResponse
             continue
 
     return safe_positions
@@ -239,17 +224,59 @@ async def get_performance(
     logger = get_logger(__name__)
 
     try:
-        # Mock performance data for tests
+        # Fetch real portfolio data to compute performance metrics
+        portfolio_service = get_portfolio_service()
+        user_id = get_user_id(user) or (user.username if hasattr(user, 'username') else 'default')
+        portfolio = await portfolio_service.get_user_portfolio(user_id)
+
+        positions = portfolio.get('positions', [])
+        total_equity = portfolio.get('totalEquity', 0.0)
+        total_pnl = portfolio.get('totalPnL', 0.0)
+        total_pnl_pct = portfolio.get('totalPnLPercent', 0.0)
+        day_pnl = portfolio.get('dayPnL', 0.0)
+
+        # Compute win/loss stats from positions
+        winners = [p for p in positions if (p.get('unrealizedPnL') or 0) > 0]
+        losers = [p for p in positions if (p.get('unrealizedPnL') or 0) < 0]
+        total_trades = len(positions)
+        winning_trades = len(winners)
+        losing_trades = len(losers)
+        win_rate = winning_trades / total_trades if total_trades > 0 else 0.0
+
+        # Profit factor = gross profit / gross loss
+        gross_profit = sum(p.get('unrealizedPnL', 0) for p in winners) if winners else 0.0
+        gross_loss = abs(sum(p.get('unrealizedPnL', 0) for p in losers)) if losers else 0.0
+        profit_factor = gross_profit / gross_loss if gross_loss > 0 else (float('inf') if gross_profit > 0 else 0.0)
+
+        # Sharpe ratio from position returns
+        from backend.risk.risk_manager import RiskMathUtils
+        import numpy as np
+        returns_list = [p.get('unrealizedPnLPercent', 0) / 100.0 for p in positions if p.get('unrealizedPnLPercent')]
+        if len(returns_list) >= 2:
+            arr = np.array(returns_list)
+            vol = RiskMathUtils.ewma_volatility(arr)
+            sharpe = (float(np.mean(arr)) * 252) / vol if vol > 1e-9 else 0.0
+        else:
+            sharpe = 0.0
+
+        # Max drawdown from equity curve (simplified from positions)
+        max_dd = 0.0
+        if returns_list:
+            cum = np.cumprod(1 + np.array(returns_list))
+            running_max = np.maximum.accumulate(cum)
+            dd = (cum - running_max) / running_max
+            max_dd = float(np.min(dd)) * 100 if len(dd) > 0 else 0.0
+
         return {
-            "total_return": 15.23,
-            "daily_return": 2.15,
-            "sharpe_ratio": 1.25,
-            "max_drawdown": -8.5,
-            "win_rate": 0.65,
-            "profit_factor": 1.8,
-            "total_trades": 142,
-            "winning_trades": 92,
-            "losing_trades": 50
+            "total_return": round(total_pnl_pct, 2),
+            "daily_return": round(day_pnl / total_equity * 100, 2) if total_equity else 0.0,
+            "sharpe_ratio": round(sharpe, 2),
+            "max_drawdown": round(max_dd, 2),
+            "win_rate": round(win_rate, 2),
+            "profit_factor": round(min(profit_factor, 999.99), 2),
+            "total_trades": total_trades,
+            "winning_trades": winning_trades,
+            "losing_trades": losing_trades,
         }
     except Exception as e:
         logger.error(f"Failed to get performance metrics: {str(e)}")

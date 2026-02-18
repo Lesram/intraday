@@ -2,6 +2,9 @@
 !logs/.gitkeep
 !logs/current.log
 
+# Organism brain state (trained models, generated per run)
+organism_brain/
+
 # Trash folder for cleanup (to be deleted)
 .trash/
 
@@ -151,9 +154,21 @@ dmypy.json
 audit_trail.log
 trading_data/
 models/saved_models/
+models/active_models/
 *.pkl
 *.h5
 *.joblib
+
+# Generated reports and artifacts (never commit)
+reports/*.txt
+reports/*.csv
+reports/*.md
+reports/*.jsonl
+reports/*.json
+!reports/README.md
+backups/
+hash.txt
+test_output.txt
 
 # Test results and artifacts (keep README for documentation)
 test_results/*

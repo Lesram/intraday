@@ -9,10 +9,21 @@ from pydantic import BaseModel, Field, field_validator
 class BacktestRequest(BaseModel):
     """Request to run a backtest"""
     strategy_id: str
+    engine: str = Field(default="platform", description="Backtest engine: platform (default) or research")
     start_date: date
     end_date: date
     initial_capital: float = Field(ge=1000, le=10_000_000, description="Initial capital in USD")
     parameters: dict[str, Any] | None = None
+
+    @field_validator('engine')
+    @classmethod
+    def validate_engine(cls, v: str) -> str:
+        if not isinstance(v, str) or not v.strip():
+            return "platform"
+        engine = v.strip().lower()
+        if engine not in {"platform", "research"}:
+            raise ValueError("engine must be 'platform' or 'research'")
+        return engine
 
     @field_validator('end_date')
     @classmethod
@@ -54,6 +65,7 @@ class Trade(BaseModel):
     pnl: float | None = None
     pnl_percent: float | None = None
     duration_days: int | None = None
+    exit_reason: str | None = None
     commission: float = 0.0
 
 
@@ -105,6 +117,7 @@ class BacktestResult(BaseModel):
     id: str
     strategy_id: str
     strategy_name: str
+    engine: str = Field(default="platform", description="Backtest engine used")
     start_date: date
     end_date: date
     initial_capital: float
@@ -122,6 +135,7 @@ class BacktestResult(BaseModel):
     status: str  # pending, running, completed, failed
     error_message: str | None = None
     progress: int = Field(default=0, ge=0, le=100)
+    origin: str | None = None
 
     created_at: datetime
     started_at: datetime | None = None
@@ -145,6 +159,7 @@ class BacktestSummary(BaseModel):
     id: str
     strategy_id: str
     strategy_name: str
+    engine: str = Field(default="platform", description="Backtest engine used")
     start_date: date
     end_date: date
     initial_capital: float
@@ -161,6 +176,7 @@ class BacktestSummary(BaseModel):
     error_message: str | None = None
     created_at: datetime
     completed_at: datetime | None = None
+    origin: str | None = None
 
     @property
     def duration_days(self) -> int:

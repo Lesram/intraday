@@ -70,21 +70,15 @@ from typing import TYPE_CHECKING as _TYPE_CHECKING
 
 if _TYPE_CHECKING:  # pragma: no cover - for type checkers only
     from .base_settings import Environment as EnvironmentEnum
-else:  # Runtime import of canonical Environment (also injected into builtins)
+else:  # Runtime import of canonical Environment
     try:  # pragma: no cover
         from .base_settings import Environment as EnvironmentEnum  # type: ignore
-    except Exception:  # fallback to builtins or define minimal enum
-        import builtins as _builtins
-        if hasattr(_builtins, "Environment"):
-            EnvironmentEnum = _builtins.Environment  # type: ignore
-        else:
-            class EnvironmentEnum(Enum):  # type: ignore
-                DEVELOPMENT = "development"
-                TESTING = "testing"
-                STAGING = "staging"
-                PRODUCTION = "production"
-            # Inject for later canonicalization when other modules import
-            _builtins.Environment = EnvironmentEnum
+    except Exception:  # fallback — define minimal enum WITHOUT builtins injection (§8.3 FIX)
+        class EnvironmentEnum(Enum):  # type: ignore
+            DEVELOPMENT = "development"
+            TESTING = "testing"
+            STAGING = "staging"
+            PRODUCTION = "production"
 
 # Public alias to preserve expected symbol name
 Environment = EnvironmentEnum
@@ -215,7 +209,7 @@ class LoggingSettings:
 
 @dataclass
 class SecuritySettings:
-    secret_key: str = "change-this-secret-key-in-production"
+    secret_key: str = ""
     jwt_expiry_hours: int = 24
     password_min_length: int = 12  # M-07 FIX: Increased from 8 to 12 characters
     max_login_attempts: int = 5
@@ -228,6 +222,19 @@ class SecuritySettings:
     rate_limiting: bool = True
     encryption_algorithm: str = "AES-256-GCM"
     def __post_init__(self):
+        # §2.2 FIX: No hardcoded secret. Must come from environment.
+        if not self.secret_key:
+            self.secret_key = os.environ.get("SECRET_KEY", os.environ.get("JWT_SECRET_KEY", ""))
+        if not self.secret_key:
+            import warnings
+            warnings.warn(
+                "SECRET_KEY not set — using generated ephemeral key. "
+                "Set SECRET_KEY env var for production.",
+                RuntimeWarning,
+                stacklevel=2,
+            )
+            import secrets
+            self.secret_key = secrets.token_urlsafe(64)
         if len(self.secret_key) < 32:
             raise SettingsError("Secret key must be at least 32 characters")
         if self.jwt_expiry_hours <= 0:
@@ -351,12 +358,12 @@ class AppSettings:
     app_name: str = "Trading Platform"
     app_version: str = "1.0.0"
     environment: Any = EnvironmentEnum.DEVELOPMENT
-    debug: bool = True
+    debug: bool = False  # PRODUCTION: debug off by default
     testing: bool = False
 
     # Broker configuration toggles
-    use_mock_data: bool = True
-    use_mock_broker: bool = False  # Default to FALSE - use real Alpaca
+    use_mock_data: bool = False  # PRODUCTION: must use real market data
+    use_mock_broker: bool = False  # PRODUCTION: must use real Alpaca
     alpaca_paper: bool = True
 
     database: DatabaseSettings = field(default_factory=DatabaseSettings)
@@ -429,6 +436,21 @@ class AppSettings:
         """Use Alpaca paper trading environment."""
         return self.alpaca_paper
 
+    @property
+    def trading_execution_mode(self) -> str:  # noqa: N802
+        """§2.1 FIX: Consolidated trading execution mode from env."""
+        mode = os.getenv("TRADING_EXECUTION_MODE", "execute").strip().lower()
+        if mode in ("paper", "live"):
+            return "execute"
+        if mode in ("execute", "shadow", "dry_run"):
+            return mode
+        return "execute"
+
+    @property
+    def alpaca_base_url(self) -> str:
+        """§2.1 FIX: Alpaca base URL for compatibility."""
+        return os.getenv("ALPACA_BASE_URL", "https://paper-api.alpaca.markets")
+
     def update_timestamp(self):
         self.updated_at = datetime.now()
 
@@ -477,14 +499,9 @@ class AppSettings:
                 setattr(self, key, value)
         self.update_timestamp()
 
-# Inject enums into builtins for tests that may expect them globally
-try:
-    import builtins as _builtins
-    _builtins.TradingMode = TradingMode
-    _builtins.LogLevel = LogLevel
-    _builtins.Environment = EnvironmentEnum
-except Exception:
-    pass
+# §8.3 FIX: Do NOT inject enums into builtins — modules should import explicitly
+# Kept as no-op for backward compatibility; tests should use:
+#   from backend.config.settings import TradingMode, LogLevel, Environment
 
 
 class SettingsValidator:

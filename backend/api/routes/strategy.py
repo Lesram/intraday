@@ -204,6 +204,22 @@ async def get_strategy_template(
 
 
 # ============================================================================
+# STRATEGY STATUS ENDPOINT (must be before /{strategy_id} to avoid shadowing)
+# ============================================================================
+
+@router.get("/status")
+async def get_strategy_status():
+    """Get strategy system status."""
+    return {
+        "status": "operational",
+        "active_strategies": 3,
+        "last_update": datetime.now().isoformat(),
+        "features_processed": 12500,
+        "signals_generated": 450
+    }
+
+
+# ============================================================================
 # STRATEGY CRUD ENDPOINTS
 # ============================================================================
 
@@ -414,18 +430,6 @@ class SignalBatch(BaseModel):
     signals: list[dict[str, Any]] = Field(..., description="List of signals")
     strategy_id: str = Field(..., description="Strategy identifier")
     metadata: dict[str, Any] = Field(default_factory=dict)
-
-
-@router.get("/status")
-async def get_strategy_status():
-    """Get strategy system status."""
-    return {
-        "status": "operational",
-        "active_strategies": 3,
-        "last_update": datetime.now().isoformat(),
-        "features_processed": 12500,
-        "signals_generated": 450
-    }
 
 
 @router.post("/{strategy_id}/start", response_model=dict[str, Any])

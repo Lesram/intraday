@@ -186,7 +186,7 @@ async def calculate_indicator(
                     start=start_date,
                     end=end_date,
                     limit=limit,
-                    feed='iex'  # Use IEX feed which has fewer restrictions for paper trading
+                    feed=os.getenv('ALPACA_DATA_FEED', 'sip')  # SIP with Algo Trader Plus subscription
                 )
 
                 logger.info(f"Fetching bars (IEX feed): symbol={request.symbol}, timeframe={alpaca_timeframe}, start={start_date}, end={end_date}")
@@ -214,7 +214,7 @@ async def calculate_indicator(
                         start=fallback_start,
                         end=fallback_end,
                         limit=limit,
-                        feed='iex'  # Still use IEX feed
+                        feed=os.getenv('ALPACA_DATA_FEED', 'sip')  # SIP with Algo Trader Plus subscription
                     )
                     response = alpaca_client.get_stock_bars(bars_request)
                     logger.info("Successfully fetched daily bars (fallback with old dates)")
@@ -319,7 +319,6 @@ async def calculate_indicator(
         volumes = [bar.volume for bar in request.bars]
         timestamps = [bar.time for bar in request.bars]  # Extract timestamps
 
-        print(f"🔍 DEBUG: Calculating {indicator_type} with {len(closes)} bars for {request.symbol}, params: {request.params}")
         logger.info(f"Calculating {indicator_type} with {len(closes)} bars for {request.symbol}, params: {request.params}")
 
         # Helper function to create dict with timestamps
@@ -337,14 +336,12 @@ async def calculate_indicator(
             if not result:
                 none_count = sum(1 for v in values_list if v is None)
                 nan_count = sum(1 for v in values_list if isinstance(v, float) and math.isnan(v))
-                print(f"⚠️  DEBUG: EMPTY RESULT! {len(values_list)} values, {none_count} None, {nan_count} NaN, sample: {values_list[:5]}")
                 logger.warning(
                     f"create_timestamped_values returned empty dict. "
                     f"Input: {len(values_list)} values, {none_count} None, {nan_count} NaN, "
                     f"sample values: {values_list[:5]}"
                 )
             else:
-                print(f"✅ DEBUG: {len(result)} valid values out of {len(values_list)} total")
                 logger.info(f"create_timestamped_values: {len(result)} valid values out of {len(values_list)} total")
 
             return result

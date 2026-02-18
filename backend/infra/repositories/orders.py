@@ -46,7 +46,7 @@ class OrdersRepo:
         order_type: str,
         tif: str,
         attributes: dict[str, Any] | None = None,
-        user_id: str = "admin",
+        user_id: str = "system",
     ) -> Order:
         """
         Create order with idempotency protection.
@@ -62,7 +62,7 @@ class OrdersRepo:
             order_type: Order type ('market', 'limit', etc.)
             tif: Time in force ('gtc', 'ioc', 'fok')
             attributes: Optional additional attributes
-            user_id: User ID for ownership tracking (default: 'admin')
+            user_id: User ID for ownership tracking (default: 'system')
 
         Returns:
             Order: Either existing or newly created order

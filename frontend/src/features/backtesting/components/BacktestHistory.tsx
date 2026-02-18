@@ -77,6 +77,19 @@ export const BacktestHistory: React.FC<BacktestHistoryProps> = ({
     return <Tag color={config.color}>{config.text}</Tag>;
   };
 
+  const getOriginTag = (origin?: string) => {
+    const normalized = (origin || 'ui').toLowerCase();
+    if (normalized === 'optuna') return <Tag color="purple">Optuna</Tag>;
+    if (normalized === 'backend') return <Tag color="geekblue">Backend</Tag>;
+    return <Tag color="green">UI</Tag>;
+  };
+
+  const getEngineTag = (engine?: string) => {
+    const normalized = (engine || 'platform').toLowerCase();
+    if (normalized === 'research') return <Tag color="gold">Research</Tag>;
+    return <Tag color="blue">Platform</Tag>;
+  };
+
   // Table columns
   const columns: ColumnsType<BacktestSummary> = [
     {
@@ -88,6 +101,20 @@ export const BacktestHistory: React.FC<BacktestHistoryProps> = ({
       render: (name: string) => (
         <span style={{ fontWeight: 600 }}>{name}</span>
       ),
+    },
+    {
+      title: 'Origin',
+      dataIndex: 'origin',
+      key: 'origin',
+      width: 110,
+      render: (origin: string | undefined) => getOriginTag(origin),
+    },
+    {
+      title: 'Engine',
+      dataIndex: 'engine',
+      key: 'engine',
+      width: 120,
+      render: (engine: string | undefined) => getEngineTag(engine),
     },
     {
       title: 'Period',

@@ -30,6 +30,7 @@ export type StrategyStatus = 'active' | 'paused' | 'stopped' | 'error';
  * - fundamental / fundamental_analysis: Company financials & valuations
  * - quantitative: Mathematical models & ML
  * - hybrid / hybrid_strategy: Multi-approach combination
+ * - optuna_meta: Optuna research meta-strategy (platform parity mode)
  */
 export type StrategyType = 
   // Implementation types (short and template names)
@@ -46,7 +47,8 @@ export type StrategyType =
   | 'fundamental_analysis'
   | 'quantitative'
   | 'hybrid'
-  | 'hybrid_strategy';
+  | 'hybrid_strategy'
+  | 'optuna_meta';
 
 /**
  * Performance metrics for a trading strategy

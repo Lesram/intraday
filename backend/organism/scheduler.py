@@ -1,0 +1,267 @@
+"""
+Phase 2.3 — Organism Live Scheduler.
+
+Drives the ``OrganismLiveEngine.live_tick()`` on a configurable interval.
+Follows the same ``start / stop / _run_loop`` pattern used by
+``LifecycleScheduler`` so it can be wired into the FastAPI lifespan
+in ``factory.py``.
+
+Environment variables:
+
+    ENABLE_ORGANISM_SCHEDULER=1          # opt-in
+    ORGANISM_TICK_INTERVAL_SECONDS=60    # seconds between ticks
+    ORGANISM_BRAIN_DIR=organism_brain    # brain persistence directory
+    ORGANISM_LIVE_SYMBOLS=AAPL,MSFT,... # comma-separated universe
+
+Usage in factory.py lifespan::
+
+    from backend.organism.scheduler import OrganismScheduler
+
+    scheduler = OrganismScheduler(
+        data_client=alpaca_client,
+        order_service=order_service,
+        positions_service=positions_service,
+    )
+    await scheduler.start()
+    ...
+    await scheduler.stop()
+"""
+
+from __future__ import annotations
+
+import asyncio
+from collections import deque
+import os
+import random
+from datetime import UTC, datetime
+from typing import Any
+
+from backend.utils.logger import get_logger
+
+logger = get_logger(__name__)
+
+
+TICK_INTERVAL = int(
+    os.getenv("ORGANISM_TICK_INTERVAL_SECONDS", "60")
+)
+
+# ── Backoff configuration (HFT-tuned) ────────────────────────────
+_BASE_BACKOFF_S = 2             # first retry wait (was 5)
+_MAX_BACKOFF_S = 30             # cap at 30s (was 300s / 5min)
+_JITTER_FRACTION = 0.10         # ±10 % randomness (was 0.25)
+
+
+class OrganismScheduler:
+    """Background scheduler for the Organism Live Engine.
+
+    The scheduler owns the engine instance, initialises it once,
+    then calls ``live_tick()`` every ``tick_interval`` seconds.
+    """
+
+    def __init__(
+        self,
+        *,
+        data_client: Any,
+        order_service: Any,
+        positions_service: Any,
+        sessionmaker: Any | None = None,
+        tick_interval: int = TICK_INTERVAL,
+        brain_dir: str | None = None,
+        universe: list[str] | None = None,
+        history_limit: int = 200,
+    ) -> None:
+        self._data_client = data_client
+        self._order_service = order_service
+        self._positions_service = positions_service
+        self._sessionmaker = sessionmaker
+        self._tick_interval = tick_interval
+        self._brain_dir = brain_dir
+        self._universe = universe
+        self._history_limit = max(10, int(history_limit))
+
+        self._task: asyncio.Task | None = None
+        self._stop = asyncio.Event()
+        self._engine: Any = None  # lazily created
+        self._last_tick_result: dict[str, Any] | None = None
+        self._tick_history: deque[dict[str, Any]] = deque(maxlen=self._history_limit)
+
+    # ── public API ───────────────────────────────────────────────
+
+    @property
+    def is_running(self) -> bool:
+        return self._task is not None and not self._task.done()
+
+    async def start(self) -> None:
+        """Start the organism scheduler background task."""
+        if self.is_running:
+            return
+
+        # Late import to avoid circular dependencies at module level
+        from backend.organism.live_engine import OrganismLiveEngine
+
+        kwargs: dict[str, Any] = {
+            "data_client": self._data_client,
+            "order_service": self._order_service,
+            "positions_service": self._positions_service,
+        }
+        if self._sessionmaker is not None:
+            kwargs["sessionmaker"] = self._sessionmaker
+        if self._brain_dir:
+            kwargs["brain_dir"] = self._brain_dir
+        if self._universe:
+            kwargs["universe"] = self._universe
+
+        self._engine = OrganismLiveEngine(**kwargs)
+        brain_loaded = await self._engine.initialize()
+
+        logger.info(
+            "Organism scheduler starting: tick_interval=%ds, "
+            "brain_loaded=%s",
+            self._tick_interval,
+            brain_loaded,
+        )
+
+        self._stop.clear()
+        self._task = asyncio.create_task(self._run_loop())
+
+    async def stop(self) -> None:
+        """Stop the scheduler and persist final brain state."""
+        self._stop.set()
+        if self._task:
+            try:
+                await asyncio.wait_for(self._task, timeout=10)
+            except (TimeoutError, asyncio.TimeoutError):
+                self._task.cancel()
+                try:
+                    await self._task
+                except asyncio.CancelledError:
+                    pass
+            except Exception:
+                pass
+        self._task = None
+
+        if self._engine:
+            await self._engine.shutdown()
+
+        logger.info("Organism scheduler stopped")
+
+    def state(self) -> dict[str, Any]:
+        """Return scheduler + engine status for monitoring."""
+        base = {
+            "running": self.is_running,
+            "tick_interval_s": self._tick_interval,
+            "last_tick": self._last_tick_result,
+            "tick_history": list(self._tick_history),
+        }
+        if self._engine:
+            base["engine"] = self._engine.status()
+        return base
+
+    # ── internal loop ────────────────────────────────────────────
+
+    async def _broadcast_tick(self, tick_data: dict[str, Any]) -> None:
+        """Push tick result to WebSocket topic 'organism'."""
+        try:
+            from backend.websocket import get_websocket_manager
+
+            manager = get_websocket_manager()
+            await manager.broadcast_to_topic(
+                "organism",
+                {
+                    "type": "organism_tick",
+                    "data": tick_data,
+                    "timestamp": datetime.now(UTC).isoformat(),
+                },
+            )
+        except Exception:
+            pass  # WebSocket not available — acceptable
+
+        try:
+            from backend.api.socketio_server import broadcast_to_topic as sio_broadcast_to_topic
+
+            await sio_broadcast_to_topic(
+                "organism",
+                "organism_tick",
+                {
+                    "type": "organism_tick",
+                    "data": tick_data,
+                    "timestamp": datetime.now(UTC).isoformat(),
+                },
+            )
+        except Exception:
+            pass
+
+    async def _run_loop(self) -> None:
+        logger.info("Organism scheduler loop started")
+        consecutive_errors = 0
+
+        while not self._stop.is_set():
+            try:
+                # Check if market is open (weekdays, roughly)
+                now = datetime.now(UTC)
+                weekday = now.weekday()  # Mon=0 … Sun=6
+                if weekday >= 5:  # skip weekends
+                    logger.debug("Weekend — skipping organism tick")
+                else:
+                    result = await asyncio.wait_for(
+                        self._engine.live_tick(),
+                        timeout=60,  # HFT: 60s hard timeout (was 300s)
+                    )
+                    self._last_tick_result = result.to_dict()
+                    self._tick_history.append(self._last_tick_result)
+                    consecutive_errors = 0  # success → reset
+
+                    if result.errors:
+                        logger.warning(
+                            "Organism tick completed with errors: %s",
+                            result.errors,
+                        )
+                    else:
+                        logger.info(
+                            "Organism tick: regime=%s signals=%d "
+                            "orders=%d exits=%d %.1fs",
+                            result.regime,
+                            result.signals_generated,
+                            result.orders_submitted,
+                            result.trades_closed,
+                            result.duration_s,
+                        )
+
+                    # Broadcast to WebSocket subscribers
+                    await self._broadcast_tick(self._last_tick_result)
+
+            except Exception as e:
+                consecutive_errors += 1
+                logger.exception(
+                    "Organism scheduler tick failed (streak=%d): %s",
+                    consecutive_errors,
+                    e,
+                )
+
+            # Compute wait time — exponential backoff on errors
+            if consecutive_errors > 0:
+                raw = min(
+                    _BASE_BACKOFF_S * (2 ** (consecutive_errors - 1)),
+                    _MAX_BACKOFF_S,
+                )
+                jitter = raw * _JITTER_FRACTION * (random.random() * 2 - 1)
+                wait = max(raw + jitter, _BASE_BACKOFF_S)
+                logger.info(
+                    "Organism scheduler backing off for %.0fs "
+                    "(consecutive_errors=%d)",
+                    wait,
+                    consecutive_errors,
+                )
+            else:
+                wait = self._tick_interval
+
+            # Wait for next interval (or stop signal)
+            try:
+                await asyncio.wait_for(
+                    self._stop.wait(),
+                    timeout=wait,
+                )
+            except (TimeoutError, asyncio.TimeoutError):
+                pass
+
+        logger.info("Organism scheduler loop exiting")

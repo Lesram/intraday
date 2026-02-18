@@ -94,6 +94,13 @@ export const STRATEGY_TYPE_CONFIG: Record<StrategyType, StrategyTypeConfig> = {
     description: 'Multi-approach combination',
     color: '#fa8c16',
   },
+
+  optuna_meta: {
+    icon: '🧪',
+    label: 'Optuna Meta',
+    description: 'Optuna research meta-strategy (platform parity)',
+    color: '#b37feb',
+  },
 };
 
 /**

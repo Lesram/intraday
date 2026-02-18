@@ -235,6 +235,15 @@ try {
         # Check for missing variables
         $missingInExample = $catalogVars | Where-Object { $_ -notin $envExampleVars }
         $missingInCatalog = $envExampleVars | Where-Object { $_ -notin $catalogVars }
+
+        # Known bootstrap/deployment-only variables allowed in .env.example
+        # without requiring explicit entries in generated ENV_CATALOG.md.
+        $envParityAllowlist = @(
+            'ADMIN_USERNAME',
+            'ADMIN_PASSWORD',
+            'POSTGRES_PASSWORD'
+        )
+        $missingInCatalog = $missingInCatalog | Where-Object { $_ -notin $envParityAllowlist }
         
         if ($missingInExample.Count -gt 0) {
             Write-GateFail "GATE 1 FAILED: $($missingInExample.Count) variables in catalog but not in .env.example"
@@ -298,19 +307,26 @@ try {
     
     $forbiddenFiles = @()
     
-    # Check git tracked files
+    # Check git tracked files using wildcard semantics (not regex),
+    # to avoid false positives like '.coverage' matching 'TEST_COVERAGE_*.md'.
     foreach ($pattern in $forbiddenPatterns) {
-        $regexPattern = $pattern -replace '\*', '.*' -replace '/', '\\'
+        $matcher = [System.Management.Automation.WildcardPattern]::new(
+            $pattern,
+            [System.Management.Automation.WildcardOptions]::IgnoreCase
+        )
         $files = git ls-files | Where-Object {
-            $_ -match $regexPattern
+            $matcher.IsMatch($_)
         }
         
         foreach ($file in $files) {
             # Check if file matches allowlist
             $isAllowed = $false
             foreach ($allowed in $allowlist) {
-                $allowedPattern = $allowed -replace '\*', '.*' -replace '/', '\\'
-                if ($file -match $allowedPattern) {
+                $allowMatcher = [System.Management.Automation.WildcardPattern]::new(
+                    $allowed,
+                    [System.Management.Automation.WildcardOptions]::IgnoreCase
+                )
+                if ($allowMatcher.IsMatch($file)) {
                     $isAllowed = $true
                     break
                 }
@@ -422,21 +438,22 @@ if ($Fast) {
 else {
     try {
         Write-GateInfo "Running bandit security scan..."
+        $pythonExe = if (Test-Path "venv/Scripts/python.exe") { "venv/Scripts/python.exe" } else { "python" }
         
         # Check if bandit is installed
-        $banditInstalled = python -c "import bandit" 2>&1
+        $banditInstalled = & $pythonExe -c "import bandit" 2>&1
         if ($LASTEXITCODE -ne 0) {
             Write-GateWarn "GATE 5 SKIPPED: bandit not installed (pip install bandit)"
             Add-GateResult -Gate "SAST_BANDIT" -Status "SKIP" -Message "Bandit not installed"
         }
         else {
             # Run bandit on backend/ directory (uses .bandit for baseline config)
-            $banditArgs = "-r backend/ -f json -o bandit_report.json"
+            $banditArgs = @("-r", "backend/", "-f", "json", "-o", "bandit_report.json")
             if (Test-Path ".bandit") {
-                $banditArgs += " -c .bandit"
+                $banditArgs += @("-c", ".bandit")
                 Write-GateInfo "Using .bandit baseline configuration"
             }
-            $banditOutput = python -m bandit $banditArgs 2>&1
+            $banditOutput = & $pythonExe -m bandit @banditArgs 2>&1
             $banditExitCode = $LASTEXITCODE
             
             if (Test-Path "bandit_report.json") {
@@ -517,12 +534,12 @@ else {
         }
         else {
             # Run grype on current directory (uses .grype.yaml for baseline config)
-            $grypeArgs = "dir:. --output json --file grype_report.json"
+            $grypeArgs = @("dir:.", "--output", "json", "--file", "grype_report.json")
             if (Test-Path ".grype.yaml") {
-                $grypeArgs += " --config .grype.yaml"
+                $grypeArgs += @("--config", ".grype.yaml")
                 Write-GateInfo "Using .grype.yaml baseline configuration"
             }
-            $grypeOutput = grype $grypeArgs 2>&1
+            $grypeOutput = & grype @grypeArgs 2>&1
             $grypeExitCode = $LASTEXITCODE
             
             if (Test-Path "grype_report.json") {

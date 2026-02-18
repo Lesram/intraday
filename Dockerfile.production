@@ -26,15 +26,20 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /build
 
 # Copy dependency files first (for layer caching)
-COPY requirements.txt requirements-dev.txt* ./
+# §12.2 FIX: Use requirements.lock for reproducible production builds
+COPY requirements.txt requirements.lock* requirements-dev.txt* ./
 
 # Create virtual environment and install dependencies
 RUN python -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
-# Install production dependencies
+# Install production dependencies (prefer locked deps for reproducibility)
 RUN pip install --upgrade pip && \
-    pip install -r requirements.txt
+    if [ -f requirements.lock ]; then \
+        pip install -r requirements.lock; \
+    else \
+        pip install -r requirements.txt; \
+    fi
 
 # -----------------------------------------------------------------------------
 # Stage 2: Production - Minimal runtime image
@@ -87,12 +92,12 @@ USER appuser
 # Expose application port
 EXPOSE 8000
 
-# Health check
+# Health check — §12.5 FIX: Use /healthz consistently across all deployments
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
-    CMD curl -f http://localhost:8000/health/live || exit 1
+    CMD curl -f http://localhost:8000/healthz || exit 1
 
 # Default command - production Uvicorn server
-CMD ["python", "-m", "uvicorn", "backend.main:app", \
+CMD ["python", "-m", "uvicorn", "backend.api.main:socketio_app", \
      "--host", "0.0.0.0", \
      "--port", "8000", \
      "--workers", "4", \
@@ -129,7 +134,7 @@ ENV APP_ENVIRONMENT=development \
     LOG_LEVEL=DEBUG
 
 # Development command with auto-reload
-CMD ["python", "-m", "uvicorn", "backend.main:app", \
+CMD ["python", "-m", "uvicorn", "backend.api.main:socketio_app", \
      "--host", "0.0.0.0", \
      "--port", "8000", \
      "--reload", \

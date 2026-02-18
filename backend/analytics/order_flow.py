@@ -471,9 +471,13 @@ class OrderFlowAnalyzer:
                         cum.delta_price_correlation = float(corr)
                         cum.divergence_detected = corr < self.DIVERGENCE_THRESHOLD
             
-            except Exception:
-                pass
-    
+            except Exception as e:
+                import logging
+                logging.getLogger(__name__).warning(
+                    "Order flow delta-price correlation failed for %s: %s",
+                    symbol, e
+                )
+
     def check_alerts(self, symbol: str) -> list[ImbalanceAlert]:
         """Check for alert conditions on a symbol."""
         now = datetime.now(UTC)

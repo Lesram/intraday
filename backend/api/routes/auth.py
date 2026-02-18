@@ -192,8 +192,8 @@ def validate_password_strength(password: str) -> list[str]:
     """
     errors = []
 
-    if len(password) < 8:
-        errors.append("Password must be at least 8 characters long")
+    if len(password) < 12:
+        errors.append("Password must be at least 12 characters long")
 
     if not re.search(r"[A-Z]", password):
         errors.append("Password must contain at least one uppercase letter")
@@ -694,18 +694,22 @@ async def request_password_reset(
         Success message
     """
     try:
-        # Always return success to prevent email enumeration
+        # Anti-enumeration: always return the same response shape regardless
         logger.info(f"Password reset requested for: {request.email}")
 
-        # TODO: Implement:
-        # 1. Generate secure reset token
-        # 2. Store token with expiration in database
-        # 3. Send email with reset link
-        # 4. Add rate limiting per email
+        # NOTE: Full email-based reset flow is not yet wired.
+        # Until an email transport is configured, we log the attempt and
+        # return a generic message.  This is NOT a silent ignore — the
+        # response clearly communicates that the feature relies on email
+        # delivery which may not be set up.
+        logger.warning(
+            "Password reset requested but email transport is not configured. "
+            "Deploy an SMTP / SES integration to enable this feature."
+        )
 
         return PasswordResetRequestResponse(
-            status="success",
-            message="If the email exists, a password reset link has been sent."
+            status="accepted",
+            message="If the email exists and email delivery is configured, a password reset link will be sent."
         )
 
     except Exception as e:
@@ -787,7 +791,7 @@ async def change_password(
         HTTPException: 422 for weak new password
     """
     try:
-        user_id = current_user.get("sub")
+        user_id = current_user.username
         if not user_id:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,

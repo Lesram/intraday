@@ -17,12 +17,13 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import uuid
+from typing import Any
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
 
 import numpy as np
-import optuna
 import pandas as pd
 from dotenv import load_dotenv
 
@@ -42,6 +43,163 @@ class BacktestMetrics:
     trades: int
     turnover: float  # notional traded / initial capital
     avg_gross_exposure: float  # average long exposure as fraction of equity
+
+
+def _turnover_from_platform_trades(trades: list[dict] | list[object], initial_capital: float) -> float:
+    if not trades or initial_capital <= 0:
+        return 0.0
+    notional = 0.0
+    for t in trades:
+        # Trade is usually a Pydantic model with attributes.
+        qty = getattr(t, "quantity", None) if not isinstance(t, dict) else t.get("quantity")
+        entry_price = getattr(t, "entry_price", None) if not isinstance(t, dict) else t.get("entry_price")
+        exit_price = getattr(t, "exit_price", None) if not isinstance(t, dict) else t.get("exit_price")
+        try:
+            q = float(qty)
+            ep = float(entry_price)
+        except Exception:
+            continue
+        notional += abs(q * ep)
+        if exit_price is not None:
+            try:
+                xp = float(exit_price)
+                notional += abs(q * xp)
+            except Exception:
+                pass
+    return float(notional / initial_capital)
+
+
+def _avg_gross_exposure_from_platform_equity(equity_curve: list[dict] | list[object]) -> float:
+    if not equity_curve:
+        return 0.0
+    exposures: list[float] = []
+    for pt in equity_curve:
+        value = getattr(pt, "value", None) if not isinstance(pt, dict) else pt.get("value")
+        positions_value = (
+            getattr(pt, "positions_value", None) if not isinstance(pt, dict) else pt.get("positions_value")
+        )
+        try:
+            v = float(value)
+            pv = float(positions_value)
+        except Exception:
+            continue
+        if v <= 0:
+            continue
+        exposures.append(max(0.0, pv / v))
+    return float(np.mean(exposures)) if exposures else 0.0
+
+
+async def _platform_holdout_eval(
+    *,
+    name: str,
+    symbols: list[str],
+    start_date: date,
+    end_date: date,
+    parameters: dict[str, float],
+    costs: CostModel,
+    initial_capital: float,
+    return_result: bool = False,
+) -> BacktestMetrics | tuple[BacktestMetrics, Any]:
+    """Run holdout using the platform BacktestService for true parity with UI/backend."""
+
+    from dotenv import load_dotenv
+
+    env_path = Path(__file__).parent.parent / ".env"
+    load_dotenv(env_path)
+
+    database_url = os.getenv("DATABASE_URL")
+    if not database_url:
+        raise RuntimeError("OPT_ENGINE=platform requires DATABASE_URL (PostgreSQL)")
+
+    from backend.infra.db import init_db
+    from backend.infra.schemas import Strategy
+    from backend.services.backtest_service import BacktestService
+
+    engine, sessionmaker = init_db(database_url)
+
+    # Build platform parameter dict.
+    platform_params: dict[str, object] = {str(k): float(v) for k, v in parameters.items()}
+    platform_params.setdefault("_origin", "optuna")
+    platform_params.setdefault("slippage_bps", float(costs.slippage_bps))
+    platform_params.setdefault("commission_per_trade", float(costs.commission_per_trade))
+    platform_params.setdefault("use_optuna_position_size", True)
+    platform_params.setdefault("use_optuna_max_positions", True)
+    platform_params.setdefault("use_optuna_min_position_dollars", True)
+
+    # Mirror harness market buffer side into the platform param (platform also reads env).
+    mbs = os.getenv("OPT_MARKET_BUFFER_SIDE", "below").strip().lower()
+    if mbs:
+        platform_params.setdefault("opt_market_buffer_side", mbs)
+
+    allow_leverage_raw = os.getenv("OPT_ALLOW_LEVERAGE")
+    if isinstance(allow_leverage_raw, str) and allow_leverage_raw.strip():
+        allow_leverage = allow_leverage_raw.strip().lower() in {"1", "true", "yes", "on"}
+        if allow_leverage:
+            platform_params.setdefault("allow_leverage", True)
+            platform_params.setdefault("use_optuna_leverage", True)
+
+    # Ensure a stable strategy row exists for FK constraints.
+    # Use a deterministic UUID so repeated runs reuse the same Strategy.
+    strategy_uuid = uuid.uuid5(uuid.UUID("6ba7b810-9dad-11d1-80b4-00c04fd430c8"), f"optuna_harness::{name}")
+    safe_name = (name[:90] + " (h)") if len(name) > 95 else name
+
+    async with sessionmaker() as session:
+        strategy = await session.get(Strategy, strategy_uuid)
+        if strategy is None:
+            strategy = Strategy(
+                id=strategy_uuid,
+                name=safe_name,
+                strategy_type="optuna_meta",
+                description="Autocreated by Optuna harness (platform engine eval)",
+                symbols=symbols,
+                parameters={},
+            )
+            session.add(strategy)
+            await session.commit()
+        else:
+            changed = False
+            if getattr(strategy, "strategy_type", None) != "optuna_meta":
+                strategy.strategy_type = "optuna_meta"
+                changed = True
+            if getattr(strategy, "symbols", None) != symbols:
+                strategy.symbols = symbols
+                changed = True
+            if changed:
+                await session.commit()
+
+        service = BacktestService(session)
+        demo_user_uuid = str(
+            uuid.uuid5(uuid.UUID("6ba7b810-9dad-11d1-80b4-00c04fd430c8"), "optuna_harness")
+        )
+
+        result = await service.run_backtest(
+            strategy=strategy,
+            start_date=start_date,
+            end_date=end_date,
+            initial_capital=float(initial_capital),
+            parameters=platform_params,  # override params per eval
+            user_id=demo_user_uuid,
+        )
+
+    await engine.dispose()
+
+    turnover = _turnover_from_platform_trades(result.trade_log, initial_capital)
+    avg_exposure = _avg_gross_exposure_from_platform_equity(result.equity_curve)
+
+    metrics = BacktestMetrics(
+        total_return_pct=float(result.metrics.total_return),
+        cagr_pct=float(result.metrics.annualized_return),
+        sharpe=float(result.metrics.sharpe_ratio),
+        max_drawdown_pct=float(result.metrics.max_drawdown),
+        trades=int(result.metrics.total_trades),
+        turnover=float(turnover),
+        avg_gross_exposure=float(avg_exposure),
+    )
+
+    if return_result:
+        return metrics, result
+
+    return metrics
 
 
 def _cagr(final_value: float, initial_value: float, trading_days: int) -> float:
@@ -857,6 +1015,12 @@ def objective_factory(
 
     objective_mode = os.getenv("OPT_OBJECTIVE", "robust_cagr").strip().lower()
 
+    # Calmar-first objective weights. Defaults favor Calmar, but still consider Sharpe/CAGR.
+    # These weights only apply when OPT_OBJECTIVE is set to calmar/calmar_combo.
+    w_calmar = float(np.clip(_env_float("OPT_W_CALMAR", 1.0), 0.0, 10.0))
+    w_sharpe = float(np.clip(_env_float("OPT_W_SHARPE", 0.35), 0.0, 10.0))
+    w_cagr = float(np.clip(_env_float("OPT_W_CAGR", 0.35), 0.0, 10.0))
+
     high_return_mode = _env_bool("OPT_HIGH_RETURN_MODE", False)
 
     # Search-space controls (defaults chosen to preserve existing behavior unless
@@ -963,7 +1127,7 @@ def objective_factory(
     warmup_max = max(20, min(120, min_test_len - 30))
     warmup_min = max(20, min(60, warmup_max))
 
-    def objective(trial: optuna.Trial) -> float:
+    def objective(trial) -> float:
         params: dict[str, float] = {
             # Trading / risk
             "warmup": trial.suggest_int("warmup", warmup_min, warmup_max),
@@ -986,6 +1150,25 @@ def objective_factory(
             # If not forcing exits, optionally trim exposure during risk-off.
             "market_trim_risk_off": float(trim_override if trim_override is not None else trial.suggest_categorical("market_trim_risk_off", [0, 1])),
             "risk_off_exposure_mult": float(risk_off_exposure_mult_override if risk_off_exposure_mult_override is not None else trial.suggest_float("risk_off_exposure_mult", 0.1, 0.9)),
+
+            # Risk overlays (parameterized)
+            "overlay_kill_switch": float(trial.suggest_categorical("overlay_kill_switch", [0, 1])),
+            "overlay_kill_dd_pct": trial.suggest_float("overlay_kill_dd_pct", 0.10, 0.35),
+            "overlay_kill_cooldown_days": float(trial.suggest_int("overlay_kill_cooldown_days", 5, 20)),
+            "overlay_kill_force_exit": float(trial.suggest_categorical("overlay_kill_force_exit", [0, 1])),
+
+            "overlay_vol_enabled": float(trial.suggest_categorical("overlay_vol_enabled", [0, 1])),
+            "overlay_vol_target": trial.suggest_float("overlay_vol_target", 0.10, 0.30),
+            "overlay_vol_window": float(trial.suggest_int("overlay_vol_window", 10, 40)),
+            "overlay_vol_min_mult": trial.suggest_float("overlay_vol_min_mult", 0.25, 1.0),
+            "overlay_vol_max_mult": trial.suggest_float("overlay_vol_max_mult", 1.0, 2.0),
+
+            "overlay_gap_enabled": float(trial.suggest_categorical("overlay_gap_enabled", [0, 1])),
+            "overlay_gap_max_pct": trial.suggest_float("overlay_gap_max_pct", 0.01, 0.08),
+
+            "overlay_risk_off_adjust": float(trial.suggest_categorical("overlay_risk_off_adjust", [0, 1])),
+            "overlay_risk_off_stop_mult": trial.suggest_float("overlay_risk_off_stop_mult", 0.5, 1.0),
+            "overlay_risk_off_take_mult": trial.suggest_float("overlay_risk_off_take_mult", 0.5, 1.0),
 
             # Meta-strategy knobs
             "rsi_buy": trial.suggest_float("rsi_buy", 20.0, 45.0),
@@ -1016,6 +1199,7 @@ def objective_factory(
             return -1e9
 
         cagrs: list[float] = []
+        sharpes: list[float] = []
         total_returns: list[float] = []
         dds: list[float] = []
         turns: list[float] = []
@@ -1043,6 +1227,7 @@ def objective_factory(
             )
 
             cagrs.append(float(m.cagr_pct))
+            sharpes.append(float(m.sharpe))
             total_returns.append(float(m.total_return_pct))
             dds.append(float(m.max_drawdown_pct))
             turns.append(float(m.turnover))
@@ -1053,11 +1238,18 @@ def objective_factory(
             return -1e9
 
         cagrs_arr = np.asarray(cagrs, dtype=float)
+        sharpes_arr = np.asarray(sharpes, dtype=float)
         total_returns_arr = np.asarray(total_returns, dtype=float)
         dds_arr = np.asarray(dds, dtype=float)
         turns_arr = np.asarray(turns, dtype=float)
         trades_arr = np.asarray(trades_list, dtype=float)
         exposures_arr = np.asarray(exposures_list, dtype=float)
+
+        # Enforce a strict max drawdown cap for Calmar-focused objectives.
+        # (Otherwise Calmar can be gamed with a few high-return/high-dd windows.)
+        if objective_mode in {"calmar", "calmar_combo"}:
+            if float(np.max(dds_arr)) > float(dd_cap_pct):
+                return -1e9
 
         # Tunable guardrails for robustness.
         min_trades_avg_default = 8.0 if high_return_mode else 12.0
@@ -1070,6 +1262,15 @@ def objective_factory(
         # Robust objective: maximize 25th percentile CAGR (close to worst-case).
         robust_cagr = float(np.percentile(cagrs_arr, 25))
         avg_cagr = float(np.mean(cagrs_arr))
+
+        robust_sharpe = float(np.percentile(sharpes_arr, 25)) if sharpes_arr.size else 0.0
+        avg_sharpe = float(np.mean(sharpes_arr)) if sharpes_arr.size else 0.0
+
+        # Calmar ratio is (annualized return %) / (max drawdown %).
+        # Use a small floor for DD to avoid blow-ups.
+        calmar_arr = cagrs_arr / np.maximum(dds_arr, 0.10)
+        robust_calmar = float(np.percentile(calmar_arr, 25))
+        avg_calmar = float(np.mean(calmar_arr))
 
         # Profit-first alternative: maximize 25th percentile total return.
         # (Windows are fixed-length half-years, so total return comparisons are meaningful.)
@@ -1118,6 +1319,13 @@ def objective_factory(
         # If recency_weight>0, blend robust with a recency-weighted average to adapt to late regimes.
         if objective_mode in {"profit", "profit_only", "robust_total_return", "total_return"}:
             final = robust_total_return - penalty
+        elif objective_mode in {"calmar", "calmar_combo"}:
+            # Calmar-first scoring with modest Sharpe/CAGR influence.
+            # Scale CAGR (% units) to a fraction so weights remain intuitive.
+            calmar_score = w_calmar * robust_calmar
+            sharpe_score = w_sharpe * robust_sharpe
+            cagr_score = w_cagr * (robust_cagr / 100.0)
+            final = (calmar_score + sharpe_score + cagr_score) - penalty
         else:
             if recency_weight > 0.0:
                 final = (0.7 * robust_cagr + 0.3 * weighted_avg_cagr) - penalty
@@ -1127,6 +1335,10 @@ def objective_factory(
         trial.set_user_attr("robust_cagr_pct", robust_cagr)
         trial.set_user_attr("avg_cagr_pct", avg_cagr)
         trial.set_user_attr("weighted_avg_cagr_pct", weighted_avg_cagr)
+        trial.set_user_attr("robust_sharpe", robust_sharpe)
+        trial.set_user_attr("avg_sharpe", avg_sharpe)
+        trial.set_user_attr("robust_calmar", robust_calmar)
+        trial.set_user_attr("avg_calmar", avg_calmar)
         trial.set_user_attr("robust_total_return_pct", robust_total_return)
         trial.set_user_attr("avg_total_return_pct", avg_total_return)
         trial.set_user_attr("objective_mode", objective_mode)
@@ -1142,6 +1354,7 @@ def objective_factory(
 
 
 async def main():
+    engine_mode = os.getenv("OPT_ENGINE", "research").strip().lower()
     eval_only = os.getenv("OPT_EVAL_ONLY", "0").strip().lower() in {"1", "true", "yes", "on"}
     eval_params_path_raw = os.getenv("OPT_EVAL_PARAMS_PATH", "").strip()
     apply_eval_env = os.getenv("OPT_EVAL_APPLY_ENV", "1").strip().lower() in {"1", "true", "yes", "on"}
@@ -1178,7 +1391,7 @@ async def main():
         start = "2023-01-01"
         end = "2025-12-31"
 
-    dd_cap_pct = float(os.getenv("OPT_DD_CAP_PCT", "15"))
+    dd_cap_pct = float(os.getenv("OPT_DD_CAP_PCT", "25"))
     n_trials = int(os.getenv("OPT_TRIALS", "75"))
     recency_weight = float(os.getenv("OPT_RECENCY_WEIGHT", "0"))
     objective_mode = os.getenv("OPT_OBJECTIVE", "robust_cagr").strip().lower()
@@ -1217,6 +1430,7 @@ async def main():
     print("=" * 80)
     print("OPTUNA META-STRATEGY WALK-FORWARD OPTIMIZER")
     print("=" * 80)
+    print(f"Engine: {engine_mode}")
     if eval_only:
         print("MODE: EVAL ONLY (skip Optuna; use OPT_EVAL_PARAMS_PATH)")
         print(f"Eval config: {eval_params_path_raw}")
@@ -1286,6 +1500,33 @@ async def main():
 
         costs = CostModel(slippage_bps=slippage_bps, commission_per_trade=commission_per_trade)
 
+        # Platform-backed EVAL ONLY: run the holdout via BacktestService for parity with UI/backend.
+        if engine_mode == "platform":
+            if holdout_override is None:
+                raise RuntimeError("OPT_ENGINE=platform requires a holdout window (set in eval config or OPT_HOLDOUT_*)")
+
+            hold = await _platform_holdout_eval(
+                name=str(eval_cfg.get("name") or eval_cfg.get("id") or "optuna_eval"),
+                symbols=symbols,
+                start_date=holdout_override[0].date(),
+                end_date=holdout_override[1].date(),
+                parameters=mapped,
+                costs=costs,
+                initial_capital=initial_capital,
+            )
+
+            print("\n" + "=" * 80)
+            print("HOLDOUT PERFORMANCE (EVAL ONLY, PLATFORM ENGINE)")
+            print("=" * 80)
+            print(f"Total Return: {hold.total_return_pct:+.2f}%")
+            print(f"CAGR:         {hold.cagr_pct:+.2f}%")
+            print(f"Sharpe:       {hold.sharpe:+.2f}")
+            print(f"Max DD:       {hold.max_drawdown_pct:.2f}%")
+            print(f"Trades:       {hold.trades}")
+            print(f"Turnover:     {hold.turnover:.2f}x")
+            print(f"Avg exposure: {hold.avg_gross_exposure:.2f}x")
+            return
+
         hold_panel_full = slice_panel(panel, holdout[0], holdout[1])
         hold_panel = hold_panel_full.drop(columns=["__MARKET__"])
         hold_market = hold_panel_full["__MARKET__"]
@@ -1313,6 +1554,8 @@ async def main():
         print(f"Avg exposure: {hold.avg_gross_exposure:.2f}x")
         return
 
+    import optuna
+
     study = optuna.create_study(direction="maximize")
     objective = objective_factory(
         panel,
@@ -1331,6 +1574,10 @@ async def main():
     print("=" * 80)
     print(f"Score: {best.value:.3f}")
     print(f"Robust test CAGR (p25): {best.user_attrs.get('robust_cagr_pct', 0):.2f}%")
+    if best.user_attrs.get("robust_calmar") is not None:
+        print(f"Robust test Calmar (p25): {best.user_attrs.get('robust_calmar', 0):.3f}")
+    if best.user_attrs.get("robust_sharpe") is not None:
+        print(f"Robust test Sharpe (p25): {best.user_attrs.get('robust_sharpe', 0):.2f}")
     print(f"Avg test CAGR:          {best.user_attrs.get('avg_cagr_pct', 0):.2f}%")
     if best.user_attrs.get("recency_weight", 0):
         print(f"Weighted avg test CAGR: {best.user_attrs.get('weighted_avg_cagr_pct', 0):.2f}%")
@@ -1431,6 +1678,20 @@ async def main():
         "w_momentum": float(best_params["w_momentum"]),
         "w_meanrev": float(best_params["w_meanrev"]),
         "w_statarb": float(best_params["w_statarb"]),
+        "overlay_kill_switch": float(best_params.get("overlay_kill_switch", 0.0)),
+        "overlay_kill_dd_pct": float(best_params.get("overlay_kill_dd_pct", 0.0)),
+        "overlay_kill_cooldown_days": float(best_params.get("overlay_kill_cooldown_days", 0.0)),
+        "overlay_kill_force_exit": float(best_params.get("overlay_kill_force_exit", 0.0)),
+        "overlay_vol_enabled": float(best_params.get("overlay_vol_enabled", 0.0)),
+        "overlay_vol_target": float(best_params.get("overlay_vol_target", 0.0)),
+        "overlay_vol_window": float(best_params.get("overlay_vol_window", 0.0)),
+        "overlay_vol_min_mult": float(best_params.get("overlay_vol_min_mult", 0.0)),
+        "overlay_vol_max_mult": float(best_params.get("overlay_vol_max_mult", 0.0)),
+        "overlay_gap_enabled": float(best_params.get("overlay_gap_enabled", 0.0)),
+        "overlay_gap_max_pct": float(best_params.get("overlay_gap_max_pct", 0.0)),
+        "overlay_risk_off_adjust": float(best_params.get("overlay_risk_off_adjust", 0.0)),
+        "overlay_risk_off_stop_mult": float(best_params.get("overlay_risk_off_stop_mult", 1.0)),
+        "overlay_risk_off_take_mult": float(best_params.get("overlay_risk_off_take_mult", 1.0)),
     }
 
     fixed_slippage_bps_raw = os.getenv("OPT_FIXED_SLIPPAGE_BPS")
@@ -1471,6 +1732,8 @@ async def main():
     print(f"CAGR:         {hold.cagr_pct:+.2f}%")
     print(f"Sharpe:       {hold.sharpe:+.2f}")
     print(f"Max DD:       {hold.max_drawdown_pct:.2f}%")
+    hold_calmar = float(hold.cagr_pct) / max(0.10, float(hold.max_drawdown_pct))
+    print(f"Calmar:       {hold_calmar:+.3f}")
     print(f"Trades:       {hold.trades}")
     print(f"Turnover:     {hold.turnover:.2f}x")
     print(f"Avg exposure: {hold.avg_gross_exposure:.2f}x")

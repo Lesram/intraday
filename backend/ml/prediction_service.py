@@ -145,9 +145,9 @@ class PredictionCache:
         return datetime.now() - timestamp > timedelta(hours=self.ttl_hours)
 
     def _evict_lru(self):
-        """Evict least recently used entries."""
+        """Evict least recently used entries until cache is under max_size."""
         with self.lock:
-            if len(self.cache) >= self.max_size:
+            while len(self.cache) >= self.max_size:
                 # Find oldest access time
                 oldest_key = min(self.access_times.keys(),
                                key=lambda k: self.access_times[k])
@@ -167,8 +167,11 @@ class PredictionCache:
 
                 if not self._is_expired(timestamp):
                     self.access_times[cache_key] = datetime.now()
-                    result.status = PredictionStatus.CACHED
-                    return result
+                    # Return a copy to prevent mutation of cached object
+                    import copy
+                    cached_result = copy.deepcopy(result)
+                    cached_result.status = PredictionStatus.CACHED
+                    return cached_result
                 else:
                     # Remove expired entry
                     del self.cache[cache_key]
@@ -495,17 +498,48 @@ class PredictionService:
             if model_type == PredictionType.CLASSIFICATION:
                 predictions, probabilities = model(request.input_data)
 
-                # Calculate confidence
+                # Calculate confidence from actual model output
                 if request.return_probabilities:
                     confidence = np.max(probabilities, axis=1) if probabilities.ndim > 1 else np.max(probabilities)
                 else:
-                    confidence = np.random.uniform(0.7, 0.95, size=len(predictions) if hasattr(predictions, '__len__') else 1)
+                    # Use decision-function margin when probabilities are unavailable.
+                    # For classifiers: the margin between the top-2 class probabilities
+                    # indicates how decisive the model is.  When probabilities are truly
+                    # unavailable we derive a conservative confidence from prediction
+                    # consistency using a sigmoid of the inter-class distance.
+                    if probabilities is not None and probabilities.size > 0:
+                        if probabilities.ndim > 1 and probabilities.shape[1] > 1:
+                            sorted_probs = np.sort(probabilities, axis=1)
+                            margin = sorted_probs[:, -1] - sorted_probs[:, -2]
+                            # Sigmoid mapping: margin ∈ [0,1] → confidence ∈ [0.5, 1.0]
+                            confidence = 0.5 + 0.5 * margin
+                        else:
+                            confidence = np.max(probabilities, axis=-1)
+                    else:
+                        # Truly no probability information — assign neutral confidence
+                        n = len(predictions) if hasattr(predictions, '__len__') else 1
+                        confidence = np.full(n, 0.5)
                     probabilities = probabilities if request.return_probabilities else None
 
             elif model_type == PredictionType.REGRESSION:
                 predictions = model(request.input_data)
-                # For regression, confidence could be prediction interval
-                confidence = np.random.uniform(0.8, 0.95, size=len(predictions) if hasattr(predictions, '__len__') else 1)
+                # Derive confidence from prediction magnitude stability.
+                # Use coefficient of variation (CV) of residuals relative to mean
+                # as a proxy: lower CV → higher confidence.
+                pred_arr = np.asarray(predictions) if not isinstance(predictions, np.ndarray) else predictions
+                if pred_arr.size > 1:
+                    mean_pred = np.mean(pred_arr)
+                    std_pred = np.std(pred_arr)
+                    # CV-based confidence: sigmoid mapping of inverse CV
+                    if abs(mean_pred) > 1e-10:
+                        cv = std_pred / abs(mean_pred)
+                        # Sigmoid: cv=0 → conf=1.0, cv→∞ → conf→0.5
+                        confidence = np.full(pred_arr.shape, 0.5 + 0.5 / (1.0 + cv))
+                    else:
+                        confidence = np.full(pred_arr.shape, 0.5)
+                else:
+                    # Single prediction — no variance info, assign neutral confidence
+                    confidence = np.full(pred_arr.shape if pred_arr.shape else (1,), 0.5)
                 probabilities = None
 
             else:

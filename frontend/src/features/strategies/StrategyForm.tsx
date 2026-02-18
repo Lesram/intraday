@@ -3,7 +3,7 @@
  * Form for creating and editing strategies
  */
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Form,
   Input,
@@ -16,6 +16,9 @@ import {
   Space,
   App,
   Spin,
+  Switch,
+  InputNumber,
+  Divider,
 } from 'antd';
 import { ArrowLeftOutlined, SaveOutlined } from '@ant-design/icons';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -42,6 +45,7 @@ export const StrategyForm: React.FC<StrategyFormProps> = ({ mode = 'create' }) =
   const queryClient = useQueryClient();
   const { message } = App.useApp();
   const [form] = Form.useForm();
+  const [overlayEnabled, setOverlayEnabled] = useState(false);
 
   const isEditMode = mode === 'edit' && !!id;
 
@@ -59,12 +63,34 @@ export const StrategyForm: React.FC<StrategyFormProps> = ({ mode = 'create' }) =
   // Populate form in edit mode
   useEffect(() => {
     if (strategy && isEditMode) {
+      const params = strategy.parameters || {};
+      const overlayPresent = Boolean(
+        params.overlay_kill_switch ||
+        params.overlay_vol_enabled ||
+        params.overlay_gap_enabled ||
+        params.overlay_risk_off_adjust
+      );
+      setOverlayEnabled(overlayPresent);
       form.setFieldsValue({
         name: strategy.name,
         description: strategy.description,
         strategyType: strategy.strategyType,
         symbols: strategy.symbols.join(', '),
         parameters: JSON.stringify(strategy.parameters, null, 2),
+        overlayKillSwitch: Boolean(params.overlay_kill_switch ?? 0),
+        overlayKillDdPct: Number(params.overlay_kill_dd_pct ?? 0.18),
+        overlayKillCooldownDays: Number(params.overlay_kill_cooldown_days ?? 10),
+        overlayKillForceExit: Boolean(params.overlay_kill_force_exit ?? 1),
+        overlayVolEnabled: Boolean(params.overlay_vol_enabled ?? 0),
+        overlayVolTarget: Number(params.overlay_vol_target ?? 0.18),
+        overlayVolWindow: Number(params.overlay_vol_window ?? 20),
+        overlayVolMinMult: Number(params.overlay_vol_min_mult ?? 0.5),
+        overlayVolMaxMult: Number(params.overlay_vol_max_mult ?? 1.5),
+        overlayGapEnabled: Boolean(params.overlay_gap_enabled ?? 0),
+        overlayGapMaxPct: Number(params.overlay_gap_max_pct ?? 0.04),
+        overlayRiskOffAdjust: Boolean(params.overlay_risk_off_adjust ?? 0),
+        overlayRiskOffStopMult: Number(params.overlay_risk_off_stop_mult ?? 0.7),
+        overlayRiskOffTakeMult: Number(params.overlay_risk_off_take_mult ?? 0.8),
       });
     }
   }, [strategy, isEditMode, form]);
@@ -106,6 +132,46 @@ export const StrategyForm: React.FC<StrategyFormProps> = ({ mode = 'create' }) =
       const parameters = values.parameters
         ? JSON.parse(values.parameters as string)
         : {};
+
+      const overlayKeys = [
+        'overlay_kill_switch',
+        'overlay_kill_dd_pct',
+        'overlay_kill_cooldown_days',
+        'overlay_kill_force_exit',
+        'overlay_vol_enabled',
+        'overlay_vol_target',
+        'overlay_vol_window',
+        'overlay_vol_min_mult',
+        'overlay_vol_max_mult',
+        'overlay_gap_enabled',
+        'overlay_gap_max_pct',
+        'overlay_risk_off_adjust',
+        'overlay_risk_off_stop_mult',
+        'overlay_risk_off_take_mult',
+      ];
+
+      if (overlayEnabled) {
+        parameters.overlay_kill_switch = Number(Boolean(values.overlayKillSwitch));
+        parameters.overlay_kill_dd_pct = values.overlayKillDdPct;
+        parameters.overlay_kill_cooldown_days = values.overlayKillCooldownDays;
+        parameters.overlay_kill_force_exit = Number(Boolean(values.overlayKillForceExit));
+        parameters.overlay_vol_enabled = Number(Boolean(values.overlayVolEnabled));
+        parameters.overlay_vol_target = values.overlayVolTarget;
+        parameters.overlay_vol_window = values.overlayVolWindow;
+        parameters.overlay_vol_min_mult = values.overlayVolMinMult;
+        parameters.overlay_vol_max_mult = values.overlayVolMaxMult;
+        parameters.overlay_gap_enabled = Number(Boolean(values.overlayGapEnabled));
+        parameters.overlay_gap_max_pct = values.overlayGapMaxPct;
+        parameters.overlay_risk_off_adjust = Number(Boolean(values.overlayRiskOffAdjust));
+        parameters.overlay_risk_off_stop_mult = values.overlayRiskOffStopMult;
+        parameters.overlay_risk_off_take_mult = values.overlayRiskOffTakeMult;
+      } else {
+        overlayKeys.forEach((key) => {
+          if (key in parameters) {
+            delete parameters[key];
+          }
+        });
+      }
 
       // Parse symbols (comma-separated string to array)
       const symbolsValue = values.symbols as string | undefined;
@@ -208,6 +274,16 @@ export const StrategyForm: React.FC<StrategyFormProps> = ({ mode = 'create' }) =
               null,
               2
             ),
+            overlayKillDdPct: 0.18,
+            overlayKillCooldownDays: 10,
+            overlayKillForceExit: true,
+            overlayVolTarget: 0.18,
+            overlayVolWindow: 20,
+            overlayVolMinMult: 0.5,
+            overlayVolMaxMult: 1.5,
+            overlayGapMaxPct: 0.04,
+            overlayRiskOffStopMult: 0.7,
+            overlayRiskOffTakeMult: 0.8,
           }}
         >
           <Row gutter={24}>
@@ -317,6 +393,163 @@ export const StrategyForm: React.FC<StrategyFormProps> = ({ mode = 'create' }) =
               maxLength={500}
             />
           </Form.Item>
+
+          <Divider style={{ margin: '8px 0 12px' }} />
+
+          <Form.Item label="Enable Risk Overlays" style={{ marginBottom: 8 }}>
+            <Switch
+              checked={overlayEnabled}
+              onChange={setOverlayEnabled}
+            />
+          </Form.Item>
+
+          {overlayEnabled && (
+            <Card size="small" style={{ marginBottom: 16 }}>
+              <Row gutter={16}>
+                <Col xs={24} md={12}>
+                  <Form.Item label="Kill Switch" name="overlayKillSwitch" valuePropName="checked">
+                    <Switch />
+                  </Form.Item>
+
+                  <Form.Item
+                    label="Kill DD % (decimal)"
+                    name="overlayKillDdPct"
+                    rules={[
+                      { type: 'number', min: 0.05, max: 0.5, message: 'Must be between 5% and 50%' },
+                    ]}
+                  >
+                    <InputNumber<number> style={{ width: '100%' }} min={0.05} max={0.5} step={0.01} />
+                  </Form.Item>
+
+                  <Form.Item
+                    label="Kill Cooldown Days"
+                    name="overlayKillCooldownDays"
+                    rules={[
+                      { type: 'number', min: 1, max: 30, message: 'Must be between 1 and 30 days' },
+                    ]}
+                  >
+                    <InputNumber<number> style={{ width: '100%' }} min={1} max={30} step={1} />
+                  </Form.Item>
+
+                  <Form.Item label="Kill Force Exit" name="overlayKillForceExit" valuePropName="checked">
+                    <Switch />
+                  </Form.Item>
+                </Col>
+
+                <Col xs={24} md={12}>
+                  <Form.Item label="Vol Targeting" name="overlayVolEnabled" valuePropName="checked">
+                    <Switch />
+                  </Form.Item>
+
+                  <Form.Item
+                    label="Vol Target (annualized)"
+                    name="overlayVolTarget"
+                    rules={[
+                      { type: 'number', min: 0.05, max: 0.5, message: 'Must be between 5% and 50%' },
+                    ]}
+                  >
+                    <InputNumber<number> style={{ width: '100%' }} min={0.05} max={0.5} step={0.01} />
+                  </Form.Item>
+
+                  <Form.Item
+                    label="Vol Window"
+                    name="overlayVolWindow"
+                    rules={[
+                      { type: 'number', min: 5, max: 60, message: 'Must be between 5 and 60 days' },
+                    ]}
+                  >
+                    <InputNumber<number> style={{ width: '100%' }} min={5} max={60} step={1} />
+                  </Form.Item>
+
+                  <Form.Item
+                    label="Vol Min Mult"
+                    name="overlayVolMinMult"
+                    dependencies={['overlayVolMaxMult']}
+                    rules={[
+                      { type: 'number', min: 0.1, max: 1.0, message: 'Must be between 0.1 and 1.0' },
+                      ({ getFieldValue }) => ({
+                        validator(_, value) {
+                          const max = getFieldValue('overlayVolMaxMult');
+                          if (value === undefined || max === undefined || value <= max) {
+                            return Promise.resolve();
+                          }
+                          return Promise.reject(new Error('Min multiplier cannot exceed max multiplier'));
+                        },
+                      }),
+                    ]}
+                  >
+                    <InputNumber<number> style={{ width: '100%' }} min={0.1} max={1.0} step={0.1} />
+                  </Form.Item>
+
+                  <Form.Item
+                    label="Vol Max Mult"
+                    name="overlayVolMaxMult"
+                    dependencies={['overlayVolMinMult']}
+                    rules={[
+                      { type: 'number', min: 1.0, max: 3.0, message: 'Must be between 1.0 and 3.0' },
+                      ({ getFieldValue }) => ({
+                        validator(_, value) {
+                          const min = getFieldValue('overlayVolMinMult');
+                          if (value === undefined || min === undefined || value >= min) {
+                            return Promise.resolve();
+                          }
+                          return Promise.reject(new Error('Max multiplier cannot be below min multiplier'));
+                        },
+                      }),
+                    ]}
+                  >
+                    <InputNumber<number> style={{ width: '100%' }} min={1.0} max={3.0} step={0.1} />
+                  </Form.Item>
+                </Col>
+              </Row>
+
+              <Divider style={{ margin: '8px 0 12px' }} />
+
+              <Row gutter={16}>
+                <Col xs={24} md={12}>
+                  <Form.Item label="Gap Guard" name="overlayGapEnabled" valuePropName="checked">
+                    <Switch />
+                  </Form.Item>
+
+                  <Form.Item
+                    label="Max Gap % (decimal)"
+                    name="overlayGapMaxPct"
+                    rules={[
+                      { type: 'number', min: 0.01, max: 0.15, message: 'Must be between 1% and 15%' },
+                    ]}
+                  >
+                    <InputNumber<number> style={{ width: '100%' }} min={0.01} max={0.15} step={0.01} />
+                  </Form.Item>
+                </Col>
+
+                <Col xs={24} md={12}>
+                  <Form.Item label="Risk-Off Stop/TP Adjust" name="overlayRiskOffAdjust" valuePropName="checked">
+                    <Switch />
+                  </Form.Item>
+
+                  <Form.Item
+                    label="Risk-Off Stop Mult"
+                    name="overlayRiskOffStopMult"
+                    rules={[
+                      { type: 'number', min: 0.3, max: 1.0, message: 'Must be between 0.3 and 1.0' },
+                    ]}
+                  >
+                    <InputNumber<number> style={{ width: '100%' }} min={0.3} max={1.0} step={0.1} />
+                  </Form.Item>
+
+                  <Form.Item
+                    label="Risk-Off Take Mult"
+                    name="overlayRiskOffTakeMult"
+                    rules={[
+                      { type: 'number', min: 0.3, max: 1.0, message: 'Must be between 0.3 and 1.0' },
+                    ]}
+                  >
+                    <InputNumber<number> style={{ width: '100%' }} min={0.3} max={1.0} step={0.1} />
+                  </Form.Item>
+                </Col>
+              </Row>
+            </Card>
+          )}
 
           <Form.Item
             name="parameters"

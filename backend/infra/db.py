@@ -34,6 +34,14 @@ _engine = None
 
 def build_engine(dsn: str):
     global _engine
+
+    # §3.3: Read pool settings from the canonical AppSettings.database
+    try:
+        from backend.config.settings import get_settings
+        db_cfg = get_settings().database
+    except Exception:
+        db_cfg = None
+
     kw = dict(
         pool_pre_ping=True,
         connect_args={},
@@ -50,12 +58,17 @@ def build_engine(dsn: str):
         logger.info("Using NullPool for SQLite database")
     else:
         # PostgreSQL: Production-ready connection pooling
+        pool_size = getattr(db_cfg, 'pool_size', 20) if db_cfg else 20
+        max_overflow = getattr(db_cfg, 'max_overflow', 10) if db_cfg else 10
+        pool_recycle = getattr(db_cfg, 'pool_recycle', 3600) if db_cfg else 3600
+        pool_timeout = getattr(db_cfg, 'pool_timeout', 30) if db_cfg else 30
+
         kw.update(
-            pool_size=10,        # Base connection pool size
-            max_overflow=20,     # Additional connections under load
-            pool_recycle=3600,   # Recycle connections every hour
-            pool_reset_on_return="commit",  # Clean state on return
-            pool_timeout=30,     # Pool checkout timeout
+            pool_size=pool_size,
+            max_overflow=max_overflow,
+            pool_recycle=pool_recycle,
+            pool_reset_on_return="commit",
+            pool_timeout=pool_timeout,
         )
 
         # PostgreSQL-specific connection parameters
@@ -69,9 +82,9 @@ def build_engine(dsn: str):
 
         logger.info("Using production PostgreSQL connection pool",
                    extra={
-                       "pool_size": 10,
-                       "max_overflow": 20,
-                       "pool_recycle": 3600,
+                       "pool_size": pool_size,
+                       "max_overflow": max_overflow,
+                       "pool_recycle": pool_recycle,
                        "pool_reset_on_return": "commit"
                    })
 
@@ -149,6 +162,34 @@ async def get_session_from(app_state) -> AsyncGenerator[AsyncSession, None]:
     """Get AsyncSession from app state db_sessionmaker"""
     async with app_state.db_sessionmaker() as session:
         yield session
+
+
+@asynccontextmanager
+async def get_session_context() -> AsyncGenerator[AsyncSession, None]:
+    """
+    Standalone async context-manager session (for background tasks / scripts).
+
+    Unlike ``get_db_session()`` (which is an async generator designed for
+    FastAPI ``Depends``), this can be used with ``async with``::
+
+        async with get_session_context() as session:
+            ...
+    """
+    assert _sessionmaker is not None, "DB not initialized"
+    session = _sessionmaker()
+    try:
+        with trace_span("database_session"):
+            yield session
+            await session.commit()
+    except Exception as e:
+        await session.rollback()
+        logger.error(f"Database session error, rolling back: {e}")
+        raise
+    finally:
+        try:
+            await session.close()
+        except Exception as close_error:
+            logger.error(f"Error closing database session: {close_error}")
 
 
 async def db_health_check() -> bool:

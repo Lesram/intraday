@@ -9,12 +9,38 @@ feature selection/transformation functionality.
 from dataclasses import dataclass
 from enum import Enum
 import logging
+import time
 from typing import Any
 
 import numpy as np
 import pandas as pd
 
 logger = logging.getLogger(__name__)
+
+# §15.3 FIX: Feature engineering metrics instrumentation
+_fe_counter = None
+_fe_latency = None
+
+
+def _get_fe_metrics():
+    """Lazily initialize feature engineering metrics."""
+    global _fe_counter, _fe_latency
+    if _fe_counter is None:
+        try:
+            from backend.infra.observability import get_meter
+            meter = get_meter()
+            _fe_counter = meter.create_counter(
+                "feature_engineering_transforms_total",
+                description="Total feature engineering transform calls",
+            )
+            _fe_latency = meter.create_histogram(
+                "feature_engineering_duration_seconds",
+                description="Feature engineering transform duration",
+                unit="s",
+            )
+        except Exception:
+            pass  # Metrics unavailable — not critical
+    return _fe_counter, _fe_latency
 
 
 class FeatureType(Enum):
@@ -54,25 +80,17 @@ class TechnicalIndicators:
 
     @staticmethod
     def rsi(data: pd.Series, window: int = 14) -> pd.Series:
-        """Relative Strength Index."""
+        """Relative Strength Index using Wilder's EWM (matches indicators.py)."""
         if window <= 0:
             raise ValueError("Window must be positive")
 
         delta = data.diff()
+        gain = delta.clip(lower=0)
+        loss = (-delta).clip(lower=0)
 
-        # Simple approach using manual assignment
-        gain = delta.copy()
-        loss = delta.copy()
-
-        # Set negative gains to 0 and positive losses to 0
-        for i in range(len(gain)):
-            gain.iloc[i] = max(gain.iloc[i], 0)
-            loss.iloc[i] = min(loss.iloc[i], 0)
-
-        loss = loss.abs()
-
-        avg_gain = gain.rolling(window=window, min_periods=1).mean()
-        avg_loss = loss.rolling(window=window, min_periods=1).mean()
+        # Wilder's smoothing: alpha = 1/window
+        avg_gain = gain.ewm(alpha=1.0 / window, min_periods=window, adjust=False).mean()
+        avg_loss = loss.ewm(alpha=1.0 / window, min_periods=window, adjust=False).mean()
 
         # Avoid division by zero
         rs = avg_gain / (avg_loss + 1e-10)
@@ -95,7 +113,9 @@ class TechnicalIndicators:
             'bb_middle': sma,
             'bb_lower': sma - (std * std_dev),
             'bb_width': (sma + (std * std_dev)) - (sma - (std * std_dev)),
-            'bb_position': (data - sma) / (std * std_dev)
+            # P&L-024 FIX: Add epsilon to prevent div-by-zero when std=0
+            # (consecutive identical prices produce inf/NaN that breaks ML)
+            'bb_position': (data - sma) / (std * std_dev + 1e-10)
         }
 
     @staticmethod
@@ -166,8 +186,8 @@ class StatisticalFeatures:
             'min': data.rolling(window=window, min_periods=1).min(),
             'max': data.rolling(window=window, min_periods=1).max(),
             'median': data.rolling(window=window, min_periods=1).apply(lambda x: np.median(x) if len(x) > 0 else np.nan, raw=True),
-            'skew': pd.Series([np.nan] * len(data), index=data.index),  # Simplified for compatibility
-            'kurt': pd.Series([np.nan] * len(data), index=data.index),  # Simplified for compatibility
+            'skew': data.rolling(window=window, min_periods=max(3, window)).skew(),
+            'kurt': data.rolling(window=window, min_periods=max(4, window)).kurt(),
             'quantile_25': data.rolling(window=window, min_periods=1).apply(lambda x: np.percentile(x, 25) if len(x) > 0 else np.nan, raw=True),
             'quantile_75': data.rolling(window=window, min_periods=1).apply(lambda x: np.percentile(x, 75) if len(x) > 0 else np.nan, raw=True)
         }
@@ -312,8 +332,25 @@ class TemporalFeatures:
         return features
 
     @staticmethod
-    def create_leads(data: pd.Series, leads: list[int]) -> pd.DataFrame:
-        """Create lead features (future values)."""
+    def create_leads(data: pd.Series, leads: list[int], *, _training_target_only: bool = False) -> pd.DataFrame:
+        """Create lead features (future values).
+
+        ⚠️  P&L-023 WARNING: Lead features use future data (shift(-N)).
+        They MUST ONLY be used for constructing training targets (y),
+        NEVER as input features (X).  Using leads as features introduces
+        look-ahead bias: models appear to have 90%+ accuracy in backtest
+        but have 0% edge in live trading.
+
+        Args:
+            _training_target_only: Must be explicitly set to True to
+                acknowledge that leads are for target construction only.
+        """
+        if not _training_target_only:
+            raise ValueError(
+                "P&L-023: create_leads() uses future data (shift(-N)). "
+                "This MUST ONLY be used for target construction, NEVER as "
+                "input features. Pass _training_target_only=True to confirm."
+            )
         features = pd.DataFrame(index=data.index)
 
         for lead in leads:
@@ -349,7 +386,8 @@ class FeatureSelector:
                             to_drop.append(cols[j])
 
             return to_drop
-        except Exception:
+        except Exception as e:
+            logger.warning(f"Correlation filter failed: {e}")
             return []
 
     @staticmethod
@@ -370,7 +408,8 @@ class FeatureSelector:
                     if variance < threshold:
                         to_drop.append(col)
             return to_drop
-        except Exception:
+        except Exception as e:
+            logger.warning(f"Variance filter failed: {e}")
             return []
 
     @staticmethod
@@ -384,7 +423,8 @@ class FeatureSelector:
                 if missing_pct > threshold:
                     to_drop.append(col)
             return to_drop
-        except Exception:
+        except Exception as e:
+            logger.warning(f"Missing value filter failed: {e}")
             return []
 
 
@@ -507,6 +547,8 @@ class FeatureEngineer:
                   categorical_columns: list[str] | None = None) -> pd.DataFrame:
         """Transform data with feature engineering."""
         features = data.copy()
+        _t0 = time.perf_counter()
+        _rows = len(data)
 
         try:
             # Technical features
@@ -528,9 +570,22 @@ class FeatureEngineer:
             return features
 
         except Exception as e:
-            logger.error(f"Error in feature transformation: {e}")
-            # Return original data if transformation fails
-            return data
+            logger.error(f"CRITICAL: Feature transformation failed — model will receive untransformed data: {e}")
+            # Raise the error: returning raw data to an ML model produces garbage predictions
+            raise RuntimeError(
+                f"Feature transformation failed: {e}. "
+                "Cannot feed untransformed data to ML model — predictions would be invalid."
+            ) from e
+
+        finally:
+            # §15.3 FIX: Record feature engineering metrics
+            _elapsed = time.perf_counter() - _t0
+            counter, latency = _get_fe_metrics()
+            labels = {"rows": str(_rows), "features": str(len(features.columns))}
+            if counter is not None:
+                counter.add(1, labels)
+            if latency is not None:
+                latency.record(_elapsed, labels)
 
     def fit_transform(self, data: pd.DataFrame,
                      categorical_columns: list[str] | None = None,
@@ -606,7 +661,8 @@ class FeatureEngineer:
                 importance[col] = importance[col] / total_variance
 
             return importance
-        except Exception:
+        except Exception as e:
+            logger.warning(f"Feature importance calculation failed: {e}")
             return {col: 0.0 for col in numeric_data.columns}
 
 

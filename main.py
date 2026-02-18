@@ -7,6 +7,7 @@ via the FastAPI lifespan context manager. This ensures proper async initializati
 and cleanup, as well as consistent behavior across all entry points.
 """
 import logging
+import os
 from pathlib import Path
 
 # Setup logging
@@ -52,11 +53,20 @@ def main():
     # ============================================================================
 
     # Start the FastAPI server with Socket.IO support
+    is_dev = settings.environment == "development"
+    use_reload = is_dev
+
+    if use_reload:
+        # §1.3 FIX: When reload=True, uvicorn forks workers — each runs the lifespan,
+        # duplicating background tasks (outbox worker, stream client, ML scheduler).
+        # Set an env-flag so factory.py can skip background workers in reload sub-processes.
+        os.environ["UVICORN_RELOAD_ACTIVE"] = "1"
+
     uvicorn.run(
         "backend.api.main:socketio_app",
         host="0.0.0.0",
         port=8000,
-        reload=True if settings.environment == "development" else False,
+        reload=use_reload,
         log_level="info",
         access_log=True
     )

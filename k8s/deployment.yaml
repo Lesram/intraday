@@ -116,6 +116,13 @@ spec:
               name: algotrading-config
               key: ALPACA_BASE_URL
 
+        # Redis Configuration — §12.6 FIX
+        - name: REDIS_URL
+          valueFrom:
+            secretKeyRef:
+              name: algotrading-secrets
+              key: redis-url
+
         # Security Configuration
         - name: JWT_SECRET_KEY
           valueFrom:
@@ -162,6 +169,9 @@ spec:
           value: "1"
         - name: PYTHONDONTWRITEBYTECODE
           value: "1"
+        # §12.7 FIX: Python tempdir must point to writable emptyDir
+        - name: TMPDIR
+          value: "/app/tmp"
 
         # Resource Requirements
         resources:

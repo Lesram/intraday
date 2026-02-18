@@ -40,16 +40,14 @@ class TestPositionsEndpointsMocked:
                 # Should return 200 with mock data if auth is bypassed
     
     def test_get_mock_positions_returns_three_positions(self):
-        """Test mock positions returns expected demo data."""
+        """Test mock positions returns empty list (deprecated - no mock data in production)."""
         from backend.api.routes.positions import get_mock_positions
         
         positions = get_mock_positions()
         
-        assert len(positions) == 3
-        symbols = [p.symbol for p in positions]
-        assert "AAPL" in symbols
-        assert "GOOGL" in symbols
-        assert "MSFT" in symbols
+        # get_mock_positions is deprecated and returns empty list
+        # All position data must come from Alpaca API or database
+        assert len(positions) == 0
         
     def test_get_mock_positions_structure(self):
         """Test mock positions have correct structure."""
@@ -66,18 +64,23 @@ class TestPositionsEndpointsMocked:
             assert pos.updated_at is not None
     
     def test_position_dto_unrealized_pl_calculation(self):
-        """Test PositionDTO unrealized P/L values."""
-        from backend.api.routes.positions import get_mock_positions
+        """Test PositionDTO unrealized P/L calculation with manually created DTOs."""
+        from backend.api.routes.positions import PositionDTO
         
-        positions = get_mock_positions()
+        # Create test DTOs directly (get_mock_positions is deprecated)
+        aapl = PositionDTO(
+            symbol="AAPL", qty=50, avg_price=180.0,
+            market_price=185.50, market_value=9275.0,
+            unrealized_pl=275.0, updated_at=datetime.now(UTC),
+        )
+        msft = PositionDTO(
+            symbol="MSFT", qty=30, avg_price=420.0,
+            market_price=415.75, market_value=12472.5,
+            unrealized_pl=-127.5, updated_at=datetime.now(UTC),
+        )
         
-        # AAPL should have positive P/L
-        aapl = next(p for p in positions if p.symbol == "AAPL")
-        assert aapl.unrealized_pl > 0  # 185.50 > 180.0
-        
-        # MSFT should have negative P/L
-        msft = next(p for p in positions if p.symbol == "MSFT")
-        assert msft.unrealized_pl < 0  # 415.75 < 420.0
+        assert aapl.unrealized_pl > 0
+        assert msft.unrealized_pl < 0
 
     @pytest.mark.asyncio
     async def test_get_alpaca_positions_fallback_to_mock(self):
@@ -115,22 +118,20 @@ class TestPositionsEndpointsMocked:
             mock_create.return_value = mock_service
             
             positions = await get_alpaca_positions()
-            
+
             assert len(positions) == 1
             assert positions[0].symbol == "TSLA"
-            assert positions[0].qty == 100
+            assert positions[0].quantity == 100
 
     @pytest.mark.asyncio
     async def test_get_database_positions(self):
-        """Test database positions returns mock data with _DB suffix."""
+        """Test database positions returns empty list (not yet implemented)."""
         from backend.api.routes.positions import get_database_positions
         
         positions = await get_database_positions()
         
-        assert len(positions) == 3
-        # Database positions have _DB suffix
-        for pos in positions:
-            assert pos.symbol.endswith("_DB")
+        # Database positions returns empty list until full DB integration
+        assert len(positions) == 0
 
 
 class TestPositionsImportModels:

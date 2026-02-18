@@ -119,7 +119,7 @@ class TestStrategyEngineInit:
             assert engine.risk_manager == mock_risk_manager
             assert engine.positions_service == mock_positions_service
             assert engine.strategy_weights["momentum"] == 0.6
-            assert engine.min_flip_interval_s == 60
+            assert engine.min_flip_interval_s == 10.0
             
     def test_init_with_custom_config(self, mock_risk_manager, mock_positions_service):
         """Test initialization with custom config"""
@@ -228,9 +228,9 @@ class TestBuildExecutionPlan:
         result = await strategy_engine.build_execution_plan(signals)
         
         assert len(result) == 1
-        # Exposure will be capped by max_new_risk_per_bar (0.15) since starting from 0
+        # Exposure will be capped by max_new_risk_per_bar (0.25) since starting from 0
         plan = result[0]
-        assert plan.to_exposure <= 0.15  # Limited by max risk per bar
+        assert plan.to_exposure <= 0.25  # Limited by max risk per bar
         assert "throttle" in plan.reason or plan.to_exposure > 0
         
     @pytest.mark.asyncio
@@ -344,8 +344,8 @@ class TestThrottling:
         """Test rapid second flip is throttled"""
         now = datetime.now(UTC)
         
-        # Record a recent flip
-        strategy_engine.last_flip_times["AAPL"] = now - timedelta(seconds=30)
+        # Record a recent flip (within the 10s min_flip_interval_s window)
+        strategy_engine.last_flip_times["AAPL"] = now - timedelta(seconds=5)
         
         to_exp, throttled = strategy_engine._apply_throttling(
             "AAPL",
@@ -393,7 +393,7 @@ class TestExposureToQuantity:
         )
         
         assert qty == Decimal("0")
-        assert side == "flat"
+        assert side == Side.FLAT
         
     @pytest.mark.asyncio
     async def test_long_exposure(self, strategy_engine):

@@ -13,11 +13,12 @@ from pydantic import BaseModel, ConfigDict
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.infra.db import get_db_session
+from backend.infra.security import AuthenticatedUser, get_authenticated_user
 from backend.services.lot_tracker_service import LotTracker
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/v1/lots", tags=["lots"])
+router = APIRouter(prefix="/lots", tags=["lots"])
 
 
 # ============================================================================
@@ -93,7 +94,7 @@ class UnrealizedPnLResponse(BaseModel):
 @router.get("/open", response_model=list[PositionLotResponse])
 async def get_open_lots(
     symbol: str | None = Query(None, description="Filter by symbol"),
-    user_id: str = Query("admin", description="User ID"),
+    current_user: AuthenticatedUser = Depends(get_authenticated_user),
     db: AsyncSession = Depends(get_db_session),
 ) -> list[PositionLotResponse]:
     """
@@ -102,6 +103,7 @@ async def get_open_lots(
     Open lots represent current positions with their cost basis.
     Used for calculating unrealized P&L and tracking cost basis.
     """
+    user_id = current_user.username
     try:
         lot_tracker = LotTracker(db)
         lots = await lot_tracker.get_open_lots(user_id, symbol)
@@ -133,7 +135,7 @@ async def get_realized_trades(
     symbol: str | None = Query(None, description="Filter by symbol"),
     start_date: datetime | None = Query(None, description="Start date filter"),
     end_date: datetime | None = Query(None, description="End date filter"),
-    user_id: str = Query("admin", description="User ID"),
+    current_user: AuthenticatedUser = Depends(get_authenticated_user),
     db: AsyncSession = Depends(get_db_session),
 ) -> list[RealizedTradeResponse]:
     """
@@ -142,6 +144,7 @@ async def get_realized_trades(
     Realized trades are completed buy→sell cycles with accurate P&L.
     Used for historical performance analysis and tax reporting.
     """
+    user_id = current_user.username
     try:
         lot_tracker = LotTracker(db)
         trades = await lot_tracker.get_realized_trades(
@@ -176,7 +179,7 @@ async def get_realized_trades(
 @router.get("/{symbol}/cost-basis", response_model=CostBasisResponse)
 async def get_cost_basis(
     symbol: str,
-    user_id: str = Query("admin", description="User ID"),
+    current_user: AuthenticatedUser = Depends(get_authenticated_user),
     db: AsyncSession = Depends(get_db_session),
 ) -> CostBasisResponse:
     """
@@ -185,6 +188,7 @@ async def get_cost_basis(
     Calculates the cost basis across all open lots for accurate
     unrealized P&L calculation and tax reporting.
     """
+    user_id = current_user.username
     try:
         lot_tracker = LotTracker(db)
 
@@ -223,7 +227,7 @@ async def get_cost_basis(
 async def get_unrealized_pnl(
     symbol: str,
     current_price: float = Query(..., description="Current market price"),
-    user_id: str = Query("admin", description="User ID"),
+    current_user: AuthenticatedUser = Depends(get_authenticated_user),
     db: AsyncSession = Depends(get_db_session),
 ) -> UnrealizedPnLResponse:
     """
@@ -231,6 +235,7 @@ async def get_unrealized_pnl(
 
     Calculates the profit/loss if all open lots were closed at current price.
     """
+    user_id = current_user.username
     try:
         lot_tracker = LotTracker(db)
 

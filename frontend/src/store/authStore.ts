@@ -33,6 +33,7 @@ interface AuthState {
   clearAuth: () => void;
   updateUser: (user: Partial<User>) => void;
   setAccessToken: (token: string, expiresIn?: number) => void;
+  setRefreshToken: (token: string) => void;
   isTokenExpired: () => boolean;
 }
 
@@ -99,6 +100,10 @@ export const useAuthStore = create<AuthState>()(
           accessToken: token,
           tokenExpiresAt: expiresAt,
         });
+      },
+
+      setRefreshToken: (token) => {
+        set({ refreshToken: token });
       },
       
       isTokenExpired: () => {

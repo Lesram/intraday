@@ -205,7 +205,7 @@ export const useIndicators = ({
   // Configure scale options for indicator
   // Uses fixed positions so oscillators appear below price chart
   // Price chart uses top 65% (bottom margin 0.35), oscillators use bottom 35%
-  const configureScale = useCallback((indicatorName: string, scaleId: string, paneIndex: number = 0) => {
+  const configureScale = useCallback((indicatorName: string, scaleId: string, _paneIndex: number = 0) => {
     if (!chart || scaleId === 'right') return; // Don't configure main price scale
     
     const scale = chart.priceScale(scaleId);

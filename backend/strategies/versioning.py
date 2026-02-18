@@ -18,6 +18,7 @@ from uuid import UUID, uuid4
 import hashlib
 import json
 import logging
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -123,8 +124,21 @@ class StrategyVersionManager:
     """
     
     def __init__(self):
-        """Initialize version manager with in-memory storage."""
-        # In-memory storage - in production, this would be backed by database
+        """Initialize version manager with in-memory storage.
+
+        WARNING: All data is lost on restart.  For production deployments,
+        back this with a persistent store (database or Redis).
+        """
+        import warnings
+        app_env = os.getenv("APP_ENVIRONMENT", "development").lower()
+        emit_warning = os.getenv("BACKEND_EMIT_RUNTIME_WARNINGS", "0") == "1"
+        if emit_warning or app_env not in {"testing", "test"}:
+            warnings.warn(
+                "StrategyVersionManager uses in-memory storage — versions will be lost on restart. "
+                "Wire to database before production deployment.",
+                RuntimeWarning,
+                stacklevel=2,
+            )
         self._versions: dict[str, StrategyVersion] = {}  # version_id -> version
         self._strategy_versions: dict[str, list[str]] = {}  # strategy_id -> [version_ids]
         self._latest_version: dict[str, str] = {}  # strategy_id -> latest_version_id

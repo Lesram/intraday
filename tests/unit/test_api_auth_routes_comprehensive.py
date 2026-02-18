@@ -155,16 +155,16 @@ class TestHelperFunctions:
     def test_validate_password_strength_valid(self):
         """Test validate_password_strength with valid password."""
         from backend.api.routes.auth import validate_password_strength
-        
-        errors = validate_password_strength("Password1!")
+
+        errors = validate_password_strength("Password1234!")
         assert len(errors) == 0
 
     def test_validate_password_strength_too_short(self):
         """Test validate_password_strength with short password."""
         from backend.api.routes.auth import validate_password_strength
-        
+
         errors = validate_password_strength("Pass1!")
-        assert any("8 characters" in e for e in errors)
+        assert any("12 characters" in e for e in errors)
 
     def test_validate_password_strength_no_uppercase(self):
         """Test validate_password_strength without uppercase."""

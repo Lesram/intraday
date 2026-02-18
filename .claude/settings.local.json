@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -c:*)",
+      "Bash(npm run build:*)",
+      "Bash(python -m pytest:*)",
+      "Bash(for dir in backend/risk backend/data backend/features backend/monitoring backend/optimization backend/security backend/deployment backend/brokers)",
+      "Bash(do touch \"$dir/__init__.py\")",
+      "Bash(echo:*)",
+      "Bash(done)",
+      "Bash(tasklist:*)",
+      "Read(//c/tmp/**)",
+      "Bash(npx vite build:*)",
+      "Bash(npx tsc:*)"
+    ]
+  }
+}

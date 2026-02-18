@@ -298,11 +298,24 @@ def generate_uuid() -> str:
 
 
 def hash_password(password: str) -> str:
-    return hashlib.sha256(password.encode()).hexdigest()
+    """Hash a password using bcrypt (delegates to backend.infra.security).
+
+    SECURITY FIX: Previously used plain SHA-256 with no salt — trivially
+    crackable via rainbow tables.  Now delegates to the production-grade
+    bcrypt implementation in backend.infra.security.
+    """
+    from backend.infra.security import hash_password as _hash
+    return _hash(password)
 
 
 def verify_password(password: str, hashed: str) -> bool:
-    return hash_password(password) == hashed
+    """Verify a password against its hash (delegates to backend.infra.security).
+
+    SECURITY FIX: Now uses bcrypt constant-time comparison instead of
+    plain SHA-256 equality check.
+    """
+    from backend.infra.security import verify_password as _verify
+    return _verify(password, hashed)
 
 
 def deep_merge_dicts(dict1: dict, dict2: dict) -> dict:

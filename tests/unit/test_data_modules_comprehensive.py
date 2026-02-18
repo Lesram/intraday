@@ -613,7 +613,7 @@ class TestAlpacaClientRateLimiting:
             test_mode=True
         )
         
-        assert client.min_request_interval == 0.2
+        assert client.min_request_interval == 0.05
 
 
 class TestGetHistoricalData:

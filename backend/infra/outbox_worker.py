@@ -9,13 +9,16 @@ Now uses unified database manager and repository pattern for all database access
 """
 
 import asyncio
-from datetime import date, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
+import os
 import random
 import time
 from typing import Any
 
-from backend.config.unified import get_unified_settings
+# §2.1 FIX: Use canonical config instead of separate UnifiedSettings
+from backend.config.settings import get_settings
+from backend.infra.observability import trace_span
 from backend.utils.logger import get_structured_logger
 
 logger = get_structured_logger(__name__)
@@ -88,7 +91,7 @@ class OutboxWorker:
 
         self._running = False
         self._task: asyncio.Task | None = None
-        self.settings = get_unified_settings()
+        self.settings = get_settings()
         self.use_mock_broker = getattr(self.settings, 'USE_MOCK_BROKER', False)  # Default to FALSE - use real Alpaca
         # NOTE: execution mode is read dynamically per event to allow runtime flips.
 
@@ -340,31 +343,32 @@ class OutboxWorker:
                 overridden=mode_state.overridden,
             )
 
-            if mode == "shadow":
-                # Shadow mode: record intent but do not submit to broker.
-                result = {
-                    "success": True,
-                    "status": "shadow",
-                    "execution_mode": "shadow",
-                    "broker": "none",
-                    "shadow": True,
-                    "skipped": True,
-                    "order_id": order_id,
-                    "symbol": symbol,
-                    "side": side,
-                    "qty": qty,
-                }
-            elif mode == "dry_run":
-                # Dry-run mode: simulate broker behavior (no real submission).
-                result = await self._simulate_broker_order(payload)
-                # Make it explicit this came from dry-run, not the mock broker toggle.
-                result = {**result, "broker": "dry_run", "dry_run": True, "execution_mode": "dry_run"}
-            elif self.use_mock_broker:
-                # Simulate broker order submission
-                result = await self._simulate_broker_order(payload)
-            else:
-                # Real broker order submission
-                result = await self._submit_real_broker_order(payload)
+            with trace_span("order.broker_dispatch", {"order_id": order_id or "", "mode": mode, "symbol": symbol or ""}):
+                if mode == "shadow":
+                    # Shadow mode: record intent but do not submit to broker.
+                    result = {
+                        "success": True,
+                        "status": "shadow",
+                        "execution_mode": "shadow",
+                        "broker": "none",
+                        "shadow": True,
+                        "skipped": True,
+                        "order_id": order_id,
+                        "symbol": symbol,
+                        "side": side,
+                        "qty": qty,
+                    }
+                elif mode == "dry_run":
+                    # Dry-run mode: simulate broker behavior (no real submission).
+                    result = await self._simulate_broker_order(payload)
+                    # Make it explicit this came from dry-run, not the mock broker toggle.
+                    result = {**result, "broker": "dry_run", "dry_run": True, "execution_mode": "dry_run"}
+                elif self.use_mock_broker:
+                    # Simulate broker order submission
+                    result = await self._simulate_broker_order(payload)
+                else:
+                    # Real broker order submission
+                    result = await self._submit_real_broker_order(payload)
 
             # Update order status in database
             if result.get("success", False):
@@ -375,12 +379,13 @@ class OutboxWorker:
                            broker_order_id=result.get("broker_order_id"),
                            result_success=result.get("success"))
 
-                await self._update_order_status(
-                    order_id=order_id,
-                    status=final_status,
-                    broker_order_id=result.get("broker_order_id"),
-                    details=result
-                )
+                with trace_span("order.status_update", {"order_id": order_id or "", "status": final_status}):
+                    await self._update_order_status(
+                        order_id=order_id,
+                        status=final_status,
+                        broker_order_id=result.get("broker_order_id"),
+                        details=result
+                    )
 
                 logger.info("Completed order status update",
                            order_id=order_id,
@@ -405,8 +410,10 @@ class OutboxWorker:
 
     async def _simulate_broker_order(self, payload: dict[str, Any]) -> dict[str, Any]:
         """
-        Simulate broker order submission for testing.
-        In paper trading mode, market orders are immediately filled.
+        Simulate broker order submission for testing / paper-trading only.
+
+        PRODUCTION GUARD: This method must never be invoked when
+        ENVIRONMENT=production. If it is, we raise immediately.
 
         Args:
             payload: Order payload
@@ -414,6 +421,18 @@ class OutboxWorker:
         Returns:
             Simulated broker result
         """
+        env = os.environ.get("ENVIRONMENT", "").lower()
+        if env == "production":
+            raise RuntimeError(
+                "CRITICAL: _simulate_broker_order called in PRODUCTION environment. "
+                "This indicates a configuration error — mock broker must never run in production."
+            )
+
+        logger.warning(
+            "Using simulated broker (paper-trading mode)",
+            extra={"order_id": payload.get("order_id"), "environment": env},
+        )
+
         # Simulate processing time
         await asyncio.sleep(0.1)
 
@@ -426,8 +445,10 @@ class OutboxWorker:
         # Generate mock broker order ID
         broker_order_id = f"MOCK_{symbol}_{int(time.time())}"
 
-        # Simulate occasional failures for testing
-        if random.random() < 0.05:  # 5% failure rate
+        # Simulate occasional failures for testing (only when explicitly enabled)
+        import os
+        mock_failure_rate = float(os.getenv("MOCK_BROKER_FAILURE_RATE", "0"))
+        if mock_failure_rate > 0 and random.random() < mock_failure_rate:
             return {
                 "success": False,
                 "error": "Simulated broker error",
@@ -531,7 +552,7 @@ class OutboxWorker:
             import uuid
 
             from backend.infra.repositories import OrdersRepo
-            from backend.infra.unified_database import get_db_session
+            from backend.infra.db import get_session_context
 
             logger.info("Updating order status via ORM repository",
                        order_id=order_id,
@@ -539,7 +560,7 @@ class OutboxWorker:
                        broker_order_id=broker_order_id)
 
             # Use proper async session and repository pattern
-            async with get_db_session() as session:
+            async with get_session_context() as session:
                 order_repo = OrdersRepo(session)
 
                 # Parse order ID (handle both UUID formats)
@@ -670,7 +691,7 @@ class OutboxWorker:
             jitter = backoff_delay * self.jitter_factor * random.random()
             total_delay = backoff_delay + jitter
 
-            next_retry_at = datetime.utcnow() + timedelta(seconds=total_delay)
+            next_retry_at = datetime.now(UTC) + timedelta(seconds=total_delay)
 
             import uuid
             event_uuid = uuid.UUID(event_id)
@@ -728,28 +749,40 @@ class OutboxWorker:
                         error_message=error_message
                     )
 
-                    # Create a DLQ entry for manual inspection
-                    # CRITICAL: Serialize datetime objects to ISO strings before storing in JSONB
+                    # Log DLQ details for manual inspection — do NOT re-enqueue
+                    # into the same outbox table (that would create an infinite loop)
                     dlq_payload_raw = {
                         "original_event": event,
                         "final_error": error_result,
-                        "failed_at": datetime.utcnow().isoformat(),
+                        "failed_at": datetime.now(UTC).isoformat(),
                         "retry_count": attempts
                     }
 
                     # Apply recursive datetime serialization
                     dlq_payload = serialize_datetime_recursive(dlq_payload_raw)
 
-                    logger.info("Moving event to DLQ",
+                    logger.warning("Event moved to DLQ (marked as failed)",
                                event_id=event_id,
                                attempts=attempts,
-                               error=error_message[:200])
+                               error=error_message[:200],
+                               dlq_payload=dlq_payload)
 
-                    await outbox_repo.enqueue(
-                        topic="dlq.failed_event",
-                        payload=dlq_payload
-                    )
                     await session.commit()
+
+                    # §4.4 FIX: Notify connected clients via WebSocket about broker rejection
+                    try:
+                        from backend.websocket import broadcaster
+                        if broadcaster:
+                            payload = event.get("payload", {})
+                            await broadcaster.broadcast_to_topic("orders", {
+                                "type": "order.rejected",
+                                "order_id": payload.get("order_id", event_id),
+                                "symbol": payload.get("symbol"),
+                                "reason": error_message[:500],
+                                "event_id": event_id,
+                            })
+                    except Exception as ws_err:
+                        logger.debug(f"WebSocket notification failed (non-critical): {ws_err}")
                 except Exception as e:
                     await session.rollback()
                     logger.error("Failed to move event to DLQ",
@@ -785,9 +818,15 @@ async def create_outbox_worker(sessionmaker) -> OutboxWorker:
         logger.warning("OutboxWorker already exists, stopping previous instance")
         await _outbox_worker.stop()
 
+    try:
+        poll_interval = float(os.environ.get("OUTBOX_POLL_INTERVAL", "0.1"))
+    except (ValueError, TypeError):
+        logger.warning("Invalid OUTBOX_POLL_INTERVAL value, using default 0.1s")
+        poll_interval = 0.1
+
     _outbox_worker = OutboxWorker(
         sessionmaker=sessionmaker,
-        poll_interval=1.0,  # Poll every second
+        poll_interval=poll_interval,  # 100ms default for HFT
         max_retries=5,      # Max 5 retries before DLQ
         initial_backoff=1.0, # Start with 1 second backoff
         max_backoff=300.0,   # Max 5 minute backoff

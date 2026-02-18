@@ -9,46 +9,57 @@ import logging
 import os
 from typing import Any
 
-# Infrastructure compatibility stubs
+# Infrastructure compatibility stubs — only used when sklearn is unavailable
+
+_SKLEARN_SCALER_AVAILABLE = False
+try:
+    from sklearn.preprocessing import StandardScaler as _RealStandardScaler
+    _SKLEARN_SCALER_AVAILABLE = True
+except ImportError:
+    _RealStandardScaler = None  # type: ignore[assignment,misc]
 
 
-class StandardScaler:
-    """StandardScaler stub for test compatibility."""
+if _SKLEARN_SCALER_AVAILABLE:
+    StandardScaler = _RealStandardScaler  # type: ignore[misc]
+else:
+    class StandardScaler:  # type: ignore[no-redef]
+        """StandardScaler fallback (no-op) when sklearn is not installed."""
 
-    def fit(self, X):
-        """Fit scaler to data."""
-        return self
+        def fit(self, X):
+            return self
 
-    def transform(self, X):
-        """Transform data."""
-        return X
+        def transform(self, X):
+            return X
 
-    def fit_transform(self, X):
-        """Fit and transform data."""
-        return X
+        def fit_transform(self, X):
+            return X
 
-    def inverse_transform(self, X):
-        """Inverse transform data."""
-        return X
+        def inverse_transform(self, X):
+            return X
+
 
 class ModelStub:
-    """Model stub for test compatibility."""
+    """Neutral model stub used when ML libraries are unavailable.
+
+    Returns 0.0 (no-signal) predictions rather than biased values,
+    so downstream logic treats them as abstain / no-conviction.
+    """
 
     def __init__(self):
         self.is_trained = False
 
     def fit(self, X, y):
-        """Fit model."""
+        """Fit model (no-op)."""
         self.is_trained = True
         return self
 
     def predict(self, X):
-        """Make predictions."""
-        return [1] * len(X)
+        """Return neutral (zero) predictions — no-signal."""
+        return [0.0] * len(X)
 
     def predict_proba(self, X):
-        """Predict probabilities."""
-        return [[0.3, 0.7]] * len(X)
+        """Return uniform probability — maximum uncertainty."""
+        return [[0.5, 0.5]] * len(X)
 
 def get_model_manager():
     """Get model manager for compatibility."""
@@ -772,19 +783,57 @@ class EnsembleModel:
 
     # --- Minimal test-friendly interfaces ---
     def evaluate(self, features: pd.DataFrame, targets: pd.Series | pd.DataFrame | list | None) -> dict[str, Any]:
-        """Lightweight evaluation returning a metrics dict expected by tests.
-        Does not require trained heavy models; returns mock-like metrics based on shapes.
+        """Evaluate ensemble model against provided targets.
+
+        Uses the ensemble's predict() for inference, then computes real
+        accuracy / precision / recall / F1 from the predicted vs actual values.
+        Falls back to neutral zeros when targets are unavailable or prediction fails.
         """
         try:
             n = len(features) if features is not None else 0
-            metrics = {
-                "accuracy": 0.8,
-                "precision": 0.78,
-                "recall": 0.79,
-                "f1_score": 0.785,
+            if targets is None or n == 0:
+                return {"accuracy": 0.0, "precision": 0.0, "recall": 0.0, "f1_score": 0.0, "samples": n}
+
+            import numpy as np
+
+            y_true = np.array(targets).flatten()
+
+            # Attempt real prediction through the ensemble
+            try:
+                preds_raw = []
+                for i in range(n):
+                    row = features.iloc[[i]] if hasattr(features, 'iloc') else features[i:i+1]
+                    pred_val, _conf, _md = self.predict(row)
+                    preds_raw.append(pred_val)
+                y_pred = np.array(preds_raw).flatten()
+            except Exception:
+                # If predict() fails (no trained models), return zeros
+                return {"accuracy": 0.0, "precision": 0.0, "recall": 0.0, "f1_score": 0.0, "samples": n}
+
+            # Binarize for classification metrics if needed
+            if np.issubdtype(y_true.dtype, np.floating):
+                threshold = np.median(y_true)
+                y_true_bin = (y_true > threshold).astype(int)
+                y_pred_bin = (y_pred > threshold).astype(int)
+            else:
+                y_true_bin = y_true.astype(int)
+                y_pred_bin = y_pred.astype(int)
+
+            accuracy = float(np.mean(y_pred_bin == y_true_bin))
+            tp = float(np.sum((y_pred_bin == 1) & (y_true_bin == 1)))
+            fp = float(np.sum((y_pred_bin == 1) & (y_true_bin == 0)))
+            fn = float(np.sum((y_pred_bin == 0) & (y_true_bin == 1)))
+            precision = tp / (tp + fp) if (tp + fp) > 0 else 0.0
+            recall = tp / (tp + fn) if (tp + fn) > 0 else 0.0
+            f1 = 2 * precision * recall / (precision + recall) if (precision + recall) > 0 else 0.0
+
+            return {
+                "accuracy": round(accuracy, 4),
+                "precision": round(precision, 4),
+                "recall": round(recall, 4),
+                "f1_score": round(f1, 4),
                 "samples": n,
             }
-            return metrics
         except Exception:
             return {"status": "failed"}
 
@@ -852,8 +901,9 @@ class EnsembleModel:
             if s > 0:
                 for k in list(self.weights.keys()):
                     self.weights[k] = self.weights[k] / s
-        except Exception:
-            pass
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).warning("set_weights failed: %s", e)
 
     def get_weights(self):
         """Return weights in a list order expected by tests."""
@@ -1605,40 +1655,105 @@ class EnsembleModel:
 
 # Test compatibility functions
 def cross_validate_model(features, targets, folds=5):
-    """Cross-validate model for testing."""
-    # Return mock result structure that tests expect
-    scores = [0.82, 0.79, 0.85, 0.81, 0.83]  # Mock CV scores
-    return {
-        'cv_scores': scores[:folds],  # Slice to match requested folds
-        'mean_score': sum(scores[:folds]) / folds,
-        'std_score': 0.02  # Mock standard deviation
-    }
+    """Cross-validate model using real sklearn cross-validation.
+
+    Args:
+        features: Feature matrix (array-like or DataFrame)
+        targets: Target vector (array-like or Series)
+        folds: Number of cross-validation folds (default: 5)
+
+    Returns:
+        dict with cv_scores, mean_score, and std_score
+    """
+    from sklearn.model_selection import cross_val_score
+    from sklearn.ensemble import GradientBoostingClassifier
+
+    try:
+        estimator = GradientBoostingClassifier(
+            n_estimators=100, max_depth=5, random_state=42
+        )
+        scores = cross_val_score(estimator, features, targets, cv=folds, scoring="accuracy")
+        return {
+            "cv_scores": scores.tolist(),
+            "mean_score": float(scores.mean()),
+            "std_score": float(scores.std()),
+        }
+    except Exception:
+        # Fallback for incompatible data (e.g. too few samples for folds)
+        from sklearn.model_selection import cross_val_score as _cvs
+        from sklearn.ensemble import GradientBoostingRegressor
+
+        estimator = GradientBoostingRegressor(
+            n_estimators=100, max_depth=5, random_state=42
+        )
+        scores = _cvs(estimator, features, targets, cv=min(folds, len(targets)), scoring="r2")
+        return {
+            "cv_scores": scores.tolist(),
+            "mean_score": float(scores.mean()),
+            "std_score": float(scores.std()),
+        }
+
 
 def perform_cross_validation(features, targets, folds=5):
-    """Perform cross-validation for testing."""
-    # Use the cross_validate_model function for consistency
+    """Perform cross-validation using real sklearn scoring."""
     return cross_validate_model(features, targets, folds)
 
+
 def optimize_hyperparameters(param_grid, cv_folds=5):
-    """Optimize hyperparameters for testing."""
-    # Return mock optimization result
-    return {
-        'best_params': {
-            'n_estimators': 100,
-            'max_depth': 10,
-            'learning_rate': 0.1
-        },
-        'best_score': 0.87,
-        'cv_results': {
-            'param_n_estimators': [50, 100, 200],
-            'param_max_depth': [5, 10, 15],
-            'mean_test_score': [0.82, 0.87, 0.84]
+    """Optimize hyperparameters using real grid/random search.
+
+    Args:
+        param_grid: Dictionary of parameter names to lists of values to try
+        cv_folds: Number of cross-validation folds
+
+    Returns:
+        dict with best_params, best_score, and cv_results
+
+    Note:
+        Requires features and targets to be passed in param_grid under
+        '_X' and '_y' keys. If not provided, returns a structured result
+        with the param_grid echoed back and a warning.
+    """
+    from sklearn.model_selection import GridSearchCV
+    from sklearn.ensemble import GradientBoostingClassifier
+
+    # Extract data if provided
+    features = param_grid.pop("_X", None)
+    targets = param_grid.pop("_y", None)
+
+    if features is None or targets is None:
+        # Cannot run real optimization without data — return structured error
+        import logging
+
+        logging.warning(
+            "optimize_hyperparameters called without _X/_y data keys. "
+            "Pass param_grid['_X'] and param_grid['_y'] for real optimization."
+        )
+        return {
+            "best_params": {k: v[0] if isinstance(v, list) and v else v for k, v in param_grid.items()},
+            "best_score": None,
+            "cv_results": {"warning": "No data provided — optimization not executed"},
         }
+
+    estimator = GradientBoostingClassifier(random_state=42)
+    search = GridSearchCV(
+        estimator, param_grid, cv=cv_folds, scoring="accuracy", n_jobs=-1
+    )
+    search.fit(features, targets)
+
+    return {
+        "best_params": search.best_params_,
+        "best_score": float(search.best_score_),
+        "cv_results": {
+            k: v.tolist() if hasattr(v, "tolist") else v
+            for k, v in search.cv_results_.items()
+            if k.startswith(("param_", "mean_test_score"))
+        },
     }
 
+
 def tune_hyperparameters(param_grid, cv_folds=5):
-    """Tune hyperparameters for testing."""
-    # Alias for optimize_hyperparameters
+    """Tune hyperparameters — alias for optimize_hyperparameters."""
     return optimize_hyperparameters(param_grid, cv_folds)
 
 

@@ -334,10 +334,10 @@ async def run_stale_order_cleanup():
     Scheduled job to detect and cleanup stale orders.
     Run this every 15 minutes via cron or background task.
     """
-    from backend.infra.unified_database import get_db_session
+    from backend.infra.db import get_session_context
     from backend.integrations.alpaca_client import get_alpaca_client
 
-    async with get_db_session() as session:
+    async with get_session_context() as session:
         alpaca_client = get_alpaca_client()
         guardrails = OrderGuardrails(alpaca_client, session)
 

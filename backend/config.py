@@ -24,8 +24,12 @@ try:  # pragma: no cover - simple forwarding
         settings,  # noqa: F401
         validate_required_settings,  # noqa: F401
     )
-except Exception:
+except Exception as _config_import_error:
     # Minimal fallback to avoid hard failures during early import
+    import logging as _logging
+    _logging.getLogger(__name__).warning(
+        f"Failed to import config.settings, using fallback: {_config_import_error}"
+    )
     try:
         from pydantic import BaseSettings as _BaseSettings  # type: ignore
     except Exception:  # pragma: no cover - ultra fallback

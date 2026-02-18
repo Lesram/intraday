@@ -182,8 +182,8 @@ class TestBaseStrategy:
         """Test strategy initialization with default risk params"""
         assert strategy.name == "TestStrategy"
         assert strategy.max_risk_per_trade == 0.02
-        assert strategy.stop_loss_pct == 0.05
-        assert strategy.take_profit_pct == 0.02
+        assert strategy.stop_loss_pct == 0.02
+        assert strategy.take_profit_pct == 0.05
         assert strategy.is_active is True
         
     def test_init_with_custom_risk_params(self, mock_risk_manager):
@@ -270,17 +270,19 @@ class TestBaseStrategy:
         
         assert is_valid is False
         
-    def test_calculate_position_size(self, strategy):
+    @pytest.mark.asyncio
+    async def test_calculate_position_size(self, strategy):
         """Test position size calculation"""
         # With 100% confidence, should use full base position
-        size = strategy.calculate_position_size("AAPL", 100.0, 1.0)
+        size = await strategy.calculate_position_size("AAPL", 100.0, 1.0)
         
         assert size > 0
         
-    def test_calculate_position_size_risk_capped(self, strategy):
+    @pytest.mark.asyncio
+    async def test_calculate_position_size_risk_capped(self, strategy):
         """Test position sizing capped by risk limit"""
         # Very low price should hit risk cap
-        size = strategy.calculate_position_size("AAPL", 0.01, 1.0)
+        size = await strategy.calculate_position_size("AAPL", 0.01, 1.0)
         
         # Should be capped at max_risk_per_trade / price
         max_risk = 100000 * 0.02  # 2% of portfolio

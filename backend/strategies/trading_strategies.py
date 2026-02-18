@@ -86,8 +86,8 @@ class BaseStrategy(ABC):
 
     # Default risk parameters (can be overridden in child classes)
     DEFAULT_MAX_RISK_PER_TRADE = 0.02  # 2% max risk per trade
-    DEFAULT_STOP_LOSS_PCT = 0.05  # 5% stop loss
-    DEFAULT_TAKE_PROFIT_PCT = 0.02  # 2% take profit
+    DEFAULT_STOP_LOSS_PCT = 0.02  # 2% stop loss — keeps losses tight
+    DEFAULT_TAKE_PROFIT_PCT = 0.05  # 5% take profit — 1:2.5 risk-reward ratio
 
     def __init__(
         self,
@@ -140,21 +140,27 @@ class BaseStrategy(ABC):
 
         return risk_check["approved"]
 
-    def calculate_position_size(
+    async def calculate_position_size(
         self, symbol: str, price: float, confidence: float
     ) -> float:
-        """Calculate position size based on confidence and risk"""
-        base_position = self.settings.trading.max_position_size * confidence
+        """Calculate position size based on confidence and risk."""
+        import inspect
+
+        base_position = float(self.settings.trading.max_position_size) * float(confidence)
 
         # Risk-adjusted position sizing
         portfolio_value = self.risk_manager.get_portfolio_value()
-        max_risk_per_trade = portfolio_value * self.max_risk_per_trade
+        if inspect.isawaitable(portfolio_value):
+            portfolio_value = await portfolio_value
+        portfolio_value = float(portfolio_value or 0.0)
 
-        position_value = base_position * price
-        if position_value > max_risk_per_trade:
-            base_position = max_risk_per_trade / price
+        max_risk_per_trade = portfolio_value * float(self.max_risk_per_trade)
 
-        return base_position
+        position_value = base_position * float(price)
+        if max_risk_per_trade > 0 and position_value > max_risk_per_trade:
+            base_position = max_risk_per_trade / float(price)
+
+        return float(base_position)
 
     def update_performance(self, trade_results: list[dict[str, Any]]):
         """Update strategy performance metrics"""
@@ -231,23 +237,21 @@ class EnsembleStrategy(BaseStrategy):
                 )
 
         # Calculate position size
-        position_size = (
-            self.calculate_position_size(
-                symbol, current_price, prediction.ensemble_confidence
+        position_size = 0.0
+        if signal_type != SignalType.HOLD:
+            position_size = await self.calculate_position_size(
+                symbol, float(current_price), float(prediction.ensemble_confidence)
             )
-            if signal_type != SignalType.HOLD
-            else 0.0
-        )
 
-        # Set stop loss and take profit using configurable percentages
+        # Set stop loss and take profit relative to current price
         stop_loss = None
         take_profit = None
         if signal_type in [SignalType.BUY, SignalType.STRONG_BUY]:
             stop_loss = current_price * (1 - self.stop_loss_pct)
-            take_profit = prediction.ensemble_prediction * (1 + self.take_profit_pct)
+            take_profit = current_price * (1 + self.take_profit_pct)
         elif signal_type in [SignalType.SELL, SignalType.STRONG_SELL]:
             stop_loss = current_price * (1 + self.stop_loss_pct)
-            take_profit = prediction.ensemble_prediction * (1 - self.take_profit_pct)
+            take_profit = current_price * (1 - self.take_profit_pct)
 
         signal = TradingSignal(
             symbol=symbol,
@@ -341,16 +345,16 @@ class MeanReversionStrategy(BaseStrategy):
         # Oversold condition: price near lower band + low RSI
         if current_price < bb_lower * (1 + self.band_tolerance) and current_rsi < self.oversold_threshold:
             signal_type = SignalType.BUY
-            confidence = min(0.9, (self.oversold_threshold - current_rsi) / 20)
+            confidence = min(0.9, max(0.1, (self.oversold_threshold - current_rsi) / 20))
 
         # Overbought condition: price near upper band + high RSI
         elif (
             current_price > bb_upper * (1 - self.band_tolerance) and current_rsi > self.overbought_threshold
         ):
             signal_type = SignalType.SELL
-            confidence = min(0.9, (current_rsi - self.overbought_threshold) / 20)
+            confidence = min(0.9, max(0.1, (current_rsi - self.overbought_threshold) / 20))
 
-        position_size = self.calculate_position_size(symbol, current_price, confidence)
+        position_size = await self.calculate_position_size(symbol, float(current_price), float(confidence))
 
         # Set targets
         target_price = bb_middle  # Revert to mean
@@ -410,21 +414,41 @@ class MomentumStrategy(BaseStrategy):
         signal_type = SignalType.HOLD
         confidence = 0.5
 
+        # Normalize MACD diff by price to make confidence scale-invariant
+        macd_diff_normalized = abs(macd - macd_signal) / max(float(current_price), 1e-9)
+
         # Bullish momentum: MACD above signal + price above moving averages
         if macd > macd_signal and current_price > sma_20 > sma_50:
             signal_type = SignalType.BUY
-            confidence = min(0.85, abs(macd - macd_signal) * 10)
+            confidence = min(0.85, max(0.1, macd_diff_normalized * 1000))
 
         # Bearish momentum: MACD below signal + price below moving averages
         elif macd < macd_signal and current_price < sma_20 < sma_50:
             signal_type = SignalType.SELL
-            confidence = min(0.85, abs(macd - macd_signal) * 10)
+            confidence = min(0.85, max(0.1, macd_diff_normalized * 1000))
 
-        position_size = self.calculate_position_size(symbol, current_price, confidence)
+        position_size = await self.calculate_position_size(symbol, float(current_price), float(confidence))
 
-        # Set targets based on momentum strength
-        momentum_strength = abs(macd - macd_signal)
-        target_multiplier = 1 + (momentum_strength * self.momentum_multiplier)
+        # Set targets based on momentum strength — normalized by price for scale-invariance
+        momentum_strength = abs(macd - macd_signal) / max(float(current_price), 1e-9)
+        target_multiplier = 1 + (momentum_strength * self.momentum_multiplier * 100)
+
+        if signal_type == SignalType.HOLD:
+            return TradingSignal(
+                symbol=symbol,
+                signal_type=SignalType.HOLD,
+                confidence=confidence,
+                target_price=current_price,
+                stop_loss=None,
+                take_profit=None,
+                position_size=0.0,
+                metadata={
+                    "macd": macd,
+                    "macd_signal": macd_signal,
+                    "sma_trend": "bullish" if sma_20 > sma_50 else "bearish",
+                    "strategy": "momentum",
+                },
+            )
 
         target_price = (
             current_price * target_multiplier
@@ -443,7 +467,7 @@ class MomentumStrategy(BaseStrategy):
                 else current_price * (1 + self.stop_loss_pct)
             ),
             take_profit=target_price,
-            position_size=position_size if signal_type != SignalType.HOLD else 0.0,
+            position_size=position_size,
             metadata={
                 "macd": macd,
                 "macd_signal": macd_signal,
@@ -454,6 +478,300 @@ class MomentumStrategy(BaseStrategy):
 
     def get_required_features(self) -> list[str]:
         return ["macd", "macd_signal", "sma_20", "sma_50"]
+
+
+class RegimeFilteredMomentumStrategy(BaseStrategy):
+    """Regime-filtered momentum strategy.
+
+    Trades only when:
+    - Trend regime is aligned (price above/below SMA50)
+    - RSI confirms momentum
+    - Volatility is within a configured band (ATR ratio)
+    """
+
+    def __init__(
+        self,
+        risk_manager: RiskManager,
+        rsi_long: float = 55.0,
+        rsi_short: float = 45.0,
+        min_atr_ratio: float = 0.002,
+        max_atr_ratio: float = 0.05,
+        stop_loss_atr_mult: float = 1.5,
+        take_profit_atr_mult: float = 2.0,
+    ):
+        super().__init__(
+            "RegimeFilteredMomentumStrategy",
+            risk_manager,
+            stop_loss_pct=self.DEFAULT_STOP_LOSS_PCT,
+            take_profit_pct=self.DEFAULT_TAKE_PROFIT_PCT,
+        )
+        self.rsi_long = rsi_long
+        self.rsi_short = rsi_short
+        self.min_atr_ratio = min_atr_ratio
+        self.max_atr_ratio = max_atr_ratio
+        self.stop_loss_atr_mult = stop_loss_atr_mult
+        self.take_profit_atr_mult = take_profit_atr_mult
+
+    async def generate_signal(
+        self, symbol: str, price_data: pd.DataFrame, features: pd.DataFrame
+    ) -> TradingSignal:
+        current_price = price_data["close"].iloc[-1]
+
+        sma_50 = features["sma_50"].iloc[-1]
+        rsi_value = features["rsi"].iloc[-1]
+        atr = features["atr"].iloc[-1] if "atr" in features.columns else None
+        atr_ratio = (
+            features["atr_ratio"].iloc[-1]
+            if "atr_ratio" in features.columns
+            else (float(atr) / float(current_price) if atr is not None and current_price else None)
+        )
+
+        # Volatility gate
+        if atr_ratio is None or not (self.min_atr_ratio <= float(atr_ratio) <= self.max_atr_ratio):
+            return TradingSignal(
+                symbol=symbol,
+                signal_type=SignalType.HOLD,
+                confidence=0.0,
+                target_price=current_price,
+                metadata={
+                    "strategy": "regime_filtered_momentum",
+                    "reason": "volatility_out_of_band",
+                    "atr_ratio": float(atr_ratio) if atr_ratio is not None else None,
+                },
+            )
+
+        trend_up = current_price > sma_50
+        trend_down = current_price < sma_50
+
+        signal_type = SignalType.HOLD
+        if trend_up and rsi_value >= self.rsi_long:
+            signal_type = SignalType.BUY
+        elif trend_down and rsi_value <= self.rsi_short:
+            signal_type = SignalType.SELL
+
+        if signal_type == SignalType.HOLD:
+            return TradingSignal(
+                symbol=symbol,
+                signal_type=SignalType.HOLD,
+                confidence=0.0,
+                target_price=current_price,
+                metadata={
+                    "strategy": "regime_filtered_momentum",
+                    "trend": "up" if trend_up else ("down" if trend_down else "flat"),
+                    "rsi": float(rsi_value),
+                    "atr_ratio": float(atr_ratio),
+                },
+            )
+
+        # Confidence increases as RSI moves away from 50.
+        confidence = min(0.85, max(0.1, abs(float(rsi_value) - 50.0) / 50.0))
+        position_size = await self.calculate_position_size(symbol, float(current_price), float(confidence))
+
+        if atr is None or pd.isna(atr):
+            # Fallback to percent-based stops if ATR missing
+            stop_loss = (
+                current_price * (1 - self.stop_loss_pct)
+                if signal_type == SignalType.BUY
+                else current_price * (1 + self.stop_loss_pct)
+            )
+            take_profit = (
+                current_price * (1 + self.take_profit_pct)
+                if signal_type == SignalType.BUY
+                else current_price * (1 - self.take_profit_pct)
+            )
+        else:
+            atr_f = float(atr)
+            stop_loss = (
+                current_price - self.stop_loss_atr_mult * atr_f
+                if signal_type == SignalType.BUY
+                else current_price + self.stop_loss_atr_mult * atr_f
+            )
+            take_profit = (
+                current_price + self.take_profit_atr_mult * atr_f
+                if signal_type == SignalType.BUY
+                else current_price - self.take_profit_atr_mult * atr_f
+            )
+
+        return TradingSignal(
+            symbol=symbol,
+            signal_type=signal_type,
+            confidence=confidence,
+            target_price=take_profit,
+            stop_loss=stop_loss,
+            take_profit=take_profit,
+            position_size=position_size,
+            metadata={
+                "strategy": "regime_filtered_momentum",
+                "trend": "up" if trend_up else "down",
+                "rsi": float(rsi_value),
+                "sma_50": float(sma_50),
+                "atr": float(atr) if atr is not None else None,
+                "atr_ratio": float(atr_ratio),
+            },
+        )
+
+    def get_required_features(self) -> list[str]:
+        return ["sma_50", "rsi", "atr_ratio"]
+
+
+class BreakoutStrategy(BaseStrategy):
+    """Breakout strategy designed to capture large breaks.
+
+    Core idea:
+    - Detect price breaking above/below a rolling range (Donchian-style)
+    - Confirm with volume expansion and reasonable volatility regime
+    - Emit BUY/SELL with confidence scaled by breakout strength
+
+    Notes:
+    - This strategy can *detect* breakouts and provide confidence/diagnostics.
+    - Actual stops/TP require execution support (brackets/trailing) beyond a simple market order.
+    """
+
+    def __init__(
+        self,
+        risk_manager: RiskManager,
+        lookback: int = 20,
+        buffer_pct: float = 0.002,
+        volume_spike_mult: float = 1.5,
+        min_atr_ratio: float = 0.002,
+        max_atr_ratio: float = 0.08,
+        allow_short: bool = True,
+    ):
+        super().__init__("BreakoutStrategy", risk_manager)
+        self.lookback = lookback
+        self.buffer_pct = buffer_pct
+        self.volume_spike_mult = volume_spike_mult
+        self.min_atr_ratio = min_atr_ratio
+        self.max_atr_ratio = max_atr_ratio
+        self.allow_short = allow_short
+        self.atr_stop_mult = 2.0   # ATR multiplier for stop-loss
+        self.atr_tp_mult = 3.0     # ATR multiplier for take-profit
+
+    async def generate_signal(
+        self, symbol: str, price_data: pd.DataFrame, features: pd.DataFrame
+    ) -> TradingSignal:
+        if price_data is None or price_data.empty or len(price_data) < (self.lookback + 2):
+            return TradingSignal(
+                symbol=symbol,
+                signal_type=SignalType.HOLD,
+                confidence=0.0,
+                target_price=float(price_data["close"].iloc[-1]) if isinstance(price_data, pd.DataFrame) and not price_data.empty else 0.0,
+                metadata={"strategy": "breakout", "reason": "insufficient_history"},
+            )
+
+        df = price_data.copy()
+        for col in ("open", "high", "low", "close", "volume"):
+            if col not in df.columns:
+                raise ValueError(f"BreakoutStrategy requires OHLCV column '{col}'")
+
+        # Rolling range excluding current bar
+        prior_high = df["high"].rolling(self.lookback).max().shift(1).iloc[-1]
+        prior_low = df["low"].rolling(self.lookback).min().shift(1).iloc[-1]
+        close = float(df["close"].iloc[-1])
+        vol = float(df["volume"].iloc[-1])
+        avg_vol = float(df["volume"].rolling(self.lookback).mean().shift(1).iloc[-1])
+
+        atr_ratio = None
+        if isinstance(features, pd.DataFrame) and not features.empty:
+            if "atr_ratio" in features.columns:
+                atr_ratio = float(features["atr_ratio"].iloc[-1])
+            elif "atr" in features.columns and close:
+                atr_ratio = float(features["atr"].iloc[-1]) / close
+
+        # Volatility regime gate
+        if atr_ratio is None or not (self.min_atr_ratio <= atr_ratio <= self.max_atr_ratio):
+            return TradingSignal(
+                symbol=symbol,
+                signal_type=SignalType.HOLD,
+                confidence=0.0,
+                target_price=close,
+                metadata={
+                    "strategy": "breakout",
+                    "reason": "atr_ratio_out_of_band",
+                    "atr_ratio": atr_ratio,
+                },
+            )
+
+        vol_ratio = (vol / avg_vol) if avg_vol > 0 else 0.0
+        if vol_ratio < self.volume_spike_mult:
+            return TradingSignal(
+                symbol=symbol,
+                signal_type=SignalType.HOLD,
+                confidence=0.0,
+                target_price=close,
+                metadata={
+                    "strategy": "breakout",
+                    "reason": "no_volume_confirmation",
+                    "volume_ratio": vol_ratio,
+                },
+            )
+
+        upper_trigger = float(prior_high) * (1.0 + self.buffer_pct)
+        lower_trigger = float(prior_low) * (1.0 - self.buffer_pct)
+
+        signal_type = SignalType.HOLD
+        breakout_strength = 0.0
+        if close >= upper_trigger:
+            signal_type = SignalType.BUY
+            breakout_strength = (close - upper_trigger) / max(1e-9, upper_trigger)
+        elif self.allow_short and close <= lower_trigger:
+            signal_type = SignalType.SELL
+            breakout_strength = (lower_trigger - close) / max(1e-9, lower_trigger)
+
+        if signal_type == SignalType.HOLD:
+            return TradingSignal(
+                symbol=symbol,
+                signal_type=SignalType.HOLD,
+                confidence=0.0,
+                target_price=close,
+                metadata={
+                    "strategy": "breakout",
+                    "reason": "no_breakout",
+                    "upper_trigger": upper_trigger,
+                    "lower_trigger": lower_trigger,
+                    "volume_ratio": vol_ratio,
+                    "atr_ratio": atr_ratio,
+                },
+            )
+
+        # Confidence combines breakout strength and volume expansion.
+        # Keep bounded and conservative.
+        conf_from_break = min(0.6, breakout_strength * 50.0)  # 1% break => 0.5
+        conf_from_vol = min(0.35, (vol_ratio - 1.0) / 5.0)
+        confidence = float(max(0.15, min(0.9, conf_from_break + conf_from_vol)))
+
+        position_size = await self.calculate_position_size(symbol, float(close), float(confidence))
+
+        # ATR-based stops and targets for proper risk management
+        atr_val = close * (atr_ratio if atr_ratio else 0.02)
+        if signal_type == SignalType.BUY:
+            stop_loss = close - atr_val * self.atr_stop_mult
+            take_profit = close + atr_val * self.atr_tp_mult
+        else:
+            stop_loss = close + atr_val * self.atr_stop_mult
+            take_profit = close - atr_val * self.atr_tp_mult
+
+        return TradingSignal(
+            symbol=symbol,
+            signal_type=signal_type,
+            confidence=confidence,
+            target_price=take_profit,
+            stop_loss=stop_loss,
+            take_profit=take_profit,
+            position_size=position_size,
+            metadata={
+                "strategy": "breakout",
+                "lookback": self.lookback,
+                "upper_trigger": upper_trigger,
+                "lower_trigger": lower_trigger,
+                "breakout_strength": breakout_strength,
+                "volume_ratio": vol_ratio,
+                "atr_ratio": atr_ratio,
+            },
+        )
+
+    def get_required_features(self) -> list[str]:
+        return ["atr_ratio"]
 
 
 class RebalancingStrategy(BaseStrategy):
@@ -525,7 +843,17 @@ class RebalancingStrategy(BaseStrategy):
 
 
 class StatisticalArbitrageStrategy(BaseStrategy):
-    """Statistical arbitrage using correlation and cointegration"""
+    """Z-Score Mean Reversion with adaptive Kalman-filtered spread tracking.
+
+    Core logic:
+    - Tracks price spread as log(price) vs its Kalman-filtered trend
+    - Computes z-score of deviation from smoothed mean
+    - Enters when z-score exceeds entry_threshold, exits at exit_threshold
+    - Uses half-life estimation for dynamic lookback calibration
+
+    This strategy captures mean-reversion alpha in individual names by detecting
+    statistically significant departures from a smoothed equilibrium price.
+    """
 
     def __init__(
         self,
@@ -534,17 +862,53 @@ class StatisticalArbitrageStrategy(BaseStrategy):
         lookback_period: int = 60,
         entry_threshold: float = 2.0,
         exit_threshold: float = 0.5,
+        kalman_transition_cov: float = 0.001,
+        kalman_observation_cov: float = 1.0,
     ):
         super().__init__("StatArbStrategy", risk_manager)
         self.reference_symbol = reference_symbol
         self.lookback_period = lookback_period
-        self.entry_threshold = entry_threshold  # Z-score threshold for entry
-        self.exit_threshold = exit_threshold  # Z-score threshold for exit
+        self.entry_threshold = entry_threshold
+        self.exit_threshold = exit_threshold
+        self.kalman_q = kalman_transition_cov
+        self.kalman_r = kalman_observation_cov
+
+    def _kalman_filter(self, observations: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+        """1D Kalman filter: returns (filtered_state, filtered_variance) arrays."""
+        n = len(observations)
+        x = np.zeros(n)  # state (smoothed level)
+        p = np.zeros(n)  # state variance
+        x[0] = observations[0]
+        p[0] = 1.0
+        for i in range(1, n):
+            # Predict
+            x_pred = x[i - 1]
+            p_pred = p[i - 1] + self.kalman_q
+            # Update
+            k = p_pred / (p_pred + self.kalman_r)  # Kalman gain
+            x[i] = x_pred + k * (observations[i] - x_pred)
+            p[i] = (1 - k) * p_pred
+        return x, p
+
+    def _estimate_half_life(self, spread: np.ndarray) -> float:
+        """Estimate OU half-life from spread via AR(1) regression."""
+        if len(spread) < 20:
+            return float(self.lookback_period)
+        y = spread[1:]
+        x = spread[:-1]
+        denom = np.sum(x * x)
+        if abs(denom) < 1e-12:
+            return float(self.lookback_period)
+        beta = np.sum(x * y) / denom
+        if beta >= 1.0 or beta <= 0.0:
+            return float(self.lookback_period)
+        half_life = -np.log(2) / np.log(beta)
+        return float(max(5, min(half_life, self.lookback_period * 2)))
 
     async def generate_signal(
         self, symbol: str, price_data: pd.DataFrame, features: pd.DataFrame
     ) -> TradingSignal:
-        """Generate statistical arbitrage signal"""
+        """Generate z-score mean reversion signal with Kalman-filtered trend."""
 
         if len(price_data) < self.lookback_period:
             return TradingSignal(
@@ -556,12 +920,25 @@ class StatisticalArbitrageStrategy(BaseStrategy):
 
         current_price = price_data["close"].iloc[-1]
 
-        # Calculate price ratio and z-score (simplified)
-        recent_prices = price_data["close"].tail(self.lookback_period)
-        price_mean = recent_prices.mean()
-        price_std = recent_prices.std()
+        # Use log prices for better statistical properties
+        log_prices = np.log(price_data["close"].values.astype(float))
 
-        if price_std == 0:
+        # Apply Kalman filter to estimate smoothed trend
+        filtered, _ = self._kalman_filter(log_prices)
+
+        # Spread = log_price - kalman_filtered_trend
+        spread = log_prices - filtered
+
+        # Estimate mean-reversion half-life for dynamic lookback
+        half_life = self._estimate_half_life(spread)
+        effective_lookback = max(10, min(int(half_life * 2), len(spread)))
+
+        # Z-score on recent spread window
+        recent_spread = spread[-effective_lookback:]
+        spread_mean = np.mean(recent_spread)
+        spread_std = np.std(recent_spread, ddof=1)
+
+        if spread_std < 1e-10:
             return TradingSignal(
                 symbol=symbol,
                 signal_type=SignalType.HOLD,
@@ -569,18 +946,24 @@ class StatisticalArbitrageStrategy(BaseStrategy):
                 target_price=current_price,
             )
 
-        z_score = (current_price - price_mean) / price_std
+        z_score = (spread[-1] - spread_mean) / spread_std
 
         signal_type = SignalType.HOLD
-        confidence = min(0.9, abs(z_score) / 5.0)  # Higher z-score = higher confidence
+        confidence = min(0.9, max(0.1, abs(z_score) / 5.0))
 
         if z_score > self.entry_threshold:
-            signal_type = SignalType.SELL  # Price is high relative to mean
+            signal_type = SignalType.SELL  # Price is high relative to trend
         elif z_score < -self.entry_threshold:
-            signal_type = SignalType.BUY  # Price is low relative to mean
+            signal_type = SignalType.BUY  # Price is low relative to trend
+        elif abs(z_score) < self.exit_threshold:
+            # Z-score reverted to mean — signal to close existing position
+            signal_type = SignalType.HOLD
+            confidence = 0.0
 
-        position_size = self.calculate_position_size(symbol, current_price, confidence)
-        target_price = price_mean  # Expect reversion to mean
+        position_size = await self.calculate_position_size(symbol, float(current_price), float(confidence))
+
+        # Target = reversion to Kalman-filtered equilibrium
+        target_price = float(np.exp(filtered[-1]))
 
         return TradingSignal(
             symbol=symbol,
@@ -595,9 +978,12 @@ class StatisticalArbitrageStrategy(BaseStrategy):
             take_profit=target_price,
             position_size=position_size if signal_type != SignalType.HOLD else 0.0,
             metadata={
-                "z_score": z_score,
-                "price_mean": price_mean,
-                "price_std": price_std,
+                "z_score": float(z_score),
+                "spread_mean": float(spread_mean),
+                "spread_std": float(spread_std),
+                "half_life": float(half_life),
+                "kalman_level": float(np.exp(filtered[-1])),
+                "effective_lookback": effective_lookback,
                 "strategy": "statistical_arbitrage",
             },
         )
@@ -679,6 +1065,17 @@ class StrategyManager:
                 signal_type=SignalType.HOLD,
                 confidence=0.0,
                 target_price=0.0,
+            )
+
+        # Fix: When the best vote is zero (all HOLD), return HOLD instead of
+        # relying on dict insertion order which would always pick BUY.
+        max_vote = max(signal_votes.values())
+        if max_vote <= 0.0:
+            return TradingSignal(
+                symbol=symbol,
+                signal_type=SignalType.HOLD,
+                confidence=0.0,
+                target_price=weighted_target / total_weight,
             )
 
         final_signal_type = max(signal_votes, key=signal_votes.get)

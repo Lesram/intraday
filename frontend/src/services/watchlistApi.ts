@@ -1,12 +1,9 @@
 /**
  * Watchlist API Service
- * Handles all watchlist-related API calls
+ * Handles all watchlist-related API calls using the centralized apiClient
  */
 
-import axios from 'axios';
-import { useAuthStore } from '@/store/authStore';
-
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+import { apiClient } from './api';
 
 export interface WatchlistSymbol {
   id: number;
@@ -57,26 +54,10 @@ export interface QuoteData {
 }
 
 /**
- * Get authorization headers
- */
-const getAuthHeaders = () => {
-  const token = useAuthStore.getState().accessToken;
-  return {
-    headers: {
-      Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/json',
-    },
-  };
-};
-
-/**
  * List all watchlists for the current user
  */
 export const listWatchlists = async (): Promise<Watchlist[]> => {
-  const response = await axios.get(
-    `${API_BASE_URL}/api/v1/watchlists/`,
-    getAuthHeaders()
-  );
+  const response = await apiClient.get<Watchlist[]>('/watchlists/');
   return response.data;
 };
 
@@ -86,11 +67,7 @@ export const listWatchlists = async (): Promise<Watchlist[]> => {
 export const createWatchlist = async (
   data: CreateWatchlistRequest
 ): Promise<Watchlist> => {
-  const response = await axios.post(
-    `${API_BASE_URL}/api/v1/watchlists/`,
-    data,
-    getAuthHeaders()
-  );
+  const response = await apiClient.post<Watchlist>('/watchlists/', data);
   return response.data;
 };
 
@@ -98,10 +75,7 @@ export const createWatchlist = async (
  * Get a specific watchlist by ID
  */
 export const getWatchlist = async (id: number): Promise<Watchlist> => {
-  const response = await axios.get(
-    `${API_BASE_URL}/api/v1/watchlists/${id}`,
-    getAuthHeaders()
-  );
+  const response = await apiClient.get<Watchlist>(`/watchlists/${id}`);
   return response.data;
 };
 
@@ -112,11 +86,7 @@ export const updateWatchlist = async (
   id: number,
   data: UpdateWatchlistRequest
 ): Promise<Watchlist> => {
-  const response = await axios.put(
-    `${API_BASE_URL}/api/v1/watchlists/${id}`,
-    data,
-    getAuthHeaders()
-  );
+  const response = await apiClient.put<Watchlist>(`/watchlists/${id}`, data);
   return response.data;
 };
 
@@ -124,10 +94,7 @@ export const updateWatchlist = async (
  * Delete a watchlist
  */
 export const deleteWatchlist = async (id: number): Promise<void> => {
-  await axios.delete(
-    `${API_BASE_URL}/api/v1/watchlists/${id}`,
-    getAuthHeaders()
-  );
+  await apiClient.delete(`/watchlists/${id}`);
 };
 
 /**
@@ -137,11 +104,7 @@ export const addSymbolToWatchlist = async (
   id: number,
   data: AddSymbolRequest
 ): Promise<Watchlist> => {
-  const response = await axios.post(
-    `${API_BASE_URL}/api/v1/watchlists/${id}/symbols`,
-    data,
-    getAuthHeaders()
-  );
+  const response = await apiClient.post<Watchlist>(`/watchlists/${id}/symbols`, data);
   return response.data;
 };
 
@@ -152,10 +115,7 @@ export const removeSymbolFromWatchlist = async (
   id: number,
   symbol: string
 ): Promise<Watchlist> => {
-  const response = await axios.delete(
-    `${API_BASE_URL}/api/v1/watchlists/${id}/symbols/${symbol}`,
-    getAuthHeaders()
-  );
+  const response = await apiClient.delete<Watchlist>(`/watchlists/${id}/symbols/${symbol}`);
   return response.data;
 };
 
@@ -166,11 +126,7 @@ export const reorderWatchlistSymbols = async (
   id: number,
   data: ReorderSymbolsRequest
 ): Promise<Watchlist> => {
-  const response = await axios.put(
-    `${API_BASE_URL}/api/v1/watchlists/${id}/symbols/reorder`,
-    data,
-    getAuthHeaders()
-  );
+  const response = await apiClient.put<Watchlist>(`/watchlists/${id}/symbols/reorder`, data);
   return response.data;
 };
 
@@ -180,9 +136,6 @@ export const reorderWatchlistSymbols = async (
 export const getWatchlistQuotes = async (
   id: number
 ): Promise<Record<string, QuoteData>> => {
-  const response = await axios.get(
-    `${API_BASE_URL}/api/v1/watchlists/${id}/quotes`,
-    getAuthHeaders()
-  );
+  const response = await apiClient.get<Record<string, QuoteData>>(`/watchlists/${id}/quotes`);
   return response.data;
 };

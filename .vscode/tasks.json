@@ -121,6 +121,81 @@
 				"-Command",
 				"$ErrorActionPreference = 'Stop'; $env:PYTHONPATH = (Resolve-Path .).Path; pytest -q test/module/test_Module121_backend_ml_model_manager.py test/module/test_Module122_backend_ml_ensemble_model.py test/module/test_Module123_backend_services_integration.py --cov=backend.ml.model_manager --cov=backend.ml.ensemble_model --cov=backend.services.integration --cov-branch --cov-report=html:test_results --cov-report=term-missing:skip-covered --maxfail=5 --tb=short"
 			]
+		},
+		{
+			"label": "Organism Ultimate Audit (Fast)",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				"scripts/ci/organism_ultimate_audit.ps1",
+				"-Fast"
+			],
+			"group": "test",
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": false,
+				"panel": "shared",
+				"showReuseMessage": false,
+				"clear": true
+			},
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"problemMatcher": []
+		},
+		{
+			"label": "Organism Ultimate Audit (Full)",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				"scripts/ci/organism_ultimate_audit.ps1"
+			],
+			"group": "test",
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": false,
+				"panel": "shared",
+				"showReuseMessage": false,
+				"clear": true
+			},
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"problemMatcher": []
+		},
+		{
+			"label": "Organism Full Audit (Timeout Safe)",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				"scripts/ci/organism_ultimate_audit.ps1",
+				"-FullSuiteTimeoutSec",
+				"300"
+			],
+			"group": "test",
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": false,
+				"panel": "shared",
+				"showReuseMessage": false,
+				"clear": true
+			},
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"problemMatcher": []
 		}
 	],
 	"inputs": [

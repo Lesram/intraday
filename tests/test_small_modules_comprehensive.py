@@ -27,28 +27,29 @@ class TestNoopModelManager:
         assert manager is not None
 
     def test_predict(self):
-        """predict returns dummy prediction."""
+        """predict returns neutral no-op prediction."""
         from backend.mlops.noop import NoopModelManager
         manager = NoopModelManager()
-        
+
         result = manager.predict([1, 2, 3])
-        
+
         assert isinstance(result, dict)
         assert "prediction" in result
         assert "confidence" in result
-        assert result["prediction"] == 0.5
-        assert result["confidence"] == 0.8
+        assert result["prediction"] == 0.0
+        assert result["confidence"] == 0.0
+        assert result["noop"] is True
 
     def test_train(self):
-        """train returns complete status."""
+        """train returns skipped status."""
         from backend.mlops.noop import NoopModelManager
         manager = NoopModelManager()
-        
+
         result = manager.train({"data": [1, 2, 3]})
-        
+
         assert isinstance(result, dict)
-        assert result["status"] == "complete"
-        assert "accuracy" in result
+        assert result["status"] == "skipped"
+        assert result["noop"] is True
 
     def test_save(self):
         """save returns True."""
@@ -69,16 +70,14 @@ class TestNoopModelManager:
         assert result is True
 
     def test_get_metrics(self):
-        """get_metrics returns dummy metrics."""
+        """get_metrics returns no-op metrics."""
         from backend.mlops.noop import NoopModelManager
         manager = NoopModelManager()
-        
+
         result = manager.get_metrics()
-        
+
         assert isinstance(result, dict)
-        assert "accuracy" in result
-        assert "precision" in result
-        assert "recall" in result
+        assert result["noop"] is True
 
 
 class TestNoopGetModelManager:

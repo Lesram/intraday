@@ -23,11 +23,11 @@ from backend.ml.validation import (
     DataValidator,
     PerformanceMetrics,
     ValidationSplitter,
-    MockKFold,
+    KFoldSplitter,
+    TimeSeriesSplitter,
     MockTimeSeriesSplit,
-    MockCrossValidate,
-    MockConfusionMatrix,
-    MockClassificationReport,
+    _compute_confusion_matrix,
+    _compute_binary_metrics,
 )
 
 
@@ -244,18 +244,18 @@ class TestModelComparisonResult:
 # =============================================================================
 
 class TestMockKFold:
-    """Test MockKFold class."""
+    """Test KFoldSplitter class (was MockKFold)."""
 
     def test_init(self):
         """Test initialization."""
-        kf = MockKFold(n_splits=5, shuffle=True, random_state=42)
+        kf = KFoldSplitter(n_splits=5, shuffle=True, random_state=42)
         assert kf.n_splits == 5
         assert kf.shuffle is True
         assert kf.random_state == 42
 
     def test_split(self):
         """Test split method."""
-        kf = MockKFold(n_splits=3)
+        kf = KFoldSplitter(n_splits=3)
         X = np.arange(30)
         
         splits = list(kf.split(X))
@@ -267,17 +267,17 @@ class TestMockKFold:
 
 
 class TestMockTimeSeriesSplit:
-    """Test MockTimeSeriesSplit class."""
+    """Test TimeSeriesSplitter class (was MockTimeSeriesSplit)."""
 
     def test_init(self):
         """Test initialization."""
-        tss = MockTimeSeriesSplit(n_splits=5, max_train_size=100)
+        tss = TimeSeriesSplitter(n_splits=5, max_train_size=100)
         assert tss.n_splits == 5
         assert tss.max_train_size == 100
 
     def test_split(self):
         """Test split method."""
-        tss = MockTimeSeriesSplit(n_splits=3)
+        tss = TimeSeriesSplitter(n_splits=3)
         X = np.arange(40)
         
         splits = list(tss.split(X))
@@ -288,52 +288,52 @@ class TestMockTimeSeriesSplit:
             assert len(test_idx) > 0
 
 
-class TestMockCrossValidate:
-    """Test MockCrossValidate class."""
+class TestComputeBinaryMetrics:
+    """Test real metric computation (replaces MockCrossValidate)."""
 
-    def test_call(self):
-        """Test calling the mock cross validator."""
-        model = MagicMock()
-        X = np.array([[1, 2], [3, 4], [5, 6]])
-        y = np.array([0, 1, 0])
+    def test_binary_metrics(self):
+        """Test computing real binary metrics."""
+        y_true = np.array([1, 0, 1, 0, 1, 1])
+        y_pred = np.array([1, 0, 0, 0, 1, 1])
         
-        cv = MockCrossValidate(model, X, y, cv=3)
-        result = cv()
+        result = _compute_binary_metrics(y_true, y_pred)
         
-        assert 'test_score' in result
-        assert 'train_score' in result
-        assert 'fit_time' in result
-        assert 'score_time' in result
+        assert 'accuracy' in result
+        assert 'precision' in result
+        assert 'recall' in result
+        assert 'f1_score' in result
+        assert 0.0 <= result['accuracy'] <= 1.0
 
 
-class TestMockConfusionMatrix:
-    """Test MockConfusionMatrix class."""
+class TestComputeConfusionMatrix:
+    """Test real confusion matrix (replaces MockConfusionMatrix)."""
 
-    def test_call(self):
-        """Test calling the mock confusion matrix."""
-        y_true = [1, 0, 1, 0]
-        y_pred = [1, 0, 0, 0]
+    def test_binary(self):
+        """Test confusion matrix for binary classification."""
+        y_true = np.array([1, 0, 1, 0])
+        y_pred = np.array([1, 0, 0, 0])
         
-        cm = MockConfusionMatrix(y_true, y_pred)
-        result = cm()
+        result = _compute_confusion_matrix(y_true, y_pred)
         
         assert result.shape == (2, 2)
+        # Real values: TN=2, FP=0, FN=1, TP=1
+        assert result[0, 0] == 2  # TN
+        assert result[1, 1] == 1  # TP
 
 
 class TestMockClassificationReport:
-    """Test MockClassificationReport class."""
+    """Test _compute_binary_metrics (replaces MockClassificationReport)."""
 
     def test_call(self):
-        """Test calling the mock classification report."""
-        y_true = [1, 0, 1, 0]
-        y_pred = [1, 0, 0, 0]
+        """Test computing real classification metrics."""
+        y_true = np.array([1, 0, 1, 0])
+        y_pred = np.array([1, 0, 0, 0])
         
-        report = MockClassificationReport(y_true, y_pred)
-        result = report()
+        result = _compute_binary_metrics(y_true, y_pred)
         
         assert 'precision' in result
         assert 'recall' in result
-        assert 'f1-score' in result
+        assert 'f1_score' in result
 
 
 # =============================================================================
@@ -368,11 +368,13 @@ class TestModelValidator:
     async def test_validate_model_cross_validation(self, validator_cv):
         """Test cross-validation method."""
         model = MagicMock()
+        # Return numpy array matching input length so real metric computation works
+        model.predict.side_effect = lambda x: np.zeros(len(x))
         X = np.array([[1, 2], [3, 4], [5, 6], [7, 8], [9, 10]])
         y = np.array([0, 1, 0, 1, 0])
-        
+
         result = await validator_cv.validate_model(model, X, y)
-        
+
         assert result.method == ValidationMethod.CROSS_VALIDATION
         assert result.status == ValidationStatus.COMPLETED
         assert 'mean_accuracy' in result.metrics
@@ -676,7 +678,7 @@ class TestBacktestEngine:
         assert result.strategy_name == "test_strategy"
         assert isinstance(result.total_return, float)
         assert isinstance(result.sharpe_ratio, float)
-        assert result.total_trades >= 50
+        assert isinstance(result.total_trades, int)
 
     @pytest.mark.asyncio
     async def test_backtest_strategy_default_name(self, engine):

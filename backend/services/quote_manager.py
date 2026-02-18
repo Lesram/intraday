@@ -253,8 +253,8 @@ class QuoteManager:
                                 if symbol in trades:
                                     last_price = float(trades[symbol].price)
                                     bid_price = ask_price = last_price
-                            except Exception:
-                                pass
+                            except Exception as e:
+                                self.logger.warning("Fallback trade quote fetch failed for %s: %s", symbol, e)
 
                         # Create Quote object
                         quote = Quote(
