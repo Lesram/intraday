@@ -754,8 +754,9 @@ class OrganismLiveEngine:
                     cand_dicts.append({
                         "symbol": bs.symbol,
                         "direction": 1.0,
-                        "predicted_return": (
-                            ml_sig.predicted_return if ml_sig else 0.02
+                        "predicted_return": max(
+                            ml_sig.predicted_return if ml_sig else 0.02,
+                            0.01,  # Floor: breakout signals always get min 1%
                         ),
                         "confidence": min(bs.composite_score, 1.0),
                         "breakout_score": bs.composite_score,

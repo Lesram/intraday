@@ -127,6 +127,12 @@ class KellySizer:
             confidence = cand.get("confidence", 0.5)
             breakout_score = cand.get("breakout_score", 0.0)
 
+            # Floor predicted_return: when ML is untrained, breakout signals
+            # arrive with predicted_return=0. Use a conservative default so
+            # the sizer can still allocate based on breakout score + confidence.
+            if predicted_return < 1e-6 and breakout_score > 0:
+                predicted_return = 0.01  # 1% conservative estimate
+
             # Guard against NaN / Inf / invalid values
             if (
                 direction == 0
