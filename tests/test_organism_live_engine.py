@@ -384,6 +384,9 @@ class TestFillReconciliation:
             "confidence": 0.7,
         }
 
+        # Advance tick count past grace period so reconciliation can detect close
+        engine._tick_count = engine._RECONCILE_GRACE_TICKS + 1
+
         # Now positions is empty → AAPL closed
         engine._positions_service = MockPositionsService({})
         features = {"AAPL": _make_price_df(300), "SPY": _make_price_df(300)}

@@ -1231,6 +1231,11 @@ class OrganismLiveEngine:
     #  FILL RECONCILIATION (Phase 2.4)
     # ═════════════════════════════════════════════════════════════
 
+    # Minimum ticks to wait after entry before reconciling a position
+    # as "closed". Prevents race condition where order hasn't settled
+    # at the broker yet when reconciliation runs on the same tick.
+    _RECONCILE_GRACE_TICKS = 3
+
     async def _reconcile_fills(
         self,
         features_by_symbol: dict[str, pd.DataFrame],
@@ -1238,7 +1243,12 @@ class OrganismLiveEngine:
         """Check for closed positions and create TradeRecords.
 
         Compares current broker positions with tracked entry metadata.
-        If a position disappears, record it as a completed trade.
+        If a position disappears (after a grace period to let orders
+        settle), record it as a completed trade.
+
+        Also detects orphaned broker positions (exist at broker but
+        have no tracking metadata) and reconstructs tracking state
+        so they can be properly managed.
         """
         try:
             current_positions = await self._positions_service.get_all_positions()
@@ -1251,8 +1261,28 @@ class OrganismLiveEngine:
         current_symbols = set(current_positions.keys())
         tracked_symbols = set(self._entry_metadata.keys())
 
-        # Detect closed positions
-        closed = tracked_symbols - current_symbols
+        # Detect closed positions — but skip recently-entered positions
+        # whose orders may not have settled at the broker yet.
+        candidates = tracked_symbols - current_symbols
+        closed = set()
+        for sym in candidates:
+            meta = self._entry_metadata.get(sym)
+            if meta is None:
+                continue
+            entry_tick = meta.get("entry_tick", 0)
+            ticks_held = self._tick_count - entry_tick
+            if ticks_held < self._RECONCILE_GRACE_TICKS:
+                # Order may still be settling — skip for now
+                logger.debug(
+                    "Skipping reconciliation for %s (entered %d ticks ago, "
+                    "grace=%d)",
+                    sym,
+                    ticks_held,
+                    self._RECONCILE_GRACE_TICKS,
+                )
+                continue
+            closed.add(sym)
+
         for sym in closed:
             meta = self._entry_metadata.pop(sym, None)
             if meta is None:
@@ -1311,6 +1341,79 @@ class OrganismLiveEngine:
                 sym,
                 "LONG" if direction > 0 else "SHORT",
                 pnl,
+            )
+
+        # Detect orphaned broker positions — positions that exist at the
+        # broker but have no tracking metadata.  This happens when entry
+        # metadata was lost (e.g. engine restart without reconstruction,
+        # or a previous phantom-close bug deleted the metadata while the
+        # real fill was still pending).  Re-create tracking so exit logic
+        # and pyramid management can work.
+        orphaned = current_symbols - tracked_symbols
+        for sym in orphaned:
+            # Don't adopt positions that we're actively exiting
+            if sym in self._exit_levels:
+                continue
+            pos = current_positions[sym]
+            qty = abs(float(pos.get("qty", 0)))
+            avg_entry = float(pos.get("avg_entry_price", 0))
+            if qty <= 0 or avg_entry <= 0:
+                continue
+
+            side = pos.get("side", "long")
+            direction = 1.0 if side == "long" else -1.0
+
+            # Re-create entry metadata so reconciliation can track it
+            self._entry_metadata[sym] = {
+                "entry_price": avg_entry,
+                "entry_tick": self._tick_count,
+                "direction": direction,
+                "predicted_return": 0.01,
+                "confidence": 0.5,
+            }
+
+            # Try to create exit levels for proper management
+            feat_df = features_by_symbol.get(sym)
+            if feat_df is not None and len(feat_df) > 10:
+                try:
+                    exit_lvl = self.exit_engine.create_exit_levels(
+                        symbol=sym,
+                        direction=direction,
+                        entry_price=avg_entry,
+                        predicted_return=0.02,
+                        features_df=feat_df,
+                        regime=RegimeLabel.UNKNOWN,
+                    )
+                    self._exit_levels[sym] = exit_lvl
+
+                    atr = exit_lvl.atr_at_entry
+                    self._pyramid_positions[sym] = PyramidPosition(
+                        symbol=sym,
+                        direction=direction,
+                        layers=[
+                            PyramidLevel(
+                                shares=int(qty),
+                                entry_price=avg_entry,
+                                bar_added=self._tick_count,
+                                level=0,
+                            )
+                        ],
+                        target_total_shares=int(qty * 1.5),
+                        atr_at_entry=atr,
+                        initial_stop=exit_lvl.stop_loss,
+                        current_stop=exit_lvl.stop_loss,
+                        highest_price=avg_entry,
+                        lowest_price=avg_entry,
+                    )
+                except Exception as e:
+                    logger.debug("Cannot create exit levels for orphaned %s: %s", sym, e)
+
+            logger.info(
+                "Adopted orphaned broker position: %s %s %d shares @ $%.2f",
+                sym,
+                "LONG" if direction > 0 else "SHORT",
+                int(qty),
+                avg_entry,
             )
 
     # ═════════════════════════════════════════════════════════════
