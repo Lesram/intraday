@@ -44,7 +44,7 @@ def test_import_all_api_routes():
         'drawings', 'health', 'indicators', 'lots', 'market_data', 'models',
         'monitoring', 'observability', 'orders', 'position_import',
         'positions', 'risk', 'scanner', 'signals', 'strategy', 'system',
-        'dev_testing_routes', 'trades', 'watchlists'
+        'trades', 'watchlists'
     ]
     for route in routes:
         try:
