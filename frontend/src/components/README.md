@@ -6,16 +6,8 @@ This document explains the organization of React components in the trading platf
 
 ```
 src/components/
-├── accessibility.ts          # Accessibility utilities and helpers
-├── AccessibleLoading.tsx     # ARIA-compliant loading indicators
-├── AccessibleModal.tsx       # Accessible modal dialogs
-├── AccessibleTooltip.tsx     # Screen-reader friendly tooltips
-├── ErrorBoundary.tsx         # React error boundary component
-├── gridUtils.ts              # AG-Grid utility functions
 ├── KeyboardShortcuts.tsx     # Global keyboard shortcut handler
 ├── SkipLinks.tsx             # Skip navigation links (a11y)
-├── VirtualizedGrid.tsx       # Virtualized data grid component
-├── VirtualList.tsx           # Virtual scrolling list component
 │
 ├── atomic/                   # Atomic Design - smallest building blocks
 │   ├── Button/
@@ -97,9 +89,6 @@ Cross-cutting concerns:
 
 ### Accessibility Components
 WCAG 2.1 AA compliance:
-- `AccessibleLoading.tsx`: Loading states with ARIA live regions
-- `AccessibleModal.tsx`: Focus trapping, keyboard navigation
-- `AccessibleTooltip.tsx`: Screen reader announcements
 - `SkipLinks.tsx`: Skip-to-content navigation
 - `KeyboardShortcuts.tsx`: Application-wide hotkeys
 
@@ -145,8 +134,6 @@ export const PositionCard = memo(function PositionCard({
 
 ## Performance Optimizations
 
-- **VirtualizedGrid.tsx**: Used for large datasets (1000+ rows)
-- **VirtualList.tsx**: Efficient list rendering for streaming data
 - **React.memo**: Applied to expensive pure components
 - **AG-Grid Enterprise**: Required for advanced features (see FRONTEND_DEPENDENCIES.md)
 
