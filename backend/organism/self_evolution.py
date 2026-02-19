@@ -88,8 +88,8 @@ class EvolvedParams:
         "normal": 0.85,
         "trending_down": 0.60,
         "chop": 0.50,
-        "high_vol": 0.40,
-        "stress": 0.20,
+        "high_vol": 0.70,      # was 0.40 — too conservative for intraday
+        "stress": 0.30,        # was 0.20
         "crisis": 0.10,
     })
 

@@ -14,12 +14,15 @@ Ref: docs/blueprints/BREAKOUT_ALPHA_BLUEPRINT.md §Module-D
 
 from __future__ import annotations
 
+import logging
 import math
 from dataclasses import dataclass
 from typing import Any
 
 import numpy as np
 import pandas as pd
+
+_logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -173,8 +176,12 @@ class KellySizer:
             else:
                 kelly_raw = mean_r / var_r
 
-            # 2. Half-Kelly
+            # 2. Half-Kelly (with breakout floor for intraday)
             kelly_half = kelly_raw * 0.5
+            # When Kelly says 0 but breakout score is strong, use a
+            # minimum allocation so breakout signals can still trade.
+            if kelly_half < 0.005 and breakout_score >= 0.55:
+                kelly_half = max(kelly_half, 0.01 * breakout_score)
 
             # 3. Drawdown scaling
             drawdown_scale = self._drawdown_scale(current_drawdown)
@@ -219,6 +226,7 @@ class KellySizer:
 
             notional = portfolio_value * target_weight
             if notional < self.min_position_usd:
+                _logger.info("Kelly skip %s: notional=%.0f < min=%d", symbol, notional, self.min_position_usd)
                 continue
 
             shares = int(notional / current_price)
@@ -278,8 +286,8 @@ class KellySizer:
             "normal": 0.85,         # was 0.8
             "trending_down": 0.6,
             "chop": 0.5,
-            "high_vol": 0.4,
-            "stress": 0.2,
+            "high_vol": 0.7,        # was 0.4 — too conservative for intraday
+            "stress": 0.3,
             "crisis": 0.1,
         }
         return scales.get(regime, 0.7)
