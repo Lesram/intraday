@@ -83,7 +83,7 @@ sys.path.insert(0, str(project_root))
 
 try:
     from backend.config.unified import get_settings
-    from backend.mlops.model_manager import get_model_manager
+    from backend.ml.model_manager import get_model_manager
     from backend.models.ensemble_model import EnsembleModel
     BACKEND_AVAILABLE = True
 except ImportError:

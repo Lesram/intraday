@@ -282,7 +282,7 @@ class TestMLOpsModelManager:
     def test_model_manager_import(self):
         """Test model manager can be imported"""
         try:
-            from backend.mlops import model_manager
+            from backend.ml import model_manager
             assert model_manager is not None
         except ImportError:
             pytest.skip("Module not available")

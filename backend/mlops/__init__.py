@@ -6,7 +6,7 @@ Population Stability Index (PSI) drift detection, feature schema validation,
 and inference telemetry integration.
 """
 
-from .model_manager import (
+from ..ml.model_manager import (
     DriftDetection,
     DriftDetector,
     DriftType,

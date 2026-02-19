@@ -678,7 +678,7 @@ class EnsembleModel:
             self.mlops_enabled = MLOPS_AVAILABLE
         if self.mlops_enabled:
             try:
-                from ..mlops.model_manager import get_model_manager
+                from ..ml.model_manager import get_model_manager
                 self.model_manager = get_model_manager()
             except ImportError:
                 self.mlops_enabled = False
