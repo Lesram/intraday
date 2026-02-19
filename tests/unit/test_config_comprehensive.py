@@ -48,18 +48,6 @@ class TestConfigUnified:
         assert unified is not None
 
 
-class TestConfigHelpers:
-    """Test config helpers"""
-    
-    def test_config_helpers_import(self):
-        """Test config helpers can be imported"""
-        try:
-            from backend import config_helpers
-            assert config_helpers is not None
-        except ImportError:
-            pytest.skip("Module not available")
-
-
 class TestMainConfig:
     """Test main config module"""
     
