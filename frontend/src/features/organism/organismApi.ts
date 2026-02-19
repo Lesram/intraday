@@ -61,8 +61,31 @@ export interface OrganismStatus {
     tick_interval_s?: number;
     last_tick?: OrganismRun;
     tick_history?: OrganismRun[];
-    engine?: Record<string, unknown>;
+    engine?: EngineStats;
   };
+}
+
+export interface EngineStats {
+  initialized?: boolean;
+  tick_count?: number;
+  total_trades?: number;
+  brain_generation?: number;
+  peak_equity?: number;
+  current_equity?: number;
+  cumulative_pnl?: number;
+  win_rate?: number;
+  winning_trades?: number;
+  losing_trades?: number;
+  avg_win?: number;
+  avg_loss?: number;
+  ml_accuracy?: number;
+  ml_trained?: boolean;
+  training_history?: Array<Record<string, unknown>>;
+  regime?: string;
+  shorts_enabled?: boolean;
+  positions_tracked?: number;
+  universe_size?: number;
+  [key: string]: unknown;
 }
 
 export interface OrganismRunsResponse {
@@ -70,7 +93,7 @@ export interface OrganismRunsResponse {
   running: boolean;
   tick_interval_s?: number;
   runs: OrganismRun[];
-  engine?: Record<string, unknown>;
+  engine?: EngineStats;
 }
 
 export interface OrganismPolicyResponse {

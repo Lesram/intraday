@@ -19,12 +19,16 @@ import {
   message,
 } from 'antd';
 import {
+  ArrowDownOutlined,
+  ArrowUpOutlined,
   CheckCircleOutlined,
   ClockCircleOutlined,
   DashboardOutlined,
+  DollarOutlined,
   ExperimentOutlined,
   FilterOutlined,
   GlobalOutlined,
+  HeartOutlined,
   LoadingOutlined,
   PauseCircleOutlined,
   PlayCircleOutlined,
@@ -32,10 +36,12 @@ import {
   ReloadOutlined,
   SafetyOutlined,
   ThunderboltOutlined,
+  TrophyOutlined,
   WarningOutlined,
 } from '@ant-design/icons';
+import { Tooltip } from 'antd';
 import { useWebSocket } from '@/hooks/useWebSocket';
-import { organismApi, type ActivityEvent, type OrganismRun, type OrganismStatus, type ScannerStatus, type UniverseStatus } from './organismApi';
+import { organismApi, type ActivityEvent, type EngineStats, type OrganismRun, type OrganismStatus, type ScannerStatus, type UniverseStatus } from './organismApi';
 import ScannerPanel from './ScannerPanel';
 import UniversePanel from './UniversePanel';
 
@@ -290,6 +296,134 @@ const TrainingStatus = ({ latestTick }: { latestTick: OrganismRun | null }) => {
   );
 };
 
+// ── Regime Explanations ─────────────────────────────────────────
+
+const REGIME_INFO: Record<string, { label: string; color: string; description: string }> = {
+  trending_up:   { label: 'Trending Up',   color: '#52c41a', description: 'Strong uptrend — full position sizing, no time exit' },
+  trending:      { label: 'Trending',      color: '#73d13d', description: 'General trend — normal sizing, no time exit' },
+  normal:        { label: 'Normal',        color: '#1890ff', description: 'Standard conditions — 0.85x sizing, 40-bar max hold' },
+  trending_down: { label: 'Trending Down', color: '#faad14', description: 'Downtrend — 0.6x sizing, 30-bar max hold' },
+  chop:          { label: 'Choppy',        color: '#fa8c16', description: 'Sideways/noisy — 0.5x sizing, 25-bar max hold' },
+  high_vol:      { label: 'High Vol',      color: '#ff7a45', description: 'Elevated volatility — 0.4x sizing, 30-bar max hold' },
+  stress:        { label: 'Stress',        color: '#ff4d4f', description: 'Market stress — 0.2x sizing, 20-bar max hold' },
+  crisis:        { label: 'Crisis',        color: '#cf1322', description: 'Extreme stress — 0.1x sizing, 15-bar max hold' },
+};
+
+const RegimeTag = ({ regime }: { regime?: string }) => {
+  const r = regime && REGIME_INFO[regime];
+  if (!r) return <Tag>{regime || 'UNKNOWN'}</Tag>;
+  return (
+    <Tooltip title={r.description}>
+      <Tag color={r.color} style={{ cursor: 'help' }}>{r.label}</Tag>
+    </Tooltip>
+  );
+};
+
+// ── Performance Summary Card ────────────────────────────────────
+
+const PerformanceSummary = ({ engine }: { engine?: EngineStats }) => {
+  if (!engine) return null;
+
+  const pnl = safeNumber(engine.cumulative_pnl);
+  const winRate = safeNumber(engine.win_rate) * 100;
+  const totalTrades = safeNumber(engine.total_trades);
+  const equity = safeNumber(engine.current_equity);
+  const peakEquity = safeNumber(engine.peak_equity);
+  const drawdown = peakEquity > 0 ? ((peakEquity - equity) / peakEquity) * 100 : 0;
+
+  return (
+    <Card title={<><DollarOutlined /> Performance</>} size="small">
+      <Row gutter={[12, 12]}>
+        <Col span={8}>
+          <Statistic
+            title="Cumulative P&L"
+            value={pnl}
+            precision={2}
+            prefix={pnl >= 0 ? <ArrowUpOutlined /> : <ArrowDownOutlined />}
+            suffix="$"
+            valueStyle={{ color: pnl >= 0 ? '#3f8600' : '#cf1322', fontSize: 18 }}
+          />
+        </Col>
+        <Col span={8}>
+          <Statistic
+            title="Win Rate"
+            value={winRate}
+            precision={1}
+            suffix="%"
+            prefix={<TrophyOutlined />}
+            valueStyle={{ color: winRate >= 50 ? '#3f8600' : winRate > 0 ? '#faad14' : '#999', fontSize: 18 }}
+          />
+        </Col>
+        <Col span={8}>
+          <Statistic
+            title="Total Trades"
+            value={totalTrades}
+            valueStyle={{ fontSize: 18 }}
+          />
+        </Col>
+        <Col span={8}>
+          <Statistic title="Equity" value={equity} precision={2} prefix="$" valueStyle={{ fontSize: 14 }} />
+        </Col>
+        <Col span={8}>
+          <Statistic title="Avg Win" value={safeNumber(engine.avg_win)} precision={2} prefix="$" valueStyle={{ color: '#3f8600', fontSize: 14 }} />
+        </Col>
+        <Col span={8}>
+          <Statistic title="Avg Loss" value={safeNumber(engine.avg_loss)} precision={2} prefix="$" valueStyle={{ color: '#cf1322', fontSize: 14 }} />
+        </Col>
+      </Row>
+      {drawdown > 0.5 && (
+        <div style={{ marginTop: 8 }}>
+          <Text type="secondary">Drawdown: </Text>
+          <Text type={drawdown > 2 ? 'danger' : 'warning'}>{drawdown.toFixed(2)}%</Text>
+        </div>
+      )}
+    </Card>
+  );
+};
+
+// ── System Health Card ──────────────────────────────────────────
+
+const SystemHealth = ({ engine, runs }: { engine?: EngineStats; runs: OrganismRun[] }) => {
+  const recentErrors = runs.slice(0, 20).reduce((acc, r) => acc + (r.errors?.length ?? 0), 0);
+  const errorRate = runs.length > 0 ? (recentErrors / Math.min(runs.length, 20)) * 100 : 0;
+  const mlTrained = engine?.ml_trained ?? false;
+  const mlAccuracy = safeNumber(engine?.ml_accuracy) * 100;
+  const positions = safeNumber(engine?.positions_tracked);
+  const generation = safeNumber(engine?.brain_generation);
+
+  return (
+    <Card title={<><HeartOutlined /> System Health</>} size="small">
+      <Descriptions column={1} size="small">
+        <Descriptions.Item label="ML Model">
+          {mlTrained
+            ? <Tag color="success">Trained ({mlAccuracy.toFixed(1)}% acc)</Tag>
+            : <Tag color="warning">Not trained</Tag>
+          }
+        </Descriptions.Item>
+        <Descriptions.Item label="Brain Generation">
+          <Tag color="blue">Gen {generation}</Tag>
+        </Descriptions.Item>
+        <Descriptions.Item label={<Tooltip title="Positions with active exit/pyramid tracking">Tracked Positions</Tooltip>}>
+          {positions}
+        </Descriptions.Item>
+        <Descriptions.Item label="Shorts">
+          <Tag color={engine?.shorts_enabled ? 'orange' : 'default'}>
+            {engine?.shorts_enabled ? 'Enabled' : 'Disabled'}
+          </Tag>
+        </Descriptions.Item>
+        <Descriptions.Item label="Error Rate (last 20 ticks)">
+          <Progress
+            percent={Math.round(100 - errorRate)}
+            size="small"
+            status={errorRate > 30 ? 'exception' : errorRate > 10 ? 'active' : 'success'}
+            format={() => `${(100 - errorRate).toFixed(0)}% clean`}
+          />
+        </Descriptions.Item>
+      </Descriptions>
+    </Card>
+  );
+};
+
 const OrganismDashboard = () => {
   const [status, setStatus] = useState<OrganismStatus | null>(null);
   const [runs, setRuns] = useState<OrganismRun[]>([]);
@@ -420,6 +554,7 @@ const OrganismDashboard = () => {
   }, [fetchAll]);
 
   const governance = status?.governance ?? {};
+  const engineStats = status?.live_engine?.engine as EngineStats | undefined;
   const latestTick = useMemo(() => {
     if (status?.live_engine?.last_tick) return status.live_engine.last_tick;
     return runs[0] ?? null;
@@ -468,7 +603,7 @@ const OrganismDashboard = () => {
       title: 'Regime',
       dataIndex: 'regime',
       key: 'regime',
-      render: (value: string) => <Tag>{value || 'UNKNOWN'}</Tag>,
+      render: (value: string) => <RegimeTag regime={value} />,
     },
     {
       title: 'Signals',
@@ -631,11 +766,20 @@ ENABLE_ORGANISM_SCHEDULER=1   # optional — starts the live tick loop`}
             label: 'Overview',
             children: (
               <Row gutter={[16, 16]}>
+                {/* ── Performance & Health (top row) ── */}
+                <Col xs={24} lg={14}>
+                  <PerformanceSummary engine={engineStats} />
+                </Col>
+                <Col xs={24} lg={10}>
+                  <SystemHealth engine={engineStats} runs={runs} />
+                </Col>
+
+                {/* ── Latest Run + Indicators ── */}
                 <Col xs={24} lg={12}>
                   <Card title="Latest Run">
                     <Descriptions column={1} size="small">
                       <Descriptions.Item label="Timestamp">{formatDateTime(latestTick?.timestamp)}</Descriptions.Item>
-                      <Descriptions.Item label="Regime">{latestTick?.regime || status?.regime?.last_regime || '-'}</Descriptions.Item>
+                      <Descriptions.Item label="Regime"><RegimeTag regime={latestTick?.regime || status?.regime?.last_regime} /></Descriptions.Item>
                       <Descriptions.Item label="Signals">{safeNumber(latestTick?.signals_generated)}</Descriptions.Item>
                       <Descriptions.Item label="Orders">{safeNumber(latestTick?.orders_submitted)}</Descriptions.Item>
                       <Descriptions.Item label="Duration">{safeNumber(latestTick?.duration_s).toFixed(3)}s</Descriptions.Item>
@@ -667,6 +811,8 @@ ENABLE_ORGANISM_SCHEDULER=1   # optional — starts the live tick loop`}
                     </Descriptions>
                   </Card>
                 </Col>
+
+                {/* ── Charts row ── */}
                 <Col xs={24} lg={8}>
                   <LatencySparkline runs={runs} />
                 </Col>

@@ -627,6 +627,26 @@ class AlpacaBrokerClient:
                 detail=f"Failed to cancel order: {str(e)}"
             )
 
+    async def cancel_all_open_orders(self) -> int:
+        """Cancel all open orders. Returns count of orders canceled."""
+        try:
+            url = f"{self.base_url}/v2/orders"
+            response = await self._make_request_with_retry("DELETE", url)
+            if response.status_code in (200, 207):
+                canceled = response.json() if response.text else []
+                count = len(canceled) if isinstance(canceled, list) else 0
+                logger.info("Canceled all open orders", count=count)
+                return count
+            elif response.status_code == 204:
+                logger.info("No open orders to cancel")
+                return 0
+            else:
+                logger.warning("Cancel all orders returned status %d", response.status_code)
+                return 0
+        except Exception as e:
+            logger.warning("Failed to cancel all open orders: %s", e)
+            return 0
+
     async def get_account(self) -> dict:
         """
         Get account information from Alpaca.

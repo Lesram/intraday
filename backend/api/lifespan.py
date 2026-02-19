@@ -433,6 +433,17 @@ async def _start_organism_scheduler(app):
         _alpaca_secret = os.getenv("ALPACA_API_SECRET_KEY", "") or os.getenv("ALPACA_SECRET_KEY", "")
         _alpaca_feed = os.getenv("ALPACA_DATA_FEED", "sip")
 
+        # Cancel stale open orders before starting the engine to prevent
+        # wash-trade rejections from orders left over after a restart.
+        try:
+            from backend.integrations.alpaca_broker import get_alpaca_broker_client
+            _broker = get_alpaca_broker_client()
+            canceled = await _broker.cancel_all_open_orders()
+            if canceled:
+                logger.info("Canceled %d stale open orders before engine start", canceled)
+        except Exception as e:
+            logger.debug("Stale order cleanup skipped: %s", e)
+
         scheduler = OrganismScheduler(
             data_client=_data_client,
             order_service=_order_service,

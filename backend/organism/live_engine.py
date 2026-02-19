@@ -324,6 +324,10 @@ class OrganismLiveEngine:
         self._pyramid_positions: dict[str, PyramidPosition] = {}
         # Maps symbol → entry metadata for TradeRecord creation
         self._entry_metadata: dict[str, dict[str, Any]] = {}
+        # Symbols with recent exit orders — cooldown prevents wash trade rejections
+        # Maps symbol → tick number when exit was submitted
+        self._exit_cooldown: dict[str, int] = {}
+        self._EXIT_COOLDOWN_TICKS = 3  # Wait 3 ticks (~30s) before re-entering
 
         # Serialize live_tick() calls to prevent concurrent state mutation
         # (scheduler loop + manual /tick endpoint)
@@ -490,6 +494,11 @@ class OrganismLiveEngine:
             timestamp=datetime.now(UTC).isoformat(),
         )
         self._tick_count += 1
+        # Expire old cooldowns (keep only recent exits)
+        self._exit_cooldown = {
+            sym: tick for sym, tick in self._exit_cooldown.items()
+            if self._tick_count - tick < self._EXIT_COOLDOWN_TICKS
+        }
 
         try:
             now_iso = result.timestamp
@@ -627,6 +636,7 @@ class OrganismLiveEngine:
                             await self._submit_exit_order(
                                 sym, sell_shares, exit_sig.reason, direction=_dir
                             )
+                            self._exit_cooldown[sym] = self._tick_count
                             exits_submitted += 1
                             result.activity.append(ActivityEvent(
                                 event_type="exit",
@@ -660,6 +670,8 @@ class OrganismLiveEngine:
                 action = self.pyramider.check_pyramid(pyr, current_price)
 
                 if action.action == "add" and action.shares_to_add > 0:
+                    if sym in self._exit_cooldown:
+                        continue  # Don't pyramid a symbol with pending exit
                     try:
                         await self._submit_entry_order(
                             sym,
@@ -704,6 +716,8 @@ class OrganismLiveEngine:
             for c in candidates:
                 if c.symbol in open_symbols:
                     continue
+                if c.symbol in self._exit_cooldown:
+                    continue  # Wash trade cooldown
                 if LONG_ONLY and not self.evolved_params.shorts_enabled and c.direction < 0:
                     continue
 
@@ -731,6 +745,7 @@ class OrganismLiveEngine:
                 if (
                     bs.symbol not in alpha_syms
                     and bs.symbol not in open_symbols
+                    and bs.symbol not in self._exit_cooldown
                     and bs.composite_score >= 0.55
                 ):
                     ml_sig = ml_signals.get(bs.symbol)
@@ -782,21 +797,31 @@ class OrganismLiveEngine:
                 if initial_shares < 1:
                     initial_shares = sz.shares
                 try:
-                    await self._submit_entry_order(
+                    order_result = await self._submit_entry_order(
                         sz.symbol,
                         initial_shares,
                         direction=sz.direction,
                         confidence=getattr(sz, "confidence", 0.6),
                         reason="organism_entry",
                     )
+
+                    # Use filled qty from broker response when available
+                    # (IOC orders may partially fill)
+                    filled_shares = initial_shares
+                    if isinstance(order_result, dict):
+                        filled = order_result.get("filled_qty") or order_result.get("filled_avg_price") and initial_shares
+                        if filled:
+                            filled_shares = max(1, int(float(filled)))
+
                     result.orders_submitted += 1
                     result.activity.append(ActivityEvent(
                         event_type="order",
                         symbol=sz.symbol,
                         message=f"ORDER SUBMITTED: {'BUY' if sz.direction >= 0 else 'SELL'} "
-                                f"{initial_shares} shares of {sz.symbol}",
+                                f"{filled_shares} shares of {sz.symbol}",
                         details={
-                            "shares": initial_shares,
+                            "shares_requested": initial_shares,
+                            "shares_filled": filled_shares,
                             "direction": sz.direction,
                             "confidence": getattr(sz, "confidence", 0.6),
                         },
@@ -823,14 +848,14 @@ class OrganismLiveEngine:
                         )
                         self._exit_levels[sz.symbol] = exit_lvl
 
-                        # Create pyramid tracker
+                        # Create pyramid tracker using filled shares
                         atr = exit_lvl.atr_at_entry
                         self._pyramid_positions[sz.symbol] = PyramidPosition(
                             symbol=sz.symbol,
                             direction=sz.direction,
                             layers=[
                                 PyramidLevel(
-                                    shares=initial_shares,
+                                    shares=filled_shares,
                                     entry_price=price,
                                     bar_added=self._tick_count,
                                     level=0,
@@ -1675,19 +1700,55 @@ class OrganismLiveEngine:
                 "scanner_candidates_count": len(self._scanner_candidates),
                 "scanner_last_scan_time": self.market_scanner.last_scan_time,
             }
+
+        # Compute trade performance stats
+        trades = self._all_trades
+        total_trades = len(trades)
+        winning = [t for t in trades if t.pnl > 0]
+        losing = [t for t in trades if t.pnl < 0]
+        cumulative_pnl = sum(t.pnl for t in trades)
+        win_rate = len(winning) / total_trades if total_trades > 0 else 0.0
+        avg_win = sum(t.pnl for t in winning) / len(winning) if winning else 0.0
+        avg_loss = sum(t.pnl for t in losing) / len(losing) if losing else 0.0
+
+        # ML model metrics
+        ml_accuracy = 0.0
+        if self.signal_gen.is_trained and hasattr(self.signal_gen, "_latest_metrics"):
+            metrics = self.signal_gen._latest_metrics
+            if isinstance(metrics, dict):
+                ml_accuracy = metrics.get("accuracy", 0.0)
+
+        # Training history from learner
+        training_history = []
+        if hasattr(self.learner, "generation_metrics"):
+            training_history = list(self.learner.generation_metrics)
+
         return {
             "initialized": self._initialized,
             "tick_count": self._tick_count,
-            "total_trades": len(self._all_trades),
+            "total_trades": total_trades,
             "brain_generation": self.brain.generation,
             "brain_total_runs": self.brain.total_runs,
             "evolved_generation": self.evolved_params.evolution_generation,
             "evolved_adaptations": self.evolved_params.total_adaptations,
             "peak_equity": self._peak_equity,
+            "current_equity": self._equity_curve[-1] if self._equity_curve else 0.0,
             "governance": self.governance.to_dict(),
             "universe_size": len(self._universe),
             "universe_symbols": list(self._universe),
             "positions_tracked": len(self._entry_metadata),
+            # Performance stats
+            "cumulative_pnl": round(cumulative_pnl, 2),
+            "win_rate": round(win_rate, 4),
+            "winning_trades": len(winning),
+            "losing_trades": len(losing),
+            "avg_win": round(avg_win, 2),
+            "avg_loss": round(avg_loss, 2),
+            "ml_accuracy": round(ml_accuracy, 4),
+            "ml_trained": self.signal_gen.is_trained,
+            "training_history": training_history,
+            "regime": self.regime_detector.current_regime,
+            "shorts_enabled": self.evolved_params.shorts_enabled,
             **scanner_info,
         }
 

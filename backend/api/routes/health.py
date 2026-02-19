@@ -99,12 +99,9 @@ async def check_broker_health() -> tuple[bool, float]:
         # Import here to avoid startup dependency issues
         from backend.infra.broker import broker_health_check
 
-        settings = get_settings()
-        should_check_alpaca = not getattr(settings, 'USE_MOCK_DATA', True)
-
         # Use asyncio.wait_for with strict timeout
         healthy = await asyncio.wait_for(
-            broker_health_check(check_alpaca=should_check_alpaca),
+            broker_health_check(),
             timeout=_BROKER_TIMEOUT_MS / 1000.0  # Convert to seconds
         )
 
