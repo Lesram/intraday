@@ -1009,26 +1009,6 @@ async def submit_order(
         )
 
 
-# DEPRECATED: Alternative endpoint POST /orders/submit
-# Use POST /orders/ instead - this alias will be removed in a future release
-@router.post(
-    "/submit",
-    response_model=OrderSubmissionResponse,
-    tags=["Trading", "Protected", "Outbox", "Deprecated"],
-    deprecated=True,
-    description="DEPRECATED: Use POST /orders/ instead. This endpoint will be removed after 2025-12-31.",
-)
-async def submit_order_submit(
-    request: Request,
-    body: dict[str, Any] | None = Body(None),
-    current_user=Depends(require_trader),
-    db: AsyncSession = Depends(get_db_session),
-    risk_manager=Depends(get_risk_manager),
-):
-    """DEPRECATED: Use POST /orders/ instead."""
-    return await submit_order(request, body, current_user, db, risk_manager)
-
-
 @router.get(
     "/{order_id}/status",  # GET /orders/{order_id}/status
     response_model=OrderStatusResponse,
