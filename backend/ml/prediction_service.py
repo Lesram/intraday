@@ -11,7 +11,6 @@ from functools import wraps
 import hashlib
 import json
 import logging
-import os
 from pathlib import Path
 import threading
 import time
@@ -379,77 +378,6 @@ class PredictionService:
 
         # Model registry (in practice, this would connect to model management)
         self.models = {}
-        allow_mock_models = os.environ.get("ALLOW_MOCK_ML", "0").lower() in {"1", "true", "yes"}
-        if allow_mock_models:
-            self._setup_mock_models()
-
-    def _setup_mock_models(self):
-        """Setup mock models for testing."""
-        # Simple classification model
-        def mock_classifier(X):
-            try:
-                if isinstance(X, pd.DataFrame):
-                    X = X.values
-                elif isinstance(X, list):
-                    X = np.array(X)
-
-                if X.ndim == 1:
-                    X = X.reshape(1, -1)
-
-                # Ensure X has valid numeric values
-                X = np.nan_to_num(X, nan=0.0, posinf=1.0, neginf=-1.0)
-
-                # Mock prediction based on sum of features
-                predictions = (X.sum(axis=1) > 0).astype(int)
-
-                # Generate probabilities that sum to 1
-                n_samples = len(predictions)
-                prob_class_1 = np.random.uniform(0.1, 0.9, size=n_samples)
-                prob_class_0 = 1.0 - prob_class_1
-                probabilities = np.column_stack([prob_class_0, prob_class_1])
-
-                return predictions, probabilities
-            except Exception:
-                # Fallback predictions
-                n_samples = 1 if np.isscalar(X) else len(X) if hasattr(X, '__len__') else 1
-                predictions = np.zeros(n_samples, dtype=int)
-                probabilities = np.full((n_samples, 2), 0.5)
-                return predictions, probabilities
-
-        # Simple regression model
-        def mock_regressor(X):
-            try:
-                if isinstance(X, pd.DataFrame):
-                    X = X.values
-                elif isinstance(X, list):
-                    X = np.array(X)
-
-                if X.ndim == 1:
-                    X = X.reshape(1, -1)
-
-                # Ensure X has valid numeric values
-                X = np.nan_to_num(X, nan=0.0, posinf=1.0, neginf=-1.0)
-
-                # Mock prediction based on weighted sum
-                predictions = X.mean(axis=1) * 2.5 + np.random.normal(0, 0.1, X.shape[0])
-                return predictions
-            except Exception:
-                # Fallback prediction
-                n_samples = 1 if np.isscalar(X) else len(X) if hasattr(X, '__len__') else 1
-                return np.full(n_samples, 1.0)
-
-        self.models = {
-            'classifier:1.0': {
-                'model': mock_classifier,
-                'type': PredictionType.CLASSIFICATION,
-                'features': ['feature_1', 'feature_2', 'feature_3']
-            },
-            'regressor:1.0': {
-                'model': mock_regressor,
-                'type': PredictionType.REGRESSION,
-                'features': ['feature_1', 'feature_2']
-            }
-        }
 
     def _get_model(self, model_name: str, model_version: str = "latest"):
         """Get model from registry."""

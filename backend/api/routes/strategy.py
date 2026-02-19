@@ -38,7 +38,7 @@ def transform_strategy_response(strategy: dict) -> dict:
         "strategyId": strategy["id"],
         "name": strategy["name"],
         "description": strategy.get("description"),
-        "strategyType": strategy.get("strategy_type"),  # ← MISSING! Add strategyType field
+        "strategyType": strategy.get("strategy_type"),
         "status": "stopped" if strategy["status"] == "inactive" else strategy["status"],
         "symbols": strategy.get("symbols", []),
         "parameters": strategy.get("parameters", {}),

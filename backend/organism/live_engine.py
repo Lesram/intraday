@@ -565,7 +565,10 @@ class OrganismLiveEngine:
                     result.duration_s = time.time() - t0
                     return result
             elif equity == 0:
-                self.logger.warning("equity_returned_zero_skipping_drawdown_check")
+                self.logger.error("equity_returned_zero — halting to prevent unprotected trading")
+                result.errors.append("Equity is zero — cannot compute drawdown. Trading halted.")
+                result.duration_s = time.time() - t0
+                return result
 
             # 5. CHECK EXITS on existing positions
             exits_submitted = 0

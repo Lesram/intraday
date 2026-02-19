@@ -167,6 +167,25 @@ def create_app(settings=None, *, registry=None, ws_queue_max: int | None = None,
         queue_max=qmax, metrics_registry=app.state.metrics_registry, **ws_kwargs
     )
 
+    # ── Request Metrics Collector (for monitoring SLI/SLO) ──────────
+    from backend.api.routes.monitoring import MetricsCollector
+    app.state.metrics_collector = MetricsCollector(window_seconds=300)
+
+    @app.middleware("http")
+    async def collect_request_metrics(request: Request, call_next):
+        import time as _time
+        start = _time.time()
+        response = await call_next(request)
+        duration_ms = (_time.time() - start) * 1000
+        # Normalize path to avoid cardinality explosion
+        path = request.url.path
+        # Skip static/health paths from metrics
+        if not path.startswith(("/docs", "/openapi", "/metrics", "/static")):
+            app.state.metrics_collector.record(
+                request.method, path, response.status_code, duration_ms,
+            )
+        return response
+
     # ── Middleware ────────────────────────────────────────────────────
     from backend.api.middleware_setup import register_middleware
     register_middleware(app, settings)

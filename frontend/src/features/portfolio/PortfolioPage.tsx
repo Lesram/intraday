@@ -70,7 +70,8 @@ const PortfolioPage = () => {
 
   useEffect(() => {
     fetchData();
-    const interval = setInterval(fetchData, 15000); // Refresh every 15s
+    // Refresh every 60s as backup — WebSocket provides real-time updates
+    const interval = setInterval(fetchData, 60000);
     return () => clearInterval(interval);
   }, [fetchData]);
 

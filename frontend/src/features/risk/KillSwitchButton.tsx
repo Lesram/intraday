@@ -3,7 +3,7 @@
  * Emergency stop functionality with confirmation modal
  */
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { Button, Modal, Typography, Alert, Space, message } from 'antd';
 import { FireOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -31,7 +31,15 @@ const KillSwitchButton: React.FC<KillSwitchButtonProps> = ({
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [reason, setReason] = useState('');
   const [countdown, setCountdown] = useState(10);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const queryClient = useQueryClient();
+
+  // Clean up timer on unmount
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, []);
 
   const emergencyStopMutation = useMutation({
     mutationFn: (request: TriggerEmergencyStopRequest) => riskApi.triggerEmergencyStop(request),
@@ -47,21 +55,24 @@ const KillSwitchButton: React.FC<KillSwitchButtonProps> = ({
     },
   });
 
-  const handleKillSwitchClick = () => {
+  const handleKillSwitchClick = useCallback(() => {
     setShowConfirmModal(true);
     setCountdown(10);
-    
-    // Start countdown
-    const timer = setInterval(() => {
+
+    // Clear any previous timer
+    if (timerRef.current) clearInterval(timerRef.current);
+
+    timerRef.current = setInterval(() => {
       setCountdown((prev) => {
         if (prev <= 1) {
-          clearInterval(timer);
+          if (timerRef.current) clearInterval(timerRef.current);
+          timerRef.current = null;
           return 0;
         }
         return prev - 1;
       });
     }, 1000);
-  };
+  }, []);
 
   const handleConfirmEmergencyStop = () => {
     const request: TriggerEmergencyStopRequest = {
@@ -74,12 +85,16 @@ const KillSwitchButton: React.FC<KillSwitchButtonProps> = ({
     emergencyStopMutation.mutate(request);
   };
 
-  const handleCancel = () => {
+  const handleCancel = useCallback(() => {
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
     setShowConfirmModal(false);
     setReason('');
     setCountdown(10);
     onCancel?.();
-  };
+  }, [onCancel]);
 
   return (
     <>

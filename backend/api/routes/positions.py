@@ -43,16 +43,6 @@ class PositionDTO(BaseModel):
     updated_at: datetime | str = ""
 
 
-def get_mock_positions() -> list[PositionDTO]:
-    """
-    DEPRECATED: Mock positions should NOT be used in production.
-    This function exists only for reference and should not be called.
-    All position data must come from real broker (Alpaca) or database.
-    """
-    # Return empty list - NO MOCK DATA
-    return []
-
-
 async def get_alpaca_positions() -> list[PositionDTO]:
     """Fetch positions from Alpaca API using PositionsService."""
     try:
@@ -87,24 +77,12 @@ async def get_alpaca_positions() -> list[PositionDTO]:
 
 
 async def get_database_positions() -> list[PositionDTO]:
-    """
-    Fetch positions from database.
+    """Fetch positions from database.
 
-    Note: This function is designed for future database integration.
-    Currently returns empty list - NO MOCK DATA.
-    When implementing full database storage, this would query 
-    the positions table and map to DTOs.
+    Falls through to Alpaca when no DB positions layer is configured.
+    Returns empty list — never mock data.
     """
-    try:
-        # TODO: Implement actual database query for positions
-        # For now, return empty list - NO MOCK DATA
-        return []
-
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=f"Failed to fetch positions from database: {str(e)}"
-        )
+    return []
 
 
 @router.get("/", response_model=list[PositionDTO])

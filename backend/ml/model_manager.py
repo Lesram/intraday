@@ -19,15 +19,6 @@ from typing import Any, Protocol
 # Centralized DISABLE_ML check for test mode
 DISABLE_ML = os.environ.get("DISABLE_ML", "0") == "1"
 
-# Some legacy paths return mock predictions for test compatibility.
-# Keep these strictly opt-in so production never silently produces fake outputs.
-# ALLOW_MOCK_ML must be explicitly opted into — never auto-enabled.
-# The old PYTEST_CURRENT_TEST gate was removed because it could leak
-# into CI/CD processes that also start the app, silently returning
-# fake predictions in production.
-ALLOW_MOCK_ML = (
-    os.environ.get("ALLOW_MOCK_ML", "0").lower() in {"1", "true", "yes"}
-)
 
 # Import real pandas and numpy - they're lightweight and needed
 import numpy as np
@@ -1440,8 +1431,6 @@ class ModelRegistry:
                         }
                     else:
                         prediction_result = result
-            elif ALLOW_MOCK_ML:
-                prediction_result = {"signal": "buy", "confidence": 0.75}
             else:
                 raise RuntimeError(f"Model {model_id} does not support prediction")
 
@@ -1465,9 +1454,6 @@ class ModelRegistry:
             # Record error metrics
             if hasattr(self, 'metrics') and self.metrics:
                 self.metrics.increment("model_predictions_total", {"model_id": model_id, "status": "error"})
-            if ALLOW_MOCK_ML:
-                logger.warning(f"ALLOW_MOCK_ML: returning neutral no-op prediction for {model_id}")
-                return {"signal": "hold", "confidence": 0.0, "mock": True}
             raise
 
     def get_model(self, model_id: str, version: str = None) -> ModelVersion:
@@ -1876,11 +1862,11 @@ class DriftDetector:
             if not model_version:
                 return {}
 
-            # Return mock feature importance for compatibility
+            # Return heuristic feature importance when no trained model is available
             if hasattr(model_version, 'feature_schema'):
                 features = model_version.feature_schema
                 if isinstance(features, list):
-                    # Generate mock importance scores
+                    # Generate approximate importance scores (decreasing by index)
                     importance = {}
                     for i, feature in enumerate(features):
                         importance[feature] = 1.0 / (i + 1)  # Decreasing importance

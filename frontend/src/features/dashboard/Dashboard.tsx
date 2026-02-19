@@ -1,12 +1,14 @@
-import { Card, Row, Col, Statistic, Typography, Alert, Button, Tag } from 'antd';
+import { Card, Row, Col, Statistic, Typography, Alert, Button, Tag, List } from 'antd';
 import {
   ArrowUpOutlined,
   ArrowDownOutlined,
   DollarOutlined,
   RiseOutlined,
   ClockCircleOutlined,
+  SwapOutlined,
+  ShoppingCartOutlined,
 } from '@ant-design/icons';
-import { useMemo } from 'react';
+import { useMemo, useState, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { colors } from '../../styles/theme';
 import { formatCurrency, formatPercent } from '../../utils/formatters';
@@ -135,10 +137,49 @@ const Dashboard = () => {
     [updateStrategy]
   );
 
+  // Track recent activity from WebSocket events
+  const [recentActivity, setRecentActivity] = useState<Array<{
+    id: string;
+    type: 'order' | 'position' | 'strategy';
+    icon: React.ReactNode;
+    message: string;
+    timestamp: string;
+    color: string;
+  }>>([]);
+
+  const addActivity = useCallback((item: { type: 'order' | 'position' | 'strategy'; message: string; color: string; icon: React.ReactNode }) => {
+    setRecentActivity((prev) => [{
+      id: `${Date.now()}-${Math.random()}`,
+      ...item,
+      timestamp: new Date().toLocaleTimeString(),
+    }, ...prev].slice(0, 50));
+  }, []);
+
   // Subscribe to WebSocket updates
   useWebSocket('portfolio', handlePortfolioUpdate);
-  useWebSocket('orders', handleOrderUpdate);
-  useWebSocket('strategies', handleStrategyUpdate);
+  useWebSocket('orders', (msg: OrderUpdateMessage) => {
+    handleOrderUpdate(msg);
+    if (msg.data) {
+      const d = msg.data as { symbol?: string; side?: string; status?: string; quantity?: number };
+      addActivity({
+        type: 'order',
+        message: `${d.side?.toUpperCase()} ${d.quantity} ${d.symbol} — ${d.status}`,
+        color: d.side === 'buy' ? colors.semantic.profit : colors.semantic.loss,
+        icon: <ShoppingCartOutlined />,
+      });
+    }
+  });
+  useWebSocket('strategies', (msg: { data?: { strategyId?: string } }) => {
+    handleStrategyUpdate(msg);
+    if (msg.data?.strategyId) {
+      addActivity({
+        type: 'strategy',
+        message: `Strategy ${msg.data.strategyId} updated`,
+        color: colors.brand.primary,
+        icon: <SwapOutlined />,
+      });
+    }
+  });
 
   // Loading state
   if (portfolioLoading || ordersLoading || strategiesLoading) {
@@ -358,9 +399,30 @@ const Dashboard = () => {
           <Card
             title="Recent Activity"
             style={{ background: colors.backgrounds.secondary }}
+            extra={recentActivity.length > 0 ? (
+              <Button size="small" type="text" onClick={() => setRecentActivity([])}>Clear</Button>
+            ) : undefined}
           >
-            <div style={{ height: '300px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <span style={{ color: colors.text.tertiary }}>No recent activity</span>
+            <div style={{ height: '300px', overflowY: 'auto' }}>
+              {recentActivity.length === 0 ? (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+                  <span style={{ color: colors.text.tertiary }}>Activity appears here as orders execute and strategies update.</span>
+                </div>
+              ) : (
+                <List
+                  size="small"
+                  dataSource={recentActivity}
+                  renderItem={(item) => (
+                    <List.Item style={{ padding: '6px 0', borderBottom: `1px solid ${colors.backgrounds.border}` }}>
+                      <List.Item.Meta
+                        avatar={<span style={{ color: item.color, fontSize: 16 }}>{item.icon}</span>}
+                        title={<span style={{ color: colors.text.primary, fontSize: 13 }}>{item.message}</span>}
+                        description={<span style={{ color: colors.text.tertiary, fontSize: 11 }}>{item.timestamp}</span>}
+                      />
+                    </List.Item>
+                  )}
+                />
+              )}
             </div>
           </Card>
         </Col>

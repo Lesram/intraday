@@ -147,69 +147,54 @@ async def fetch_closes(symbol: str, client, lookback: int = 200) -> list[float]:
 def get_market_data_client():
     """Get market data client based on settings.
 
-    Defaults to real Alpaca data. Mock client is used only when
+    Defaults to real Alpaca data. Mock client is used ONLY when
     USE_MOCK_DATA is explicitly set to True (e.g. in CI/testing).
+    Raises an error if Alpaca integration is unavailable in production.
     """
     settings = get_settings()
 
-    # Use real data by default; mock only when explicitly requested
     use_mock = getattr(settings, 'USE_MOCK_DATA', False)
 
     if use_mock:
-        return get_mock_alpaca_client()
-    else:
-        # Use real Alpaca data client
-        try:
-            from backend.integrations.alpaca_data import get_alpaca_data_client
-            return get_alpaca_data_client()
-        except ImportError as e:
-            logger.warning(f"AlpacaDataClient not available, falling back to mock: {e}")
-            return get_mock_alpaca_client()
+        logger.info("Using mock market data client (USE_MOCK_DATA=True)")
+        return _get_mock_alpaca_client()
+
+    # Production: require real Alpaca client
+    try:
+        from backend.integrations.alpaca_data import get_alpaca_data_client
+        return get_alpaca_data_client()
+    except ImportError as e:
+        logger.error(f"AlpacaDataClient not available and USE_MOCK_DATA is not set: {e}")
+        raise RuntimeError(
+            "Real market data client (alpaca_data) is not available. "
+            "Set USE_MOCK_DATA=True for testing, or install Alpaca integration."
+        ) from e
 
 
-def get_mock_alpaca_client():
-    """Get mock Alpaca client with deterministic (but realistic) data.
-
-    Used ONLY when USE_MOCK_DATA=True (CI/testing) or when the real
-    Alpaca integration is unavailable.  All randomness is seeded from
-    the symbol hash so results are reproducible.
-    """
+def _get_mock_alpaca_client():
+    """Mock Alpaca client for CI/testing ONLY. Never used in production."""
     import numpy as np
     import pandas as pd
 
     class MockAlpacaClient:
-        """Deterministic mock market-data client for CI/testing."""
-
         async def get_historical_data(self, symbol: str, timeframe: str, limit: int):
-            """Generate deterministic OHLCV data seeded by symbol hash."""
             seed = hash(symbol) % 1000000
             rng = np.random.default_rng(seed)
-
             base_price = 100 + (seed % 200)
             dates = pd.date_range(end=datetime.now(), periods=limit, freq='D')
-
-            # Geometric Brownian Motion with mean-reversion (Ornstein–Uhlenbeck)
-            mu = 0.0002        # slight daily drift
-            sigma = 0.015      # 1.5% daily vol (realistic equity)
-            theta = 0.05       # mean-reversion speed
+            mu, sigma, theta = 0.0002, 0.015, 0.05
             prices = [float(base_price)]
-
-            for i in range(1, limit):
+            for _ in range(1, limit):
                 log_ret = mu - theta * (np.log(prices[-1] / base_price)) + sigma * rng.standard_normal()
                 prices.append(prices[-1] * np.exp(log_ret))
-
             prices_arr = np.array(prices)
-            intraday_spread = rng.uniform(0.002, 0.008, size=limit)
-            highs = prices_arr * (1 + intraday_spread)
-            lows = prices_arr * (1 - intraday_spread)
-            volumes = rng.integers(50_000, 500_000, size=limit)
-
+            spread = rng.uniform(0.002, 0.008, size=limit)
             return pd.DataFrame({
                 'open': prices_arr * (1 + rng.normal(0, 0.001, limit)),
-                'high': highs,
-                'low': lows,
+                'high': prices_arr * (1 + spread),
+                'low': prices_arr * (1 - spread),
                 'close': prices_arr,
-                'volume': volumes,
+                'volume': rng.integers(50_000, 500_000, size=limit),
             }, index=dates)
 
     return MockAlpacaClient()

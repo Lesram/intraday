@@ -151,8 +151,12 @@ const OrganismDashboard = () => {
 
     // Refresh scanner & universe data when a scan just ran
     if (tickData.scanner_ran) {
-      organismApi.getScanner().then(setScannerData).catch(() => {});
-      organismApi.getUniverse().then(setUniverseData).catch(() => {});
+      organismApi.getScanner().then(setScannerData).catch((err) => {
+        console.warn('Failed to refresh scanner data:', err);
+      });
+      organismApi.getUniverse().then(setUniverseData).catch((err) => {
+        console.warn('Failed to refresh universe data:', err);
+      });
     }
   }, []);
 
