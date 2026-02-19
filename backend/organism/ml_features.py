@@ -328,6 +328,25 @@ def compute_ml_features(
     f.loc[f["vol_regime"] == 2, "regime_encoded"] = 2.0
 
     # ═══════════════════════════════════════════════════════
+    # COMPOSITE INDICATORS (7)
+    # ═══════════════════════════════════════════════════════
+    try:
+        from backend.organism.composite_indicators import (
+            compute_composite_indicators,
+            COMPOSITE_COLUMNS,
+        )
+        f = compute_composite_indicators(f)
+    except Exception:
+        # Graceful fallback — composites are not critical
+        for col_name in [
+            "comp_squeeze_momentum", "comp_vol_price_div",
+            "comp_trend_alignment", "comp_institutional_acc",
+            "comp_mean_rev_extreme", "comp_breakout_readiness",
+            "comp_momentum_quality",
+        ]:
+            f[col_name] = 0.0
+
+    # ═══════════════════════════════════════════════════════
     # CLEANUP
     # ═══════════════════════════════════════════════════════
     # Drop intermediate columns that are not features
@@ -375,5 +394,10 @@ FEATURE_COLUMNS: list[str] = [
     "pct_from_52w_high", "pct_from_52w_low",
     # Regime
     "trend_strength", "choppiness", "hurst", "regime_encoded",
+    # Composite indicators (proprietary)
+    "comp_squeeze_momentum", "comp_vol_price_div",
+    "comp_trend_alignment", "comp_institutional_acc",
+    "comp_mean_rev_extreme", "comp_breakout_readiness",
+    "comp_momentum_quality",
 ]
-"""All 68 feature column names produced by compute_ml_features()."""
+"""All 75 feature column names produced by compute_ml_features()."""

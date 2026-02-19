@@ -29,7 +29,7 @@ import {
   ThunderboltOutlined,
 } from '@ant-design/icons';
 import { useWebSocket } from '@/hooks/useWebSocket';
-import { organismApi, type OrganismRun, type OrganismStatus, type ScannerStatus, type UniverseStatus } from './organismApi';
+import { organismApi, type ActivityEvent, type OrganismRun, type OrganismStatus, type ScannerStatus, type UniverseStatus } from './organismApi';
 import ScannerPanel from './ScannerPanel';
 import UniversePanel from './UniversePanel';
 
@@ -58,6 +58,7 @@ const OrganismDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [activityFeed, setActivityFeed] = useState<ActivityEvent[]>([]);
 
   const fetchAll = useCallback(async (withSpinner = false) => {
     if (withSpinner) setLoading(true);
@@ -131,6 +132,11 @@ const OrganismDashboard = () => {
       const next = [tickData, ...previous];
       return next.slice(0, 200);
     });
+
+    // Accumulate activity events from tick
+    if (Array.isArray(tickData.activity) && tickData.activity.length > 0) {
+      setActivityFeed((prev) => [...tickData.activity!, ...prev].slice(0, 200));
+    }
 
     setStatus((previous) => {
       if (!previous) return previous;
@@ -427,6 +433,41 @@ ENABLE_ORGANISM_SCHEDULER=1   # optional — starts the live tick loop`}
                   pagination={{ pageSize: 20 }}
                   size="small"
                 />
+              </Card>
+            ),
+          },
+          {
+            key: 'activity',
+            label: (
+              <span>
+                <ThunderboltOutlined /> Activity Feed{' '}
+                <Badge count={activityFeed.length} overflowCount={999} style={{ backgroundColor: '#722ed1' }} />
+              </span>
+            ),
+            children: (
+              <Card title="Real-Time Activity Feed" extra={<Button size="small" onClick={() => setActivityFeed([])}>Clear</Button>}>
+                {activityFeed.length === 0 ? (
+                  <Text type="secondary">No activity yet. Events appear here as the organism ticks.</Text>
+                ) : (
+                  <div style={{ maxHeight: 600, overflowY: 'auto' }}>
+                    {activityFeed.map((evt, idx) => {
+                      const colorMap: Record<string, string> = {
+                        signal: 'blue', order: 'green', exit: 'orange',
+                        scanner: 'purple', retrain: 'cyan', regime: 'geekblue', skip: 'default',
+                      };
+                      return (
+                        <div key={`${evt.timestamp}-${idx}`} style={{ padding: '6px 0', borderBottom: '1px solid #f0f0f0' }}>
+                          <Space>
+                            <Tag color={colorMap[evt.type] ?? 'default'}>{evt.type.toUpperCase()}</Tag>
+                            {evt.symbol && <Tag>{evt.symbol}</Tag>}
+                            <Text style={{ fontSize: 13 }}>{evt.message}</Text>
+                            <Text type="secondary" style={{ fontSize: 11 }}>{formatDateTime(evt.timestamp)}</Text>
+                          </Space>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </Card>
             ),
           },

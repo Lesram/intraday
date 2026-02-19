@@ -137,6 +137,25 @@ SCANNER_ENABLED = _env_bool("SCANNER_ENABLED", True)
 
 
 @dataclass
+class ActivityEvent:
+    """One activity event for the frontend activity feed."""
+    event_type: str       # "signal", "order", "exit", "scanner", "retrain", "regime", "skip"
+    symbol: str = ""
+    message: str = ""
+    details: dict[str, Any] = field(default_factory=dict)
+    timestamp: str = ""
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "type": self.event_type,
+            "symbol": self.symbol,
+            "message": self.message,
+            "details": self.details,
+            "timestamp": self.timestamp,
+        }
+
+
+@dataclass
 class LiveTickResult:
     """Return value from one ``live_tick()`` call."""
     timestamp: str = ""
@@ -152,6 +171,8 @@ class LiveTickResult:
     universe_size: int = 0
     scanner_candidates_count: int = 0
     scanner_ran: bool = False
+    # Activity feed for frontend visibility
+    activity: list[ActivityEvent] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -167,6 +188,7 @@ class LiveTickResult:
             "universe_size": self.universe_size,
             "scanner_candidates_count": self.scanner_candidates_count,
             "scanner_ran": self.scanner_ran,
+            "activity": [a.to_dict() for a in self.activity[-50:]],
         }
 
 
@@ -445,9 +467,15 @@ class OrganismLiveEngine:
         self._tick_count += 1
 
         try:
+            now_iso = result.timestamp
+
             # 1. GOVERNANCE CHECK
             if self.governance.is_trading_halted:
                 result.errors.append("Trading halted by governance")
+                result.activity.append(ActivityEvent(
+                    event_type="skip", message="Trading halted by governance kill-switch",
+                    timestamp=now_iso,
+                ))
                 result.duration_s = time.time() - t0
                 return result
 
@@ -472,6 +500,16 @@ class OrganismLiveEngine:
                                 len(scanner_additions),
                                 len(self._universe),
                             )
+                        result.activity.append(ActivityEvent(
+                            event_type="scanner",
+                            message=f"Market scan found {len(new_candidates)} candidates",
+                            details={
+                                "top_5": new_candidates[:5],
+                                "new_additions": scanner_additions[:10],
+                                "total_candidates": len(new_candidates),
+                            },
+                            timestamp=now_iso,
+                        ))
                 except Exception as e:
                     logger.warning("Market scan failed: %s", e)
 
@@ -505,6 +543,12 @@ class OrganismLiveEngine:
                 )
             regime = regime_state.primary
             result.regime = regime
+            result.activity.append(ActivityEvent(
+                event_type="regime",
+                message=f"Market regime: {regime}",
+                details={"regime": regime, "tick": self._tick_count},
+                timestamp=now_iso,
+            ))
 
             # 4. GET CURRENT POSITIONS from broker
             current_positions = await self._positions_service.get_all_positions()
@@ -556,6 +600,19 @@ class OrganismLiveEngine:
                                 sym, sell_shares, exit_sig.reason, direction=_dir
                             )
                             exits_submitted += 1
+                            result.activity.append(ActivityEvent(
+                                event_type="exit",
+                                symbol=sym,
+                                message=f"EXIT: {sym} — {exit_sig.reason} "
+                                        f"({'partial' if exit_sig.partial_exit else 'full'} "
+                                        f"{sell_shares} shares)",
+                                details={
+                                    "reason": exit_sig.reason,
+                                    "shares": sell_shares,
+                                    "partial": exit_sig.partial_exit,
+                                },
+                                timestamp=now_iso,
+                            ))
                         except Exception as e:
                             result.errors.append(
                                 f"Exit order failed for {sym}: {e}"
@@ -670,6 +727,17 @@ class OrganismLiveEngine:
             cand_dicts = cand_dicts[: max(0, open_slots)]
             result.signals_generated = len(cand_dicts)
 
+            # Log signal activity
+            for cd in cand_dicts[:10]:
+                result.activity.append(ActivityEvent(
+                    event_type="signal",
+                    symbol=cd["symbol"],
+                    message=f"{'BUY' if cd['direction'] > 0 else 'SELL'} signal: {cd['symbol']} "
+                            f"(confidence={cd['confidence']:.2f}, breakout={cd['breakout_score']:.2f})",
+                    details=cd,
+                    timestamp=now_iso,
+                ))
+
             # 8. SIZE POSITIONS (Kelly)
             drawdown = (
                 (self._peak_equity - equity) / self._peak_equity
@@ -694,6 +762,18 @@ class OrganismLiveEngine:
                         reason="organism_entry",
                     )
                     result.orders_submitted += 1
+                    result.activity.append(ActivityEvent(
+                        event_type="order",
+                        symbol=sz.symbol,
+                        message=f"ORDER SUBMITTED: {'BUY' if sz.direction >= 0 else 'SELL'} "
+                                f"{initial_shares} shares of {sz.symbol}",
+                        details={
+                            "shares": initial_shares,
+                            "direction": sz.direction,
+                            "confidence": getattr(sz, "confidence", 0.6),
+                        },
+                        timestamp=now_iso,
+                    ))
 
                     # Create exit levels for the new position
                     feat_df = features_by_symbol.get(sz.symbol)
@@ -758,6 +838,17 @@ class OrganismLiveEngine:
             if self._bars_since_retrain >= RETRAIN_INTERVAL:
                 self._bars_since_retrain = 0
                 self._retrain_and_evolve(features_by_symbol, regime)
+                result.activity.append(ActivityEvent(
+                    event_type="retrain",
+                    message=f"ML model retrained (gen={self.evolved_params.evolution_generation}, "
+                            f"trades={len(self._all_trades)})",
+                    details={
+                        "generation": self.evolved_params.evolution_generation,
+                        "total_trades": len(self._all_trades),
+                        "is_trained": self.signal_gen.is_trained,
+                    },
+                    timestamp=now_iso,
+                ))
 
             # 12. BRAIN SAVE (every 50 ticks — disk I/O is expensive at HFT speeds)
             if self._tick_count % 50 == 0:

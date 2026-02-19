@@ -48,19 +48,23 @@ class AlphaCandidate:
 class AlphaScanner:
     """Scan universe for highest-conviction trades.
 
-    Scoring system (each [0,1], then weighted sum):
-        1. ML prediction confidence × direction accuracy  (35%)
-        2. Volume breakout strength                       (20%)
-        3. Price momentum (cross-sectional rank)          (20%)
-        4. Bollinger squeeze expansion probability        (15%)
-        5. Regime alignment bonus                         (10%)
+    Enhanced scoring system using composite indicators:
+        1. ML prediction confidence × direction accuracy  (25%)
+        2. Composite breakout readiness + squeeze         (20%)
+        3. Institutional accumulation flow                (15%)
+        4. Price momentum (cross-sectional rank)          (15%)
+        5. Momentum quality (sustainable vs fading)       (10%)
+        6. Volume-price divergence                        (10%)
+        7. Regime alignment bonus                          (5%)
     """
 
-    WEIGHT_ML = 0.35
-    WEIGHT_VOLUME = 0.20
-    WEIGHT_MOMENTUM = 0.20
-    WEIGHT_BREAKOUT = 0.15
-    WEIGHT_REGIME = 0.10
+    WEIGHT_ML = 0.25
+    WEIGHT_BREAKOUT = 0.20
+    WEIGHT_INSTITUTIONAL = 0.15
+    WEIGHT_MOMENTUM = 0.15
+    WEIGHT_MOM_QUALITY = 0.10
+    WEIGHT_VOLUME = 0.10
+    WEIGHT_REGIME = 0.05
 
     MIN_COMPOSITE = 0.15  # HFT: lower gate = more intraday candidates (was 0.25)
 
@@ -112,28 +116,37 @@ class AlphaScanner:
                 ml_score = min(ml_score, 1.0)
                 direction = ml_sig.direction
 
-            # 2. Volume breakout score
-            vol_ratio = float(row.get("vol_sma_ratio", 1.0))
-            volume_score = min(max(vol_ratio - 1.0, 0.0) / 2.0, 1.0)
+            # 2. Breakout readiness (composite: squeeze + coil + resistance proximity)
+            breakout_readiness = float(row.get("comp_breakout_readiness", 0.0))
+            squeeze_momentum = float(row.get("comp_squeeze_momentum", 0.0))
+            breakout_score = breakout_readiness * 0.6 + squeeze_momentum * 0.4
 
-            # 3. Momentum score (cross-sectional rank)
+            # 3. Institutional accumulation
+            inst_score = float(row.get("comp_institutional_acc", 0.5))
+
+            # 4. Momentum score (cross-sectional rank)
             momentum_score = mom_ranks.get(symbol, 0.5)
 
-            # 4. Breakout score (squeeze expansion)
-            bb_sq = float(row.get("bb_squeeze", 0.5))
-            vol_exp = float(row.get("vol_expansion", 0.0))
-            # Low squeeze percentile + positive vol expansion = breakout imminent
-            breakout_score = (1.0 - bb_sq) * 0.6 + min(max(vol_exp, 0), 1.0) * 0.4
+            # 5. Momentum quality (sustainable vs fading)
+            mom_quality = float(row.get("comp_momentum_quality", 0.5))
 
-            # 5. Regime alignment score
+            # 6. Volume-price divergence (smart money detection)
+            vol_div = float(row.get("comp_vol_price_div", 0.5))
+            # Also use raw volume ratio
+            vol_ratio = float(row.get("vol_sma_ratio", 1.0))
+            volume_score = min(max(vol_ratio - 1.0, 0.0) / 2.0, 1.0) * 0.5 + vol_div * 0.5
+
+            # 7. Regime alignment score
             regime_score = self._regime_alignment(row, direction, current_regime)
 
             # Composite
             composite = (
                 self.WEIGHT_ML * ml_score
-                + self.WEIGHT_VOLUME * volume_score
-                + self.WEIGHT_MOMENTUM * momentum_score
                 + self.WEIGHT_BREAKOUT * breakout_score
+                + self.WEIGHT_INSTITUTIONAL * inst_score
+                + self.WEIGHT_MOMENTUM * momentum_score
+                + self.WEIGHT_MOM_QUALITY * mom_quality
+                + self.WEIGHT_VOLUME * volume_score
                 + self.WEIGHT_REGIME * regime_score
             )
 

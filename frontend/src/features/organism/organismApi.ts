@@ -1,5 +1,13 @@
 import { apiClient } from '@/services/api';
 
+export interface ActivityEvent {
+  type: string;
+  symbol?: string;
+  message: string;
+  details?: Record<string, unknown>;
+  timestamp?: string;
+}
+
 export interface OrganismRun {
   timestamp?: string;
   regime?: string;
@@ -14,6 +22,8 @@ export interface OrganismRun {
   universe_size?: number;
   scanner_candidates_count?: number;
   scanner_ran?: boolean;
+  // Activity feed
+  activity?: ActivityEvent[];
 }
 
 export interface OrganismStatus {

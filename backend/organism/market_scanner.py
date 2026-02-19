@@ -275,19 +275,25 @@ class MarketScanner:
     ) -> float:
         """Score a stock's 'tension' -- likelihood of an imminent breakout.
 
-        Uses snapshot data (daily bar, minute bar, prev daily close) to
-        compute a 0-1 tension score based on:
-        - Intraday range compression (tight range = coiled spring)
-        - Volume surge vs daily average
-        - Distance from daily high/low (near breakout level)
-        - Price acceleration (minute bar momentum)
+        Enhanced scoring with 7 dimensions:
+        1. Range compression (coiled spring)
+        2. Volume surge (institutional participation)
+        3. Proximity to breakout level
+        4. Gap / opening momentum
+        5. Minute-bar acceleration
+        6. Body-to-range ratio (conviction of direction)
+        7. Previous day context (multi-bar tension)
 
         Higher score = more tension = more likely to break out.
         """
         try:
             daily = snapshot.get("dailyBar", {})
             minute = snapshot.get("minuteBar", {})
-            prev_close = float(snapshot.get("prevDailyBar", {}).get("c", 0))
+            prev_bar = snapshot.get("prevDailyBar", {})
+            prev_close = float(prev_bar.get("c", 0))
+            prev_high = float(prev_bar.get("h", 0))
+            prev_low = float(prev_bar.get("l", 0))
+            prev_vol = int(prev_bar.get("v", 1))
 
             d_high = float(daily.get("h", 0))
             d_low = float(daily.get("l", 0))
@@ -298,44 +304,58 @@ class MarketScanner:
             if d_high <= 0 or d_low <= 0 or d_close <= 0:
                 return 0.0
 
-            # 1. Range compression: how tight is today's range vs price?
-            daily_range = (d_high - d_low) / d_close if d_close > 0 else 0
-            # Tighter range -> higher tension (inverted, capped)
-            range_score = max(0, 1.0 - (daily_range / 0.05))  # 5% range -> 0 score
+            # 1. Range compression: tight range = coiled spring
+            daily_range = (d_high - d_low) / d_close
+            range_score = max(0, 1.0 - (daily_range / 0.05))
             range_score = min(range_score, 1.0)
 
-            # 2. Volume surge: is volume elevated vs recent avg?
-            vol_score = min(d_volume / 5_000_000, 1.0)  # 5M volume -> 1.0
+            # 2. Volume surge: elevated vs previous day
+            vol_ratio = d_volume / max(prev_vol, 1)
+            vol_score = min(max(vol_ratio - 1.0, 0) / 3.0, 1.0)
+            # Also factor absolute volume
+            abs_vol_score = min(d_volume / 5_000_000, 1.0)
+            vol_score = vol_score * 0.6 + abs_vol_score * 0.4
 
-            # 3. Proximity to breakout level: how close to daily high?
+            # 3. Proximity to breakout level
             if d_high > d_low:
                 proximity = (d_close - d_low) / (d_high - d_low)
             else:
                 proximity = 0.5
-            # Near high = bullish tension, near low = bearish tension
             breakout_score = max(proximity, 1.0 - proximity)
 
-            # 4. Gap/momentum: opening gap + intraday trend
-            gap = 0.0
-            if prev_close > 0:
-                gap = abs(d_open - prev_close) / prev_close
-            gap_score = min(gap / 0.03, 1.0)  # 3% gap -> 1.0
+            # 4. Gap/momentum
+            gap = abs(d_open - prev_close) / prev_close if prev_close > 0 else 0
+            gap_score = min(gap / 0.03, 1.0)
 
-            # 5. Minute-bar momentum (acceleration)
+            # 5. Minute-bar acceleration
             m_close = float(minute.get("c", 0))
             m_open = float(minute.get("o", 0))
+            m_volume = int(minute.get("v", 0))
             accel_score = 0.0
             if m_close > 0 and m_open > 0:
                 accel = abs(m_close - m_open) / m_open
-                accel_score = min(accel / 0.005, 1.0)  # 0.5% in 1 min -> 1.0
+                accel_score = min(accel / 0.005, 1.0)
 
-            # Weighted composite
+            # 6. Body-to-range ratio: strong directional conviction
+            body = abs(d_close - d_open)
+            total_range = d_high - d_low
+            body_ratio = body / total_range if total_range > 0 else 0
+            body_score = min(body_ratio / 0.7, 1.0)  # 70%+ body = strong bar
+
+            # 7. Multi-bar context: narrowing range over 2 bars
+            prev_range = (prev_high - prev_low) / prev_close if prev_close > 0 else 0.05
+            range_narrowing = max(0, 1.0 - daily_range / max(prev_range, 1e-10))
+            context_score = min(range_narrowing, 1.0)
+
+            # Weighted composite (7 dimensions)
             tension = (
-                0.20 * range_score
-                + 0.20 * vol_score
-                + 0.25 * breakout_score
-                + 0.15 * gap_score
-                + 0.20 * accel_score
+                0.18 * range_score
+                + 0.18 * vol_score
+                + 0.18 * breakout_score
+                + 0.12 * gap_score
+                + 0.12 * accel_score
+                + 0.12 * body_score
+                + 0.10 * context_score
             )
             return round(min(tension, 1.0), 4)
 
