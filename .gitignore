@@ -169,6 +169,8 @@ reports/*.json
 backups/
 hash.txt
 test_output.txt
+pytest_output*.txt
+frontend/eslint-output.json
 
 # Test results and artifacts (keep README for documentation)
 test_results/*
