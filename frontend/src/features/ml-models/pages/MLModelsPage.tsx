@@ -28,7 +28,7 @@ import {
   PerformanceChartsLazyWrapped as PerformanceCharts,
 } from '../components/AnalyticsLazy';
 import { LifecycleDashboard } from '../components/LifecycleDashboard';
-import ErrorBoundary from '@/components/ErrorBoundary';
+import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 
 const { Title, Text } = Typography;
 
