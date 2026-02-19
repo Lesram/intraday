@@ -40,6 +40,7 @@ def register_routes(app) -> None:
     from backend.api.routes.positions import router as positions_router
     from backend.api.routes.risk import router as risk_router
     from backend.api.routes.scanner import router as scanner_router
+    from backend.api.routes.settings import router as settings_router
     from backend.api.routes.signals import router as signals_router
     from backend.api.routes.strategy import router as strategy_router
     from backend.api.routes.system import router as system_router
@@ -73,6 +74,7 @@ def register_routes(app) -> None:
     protected.include_router(admin_trading_router, tags=["Admin Trading"])
     protected.include_router(audit_router, tags=["Audit"])
     protected.include_router(lots_router, tags=["Lots"])
+    protected.include_router(settings_router, tags=["Settings"])
 
     # Organism routes (optional module)
     try:

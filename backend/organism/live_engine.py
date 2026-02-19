@@ -58,6 +58,7 @@ from backend.organism.self_evolution import (
 )
 from backend.organism.universe_selector import DynamicUniverseSelector
 from backend.organism.transfer_learning import TransferLearningEngine
+from backend.organism.background_trainer import BackgroundTrainer
 from backend.organism.market_scanner import MarketScanner, SCAN_INTERVAL_TICKS
 from backend.strategies.types import TradingSignal
 from backend.utils.logger import get_logger
@@ -134,6 +135,14 @@ TRAIN_WINDOW = _env_int("ORGANISM_TRAIN_WINDOW", 200)
 MIN_BARS = _env_int("ORGANISM_MIN_BARS", 200)
 LONG_ONLY = _env_bool("ORGANISM_LONG_ONLY", True)
 SCANNER_ENABLED = _env_bool("SCANNER_ENABLED", True)
+USE_STREAMING = _env_bool("ORGANISM_USE_STREAMING", False)
+
+# ── Dynamic intraday adjustments ────────────────────────────────
+_IS_INTRADAY = LIVE_TIMEFRAME in ("1Min", "5Min", "15Min", "1Hour")
+if _IS_INTRADAY and MIN_BARS == 200:
+    MIN_BARS = _env_int("ORGANISM_MIN_BARS", 50)
+if _IS_INTRADAY and RETRAIN_INTERVAL == 60:
+    RETRAIN_INTERVAL = _env_int("ORGANISM_RETRAIN_INTERVAL", 200)
 
 
 @dataclass
@@ -173,6 +182,9 @@ class LiveTickResult:
     scanner_ran: bool = False
     # Activity feed for frontend visibility
     activity: list[ActivityEvent] = field(default_factory=list)
+    # Background training metadata
+    training_status: str = ""  # "training", "completed", "rejected", ""
+    training_metadata: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -189,6 +201,8 @@ class LiveTickResult:
             "scanner_candidates_count": self.scanner_candidates_count,
             "scanner_ran": self.scanner_ran,
             "activity": [a.to_dict() for a in self.activity[-50:]],
+            "training_status": self.training_status,
+            "training_metadata": self.training_metadata,
         }
 
 
@@ -208,10 +222,12 @@ class OrganismLiveEngine:
         brain_dir: str = BRAIN_DIR,
         universe: list[str] | None = None,
         sessionmaker: Any | None = None,  # Phase 3.3: for VersionedFeatureStore
+        streaming_provider: Any | None = None,  # StreamingDataProvider
     ) -> None:
         self._data_client = data_client
         self._order_service = order_service
         self._positions_service = positions_service
+        self._streaming_provider = streaming_provider
 
         self._universe = universe or [
             s.strip().upper()
@@ -312,6 +328,10 @@ class OrganismLiveEngine:
         # Serialize live_tick() calls to prevent concurrent state mutation
         # (scheduler loop + manual /tick endpoint)
         self._tick_lock = asyncio.Lock()
+
+        # ── Background trainer for non-blocking retraining ────────
+        self._bg_trainer = BackgroundTrainer()
+        self._bg_training_metadata: dict[str, Any] = {}
 
     # ═════════════════════════════════════════════════════════════
     #  INITIALIZATION / SHUTDOWN
@@ -421,6 +441,9 @@ class OrganismLiveEngine:
         # Reconstruct live positions → exit levels + pyramid state
         await self._reconstruct_position_state()
 
+        # Start background trainer
+        await self._bg_trainer.start()
+
         self._initialized = True
         return brain_loaded
 
@@ -429,6 +452,8 @@ class OrganismLiveEngine:
         if not self._initialized:
             return
         self._save_brain()
+        # Clean up background trainer
+        await self._bg_trainer.stop()
         # Clean up market scanner
         if self.market_scanner is not None:
             await self.market_scanner.close()
@@ -836,26 +861,88 @@ class OrganismLiveEngine:
             # 10. RECORD TRADE OUTCOMES from closed positions
             await self._reconcile_fills(features_by_symbol)
 
-            # 11. PERIODIC RETRAIN + EVOLVE
+            # 11. PERIODIC RETRAIN + EVOLVE (non-blocking background training)
             self._bars_since_retrain += 1
-            if self._bars_since_retrain >= RETRAIN_INTERVAL:
+
+            # Check if previous background training completed
+            if self._bg_trainer.is_training:
+                done, train_result = self._bg_trainer.get_result()
+                if done and train_result and train_result.accepted:
+                    self.evolved_params = self._bg_trainer.apply_result(
+                        signal_gen=self.signal_gen,
+                        evolution_engine=self.evolution_engine,
+                        evolved_params=self.evolved_params,
+                        alpha_scanner=self.alpha_scanner,
+                        breakout_scanner=self.breakout_scanner,
+                        kelly_sizer=self.kelly_sizer,
+                        exit_engine=self.exit_engine,
+                    )
+                    self._bg_training_metadata = {
+                        "status": "completed",
+                        "accepted": train_result.accepted,
+                        "duration_s": train_result.duration_s,
+                        "last_trained_tick": self._tick_count,
+                    }
+                    self.governance.record_change()
+                    result.activity.append(ActivityEvent(
+                        event_type="retrain",
+                        message=f"Background training completed (gen={self.evolved_params.evolution_generation}, "
+                                f"duration={train_result.duration_s:.1f}s)",
+                        details={
+                            "generation": self.evolved_params.evolution_generation,
+                            "total_trades": len(self._all_trades),
+                            "is_trained": self.signal_gen.is_trained,
+                            "background": True,
+                            "duration_s": train_result.duration_s,
+                        },
+                        timestamp=now_iso,
+                    ))
+                elif done and train_result:
+                    self._bg_training_metadata = {
+                        "status": "rejected",
+                        "error": train_result.error,
+                        "last_trained_tick": self._tick_count,
+                    }
+            elif self._bars_since_retrain >= RETRAIN_INTERVAL:
                 self._bars_since_retrain = 0
-                self._retrain_and_evolve(features_by_symbol, regime)
-                result.activity.append(ActivityEvent(
-                    event_type="retrain",
-                    message=f"ML model retrained (gen={self.evolved_params.evolution_generation}, "
-                            f"trades={len(self._all_trades)})",
-                    details={
-                        "generation": self.evolved_params.evolution_generation,
-                        "total_trades": len(self._all_trades),
-                        "is_trained": self.signal_gen.is_trained,
-                    },
-                    timestamp=now_iso,
-                ))
+                try:
+                    await self._bg_trainer.submit_retrain(
+                        features_by_symbol=features_by_symbol,
+                        regime=regime,
+                        trades=self._all_trades,
+                        signal_gen=self.signal_gen,
+                        evolution_engine=self.evolution_engine,
+                        evolved_params=self.evolved_params,
+                    )
+                    self._bg_training_metadata["status"] = "training"
+                    result.activity.append(ActivityEvent(
+                        event_type="retrain",
+                        message=f"Background training submitted (trades={len(self._all_trades)})",
+                        details={
+                            "total_trades": len(self._all_trades),
+                            "background": True,
+                        },
+                        timestamp=now_iso,
+                    ))
+                except Exception as e:
+                    # Fallback to synchronous training
+                    logger.warning("Background training failed, falling back to sync: %s", e)
+                    self._retrain_and_evolve(features_by_symbol, regime)
+                    result.activity.append(ActivityEvent(
+                        event_type="retrain",
+                        message=f"ML model retrained synchronously (gen={self.evolved_params.evolution_generation})",
+                        details={
+                            "generation": self.evolved_params.evolution_generation,
+                            "total_trades": len(self._all_trades),
+                            "is_trained": self.signal_gen.is_trained,
+                            "background": False,
+                        },
+                        timestamp=now_iso,
+                    ))
 
             # 12. BRAIN SAVE (every 50 ticks — disk I/O is expensive at HFT speeds)
             if self._tick_count % 50 == 0:
-                self._save_brain()
+                await asyncio.to_thread(self._save_brain)
                 result.brain_saved = True
 
             # Phase 5: Populate scanner/universe metadata
@@ -865,6 +952,10 @@ class OrganismLiveEngine:
                 self.market_scanner is not None
                 and self._tick_count % SCAN_INTERVAL_TICKS == 0
             )
+
+            # Training metadata for dashboard visibility
+            result.training_status = self._bg_training_metadata.get("status", "")
+            result.training_metadata = dict(self._bg_training_metadata)
 
         except Exception as e:
             logger.exception("Organism live tick failed")
@@ -920,9 +1011,49 @@ class OrganismLiveEngine:
         features_by_symbol: dict[str, pd.DataFrame] = {}
         spy_df = None
         _concurrency = asyncio.Semaphore(10)  # Max 10 parallel bar fetches
+        _streaming_active = self._streaming_provider is not None
 
         # Fetch SPY first (needed for cross-asset features)
+        # When streaming, SPY is already buffered so this is instant
         spy_df = await self._fetch_bars("SPY")
+
+        def _compute_features_sync(
+            raw_df: pd.DataFrame, sym: str, spy_ref: pd.DataFrame | None,
+        ) -> pd.DataFrame:
+            """CPU-bound feature computation — runs in thread when streaming."""
+            if self._feature_store is not None:
+                feats, _snapshot = self._feature_store.compute_features(
+                    raw_df, symbol=sym,
+                )
+                feats_ml = compute_ml_features(
+                    raw_df,
+                    spy_df=spy_ref if sym != "SPY" else None,
+                )
+                feats = feats.reset_index(drop=True)
+                feats_ml = feats_ml.reset_index(drop=True)
+                n_min = min(len(feats), len(feats_ml))
+                feats = feats.iloc[-n_min:].reset_index(drop=True)
+                feats_ml = feats_ml.iloc[-n_min:].reset_index(drop=True)
+                for col in feats.columns:
+                    if col not in feats_ml.columns:
+                        feats_ml[col] = feats[col].values
+                feats = feats_ml
+            else:
+                feats = compute_ml_features(
+                    raw_df,
+                    spy_df=spy_ref if sym != "SPY" else None,
+                )
+                feats = feats.reset_index(drop=True)
+
+            # Preserve OHLCV columns
+            n_feats = len(feats)
+            for col in ["open", "high", "low", "close", "volume"]:
+                if col in raw_df.columns and col not in feats.columns:
+                    feats[col] = raw_df[col].values[-n_feats:]
+
+            # Phase 4.2: Multi-timeframe features
+            feats = add_multi_timeframe_features(feats)
+            return feats
 
         async def _fetch_one(sym: str) -> tuple[str, pd.DataFrame | None]:
             async with _concurrency:
@@ -935,39 +1066,14 @@ class OrganismLiveEngine:
                     if raw_df is None or len(raw_df) < MIN_BARS:
                         return sym, None
 
-                    # Phase 3.3: Use feature store when available
-                    if self._feature_store is not None:
-                        feats, _snapshot = self._feature_store.compute_features(
-                            raw_df, symbol=sym,
+                    # When streaming is active, offload CPU-bound work
+                    # to a thread so the event loop stays responsive
+                    if _streaming_active:
+                        feats = await asyncio.to_thread(
+                            _compute_features_sync, raw_df, sym, spy_df,
                         )
-                        feats_ml = compute_ml_features(
-                            raw_df,
-                            spy_df=spy_df if sym != "SPY" else None,
-                        )
-                        feats = feats.reset_index(drop=True)
-                        feats_ml = feats_ml.reset_index(drop=True)
-                        n_min = min(len(feats), len(feats_ml))
-                        feats = feats.iloc[-n_min:].reset_index(drop=True)
-                        feats_ml = feats_ml.iloc[-n_min:].reset_index(drop=True)
-                        for col in feats.columns:
-                            if col not in feats_ml.columns:
-                                feats_ml[col] = feats[col].values
-                        feats = feats_ml
                     else:
-                        feats = compute_ml_features(
-                            raw_df,
-                            spy_df=spy_df if sym != "SPY" else None,
-                        )
-                        feats = feats.reset_index(drop=True)
-
-                    # Preserve OHLCV columns
-                    n_feats = len(feats)
-                    for col in ["open", "high", "low", "close", "volume"]:
-                        if col in raw_df.columns and col not in feats.columns:
-                            feats[col] = raw_df[col].values[-n_feats:]
-
-                    # Phase 4.2: Multi-timeframe features
-                    feats = add_multi_timeframe_features(feats)
+                        feats = _compute_features_sync(raw_df, sym, spy_df)
 
                     return sym, feats
                 except Exception as e:
@@ -986,9 +1092,23 @@ class OrganismLiveEngine:
     async def _fetch_bars(self, symbol: str) -> pd.DataFrame | None:
         """Fetch historical bars for a single symbol.
 
+        When a streaming provider is active, returns bars from the
+        in-memory ring buffer (zero latency).  Falls back to REST
+        if streaming has no data for this symbol.
+
         Handles both sync clients (AlpacaClient) and async clients
         (AlpacaDataClient) transparently.
         """
+        # ── Streaming fast-path ──────────────────────────────────
+        if self._streaming_provider is not None:
+            try:
+                df = self._streaming_provider.get_bars(symbol, LIVE_LOOKBACK)
+                if df is not None and not df.empty and len(df) >= MIN_BARS:
+                    return df
+                # Fall through to REST if streaming buffer insufficient
+            except Exception as e:
+                logger.debug("Streaming fallback for %s: %s", symbol, e)
+
         try:
             if hasattr(self._data_client, "get_historical_bars_df"):
                 method = self._data_client.get_historical_bars_df
@@ -1467,6 +1587,78 @@ class OrganismLiveEngine:
             "positions_tracked": len(self._entry_metadata),
             **scanner_info,
         }
+
+    def update_config(self, config: dict[str, Any]) -> dict[str, Any]:
+        """Hot-reload engine configuration at next tick boundary.
+
+        Called by scheduler.update_config() when settings are changed
+        via the Settings API.  The tick lock ensures atomic updates.
+
+        Returns a dict of parameters that were actually changed.
+        """
+        global MAX_OPEN_POSITIONS, RETRAIN_INTERVAL, LIVE_LOOKBACK, MIN_BARS, LONG_ONLY
+
+        changed: dict[str, Any] = {}
+
+        if "max_positions" in config:
+            MAX_OPEN_POSITIONS = int(config["max_positions"])
+            self.alpha_scanner = AlphaScanner(top_n=MAX_OPEN_POSITIONS)
+            self.breakout_scanner = BreakoutScanner(top_n=MAX_OPEN_POSITIONS)
+            changed["max_positions"] = MAX_OPEN_POSITIONS
+
+        if "retrain_interval" in config:
+            RETRAIN_INTERVAL = int(config["retrain_interval"])
+            self.learner._retrain_every_n = RETRAIN_INTERVAL
+            changed["retrain_interval"] = RETRAIN_INTERVAL
+
+        if "lookback" in config:
+            LIVE_LOOKBACK = int(config["lookback"])
+            changed["lookback"] = LIVE_LOOKBACK
+
+        if "min_bars" in config:
+            MIN_BARS = int(config["min_bars"])
+            changed["min_bars"] = MIN_BARS
+
+        if "long_only" in config:
+            LONG_ONLY = bool(config["long_only"])
+            changed["long_only"] = LONG_ONLY
+
+        # Kelly sizer params
+        kelly_keys = {"max_position_pct", "vol_target", "min_position_usd"}
+        for key in kelly_keys & config.keys():
+            setattr(self.kelly_sizer, key, float(config[key]))
+            changed[key] = float(config[key])
+
+        # Exit engine params
+        exit_keys = {
+            "atr_multiplier", "profit_r_multiple", "trailing_distance_atr",
+            "max_bars_held", "partial_tp_pct",
+        }
+        for key in exit_keys & config.keys():
+            setattr(self.exit_engine, key, float(config[key]))
+            changed[key] = float(config[key])
+
+        # ML params
+        if "n_estimators" in config:
+            self.signal_gen._n_estimators = int(config["n_estimators"])
+            changed["n_estimators"] = int(config["n_estimators"])
+        if "max_depth" in config:
+            self.signal_gen._max_depth = int(config["max_depth"])
+            changed["max_depth"] = int(config["max_depth"])
+        if "learning_rate" in config:
+            self.signal_gen._learning_rate = float(config["learning_rate"])
+            changed["learning_rate"] = float(config["learning_rate"])
+        if "direction_threshold" in config:
+            self.signal_gen._direction_threshold = float(config["direction_threshold"])
+            changed["direction_threshold"] = float(config["direction_threshold"])
+
+        if "universe" in config and isinstance(config["universe"], list):
+            self._universe = [s.strip().upper() for s in config["universe"] if s.strip()]
+            changed["universe"] = self._universe
+
+        if changed:
+            logger.info("Engine config updated: %s", changed)
+        return changed
 
     def generate_trading_signals(
         self,

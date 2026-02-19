@@ -402,6 +402,24 @@ async def broadcast_strategy_update(topic: str, strategy_data: dict[str, Any]) -
         logger.error(f"Failed to broadcast strategy update to topic {topic}: {e}")
 
 
+async def broadcast_settings_update(settings_data: dict[str, Any]) -> None:
+    """
+    Broadcast settings update to all connected clients.
+
+    Args:
+        settings_data: Settings data including category and new values
+    """
+    try:
+        await broadcast_to_all('settings_update', {
+            'type': 'settings_update',
+            'data': settings_data,
+            'timestamp': datetime.now(UTC).isoformat()
+        })
+        logger.debug("Broadcasted settings update")
+    except Exception as e:
+        logger.error(f"Failed to broadcast settings update: {e}")
+
+
 def get_subscriber_count(topic: str | None = None) -> int:
     """
     Get number of subscribers for a topic or total connected clients.

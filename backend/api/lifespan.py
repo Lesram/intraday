@@ -427,15 +427,28 @@ async def _start_organism_scheduler(app):
             pass
 
     if _data_client and _order_service and _positions_svc:
+        # Streaming configuration
+        _use_streaming = os.getenv("ORGANISM_USE_STREAMING", "0").lower() in ("1", "true", "yes")
+        _alpaca_key = os.getenv("ALPACA_API_KEY_ID", "") or os.getenv("ALPACA_API_KEY", "")
+        _alpaca_secret = os.getenv("ALPACA_API_SECRET_KEY", "") or os.getenv("ALPACA_SECRET_KEY", "")
+        _alpaca_feed = os.getenv("ALPACA_DATA_FEED", "sip")
+
         scheduler = OrganismScheduler(
             data_client=_data_client,
             order_service=_order_service,
             positions_service=_positions_svc,
             sessionmaker=_sessionmaker,
+            use_streaming=_use_streaming,
+            alpaca_api_key=_alpaca_key if _use_streaming else None,
+            alpaca_api_secret=_alpaca_secret if _use_streaming else None,
+            alpaca_feed=_alpaca_feed,
         )
         await scheduler.start()
         app.state.organism_scheduler = scheduler
-        logger.info("Organism live engine scheduler enabled")
+        logger.info(
+            "Organism live engine scheduler enabled (streaming=%s)",
+            _use_streaming,
+        )
         return scheduler
 
     logger.info("Organism scheduler skipped — missing dependencies")

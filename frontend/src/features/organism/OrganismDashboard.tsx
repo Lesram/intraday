@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
   Badge,
@@ -8,6 +8,7 @@ import {
   Descriptions,
   Progress,
   Row,
+  Select,
   Space,
   Spin,
   Statistic,
@@ -18,15 +19,20 @@ import {
   message,
 } from 'antd';
 import {
+  CheckCircleOutlined,
+  ClockCircleOutlined,
   DashboardOutlined,
   ExperimentOutlined,
+  FilterOutlined,
   GlobalOutlined,
+  LoadingOutlined,
   PauseCircleOutlined,
   PlayCircleOutlined,
   RadarChartOutlined,
   ReloadOutlined,
   SafetyOutlined,
   ThunderboltOutlined,
+  WarningOutlined,
 } from '@ant-design/icons';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { organismApi, type ActivityEvent, type OrganismRun, type OrganismStatus, type ScannerStatus, type UniverseStatus } from './organismApi';
@@ -47,6 +53,243 @@ const formatDateTime = (value?: string) => {
   return date.toLocaleString();
 };
 
+// ── Tick Latency Sparkline (canvas-based) ───────────────────────
+
+const LatencySparkline = ({ runs }: { runs: OrganismRun[] }) => {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const data = useMemo(() => runs.slice(0, 50).map((r) => safeNumber(r.duration_s)).reverse(), [runs]);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || data.length < 2) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const w = canvas.width;
+    const h = canvas.height;
+    const max = Math.max(...data, 0.1);
+    const min = Math.min(...data, 0);
+    const range = max - min || 1;
+
+    ctx.clearRect(0, 0, w, h);
+
+    // Draw sparkline
+    ctx.beginPath();
+    ctx.strokeStyle = '#1890ff';
+    ctx.lineWidth = 1.5;
+    data.forEach((val, i) => {
+      const x = (i / (data.length - 1)) * w;
+      const y = h - ((val - min) / range) * (h - 4) - 2;
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+
+    // 2s threshold line
+    const thresholdY = h - ((2 - min) / range) * (h - 4) - 2;
+    if (thresholdY > 0 && thresholdY < h) {
+      ctx.beginPath();
+      ctx.setLineDash([3, 3]);
+      ctx.strokeStyle = '#ff4d4f';
+      ctx.lineWidth = 1;
+      ctx.moveTo(0, thresholdY);
+      ctx.lineTo(w, thresholdY);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+  }, [data]);
+
+  const stats = useMemo(() => {
+    if (data.length === 0) return { min: 0, avg: 0, max: 0 };
+    return {
+      min: Math.min(...data),
+      avg: data.reduce((a, b) => a + b, 0) / data.length,
+      max: Math.max(...data),
+    };
+  }, [data]);
+
+  return (
+    <Card title="Tick Latency" size="small">
+      <canvas ref={canvasRef} width={280} height={60} style={{ width: '100%', height: 60 }} />
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4, fontSize: 11 }}>
+        <Text type="secondary">Min: {stats.min.toFixed(3)}s</Text>
+        <Text type="secondary">Avg: {stats.avg.toFixed(3)}s</Text>
+        <Text type={stats.max > 2 ? 'danger' : 'secondary'}>Max: {stats.max.toFixed(3)}s</Text>
+      </div>
+    </Card>
+  );
+};
+
+// ── Equity Curve (canvas-based) ─────────────────────────────────
+
+const EquityCurve = ({ runs }: { runs: OrganismRun[] }) => {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    // Extract equity-like data from tick history (cumulative orders)
+    const data = runs
+      .slice(0, 100)
+      .reverse()
+      .map((r) => safeNumber(r.orders_submitted) - safeNumber(r.trades_closed));
+
+    // Build cumulative curve
+    const cumulative: number[] = [];
+    let sum = 0;
+    for (const d of data) {
+      sum += d;
+      cumulative.push(sum);
+    }
+
+    if (cumulative.length < 2) {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = '#999';
+      ctx.font = '12px sans-serif';
+      ctx.fillText('Insufficient data', 10, 35);
+      return;
+    }
+
+    const w = canvas.width;
+    const h = canvas.height;
+    const max = Math.max(...cumulative);
+    const min = Math.min(...cumulative);
+    const range = max - min || 1;
+
+    ctx.clearRect(0, 0, w, h);
+
+    // Fill under curve
+    ctx.beginPath();
+    ctx.fillStyle = 'rgba(24, 144, 255, 0.08)';
+    cumulative.forEach((val, i) => {
+      const x = (i / (cumulative.length - 1)) * w;
+      const y = h - ((val - min) / range) * (h - 8) - 4;
+      if (i === 0) { ctx.moveTo(x, h); ctx.lineTo(x, y); }
+      else ctx.lineTo(x, y);
+    });
+    ctx.lineTo(w, h);
+    ctx.fill();
+
+    // Draw line
+    ctx.beginPath();
+    const lastVal = cumulative[cumulative.length - 1];
+    ctx.strokeStyle = lastVal >= 0 ? '#52c41a' : '#ff4d4f';
+    ctx.lineWidth = 1.5;
+    cumulative.forEach((val, i) => {
+      const x = (i / (cumulative.length - 1)) * w;
+      const y = h - ((val - min) / range) * (h - 8) - 4;
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+  }, [runs]);
+
+  return (
+    <Card title="Equity Curve (Net Orders)" size="small">
+      <canvas ref={canvasRef} width={280} height={80} style={{ width: '100%', height: 80 }} />
+    </Card>
+  );
+};
+
+// ── Signal Heat Map ─────────────────────────────────────────────
+
+const SignalHeatMap = ({ runs }: { runs: OrganismRun[] }) => {
+  const heatData = useMemo(() => {
+    const symbolCounts: Record<string, number> = {};
+    const recent = runs.slice(0, 20);
+
+    for (const run of recent) {
+      if (!Array.isArray(run.activity)) continue;
+      for (const evt of run.activity) {
+        if (evt.type === 'signal' && evt.symbol) {
+          symbolCounts[evt.symbol] = (symbolCounts[evt.symbol] || 0) + 1;
+        }
+      }
+    }
+
+    return Object.entries(symbolCounts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 12);
+  }, [runs]);
+
+  if (heatData.length === 0) {
+    return (
+      <Card title="Signal Heat Map" size="small">
+        <Text type="secondary">No signal data in recent ticks</Text>
+      </Card>
+    );
+  }
+
+  const maxCount = Math.max(...heatData.map(([, c]) => c), 1);
+
+  return (
+    <Card title="Signal Heat Map (Last 20 Ticks)" size="small">
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+        {heatData.map(([symbol, count]) => {
+          const intensity = count / maxCount;
+          const bg = `rgba(24, 144, 255, ${0.15 + intensity * 0.75})`;
+          return (
+            <Tag
+              key={symbol}
+              style={{
+                backgroundColor: bg,
+                color: intensity > 0.5 ? '#fff' : '#333',
+                fontWeight: intensity > 0.5 ? 600 : 400,
+              }}
+            >
+              {symbol}: {count}
+            </Tag>
+          );
+        })}
+      </div>
+    </Card>
+  );
+};
+
+// ── Training Status Indicator ───────────────────────────────────
+
+const TrainingStatus = ({ latestTick }: { latestTick: OrganismRun | null }) => {
+  const status = (latestTick as any)?.training_status as string | undefined;
+  const meta = (latestTick as any)?.training_metadata as Record<string, unknown> | undefined;
+
+  let icon: React.ReactNode;
+  let color: string;
+  let label: string;
+
+  switch (status) {
+    case 'training':
+      icon = <LoadingOutlined spin />;
+      color = 'processing';
+      label = 'Training in progress...';
+      break;
+    case 'completed':
+      icon = <CheckCircleOutlined />;
+      color = 'success';
+      label = `Model accepted (${safeNumber(meta?.duration_s).toFixed(1)}s)`;
+      break;
+    case 'rejected':
+      icon = <WarningOutlined />;
+      color = 'warning';
+      label = meta?.error ? `Rejected: ${meta.error}` : 'Model rejected';
+      break;
+    default:
+      icon = <ClockCircleOutlined />;
+      color = 'default';
+      label = meta?.last_trained_tick
+        ? `Last trained: tick #${meta.last_trained_tick}`
+        : 'No training yet';
+  }
+
+  return (
+    <Card title="Training Status" size="small">
+      <Badge status={color as any} text={<Space>{icon}<Text>{label}</Text></Space>} />
+    </Card>
+  );
+};
+
 const OrganismDashboard = () => {
   const [status, setStatus] = useState<OrganismStatus | null>(null);
   const [runs, setRuns] = useState<OrganismRun[]>([]);
@@ -59,6 +302,7 @@ const OrganismDashboard = () => {
   const [error, setError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [activityFeed, setActivityFeed] = useState<ActivityEvent[]>([]);
+  const [activityFilter, setActivityFilter] = useState<string>('all');
 
   const fetchAll = useCallback(async (withSpinner = false) => {
     if (withSpinner) setLoading(true);
@@ -423,6 +667,18 @@ ENABLE_ORGANISM_SCHEDULER=1   # optional — starts the live tick loop`}
                     </Descriptions>
                   </Card>
                 </Col>
+                <Col xs={24} lg={8}>
+                  <LatencySparkline runs={runs} />
+                </Col>
+                <Col xs={24} lg={8}>
+                  <EquityCurve runs={runs} />
+                </Col>
+                <Col xs={24} lg={8}>
+                  <TrainingStatus latestTick={latestTick} />
+                </Col>
+                <Col xs={24}>
+                  <SignalHeatMap runs={runs} />
+                </Col>
               </Row>
             ),
           },
@@ -448,19 +704,64 @@ ENABLE_ORGANISM_SCHEDULER=1   # optional — starts the live tick loop`}
                 <Badge count={activityFeed.length} overflowCount={999} style={{ backgroundColor: '#722ed1' }} />
               </span>
             ),
-            children: (
-              <Card title="Real-Time Activity Feed" extra={<Button size="small" onClick={() => setActivityFeed([])}>Clear</Button>}>
-                {activityFeed.length === 0 ? (
-                  <Text type="secondary">No activity yet. Events appear here as the organism ticks.</Text>
-                ) : (
-                  <div style={{ maxHeight: 600, overflowY: 'auto' }}>
-                    {activityFeed.map((evt, idx) => {
-                      const colorMap: Record<string, string> = {
-                        signal: 'blue', order: 'green', exit: 'orange',
-                        scanner: 'purple', retrain: 'cyan', regime: 'geekblue', skip: 'default',
-                      };
-                      return (
-                        <div key={`${evt.timestamp}-${idx}`} style={{ padding: '6px 0', borderBottom: '1px solid #f0f0f0' }}>
+            children: (() => {
+              const colorMap: Record<string, string> = {
+                signal: 'blue', order: 'green', exit: 'orange',
+                scanner: 'purple', retrain: 'cyan', regime: 'geekblue',
+                skip: 'default', error: 'red',
+              };
+              const severityBorder: Record<string, string> = {
+                error: '#ff4d4f', exit: '#fa8c16', order: '#52c41a',
+                signal: '#1890ff', retrain: '#13c2c2',
+              };
+              const filteredFeed = activityFilter === 'all'
+                ? activityFeed
+                : activityFeed.filter((evt) => evt.type === activityFilter);
+
+              return (
+                <Card
+                  title="Real-Time Activity Feed"
+                  extra={
+                    <Space>
+                      <FilterOutlined />
+                      <Select
+                        size="small"
+                        value={activityFilter}
+                        onChange={setActivityFilter}
+                        style={{ width: 130 }}
+                        options={[
+                          { value: 'all', label: 'All Events' },
+                          { value: 'signal', label: 'Signals' },
+                          { value: 'order', label: 'Orders' },
+                          { value: 'exit', label: 'Exits' },
+                          { value: 'retrain', label: 'Retraining' },
+                          { value: 'scanner', label: 'Scanner' },
+                          { value: 'regime', label: 'Regime' },
+                          { value: 'skip', label: 'Skipped' },
+                        ]}
+                      />
+                      <Button size="small" onClick={() => setActivityFeed([])}>Clear</Button>
+                    </Space>
+                  }
+                >
+                  {filteredFeed.length === 0 ? (
+                    <Text type="secondary">
+                      {activityFilter === 'all'
+                        ? 'No activity yet. Events appear here as the organism ticks.'
+                        : `No "${activityFilter}" events yet.`}
+                    </Text>
+                  ) : (
+                    <div style={{ maxHeight: 600, overflowY: 'auto' }}>
+                      {filteredFeed.map((evt, idx) => (
+                        <div
+                          key={`${evt.timestamp}-${idx}`}
+                          style={{
+                            padding: '6px 0',
+                            borderBottom: '1px solid #f0f0f0',
+                            borderLeft: `3px solid ${severityBorder[evt.type] ?? '#d9d9d9'}`,
+                            paddingLeft: 8,
+                          }}
+                        >
                           <Space>
                             <Tag color={colorMap[evt.type] ?? 'default'}>{evt.type.toUpperCase()}</Tag>
                             {evt.symbol && <Tag>{evt.symbol}</Tag>}
@@ -468,12 +769,12 @@ ENABLE_ORGANISM_SCHEDULER=1   # optional — starts the live tick loop`}
                             <Text type="secondary" style={{ fontSize: 11 }}>{formatDateTime(evt.timestamp)}</Text>
                           </Space>
                         </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </Card>
-            ),
+                      ))}
+                    </div>
+                  )}
+                </Card>
+              );
+            })(),
           },
           {
             key: 'scanner',

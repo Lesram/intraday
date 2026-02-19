@@ -36,9 +36,10 @@ const BacktestingPage = lazy(() => import('../features/backtesting/BacktestingPa
 const MLModelsPage = lazy(() => import('../features/ml-models/pages/MLModelsPage').then(m => ({ default: m.MLModelsPage })));
 const RiskManagement = lazy(() => import('../features/risk').then(m => ({ default: m.RiskManagement })));
 
-// Portfolio, Organism, Strategy Monitor
+// Portfolio, Organism, Strategy Monitor, Settings
 const PortfolioPage = lazy(() => import('../features/portfolio/PortfolioPage'));
 const OrganismDashboard = lazy(() => import('../features/organism/OrganismDashboard'));
+const SettingsPage = lazy(() => import('../features/settings/SettingsPage'));
 
 // Suspense wrapper for lazy components
 const LazyRoute = ({ children }: { children: React.ReactNode }) => (
@@ -90,7 +91,7 @@ const AppRoutes = () => {
         <Route path="market-data" element={<LazyRoute><ScannerPage /></LazyRoute>} />
         <Route path="reports" element={<LazyRoute><ComingSoon title="Reports" /></LazyRoute>} />
         <Route path="admin" element={<LazyRoute><ComingSoon title="Admin" /></LazyRoute>} />
-        <Route path="settings" element={<LazyRoute><ComingSoon title="Settings" /></LazyRoute>} />
+        <Route path="settings" element={<LazyRoute><SettingsPage /></LazyRoute>} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>

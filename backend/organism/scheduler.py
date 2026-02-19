@@ -69,6 +69,10 @@ class OrganismScheduler:
         brain_dir: str | None = None,
         universe: list[str] | None = None,
         history_limit: int = 200,
+        use_streaming: bool = False,
+        alpaca_api_key: str | None = None,
+        alpaca_api_secret: str | None = None,
+        alpaca_feed: str = "sip",
     ) -> None:
         self._data_client = data_client
         self._order_service = order_service
@@ -78,6 +82,13 @@ class OrganismScheduler:
         self._brain_dir = brain_dir
         self._universe = universe
         self._history_limit = max(10, int(history_limit))
+
+        # Streaming config
+        self._use_streaming = use_streaming
+        self._alpaca_api_key = alpaca_api_key
+        self._alpaca_api_secret = alpaca_api_secret
+        self._alpaca_feed = alpaca_feed
+        self._streaming_provider: Any = None
 
         self._task: asyncio.Task | None = None
         self._stop = asyncio.Event()
@@ -99,6 +110,32 @@ class OrganismScheduler:
         # Late import to avoid circular dependencies at module level
         from backend.organism.live_engine import OrganismLiveEngine
 
+        # ── Start streaming provider if configured ────────────────
+        if self._use_streaming and self._alpaca_api_key and self._alpaca_api_secret:
+            try:
+                from backend.organism.streaming_data_provider import StreamingDataProvider
+
+                self._streaming_provider = StreamingDataProvider()
+                universe = self._universe or [
+                    s.strip().upper()
+                    for s in os.getenv(
+                        "ORGANISM_LIVE_SYMBOLS",
+                        "AAPL,MSFT,GOOGL,AMZN,NVDA,META,TSLA,AMD,AVGO,CRM,"
+                        "COST,WMT,LLY,XOM,CAT,SPY,QQQ,IWM,XLK,XLE",
+                    ).split(",")
+                    if s.strip()
+                ]
+                await self._streaming_provider.start(
+                    symbols=universe,
+                    api_key=self._alpaca_api_key,
+                    api_secret=self._alpaca_api_secret,
+                    feed=self._alpaca_feed,
+                )
+                logger.info("Streaming data provider started for scheduler")
+            except Exception as e:
+                logger.warning("Streaming provider failed, continuing without: %s", e)
+                self._streaming_provider = None
+
         kwargs: dict[str, Any] = {
             "data_client": self._data_client,
             "order_service": self._order_service,
@@ -110,15 +147,18 @@ class OrganismScheduler:
             kwargs["brain_dir"] = self._brain_dir
         if self._universe:
             kwargs["universe"] = self._universe
+        if self._streaming_provider is not None:
+            kwargs["streaming_provider"] = self._streaming_provider
 
         self._engine = OrganismLiveEngine(**kwargs)
         brain_loaded = await self._engine.initialize()
 
         logger.info(
             "Organism scheduler starting: tick_interval=%ds, "
-            "brain_loaded=%s",
+            "brain_loaded=%s, streaming=%s",
             self._tick_interval,
             brain_loaded,
+            self._streaming_provider is not None,
         )
 
         self._stop.clear()
@@ -140,6 +180,14 @@ class OrganismScheduler:
                 pass
         self._task = None
 
+        # Shut down streaming provider before engine
+        if self._streaming_provider is not None:
+            try:
+                await self._streaming_provider.stop()
+            except Exception as e:
+                logger.warning("Error stopping streaming provider: %s", e)
+            self._streaming_provider = None
+
         if self._engine:
             await self._engine.shutdown()
 
@@ -156,6 +204,34 @@ class OrganismScheduler:
         if self._engine:
             base["engine"] = self._engine.status()
         return base
+
+    async def update_config(self, config: dict[str, Any]) -> dict[str, Any]:
+        """Hot-reload configuration from settings API.
+
+        Updates tick interval, engine params, and streaming subscriptions.
+        Returns a dict of parameters that were actually changed.
+        """
+        changed: dict[str, Any] = {}
+
+        if "tick_interval_seconds" in config:
+            self._tick_interval = int(config["tick_interval_seconds"])
+            changed["tick_interval_seconds"] = self._tick_interval
+
+        # Forward remaining config to the engine
+        if self._engine:
+            engine_changed = self._engine.update_config(config)
+            changed.update(engine_changed)
+
+        # Update streaming subscriptions if universe changed
+        if "universe" in config and self._streaming_provider is not None:
+            try:
+                await self._streaming_provider.update_subscriptions(config["universe"])
+            except Exception as e:
+                logger.warning("Streaming subscription update failed: %s", e)
+
+        if changed:
+            logger.info("Scheduler config updated: %s", changed)
+        return changed
 
     # ── internal loop ────────────────────────────────────────────
 
