@@ -871,27 +871,29 @@ class TestAlpacaStreamClientProcessTradeUpdate:
     async def test_process_trade_update_order_not_found(self, mock_env_vars):
         """Test processing trade update when order not found."""
         with patch("backend.integrations.alpaca_stream.get_settings") as mock_get, \
-             patch("backend.integrations.alpaca_stream.get_db_session") as mock_session:
+             patch("backend.integrations.alpaca_stream.get_session_context") as mock_session:
             mock_get.return_value = MagicMock()
-            
+
             # Mock async context manager for session
             mock_ctx = AsyncMock()
             mock_ctx.__aenter__.return_value = MagicMock()
             mock_session.return_value = mock_ctx
-            
+
             from backend.integrations.alpaca_stream import AlpacaStreamClient
-            
+
             client = AlpacaStreamClient()
-            
+
             with patch("backend.integrations.alpaca_stream.OrdersRepo") as mock_repo:
                 mock_repo_instance = MagicMock()
                 mock_repo_instance.get_by_broker_order_id = AsyncMock(return_value=None)
                 mock_repo.return_value = mock_repo_instance
-                
+
                 await client._process_trade_update({
                     "data": {
-                        "id": "unknown_order",
-                        "status": "filled"
+                        "order": {
+                            "id": "unknown_order",
+                            "status": "filled"
+                        }
                     }
                 })
 
@@ -1050,10 +1052,10 @@ class TestAlpacaStreamProcessTradeUpdateBroadcast:
     async def test_process_trade_update_broadcasts_to_user(self, mock_env_vars):
         """Test successful trade update broadcasts to user."""
         with patch("backend.integrations.alpaca_stream.get_settings") as mock_get, \
-             patch("backend.integrations.alpaca_stream.get_db_session") as mock_db, \
+             patch("backend.integrations.alpaca_stream.get_session_context") as mock_db, \
              patch("backend.api.socketio_server.broadcast_order_update", new_callable=AsyncMock) as mock_broadcast:
             mock_get.return_value = MagicMock()
-            
+
             # Mock DB session as async context manager
             mock_session = AsyncMock()
             mock_order = MagicMock()
@@ -1064,32 +1066,34 @@ class TestAlpacaStreamProcessTradeUpdateBroadcast:
             mock_order.order_type = "market"
             mock_order.submitted_at = None
             mock_order.user_id = "test_user"
-            
+
             mock_orders_repo = AsyncMock()
             mock_orders_repo.get_by_broker_order_id.return_value = mock_order
-            
+
             # Create async context manager mock
             mock_ctx = AsyncMock()
             mock_ctx.__aenter__.return_value = mock_session
             mock_ctx.__aexit__.return_value = None
             mock_db.return_value = mock_ctx
-            
+
             with patch("backend.integrations.alpaca_stream.OrdersRepo", return_value=mock_orders_repo):
                 from backend.integrations.alpaca_stream import AlpacaStreamClient
-                
+
                 client = AlpacaStreamClient()
-                
+
                 update = {
                     "data": {
-                        "id": "broker-123",
-                        "status": "filled",
-                        "filled_qty": "100",
-                        "filled_avg_price": "150.50"
+                        "order": {
+                            "id": "broker-123",
+                            "status": "filled",
+                            "filled_qty": "100",
+                            "filled_avg_price": "150.50"
+                        }
                     }
                 }
-                
+
                 await client._process_trade_update(update)
-                
+
                 # Should have broadcast to user
                 mock_broadcast.assert_called_once()
 
@@ -1097,11 +1101,11 @@ class TestAlpacaStreamProcessTradeUpdateBroadcast:
     async def test_process_trade_update_broadcast_failure_doesnt_break(self, mock_env_vars):
         """Test that broadcast failure doesn't break order update."""
         with patch("backend.integrations.alpaca_stream.get_settings") as mock_get, \
-             patch("backend.integrations.alpaca_stream.get_db_session") as mock_db, \
-             patch("backend.api.socketio_server.broadcast_order_update", 
+             patch("backend.integrations.alpaca_stream.get_session_context") as mock_db, \
+             patch("backend.api.socketio_server.broadcast_order_update",
                    new_callable=AsyncMock, side_effect=Exception("Broadcast failed")):
             mock_get.return_value = MagicMock()
-            
+
             mock_session = AsyncMock()
             mock_order = MagicMock()
             mock_order.id = "order-123"
@@ -1111,29 +1115,31 @@ class TestAlpacaStreamProcessTradeUpdateBroadcast:
             mock_order.order_type = "market"
             mock_order.submitted_at = None
             mock_order.user_id = None  # No user_id
-            
+
             mock_orders_repo = AsyncMock()
             mock_orders_repo.get_by_broker_order_id.return_value = mock_order
-            
+
             # Create async context manager mock
             mock_ctx = AsyncMock()
             mock_ctx.__aenter__.return_value = mock_session
             mock_ctx.__aexit__.return_value = None
             mock_db.return_value = mock_ctx
-            
+
             with patch("backend.integrations.alpaca_stream.OrdersRepo", return_value=mock_orders_repo):
                 from backend.integrations.alpaca_stream import AlpacaStreamClient
-                
+
                 client = AlpacaStreamClient()
-                
+
                 update = {
                     "data": {
-                        "id": "broker-123",
-                        "status": "filled",
-                        "filled_qty": "100"
+                        "order": {
+                            "id": "broker-123",
+                            "status": "filled",
+                            "filled_qty": "100"
+                        }
                     }
                 }
-                
+
                 # Should not raise even if broadcast fails
                 await client._process_trade_update(update)
 
@@ -1538,46 +1544,47 @@ class TestAlpacaStreamProcessTradeUpdateComplete:
         """Test process_trade_update includes avg_fill_price in update."""
         with patch("backend.integrations.alpaca_stream.get_settings") as mock_get:
             mock_get.return_value = MagicMock()
-            
+
             from backend.integrations.alpaca_stream import AlpacaStreamClient
-            
+
             client = AlpacaStreamClient()
-            
+
             mock_order = MagicMock()
             mock_order.id = 123
-            
+
             mock_session = MagicMock()
             mock_session.commit = AsyncMock()
-            
+
             mock_orders_repo = MagicMock()
             mock_orders_repo.get_by_broker_order_id = AsyncMock(return_value=mock_order)
-            mock_orders_repo.update = AsyncMock()
-            
+            mock_orders_repo.attach_broker_result = AsyncMock()
+
             update = {
                 "data": {
-                    "id": "broker-123",
-                    "status": "filled",
-                    "filled_qty": "100",
-                    "avg_fill_price": "150.50"
+                    "order": {
+                        "id": "broker-123",
+                        "status": "filled",
+                        "filled_qty": "100",
+                        "filled_avg_price": "150.50"
+                    }
                 },
                 "event": "fill"
             }
-            
+
             # Create proper async context manager class
             class MockAsyncContextManager:
                 async def __aenter__(self):
                     return mock_session
                 async def __aexit__(self, *args):
                     return None
-            
-            with patch("backend.integrations.alpaca_stream.get_db_session", return_value=MockAsyncContextManager()):
+
+            with patch("backend.integrations.alpaca_stream.get_session_context", return_value=MockAsyncContextManager()):
                 with patch("backend.integrations.alpaca_stream.OrdersRepo", return_value=mock_orders_repo):
                     with patch("backend.api.socketio_server.broadcast_order_update", new_callable=AsyncMock):
                         await client._process_trade_update(update)
-                        
-                        # Verify update was called with avg_fill_price
-                        mock_orders_repo.update.assert_called_once()
-                        update_call = mock_orders_repo.update.call_args
-                        update_data = update_call[0][1]
-                        assert "avg_fill_price" in update_data
-                        assert update_data["avg_fill_price"] == 150.50
+
+                        # Verify attach_broker_result was called with avg_fill_price
+                        mock_orders_repo.attach_broker_result.assert_called_once()
+                        call_kwargs = mock_orders_repo.attach_broker_result.call_args
+                        from decimal import Decimal
+                        assert call_kwargs.kwargs["avg_fill_price"] == Decimal("150.50")

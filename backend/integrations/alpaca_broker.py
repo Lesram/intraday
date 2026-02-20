@@ -403,11 +403,41 @@ class AlpacaBrokerClient:
                        is_paper=self.is_paper)
 
             # Make API request with retry for transient errors
-            response = await self._make_request_with_retry(
-                "POST",
-                f"{self.base_url}/v2/orders",
-                json=order_data
-            )
+            try:
+                response = await self._make_request_with_retry(
+                    "POST",
+                    f"{self.base_url}/v2/orders",
+                    json=order_data
+                )
+            except HTTPException as e:
+                # _make_request_with_retry raises for 4xx — handle duplicate here
+                if e.status_code == 422 and "client_order_id" in str(e.detail).lower() and "unique" in str(e.detail).lower():
+                    logger.warning(
+                        "Duplicate client_order_id — recovering existing order",
+                        client_order_id=client_order_id,
+                    )
+                    try:
+                        # Use Alpaca's dedicated client_order_id lookup endpoint
+                        url = f"{self.base_url}/v2/orders:by_client_order_id"
+                        resp = await self._make_request_with_retry(
+                            "GET", url, params={"client_order_id": client_order_id}
+                        )
+                        if resp.status_code == 200:
+                            existing_order = resp.json()
+                            logger.info(
+                                "Recovered existing order after duplicate",
+                                client_order_id=client_order_id,
+                                order_id=existing_order.get("id"),
+                                status=existing_order.get("status"),
+                            )
+                            return existing_order
+                    except Exception as recovery_err:
+                        logger.warning(
+                            "Failed to recover duplicate order",
+                            client_order_id=client_order_id,
+                            error=str(recovery_err),
+                        )
+                raise
 
             # Handle API response
             if response.status_code in (200, 201):
@@ -418,35 +448,6 @@ class AlpacaBrokerClient:
                            client_order_id=client_order_id,
                            status=order_result.get("status"))
                 return order_result
-
-            elif response.status_code in (400, 422):
-                # Client error - invalid request
-                error_data = response.json() if response.headers.get("content-type", "").startswith("application/json") else {"message": response.text}
-                error_msg = error_data.get("message", "Invalid order request")
-
-                # Special handling for duplicate client_order_id
-                if response.status_code == 422 and "client_order_id" in error_msg.lower() and "unique" in error_msg.lower():
-                    logger.warning("Duplicate client_order_id detected (should have been caught by idempotency check)",
-                                 status_code=response.status_code,
-                                 error=error_msg,
-                                 client_order_id=client_order_id)
-                    # Try to fetch the existing order
-                    try:
-                        existing_order = await self.get_order(client_order_id)
-                        logger.info("Retrieved existing order after duplicate error",
-                                   client_order_id=client_order_id,
-                                   order_id=existing_order.get("id"))
-                        return existing_order
-                    except Exception as fetch_err:
-                        logger.error("Failed to fetch existing order after duplicate error",
-                                    client_order_id=client_order_id,
-                                    error=str(fetch_err))
-
-                logger.warning("Order rejected by Alpaca",
-                             status_code=response.status_code,
-                             error=error_msg,
-                             client_order_id=client_order_id)
-                raise HTTPException(status_code=response.status_code, detail=error_msg)
 
             else:
                 # Server error or other issues

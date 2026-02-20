@@ -23,7 +23,7 @@ import websockets
 from websockets.exceptions import ConnectionClosed, WebSocketException
 
 from backend.config import get_settings
-from backend.infra.db import get_db_session
+from backend.infra.db import get_session_context
 from backend.infra.repositories.orders import OrdersRepo
 from backend.utils.logger import get_structured_logger
 
@@ -370,15 +370,19 @@ class AlpacaStreamClient:
         """
         try:
             # Extract order information
-            order_data = update.get("data", {})
-            if not order_data:
+            # Alpaca v2 format: {"data": {"event": "fill", "order": {"id": ..., "status": ...}}}
+            event_data = update.get("data", {})
+            if not event_data:
                 logger.warning("Empty order data in trade update", update=update)
                 return
+
+            # Order fields are nested under the "order" key
+            order_data = event_data.get("order", event_data)
 
             broker_order_id = order_data.get("id")
             status = order_data.get("status")
             filled_qty = float(order_data.get("filled_qty", 0))
-            avg_fill_price = float(order_data.get("avg_fill_price", 0)) if order_data.get("avg_fill_price") else None
+            avg_fill_price = float(order_data.get("filled_avg_price") or order_data.get("avg_fill_price") or 0) or None
 
             if not broker_order_id or not status:
                 logger.warning("Missing required fields in trade update",
@@ -398,7 +402,7 @@ class AlpacaStreamClient:
                        avg_fill_price=avg_fill_price)
 
             # Update database
-            async with get_db_session() as session:
+            async with get_session_context() as session:
                 orders_repo = OrdersRepo(session)
 
                 # Find order by broker_order_id
@@ -409,16 +413,13 @@ class AlpacaStreamClient:
                     return
 
                 # Update order status and fill information
-                update_data = {
-                    "status": internal_status,
-                    "filled_qty": filled_qty,
-                    "updated_at": datetime.now(UTC)
-                }
-
-                if avg_fill_price is not None:
-                    update_data["avg_fill_price"] = avg_fill_price
-
-                await orders_repo.update(order.id, update_data)
+                from decimal import Decimal
+                await orders_repo.attach_broker_result(
+                    order.id,
+                    status=internal_status,
+                    filled_qty=Decimal(str(filled_qty)) if filled_qty else None,
+                    avg_fill_price=Decimal(str(avg_fill_price)) if avg_fill_price else None,
+                )
                 await session.commit()
 
                 logger.info("Order updated in database",
