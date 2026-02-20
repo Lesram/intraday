@@ -152,6 +152,7 @@ class OrganismScheduler:
                     api_key=self._alpaca_api_key,
                     api_secret=self._alpaca_api_secret,
                     feed=self._alpaca_feed,
+                    data_client=self._data_client,
                 )
                 logger.info("Streaming data provider started for scheduler")
             except Exception as e:

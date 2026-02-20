@@ -55,8 +55,14 @@ class StreamingDataProvider:
         api_key: str,
         api_secret: str,
         feed: str = "sip",
+        data_client: Any | None = None,
     ) -> None:
-        """Connect to Alpaca WebSocket and subscribe to bars + quotes."""
+        """Connect to Alpaca WebSocket and subscribe to bars + quotes.
+
+        If *data_client* is provided, the ring buffers are pre-filled with
+        historical bars via REST so the engine can trade on the very first tick
+        instead of waiting for ``MIN_BARS`` streaming bars to arrive.
+        """
         if self._running:
             logger.warning("StreamingDataProvider already running")
             return
@@ -80,6 +86,10 @@ class StreamingDataProvider:
         symbols_upper = [s.upper() for s in symbols]
         await self._stream.subscribe_bars(symbols_upper)
         await self._stream.subscribe_quotes(symbols_upper)
+
+        # Pre-fill ring buffers with historical bars from REST
+        if data_client is not None:
+            await self._prefill(symbols_upper, data_client)
 
         self._running = True
         logger.info(
@@ -176,6 +186,46 @@ class StreamingDataProvider:
         if to_remove:
             await self._stream.unsubscribe(to_remove)
             logger.info("Streaming unsubscribed: -%d symbols", len(to_remove))
+
+    # ── Pre-fill ──────────────────────────────────────────────────
+
+    async def _prefill(self, symbols: list[str], data_client: Any) -> None:
+        """Seed ring buffers with historical bars so engine can trade immediately.
+
+        Fetches LIVE_LOOKBACK bars per symbol via REST.  Individual failures
+        are logged and skipped — remaining symbols still get pre-filled.
+        """
+        import os
+
+        lookback = int(os.getenv("ORGANISM_LIVE_LOOKBACK", "100"))
+        timeframe = os.getenv("ORGANISM_LIVE_TIMEFRAME", "1Day")
+        filled = 0
+
+        for symbol in symbols:
+            try:
+                df = await data_client.get_historical_bars_df(
+                    symbol, lookback=lookback, timeframe=timeframe,
+                )
+                if df is None or df.empty:
+                    continue
+
+                buf: deque[dict[str, Any]] = deque(maxlen=self._buffer_size)
+                for _, row in df.iterrows():
+                    buf.append({
+                        "timestamp": row.get("timestamp"),
+                        "open": row.get("open"),
+                        "high": row.get("high"),
+                        "low": row.get("low"),
+                        "close": row.get("close"),
+                        "volume": row.get("volume"),
+                    })
+                self._bars[symbol] = buf
+                self._last_bar_ts[symbol] = time.time()
+                filled += 1
+            except Exception as e:
+                logger.warning("Pre-fill failed for %s: %s", symbol, e)
+
+        logger.info("Pre-filled %d/%d symbols", filled, len(symbols))
 
     # ── Internal Callbacks ────────────────────────────────────────
 
