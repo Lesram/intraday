@@ -269,10 +269,11 @@ class RegimeDetector:
         elif vol_anomaly > 1.0:
             scores[RegimeLabel.STRESS] += 1.0
 
-        # Normalize to probabilities (softmax-like)
-        total = sum(math.exp(s) for s in scores.values())
+        # Normalize to probabilities (softmax with log-sum-exp stability)
+        max_s = max(scores.values()) if scores else 0
+        total = sum(math.exp(s - max_s) for s in scores.values())
         if total > 0:
-            probs = {k: math.exp(v) / total for k, v in scores.items()}
+            probs = {k: math.exp(v - max_s) / total for k, v in scores.items()}
         else:
             n = len(scores)
             probs = {k: 1.0 / n for k in scores}

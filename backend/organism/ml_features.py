@@ -137,8 +137,8 @@ def compute_ml_features(
     f["bb_position"] = (c - bb_lower) / (bb_upper - bb_lower).replace(0, 1e-10)
     f["bb_width"] = (bb_upper - bb_lower) / bb_mid.replace(0, 1e-10)
 
-    f["z_score_20"] = (c - _sma(c, 20)) / c.rolling(20, min_periods=1).std().replace(0, 1e-10)
-    f["z_score_50"] = (c - _sma(c, 50)) / c.rolling(50, min_periods=1).std().replace(0, 1e-10)
+    f["z_score_20"] = (c - _sma(c, 20)) / c.rolling(20, min_periods=1).std().replace(0, 1e-10).fillna(1e-10)
+    f["z_score_50"] = (c - _sma(c, 50)) / c.rolling(50, min_periods=1).std().replace(0, 1e-10).fillna(1e-10)
 
     # Stochastic
     low14 = l.rolling(14, min_periods=1).min()
@@ -186,7 +186,7 @@ def compute_ml_features(
     vol_sma20 = _sma(v, 20)
     f["vol_sma_ratio"] = v / vol_sma20.replace(0, 1e-10)
     f["obv_slope"] = (v * np.sign(c - c.shift(1))).cumsum()
-    f["obv_slope"] = (f["obv_slope"] - _sma(f["obv_slope"], 10)) / f["obv_slope"].rolling(10, min_periods=1).std().replace(0, 1e-10)
+    f["obv_slope"] = (f["obv_slope"] - _sma(f["obv_slope"], 10)) / f["obv_slope"].rolling(10, min_periods=1).std().replace(0, 1e-10).fillna(1e-10)
     f["vol_momentum_5"] = v.pct_change(5)
     f["vol_momentum_10"] = v.pct_change(10)
 

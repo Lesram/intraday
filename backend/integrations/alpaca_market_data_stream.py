@@ -625,15 +625,20 @@ class AlpacaMarketDataStream:
         )
 
         # Attempt reconnection
-        success = await self.connect()
+        try:
+            success = await self.connect()
+        except Exception as e:
+            logger.error(f"Reconnection attempt raised exception: {e}")
+            success = False
 
         if success:
             logger.info("Reconnected successfully")
             # Start listening again
             asyncio.create_task(self.listen())
+        elif self.reconnect_attempts < self.MAX_RECONNECT_ATTEMPTS:
+            await self._reconnect()
         else:
-            logger.error("Reconnection failed")
-            await self._reconnect()  # Try again
+            logger.error("Max reconnect attempts exhausted")
 
     def _start_background_tasks(self):
         """Start background tasks for heartbeat monitoring"""

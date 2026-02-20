@@ -171,7 +171,7 @@ class KellySizer:
             mean_r = float(np.mean(dir_returns))
             var_r = float(np.var(dir_returns, ddof=1))
 
-            if var_r < 1e-8 or mean_r <= 0:
+            if var_r < 1e-8 or mean_r <= 0 or not math.isfinite(mean_r) or not math.isfinite(var_r):
                 kelly_raw = 0.0
             else:
                 kelly_raw = min(mean_r / var_r, 1.0)  # Cap raw Kelly at 100%

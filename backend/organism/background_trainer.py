@@ -179,7 +179,7 @@ class BackgroundTrainer:
     async def stop(self) -> None:
         """Shut down the executor."""
         if self._executor:
-            self._executor.shutdown(wait=False)
+            self._executor.shutdown(wait=True)
             self._executor = None
 
     @property
@@ -259,7 +259,7 @@ class BackgroundTrainer:
         learner_state = {}
 
         self._is_training = True
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
 
         try:
             self._future = loop.run_in_executor(

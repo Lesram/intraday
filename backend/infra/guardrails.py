@@ -280,7 +280,7 @@ class TradingGuardrails:
 
     def _check_symbol_whitelist(self, order: OrderRequest):
         """Check if symbol is in whitelist."""
-        if order.symbol not in self.symbol_whitelist:
+        if order.symbol.upper() not in self.symbol_whitelist:
             raise GuardrailViolation(
                 code=GuardrailCode.SYMBOL_NOT_ALLOWED,
                 message=f"Symbol '{order.symbol}' not in whitelist",

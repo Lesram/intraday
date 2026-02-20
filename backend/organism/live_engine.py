@@ -610,6 +610,7 @@ class OrganismLiveEngine:
                     result.duration_s = time.time() - t0
                     return result
             elif equity == 0:
+                self.governance.halt_trading()
                 logger.error("equity_returned_zero — halting to prevent unprotected trading")
                 result.errors.append("Equity is zero — cannot compute drawdown. Trading halted.")
                 result.duration_s = time.time() - t0
@@ -827,9 +828,9 @@ class OrganismLiveEngine:
                     # (IOC orders may partially fill)
                     filled_shares = initial_shares
                     if isinstance(order_result, dict):
-                        filled = order_result.get("filled_qty") or order_result.get("filled_avg_price") and initial_shares
-                        if filled:
-                            filled_shares = max(1, int(float(filled)))
+                        filled_qty = order_result.get("filled_qty")
+                        if filled_qty:
+                            filled_shares = max(1, int(float(filled_qty)))
 
                     result.orders_submitted += 1
                     # Mark as pending so we don't re-submit next tick
@@ -894,6 +895,7 @@ class OrganismLiveEngine:
                             "entry_price": price,
                             "entry_tick": self._tick_count,
                             "direction": sz.direction,
+                            "filled_shares": filled_shares,
                             "predicted_return": predicted_return,
                             "confidence": 0.6,
                         }
@@ -1304,7 +1306,8 @@ class OrganismLiveEngine:
         """
         try:
             current_positions = await self._positions_service.get_all_positions()
-        except Exception:
+        except Exception as e:
+            logger.warning("Reconciliation skipped — broker API failed: %s", e)
             return
 
         # Cache for sync callers (e.g. _retrain_and_evolve universe rotation)
@@ -1354,7 +1357,11 @@ class OrganismLiveEngine:
                 shares = sum(l.shares for l in pyr.layers)
 
             if shares == 0:
-                shares = 1  # at minimum
+                # Fallback to tracked filled_shares from entry metadata
+                shares = meta.get("filled_shares", 0)
+            if shares == 0:
+                logger.error("Zero shares for closed position %s — skipping trade record", sym)
+                continue
 
             if direction > 0:
                 pnl = (exit_price - entry_price) * shares

@@ -364,6 +364,9 @@ class AdaptiveExitEngine:
         direction = levels.direction
         atr = levels.atr_at_entry
 
+        if atr < 1e-6:
+            return ExitSignal(False)
+
         # Favorable excursion in ATR units
         if direction > 0:
             excursion_atr = (levels.highest_favorable - levels.entry_price) / atr
