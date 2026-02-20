@@ -26,8 +26,9 @@ from backend.ml.training import (
     TrainingService,
     generate_sample_data,
     create_training_request_from_dict,
-    SKLEARN_AVAILABLE,
 )
+# SKLEARN_AVAILABLE was removed from training module
+SKLEARN_AVAILABLE = True
 
 # Import models conditionally based on sklearn availability
 if SKLEARN_AVAILABLE:

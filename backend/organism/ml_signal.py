@@ -9,12 +9,15 @@ Ref: docs/blueprints/SELF_LEARNING_ORGANISM_BLUEPRINT.md §3.2
 
 from __future__ import annotations
 
+import logging
 import math
 from dataclasses import dataclass, field
 from typing import Any
 
 import numpy as np
 import pandas as pd
+
+logger = logging.getLogger(__name__)
 
 try:
     from xgboost import XGBClassifier, XGBRegressor

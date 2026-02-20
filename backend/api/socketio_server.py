@@ -10,6 +10,7 @@ Handles WebSocket connections from frontend clients with:
 
 from datetime import UTC, datetime
 import logging
+import os
 import traceback
 from typing import Any
 
@@ -20,15 +21,19 @@ from backend.infra.security import decode_token
 
 logger = logging.getLogger(__name__)
 
+# Build CORS origins from environment or use defaults
+_cors_env = os.environ.get("SOCKETIO_CORS_ORIGINS", "")
+_cors_origins = [o.strip() for o in _cors_env.split(",") if o.strip()] if _cors_env else [
+    'http://localhost:5173',
+    'http://localhost:5174',
+    'http://localhost:3000',
+    'http://localhost:3001',
+]
+
 # Create Socket.IO async server
 sio = socketio.AsyncServer(
     async_mode='asgi',
-    cors_allowed_origins=[
-        'http://localhost:5173',
-        'http://localhost:5174',
-        'http://localhost:3000',
-        'http://localhost:3001',
-    ],
+    cors_allowed_origins=_cors_origins,
     logger=True,
     engineio_logger=True,  # Enable Engine.IO logging for debugging
     ping_interval=25,  # Send ping every 25 seconds
@@ -335,11 +340,7 @@ async def broadcast_portfolio_update(user_id: str, portfolio_data: dict[str, Any
             for sid in subscribers:
                 try:
                     # Emit the portfolio_update event directly to this client
-                    await sio.emit('portfolio_update', {
-                        'type': 'portfolio_update',
-                        'data': portfolio_data,
-                        'timestamp': portfolio_data.get('timestamp', datetime.now(UTC).isoformat())
-                    }, to=sid)
+                    await sio.emit('portfolio_update', portfolio_data, to=sid)
                     logger.info(f"✅ Sent portfolio_update to client {sid}")
                 except Exception as e:
                     logger.error(f"❌ Failed to send to client {sid}: {e}")
@@ -361,16 +362,10 @@ async def broadcast_order_update(user_id: str, order_data: dict[str, Any]) -> No
         order_data: Order data to broadcast
     """
     try:
-        from datetime import datetime
-
         user_topic = f"user_{user_id}"
 
         if user_topic in topic_subscribers:
-            await broadcast_to_topic(user_topic, 'order_update', {
-                'type': 'order_update',
-                'data': order_data,
-                'timestamp': datetime.now(UTC).isoformat()
-            })
+            await broadcast_to_topic(user_topic, 'order_update', order_data)
 
             logger.info(f"Broadcasted order update to user {user_id}")
 
@@ -387,14 +382,8 @@ async def broadcast_strategy_update(topic: str, strategy_data: dict[str, Any]) -
         strategy_data: Strategy data to broadcast
     """
     try:
-        from datetime import datetime
-
         if topic in topic_subscribers:
-            await broadcast_to_topic(topic, 'strategy_update', {
-                'type': 'strategy_update',
-                'data': strategy_data,
-                'timestamp': datetime.now(UTC).isoformat()
-            })
+            await broadcast_to_topic(topic, 'strategy_update', strategy_data)
 
             logger.info(f"Broadcasted strategy update to topic: {topic}")
 
@@ -410,11 +399,7 @@ async def broadcast_settings_update(settings_data: dict[str, Any]) -> None:
         settings_data: Settings data including category and new values
     """
     try:
-        await broadcast_to_all('settings_update', {
-            'type': 'settings_update',
-            'data': settings_data,
-            'timestamp': datetime.now(UTC).isoformat()
-        })
+        await broadcast_to_all('settings_update', settings_data)
         logger.debug("Broadcasted settings update")
     except Exception as e:
         logger.error(f"Failed to broadcast settings update: {e}")

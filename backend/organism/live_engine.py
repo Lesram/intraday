@@ -610,7 +610,7 @@ class OrganismLiveEngine:
                     result.duration_s = time.time() - t0
                     return result
             elif equity == 0:
-                self.logger.error("equity_returned_zero — halting to prevent unprotected trading")
+                logger.error("equity_returned_zero — halting to prevent unprotected trading")
                 result.errors.append("Equity is zero — cannot compute drawdown. Trading halted.")
                 result.duration_s = time.time() - t0
                 return result
@@ -666,6 +666,9 @@ class OrganismLiveEngine:
                             result.errors.append(
                                 f"Exit order failed for {sym}: {e}"
                             )
+                        finally:
+                            # Always set cooldown to prevent retry spam on failures
+                            self._exit_cooldown[sym] = self._tick_count
             result.trades_closed = exits_submitted
 
             # 6. CHECK PYRAMIDS

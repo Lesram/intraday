@@ -17,51 +17,11 @@ from fastapi.testclient import TestClient
 class TestPositionsEndpointsMocked:
     """Test positions endpoints with mocked dependencies."""
 
-    def test_get_positions_with_mock_data_enabled(self):
-        """Test GET /positions returns mock data when USE_MOCK_DATA=true."""
-        from backend.api.routes.positions import router, get_mock_positions
-        
-        # Mock settings to return USE_MOCK_DATA=True
-        mock_settings = MagicMock()
-        mock_settings.USE_MOCK_DATA = True
-        
-        app = FastAPI()
-        app.include_router(router)
-        
-        with patch('backend.api.routes.positions.get_settings', return_value=mock_settings):
-            with patch('backend.api.routes.positions.get_authenticated_user') as mock_auth:
-                mock_auth.return_value = MagicMock(id=1, email="test@test.com")
-                
-                # Override dependency
-                app.dependency_overrides[mock_auth] = lambda: MagicMock(id=1)
-                
-                client = TestClient(app, raise_server_exceptions=False)
-                response = client.get("/positions/")
-                # Should return 200 with mock data if auth is bypassed
-    
-    def test_get_mock_positions_returns_three_positions(self):
-        """Test mock positions returns empty list (deprecated - no mock data in production)."""
-        from backend.api.routes.positions import get_mock_positions
-        
-        positions = get_mock_positions()
-        
-        # get_mock_positions is deprecated and returns empty list
-        # All position data must come from Alpaca API or database
-        assert len(positions) == 0
-        
-    def test_get_mock_positions_structure(self):
-        """Test mock positions have correct structure."""
-        from backend.api.routes.positions import get_mock_positions, PositionDTO
-        
-        positions = get_mock_positions()
-        
-        for pos in positions:
-            assert isinstance(pos, PositionDTO)
-            assert pos.qty > 0
-            assert pos.avg_price > 0
-            assert pos.market_price is not None
-            assert pos.market_value is not None
-            assert pos.updated_at is not None
+    def test_no_mock_positions_function(self):
+        """Verify get_mock_positions was removed (no mock data in production)."""
+        import backend.api.routes.positions as positions_mod
+        assert not hasattr(positions_mod, "get_mock_positions"), \
+            "get_mock_positions should be removed — all data from Alpaca/DB"
     
     def test_position_dto_unrealized_pl_calculation(self):
         """Test PositionDTO unrealized P/L calculation with manually created DTOs."""
@@ -83,21 +43,20 @@ class TestPositionsEndpointsMocked:
         assert msft.unrealized_pl < 0
 
     @pytest.mark.asyncio
-    async def test_get_alpaca_positions_fallback_to_mock(self):
-        """Test Alpaca positions falls back to mock when API unavailable."""
-        from backend.api.routes.positions import get_alpaca_positions, get_mock_positions
-        
+    async def test_get_alpaca_positions_fallback_on_error(self):
+        """Test Alpaca positions returns empty list when API unavailable."""
+        from backend.api.routes.positions import get_alpaca_positions
+
         # Mock the positions service to raise an exception
         with patch('backend.api.routes.positions.create_positions_service') as mock_create:
             mock_service = AsyncMock()
             mock_service.get_all_positions.side_effect = Exception("API unavailable")
             mock_create.return_value = mock_service
-            
+
             positions = await get_alpaca_positions()
-            
-            # Should fallback to mock data
-            mock_positions = get_mock_positions()
-            assert len(positions) == len(mock_positions)
+
+            # Should return empty list on error (no mock fallback)
+            assert isinstance(positions, list)
     
     @pytest.mark.asyncio
     async def test_get_alpaca_positions_success(self):

@@ -197,7 +197,7 @@ class QuoteManager:
 
                 for symbol, data in zip(symbols, results, strict=False):
                     if data:
-                        quote = self._deserialize_quote(data)
+                        quote = self._deserialize_quote(data, symbol)
                         if quote and not quote.is_stale(self.cache_ttl):
                             cached[symbol] = quote
                         else:
@@ -265,7 +265,7 @@ class QuoteManager:
                                     last_price = float(trades[symbol].price)
                                     bid_price = ask_price = last_price
                             except Exception as e:
-                                self.logger.warning("Fallback trade quote fetch failed for %s: %s", symbol, e)
+                                logger.warning("Fallback trade quote fetch failed for %s: %s", symbol, e)
 
                         # Create Quote object
                         quote = Quote(
@@ -306,11 +306,10 @@ class QuoteManager:
         """Serialize quote for Redis storage"""
         return f"{quote.bid}|{quote.ask}|{quote.last}|{quote.timestamp.isoformat()}|{quote.volume}"
 
-    def _deserialize_quote(self, data: str) -> Quote | None:
+    def _deserialize_quote(self, data: str, symbol: str = 'UNKNOWN') -> Quote | None:
         """Deserialize quote from Redis"""
         try:
             parts = data.split('|')
-            symbol = parts[0] if len(parts) > 5 else 'UNKNOWN'
             return Quote(
                 symbol=symbol,
                 bid=float(parts[0]),

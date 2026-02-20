@@ -1,37 +1,23 @@
 /**
  * Portfolio Dashboard Page
  * Real-time portfolio overview with positions, P&L, performance metrics
+ *
+ * Uses the same usePortfolio() hook + portfolioStore as Dashboard,
+ * ensuring consistent data across all views.
  */
 
-import { useState, useEffect, useCallback } from 'react';
-import { Card, Row, Col, Statistic, Table, Button, Space, Spin, Typography, Alert } from 'antd';
+import { useState } from 'react';
+import { Card, Row, Col, Statistic, Table, Button, Space, Spin, Typography, Alert, Tooltip } from 'antd';
 import {
   DollarOutlined, ArrowUpOutlined, ArrowDownOutlined,
   SyncOutlined, FundOutlined, ReloadOutlined,
 } from '@ant-design/icons';
+import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '@/services/api';
+import { usePortfolio } from '@/hooks/useData';
+import { usePortfolioStore, type Position } from '@/store/portfolioStore';
 
 const { Title, Text } = Typography;
-
-interface PortfolioSummary {
-  totalEquity: number;
-  cash: number;
-  buyingPower: number;
-  marginUsed: number;
-  totalPnL: number;
-  totalPnLPercent: number;
-  dayPnL: number;
-  dayPnLPercent: number;
-  positions: Position[];
-}
-
-interface Position {
-  symbol: string;
-  qty: string;
-  avg_price: string;
-  market_value: string;
-  unrealized_pnl: string;
-}
 
 interface PerformanceMetrics {
   total_return: number;
@@ -46,40 +32,30 @@ interface PerformanceMetrics {
 }
 
 const PortfolioPage = () => {
-  const [summary, setSummary] = useState<PortfolioSummary | null>(null);
-  const [performance, setPerformance] = useState<PerformanceMetrics | null>(null);
-  const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchData = useCallback(async () => {
-    try {
-      const [summaryRes, perfRes] = await Promise.all([
-        apiClient.get('/portfolio/'),
-        apiClient.get('/portfolio/performance'),
-      ]);
-      setSummary(summaryRes.data);
-      setPerformance(perfRes.data);
-      setError(null);
-    } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to fetch portfolio data');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  // Use the same hook as Dashboard for portfolio data (WebSocket-backed store)
+  const { isLoading: portfolioLoading, error: portfolioError, refetch: refetchPortfolio } = usePortfolio();
+  const portfolio = usePortfolioStore((state) => state.portfolio);
 
-  useEffect(() => {
-    fetchData();
-    // Refresh every 60s as backup — WebSocket provides real-time updates
-    const interval = setInterval(fetchData, 60000);
-    return () => clearInterval(interval);
-  }, [fetchData]);
+  // Performance metrics (separate endpoint, not available via WebSocket)
+  const { data: performance } = useQuery<PerformanceMetrics>({
+    queryKey: ['portfolio', 'performance'],
+    queryFn: async () => {
+      const res = await apiClient.get('/portfolio/performance');
+      return res.data;
+    },
+    staleTime: 60000,
+    refetchInterval: 60000,
+  });
 
   const handleSync = async () => {
     setSyncing(true);
     try {
       await apiClient.post('/portfolio/sync');
-      await fetchData();
+      await refetchPortfolio();
+      setError(null);
     } catch (err: any) {
       setError('Sync failed: ' + (err.response?.data?.detail || err.message));
     } finally {
@@ -87,7 +63,7 @@ const PortfolioPage = () => {
     }
   };
 
-  if (loading) {
+  if (portfolioLoading && !portfolio) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
         <Spin size="large" />
@@ -95,11 +71,11 @@ const PortfolioPage = () => {
     );
   }
 
-  if (error && !summary) {
+  if (portfolioError && !portfolio) {
     return (
       <div style={{ padding: 24 }}>
-        <Alert message="Portfolio Error" description={error} type="error" showIcon
-          action={<Button onClick={fetchData} icon={<ReloadOutlined />}>Retry</Button>}
+        <Alert message="Portfolio Error" description={String(portfolioError)} type="error" showIcon
+          action={<Button onClick={() => refetchPortfolio()} icon={<ReloadOutlined />}>Retry</Button>}
         />
       </div>
     );
@@ -107,16 +83,23 @@ const PortfolioPage = () => {
 
   const positionColumns = [
     { title: 'Symbol', dataIndex: 'symbol', key: 'symbol', render: (v: string) => <Text strong>{v}</Text> },
-    { title: 'Qty', dataIndex: 'qty', key: 'qty', render: (v: string) => parseFloat(v).toFixed(2) },
-    { title: 'Avg Price', dataIndex: 'avg_price', key: 'avg_price', render: (v: string) => `$${parseFloat(v).toFixed(2)}` },
-    { title: 'Market Value', dataIndex: 'market_value', key: 'market_value', render: (v: string) => `$${parseFloat(v).toFixed(2)}` },
+    { title: 'Qty', dataIndex: 'quantity', key: 'quantity', render: (v: number) => (v ?? 0).toFixed(2) },
+    { title: 'Avg Price', dataIndex: 'averagePrice', key: 'averagePrice', render: (v: number) => `$${(v ?? 0).toFixed(2)}` },
+    { title: 'Current Price', dataIndex: 'currentPrice', key: 'currentPrice', render: (v: number) => `$${(v ?? 0).toFixed(2)}` },
+    { title: 'Market Value', dataIndex: 'marketValue', key: 'marketValue', render: (v: number) => `$${(v ?? 0).toFixed(2)}` },
     {
       title: 'Unrealized P&L',
-      dataIndex: 'unrealized_pnl',
-      key: 'unrealized_pnl',
-      render: (v: string) => {
-        const val = parseFloat(v);
-        return <Text type={val >= 0 ? 'success' : 'danger'}>${val.toFixed(2)}</Text>;
+      dataIndex: 'unrealizedPnL',
+      key: 'unrealizedPnL',
+      render: (v: number, record: Position) => {
+        const val = v ?? 0;
+        const pct = record.unrealizedPnLPercent ?? 0;
+        return (
+          <div>
+            <Text type={val >= 0 ? 'success' : 'danger'}>${val.toFixed(2)}</Text>
+            <div style={{ fontSize: 11, color: '#888' }}>{pct >= 0 ? '+' : ''}{pct.toFixed(2)}%</div>
+          </div>
+        );
       },
     },
   ];
@@ -126,7 +109,7 @@ const PortfolioPage = () => {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
         <Title level={3}><FundOutlined /> Portfolio Dashboard</Title>
         <Space>
-          <Button icon={<ReloadOutlined />} onClick={fetchData}>Refresh</Button>
+          <Button icon={<ReloadOutlined />} onClick={() => refetchPortfolio()}>Refresh</Button>
           <Button type="primary" icon={<SyncOutlined spin={syncing} />} onClick={handleSync} loading={syncing}>
             Sync with Broker
           </Button>
@@ -139,46 +122,54 @@ const PortfolioPage = () => {
       <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
         <Col span={6}>
           <Card>
-            <Statistic
-              title="Total Equity"
-              value={summary?.totalEquity ?? 0}
-              precision={2}
-              prefix={<DollarOutlined />}
-            />
+            <Tooltip title="Total account value including cash and positions (from Alpaca broker)">
+              <Statistic
+                title="Total Equity"
+                value={portfolio?.totalEquity ?? 0}
+                precision={2}
+                prefix={<DollarOutlined />}
+              />
+            </Tooltip>
           </Card>
         </Col>
         <Col span={6}>
           <Card>
-            <Statistic
-              title="Cash"
-              value={summary?.cash ?? 0}
-              precision={2}
-              prefix="$"
-            />
+            <Tooltip title="Available cash not invested in positions">
+              <Statistic
+                title="Cash"
+                value={portfolio?.cash ?? 0}
+                precision={2}
+                prefix="$"
+              />
+            </Tooltip>
           </Card>
         </Col>
         <Col span={6}>
           <Card>
-            <Statistic
-              title="Total P&L"
-              value={summary?.totalPnL ?? 0}
-              precision={2}
-              prefix={<DollarOutlined />}
-              valueStyle={{ color: (summary?.totalPnL ?? 0) >= 0 ? '#3f8600' : '#cf1322' }}
-              suffix={summary?.totalPnLPercent ? `(${summary.totalPnLPercent.toFixed(1)}%)` : ''}
-            />
+            <Tooltip title="Total unrealized P&L across all open positions">
+              <Statistic
+                title="Total P&L"
+                value={portfolio?.totalPnL ?? 0}
+                precision={2}
+                prefix={<DollarOutlined />}
+                valueStyle={{ color: (portfolio?.totalPnL ?? 0) >= 0 ? '#3f8600' : '#cf1322' }}
+                suffix={portfolio?.totalPnLPercent ? `(${portfolio.totalPnLPercent.toFixed(1)}%)` : ''}
+              />
+            </Tooltip>
           </Card>
         </Col>
         <Col span={6}>
           <Card>
-            <Statistic
-              title="Day P&L"
-              value={summary?.dayPnL ?? 0}
-              precision={2}
-              prefix={(summary?.dayPnL ?? 0) >= 0 ? <ArrowUpOutlined /> : <ArrowDownOutlined />}
-              valueStyle={{ color: (summary?.dayPnL ?? 0) >= 0 ? '#3f8600' : '#cf1322' }}
-              suffix={summary?.dayPnLPercent ? `(${summary.dayPnLPercent.toFixed(1)}%)` : ''}
-            />
+            <Tooltip title="Profit/loss for today's trading session">
+              <Statistic
+                title="Day P&L"
+                value={portfolio?.dayPnL ?? 0}
+                precision={2}
+                prefix={(portfolio?.dayPnL ?? 0) >= 0 ? <ArrowUpOutlined /> : <ArrowDownOutlined />}
+                valueStyle={{ color: (portfolio?.dayPnL ?? 0) >= 0 ? '#3f8600' : '#cf1322' }}
+                suffix={portfolio?.dayPnLPercent ? `(${portfolio.dayPnLPercent.toFixed(1)}%)` : ''}
+              />
+            </Tooltip>
           </Card>
         </Col>
       </Row>
@@ -187,20 +178,44 @@ const PortfolioPage = () => {
       {performance && (
         <Card title="Performance Metrics" style={{ marginBottom: 16 }}>
           <Row gutter={[16, 8]}>
-            <Col span={4}><Statistic title="Total Return" value={performance.total_return} precision={2} suffix="%" /></Col>
-            <Col span={4}><Statistic title="Sharpe" value={performance.sharpe_ratio} precision={3} /></Col>
-            <Col span={4}><Statistic title="Max Drawdown" value={performance.max_drawdown} precision={2} suffix="%" valueStyle={{ color: '#cf1322' }} /></Col>
-            <Col span={4}><Statistic title="Win Rate" value={performance.win_rate} precision={1} suffix="%" /></Col>
-            <Col span={4}><Statistic title="Profit Factor" value={performance.profit_factor} precision={2} /></Col>
-            <Col span={4}><Statistic title="Total Trades" value={performance.total_trades} /></Col>
+            <Col span={4}>
+              <Tooltip title="Cumulative return since inception">
+                <Statistic title="Total Return" value={performance.total_return} precision={2} suffix="%" />
+              </Tooltip>
+            </Col>
+            <Col span={4}>
+              <Tooltip title="Risk-adjusted return (annualized excess return / volatility). >1.0 is good, >2.0 is excellent">
+                <Statistic title="Sharpe" value={performance.sharpe_ratio} precision={3} />
+              </Tooltip>
+            </Col>
+            <Col span={4}>
+              <Tooltip title="Largest peak-to-trough decline in portfolio value">
+                <Statistic title="Max Drawdown" value={performance.max_drawdown} precision={2} suffix="%" valueStyle={{ color: '#cf1322' }} />
+              </Tooltip>
+            </Col>
+            <Col span={4}>
+              <Tooltip title="Percentage of closed trades that were profitable">
+                <Statistic title="Win Rate" value={performance.win_rate} precision={1} suffix="%" />
+              </Tooltip>
+            </Col>
+            <Col span={4}>
+              <Tooltip title="Gross profits / gross losses. >1.0 means profitable overall">
+                <Statistic title="Profit Factor" value={performance.profit_factor} precision={2} />
+              </Tooltip>
+            </Col>
+            <Col span={4}>
+              <Tooltip title="Total number of completed (closed) trades">
+                <Statistic title="Total Trades" value={performance.total_trades} />
+              </Tooltip>
+            </Col>
           </Row>
         </Card>
       )}
 
       {/* Positions Table */}
-      <Card title={`Positions (${summary?.positions?.length ?? 0})`}>
+      <Card title={`Positions (${portfolio?.positions?.length ?? 0})`}>
         <Table
-          dataSource={summary?.positions ?? []}
+          dataSource={portfolio?.positions ?? []}
           columns={positionColumns}
           rowKey="symbol"
           pagination={false}

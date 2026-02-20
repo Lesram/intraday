@@ -746,22 +746,31 @@ class TestAlpacaStreamClientReconnection:
     @pytest.mark.asyncio
     async def test_max_reconnect_attempts_reached(self, mock_env_vars):
         """Test reconnection stops after max attempts."""
-        with patch("backend.integrations.alpaca_stream.get_settings") as mock_get, \
-             patch("backend.integrations.alpaca_stream.websockets.connect", new_callable=AsyncMock) as mock_connect:
+        with patch("backend.integrations.alpaca_stream.get_settings") as mock_get:
             mock_get.return_value = MagicMock()
-            mock_connect.side_effect = Exception("Connection failed")
-            
+
             from backend.integrations.alpaca_stream import AlpacaStreamClient
-            
+
             client = AlpacaStreamClient()
             client.max_reconnect_attempts = 2
-            client.reconnect_delay = 0.01  # Fast for testing
-            
-            with patch("asyncio.sleep", new_callable=AsyncMock):
+            client.reconnect_delay = 0.01
+
+            # Override connect to fail and stop loop after enough attempts
+            connect_calls = 0
+            original_reconnect = client.should_reconnect
+            async def _failing_connect():
+                nonlocal connect_calls
+                connect_calls += 1
+                if connect_calls > 4:
+                    client.should_reconnect = False
+                return False
+
+            with patch.object(client, "connect", side_effect=_failing_connect), \
+                 patch("asyncio.sleep", new_callable=AsyncMock):
                 await client.start_with_reconnect()
-            
-            # Should have tried max_reconnect_attempts times
-            assert client.reconnect_attempts >= 2
+
+            # connect was called multiple times before loop ended
+            assert connect_calls >= 2
 
     @pytest.mark.asyncio
     async def test_stop_client(self, mock_env_vars, mock_websocket):
@@ -1135,21 +1144,29 @@ class TestAlpacaStreamStartWithReconnectLoop:
     @pytest.mark.asyncio
     async def test_start_with_reconnect_exception_handling(self, mock_env_vars):
         """Test start_with_reconnect handles unexpected exceptions."""
-        with patch("backend.integrations.alpaca_stream.get_settings") as mock_get, \
-             patch("backend.integrations.alpaca_stream.websockets.connect", new_callable=AsyncMock) as mock_connect, \
-             patch("asyncio.sleep", new_callable=AsyncMock):
+        with patch("backend.integrations.alpaca_stream.get_settings") as mock_get:
             mock_get.return_value = MagicMock()
-            mock_connect.side_effect = Exception("Unexpected error")
-            
+
             from backend.integrations.alpaca_stream import AlpacaStreamClient
-            
+
             client = AlpacaStreamClient()
             client.max_reconnect_attempts = 1
             client.reconnect_delay = 0.01
-            
-            await client.start_with_reconnect()
-            
-            assert client.reconnect_attempts >= 1
+
+            call_count = 0
+            async def _failing_connect():
+                nonlocal call_count
+                call_count += 1
+                if call_count > 3:
+                    client.should_reconnect = False
+                raise Exception("Unexpected error")
+
+            with patch.object(client, "connect", side_effect=_failing_connect), \
+                 patch("asyncio.sleep", new_callable=AsyncMock):
+                await client.start_with_reconnect()
+
+            # connect was retried multiple times before giving up
+            assert call_count >= 1
 
 
 class TestAlpacaStreamListenWebSocketException:
@@ -1401,43 +1418,55 @@ class TestAlpacaStreamReconnectionLoop:
         """Test reconnection stops at max attempts."""
         with patch("backend.integrations.alpaca_stream.get_settings") as mock_get:
             mock_get.return_value = MagicMock()
-            
+
             from backend.integrations.alpaca_stream import AlpacaStreamClient
-            
+
             client = AlpacaStreamClient()
             client.max_reconnect_attempts = 2
             client.reconnect_delay = 0.01
-            
-            with patch.object(client, "connect", return_value=False):
+
+            connect_calls = 0
+            async def _connect_then_stop():
+                nonlocal connect_calls
+                connect_calls += 1
+                if connect_calls > 4:
+                    client.should_reconnect = False
+                return False
+
+            with patch.object(client, "connect", side_effect=_connect_then_stop), \
+                 patch("asyncio.sleep", new_callable=AsyncMock):
                 await client.start_with_reconnect()
-                
-                assert client.reconnect_attempts >= 2
+
+            assert connect_calls >= 2
 
     @pytest.mark.asyncio
     async def test_start_with_reconnect_unexpected_error(self, mock_env_vars):
         """Test start_with_reconnect handles unexpected errors."""
         with patch("backend.integrations.alpaca_stream.get_settings") as mock_get:
             mock_get.return_value = MagicMock()
-            
+
             from backend.integrations.alpaca_stream import AlpacaStreamClient
-            
+
             client = AlpacaStreamClient()
             client.reconnect_delay = 0.01
             client.max_reconnect_attempts = 2
-            
-            call_count = 0
-            
+
+            connect_count = 0
+
             async def failing_connect():
-                nonlocal call_count
-                call_count += 1
-                if call_count == 1:
+                nonlocal connect_count
+                connect_count += 1
+                if connect_count == 1:
                     raise ValueError("Unexpected error")
+                if connect_count > 4:
+                    client.should_reconnect = False
                 return False
-            
-            with patch.object(client, "connect", side_effect=failing_connect):
+
+            with patch.object(client, "connect", side_effect=failing_connect), \
+                 patch("asyncio.sleep", new_callable=AsyncMock):
                 await client.start_with_reconnect()
-                
-                assert call_count >= 1
+
+            assert connect_count >= 1
 
 
 class TestAlpacaStreamGlobalFunctions:

@@ -507,14 +507,33 @@ class TestPredictionService:
 
     @pytest.fixture
     def service(self, tmp_path):
-        """Create a prediction service with mock models."""
-        with patch.dict(os.environ, {"ALLOW_MOCK_ML": "1"}):
-            return PredictionService(
-                cache_size=100,
-                cache_ttl_hours=1,
-                max_workers=2,
-                log_file=str(tmp_path / "test.log")
-            )
+        """Create a prediction service with injected mock models."""
+        svc = PredictionService(
+            cache_size=100,
+            cache_ttl_hours=1,
+            max_workers=2,
+            log_file=str(tmp_path / "test.log")
+        )
+        # Inject mock models as dicts (ALLOW_MOCK_ML env var was removed)
+        def _clf_predict(data):
+            n = len(data) if hasattr(data, '__len__') else 1
+            return np.array([1] * n), np.array([[0.3, 0.7]] * n)
+
+        def _reg_predict(data):
+            n = len(data) if hasattr(data, '__len__') else 1
+            return np.array([0.05] * n)
+
+        svc.models["classifier:1.0"] = {
+            "model": _clf_predict,
+            "type": PredictionType.CLASSIFICATION,
+            "features": ["feature_1", "feature_2", "feature_3"],
+        }
+        svc.models["regressor:1.0"] = {
+            "model": _reg_predict,
+            "type": PredictionType.REGRESSION,
+            "features": ["feature_1", "feature_2"],
+        }
+        return svc
 
     def test_init(self, service):
         """Test service initialization."""

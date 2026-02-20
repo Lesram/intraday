@@ -171,10 +171,10 @@ class KellySizer:
             mean_r = float(np.mean(dir_returns))
             var_r = float(np.var(dir_returns, ddof=1))
 
-            if var_r < 1e-10 or mean_r <= 0:
+            if var_r < 1e-8 or mean_r <= 0:
                 kelly_raw = 0.0
             else:
-                kelly_raw = mean_r / var_r
+                kelly_raw = min(mean_r / var_r, 1.0)  # Cap raw Kelly at 100%
 
             # 2. Half-Kelly (with breakout floor for intraday)
             kelly_half = kelly_raw * 0.5

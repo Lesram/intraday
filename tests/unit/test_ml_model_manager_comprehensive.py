@@ -36,8 +36,9 @@ from backend.ml.model_manager import (
     NoOpModelManager,
     _NoopModel,
     DISABLE_ML,
-    ALLOW_MOCK_ML,
 )
+# ALLOW_MOCK_ML was removed — mock loading is no longer supported
+ALLOW_MOCK_ML = False
 
 
 # =============================================================================

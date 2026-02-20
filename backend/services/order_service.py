@@ -186,7 +186,8 @@ class CircuitBreaker:
 
         except Exception as e:
             logger.warning(f"Failed to load circuit breaker state from Redis: {e}")
-            self._redis_available = False
+            # Allow retry on next call — don't permanently disable Redis
+            self._state_loaded = False
 
     async def _persist_state(self) -> None:
         """Persist circuit breaker state to Redis."""

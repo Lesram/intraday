@@ -137,8 +137,11 @@ def client():
     if not database_url:
         # Fall back to a unique file-based SQLite DB for test isolation
         # Each test function gets its own database file to avoid lock contention
+        import tempfile as _tempfile
+        _test_dir = os.path.join(os.path.dirname(__file__), "..", "test_results")
+        os.makedirs(_test_dir, exist_ok=True)
         unique_id = _uuid.uuid4().hex[:8]
-        database_url = f"sqlite+aiosqlite:///./test_results/test_db_{unique_id}.sqlite3"
+        database_url = f"sqlite+aiosqlite:///{_test_dir}/test_db_{unique_id}.sqlite3"
         os.environ["DATABASE_URL"] = database_url
     
     # Initialize database before creating app

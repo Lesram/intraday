@@ -60,29 +60,11 @@ class TestPositionsModels:
 class TestPositionsHelperFunctions:
     """Test helper functions in positions routes."""
 
-    def test_get_mock_positions(self):
-        """Test get_mock_positions returns empty list (deprecated - no mock data)."""
-        from backend.api.routes.positions import get_mock_positions
-
-        positions = get_mock_positions()
-
-        # get_mock_positions is deprecated and returns empty list
-        # All position data must come from Alpaca API or database
-        assert len(positions) == 0
-
-    def test_mock_positions_have_all_fields(self):
-        """Test mock positions have all required fields."""
-        from backend.api.routes.positions import get_mock_positions
-        
-        positions = get_mock_positions()
-        
-        for pos in positions:
-            assert pos.symbol is not None
-            assert pos.qty > 0
-            assert pos.avg_price > 0
-            assert pos.market_price is not None
-            assert pos.market_value is not None
-            assert pos.updated_at is not None
+    def test_no_mock_positions_function(self):
+        """Verify get_mock_positions was removed (no mock data in production)."""
+        import backend.api.routes.positions as positions_mod
+        assert not hasattr(positions_mod, "get_mock_positions"), \
+            "get_mock_positions should be removed — all data from Alpaca/DB"
 
 
 class TestPositionsRouter:

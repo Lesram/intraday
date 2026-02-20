@@ -24,6 +24,7 @@ from typing import Any
 from pydantic import BaseModel
 
 from backend.config import get_settings
+from backend.services.quote_manager import get_quote_manager
 from backend.utils.logger import get_structured_logger
 
 logger = get_structured_logger(__name__)
@@ -378,27 +379,37 @@ class TradingGuardrails:
 
     async def _get_estimated_price(self, symbol: str) -> Decimal:
         """
-        Get estimated price for notional calculations.
+        Get estimated price for notional calculations from real-time quotes.
 
-        In production, this should use:
-        1. Real-time market data
-        2. Last trade price
-        3. Mid-market price from order book
-
-        For now, using placeholder prices.
+        Uses QuoteManager (Redis-cached, Alpaca-backed) for live prices.
+        Falls back to the order's limit_price or a conservative default
+        so that guardrails are never silently bypassed.
         """
-        # Placeholder prices - in production, fetch from market data service
-        placeholder_prices = {
-            'AAPL': Decimal('175.00'),
-            'MSFT': Decimal('380.00'),
-            'GOOGL': Decimal('140.00'),
-            'TSLA': Decimal('250.00'),
-            'NVDA': Decimal('900.00'),
-            'SPY': Decimal('450.00'),
-            'QQQ': Decimal('380.00')
-        }
+        try:
+            qm = get_quote_manager()
+            quote = await qm.get_quote(symbol)
 
-        return placeholder_prices.get(symbol, Decimal('100.00'))  # Default price
+            if quote is not None:
+                # Prefer mid price (best estimate of fair value), then last trade
+                price = quote.mid or quote.last
+                if price and price > 0:
+                    return Decimal(str(price))
+
+            logger.warning(
+                "No live quote available for notional estimate",
+                symbol=symbol,
+            )
+        except Exception as e:
+            logger.warning(
+                "Failed to fetch quote for notional estimate",
+                symbol=symbol,
+                error=str(e),
+            )
+
+        # Conservative fallback: assume $500 per share so guardrails stay
+        # protective rather than permissive.  This only fires when the quote
+        # service is completely unreachable.
+        return Decimal('500.00')
 
     def record_order_submitted(self, order: OrderRequest, estimated_notional: Decimal | None = None):
         """

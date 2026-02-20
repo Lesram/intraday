@@ -411,19 +411,47 @@ class TestCheckRateLimits:
 # ============================================================================
 
 class TestGetEstimatedPrice:
-    """Tests for _get_estimated_price method."""
-    
+    """Tests for _get_estimated_price method using real QuoteManager."""
+
     @pytest.mark.asyncio
-    async def test_known_symbol_price(self, guardrails):
-        """Test getting price for known symbol."""
-        price = await guardrails._get_estimated_price("AAPL")
-        assert price == Decimal("175.00")
-        
+    async def test_known_symbol_returns_live_price(self, guardrails):
+        """Test getting live price from QuoteManager for known symbol."""
+        from unittest.mock import AsyncMock, patch, MagicMock
+
+        mock_quote = MagicMock()
+        mock_quote.mid = 195.50
+        mock_quote.last = 195.40
+
+        mock_qm = MagicMock()
+        mock_qm.get_quote = AsyncMock(return_value=mock_quote)
+
+        with patch("backend.infra.guardrails.get_quote_manager", return_value=mock_qm):
+            price = await guardrails._get_estimated_price("AAPL")
+        assert price == Decimal("195.5")
+
     @pytest.mark.asyncio
-    async def test_unknown_symbol_default_price(self, guardrails):
-        """Test getting default price for unknown symbol."""
-        price = await guardrails._get_estimated_price("UNKNOWN")
-        assert price == Decimal("100.00")
+    async def test_unknown_symbol_falls_back_to_conservative_default(self, guardrails):
+        """Test conservative $500 fallback when quote unavailable."""
+        from unittest.mock import AsyncMock, patch, MagicMock
+
+        mock_qm = MagicMock()
+        mock_qm.get_quote = AsyncMock(return_value=None)
+
+        with patch("backend.infra.guardrails.get_quote_manager", return_value=mock_qm):
+            price = await guardrails._get_estimated_price("UNKNOWN")
+        assert price == Decimal("500.00")
+
+    @pytest.mark.asyncio
+    async def test_quote_service_error_falls_back(self, guardrails):
+        """Test fallback when QuoteManager raises an exception."""
+        from unittest.mock import AsyncMock, patch, MagicMock
+
+        mock_qm = MagicMock()
+        mock_qm.get_quote = AsyncMock(side_effect=Exception("Redis down"))
+
+        with patch("backend.infra.guardrails.get_quote_manager", return_value=mock_qm):
+            price = await guardrails._get_estimated_price("AAPL")
+        assert price == Decimal("500.00")
 
 
 # ============================================================================

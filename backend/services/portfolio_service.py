@@ -171,7 +171,8 @@ class PortfolioService:
                     Decimal(str(p.get('unrealizedPnL', 0) or 0)) for p in positions_data
                 )
                 total_cost_basis = sum(
-                    Decimal(str(p.get('costBasis', 0) or 0)) for p in positions_data
+                    Decimal(str(p.get('quantity', 0) * p.get('averagePrice', 0)))
+                    for p in positions_data
                 )
                 total_pl = total_unrealized_pl
                 total_pl_percent = (total_pl / total_cost_basis * 100) if total_cost_basis > 0 else Decimal(0)

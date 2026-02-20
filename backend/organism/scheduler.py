@@ -349,8 +349,8 @@ class OrganismScheduler:
                     _BASE_BACKOFF_S * (2 ** (consecutive_errors - 1)),
                     _MAX_BACKOFF_S,
                 )
-                jitter = raw * _JITTER_FRACTION * (random.random() * 2 - 1)
-                wait = max(raw + jitter, _BASE_BACKOFF_S)
+                jitter = raw * _JITTER_FRACTION * random.random()  # positive-only jitter
+                wait = raw + jitter
                 logger.info(
                     "Organism scheduler backing off for %.0fs "
                     "(consecutive_errors=%d)",
