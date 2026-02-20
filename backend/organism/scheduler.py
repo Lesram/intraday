@@ -33,12 +33,34 @@ import asyncio
 from collections import deque
 import os
 import random
-from datetime import UTC, datetime
+from datetime import UTC, datetime, time as dt_time
 from typing import Any
+from zoneinfo import ZoneInfo
 
 from backend.utils.logger import get_logger
 
 logger = get_logger(__name__)
+
+# ── US equity market hours (Eastern Time) ─────────────────────────
+_ET = ZoneInfo("America/New_York")
+_MARKET_OPEN = dt_time(9, 30)   # 9:30 AM ET
+_MARKET_CLOSE = dt_time(16, 0)  # 4:00 PM ET
+# Buffer: start ticking 2 min before open, stop 1 min after close
+# so the engine is warm when market opens and can catch late fills.
+_TICK_START = dt_time(9, 28)
+_TICK_STOP = dt_time(16, 1)
+
+
+def _is_market_tick_window() -> bool:
+    """Return True if current time is within the tick window for US equities.
+
+    Checks weekday + time-of-day in Eastern Time.
+    """
+    now_et = datetime.now(_ET)
+    if now_et.weekday() >= 5:  # Saturday / Sunday
+        return False
+    t = now_et.time()
+    return _TICK_START <= t <= _TICK_STOP
 
 
 TICK_INTERVAL = int(
@@ -270,14 +292,21 @@ class OrganismScheduler:
     async def _run_loop(self) -> None:
         logger.info("Organism scheduler loop started")
         consecutive_errors = 0
+        _last_outside_hours_log: float = 0  # throttle "outside hours" logs
 
         while not self._stop.is_set():
             try:
-                # Check if market is open (weekdays, roughly)
-                now = datetime.now(UTC)
-                weekday = now.weekday()  # Mon=0 … Sun=6
-                if weekday >= 5:  # skip weekends
-                    logger.debug("Weekend — skipping organism tick")
+                if not _is_market_tick_window():
+                    # Log once per 5 minutes to avoid spam
+                    now_ts = datetime.now(UTC).timestamp()
+                    if now_ts - _last_outside_hours_log > 300:
+                        now_et = datetime.now(_ET)
+                        logger.debug(
+                            "Outside market hours (%s ET %s) — skipping tick",
+                            now_et.strftime("%H:%M"),
+                            now_et.strftime("%A"),
+                        )
+                        _last_outside_hours_log = now_ts
                 else:
                     result = await asyncio.wait_for(
                         self._engine.live_tick(),

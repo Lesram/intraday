@@ -329,6 +329,12 @@ class OrganismLiveEngine:
         self._exit_cooldown: dict[str, int] = {}
         self._EXIT_COOLDOWN_TICKS = 3  # Wait 3 ticks (~30s) before re-entering
 
+        # Symbols with recent entry orders — prevents re-submitting the same
+        # order every tick when the order hasn't settled or was rejected.
+        # Maps symbol → tick number when entry order was submitted
+        self._pending_entry: dict[str, int] = {}
+        self._PENDING_ENTRY_TICKS = 5  # Wait 5 ticks before retrying same symbol
+
         # Serialize live_tick() calls to prevent concurrent state mutation
         # (scheduler loop + manual /tick endpoint)
         self._tick_lock = asyncio.Lock()
@@ -498,6 +504,11 @@ class OrganismLiveEngine:
         self._exit_cooldown = {
             sym: tick for sym, tick in self._exit_cooldown.items()
             if self._tick_count - tick < self._EXIT_COOLDOWN_TICKS
+        }
+        # Expire old pending entries
+        self._pending_entry = {
+            sym: tick for sym, tick in self._pending_entry.items()
+            if self._tick_count - tick < self._PENDING_ENTRY_TICKS
         }
 
         try:
@@ -718,6 +729,8 @@ class OrganismLiveEngine:
                     continue
                 if c.symbol in self._exit_cooldown:
                     continue  # Wash trade cooldown
+                if c.symbol in self._pending_entry:
+                    continue  # Already submitted an order recently
                 if LONG_ONLY and not self.evolved_params.shorts_enabled and c.direction < 0:
                     continue
 
@@ -746,6 +759,7 @@ class OrganismLiveEngine:
                     bs.symbol not in alpha_syms
                     and bs.symbol not in open_symbols
                     and bs.symbol not in self._exit_cooldown
+                    and bs.symbol not in self._pending_entry
                     and bs.composite_score >= 0.55
                 ):
                     ml_sig = ml_signals.get(bs.symbol)
@@ -815,6 +829,8 @@ class OrganismLiveEngine:
                             filled_shares = max(1, int(float(filled)))
 
                     result.orders_submitted += 1
+                    # Mark as pending so we don't re-submit next tick
+                    self._pending_entry[sz.symbol] = self._tick_count
                     result.activity.append(ActivityEvent(
                         event_type="order",
                         symbol=sz.symbol,
@@ -890,6 +906,13 @@ class OrganismLiveEngine:
             # 11. PERIODIC RETRAIN + EVOLVE (non-blocking background training)
             self._bars_since_retrain += 1
 
+            # Fast initial training: if model has never been trained, retrain
+            # after just 30 ticks (~5 min) so we get real predicted_return
+            # values early instead of relying on the 1% floor.
+            _retrain_threshold = RETRAIN_INTERVAL
+            if not self.signal_gen.is_trained and _retrain_threshold > 30:
+                _retrain_threshold = 30
+
             # Check if previous background training completed
             if self._bg_trainer.is_training:
                 done, train_result = self._bg_trainer.get_result()
@@ -929,7 +952,7 @@ class OrganismLiveEngine:
                         "error": train_result.error,
                         "last_trained_tick": self._tick_count,
                     }
-            elif self._bars_since_retrain >= RETRAIN_INTERVAL:
+            elif self._bars_since_retrain >= _retrain_threshold:
                 self._bars_since_retrain = 0
                 try:
                     await self._bg_trainer.submit_retrain(
