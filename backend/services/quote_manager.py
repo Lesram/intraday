@@ -82,15 +82,26 @@ class QuoteManager:
         self.redis_client = None
         if REDIS_AVAILABLE:
             try:
-                self.redis_client = redis.Redis(
-                    host=os.getenv('REDIS_HOST', 'localhost'),
-                    port=int(os.getenv('REDIS_PORT', 6379)),
-                    db=int(os.getenv('REDIS_DB', 0)),
-                    decode_responses=True,
-                    socket_timeout=1,
-                    socket_connect_timeout=1,
-                    max_connections=50
-                )
+                redis_url = os.getenv('REDIS_URL')
+                if redis_url:
+                    self.redis_client = redis.from_url(
+                        redis_url,
+                        decode_responses=True,
+                        socket_timeout=1,
+                        socket_connect_timeout=1,
+                        max_connections=50,
+                    )
+                else:
+                    self.redis_client = redis.Redis(
+                        host=os.getenv('REDIS_HOST', 'localhost'),
+                        port=int(os.getenv('REDIS_PORT', 6379)),
+                        db=int(os.getenv('REDIS_DB', 0)),
+                        password=os.getenv('REDIS_PASSWORD'),
+                        decode_responses=True,
+                        socket_timeout=1,
+                        socket_connect_timeout=1,
+                        max_connections=50,
+                    )
                 logger.info("Redis cache initialized")
             except Exception as e:
                 logger.warning(f"Redis initialization failed: {e}. Running without cache.")
