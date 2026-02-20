@@ -207,6 +207,12 @@ class EvolvedParams:
                 setattr(params, key, d[key])
         if "regime_size_scales" in d and isinstance(d["regime_size_scales"], dict):
             params.regime_size_scales.update(d["regime_size_scales"])
+            # Enforce minimum regime scales — old brain files may have values
+            # that are too conservative for intraday trading
+            _min_regime_scales = {"high_vol": 0.70, "stress": 0.30}
+            for regime, min_val in _min_regime_scales.items():
+                if params.regime_size_scales.get(regime, 1.0) < min_val:
+                    params.regime_size_scales[regime] = min_val
         if "feature_weights" in d and isinstance(d["feature_weights"], dict):
             params.feature_weights = d["feature_weights"]
         if "symbol_fitness" in d and isinstance(d["symbol_fitness"], dict):
