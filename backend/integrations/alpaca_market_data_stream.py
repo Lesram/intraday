@@ -113,10 +113,8 @@ class AlpacaMarketDataStream:
         self.background_tasks: list[asyncio.Task] = []
 
         logger.info(
-            "AlpacaMarketDataStream initialized",
-            base_url=self.base_url,
-            paper=paper,
-            feed=feed
+            "AlpacaMarketDataStream initialized: base_url=%s paper=%s feed=%s",
+            self.base_url, paper, feed,
         )
 
     async def connect(self) -> bool:
@@ -207,6 +205,17 @@ class AlpacaMarketDataStream:
                 "key": self.api_key,
                 "secret": self.api_secret
             }
+
+            # Consume the initial welcome message before sending auth.
+            # Alpaca sends [{"T":"success","msg":"connected"}] on connect.
+            welcome = await asyncio.wait_for(self.websocket.recv(), timeout=10.0)
+            welcome_data = json.loads(welcome)
+            if isinstance(welcome_data, list):
+                welcome_data = welcome_data[0] if welcome_data else {}
+            if welcome_data.get("msg") == "connected":
+                logger.debug("Received welcome message from Alpaca")
+            else:
+                logger.warning("Unexpected first message: %s", welcome_data)
 
             await self.websocket.send(json.dumps(auth_message))
             logger.debug("Sent authentication message")
@@ -432,7 +441,7 @@ class AlpacaMarketDataStream:
                     await self._handle_message(message)
 
                 except json.JSONDecodeError as e:
-                    logger.warning(f"Invalid JSON received: {message[:200]}", error=str(e))
+                    logger.warning("Invalid JSON received: %s error=%s", message[:200], e)
                     continue
 
                 except Exception as e:
@@ -655,7 +664,7 @@ class AlpacaMarketDataStream:
         while self.is_connected:
             await asyncio.sleep(self.HEARTBEAT_INTERVAL)
             self.last_heartbeat = datetime.now(UTC)
-            logger.debug("Heartbeat", connection_count=self.connection_count)
+            logger.debug("Heartbeat connection_count=%d", self.connection_count)
 
     def get_stats(self) -> dict[str, Any]:
         """Get stream statistics"""
