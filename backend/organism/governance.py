@@ -218,13 +218,16 @@ class GovernanceController:
         self._effective_cooldown_s = data.get(
             "effective_cooldown_s", self._drawdown_cooldown_s
         )
-        # Restore governance limits (may have been tuned at runtime)
-        self._drawdown_limit = data.get(
-            "drawdown_limit", self._drawdown_limit
-        )
-        self._max_changes_per_day = data.get(
-            "max_changes_per_day", self._max_changes_per_day
-        )
+        # Governance limits: env vars take precedence over persisted state.
+        # Only restore from persistence if the env var was NOT explicitly set.
+        if not os.getenv("ORGANISM_DRAWDOWN_KILL_PCT"):
+            self._drawdown_limit = data.get(
+                "drawdown_limit", self._drawdown_limit
+            )
+        if not os.getenv("ORGANISM_MAX_CHANGES_PER_DAY"):
+            self._max_changes_per_day = data.get(
+                "max_changes_per_day", self._max_changes_per_day
+            )
         # Restore disabled strategies — MERGE with env-var overrides so that
         # ORGANISM_DISABLED_STRATEGIES remains authoritative as a safety control
         persisted_disabled = set(data.get("disabled_strategies", []))
