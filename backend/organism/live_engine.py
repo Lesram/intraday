@@ -669,6 +669,10 @@ class OrganismLiveEngine:
             for sym, pos_data in current_positions.items():
                 feat_df = features_by_symbol.get(sym)
                 if feat_df is None or len(feat_df) < 1:
+                    logger.warning(
+                        "No features for open position %s — exit check skipped",
+                        sym,
+                    )
                     continue
 
                 result.exits_checked += 1
@@ -1158,7 +1162,75 @@ class OrganismLiveEngine:
             if isinstance(best_sharpe, (int, float)) and np.isfinite(best_sharpe):
                 ORGANISM_SHARPE.set(best_sharpe)
 
+        # ── Production invariant checks ────────────────────────────
+        # These catch state inconsistencies before they compound into
+        # silent bugs.  Violations are logged as warnings (not exceptions)
+        # so the tick loop keeps running.
+        self._check_tick_invariants()
+
         return result
+
+    def _check_tick_invariants(self) -> None:
+        """Runtime invariant checks — called at the end of every tick.
+
+        Catches:
+            - Exit levels without matching entry metadata
+            - Stale pending entries / exit cooldowns
+            - Entry metadata for symbols with no position and no exit levels
+            - Tick count sanity
+        """
+        try:
+            # INV-1: Every symbol in _exit_levels should have entry_metadata
+            for sym in list(self._exit_levels.keys()):
+                if sym not in self._entry_metadata:
+                    logger.warning(
+                        "INVARIANT: exit_levels exists for %s but no "
+                        "entry_metadata — creating stub",
+                        sym,
+                    )
+                    lvl = self._exit_levels[sym]
+                    self._entry_metadata[sym] = {
+                        "entry_price": getattr(lvl, "entry_price", 0),
+                        "entry_tick": 0,
+                        "direction": getattr(lvl, "direction", 1.0),
+                        "predicted_return": 0.01,
+                        "confidence": 0.5,
+                    }
+
+            # INV-2: _tick_count must be positive after first tick
+            if self._tick_count < 0:
+                logger.error(
+                    "INVARIANT: tick_count is negative (%d) — resetting to 0",
+                    self._tick_count,
+                )
+                self._tick_count = 0
+
+            # INV-3: _bars_since_retrain cannot exceed tick_count
+            if self._bars_since_retrain > self._tick_count:
+                logger.warning(
+                    "INVARIANT: bars_since_retrain (%d) > tick_count (%d) "
+                    "— clamping",
+                    self._bars_since_retrain,
+                    self._tick_count,
+                )
+                self._bars_since_retrain = self._tick_count
+
+            # INV-4: Detect orphaned pending entries that somehow survived
+            # expiry (should be impossible but guards against logic errors)
+            stale_pending = [
+                sym for sym, tick in self._pending_entry.items()
+                if self._tick_count - tick >= self._PENDING_ENTRY_TICKS * 2
+            ]
+            if stale_pending:
+                logger.warning(
+                    "INVARIANT: stale pending entries detected: %s — clearing",
+                    stale_pending,
+                )
+                for sym in stale_pending:
+                    del self._pending_entry[sym]
+
+        except Exception as e:
+            logger.debug("Invariant check error (non-fatal): %s", e)
 
     # ═════════════════════════════════════════════════════════════
     #  DATA PIPELINE
@@ -1635,6 +1707,18 @@ class OrganismLiveEngine:
             direction = 1.0 if side == "long" else -1.0
 
             if qty <= 0 or avg_entry <= 0:
+                continue
+
+            # Skip symbols that already have exit levels restored from
+            # the brain — those have richer state (trailing stop progress,
+            # partial_tp_taken, stress_tightened) that would be lost if we
+            # overwrite with fresh conservative defaults.
+            if sym in self._exit_levels:
+                logger.debug(
+                    "Skipping reconstruction for %s — exit levels "
+                    "already restored from brain",
+                    sym,
+                )
                 continue
 
             # Create basic exit levels (conservative defaults)

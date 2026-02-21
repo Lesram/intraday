@@ -234,8 +234,14 @@ def compute_ml_features(
             else:
                 sr = stock_rets[i-20:i]
                 mr = spy_ret[max(0, len(spy_ret)-len(stock_rets)+i-20):max(0, len(spy_ret)-len(stock_rets)+i)]
-                if len(mr) >= 20 and np.std(mr) > 0:
-                    betas.append(float(np.corrcoef(sr, mr[-20:])[0, 1] * np.std(sr) / np.std(mr[-20:])))
+                if (
+                    len(mr) >= 20
+                    and np.std(mr) > 0
+                    and not np.any(np.isnan(sr))
+                    and not np.any(np.isnan(mr[-20:]))
+                ):
+                    val = float(np.corrcoef(sr, mr[-20:])[0, 1] * np.std(sr) / np.std(mr[-20:]))
+                    betas.append(val if np.isfinite(val) else 1.0)
                 else:
                     betas.append(1.0)
         f["beta_20d"] = betas
@@ -248,8 +254,15 @@ def compute_ml_features(
             else:
                 sr = stock_rets[i-20:i]
                 mr = spy_ret[max(0, len(spy_ret)-len(stock_rets)+i-20):max(0, len(spy_ret)-len(stock_rets)+i)]
-                if len(mr) >= 20 and np.std(sr) > 0 and np.std(mr) > 0:
-                    corrs.append(float(np.corrcoef(sr, mr[-20:])[0, 1]))
+                if (
+                    len(mr) >= 20
+                    and np.std(sr) > 0
+                    and np.std(mr) > 0
+                    and not np.any(np.isnan(sr))
+                    and not np.any(np.isnan(mr[-20:]))
+                ):
+                    val = float(np.corrcoef(sr, mr[-20:])[0, 1])
+                    corrs.append(val if np.isfinite(val) else 0.0)
                 else:
                     corrs.append(0.0)
         f["corr_to_market"] = corrs

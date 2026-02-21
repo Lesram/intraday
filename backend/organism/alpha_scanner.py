@@ -191,6 +191,10 @@ class AlphaScanner:
             if len(df) < 20:
                 continue
             ret_20 = float(df.iloc[-1].get("ret_20d", 0.0))
+            # NaN from missing data would corrupt the ranking — replace
+            # with 0.0 so the symbol sorts neutrally rather than last.
+            if not np.isfinite(ret_20):
+                ret_20 = 0.0
             mom_values[symbol] = ret_20
 
         if not mom_values:
