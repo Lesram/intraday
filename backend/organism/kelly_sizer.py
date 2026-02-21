@@ -89,6 +89,8 @@ class KellySizer:
 
         # Regime-stratified Kelly stats: {regime: {wins, losses, total_pnl, total_win_pnl, total_loss_pnl}}
         self._regime_stats: dict[str, dict[str, float]] = {}
+        # Last sizing intermediates for telemetry (confidence_scale, breakout_bonus per symbol)
+        self._last_intermediates: dict[str, dict[str, float]] = {}
 
     def size_positions(
         self,
@@ -127,6 +129,7 @@ class KellySizer:
 
         sizes: list[PositionSize] = []
         total_weight = 0.0
+        self._last_intermediates = {}
 
         for cand in candidates:
             symbol = cand["symbol"]
@@ -207,6 +210,12 @@ class KellySizer:
 
             # 7. **NEW** — Breakout score bonus
             breakout_bonus = self._breakout_bonus(breakout_score)
+
+            # Store intermediates for telemetry
+            self._last_intermediates[symbol] = {
+                "confidence_scale": confidence_scale,
+                "breakout_bonus": breakout_bonus,
+            }
 
             # Combine all factors
             target_weight = (

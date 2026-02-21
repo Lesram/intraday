@@ -133,6 +133,7 @@ class BreakoutScanner:
 
         # Sort by composite score
         signals.sort(key=lambda s: s.composite_score, reverse=True)
+        self._last_full_scan = list(signals)
 
         # Filter and take top N
         result = [

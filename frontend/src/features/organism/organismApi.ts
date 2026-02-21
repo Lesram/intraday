@@ -175,6 +175,182 @@ export interface OrganismAnalytics {
   calibration: Record<string, unknown>;
 }
 
+// ── Decision Telemetry Types ──────────────────────────────────────
+
+export interface AlphaFactorScore {
+  symbol: string;
+  composite_score: number;
+  factors: {
+    ml: number;
+    breakout: number;
+    institutional: number;
+    momentum: number;
+    momentum_quality: number;
+    vol_price_div: number;
+    regime: number;
+  };
+  weights: Record<string, number>;
+  direction: number;
+  threshold: number;
+  distance_to_threshold: number;
+  passed_threshold: boolean;
+  symbol_fitness: number;
+  fitness_gate: number;
+  passed_fitness: boolean;
+}
+
+export interface BreakoutFactorScore {
+  symbol: string;
+  composite_score: number;
+  factors: {
+    squeeze: number;
+    volume: number;
+    contraction: number;
+    rs: number;
+    pivot: number;
+    flow: number;
+  };
+  weights: Record<string, number>;
+  direction: number;
+  squeeze_fired: boolean;
+  volume_ratio: number;
+  threshold: number;
+  distance_to_threshold: number;
+  passed_threshold: boolean;
+}
+
+export interface ExitProximity {
+  symbol: string;
+  current_price: number;
+  entry_price: number;
+  direction: number;
+  pnl_pct: number;
+  exits: {
+    stop_loss: { level: number; distance_pct: number };
+    take_profit: { level: number; distance_pct: number };
+    trailing_stop: { level: number; distance_pct: number; active: boolean };
+    partial_tp: { level: number; distance_pct: number; taken: boolean };
+    time: { bars_held: number; max_bars: number; distance_pct: number };
+  };
+  atr_at_entry: number;
+  regime_at_entry: string;
+  highest_favorable: number;
+  nearest_exit: string;
+  nearest_exit_distance_pct: number;
+}
+
+export interface KellySizingStage {
+  symbol: string;
+  pipeline: {
+    kelly_raw: number;
+    kelly_half: number;
+    drawdown_scale: number;
+    vol_scale: number;
+    regime_scale: number;
+    confidence_scale: number;
+    breakout_bonus: number;
+    final_weight: number;
+  };
+  position_cap: number;
+  shares: number;
+  notional: number;
+  direction: number;
+}
+
+export interface RegimeProbabilities {
+  primary: string;
+  probabilities: Record<string, number>;
+  confidence: number;
+  features: Record<string, number>;
+}
+
+export interface FilteringSummary {
+  total_universe: number;
+  had_features: number;
+  alpha_scored: number;
+  above_alpha_threshold: number;
+  breakout_scored: number;
+  above_breakout_threshold: number;
+  passed_sector_gate: number;
+  passed_fitness_gate: number;
+  passed_cooldown: number;
+  passed_position_limit: number;
+  kelly_sized: number;
+  orders_submitted: number;
+}
+
+export interface EvolutionSnapshot {
+  tick_number: number;
+  timestamp: string;
+  generation: number;
+  regime: string;
+  equity: number;
+  drawdown_pct: number;
+  params: Record<string, unknown>;
+}
+
+export interface DecisionSnapshot {
+  tick_number: number;
+  timestamp: string;
+  duration_s: number;
+  regime: RegimeProbabilities;
+  governance: {
+    equity: number;
+    peak_equity: number;
+    drawdown_pct: number;
+    is_halted: boolean;
+    is_frozen: boolean;
+  };
+  evolution: {
+    generation: number;
+    params: Record<string, unknown>;
+  };
+  alpha_scores: AlphaFactorScore[];
+  breakout_scores: BreakoutFactorScore[];
+  exit_proximity: ExitProximity[];
+  kelly_sizing: KellySizingStage[];
+  filtering: FilteringSummary;
+  open_positions: number;
+  max_positions: number;
+}
+
+export interface DecisionResponse {
+  active: boolean;
+  snapshot: DecisionSnapshot | null;
+}
+
+export interface DecisionHistoryResponse {
+  active: boolean;
+  count: number;
+  snapshots: DecisionSnapshot[];
+}
+
+export interface SymbolDecisionHistory {
+  active: boolean;
+  symbol: string;
+  count: number;
+  history: Array<{
+    tick_number: number;
+    timestamp: string;
+    regime: string;
+    alpha?: AlphaFactorScore;
+    breakout?: BreakoutFactorScore;
+    exit?: ExitProximity;
+    kelly?: KellySizingStage;
+  }>;
+}
+
+export interface ExitProximityResponse {
+  active: boolean;
+  exits: ExitProximity[];
+}
+
+export interface EvolutionHistoryResponse {
+  active: boolean;
+  count: number;
+  history: EvolutionSnapshot[];
+}
+
 export const organismApi = {
   async getStatus() {
     const { data } = await apiClient.get<OrganismStatus>('/organism/status');
@@ -218,6 +394,31 @@ export const organismApi = {
 
   async getAnalytics() {
     const { data } = await apiClient.get<OrganismAnalytics>('/organism/analytics');
+    return data;
+  },
+
+  async getDecisions() {
+    const { data } = await apiClient.get<DecisionResponse>('/organism/decisions');
+    return data;
+  },
+
+  async getDecisionHistory(limit = 50) {
+    const { data } = await apiClient.get<DecisionHistoryResponse>(`/organism/decisions/history?limit=${limit}`);
+    return data;
+  },
+
+  async getDecisionBySymbol(symbol: string, limit = 50) {
+    const { data } = await apiClient.get<SymbolDecisionHistory>(`/organism/decisions/symbol/${symbol}?limit=${limit}`);
+    return data;
+  },
+
+  async getExitProximity() {
+    const { data } = await apiClient.get<ExitProximityResponse>('/organism/decisions/exits');
+    return data;
+  },
+
+  async getEvolutionHistory(limit = 50) {
+    const { data } = await apiClient.get<EvolutionHistoryResponse>(`/organism/evolution/history?limit=${limit}`);
     return data;
   },
 };

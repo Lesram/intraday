@@ -109,6 +109,7 @@ class RegimeDetector:
         # Running state
         self._history: list[str] = []
         self._smoothed_probs: dict[str, float] = {}
+        self._last_state: RegimeState | None = None
 
     @property
     def current_regime(self) -> str:
@@ -215,6 +216,7 @@ class RegimeDetector:
             timestamp=now.isoformat(),
         )
 
+        self._last_state = state
         return state
 
     def _compute_probabilities(
@@ -379,7 +381,7 @@ class RegimeDetector:
         # Average across symbols
         agg_probs = {k: v / n for k, v in agg_probs.items()}
         primary = max(agg_probs, key=agg_probs.get)  # type: ignore[arg-type]
-        return RegimeState(
+        state = RegimeState(
             primary=primary,
             probabilities=agg_probs,
             confidence=agg_probs.get(primary, 0.0),
@@ -387,6 +389,8 @@ class RegimeDetector:
             churn_rate=0.0,
             timestamp=datetime.now(UTC).isoformat(),
         )
+        self._last_state = state
+        return state
 
     # ------------------------------------------------------------------
     # Phase 4.3: Cross-asset regime conditioning
@@ -486,7 +490,7 @@ class RegimeDetector:
 
         primary = max(conditioned, key=conditioned.get)  # type: ignore[arg-type]
 
-        return RegimeState(
+        state = RegimeState(
             primary=primary,
             probabilities=conditioned,
             confidence=conditioned.get(primary, 0.0),
@@ -500,6 +504,8 @@ class RegimeDetector:
             churn_rate=base.churn_rate,
             timestamp=datetime.now(UTC).isoformat(),
         )
+        self._last_state = state
+        return state
 
 
 class DriftDetector:

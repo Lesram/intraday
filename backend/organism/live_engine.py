@@ -52,6 +52,15 @@ from backend.organism.pyramider import (
 )
 from backend.organism.regime import RegimeDetector, RegimeLabel
 from backend.organism.sector_map import sector_gate_allows, get_sector
+from backend.organism.decision_telemetry import (
+    DecisionSnapshot,
+    DecisionTelemetryStore,
+    FilteringSummary,
+    KellySizingDetail,
+    PositionExitDetail,
+    SymbolAlphaDetail,
+    SymbolBreakoutDetail,
+)
 from backend.organism.self_evolution import (
     EvolutionEngine,
     EvolvedParams,
@@ -308,6 +317,9 @@ class OrganismLiveEngine:
                 )
             except Exception as e:
                 logger.debug("VersionedFeatureStore not available: %s", e)
+
+        # ── Decision telemetry (in-memory ring buffer) ────────
+        self._telemetry = DecisionTelemetryStore()
 
         # ── Live state ──────────────────────────────────────────
         self._tick_count: int = 0
@@ -621,6 +633,12 @@ class OrganismLiveEngine:
 
             # 2. FETCH LATEST DATA
             features_by_symbol = await self._fetch_and_compute_features()
+            # Save for telemetry: latest close prices and feature count
+            self._last_features_count = len(features_by_symbol)
+            self._last_prices = {}
+            for _sym, _df in features_by_symbol.items():
+                if len(_df) > 0 and "close" in _df.columns:
+                    self._last_prices[_sym] = float(_df["close"].iloc[-1])
             if len(features_by_symbol) < 3:
                 result.errors.append(
                     f"Insufficient data: got {len(features_by_symbol)} symbols"
@@ -918,6 +936,7 @@ class OrganismLiveEngine:
             sizes = self.kelly_sizer.size_positions(
                 cand_dicts, equity, drawdown, features_by_symbol, regime
             )
+            self._last_kelly_sizes = sizes
 
             # 8b. INTRADAY SEASONALITY FILTER — reduce allocation
             # during first/last 15 min (highest volatility, worst fills)
@@ -1229,6 +1248,13 @@ class OrganismLiveEngine:
             if isinstance(best_sharpe, (int, float)) and np.isfinite(best_sharpe):
                 ORGANISM_SHARPE.set(best_sharpe)
 
+        # ── Decision telemetry capture (non-fatal) ──────────────
+        try:
+            snapshot = self._build_decision_snapshot(result)
+            self._telemetry.append(snapshot)
+        except Exception:
+            pass  # Telemetry must never break the tick loop
+
         # ── Production invariant checks ────────────────────────────
         # These catch state inconsistencies before they compound into
         # silent bugs.  Violations are logged as warnings (not exceptions)
@@ -1236,6 +1262,207 @@ class OrganismLiveEngine:
         self._check_tick_invariants()
 
         return result
+
+    def _build_decision_snapshot(self, result: LiveTickResult) -> DecisionSnapshot:
+        """Assemble a full decision snapshot from data already computed during the tick."""
+        snap = DecisionSnapshot(
+            tick_number=self._tick_count,
+            timestamp=result.timestamp,
+            duration_s=result.duration_s,
+            regime=result.regime,
+            is_halted=self.governance.is_trading_halted,
+            is_frozen=self.governance.is_frozen,
+            evolution_generation=self.evolved_params.evolution_generation,
+            open_positions=len(self._exit_levels),
+            max_positions=MAX_OPEN_POSITIONS,
+        )
+
+        # Regime probabilities from detector
+        regime_state = getattr(self.regime_detector, "_last_state", None)
+        if regime_state and hasattr(regime_state, "probabilities"):
+            snap.regime_probabilities = dict(regime_state.probabilities)
+            snap.regime_confidence = regime_state.confidence
+            snap.regime_features = dict(regime_state.features_used)
+
+        # Equity / drawdown
+        if self._equity_curve:
+            snap.equity = self._equity_curve[-1]
+        snap.peak_equity = self._peak_equity
+        if self._peak_equity > 0 and snap.equity > 0:
+            snap.drawdown_pct = (self._peak_equity - snap.equity) / self._peak_equity
+
+        # Evolved params summary
+        snap.evolved_params_summary = {
+            "generation": self.evolved_params.evolution_generation,
+            "shorts_enabled": self.evolved_params.shorts_enabled,
+        }
+        if self.evolved_params.symbol_fitness:
+            snap.evolved_params_summary["symbol_fitness_count"] = len(
+                self.evolved_params.symbol_fitness
+            )
+
+        # Alpha details — from _last_full_scan
+        full_alpha = getattr(self.alpha_scanner, "_last_full_scan", [])
+        fitness_gate = 0.35
+        for c in full_alpha:
+            sym_fitness = self.evolved_params.symbol_fitness.get(c.symbol, 0.5)
+            ad = SymbolAlphaDetail(
+                symbol=c.symbol,
+                composite_score=c.composite_score,
+                ml_score=c.ml_score,
+                breakout_score=c.breakout_score,
+                institutional_score=getattr(c, "institutional_score", 0.0),
+                momentum_score=c.momentum_score,
+                momentum_quality_score=getattr(c, "momentum_quality_score", 0.0),
+                vol_price_div_score=c.volume_score,
+                regime_score=c.regime_score,
+                direction=c.direction,
+                weights={
+                    "ml": self.alpha_scanner.WEIGHT_ML,
+                    "breakout": self.alpha_scanner.WEIGHT_BREAKOUT,
+                    "institutional": self.alpha_scanner.WEIGHT_INSTITUTIONAL,
+                    "momentum": self.alpha_scanner.WEIGHT_MOMENTUM,
+                    "momentum_quality": self.alpha_scanner.WEIGHT_MOM_QUALITY,
+                    "vol_price_div": self.alpha_scanner.WEIGHT_VOLUME,
+                    "regime": self.alpha_scanner.WEIGHT_REGIME,
+                },
+                min_composite_threshold=self.alpha_scanner.MIN_COMPOSITE,
+                distance_to_threshold=c.composite_score - self.alpha_scanner.MIN_COMPOSITE,
+                passed_threshold=c.composite_score >= self.alpha_scanner.MIN_COMPOSITE,
+                symbol_fitness=sym_fitness,
+                fitness_gate=fitness_gate,
+                passed_fitness=sym_fitness >= fitness_gate,
+            )
+            snap.alpha_details.append(ad)
+
+        # Breakout details — from _last_full_scan
+        full_breakout = getattr(self.breakout_scanner, "_last_full_scan", [])
+        for s in full_breakout:
+            bd = SymbolBreakoutDetail(
+                symbol=s.symbol,
+                composite_score=s.composite_score,
+                squeeze_score=s.squeeze_score,
+                volume_score=s.volume_score,
+                contraction_score=s.contraction_score,
+                rs_score=s.rs_score,
+                pivot_score=s.pivot_score,
+                flow_score=s.flow_score,
+                direction=s.direction,
+                squeeze_fired=s.squeeze_fired,
+                volume_ratio=s.volume_ratio,
+                weights={
+                    "squeeze": self.breakout_scanner.W_SQUEEZE,
+                    "volume": self.breakout_scanner.W_VOLUME,
+                    "contraction": self.breakout_scanner.W_CONTRACTION,
+                    "rs": self.breakout_scanner.W_RS,
+                    "pivot": self.breakout_scanner.W_PIVOT,
+                    "flow": self.breakout_scanner.W_FLOW,
+                },
+                min_breakout_threshold=self.breakout_scanner.MIN_BREAKOUT_SCORE,
+                distance_to_threshold=s.composite_score - self.breakout_scanner.MIN_BREAKOUT_SCORE,
+                passed_threshold=s.composite_score >= self.breakout_scanner.MIN_BREAKOUT_SCORE,
+            )
+            snap.breakout_details.append(bd)
+
+        # Exit proximity for all positions
+        last_prices = getattr(self, "_last_prices", {})
+        for sym, levels in self._exit_levels.items():
+            # Use latest close price from features; fall back to highest_favorable
+            price = last_prices.get(sym, levels.highest_favorable)
+            if levels.entry_price > 0:
+                pnl_pct = (price - levels.entry_price) / levels.entry_price * levels.direction
+            else:
+                pnl_pct = 0.0
+
+            max_bars = self.exit_engine.REGIME_MAX_BARS.get(result.regime, self.exit_engine.max_bars_held)
+            time_dist = 0.0
+            if max_bars > 0 and levels.bars_held < max_bars:
+                time_dist = ((max_bars - levels.bars_held) / max_bars) * 100
+
+            sl_dist = abs((levels.stop_loss - price) / price * 100) if price > 0 else 0
+            tp_dist = abs((levels.take_profit - price) / price * 100) if price > 0 else 0
+            trail_dist = abs((levels.trailing_stop - price) / price * 100) if price > 0 else 0
+            partial_dist = abs((levels.partial_tp_price - price) / price * 100) if price > 0 else 0
+
+            # Nearest exit
+            exits_map = {"stop_loss": sl_dist, "take_profit": tp_dist}
+            if levels.trailing_active:
+                exits_map["trailing_stop"] = trail_dist
+            if not levels.partial_tp_taken and levels.partial_tp_price > 0:
+                exits_map["partial_tp"] = partial_dist
+            if max_bars > 0:
+                exits_map["time"] = time_dist
+            nearest = min(exits_map, key=exits_map.get) if exits_map else ""
+            nearest_dist = exits_map.get(nearest, 0.0)
+
+            ed = PositionExitDetail(
+                symbol=sym,
+                current_price=price,
+                entry_price=levels.entry_price,
+                direction=levels.direction,
+                pnl_pct=pnl_pct,
+                stop_loss=levels.stop_loss,
+                take_profit=levels.take_profit,
+                trailing_stop=levels.trailing_stop,
+                partial_tp_price=levels.partial_tp_price,
+                stop_loss_distance_pct=sl_dist,
+                take_profit_distance_pct=tp_dist,
+                trailing_stop_distance_pct=trail_dist,
+                partial_tp_distance_pct=partial_dist,
+                trailing_active=levels.trailing_active,
+                partial_tp_taken=levels.partial_tp_taken,
+                bars_held=levels.bars_held,
+                max_bars=max_bars,
+                time_exit_distance_pct=time_dist,
+                atr_at_entry=levels.atr_at_entry,
+                regime_at_entry=levels.regime_at_entry,
+                highest_favorable=levels.highest_favorable,
+                nearest_exit=nearest,
+                nearest_exit_distance_pct=nearest_dist,
+            )
+            snap.exit_details.append(ed)
+
+        # Kelly sizing details — from last sizing step
+        last_sizes = getattr(self, "_last_kelly_sizes", [])
+        kelly_intermediates = getattr(self.kelly_sizer, "_last_intermediates", {})
+        for sz in last_sizes:
+            intermed = kelly_intermediates.get(sz.symbol, {})
+            kd = KellySizingDetail(
+                symbol=sz.symbol,
+                kelly_raw=sz.kelly_raw,
+                kelly_half=sz.kelly_half,
+                drawdown_scale=sz.drawdown_scale,
+                vol_scale=sz.vol_scale,
+                regime_scale=sz.regime_scale,
+                confidence_scale=intermed.get("confidence_scale", 0.0),
+                breakout_bonus=intermed.get("breakout_bonus", 1.0),
+                final_weight=sz.target_weight,
+                position_cap=self.kelly_sizer.max_position_pct,
+                shares=sz.shares,
+                notional=sz.notional,
+                direction=sz.direction,
+            )
+            snap.kelly_details.append(kd)
+
+        # Filtering funnel
+        snap.filtering = FilteringSummary(
+            total_universe=len(self._universe),
+            had_features=getattr(self, "_last_features_count", 0),
+            alpha_scored=len(full_alpha),
+            above_alpha_threshold=sum(
+                1 for c in full_alpha
+                if c.composite_score >= self.alpha_scanner.MIN_COMPOSITE
+            ),
+            breakout_scored=len(full_breakout),
+            above_breakout_threshold=sum(
+                1 for s in full_breakout
+                if s.composite_score >= self.breakout_scanner.MIN_BREAKOUT_SCORE
+            ),
+            kelly_sized=len(snap.kelly_details),
+            orders_submitted=result.orders_submitted,
+        )
+
+        return snap
 
     def _check_tick_invariants(self) -> None:
         """Runtime invariant checks — called at the end of every tick.

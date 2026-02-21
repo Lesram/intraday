@@ -479,3 +479,116 @@ async def get_scanner_history(request: Request):
         "scan_count": scanner.scan_count,
         "last_scan_time": scanner.last_scan_time,
     }
+
+
+# ── Decision Telemetry Endpoints ──────────────────────────────────
+
+def _get_engine(request: Request):
+    scheduler = getattr(request.app.state, "organism_scheduler", None)
+    return getattr(scheduler, "_engine", None) if scheduler else None
+
+
+@router.get("/decisions")
+async def get_decisions(request: Request):
+    """Latest full decision snapshot — all symbols scored, all exit proximities."""
+    engine = _get_engine(request)
+    if engine is None:
+        return {"active": False, "snapshot": None}
+
+    telemetry = getattr(engine, "_telemetry", None)
+    if telemetry is None:
+        return {"active": True, "snapshot": None}
+
+    snap = telemetry.latest
+    if snap is None:
+        return {"active": True, "snapshot": None}
+
+    return {"active": True, "snapshot": snap.to_dict()}
+
+
+@router.get("/decisions/history")
+async def get_decision_history(
+    request: Request, limit: int = Query(default=50, ge=1, le=360)
+):
+    """Recent decision snapshots for time-series analysis."""
+    engine = _get_engine(request)
+    if engine is None:
+        return {"active": False, "snapshots": []}
+
+    telemetry = getattr(engine, "_telemetry", None)
+    if telemetry is None:
+        return {"active": True, "snapshots": []}
+
+    snaps = telemetry.history(limit=limit)
+    return {
+        "active": True,
+        "count": len(snaps),
+        "snapshots": [s.to_dict() for s in snaps],
+    }
+
+
+@router.get("/decisions/symbol/{symbol}")
+async def get_decision_by_symbol(request: Request, symbol: str, limit: int = Query(default=50, ge=1, le=360)):
+    """Per-symbol timeline of alpha/breakout/exit/kelly data across recent ticks."""
+    engine = _get_engine(request)
+    if engine is None:
+        return {"active": False, "symbol": symbol, "history": []}
+
+    telemetry = getattr(engine, "_telemetry", None)
+    if telemetry is None:
+        return {"active": True, "symbol": symbol, "history": []}
+
+    history = telemetry.symbol_history(symbol.upper(), limit=limit)
+    return {
+        "active": True,
+        "symbol": symbol.upper(),
+        "count": len(history),
+        "history": history,
+    }
+
+
+@router.get("/decisions/exits")
+async def get_exit_proximity(request: Request):
+    """Exit proximity for all current positions — distances to each exit condition."""
+    engine = _get_engine(request)
+    if engine is None:
+        return {"active": False, "exits": []}
+
+    telemetry = getattr(engine, "_telemetry", None)
+    if telemetry is None:
+        return {"active": True, "exits": []}
+
+    return {
+        "active": True,
+        "exits": telemetry.exits_snapshot(),
+    }
+
+
+@router.get("/evolution/history")
+async def get_evolution_history(request: Request, limit: int = Query(default=50, ge=1, le=360)):
+    """Evolution parameter change history across recent ticks."""
+    engine = _get_engine(request)
+    if engine is None:
+        return {"active": False, "history": []}
+
+    telemetry = getattr(engine, "_telemetry", None)
+    if telemetry is None:
+        return {"active": True, "history": []}
+
+    snaps = telemetry.history(limit=limit)
+    history = []
+    for s in snaps:
+        history.append({
+            "tick_number": s.tick_number,
+            "timestamp": s.timestamp,
+            "generation": s.evolution_generation,
+            "regime": s.regime,
+            "equity": round(s.equity, 2),
+            "drawdown_pct": round(s.drawdown_pct, 4),
+            "params": s.evolved_params_summary,
+        })
+    return {
+        "active": True,
+        "count": len(history),
+        "history": history,
+    }

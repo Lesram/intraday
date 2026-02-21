@@ -50,6 +50,7 @@ import PositionHeatmap from '../positions/components/PositionHeatmap';
 import PnLWaterfall from '../portfolio/components/PnLWaterfall';
 import AttributionPanel from './components/AttributionChart';
 import RegimeTimeline from './components/RegimeTimeline';
+import DecisionDashboard from './components/DecisionDashboard';
 
 const { Title, Text } = Typography;
 
@@ -972,6 +973,15 @@ ENABLE_ORGANISM_SCHEDULER=1   # optional — starts the live tick loop`}
                 </Col>
               </Row>
             ),
+          },
+          {
+            key: 'decisions',
+            label: (
+              <span>
+                <DashboardOutlined /> Decisions
+              </span>
+            ),
+            children: <DecisionDashboard />,
           },
           {
             key: 'runs',

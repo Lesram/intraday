@@ -29,6 +29,8 @@ class AlphaCandidate:
     volume_score: float = 0.0
     momentum_score: float = 0.0
     regime_score: float = 0.0
+    institutional_score: float = 0.0
+    momentum_quality_score: float = 0.0
     ml_signal: MLSignal | None = None
     direction: float = 0.0  # +1 buy, -1 sell
 
@@ -41,6 +43,8 @@ class AlphaCandidate:
             "volume": round(self.volume_score, 4),
             "momentum": round(self.momentum_score, 4),
             "regime": round(self.regime_score, 4),
+            "institutional": round(self.institutional_score, 4),
+            "momentum_quality": round(self.momentum_quality_score, 4),
             "direction": self.direction,
         }
 
@@ -169,12 +173,15 @@ class AlphaScanner:
                 volume_score=volume_score,
                 momentum_score=momentum_score,
                 regime_score=regime_score,
+                institutional_score=inst_score,
+                momentum_quality_score=mom_quality,
                 ml_signal=ml_sig,
                 direction=direction,
             ))
 
         # Sort by composite score, take top N
         candidates.sort(key=lambda c: c.composite_score, reverse=True)
+        self._last_full_scan = list(candidates)
         result = [c for c in candidates[:self.top_n] if c.composite_score >= self.MIN_COMPOSITE]
 
         if result:
