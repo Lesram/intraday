@@ -333,7 +333,7 @@ class OrganismLiveEngine:
         # order every tick when the order hasn't settled or was rejected.
         # Maps symbol → tick number when entry order was submitted
         self._pending_entry: dict[str, int] = {}
-        self._PENDING_ENTRY_TICKS = 5  # Wait 5 ticks before retrying same symbol
+        self._PENDING_ENTRY_TICKS = 15  # Wait 15 ticks (~2.5 min) before retrying same symbol
 
         # Serialize live_tick() calls to prevent concurrent state mutation
         # (scheduler loop + manual /tick endpoint)
@@ -342,6 +342,8 @@ class OrganismLiveEngine:
         # ── Background trainer for non-blocking retraining ────────
         self._bg_trainer = BackgroundTrainer()
         self._bg_training_metadata: dict[str, Any] = {}
+        self._bg_training_started_tick: int = 0  # tick when bg training started
+        self._BG_TRAINING_TIMEOUT_TICKS = 30  # ~5 min at 10s/tick
 
     # ═════════════════════════════════════════════════════════════
     #  INITIALIZATION / SHUTDOWN
@@ -727,6 +729,9 @@ class OrganismLiveEngine:
                 for ss in self.market_scanner.scanned_stocks:
                     _tension_lookup[ss.symbol] = ss.tension_score
 
+            # Symbol fitness gate threshold — block re-entry on chronic losers
+            _FITNESS_GATE = 0.35
+
             cand_dicts = []
             for c in candidates:
                 if c.symbol in open_symbols:
@@ -735,7 +740,17 @@ class OrganismLiveEngine:
                     continue  # Wash trade cooldown
                 if c.symbol in self._pending_entry:
                     continue  # Already submitted an order recently
+                if c.symbol in self._entry_metadata:
+                    continue  # Already tracking this position
                 if LONG_ONLY and not self.evolved_params.shorts_enabled and c.direction < 0:
+                    continue
+                # Block symbols with poor fitness scores from evolved params
+                sym_fitness = self.evolved_params.symbol_fitness.get(c.symbol, 0.5)
+                if sym_fitness < _FITNESS_GATE:
+                    logger.info(
+                        "Fitness gate blocked %s (fitness=%.2f < %.2f)",
+                        c.symbol, sym_fitness, _FITNESS_GATE,
+                    )
                     continue
 
                 bs = breakout_by_sym.get(c.symbol)
@@ -764,7 +779,9 @@ class OrganismLiveEngine:
                     and bs.symbol not in open_symbols
                     and bs.symbol not in self._exit_cooldown
                     and bs.symbol not in self._pending_entry
+                    and bs.symbol not in self._entry_metadata
                     and bs.composite_score >= 0.55
+                    and self.evolved_params.symbol_fitness.get(bs.symbol, 0.5) >= _FITNESS_GATE
                 ):
                     ml_sig = ml_signals.get(bs.symbol)
                     if ml_sig and ml_sig.direction < 0:
@@ -811,7 +828,23 @@ class OrganismLiveEngine:
             )
 
             # 9. SUBMIT ENTRY ORDERS
+            # Re-check positions right before ordering to catch partial
+            # fills from cancelled orders that silently accumulated shares
+            try:
+                fresh_positions = await self._positions_service.get_all_positions()
+                fresh_open = set(fresh_positions.keys())
+            except Exception:
+                fresh_open = open_symbols
+
             for sz in sizes:
+                # Skip if position already exists (e.g. from partial fill
+                # on a cancelled order that the earlier check missed)
+                if sz.symbol in fresh_open:
+                    logger.info(
+                        "Skipping entry for %s — position already exists at broker",
+                        sz.symbol,
+                    )
+                    continue
                 initial_shares = self.pyramider.initial_shares(sz.shares)
                 if initial_shares < 1:
                     initial_shares = sz.shares
@@ -920,6 +953,22 @@ class OrganismLiveEngine:
 
             # Check if previous background training completed
             if self._bg_trainer.is_training:
+                # Detect stuck training — if it's been running for too long,
+                # force-reset and fall back to synchronous training
+                ticks_training = self._tick_count - self._bg_training_started_tick
+                if ticks_training > self._BG_TRAINING_TIMEOUT_TICKS:
+                    logger.warning(
+                        "Background training stuck for %d ticks — force-resetting",
+                        ticks_training,
+                    )
+                    self._bg_trainer._is_training = False
+                    self._bg_trainer._future = None
+                    try:
+                        self._retrain_and_evolve(features_by_symbol, regime)
+                        logger.info("Sync retrain after stuck bg trainer completed")
+                    except Exception as e:
+                        logger.warning("Sync retrain after stuck reset failed: %s", e)
+
                 done, train_result = self._bg_trainer.get_result()
                 if done and train_result and train_result.accepted:
                     self.evolved_params = self._bg_trainer.apply_result(
@@ -952,11 +1001,22 @@ class OrganismLiveEngine:
                         timestamp=now_iso,
                     ))
                 elif done and train_result:
+                    # Background training failed — log error and fall back
+                    # to synchronous training so the model still gets updated
+                    logger.warning(
+                        "Background training rejected/failed: %s — falling back to sync",
+                        train_result.error,
+                    )
                     self._bg_training_metadata = {
                         "status": "rejected",
                         "error": train_result.error,
                         "last_trained_tick": self._tick_count,
                     }
+                    try:
+                        self._retrain_and_evolve(features_by_symbol, regime)
+                        logger.info("Synchronous fallback retrain completed")
+                    except Exception as e:
+                        logger.warning("Sync retrain fallback also failed: %s", e)
             elif self._bars_since_retrain >= _retrain_threshold:
                 self._bars_since_retrain = 0
                 try:
@@ -969,6 +1029,11 @@ class OrganismLiveEngine:
                         evolved_params=self.evolved_params,
                     )
                     self._bg_training_metadata["status"] = "training"
+                    self._bg_training_started_tick = self._tick_count
+                    logger.info(
+                        "Background training submitted (trades=%d, bars_since=%d, threshold=%d)",
+                        len(self._all_trades), self._bars_since_retrain, _retrain_threshold,
+                    )
                     result.activity.append(ActivityEvent(
                         event_type="retrain",
                         message=f"Background training submitted (trades={len(self._all_trades)})",
@@ -1134,12 +1199,35 @@ class OrganismLiveEngine:
                     logger.warning("Failed to fetch/compute %s: %s", sym, e)
                     return sym, None
 
-        # Fetch all symbols concurrently (semaphore-limited)
+        # Fetch all universe symbols concurrently (semaphore-limited)
         tasks = [_fetch_one(sym) for sym in self._universe]
         results = await asyncio.gather(*tasks)
         for sym, feats in results:
             if feats is not None:
                 features_by_symbol[sym] = feats
+
+        # Also fetch features for open position symbols that aren't in
+        # the universe.  Without this, exit checks are silently skipped
+        # for positions whose symbols rotated out of the universe.
+        try:
+            current_positions = await self._positions_service.get_all_positions()
+            position_syms_missing = [
+                sym for sym in current_positions
+                if sym not in features_by_symbol
+            ]
+            if position_syms_missing:
+                pos_tasks = [_fetch_one(sym) for sym in position_syms_missing]
+                pos_results = await asyncio.gather(*pos_tasks)
+                for sym, feats in pos_results:
+                    if feats is not None:
+                        features_by_symbol[sym] = feats
+                logger.info(
+                    "Fetched features for %d position symbols outside universe: %s",
+                    len(position_syms_missing),
+                    position_syms_missing,
+                )
+        except Exception as e:
+            logger.warning("Failed to fetch position symbol features: %s", e)
 
         return features_by_symbol
 

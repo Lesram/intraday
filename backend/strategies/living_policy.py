@@ -203,10 +203,11 @@ class LivingPolicyEngine:
                     pnl = _clamp(pnl, -0.05, 0.05)
                     per_source_deltas[source] = per_source_deltas.get(source, 0.0) + pnl
 
+            raw_ts = meta.get("bar_timestamp") or getattr(sig, "ts", None) or now.isoformat()
             self._last_obs[key] = {
                 "close": close_f,
                 "direction": _sign(target_exposure),
-                "ts": meta.get("bar_timestamp") or getattr(sig, "ts", None) or now.isoformat(),
+                "ts": str(raw_ts),
             }
 
         # Update per-source scores (EMA)

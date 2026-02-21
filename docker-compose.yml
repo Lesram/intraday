@@ -30,7 +30,12 @@ services:
       # Alpaca Configuration (use test credentials)
       - ALPACA_API_KEY=${ALPACA_API_KEY:-dummy_key_for_testing}
       - ALPACA_SECRET_KEY=${ALPACA_SECRET_KEY:-dummy_secret_for_testing}
-      - ALPACA_BASE_URL=https://paper-api.alpaca.markets
+      - ALPACA_API_KEY_ID=${ALPACA_API_KEY_ID:-}
+      - ALPACA_API_SECRET_KEY=${ALPACA_API_SECRET_KEY:-}
+      - ALPACA_BASE_URL=${ALPACA_BASE_URL:-https://paper-api.alpaca.markets}
+      - ALPACA_DATA_URL=${ALPACA_DATA_URL:-}
+      - ALPACA_STREAM_URL=${ALPACA_STREAM_URL:-}
+      - ALPACA_DATA_FEED=${ALPACA_DATA_FEED:-iex}
 
       # Security Settings - MUST be overridden in production via .env file
       # Generate a secure key: python -c "import secrets; print(secrets.token_urlsafe(32))"

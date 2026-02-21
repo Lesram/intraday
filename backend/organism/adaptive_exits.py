@@ -273,6 +273,13 @@ class AdaptiveExitEngine:
                 levels.highest_favorable = current_price
             levels.highest_favorable = min(levels.highest_favorable, current_price)
 
+        # 0. ABSOLUTE MAX LOSS — safety net regardless of ATR calculations.
+        #    No position should ever lose more than 15%.
+        if levels.entry_price > 0:
+            pnl_pct = (current_price - levels.entry_price) / levels.entry_price * direction
+            if pnl_pct <= -0.15:
+                return ExitSignal(True, "max_loss_limit", current_price)
+
         # 1. Hard stop-loss check
         if direction > 0 and current_price <= levels.stop_loss:
             return ExitSignal(True, "stop_loss", levels.stop_loss)
