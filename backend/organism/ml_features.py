@@ -341,6 +341,36 @@ def compute_ml_features(
     f.loc[f["vol_regime"] == 2, "regime_encoded"] = 2.0
 
     # ═══════════════════════════════════════════════════════
+    # MOMENTUM PERSISTENCE (4)
+    # ═══════════════════════════════════════════════════════
+    _ret_1d = f["ret_1d"]
+    for _lag in (1, 5, 10):
+        f[f"ret_autocorr_{_lag}"] = _ret_1d.rolling(
+            window=max(30, _lag * 3), min_periods=max(15, _lag + 2),
+        ).apply(
+            lambda s, __lag=_lag: float(s.autocorr(lag=__lag))
+            if len(s) > __lag else 0.0,
+            raw=False,
+        )
+
+    # Hurst exponent on returns (rescaled-range, separate from price hurst)
+    def _hurst_ret(series: pd.Series, window: int = 50) -> pd.Series:
+        result = pd.Series(0.5, index=series.index)
+        vals = series.values
+        for i in range(window, len(vals)):
+            seg = vals[i - window : i]
+            mean_val = np.mean(seg)
+            std_val = np.std(seg)
+            if std_val < 1e-10:
+                continue
+            cumdev = np.cumsum(seg - mean_val)
+            r = np.max(cumdev) - np.min(cumdev)
+            result.iloc[i] = math.log(max(r / std_val, 1e-10)) / math.log(window)
+        return result
+
+    f["hurst_exponent"] = _hurst_ret(_ret_1d, 50)
+
+    # ═══════════════════════════════════════════════════════
     # COMPOSITE INDICATORS (7)
     # ═══════════════════════════════════════════════════════
     try:
@@ -407,6 +437,8 @@ FEATURE_COLUMNS: list[str] = [
     "pct_from_52w_high", "pct_from_52w_low",
     # Regime
     "trend_strength", "choppiness", "hurst", "regime_encoded",
+    # Momentum persistence
+    "ret_autocorr_1", "ret_autocorr_5", "ret_autocorr_10", "hurst_exponent",
     # Composite indicators (proprietary)
     "comp_squeeze_momentum", "comp_vol_price_div",
     "comp_trend_alignment", "comp_institutional_acc",

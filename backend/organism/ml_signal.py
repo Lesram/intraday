@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import logging
 import math
+import os
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -18,6 +19,8 @@ import numpy as np
 import pandas as pd
 
 logger = logging.getLogger(__name__)
+
+ML_DECAY_RATE = float(os.getenv("ORGANISM_ML_DECAY_RATE", "0.005"))
 
 try:
     from xgboost import XGBClassifier, XGBRegressor
@@ -124,6 +127,11 @@ class MLSignalGenerator:
         self._direction_threshold_buy: float = 0.52
         self._direction_threshold_sell: float = 0.48
 
+        # Confidence calibration: tracks P(actual_win | predicted_confidence_bin)
+        # 5 bins: [0-0.2, 0.2-0.4, 0.4-0.6, 0.6-0.8, 0.8-1.0]
+        self._calibration_counts: list[list[int]] = [[0, 0] for _ in range(5)]  # [correct, total]
+        self._calibration_map: list[float] = [1.0] * 5  # multiplier per bin
+
         self._init_models()
 
         # Phase 4.4: Ensemble expansion (RF + optional LightGBM)
@@ -215,11 +223,14 @@ class MLSignalGenerator:
         y_ret_val = X_val[2]
         X_val = X_val[0]
 
+        # Time-decay sample weights: recent bars get more weight
+        weights = self._compute_sample_weights(len(X_train))
+
         # Train direction classifier
-        self._clf.fit(X_train, y_dir_train)
+        self._clf.fit(X_train, y_dir_train, sample_weight=weights)
 
         # Train return regressor
-        self._reg.fit(X_train, y_ret_train)
+        self._reg.fit(X_train, y_ret_train, sample_weight=weights)
 
         # Phase 4.4: Train ensemble models
         if self._ensemble is not None:
@@ -305,6 +316,9 @@ class MLSignalGenerator:
         confidence = abs(p_up - 0.5) * 2  # [0, 1]
         confidence = min(confidence, 1.0)
 
+        # Apply calibration correction
+        confidence = self.calibrate_confidence(confidence)
+
         # Feature importance
         fi = self._get_feature_importance()
 
@@ -326,6 +340,66 @@ class MLSignalGenerator:
         return signals
 
     # ── Internal ───────────────────────────────────────────────────
+
+    def record_prediction_outcome(self, confidence: float, was_correct: bool) -> None:
+        """Record whether a prediction at a given confidence was correct."""
+        bin_idx = min(int(confidence * 5), 4)
+        self._calibration_counts[bin_idx][1] += 1  # total
+        if was_correct:
+            self._calibration_counts[bin_idx][0] += 1  # correct
+
+    def update_calibration_map(self) -> None:
+        """Recompute calibration multipliers from accumulated outcomes."""
+        for i in range(5):
+            total = self._calibration_counts[i][1]
+            if total < 10:
+                self._calibration_map[i] = 1.0  # Not enough data
+                continue
+            actual_rate = self._calibration_counts[i][0] / total
+            # Bin midpoint represents the "expected" accuracy
+            bin_midpoint = (i * 0.2 + (i + 1) * 0.2) / 2
+            if bin_midpoint < 0.01:
+                self._calibration_map[i] = 1.0
+            else:
+                self._calibration_map[i] = min(actual_rate / bin_midpoint, 2.0)
+
+    def calibrate_confidence(self, raw_confidence: float) -> float:
+        """Apply calibration correction to raw confidence."""
+        bin_idx = min(int(raw_confidence * 5), 4)
+        return min(raw_confidence * self._calibration_map[bin_idx], 1.0)
+
+    def calibration_to_dict(self) -> dict[str, Any]:
+        """Serialize calibration state for brain persistence."""
+        return {
+            "counts": self._calibration_counts,
+            "map": self._calibration_map,
+        }
+
+    def load_calibration(self, data: dict[str, Any]) -> None:
+        """Restore calibration state from brain."""
+        if not data or not isinstance(data, dict):
+            return
+        counts = data.get("counts")
+        if counts and len(counts) == 5:
+            self._calibration_counts = [[int(c[0]), int(c[1])] for c in counts]
+        cal_map = data.get("map")
+        if cal_map and len(cal_map) == 5:
+            self._calibration_map = [float(m) for m in cal_map]
+
+    @staticmethod
+    def _compute_sample_weights(n: int) -> np.ndarray:
+        """Exponential decay weights — recent samples get 3-5x weight.
+
+        Formula: w_i = exp(-decay_rate * (n - 1 - i))
+        where i=0 is oldest, i=n-1 is newest.
+        """
+        if n <= 1:
+            return np.ones(n)
+        indices = np.arange(n)
+        weights = np.exp(-ML_DECAY_RATE * (n - 1 - indices))
+        # Normalize so mean weight = 1 (preserves effective sample size feel)
+        weights /= weights.mean()
+        return weights
 
     def _select_feature_columns(
         self, features_by_symbol: dict[str, pd.DataFrame]

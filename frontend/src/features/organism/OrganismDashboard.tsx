@@ -43,9 +43,13 @@ import { Tooltip } from 'antd';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { usePortfolio } from '@/hooks/useData';
 import { usePortfolioStore } from '@/store/portfolioStore';
-import { organismApi, type ActivityEvent, type EngineStats, type OrganismRun, type OrganismStatus, type ScannerStatus, type UniverseStatus } from './organismApi';
+import { organismApi, type ActivityEvent, type EngineStats, type OrganismRun, type OrganismStatus, type OrganismAnalytics, type ScannerStatus, type UniverseStatus } from './organismApi';
 import ScannerPanel from './ScannerPanel';
 import UniversePanel from './UniversePanel';
+import PositionHeatmap from '../positions/components/PositionHeatmap';
+import PnLWaterfall from '../portfolio/components/PnLWaterfall';
+import AttributionPanel from './components/AttributionChart';
+import RegimeTimeline from './components/RegimeTimeline';
 
 const { Title, Text } = Typography;
 
@@ -537,6 +541,7 @@ const OrganismDashboard = () => {
   const [attribution, setAttribution] = useState<Record<string, unknown> | null>(null);
   const [scannerData, setScannerData] = useState<ScannerStatus | null>(null);
   const [universeData, setUniverseData] = useState<UniverseStatus | null>(null);
+  const [analyticsData, setAnalyticsData] = useState<OrganismAnalytics | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
@@ -546,7 +551,7 @@ const OrganismDashboard = () => {
   const fetchAll = useCallback(async (withSpinner = false) => {
     if (withSpinner) setLoading(true);
     try {
-      const [statusResult, runsResult, policyResult, brainResult, attributionResult, scannerResult, universeResult] = await Promise.allSettled([
+      const [statusResult, runsResult, policyResult, brainResult, attributionResult, scannerResult, universeResult, analyticsResult] = await Promise.allSettled([
         organismApi.getStatus(),
         organismApi.getRuns(120),
         organismApi.getPolicy(),
@@ -554,6 +559,7 @@ const OrganismDashboard = () => {
         organismApi.getAttribution(),
         organismApi.getScanner(),
         organismApi.getUniverse(),
+        organismApi.getAnalytics(),
       ]);
 
       if (statusResult.status === 'fulfilled') {
@@ -588,6 +594,10 @@ const OrganismDashboard = () => {
 
       if (universeResult.status === 'fulfilled') {
         setUniverseData(universeResult.value);
+      }
+
+      if (analyticsResult.status === 'fulfilled') {
+        setAnalyticsData(analyticsResult.value);
       }
 
       setError(null);
@@ -947,6 +957,19 @@ ENABLE_ORGANISM_SCHEDULER=1   # optional — starts the live tick loop`}
                 <Col xs={24}>
                   <SignalHeatMap runs={runs} />
                 </Col>
+
+                {/* ── Position Heatmap + P&L Waterfall ── */}
+                <Col xs={24} lg={12}>
+                  <PositionHeatmap />
+                </Col>
+                <Col xs={24} lg={12}>
+                  <PnLWaterfall />
+                </Col>
+
+                {/* ── Regime Timeline ── */}
+                <Col xs={24}>
+                  <RegimeTimeline data={analyticsData?.regime_timeline ?? []} />
+                </Col>
               </Row>
             ),
           },
@@ -1063,6 +1086,21 @@ ENABLE_ORGANISM_SCHEDULER=1   # optional — starts the live tick loop`}
               </span>
             ),
             children: <UniversePanel universe={universeData} loading={loading} />,
+          },
+          {
+            key: 'analytics',
+            label: (
+              <span>
+                <ExperimentOutlined /> Analytics
+              </span>
+            ),
+            children: (
+              <AttributionPanel
+                sectorExposure={analyticsData?.sector_exposure ?? []}
+                confidenceDist={analyticsData?.confidence_distribution ?? []}
+                regimeKellyStats={analyticsData?.regime_kelly_stats ?? {}}
+              />
+            ),
           },
           {
             key: 'learned',

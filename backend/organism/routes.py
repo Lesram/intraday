@@ -390,6 +390,80 @@ async def get_universe_status(request: Request):
     )
 
 
+@router.get("/analytics")
+async def get_organism_analytics(request: Request):
+    """Get enhanced analytics: sector exposure, regime timeline, signal confidence distribution."""
+    scheduler = getattr(request.app.state, "organism_scheduler", None)
+    engine = getattr(scheduler, "_engine", None) if scheduler else None
+
+    result: dict[str, Any] = {
+        "sector_exposure": [],
+        "regime_timeline": [],
+        "confidence_distribution": [],
+        "regime_kelly_stats": {},
+        "calibration": {},
+    }
+
+    if engine is None:
+        return result
+
+    # Sector exposure from current positions
+    try:
+        from backend.organism.sector_map import get_sector
+        positions = getattr(engine, "_last_positions", None)
+        if positions is None:
+            try:
+                positions = await engine._positions_service.get_all_positions()
+            except Exception:
+                positions = {}
+        sector_counts: dict[str, dict[str, Any]] = {}
+        for sym, pos_data in (positions or {}).items():
+            sector = get_sector(sym)
+            if sector not in sector_counts:
+                sector_counts[sector] = {"count": 0, "symbols": [], "total_value": 0.0}
+            sector_counts[sector]["count"] += 1
+            sector_counts[sector]["symbols"].append(sym)
+            mkt_val = abs(float(pos_data.get("market_value", 0)))
+            sector_counts[sector]["total_value"] += mkt_val
+        result["sector_exposure"] = [
+            {"sector": k, **v} for k, v in sector_counts.items()
+        ]
+    except Exception as e:
+        logger.debug("Sector exposure failed: %s", e)
+
+    # Regime timeline from tick history
+    try:
+        runs = getattr(engine, "_tick_history", [])
+        timeline = []
+        for run in runs[-100:]:
+            r = run if isinstance(run, dict) else (run.to_dict() if hasattr(run, "to_dict") else {})
+            if r.get("regime") and r.get("timestamp"):
+                timeline.append({"regime": r["regime"], "timestamp": r["timestamp"]})
+        result["regime_timeline"] = timeline
+    except Exception as e:
+        logger.debug("Regime timeline failed: %s", e)
+
+    # ML confidence distribution from recent signals
+    try:
+        cal = engine.signal_gen.calibration_to_dict()
+        result["calibration"] = cal
+        bins = ["0.0-0.2", "0.2-0.4", "0.4-0.6", "0.6-0.8", "0.8-1.0"]
+        result["confidence_distribution"] = [
+            {"bin": bins[i], "correct": cal["counts"][i][0], "total": cal["counts"][i][1]}
+            for i in range(5)
+        ]
+    except Exception as e:
+        logger.debug("Confidence distribution failed: %s", e)
+
+    # Regime Kelly stats
+    try:
+        result["regime_kelly_stats"] = engine.kelly_sizer.regime_stats_to_dict()
+    except Exception as e:
+        logger.debug("Regime Kelly stats failed: %s", e)
+
+    return result
+
+
 @router.get("/scanner/history")
 async def get_scanner_history(request: Request):
     """Get the raw list of scanned stock details (latest scan only)."""

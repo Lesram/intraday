@@ -51,6 +51,7 @@ from backend.organism.pyramider import (
     PyramidLevel,
 )
 from backend.organism.regime import RegimeDetector, RegimeLabel
+from backend.organism.sector_map import sector_gate_allows, get_sector
 from backend.organism.self_evolution import (
     EvolutionEngine,
     EvolvedParams,
@@ -455,6 +456,18 @@ class OrganismLiveEngine:
                     len(self._entry_metadata),
                 )
 
+            # Restore regime-stratified Kelly stats
+            rk_data = self.brain.extra_counters.get("regime_kelly_stats")
+            if rk_data:
+                self.kelly_sizer.load_regime_stats(rk_data)
+                logger.info("Restored regime Kelly stats from brain")
+
+            # Restore ML confidence calibration
+            cal_data = self.brain.extra_counters.get("ml_calibration")
+            if cal_data:
+                self.signal_gen.load_calibration(cal_data)
+                logger.info("Restored ML calibration from brain")
+
             # Validate brain
             warnings = self.brain.validate_brain()
             for w in warnings:
@@ -685,6 +698,27 @@ class OrganismLiveEngine:
                     exit_levels, current_price, regime
                 )
 
+                # ML reversal check: if ML signal flips, trigger partial exit
+                if not exit_sig.should_exit and self.signal_gen.is_trained:
+                    try:
+                        ml_sig = self.signal_gen.predict(feat_df, sym)
+                        pos_direction = exit_levels.direction
+                        if (
+                            ml_sig.direction != 0
+                            and ml_sig.direction != pos_direction
+                            and ml_sig.confidence > 0.3
+                        ):
+                            from backend.organism.adaptive_exits import ExitSignal
+                            exit_sig = ExitSignal(
+                                should_exit=True,
+                                reason="ml_reversal",
+                                exit_price=current_price,
+                                partial_exit=True,
+                                partial_pct=0.50,
+                            )
+                    except Exception:
+                        pass  # ML reversal check is non-fatal
+
                 if exit_sig.should_exit:
                     qty = abs(float(pos_data.get("qty", 0)))
                     if exit_sig.partial_exit:
@@ -794,6 +828,13 @@ class OrganismLiveEngine:
                     continue  # Already tracking this position
                 if LONG_ONLY and not self.evolved_params.shorts_enabled and c.direction < 0:
                     continue
+                # Sector diversification gate
+                if not sector_gate_allows(c.symbol, open_symbols):
+                    logger.info(
+                        "Sector gate blocked %s (sector=%s)",
+                        c.symbol, get_sector(c.symbol),
+                    )
+                    continue
                 # Block symbols with poor fitness scores from evolved params
                 sym_fitness = self.evolved_params.symbol_fitness.get(c.symbol, 0.5)
                 if sym_fitness < _FITNESS_GATE:
@@ -832,6 +873,7 @@ class OrganismLiveEngine:
                     and bs.symbol not in self._entry_metadata
                     and bs.composite_score >= 0.55
                     and self.evolved_params.symbol_fitness.get(bs.symbol, 0.5) >= _FITNESS_GATE
+                    and sector_gate_allows(bs.symbol, open_symbols)
                 ):
                     ml_sig = ml_signals.get(bs.symbol)
                     if ml_sig and ml_sig.direction < 0:
@@ -876,6 +918,31 @@ class OrganismLiveEngine:
             sizes = self.kelly_sizer.size_positions(
                 cand_dicts, equity, drawdown, features_by_symbol, regime
             )
+
+            # 8b. INTRADAY SEASONALITY FILTER — reduce allocation
+            # during first/last 15 min (highest volatility, worst fills)
+            if _IS_INTRADAY and sizes:
+                from datetime import timezone
+                now_et = datetime.now(UTC)
+                # Approximate ET offset (UTC-5 EST / UTC-4 EDT)
+                # Good enough for 15-min window checks
+                try:
+                    import zoneinfo
+                    now_et = datetime.now(zoneinfo.ZoneInfo("America/New_York"))
+                except Exception:
+                    now_et = datetime.now(UTC).replace(
+                        hour=(datetime.now(UTC).hour - 5) % 24
+                    )
+                hhmm = now_et.hour * 100 + now_et.minute
+                if (930 <= hhmm <= 945) or (1545 <= hhmm <= 1600):
+                    for sz in sizes:
+                        sz.shares = max(1, int(sz.shares * 0.6))
+                        sz.notional = sz.notional * 0.6
+                        sz.target_weight = sz.target_weight * 0.6
+                    logger.info(
+                        "Seasonality filter: reduced allocation 40%% (time=%d)",
+                        hhmm,
+                    )
 
             # 9. SUBMIT ENTRY ORDERS
             # Re-check positions right before ordering to catch partial
@@ -1597,6 +1664,20 @@ class OrganismLiveEngine:
             self._all_trades.append(trade)
             self.learner.record_trade(trade)
 
+            # Record for regime-stratified Kelly
+            exit_lvl = self._exit_levels.get(sym)
+            regime_at_trade = (
+                exit_lvl.regime_at_entry if exit_lvl else "normal"
+            )
+            self.kelly_sizer.record_trade(regime_at_trade, pnl)
+
+            # Record for ML calibration
+            if meta.get("confidence") is not None:
+                was_correct = actual_return > 0
+                self.signal_gen.record_prediction_outcome(
+                    meta["confidence"], was_correct
+                )
+
             # Clean up tracking state
             self._exit_levels.pop(sym, None)
             self._pyramid_positions.pop(sym, None)
@@ -1808,6 +1889,9 @@ class OrganismLiveEngine:
 
         self.learner.compute_attribution()
 
+        # Update ML confidence calibration map
+        self.signal_gen.update_calibration_map()
+
         # Evolve
         recent_trades = self._all_trades[-200:]  # last 200 trades
         if recent_trades:
@@ -1903,6 +1987,8 @@ class OrganismLiveEngine:
                         for sym, lvl in self._exit_levels.items()
                     },
                     "entry_metadata": dict(self._entry_metadata),
+                    "regime_kelly_stats": self.kelly_sizer.regime_stats_to_dict(),
+                    "ml_calibration": self.signal_gen.calibration_to_dict(),
                 },
                 evolved_params=self.evolved_params.to_dict(),
                 governance_controller=self.governance,

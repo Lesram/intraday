@@ -55,7 +55,7 @@ class PositionSize:
 
 
 class KellySizer:
-    """Half-Kelly position sizing with breakout bonuses.
+    """Half-Kelly position sizing with breakout bonuses + regime stratification.
 
     v2 pipeline:
         1. Raw Kelly  = mean_return / variance
@@ -67,6 +67,8 @@ class KellySizer:
         7. **NEW** — breakout score bonus (1.5× / 2.0×)
         8. Enforce per-position max (12 %), total portfolio max (95 %)
         9. Convert to shares; min position $2 000
+
+    v3 addition: regime-stratified Kelly — per-regime win_rate/payoff tracking.
     """
 
     def __init__(
@@ -84,6 +86,9 @@ class KellySizer:
         self.drawdown_floor = drawdown_floor
         self.max_drawdown_cutoff = max_drawdown_cutoff
         self.min_position_usd = min_position_usd
+
+        # Regime-stratified Kelly stats: {regime: {wins, losses, total_pnl, total_win_pnl, total_loss_pnl}}
+        self._regime_stats: dict[str, dict[str, float]] = {}
 
     def size_positions(
         self,
@@ -167,14 +172,18 @@ class KellySizer:
             # Directional returns based on signal
             dir_returns = returns * direction
 
-            # 1. Raw Kelly
-            mean_r = float(np.mean(dir_returns))
-            var_r = float(np.var(dir_returns, ddof=1))
-
-            if var_r < 1e-8 or mean_r <= 0 or not math.isfinite(mean_r) or not math.isfinite(var_r):
-                kelly_raw = 0.0
+            # 1. Raw Kelly (try regime-stratified first, fallback to global)
+            regime_kelly = self.get_regime_kelly(current_regime)
+            if regime_kelly is not None:
+                kelly_raw = min(regime_kelly, 1.0)
             else:
-                kelly_raw = min(mean_r / var_r, 1.0)  # Cap raw Kelly at 100%
+                mean_r = float(np.mean(dir_returns))
+                var_r = float(np.var(dir_returns, ddof=1))
+
+                if var_r < 1e-8 or mean_r <= 0 or not math.isfinite(mean_r) or not math.isfinite(var_r):
+                    kelly_raw = 0.0
+                else:
+                    kelly_raw = min(mean_r / var_r, 1.0)  # Cap raw Kelly at 100%
 
             # 2. Half-Kelly (with breakout floor for intraday)
             kelly_half = kelly_raw * 0.5
@@ -312,3 +321,61 @@ class KellySizer:
             return 1.5 + (breakout_score - 0.7) / 0.15 * 0.5
         # Interpolate 1.0 → 1.5 for 0.5 → 0.7
         return 1.0 + (breakout_score - 0.5) / 0.2 * 0.5
+
+    # ── Regime-stratified Kelly ──────────────────────────────────
+
+    def record_trade(self, regime: str, pnl: float) -> None:
+        """Record a completed trade outcome for regime-stratified Kelly."""
+        if regime not in self._regime_stats:
+            self._regime_stats[regime] = {
+                "wins": 0, "losses": 0,
+                "total_pnl": 0.0, "total_win_pnl": 0.0, "total_loss_pnl": 0.0,
+            }
+        stats = self._regime_stats[regime]
+        stats["total_pnl"] += pnl
+        if pnl > 0:
+            stats["wins"] += 1
+            stats["total_win_pnl"] += pnl
+        else:
+            stats["losses"] += 1
+            stats["total_loss_pnl"] += abs(pnl)
+
+    def get_regime_kelly(self, regime: str) -> float | None:
+        """Compute Kelly fraction for a specific regime.
+
+        Returns None if insufficient data (< 10 trades in regime).
+        """
+        stats = self._regime_stats.get(regime)
+        if not stats:
+            return None
+        total = stats["wins"] + stats["losses"]
+        if total < 10:
+            return None
+        win_rate = stats["wins"] / total
+        if stats["losses"] == 0 or stats["total_loss_pnl"] < 1e-8:
+            return None
+        avg_win = stats["total_win_pnl"] / max(stats["wins"], 1)
+        avg_loss = stats["total_loss_pnl"] / max(stats["losses"], 1)
+        payoff_ratio = avg_win / avg_loss
+        # Kelly: W - (1-W)/B
+        kelly = win_rate - (1 - win_rate) / payoff_ratio
+        return max(kelly, 0.0)
+
+    def regime_stats_to_dict(self) -> dict[str, Any]:
+        """Serialize regime stats for brain persistence."""
+        return dict(self._regime_stats)
+
+    def load_regime_stats(self, data: dict[str, Any]) -> None:
+        """Restore regime stats from brain."""
+        if data and isinstance(data, dict):
+            self._regime_stats = {
+                k: {
+                    "wins": float(v.get("wins", 0)),
+                    "losses": float(v.get("losses", 0)),
+                    "total_pnl": float(v.get("total_pnl", 0)),
+                    "total_win_pnl": float(v.get("total_win_pnl", 0)),
+                    "total_loss_pnl": float(v.get("total_loss_pnl", 0)),
+                }
+                for k, v in data.items()
+                if isinstance(v, dict)
+            }

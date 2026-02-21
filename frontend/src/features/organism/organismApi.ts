@@ -149,6 +149,32 @@ export interface UniverseStatus {
   };
 }
 
+export interface SectorExposure {
+  sector: string;
+  count: number;
+  symbols: string[];
+  total_value: number;
+}
+
+export interface RegimeTimelineEntry {
+  regime: string;
+  timestamp: string;
+}
+
+export interface ConfidenceBin {
+  bin: string;
+  correct: number;
+  total: number;
+}
+
+export interface OrganismAnalytics {
+  sector_exposure: SectorExposure[];
+  regime_timeline: RegimeTimelineEntry[];
+  confidence_distribution: ConfidenceBin[];
+  regime_kelly_stats: Record<string, Record<string, number>>;
+  calibration: Record<string, unknown>;
+}
+
 export const organismApi = {
   async getStatus() {
     const { data } = await apiClient.get<OrganismStatus>('/organism/status');
@@ -187,6 +213,11 @@ export const organismApi = {
 
   async getUniverse() {
     const { data } = await apiClient.get<UniverseStatus>('/organism/universe');
+    return data;
+  },
+
+  async getAnalytics() {
+    const { data } = await apiClient.get<OrganismAnalytics>('/organism/analytics');
     return data;
   },
 };
