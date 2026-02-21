@@ -57,9 +57,12 @@ class ExitLevels:
             "take_profit": round(self.take_profit, 4),
             "trailing_stop": round(self.trailing_stop, 4),
             "atr": round(self.atr_at_entry, 4),
+            "regime_at_entry": self.regime_at_entry,
+            "highest_favorable": round(self.highest_favorable, 4),
             "bars_held": self.bars_held,
             "partial_tp_taken": self.partial_tp_taken,
             "trailing_active": self.trailing_active,
+            "stress_tightened": self.stress_tightened,
         }
 
 

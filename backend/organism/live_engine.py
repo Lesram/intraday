@@ -408,6 +408,52 @@ class OrganismLiveEngine:
             self._peak_equity = self.brain.extra_counters.get(
                 "peak_equity", 0.0
             )
+            # Restore tick counters — without this, cooldowns reference
+            # old tick numbers and never expire after restart.
+            self._tick_count = self.brain.extra_counters.get(
+                "tick_count", 0
+            )
+            self._bars_since_retrain = self.brain.extra_counters.get(
+                "bars_since_retrain", 0
+            )
+
+            # Restore exit levels — preserves trailing stop state,
+            # partial_tp_taken, stress_tightened flags across restarts.
+            saved_exit_levels = self.brain.extra_counters.get("exit_levels", {})
+            if saved_exit_levels and isinstance(saved_exit_levels, dict):
+                from backend.organism.adaptive_exits import ExitLevels
+                for sym, lvl_data in saved_exit_levels.items():
+                    try:
+                        self._exit_levels[sym] = ExitLevels(
+                            symbol=lvl_data.get("symbol", sym),
+                            direction=float(lvl_data.get("direction", 1.0)),
+                            entry_price=float(lvl_data.get("entry", 0)),
+                            stop_loss=float(lvl_data.get("stop_loss", 0)),
+                            take_profit=float(lvl_data.get("take_profit", 0)),
+                            trailing_stop=float(lvl_data.get("trailing_stop", 0)),
+                            atr_at_entry=float(lvl_data.get("atr", 0)),
+                            regime_at_entry=lvl_data.get("regime_at_entry", "normal"),
+                            highest_favorable=float(lvl_data.get("highest_favorable", lvl_data.get("entry", 0))),
+                            bars_held=int(lvl_data.get("bars_held", 0)),
+                            partial_tp_taken=bool(lvl_data.get("partial_tp_taken", False)),
+                            trailing_active=bool(lvl_data.get("trailing_active", False)),
+                        )
+                    except (KeyError, ValueError, TypeError) as e:
+                        logger.debug("Cannot restore exit levels for %s: %s", sym, e)
+                if self._exit_levels:
+                    logger.info(
+                        "Restored exit levels for %d positions from brain",
+                        len(self._exit_levels),
+                    )
+
+            # Restore entry metadata
+            saved_entry_meta = self.brain.extra_counters.get("entry_metadata", {})
+            if saved_entry_meta and isinstance(saved_entry_meta, dict):
+                self._entry_metadata = saved_entry_meta
+                logger.info(
+                    "Restored entry metadata for %d positions from brain",
+                    len(self._entry_metadata),
+                )
 
             # Validate brain
             warnings = self.brain.validate_brain()
@@ -1768,6 +1814,11 @@ class OrganismLiveEngine:
                     "tick_count": self._tick_count,
                     "bars_since_retrain": self._bars_since_retrain,
                     "universe_selector": self.universe_selector.to_dict(),
+                    "exit_levels": {
+                        sym: lvl.to_dict()
+                        for sym, lvl in self._exit_levels.items()
+                    },
+                    "entry_metadata": dict(self._entry_metadata),
                 },
                 evolved_params=self.evolved_params.to_dict(),
                 governance_controller=self.governance,
