@@ -10,10 +10,22 @@ In-memory ring buffer only — no DB storage. Ephemeral diagnostic data.
 from __future__ import annotations
 
 import collections
+import math
 import time
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any
+
+
+def _f(v: Any) -> float:
+    """Safely cast to native float (handles numpy.float64, int, etc.)."""
+    x = float(v)
+    return 0.0 if not math.isfinite(x) else x
+
+
+def _b(v: Any) -> bool:
+    """Safely cast to native bool (handles numpy.bool_)."""
+    return bool(v)
 
 
 @dataclass
@@ -43,24 +55,24 @@ class SymbolAlphaDetail:
     def to_dict(self) -> dict[str, Any]:
         return {
             "symbol": self.symbol,
-            "composite_score": round(self.composite_score, 4),
+            "composite_score": round(_f(self.composite_score), 4),
             "factors": {
-                "ml": round(self.ml_score, 4),
-                "breakout": round(self.breakout_score, 4),
-                "institutional": round(self.institutional_score, 4),
-                "momentum": round(self.momentum_score, 4),
-                "momentum_quality": round(self.momentum_quality_score, 4),
-                "vol_price_div": round(self.vol_price_div_score, 4),
-                "regime": round(self.regime_score, 4),
+                "ml": round(_f(self.ml_score), 4),
+                "breakout": round(_f(self.breakout_score), 4),
+                "institutional": round(_f(self.institutional_score), 4),
+                "momentum": round(_f(self.momentum_score), 4),
+                "momentum_quality": round(_f(self.momentum_quality_score), 4),
+                "vol_price_div": round(_f(self.vol_price_div_score), 4),
+                "regime": round(_f(self.regime_score), 4),
             },
-            "weights": self.weights,
-            "direction": self.direction,
-            "threshold": round(self.min_composite_threshold, 4),
-            "distance_to_threshold": round(self.distance_to_threshold, 4),
-            "passed_threshold": self.passed_threshold,
-            "symbol_fitness": round(self.symbol_fitness, 4),
-            "fitness_gate": round(self.fitness_gate, 4),
-            "passed_fitness": self.passed_fitness,
+            "weights": {k: round(_f(v), 4) for k, v in self.weights.items()},
+            "direction": _f(self.direction),
+            "threshold": round(_f(self.min_composite_threshold), 4),
+            "distance_to_threshold": round(_f(self.distance_to_threshold), 4),
+            "passed_threshold": _b(self.passed_threshold),
+            "symbol_fitness": round(_f(self.symbol_fitness), 4),
+            "fitness_gate": round(_f(self.fitness_gate), 4),
+            "passed_fitness": _b(self.passed_fitness),
         }
 
 
@@ -88,22 +100,22 @@ class SymbolBreakoutDetail:
     def to_dict(self) -> dict[str, Any]:
         return {
             "symbol": self.symbol,
-            "composite_score": round(self.composite_score, 4),
+            "composite_score": round(_f(self.composite_score), 4),
             "factors": {
-                "squeeze": round(self.squeeze_score, 4),
-                "volume": round(self.volume_score, 4),
-                "contraction": round(self.contraction_score, 4),
-                "rs": round(self.rs_score, 4),
-                "pivot": round(self.pivot_score, 4),
-                "flow": round(self.flow_score, 4),
+                "squeeze": round(_f(self.squeeze_score), 4),
+                "volume": round(_f(self.volume_score), 4),
+                "contraction": round(_f(self.contraction_score), 4),
+                "rs": round(_f(self.rs_score), 4),
+                "pivot": round(_f(self.pivot_score), 4),
+                "flow": round(_f(self.flow_score), 4),
             },
-            "weights": self.weights,
-            "direction": self.direction,
-            "squeeze_fired": self.squeeze_fired,
-            "volume_ratio": round(self.volume_ratio, 2),
-            "threshold": round(self.min_breakout_threshold, 4),
-            "distance_to_threshold": round(self.distance_to_threshold, 4),
-            "passed_threshold": self.passed_threshold,
+            "weights": {k: round(_f(v), 4) for k, v in self.weights.items()},
+            "direction": _f(self.direction),
+            "squeeze_fired": _b(self.squeeze_fired),
+            "volume_ratio": round(_f(self.volume_ratio), 2),
+            "threshold": round(_f(self.min_breakout_threshold), 4),
+            "distance_to_threshold": round(_f(self.distance_to_threshold), 4),
+            "passed_threshold": _b(self.passed_threshold),
         }
 
 
@@ -142,40 +154,40 @@ class PositionExitDetail:
     def to_dict(self) -> dict[str, Any]:
         return {
             "symbol": self.symbol,
-            "current_price": round(self.current_price, 4),
-            "entry_price": round(self.entry_price, 4),
-            "direction": self.direction,
-            "pnl_pct": round(self.pnl_pct, 4),
+            "current_price": round(_f(self.current_price), 4),
+            "entry_price": round(_f(self.entry_price), 4),
+            "direction": _f(self.direction),
+            "pnl_pct": round(_f(self.pnl_pct), 4),
             "exits": {
                 "stop_loss": {
-                    "level": round(self.stop_loss, 4),
-                    "distance_pct": round(self.stop_loss_distance_pct, 2),
+                    "level": round(_f(self.stop_loss), 4),
+                    "distance_pct": round(_f(self.stop_loss_distance_pct), 2),
                 },
                 "take_profit": {
-                    "level": round(self.take_profit, 4),
-                    "distance_pct": round(self.take_profit_distance_pct, 2),
+                    "level": round(_f(self.take_profit), 4),
+                    "distance_pct": round(_f(self.take_profit_distance_pct), 2),
                 },
                 "trailing_stop": {
-                    "level": round(self.trailing_stop, 4),
-                    "distance_pct": round(self.trailing_stop_distance_pct, 2),
-                    "active": self.trailing_active,
+                    "level": round(_f(self.trailing_stop), 4),
+                    "distance_pct": round(_f(self.trailing_stop_distance_pct), 2),
+                    "active": _b(self.trailing_active),
                 },
                 "partial_tp": {
-                    "level": round(self.partial_tp_price, 4),
-                    "distance_pct": round(self.partial_tp_distance_pct, 2),
-                    "taken": self.partial_tp_taken,
+                    "level": round(_f(self.partial_tp_price), 4),
+                    "distance_pct": round(_f(self.partial_tp_distance_pct), 2),
+                    "taken": _b(self.partial_tp_taken),
                 },
                 "time": {
-                    "bars_held": self.bars_held,
-                    "max_bars": self.max_bars,
-                    "distance_pct": round(self.time_exit_distance_pct, 2),
+                    "bars_held": int(self.bars_held),
+                    "max_bars": int(self.max_bars),
+                    "distance_pct": round(_f(self.time_exit_distance_pct), 2),
                 },
             },
-            "atr_at_entry": round(self.atr_at_entry, 4),
-            "regime_at_entry": self.regime_at_entry,
-            "highest_favorable": round(self.highest_favorable, 4),
-            "nearest_exit": self.nearest_exit,
-            "nearest_exit_distance_pct": round(self.nearest_exit_distance_pct, 2),
+            "atr_at_entry": round(_f(self.atr_at_entry), 4),
+            "regime_at_entry": str(self.regime_at_entry),
+            "highest_favorable": round(_f(self.highest_favorable), 4),
+            "nearest_exit": str(self.nearest_exit),
+            "nearest_exit_distance_pct": round(_f(self.nearest_exit_distance_pct), 2),
         }
 
 
@@ -200,19 +212,19 @@ class KellySizingDetail:
         return {
             "symbol": self.symbol,
             "pipeline": {
-                "kelly_raw": round(self.kelly_raw, 6),
-                "kelly_half": round(self.kelly_half, 6),
-                "drawdown_scale": round(self.drawdown_scale, 4),
-                "vol_scale": round(self.vol_scale, 4),
-                "regime_scale": round(self.regime_scale, 4),
-                "confidence_scale": round(self.confidence_scale, 4),
-                "breakout_bonus": round(self.breakout_bonus, 4),
-                "final_weight": round(self.final_weight, 6),
+                "kelly_raw": round(_f(self.kelly_raw), 6),
+                "kelly_half": round(_f(self.kelly_half), 6),
+                "drawdown_scale": round(_f(self.drawdown_scale), 4),
+                "vol_scale": round(_f(self.vol_scale), 4),
+                "regime_scale": round(_f(self.regime_scale), 4),
+                "confidence_scale": round(_f(self.confidence_scale), 4),
+                "breakout_bonus": round(_f(self.breakout_bonus), 4),
+                "final_weight": round(_f(self.final_weight), 6),
             },
-            "position_cap": round(self.position_cap, 4),
-            "shares": self.shares,
-            "notional": round(self.notional, 2),
-            "direction": self.direction,
+            "position_cap": round(_f(self.position_cap), 4),
+            "shares": int(self.shares),
+            "notional": round(_f(self.notional), 2),
+            "direction": _f(self.direction),
         }
 
 
@@ -284,30 +296,30 @@ class DecisionSnapshot:
 
     def to_dict(self) -> dict[str, Any]:
         return {
-            "tick_number": self.tick_number,
-            "timestamp": self.timestamp,
-            "duration_s": round(self.duration_s, 3),
+            "tick_number": int(self.tick_number),
+            "timestamp": str(self.timestamp),
+            "duration_s": round(_f(self.duration_s), 3),
             "regime": {
-                "primary": self.regime,
+                "primary": str(self.regime),
                 "probabilities": {
-                    k: round(v, 4)
+                    str(k): round(_f(v), 4)
                     for k, v in self.regime_probabilities.items()
                 },
-                "confidence": round(self.regime_confidence, 4),
+                "confidence": round(_f(self.regime_confidence), 4),
                 "features": {
-                    k: round(v, 6)
+                    str(k): round(_f(v), 6) if isinstance(v, (int, float)) else v
                     for k, v in self.regime_features.items()
                 },
             },
             "governance": {
-                "equity": round(self.equity, 2),
-                "peak_equity": round(self.peak_equity, 2),
-                "drawdown_pct": round(self.drawdown_pct, 4),
-                "is_halted": self.is_halted,
-                "is_frozen": self.is_frozen,
+                "equity": round(_f(self.equity), 2),
+                "peak_equity": round(_f(self.peak_equity), 2),
+                "drawdown_pct": round(_f(self.drawdown_pct), 4),
+                "is_halted": _b(self.is_halted),
+                "is_frozen": _b(self.is_frozen),
             },
             "evolution": {
-                "generation": self.evolution_generation,
+                "generation": int(self.evolution_generation),
                 "params": self.evolved_params_summary,
             },
             "alpha_scores": [d.to_dict() for d in self.alpha_details],
@@ -315,8 +327,8 @@ class DecisionSnapshot:
             "exit_proximity": [d.to_dict() for d in self.exit_details],
             "kelly_sizing": [d.to_dict() for d in self.kelly_details],
             "filtering": self.filtering.to_dict(),
-            "open_positions": self.open_positions,
-            "max_positions": self.max_positions,
+            "open_positions": int(self.open_positions),
+            "max_positions": int(self.max_positions),
         }
 
 
