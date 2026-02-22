@@ -164,22 +164,25 @@ class AlpacaMarketDataStream:
             self.is_connected = False
             return False
 
-    async def disconnect(self):
-        """Disconnect from Alpaca market data stream"""
-        logger.info("Disconnecting from Alpaca market data stream")
+    async def _cleanup_connection(self) -> None:
+        """Clean up connection resources without changing reconnect intent.
 
-        self.should_reconnect = False
+        Safe to call from within a listen() task — skips cancelling the
+        current task to avoid self-cancellation.
+        """
         self.is_connected = False
         self.is_authenticated = False
 
-        # Cancel background tasks
-        for task in self.background_tasks:
+        # Cancel background tasks (skip the current task if called from within)
+        current = asyncio.current_task()
+        to_cancel = [t for t in self.background_tasks if t is not current and not t.done()]
+        for task in to_cancel:
             task.cancel()
+        if to_cancel:
+            await asyncio.gather(*to_cancel, return_exceptions=True)
 
-        if self.background_tasks:
-            await asyncio.gather(*self.background_tasks, return_exceptions=True)
-
-        self.background_tasks.clear()
+        # Remove completed/cancelled tasks
+        self.background_tasks = [t for t in self.background_tasks if not t.done() and t is current]
 
         # Close WebSocket
         if self.websocket:
@@ -187,9 +190,13 @@ class AlpacaMarketDataStream:
                 await self.websocket.close()
             except Exception as e:
                 logger.warning(f"Error closing WebSocket: {e}")
-
             self.websocket = None
 
+    async def disconnect(self):
+        """Disconnect from Alpaca market data stream permanently."""
+        logger.info("Disconnecting from Alpaca market data stream")
+        self.should_reconnect = False
+        await self._cleanup_connection()
         logger.info("Disconnected from Alpaca")
 
     async def _authenticate(self) -> bool:
@@ -608,7 +615,13 @@ class AlpacaMarketDataStream:
             logger.error(f"Error handling bar: {e}", exc_info=True)
 
     async def _reconnect(self):
-        """Reconnect with exponential backoff"""
+        """Reconnect with exponential backoff.
+
+        Called from within listen() when the connection drops.
+        Cleans up the old connection, then calls connect() which
+        starts a fresh listen() task via _start_background_tasks().
+        The calling listen() task exits naturally after this returns.
+        """
         if self.reconnect_attempts >= self.MAX_RECONNECT_ATTEMPTS:
             logger.error(f"Max reconnect attempts ({self.MAX_RECONNECT_ATTEMPTS}) reached, giving up")
             if self.on_error:
@@ -633,7 +646,10 @@ class AlpacaMarketDataStream:
             self.MAX_BACKOFF
         )
 
-        # Attempt reconnection
+        # Clean up old connection (closes websocket, cancels heartbeat)
+        await self._cleanup_connection()
+
+        # Attempt reconnection — connect() starts fresh listen() + heartbeat
         try:
             success = await self.connect()
         except Exception as e:
@@ -642,20 +658,21 @@ class AlpacaMarketDataStream:
 
         if success:
             logger.info("Reconnected successfully")
-            # Start listening again
-            asyncio.create_task(self.listen())
+            # NOTE: Do NOT create another listen() task here.
+            # connect() → _start_background_tasks() already started one.
         elif self.reconnect_attempts < self.MAX_RECONNECT_ATTEMPTS:
             await self._reconnect()
         else:
             logger.error("Max reconnect attempts exhausted")
 
     def _start_background_tasks(self):
-        """Start background tasks for heartbeat monitoring"""
-        # Listen task
+        """Start background tasks for listening and heartbeat monitoring."""
+        # Prune completed/cancelled tasks to prevent accumulation
+        self.background_tasks = [t for t in self.background_tasks if not t.done()]
+
         listen_task = asyncio.create_task(self.listen())
         self.background_tasks.append(listen_task)
 
-        # Heartbeat task
         heartbeat_task = asyncio.create_task(self._heartbeat_loop())
         self.background_tasks.append(heartbeat_task)
 

@@ -696,6 +696,7 @@ class OrganismLiveEngine:
                 return result
 
             # 5. CHECK EXITS on existing positions
+            _MAX_LOSS_PCT = 0.15  # Absolute safety net — no position beyond -15%
             exits_submitted = 0
             for sym, pos_data in current_positions.items():
                 feat_df = features_by_symbol.get(sym)
@@ -708,10 +709,50 @@ class OrganismLiveEngine:
 
                 result.exits_checked += 1
                 exit_levels = self._exit_levels.get(sym)
-                if exit_levels is None:
-                    continue
-
                 current_price = float(feat_df["close"].iloc[-1])
+
+                # SAFETY NET: enforce max loss even without exit_levels.
+                # This prevents positions from losing >15% when exit_levels
+                # are missing (e.g. after restart with failed reconstruction).
+                if exit_levels is None:
+                    avg_entry = float(pos_data.get("avg_entry_price", 0))
+                    if avg_entry > 0:
+                        side = pos_data.get("side", "long")
+                        _dir = 1.0 if side == "long" else -1.0
+                        pnl_pct = (current_price - avg_entry) / avg_entry * _dir
+                        if pnl_pct <= -_MAX_LOSS_PCT:
+                            from backend.organism.adaptive_exits import ExitSignal
+                            exit_sig = ExitSignal(
+                                True, "max_loss_safety_net", current_price,
+                            )
+                            qty = abs(float(pos_data.get("qty", 0)))
+                            sell_shares = int(qty)
+                            if sell_shares > 0:
+                                try:
+                                    await self._submit_exit_order(
+                                        sym, sell_shares, exit_sig.reason,
+                                        direction=_dir,
+                                    )
+                                    self._exit_cooldown[sym] = self._tick_count
+                                    exits_submitted += 1
+                                    logger.warning(
+                                        "SAFETY NET triggered for %s: %.1f%% loss "
+                                        "(no exit_levels)", sym, pnl_pct * 100,
+                                    )
+                                    result.activity.append(ActivityEvent(
+                                        event_type="exit",
+                                        symbol=sym,
+                                        message=f"EXIT: {sym} — safety net "
+                                                f"({pnl_pct*100:.1f}% loss, no exit_levels)",
+                                        details={"reason": "max_loss_safety_net",
+                                                 "shares": sell_shares, "pnl_pct": pnl_pct},
+                                        timestamp=now_iso,
+                                    ))
+                                except Exception as e:
+                                    result.errors.append(f"Safety net exit failed for {sym}: {e}")
+                                finally:
+                                    self._exit_cooldown[sym] = self._tick_count
+                    continue
                 exit_sig = self.exit_engine.check_exit(
                     exit_levels, current_price, regime
                 )
@@ -2054,46 +2095,71 @@ class OrganismLiveEngine:
                         features_df=feat_df,
                         regime=RegimeLabel.UNKNOWN,
                     )
-                    self._exit_levels[sym] = exit_lvl
-
-                    atr = exit_lvl.atr_at_entry
-                    self._pyramid_positions[sym] = PyramidPosition(
+                else:
+                    # Fallback: create exit levels with a 2% ATR estimate.
+                    # Better than nothing — ensures max-loss safety net is
+                    # enforced through normal check_exit() rather than only
+                    # through the emergency safety net added in the tick loop.
+                    fallback_atr = avg_entry * 0.02
+                    fallback_df = pd.DataFrame({
+                        "close": [avg_entry] * 20,
+                        "high": [avg_entry * 1.01] * 20,
+                        "low": [avg_entry * 0.99] * 20,
+                    })
+                    exit_lvl = self.exit_engine.create_exit_levels(
                         symbol=sym,
                         direction=direction,
-                        layers=[
-                            PyramidLevel(
-                                shares=int(qty),
-                                entry_price=avg_entry,
-                                bar_added=0,
-                                level=0,
-                            )
-                        ],
-                        target_total_shares=int(qty * 1.5),
-                        atr_at_entry=atr,
-                        initial_stop=exit_lvl.stop_loss,
-                        current_stop=exit_lvl.stop_loss,
-                        highest_price=avg_entry,
-                        lowest_price=avg_entry,
+                        entry_price=avg_entry,
+                        predicted_return=0.02,
+                        features_df=fallback_df,
+                        regime=RegimeLabel.UNKNOWN,
+                    )
+                    logger.warning(
+                        "Using fallback ATR ($%.2f) for %s — "
+                        "no historical data available",
+                        fallback_atr, sym,
                     )
 
-                    self._entry_metadata[sym] = {
-                        "entry_price": avg_entry,
-                        "entry_tick": 0,
-                        "direction": direction,
-                        "predicted_return": 0.02,
-                        "confidence": 0.5,
-                    }
+                self._exit_levels[sym] = exit_lvl
 
-                    logger.info(
-                        "Reconstructed position state for %s: "
-                        "%d shares @ $%.2f",
-                        sym,
-                        int(qty),
-                        avg_entry,
-                    )
+                atr = exit_lvl.atr_at_entry
+                self._pyramid_positions[sym] = PyramidPosition(
+                    symbol=sym,
+                    direction=direction,
+                    layers=[
+                        PyramidLevel(
+                            shares=int(qty),
+                            entry_price=avg_entry,
+                            bar_added=0,
+                            level=0,
+                        )
+                    ],
+                    target_total_shares=int(qty * 1.5),
+                    atr_at_entry=atr,
+                    initial_stop=exit_lvl.stop_loss,
+                    current_stop=exit_lvl.stop_loss,
+                    highest_price=avg_entry,
+                    lowest_price=avg_entry,
+                )
+
+                self._entry_metadata[sym] = {
+                    "entry_price": avg_entry,
+                    "entry_tick": 0,
+                    "direction": direction,
+                    "predicted_return": 0.02,
+                    "confidence": 0.5,
+                }
+
+                logger.info(
+                    "Reconstructed position state for %s: "
+                    "%d shares @ $%.2f",
+                    sym,
+                    int(qty),
+                    avg_entry,
+                )
 
             except Exception as e:
-                logger.debug("Cannot reconstruct %s: %s", sym, e)
+                logger.warning("Cannot reconstruct %s: %s", sym, e)
 
     # ═════════════════════════════════════════════════════════════
     #  RETRAIN & EVOLVE

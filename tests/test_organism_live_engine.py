@@ -428,8 +428,90 @@ class TestPositionReconstruction:
         # Should have reconstructed exit levels and pyramid state
         assert "MSFT" in engine._entry_metadata
         assert engine._entry_metadata["MSFT"]["entry_price"] == 380.0
-        # May or may not have exit levels depending on data fetch
-        # but entry metadata should always be set
+        # With fallback logic, exit levels should ALWAYS be created
+        assert "MSFT" in engine._exit_levels
+
+    @pytest.mark.asyncio
+    async def test_reconstruction_fallback_when_no_data(
+        self, mock_order_service, brain_dir,
+    ):
+        """Positions get exit levels even when historical data fetch fails."""
+        from backend.organism.live_engine import OrganismLiveEngine
+
+        class NoDataClient:
+            def get_historical_data(self, symbol, **kw):
+                return None  # Simulate data fetch failure
+
+        positions = MockPositionsService({
+            "ANPA": {"qty": "100", "avg_entry_price": "12.85", "side": "long"},
+        })
+        engine = OrganismLiveEngine(
+            data_client=NoDataClient(),
+            order_service=mock_order_service,
+            positions_service=positions,
+            brain_dir=brain_dir,
+            universe=["SPY"],
+        )
+        await engine.initialize()
+
+        # Fallback should still create exit_levels
+        assert "ANPA" in engine._exit_levels
+        assert "ANPA" in engine._entry_metadata
+        lvl = engine._exit_levels["ANPA"]
+        assert lvl.entry_price == 12.85
+        assert lvl.stop_loss > 0
+        assert lvl.take_profit > lvl.entry_price
+
+    @pytest.mark.asyncio
+    async def test_safety_net_triggers_without_exit_levels(
+        self, mock_data_client, brain_dir,
+    ):
+        """Max-loss safety net fires for positions without exit_levels."""
+        from backend.organism.live_engine import OrganismLiveEngine
+
+        order_svc = MockOrderService()
+        # Position is down 20% from entry
+        positions = MockPositionsService({
+            "BADX": {"qty": "50", "avg_entry_price": "100.0", "side": "long"},
+        })
+        engine = OrganismLiveEngine(
+            data_client=mock_data_client,
+            order_service=order_svc,
+            positions_service=positions,
+            brain_dir=brain_dir,
+            universe=["AAPL", "SPY", "BADX"],
+        )
+        await engine.initialize()
+
+        # Remove exit_levels to simulate failed reconstruction
+        engine._exit_levels.pop("BADX", None)
+        engine._entry_metadata.pop("BADX", None)
+
+        # Set peak_equity so drawdown check doesn't halt trading
+        engine._peak_equity = 100_000.0
+
+        # Inject a price DataFrame showing 20% drop
+        price_df = _make_price_df(300, base=100.0)
+        # Overwrite last close to simulate -20% from entry
+        price_df.loc[price_df.index[-1], "close"] = 80.0
+
+        # Patch _fetch_and_compute_features to return our test data
+        # Need >= 3 symbols to pass the insufficient-data gate
+        async def _mock_features():
+            return {
+                "SPY": _make_price_df(300),
+                "AAPL": _make_price_df(300),
+                "BADX": price_df,
+            }
+
+        engine._fetch_and_compute_features = _mock_features
+        result = await engine.live_tick()
+
+        # Safety net should have submitted an exit order
+        assert len(order_svc.submitted) >= 1
+        # Find the BADX exit order
+        badx_orders = [o for o in order_svc.submitted if o.get("symbol") == "BADX"]
+        assert len(badx_orders) >= 1
 
 
 # ═════════════════════════════════════════════════════════════════
