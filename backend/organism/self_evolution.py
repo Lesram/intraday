@@ -1173,10 +1173,13 @@ def apply_evolved_params(
 
     # ── Exit Engine ──────────────────────────────────────────────
     if exit_engine is not None:
-        exit_engine.atr_multiplier = 1.5 * params.stop_atr_scale
-        exit_engine.trailing_start_atr = 3.0 * params.trailing_start_atr_scale
-        exit_engine.trailing_distance_atr = 2.5 * params.trailing_distance_scale
-        exit_engine.partial_tp_r = 3.0 * params.partial_tp_r_scale
+        # Baselines MUST match the live engine's AdaptiveExitEngine
+        # constructor values (HFT/intraday config) to avoid discontinuous
+        # parameter jumps on the first evolution cycle.
+        exit_engine.atr_multiplier = 1.0 * params.stop_atr_scale
+        exit_engine.trailing_start_atr = 2.0 * params.trailing_start_atr_scale
+        exit_engine.trailing_distance_atr = 1.5 * params.trailing_distance_scale
+        exit_engine.partial_tp_r = 2.0 * params.partial_tp_r_scale
         exit_engine.partial_tp_pct = params.partial_tp_pct
 
     # ── ML Signal Generator ──────────────────────────────────────

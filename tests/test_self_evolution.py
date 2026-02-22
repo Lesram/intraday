@@ -218,8 +218,9 @@ class TestApplyEvolvedParams:
 
         apply_evolved_params(params, exit_engine=engine)
 
-        assert abs(engine.atr_multiplier - 1.5 * 1.3) < 1e-6
-        assert abs(engine.trailing_distance_atr - 2.5 * 0.8) < 1e-6
+        # Baselines match live engine's intraday config: 1.0, 2.0, 1.5, 2.0
+        assert abs(engine.atr_multiplier - 1.0 * 1.3) < 1e-6
+        assert abs(engine.trailing_distance_atr - 1.5 * 0.8) < 1e-6
 
     def test_apply_to_signal_gen(self):
         from backend.organism.ml_signal import MLSignalGenerator

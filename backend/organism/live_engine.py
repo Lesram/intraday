@@ -665,40 +665,48 @@ class OrganismLiveEngine:
             for _sym, _df in features_by_symbol.items():
                 if len(_df) > 0 and "close" in _df.columns:
                     self._last_prices[_sym] = float(_df["close"].iloc[-1])
-            if len(features_by_symbol) < 3:
+            insufficient_features = len(features_by_symbol) < 3
+            if insufficient_features:
                 result.errors.append(
                     f"Insufficient data: got {len(features_by_symbol)} symbols"
                 )
-                result.duration_s = time.time() - t0
-                return result
+                entries_blocked = True
+                logger.warning(
+                    "Insufficient features (%d symbols) — blocking entries, "
+                    "exits still active via broker price fallback",
+                    len(features_by_symbol),
+                )
 
             # 3. DETECT REGIME (Phase 4.3: cross-asset conditioning)
-            spy_features = features_by_symbol.get("SPY")
-            sector_features = {
-                sym: features_by_symbol[sym]
-                for sym in self.regime_detector.SECTOR_ETFS
-                if sym in features_by_symbol
-                and len(features_by_symbol[sym]) >= 10
-            }
+            # Skip regime detection when features are insufficient — it
+            # requires meaningful price data to function.
+            if not insufficient_features:
+                spy_features = features_by_symbol.get("SPY")
+                sector_features = {
+                    sym: features_by_symbol[sym]
+                    for sym in self.regime_detector.SECTOR_ETFS
+                    if sym in features_by_symbol
+                    and len(features_by_symbol[sym]) >= 10
+                }
 
-            if sector_features:
-                regime_state = self.regime_detector.detect_cross_asset_regime(
-                    features_by_symbol, sector_features=sector_features,
-                )
-            elif spy_features is not None and len(spy_features) >= 10:
-                regime_state = self.regime_detector.detect(spy_features)
-            else:
-                regime_state = self.regime_detector.detect_market_regime(
-                    features_by_symbol
-                )
-            regime = regime_state.primary
-            result.regime = regime
-            result.activity.append(ActivityEvent(
-                event_type="regime",
-                message=f"Market regime: {regime}",
-                details={"regime": regime, "tick": self._tick_count},
-                timestamp=now_iso,
-            ))
+                if sector_features:
+                    regime_state = self.regime_detector.detect_cross_asset_regime(
+                        features_by_symbol, sector_features=sector_features,
+                    )
+                elif spy_features is not None and len(spy_features) >= 10:
+                    regime_state = self.regime_detector.detect(spy_features)
+                else:
+                    regime_state = self.regime_detector.detect_market_regime(
+                        features_by_symbol
+                    )
+                regime = regime_state.primary
+                result.regime = regime
+                result.activity.append(ActivityEvent(
+                    event_type="regime",
+                    message=f"Market regime: {regime}",
+                    details={"regime": regime, "tick": self._tick_count},
+                    timestamp=now_iso,
+                ))
 
             # 4. GET CURRENT POSITIONS from broker
             current_positions = await self._positions_service.get_all_positions()
@@ -902,8 +910,8 @@ class OrganismLiveEngine:
                     if current_positions:
                         ORGANISM_HALTED_WITH_POSITIONS.inc()
                 logger.info(
-                    "Entries blocked (halt/drawdown) — skipping pyramids, "
-                    "scans, sizing, entries, and retrain. "
+                    "Entries blocked (halt/drawdown/insufficient data) — "
+                    "skipping pyramids, scans, sizing, entries, and retrain. "
                     "Exits processed: %d", exits_submitted,
                 )
                 result.activity.append(ActivityEvent(
@@ -912,454 +920,445 @@ class OrganismLiveEngine:
                             f"skipping new entries/pyramids/evolution",
                     timestamp=now_iso,
                 ))
-                # Jump to step 10: reconcile fills (always needed)
-                await self._reconcile_fills(features_by_symbol)
+                # Fall through to reconcile, brain save, metadata, and
+                # metric export — these ALWAYS run regardless of halt state.
 
-                # Brain save (always needed to persist exit state changes)
-                if self._tick_count % 50 == 0:
-                    await asyncio.to_thread(self._save_brain)
-                    result.brain_saved = True
+            # ── Steps 6-9: Entry-side logic (gated) ─────────────
+            if not entries_blocked:
 
-                # Populate metadata before returning
-                result.universe_size = len(self._universe)
-                result.scanner_candidates_count = len(self._scanner_candidates)
-                result.scanner_ran = False
-                result.training_status = self._bg_training_metadata.get("status", "")
-                result.training_metadata = dict(self._bg_training_metadata)
-
-                # Raise an exception out to the outer handler so equity curve
-                # and Prometheus metrics are still recorded (the except block
-                # at the end of the try already handles this).
-                # Actually, just let it fall through cleanly:
-                result.duration_s = time.time() - t0
-                return result
-
-            # 6. CHECK PYRAMIDS
-            for sym, pos_data in current_positions.items():
-                pyr = self._pyramid_positions.get(sym)
-                if pyr is None:
-                    continue
-                feat_df = features_by_symbol.get(sym)
-                if feat_df is None or len(feat_df) < 1:
-                    continue
-
-                current_price = float(feat_df["close"].iloc[-1])
-                action = self.pyramider.check_pyramid(pyr, current_price)
-
-                if action.action == "add" and action.shares_to_add > 0:
-                    if sym in self._exit_cooldown:
-                        continue  # Don't pyramid a symbol with pending exit
-                    try:
-                        await self._submit_entry_order(
-                            sym,
-                            action.shares_to_add,
-                            confidence=0.7,
-                            reason="pyramid_add",
-                        )
-                    except Exception as e:
-                        result.errors.append(
-                            f"Pyramid order failed for {sym}: {e}"
-                        )
-
-            # 7. SCAN FOR NEW ENTRIES
-            # Breakout scan
-            data_for_scanner = {
-                sym: df
-                for sym, df in features_by_symbol.items()
-                if len(df) >= 20
-            }
-            spy_slice = features_by_symbol.get("SPY")
-            breakout_signals = self.breakout_scanner.scan(
-                data_for_scanner, spy_slice
-            )
-            breakout_by_sym = {s.symbol: s for s in breakout_signals}
-
-            # ML predictions
-            ml_signals = self.signal_gen.predict_batch(features_by_symbol)
-
-            # Alpha scan
-            candidates = self.alpha_scanner.scan(
-                features_by_symbol, ml_signals, regime
-            )
-
-            # Build candidate list
-            # Build tension lookup from scanner
-            _tension_lookup: dict[str, float] = {}
-            if self.market_scanner is not None:
-                for ss in self.market_scanner.scanned_stocks:
-                    _tension_lookup[ss.symbol] = ss.tension_score
-
-            # Symbol fitness gate threshold — block re-entry on chronic losers
-            _FITNESS_GATE = 0.35
-
-            # Track symbols planned for entry in THIS tick so the sector gate
-            # counts them when evaluating subsequent candidates.  Prevents
-            # intra-tick sector-limit violations.
-            _planned_entries: set[str] = set()
-
-            cand_dicts = []
-            for c in candidates:
-                if c.symbol in open_symbols:
-                    continue
-                if c.symbol in self._exit_cooldown:
-                    continue  # Wash trade cooldown
-                if c.symbol in self._pending_entry:
-                    continue  # Already submitted an order recently
-                if c.symbol in self._entry_metadata:
-                    continue  # Already tracking this position
-                if LONG_ONLY and not self.evolved_params.shorts_enabled and c.direction < 0:
-                    continue
-                # Sector diversification gate — includes planned entries from
-                # earlier in this loop to prevent intra-tick sector breaches.
-                if not sector_gate_allows(c.symbol, open_symbols, _planned_entries):
-                    logger.info(
-                        "Sector gate blocked %s (sector=%s, planned=%s)",
-                        c.symbol, get_sector(c.symbol), _planned_entries,
-                    )
-                    continue
-                # Block symbols with poor fitness scores from evolved params
-                sym_fitness = self.evolved_params.symbol_fitness.get(c.symbol, 0.5)
-                if sym_fitness < _FITNESS_GATE:
-                    logger.info(
-                        "Fitness gate blocked %s (fitness=%.2f < %.2f)",
-                        c.symbol, sym_fitness, _FITNESS_GATE,
-                    )
-                    continue
-
-                bs = breakout_by_sym.get(c.symbol)
-                breakout_score = bs.composite_score if bs else 0.0
-                tension = _tension_lookup.get(c.symbol, 0.0)
-                confidence = (
-                    (c.ml_signal.confidence if c.ml_signal else 0.5)
-                    * (1.0 + breakout_score)
-                    * (1.0 + tension * 0.5)  # Phase 5: scanner tension boost
-                )
-                cand_dicts.append({
-                    "symbol": c.symbol,
-                    "direction": c.direction,
-                    "predicted_return": (
-                        c.ml_signal.predicted_return if c.ml_signal else 0.01
-                    ),
-                    "confidence": min(confidence, 1.0),
-                    "breakout_score": breakout_score,
-                })
-                _planned_entries.add(c.symbol)
-
-            # Pure breakout signals not in alpha candidates
-            alpha_syms = {d["symbol"] for d in cand_dicts}
-            for bs in breakout_signals:
-                if (
-                    bs.symbol not in alpha_syms
-                    and bs.symbol not in open_symbols
-                    and bs.symbol not in self._exit_cooldown
-                    and bs.symbol not in self._pending_entry
-                    and bs.symbol not in self._entry_metadata
-                    and bs.composite_score >= 0.55
-                    and self.evolved_params.symbol_fitness.get(bs.symbol, 0.5) >= _FITNESS_GATE
-                    and sector_gate_allows(bs.symbol, open_symbols, _planned_entries)
-                ):
-                    ml_sig = ml_signals.get(bs.symbol)
-                    if ml_sig and ml_sig.direction < 0:
+                # 6. CHECK PYRAMIDS
+                for sym, pos_data in current_positions.items():
+                    pyr = self._pyramid_positions.get(sym)
+                    if pyr is None:
                         continue
+                    feat_df = features_by_symbol.get(sym)
+                    if feat_df is None or len(feat_df) < 1:
+                        continue
+
+                    current_price = float(feat_df["close"].iloc[-1])
+                    action = self.pyramider.check_pyramid(pyr, current_price)
+
+                    if action.action == "add" and action.shares_to_add > 0:
+                        if sym in self._exit_cooldown:
+                            continue  # Don't pyramid a symbol with pending exit
+                        try:
+                            await self._submit_entry_order(
+                                sym,
+                                action.shares_to_add,
+                                confidence=0.7,
+                                reason="pyramid_add",
+                            )
+                        except Exception as e:
+                            result.errors.append(
+                                f"Pyramid order failed for {sym}: {e}"
+                            )
+
+                # 7. SCAN FOR NEW ENTRIES
+                # Breakout scan
+                data_for_scanner = {
+                    sym: df
+                    for sym, df in features_by_symbol.items()
+                    if len(df) >= 20
+                }
+                spy_slice = features_by_symbol.get("SPY")
+                breakout_signals = self.breakout_scanner.scan(
+                    data_for_scanner, spy_slice
+                )
+                breakout_by_sym = {s.symbol: s for s in breakout_signals}
+
+                # ML predictions
+                ml_signals = self.signal_gen.predict_batch(features_by_symbol)
+
+                # Alpha scan
+                candidates = self.alpha_scanner.scan(
+                    features_by_symbol, ml_signals, regime
+                )
+
+                # Build candidate list
+                # Build tension lookup from scanner
+                _tension_lookup: dict[str, float] = {}
+                if self.market_scanner is not None:
+                    for ss in self.market_scanner.scanned_stocks:
+                        _tension_lookup[ss.symbol] = ss.tension_score
+
+                # Symbol fitness gate threshold — block re-entry on chronic losers
+                _FITNESS_GATE = 0.35
+
+                # Track symbols planned for entry in THIS tick so the sector gate
+                # counts them when evaluating subsequent candidates.  Prevents
+                # intra-tick sector-limit violations.
+                _planned_entries: set[str] = set()
+
+                cand_dicts = []
+                for c in candidates:
+                    if c.symbol in open_symbols:
+                        continue
+                    if c.symbol in self._exit_cooldown:
+                        continue  # Wash trade cooldown
+                    if c.symbol in self._pending_entry:
+                        continue  # Already submitted an order recently
+                    if c.symbol in self._entry_metadata:
+                        continue  # Already tracking this position
+                    if LONG_ONLY and not self.evolved_params.shorts_enabled and c.direction < 0:
+                        continue
+                    # Sector diversification gate — includes planned entries from
+                    # earlier in this loop to prevent intra-tick sector breaches.
+                    if not sector_gate_allows(c.symbol, open_symbols, _planned_entries):
+                        logger.info(
+                            "Sector gate blocked %s (sector=%s, planned=%s)",
+                            c.symbol, get_sector(c.symbol), _planned_entries,
+                        )
+                        if _PROMETHEUS_AVAILABLE:
+                            ORGANISM_SECTOR_CAP_BLOCKED.inc()
+                        continue
+                    # Block symbols with poor fitness scores from evolved params
+                    sym_fitness = self.evolved_params.symbol_fitness.get(c.symbol, 0.5)
+                    if sym_fitness < _FITNESS_GATE:
+                        logger.info(
+                            "Fitness gate blocked %s (fitness=%.2f < %.2f)",
+                            c.symbol, sym_fitness, _FITNESS_GATE,
+                        )
+                        continue
+
+                    bs = breakout_by_sym.get(c.symbol)
+                    breakout_score = bs.composite_score if bs else 0.0
+                    tension = _tension_lookup.get(c.symbol, 0.0)
+                    confidence = (
+                        (c.ml_signal.confidence if c.ml_signal else 0.5)
+                        * (1.0 + breakout_score)
+                        * (1.0 + tension * 0.5)  # Phase 5: scanner tension boost
+                    )
                     cand_dicts.append({
-                        "symbol": bs.symbol,
-                        "direction": 1.0,
-                        "predicted_return": max(
-                            ml_sig.predicted_return if ml_sig else 0.02,
-                            0.01,  # Floor: breakout signals always get min 1%
+                        "symbol": c.symbol,
+                        "direction": c.direction,
+                        "predicted_return": (
+                            c.ml_signal.predicted_return if c.ml_signal else 0.01
                         ),
-                        "confidence": min(bs.composite_score, 1.0),
-                        "breakout_score": bs.composite_score,
+                        "confidence": min(confidence, 1.0),
+                        "breakout_score": breakout_score,
                     })
-                    _planned_entries.add(bs.symbol)
+                    _planned_entries.add(c.symbol)
 
-            cand_dicts.sort(
-                key=lambda x: x["breakout_score"] * x["confidence"],
-                reverse=True,
-            )
+                # Pure breakout signals not in alpha candidates
+                alpha_syms = {d["symbol"] for d in cand_dicts}
+                for bs in breakout_signals:
+                    if (
+                        bs.symbol not in alpha_syms
+                        and bs.symbol not in open_symbols
+                        and bs.symbol not in self._exit_cooldown
+                        and bs.symbol not in self._pending_entry
+                        and bs.symbol not in self._entry_metadata
+                        and bs.composite_score >= 0.55
+                        and self.evolved_params.symbol_fitness.get(bs.symbol, 0.5) >= _FITNESS_GATE
+                    ):
+                        if not sector_gate_allows(bs.symbol, open_symbols, _planned_entries):
+                            if _PROMETHEUS_AVAILABLE:
+                                ORGANISM_SECTOR_CAP_BLOCKED.inc()
+                            continue
+                        ml_sig = ml_signals.get(bs.symbol)
+                        if ml_sig and ml_sig.direction < 0:
+                            continue
+                        cand_dicts.append({
+                            "symbol": bs.symbol,
+                            "direction": 1.0,
+                            "predicted_return": max(
+                                ml_sig.predicted_return if ml_sig else 0.02,
+                                0.01,  # Floor: breakout signals always get min 1%
+                            ),
+                            "confidence": min(bs.composite_score, 1.0),
+                            "breakout_score": bs.composite_score,
+                        })
+                        _planned_entries.add(bs.symbol)
 
-            open_slots = MAX_OPEN_POSITIONS - len(open_symbols)
-            cand_dicts = cand_dicts[: max(0, open_slots)]
-            result.signals_generated = len(cand_dicts)
+                cand_dicts.sort(
+                    key=lambda x: x["breakout_score"] * x["confidence"],
+                    reverse=True,
+                )
 
-            # Log signal activity
-            for cd in cand_dicts[:10]:
-                result.activity.append(ActivityEvent(
-                    event_type="signal",
-                    symbol=cd["symbol"],
-                    message=f"{'BUY' if cd['direction'] > 0 else 'SELL'} signal: {cd['symbol']} "
-                            f"(confidence={cd['confidence']:.2f}, breakout={cd['breakout_score']:.2f})",
-                    details=cd,
-                    timestamp=now_iso,
-                ))
+                open_slots = MAX_OPEN_POSITIONS - len(open_symbols)
+                cand_dicts = cand_dicts[: max(0, open_slots)]
+                result.signals_generated = len(cand_dicts)
 
-            # 8. SIZE POSITIONS (Kelly)
-            drawdown = (
-                (self._peak_equity - equity) / self._peak_equity
-                if self._peak_equity > 0
-                else 0
-            )
-            sizes = self.kelly_sizer.size_positions(
-                cand_dicts, equity, drawdown, features_by_symbol, regime
-            )
-            self._last_kelly_sizes = sizes
-
-            # 8b. INTRADAY SEASONALITY FILTER — reduce allocation
-            # during first/last 15 min (highest volatility, worst fills)
-            if _IS_INTRADAY and sizes:
-                from datetime import timezone
-                now_et = datetime.now(UTC)
-                # Approximate ET offset (UTC-5 EST / UTC-4 EDT)
-                # Good enough for 15-min window checks
-                try:
-                    import zoneinfo
-                    now_et = datetime.now(zoneinfo.ZoneInfo("America/New_York"))
-                except Exception:
-                    now_et = datetime.now(UTC).replace(
-                        hour=(datetime.now(UTC).hour - 5) % 24
-                    )
-                hhmm = now_et.hour * 100 + now_et.minute
-                if (930 <= hhmm <= 945) or (1545 <= hhmm <= 1600):
-                    for sz in sizes:
-                        sz.shares = max(1, int(sz.shares * 0.6))
-                        sz.notional = sz.notional * 0.6
-                        sz.target_weight = sz.target_weight * 0.6
-                    logger.info(
-                        "Seasonality filter: reduced allocation 40%% (time=%d)",
-                        hhmm,
-                    )
-
-            # 9. SUBMIT ENTRY ORDERS
-            # Re-check positions right before ordering to catch partial
-            # fills from cancelled orders that silently accumulated shares
-            try:
-                fresh_positions = await self._positions_service.get_all_positions()
-                fresh_open = set(fresh_positions.keys())
-            except Exception:
-                fresh_open = open_symbols
-
-            for sz in sizes:
-                # Skip if position already exists (e.g. from partial fill
-                # on a cancelled order that the earlier check missed)
-                if sz.symbol in fresh_open:
-                    logger.info(
-                        "Skipping entry for %s — position already exists at broker",
-                        sz.symbol,
-                    )
-                    continue
-                initial_shares = self.pyramider.initial_shares(sz.shares)
-                if initial_shares < 1:
-                    initial_shares = sz.shares
-                try:
-                    order_result = await self._submit_entry_order(
-                        sz.symbol,
-                        initial_shares,
-                        direction=sz.direction,
-                        confidence=getattr(sz, "confidence", 0.6),
-                        reason="organism_entry",
-                    )
-
-                    # Use filled qty from broker response when available
-                    # (IOC orders may partially fill)
-                    filled_shares = initial_shares
-                    if isinstance(order_result, dict):
-                        filled_qty = order_result.get("filled_qty")
-                        if filled_qty:
-                            filled_shares = max(1, int(float(filled_qty)))
-
-                    result.orders_submitted += 1
-                    # Mark as pending so we don't re-submit next tick
-                    self._pending_entry[sz.symbol] = self._tick_count
+                # Log signal activity
+                for cd in cand_dicts[:10]:
                     result.activity.append(ActivityEvent(
-                        event_type="order",
-                        symbol=sz.symbol,
-                        message=f"ORDER SUBMITTED: {'BUY' if sz.direction >= 0 else 'SELL'} "
-                                f"{filled_shares} shares of {sz.symbol}",
-                        details={
-                            "shares_requested": initial_shares,
-                            "shares_filled": filled_shares,
-                            "direction": sz.direction,
-                            "confidence": getattr(sz, "confidence", 0.6),
-                        },
+                        event_type="signal",
+                        symbol=cd["symbol"],
+                        message=f"{'BUY' if cd['direction'] > 0 else 'SELL'} signal: {cd['symbol']} "
+                                f"(confidence={cd['confidence']:.2f}, breakout={cd['breakout_score']:.2f})",
+                        details=cd,
                         timestamp=now_iso,
                     ))
 
-                    # Create exit levels for the new position
-                    feat_df = features_by_symbol.get(sz.symbol)
-                    if feat_df is not None and len(feat_df) > 0:
-                        price = float(feat_df["close"].iloc[-1])
-                        predicted_return = 0.01
-                        if self.signal_gen.is_trained:
-                            sig = self.signal_gen.predict(feat_df, sz.symbol)
-                            if sig:
-                                predicted_return = abs(sig.predicted_return)
+                # 8. SIZE POSITIONS (Kelly)
+                drawdown = (
+                    (self._peak_equity - equity) / self._peak_equity
+                    if self._peak_equity > 0
+                    else 0
+                )
+                sizes = self.kelly_sizer.size_positions(
+                    cand_dicts, equity, drawdown, features_by_symbol, regime
+                )
+                self._last_kelly_sizes = sizes
 
-                        exit_lvl = self.exit_engine.create_exit_levels(
-                            symbol=sz.symbol,
-                            direction=sz.direction,
-                            entry_price=price,
-                            predicted_return=predicted_return,
-                            features_df=feat_df,
-                            regime=regime,
+                # 8b. INTRADAY SEASONALITY FILTER — reduce allocation
+                # during first/last 15 min (highest volatility, worst fills)
+                if _IS_INTRADAY and sizes:
+                    from datetime import timezone
+                    now_et = datetime.now(UTC)
+                    # Approximate ET offset (UTC-5 EST / UTC-4 EDT)
+                    # Good enough for 15-min window checks
+                    try:
+                        import zoneinfo
+                        now_et = datetime.now(zoneinfo.ZoneInfo("America/New_York"))
+                    except Exception:
+                        now_et = datetime.now(UTC).replace(
+                            hour=(datetime.now(UTC).hour - 5) % 24
                         )
-                        self._exit_levels[sz.symbol] = exit_lvl
-
-                        # Create pyramid tracker using filled shares
-                        atr = exit_lvl.atr_at_entry
-                        self._pyramid_positions[sz.symbol] = PyramidPosition(
-                            symbol=sz.symbol,
-                            direction=sz.direction,
-                            layers=[
-                                PyramidLevel(
-                                    shares=filled_shares,
-                                    entry_price=price,
-                                    bar_added=self._tick_count,
-                                    level=0,
-                                )
-                            ],
-                            target_total_shares=sz.shares,
-                            atr_at_entry=atr,
-                            initial_stop=exit_lvl.stop_loss,
-                            current_stop=exit_lvl.stop_loss,
-                            highest_price=price,
-                            lowest_price=price,
+                    hhmm = now_et.hour * 100 + now_et.minute
+                    if (930 <= hhmm <= 945) or (1545 <= hhmm <= 1600):
+                        for sz in sizes:
+                            sz.shares = max(1, int(sz.shares * 0.6))
+                            sz.notional = sz.notional * 0.6
+                            sz.target_weight = sz.target_weight * 0.6
+                        logger.info(
+                            "Seasonality filter: reduced allocation 40%% (time=%d)",
+                            hhmm,
                         )
 
-                        # Track entry metadata for TradeRecord
-                        self._entry_metadata[sz.symbol] = {
-                            "entry_price": price,
-                            "entry_tick": self._tick_count,
-                            "direction": sz.direction,
-                            "filled_shares": filled_shares,
-                            "predicted_return": predicted_return,
-                            "confidence": 0.6,
-                        }
+                # 9. SUBMIT ENTRY ORDERS
+                # Re-check positions right before ordering to catch partial
+                # fills from cancelled orders that silently accumulated shares
+                try:
+                    fresh_positions = await self._positions_service.get_all_positions()
+                    fresh_open = set(fresh_positions.keys())
+                except Exception:
+                    fresh_open = open_symbols
 
-                except Exception as e:
-                    result.errors.append(
-                        f"Entry order failed for {sz.symbol}: {e}"
-                    )
+                for sz in sizes:
+                    # Skip if position already exists (e.g. from partial fill
+                    # on a cancelled order that the earlier check missed)
+                    if sz.symbol in fresh_open:
+                        logger.info(
+                            "Skipping entry for %s — position already exists at broker",
+                            sz.symbol,
+                        )
+                        continue
+                    initial_shares = self.pyramider.initial_shares(sz.shares)
+                    if initial_shares < 1:
+                        initial_shares = sz.shares
+                    try:
+                        order_result = await self._submit_entry_order(
+                            sz.symbol,
+                            initial_shares,
+                            direction=sz.direction,
+                            confidence=getattr(sz, "confidence", 0.6),
+                            reason="organism_entry",
+                        )
+
+                        # Use filled qty from broker response when available
+                        # (IOC orders may partially fill)
+                        filled_shares = initial_shares
+                        if isinstance(order_result, dict):
+                            filled_qty = order_result.get("filled_qty")
+                            if filled_qty:
+                                filled_shares = max(1, int(float(filled_qty)))
+
+                        result.orders_submitted += 1
+                        # Mark as pending so we don't re-submit next tick
+                        self._pending_entry[sz.symbol] = self._tick_count
+                        result.activity.append(ActivityEvent(
+                            event_type="order",
+                            symbol=sz.symbol,
+                            message=f"ORDER SUBMITTED: {'BUY' if sz.direction >= 0 else 'SELL'} "
+                                    f"{filled_shares} shares of {sz.symbol}",
+                            details={
+                                "shares_requested": initial_shares,
+                                "shares_filled": filled_shares,
+                                "direction": sz.direction,
+                                "confidence": getattr(sz, "confidence", 0.6),
+                            },
+                            timestamp=now_iso,
+                        ))
+
+                        # Create exit levels for the new position
+                        feat_df = features_by_symbol.get(sz.symbol)
+                        if feat_df is not None and len(feat_df) > 0:
+                            price = float(feat_df["close"].iloc[-1])
+                            predicted_return = 0.01
+                            if self.signal_gen.is_trained:
+                                sig = self.signal_gen.predict(feat_df, sz.symbol)
+                                if sig:
+                                    predicted_return = abs(sig.predicted_return)
+
+                            exit_lvl = self.exit_engine.create_exit_levels(
+                                symbol=sz.symbol,
+                                direction=sz.direction,
+                                entry_price=price,
+                                predicted_return=predicted_return,
+                                features_df=feat_df,
+                                regime=regime,
+                            )
+                            self._exit_levels[sz.symbol] = exit_lvl
+
+                            # Create pyramid tracker using filled shares
+                            atr = exit_lvl.atr_at_entry
+                            self._pyramid_positions[sz.symbol] = PyramidPosition(
+                                symbol=sz.symbol,
+                                direction=sz.direction,
+                                layers=[
+                                    PyramidLevel(
+                                        shares=filled_shares,
+                                        entry_price=price,
+                                        bar_added=self._tick_count,
+                                        level=0,
+                                    )
+                                ],
+                                target_total_shares=sz.shares,
+                                atr_at_entry=atr,
+                                initial_stop=exit_lvl.stop_loss,
+                                current_stop=exit_lvl.stop_loss,
+                                highest_price=price,
+                                lowest_price=price,
+                            )
+
+                            # Track entry metadata for TradeRecord
+                            self._entry_metadata[sz.symbol] = {
+                                "entry_price": price,
+                                "entry_tick": self._tick_count,
+                                "direction": sz.direction,
+                                "filled_shares": filled_shares,
+                                "predicted_return": predicted_return,
+                                "confidence": 0.6,
+                            }
+
+                    except Exception as e:
+                        result.errors.append(
+                            f"Entry order failed for {sz.symbol}: {e}"
+                        )
 
             # 10. RECORD TRADE OUTCOMES from closed positions
             await self._reconcile_fills(features_by_symbol)
 
-            # 11. PERIODIC RETRAIN + EVOLVE (non-blocking background training)
-            self._bars_since_retrain += 1
+            # ── Step 11: Retrain/evolve (gated) ────────────────
+            if not entries_blocked:
+                # 11. PERIODIC RETRAIN + EVOLVE (non-blocking background training)
+                self._bars_since_retrain += 1
 
-            # Fast initial training: if model has never been trained, retrain
-            # after just 30 ticks (~5 min) so we get real predicted_return
-            # values early instead of relying on the 1% floor.
-            _retrain_threshold = RETRAIN_INTERVAL
-            if not self.signal_gen.is_trained and _retrain_threshold > 30:
-                _retrain_threshold = 30
+                # Fast initial training: if model has never been trained, retrain
+                # after just 30 ticks (~5 min) so we get real predicted_return
+                # values early instead of relying on the 1% floor.
+                _retrain_threshold = RETRAIN_INTERVAL
+                if not self.signal_gen.is_trained and _retrain_threshold > 30:
+                    _retrain_threshold = 30
 
-            # Check if previous background training completed
-            if self._bg_trainer.is_training:
-                # Detect stuck training — if it's been running for too long,
-                # force-reset and fall back to synchronous training
-                ticks_training = self._tick_count - self._bg_training_started_tick
-                if ticks_training > self._BG_TRAINING_TIMEOUT_TICKS:
-                    logger.warning(
-                        "Background training stuck for %d ticks — force-resetting",
-                        ticks_training,
-                    )
-                    self._bg_trainer._is_training = False
-                    self._bg_trainer._future = None
-                    try:
-                        self._retrain_and_evolve(features_by_symbol, regime)
-                        logger.info("Sync retrain after stuck bg trainer completed")
-                    except Exception as e:
-                        logger.warning("Sync retrain after stuck reset failed: %s", e)
+                # Check if previous background training completed
+                if self._bg_trainer.is_training:
+                    # Detect stuck training — if it's been running for too long,
+                    # force-reset and fall back to synchronous training
+                    ticks_training = self._tick_count - self._bg_training_started_tick
+                    if ticks_training > self._BG_TRAINING_TIMEOUT_TICKS:
+                        logger.warning(
+                            "Background training stuck for %d ticks — force-resetting",
+                            ticks_training,
+                        )
+                        self._bg_trainer._is_training = False
+                        self._bg_trainer._future = None
+                        try:
+                            self._retrain_and_evolve(features_by_symbol, regime)
+                            logger.info("Sync retrain after stuck bg trainer completed")
+                        except Exception as e:
+                            logger.warning("Sync retrain after stuck reset failed: %s", e)
 
-                done, train_result = self._bg_trainer.get_result()
-                if done and train_result and train_result.accepted:
-                    self.evolved_params = self._bg_trainer.apply_result(
-                        signal_gen=self.signal_gen,
-                        evolution_engine=self.evolution_engine,
-                        evolved_params=self.evolved_params,
-                        alpha_scanner=self.alpha_scanner,
-                        breakout_scanner=self.breakout_scanner,
-                        kelly_sizer=self.kelly_sizer,
-                        exit_engine=self.exit_engine,
-                    )
-                    self._bg_training_metadata = {
-                        "status": "completed",
-                        "accepted": train_result.accepted,
-                        "duration_s": train_result.duration_s,
-                        "last_trained_tick": self._tick_count,
-                    }
-                    self.governance.record_change()
-                    result.activity.append(ActivityEvent(
-                        event_type="retrain",
-                        message=f"Background training completed (gen={self.evolved_params.evolution_generation}, "
-                                f"duration={train_result.duration_s:.1f}s)",
-                        details={
-                            "generation": self.evolved_params.evolution_generation,
-                            "total_trades": len(self._all_trades),
-                            "is_trained": self.signal_gen.is_trained,
-                            "background": True,
+                    done, train_result = self._bg_trainer.get_result()
+                    if done and train_result and train_result.accepted:
+                        self.evolved_params = self._bg_trainer.apply_result(
+                            signal_gen=self.signal_gen,
+                            evolution_engine=self.evolution_engine,
+                            evolved_params=self.evolved_params,
+                            alpha_scanner=self.alpha_scanner,
+                            breakout_scanner=self.breakout_scanner,
+                            kelly_sizer=self.kelly_sizer,
+                            exit_engine=self.exit_engine,
+                        )
+                        self._bg_training_metadata = {
+                            "status": "completed",
+                            "accepted": train_result.accepted,
                             "duration_s": train_result.duration_s,
-                        },
-                        timestamp=now_iso,
-                    ))
-                elif done and train_result:
-                    # Background training failed — log error and fall back
-                    # to synchronous training so the model still gets updated
-                    logger.warning(
-                        "Background training rejected/failed: %s — falling back to sync",
-                        train_result.error,
-                    )
-                    self._bg_training_metadata = {
-                        "status": "rejected",
-                        "error": train_result.error,
-                        "last_trained_tick": self._tick_count,
-                    }
+                            "last_trained_tick": self._tick_count,
+                        }
+                        self.governance.record_change()
+                        result.activity.append(ActivityEvent(
+                            event_type="retrain",
+                            message=f"Background training completed (gen={self.evolved_params.evolution_generation}, "
+                                    f"duration={train_result.duration_s:.1f}s)",
+                            details={
+                                "generation": self.evolved_params.evolution_generation,
+                                "total_trades": len(self._all_trades),
+                                "is_trained": self.signal_gen.is_trained,
+                                "background": True,
+                                "duration_s": train_result.duration_s,
+                            },
+                            timestamp=now_iso,
+                        ))
+                    elif done and train_result:
+                        # Background training failed — log error and fall back
+                        # to synchronous training so the model still gets updated
+                        logger.warning(
+                            "Background training rejected/failed: %s — falling back to sync",
+                            train_result.error,
+                        )
+                        self._bg_training_metadata = {
+                            "status": "rejected",
+                            "error": train_result.error,
+                            "last_trained_tick": self._tick_count,
+                        }
+                        try:
+                            self._retrain_and_evolve(features_by_symbol, regime)
+                            logger.info("Synchronous fallback retrain completed")
+                        except Exception as e:
+                            logger.warning("Sync retrain fallback also failed: %s", e)
+                elif self._bars_since_retrain >= _retrain_threshold:
+                    self._bars_since_retrain = 0
                     try:
-                        self._retrain_and_evolve(features_by_symbol, regime)
-                        logger.info("Synchronous fallback retrain completed")
+                        await self._bg_trainer.submit_retrain(
+                            features_by_symbol=features_by_symbol,
+                            regime=regime,
+                            trades=self._all_trades,
+                            signal_gen=self.signal_gen,
+                            evolution_engine=self.evolution_engine,
+                            evolved_params=self.evolved_params,
+                        )
+                        self._bg_training_metadata["status"] = "training"
+                        self._bg_training_started_tick = self._tick_count
+                        logger.info(
+                            "Background training submitted (trades=%d, bars_since=%d, threshold=%d)",
+                            len(self._all_trades), self._bars_since_retrain, _retrain_threshold,
+                        )
+                        result.activity.append(ActivityEvent(
+                            event_type="retrain",
+                            message=f"Background training submitted (trades={len(self._all_trades)})",
+                            details={
+                                "total_trades": len(self._all_trades),
+                                "background": True,
+                            },
+                            timestamp=now_iso,
+                        ))
                     except Exception as e:
-                        logger.warning("Sync retrain fallback also failed: %s", e)
-            elif self._bars_since_retrain >= _retrain_threshold:
-                self._bars_since_retrain = 0
-                try:
-                    await self._bg_trainer.submit_retrain(
-                        features_by_symbol=features_by_symbol,
-                        regime=regime,
-                        trades=self._all_trades,
-                        signal_gen=self.signal_gen,
-                        evolution_engine=self.evolution_engine,
-                        evolved_params=self.evolved_params,
-                    )
-                    self._bg_training_metadata["status"] = "training"
-                    self._bg_training_started_tick = self._tick_count
-                    logger.info(
-                        "Background training submitted (trades=%d, bars_since=%d, threshold=%d)",
-                        len(self._all_trades), self._bars_since_retrain, _retrain_threshold,
-                    )
-                    result.activity.append(ActivityEvent(
-                        event_type="retrain",
-                        message=f"Background training submitted (trades={len(self._all_trades)})",
-                        details={
-                            "total_trades": len(self._all_trades),
-                            "background": True,
-                        },
-                        timestamp=now_iso,
-                    ))
-                except Exception as e:
-                    # Fallback to synchronous training
-                    logger.warning("Background training failed, falling back to sync: %s", e)
-                    self._retrain_and_evolve(features_by_symbol, regime)
-                    result.activity.append(ActivityEvent(
-                        event_type="retrain",
-                        message=f"ML model retrained synchronously (gen={self.evolved_params.evolution_generation})",
-                        details={
-                            "generation": self.evolved_params.evolution_generation,
-                            "total_trades": len(self._all_trades),
-                            "is_trained": self.signal_gen.is_trained,
-                            "background": False,
-                        },
-                        timestamp=now_iso,
-                    ))
+                        # Fallback to synchronous training
+                        logger.warning("Background training failed, falling back to sync: %s", e)
+                        self._retrain_and_evolve(features_by_symbol, regime)
+                        result.activity.append(ActivityEvent(
+                            event_type="retrain",
+                            message=f"ML model retrained synchronously (gen={self.evolved_params.evolution_generation})",
+                            details={
+                                "generation": self.evolved_params.evolution_generation,
+                                "total_trades": len(self._all_trades),
+                                "is_trained": self.signal_gen.is_trained,
+                                "background": False,
+                            },
+                            timestamp=now_iso,
+                        ))
 
             # 12. BRAIN SAVE (every 50 ticks — disk I/O is expensive at HFT speeds)
             if self._tick_count % 50 == 0:

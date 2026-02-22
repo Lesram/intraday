@@ -1378,7 +1378,7 @@ class OrderService:
         side = order_data.get("side", "").lower()
         qty = order_data.get("qty") or order_data.get("quantity", 0)
         order_type = order_data.get("order_type", "market")
-        tif = order_data.get("tif", "gtc")  # time in force
+        tif = order_data.get("tif", "day")  # time in force — default 'day' for intraday safety
         idempotency_key = order_data.get("idempotency_key") or str(uuid4())
         owner_id = (
             order_data.get("user_id")
