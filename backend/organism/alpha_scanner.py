@@ -17,6 +17,9 @@ import numpy as np
 import pandas as pd
 
 from backend.organism.ml_signal import MLSignal
+from backend.utils.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 @dataclass
@@ -143,6 +146,25 @@ class AlphaScanner:
             # 7. Regime alignment score
             regime_score = self._regime_alignment(row, direction, current_regime)
 
+            # NaN guard: sanitize every factor before composing.
+            # A single NaN from missing data would silently produce a NaN
+            # composite, creating "silent non-trading" or unstable candidates.
+            for _name, _val in [
+                ("ml_score", ml_score), ("breakout_score", breakout_score),
+                ("inst_score", inst_score), ("momentum_score", momentum_score),
+                ("mom_quality", mom_quality), ("volume_score", volume_score),
+                ("regime_score", regime_score),
+            ]:
+                if not np.isfinite(_val):
+                    logger.warning("NaN/Inf in alpha factor %s for %s — zeroed", _name, symbol)
+            ml_score = ml_score if np.isfinite(ml_score) else 0.0
+            breakout_score = breakout_score if np.isfinite(breakout_score) else 0.0
+            inst_score = inst_score if np.isfinite(inst_score) else 0.5
+            momentum_score = momentum_score if np.isfinite(momentum_score) else 0.5
+            mom_quality = mom_quality if np.isfinite(mom_quality) else 0.5
+            volume_score = volume_score if np.isfinite(volume_score) else 0.0
+            regime_score = regime_score if np.isfinite(regime_score) else 0.5
+
             # Composite
             composite = (
                 self.WEIGHT_ML * ml_score
@@ -164,6 +186,11 @@ class AlphaScanner:
                 fitness = self._symbol_fitness.get(symbol, 0.5)
                 # Scale: 0.5 = neutral, >0.5 = boost, <0.5 = penalize
                 composite *= 0.5 + fitness  # range [0.6, 1.45]
+
+            # Final NaN guard on composite — drop the symbol entirely if NaN.
+            if not np.isfinite(composite):
+                logger.warning("NaN/Inf composite for %s — skipping candidate", symbol)
+                continue
 
             candidates.append(AlphaCandidate(
                 symbol=symbol,

@@ -514,18 +514,62 @@ class TestOrderStateMachine:
             TransitionTrigger.RISK_DECISION,
         )
 
-    def test_broker_update_special_handling(self):
-        """BROKER_UPDATE trigger has special handling."""
+    def test_broker_update_all_valid_transitions(self):
+        """BROKER_UPDATE trigger correctly allows all defined target states."""
         fsm = OrderStateMachine()
-        
-        # Broker update from SUBMITTED state
-        result = fsm.can_transition(
-            OrderState.SUBMITTED,
-            OrderState.PENDING_EXECUTION,
+
+        # SUBMITTED → PENDING_EXECUTION or REJECTED via BROKER_UPDATE
+        assert fsm.can_transition(
+            OrderState.SUBMITTED, OrderState.PENDING_EXECUTION,
             TransitionTrigger.BROKER_UPDATE,
         )
-        # Result depends on VALID_TRANSITIONS configuration
-        assert isinstance(result, bool)
+        assert fsm.can_transition(
+            OrderState.SUBMITTED, OrderState.REJECTED,
+            TransitionTrigger.BROKER_UPDATE,
+        )
+        # SUBMITTED → FILLED should NOT be valid (not directly reachable)
+        assert not fsm.can_transition(
+            OrderState.SUBMITTED, OrderState.FILLED,
+            TransitionTrigger.BROKER_UPDATE,
+        )
+
+        # PENDING_EXECUTION → PARTIALLY_FILLED, FILLED, or CANCELLED
+        assert fsm.can_transition(
+            OrderState.PENDING_EXECUTION, OrderState.PARTIALLY_FILLED,
+            TransitionTrigger.BROKER_UPDATE,
+        )
+        assert fsm.can_transition(
+            OrderState.PENDING_EXECUTION, OrderState.FILLED,
+            TransitionTrigger.BROKER_UPDATE,
+        )
+        assert fsm.can_transition(
+            OrderState.PENDING_EXECUTION, OrderState.CANCELLED,
+            TransitionTrigger.BROKER_UPDATE,
+        )
+
+        # PARTIALLY_FILLED → FILLED or CANCELLED
+        assert fsm.can_transition(
+            OrderState.PARTIALLY_FILLED, OrderState.FILLED,
+            TransitionTrigger.BROKER_UPDATE,
+        )
+        assert fsm.can_transition(
+            OrderState.PARTIALLY_FILLED, OrderState.CANCELLED,
+            TransitionTrigger.BROKER_UPDATE,
+        )
+
+    def test_manual_override_all_valid_transitions(self):
+        """MANUAL_OVERRIDE correctly allows all defined target states."""
+        fsm = OrderStateMachine()
+
+        # UNDER_REVIEW → VALIDATED or CANCELLED via MANUAL_OVERRIDE
+        assert fsm.can_transition(
+            OrderState.UNDER_REVIEW, OrderState.VALIDATED,
+            TransitionTrigger.MANUAL_OVERRIDE,
+        )
+        assert fsm.can_transition(
+            OrderState.UNDER_REVIEW, OrderState.CANCELLED,
+            TransitionTrigger.MANUAL_OVERRIDE,
+        )
 
     @pytest.mark.asyncio
     async def test_transition_success(self):
@@ -586,10 +630,18 @@ class TestOrderStateMachine:
     def test_get_reachable_states(self):
         """get_reachable_states returns set of reachable states."""
         fsm = OrderStateMachine()
-        
+
         reachable = fsm.get_reachable_states(OrderState.PENDING_VALIDATION)
-        
         assert isinstance(reachable, set)
+        assert OrderState.VALIDATED in reachable
+        assert OrderState.CANCELLED in reachable
+        assert OrderState.EXPIRED in reachable
+
+        # SUBMITTED can reach PENDING_EXECUTION, REJECTED, and CANCELLED
+        reachable_submitted = fsm.get_reachable_states(OrderState.SUBMITTED)
+        assert OrderState.PENDING_EXECUTION in reachable_submitted
+        assert OrderState.REJECTED in reachable_submitted
+        assert OrderState.CANCELLED in reachable_submitted
 
     def test_get_reachable_states_terminal(self):
         """Terminal states have no reachable states."""

@@ -204,9 +204,9 @@ Step 4: GET CURRENT POSITIONS + PORTFOLIO STATE
 Step 5: CHECK EXITS on existing positions
    └─ For each open position, run through AdaptiveExitEngine:
       ├─ Hard stop-loss (ATR-based, regime-adaptive)
-      ├─ Partial take-profit at 3R (sell 30%, move stop to breakeven)
+      ├─ Partial take-profit at 2R (sell 40%, move stop to breakeven)
       ├─ Full take-profit
-      ├─ Trailing stop (activates after 3×ATR favorable move)
+      ├─ Trailing stop (activates after 2×ATR favorable move)
       ├─ Time-based exit (only if in profit)
       └─ Stress regime tightening (40% stop tightening)
 
@@ -228,7 +228,7 @@ Step 8: SIZE POSITIONS via Kelly Criterion
    └─ → Regime scale (trending_up: 1.2×, chop: 0.5×, crisis: 0.1×)
    └─ → Confidence clamp [0.3× to 1.5×]
    └─ → Breakout bonus (up to 2.0×)
-   └─ Caps: max 12% per position, min $2,000, max 95% portfolio
+   └─ Caps: max 8% per position, min $500 (intraday), max 95% portfolio
 
 Step 9: SUBMIT ENTRY ORDERS
    └─ Send to broker client (Alpaca)
@@ -373,7 +373,7 @@ Tier 2: Advanced Strategies (quantitative, indicator-heavy)
    └── MicrostructureAlphaStrategy      ← Smart Money + vol-price divergence
 
 Tier 3: Organism Strategies (ML-driven, evolving)
-   └── Living Organism ML Signals       ← XGBoost ensemble + 68 features + self-evolution
+   └── Living Organism ML Signals       ← XGBoost ensemble + 79 features + self-evolution
 ```
 
 ### How Signals Flow Through the System
@@ -462,9 +462,9 @@ The Living Policy Engine dynamically adjusts how much to trust each strategy:
 
 ## 5. Machine Learning Pipeline — The Prediction Engine
 
-### Feature Engineering — 68 ML Features
+### Feature Engineering — 79 ML Features
 
-The organism computes **68 features** per symbol per time bar:
+The organism computes **79 features** per symbol per time bar:
 
 | Category | Count | Examples |
 |----------|-------|---------|
@@ -484,7 +484,7 @@ The platform uses a **dual-model XGBoost ensemble**:
 
 ```
 ┌─────────────────────────────────────────────────────┐
-│  INPUT: 68 features per symbol                       │
+│  INPUT: 79 features per symbol                       │
 │                                                      │
 │  Feature Selection (evolved weights > 0.20,          │
 │  minimum 15 features kept)                           │
@@ -1593,7 +1593,7 @@ LIVE_ENGINE.live_tick()
     │     └─ Layer 1 at +1.5R, Layer 2 at +3.0R, anti-pyramid at -0.7R / -1.0R
     │
     ├─ ml_signal_generator.predict(features)
-    │     ├─ compute_ml_features(bars, spy_bars) → 68 features
+    │     ├─ compute_ml_features(bars, spy_bars) → 79 features
     │     ├─ XGBClassifier.predict_proba() → P(up)
     │     ├─ XGBRegressor.predict() → expected return
     │     └─ Ensemble blend: 60% primary + 40% secondary

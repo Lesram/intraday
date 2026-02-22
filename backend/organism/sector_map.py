@@ -67,10 +67,27 @@ def count_sector_positions(
     return sum(1 for s in open_symbols if SECTOR_MAP.get(s) == sector)
 
 
-def sector_gate_allows(symbol: str, open_symbols: set[str]) -> bool:
-    """Return True if opening a position in symbol would not breach the sector limit."""
+def sector_gate_allows(
+    symbol: str,
+    open_symbols: set[str],
+    planned_symbols: set[str] | None = None,
+) -> bool:
+    """Return True if opening a position in symbol would not breach the sector limit.
+
+    Parameters
+    ----------
+    symbol : str
+        The symbol we want to enter.
+    open_symbols : set[str]
+        Symbols with currently open positions at the broker.
+    planned_symbols : set[str] | None
+        Symbols already selected for entry earlier in this tick but not yet
+        submitted.  Including these prevents intra-tick sector-limit violations
+        when multiple candidates from the same sector are selected in one tick.
+    """
     sector = get_sector(symbol)
     if sector == "Unknown":
         return True  # Don't block unknown symbols
-    current = count_sector_positions(open_symbols, sector)
+    combined = open_symbols | (planned_symbols or set())
+    current = count_sector_positions(combined, sector)
     return current < MAX_PER_SECTOR

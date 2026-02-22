@@ -22,15 +22,18 @@ def get_smart_tif(requested_tif: str | None = None) -> str:
     Determine appropriate Time In Force based on market hours.
 
     During regular market hours (9:30 AM - 4:00 PM ET Mon-Fri), use 'day'.
-    Outside market hours, use 'gtc' to prevent orders from expiring before they can fill.
+    Outside market hours, also default to 'day' for an intraday system to
+    prevent unwanted overnight exposure.  GTC is only used when explicitly
+    requested via ``requested_tif``.
 
     Args:
-        requested_tif: TIF explicitly requested by user (if any)
+        requested_tif: TIF explicitly requested by caller (if any).
+                       Pass 'gtc' explicitly to allow GTC orders.
 
     Returns:
-        'day' or 'gtc' based on market hours
+        'day' (default) or 'gtc' (only when explicitly requested)
     """
-    # If user explicitly requested a TIF, honor it
+    # If caller explicitly requested a TIF, honor it
     if requested_tif and requested_tif.lower() != 'day':
         return requested_tif.lower()
 
@@ -39,20 +42,28 @@ def get_smart_tif(requested_tif: str | None = None) -> str:
         et_tz = ZoneInfo('America/New_York')
         now_et = datetime.now(et_tz)
 
-        # Check if weekend
+        # Check market hours (9:30 AM - 4:00 PM ET, Mon-Fri)
         weekday = now_et.weekday()
-        if weekday >= 5:  # Saturday (5) or Sunday (6)
-            logger.debug("Market closed (weekend), using TIF=gtc")
-            return 'gtc'
-
-        # Check market hours (9:30 AM - 4:00 PM ET)
         current_time = now_et.time()
         market_open = current_time.replace(hour=9, minute=30, second=0, microsecond=0)
         market_close = current_time.replace(hour=16, minute=0, second=0, microsecond=0)
 
-        is_market_hours = market_open <= current_time <= market_close
+        is_market_hours = (
+            weekday < 5
+            and market_open <= current_time <= market_close
+        )
 
-        tif = 'day' if is_market_hours else 'gtc'
+        # For an intraday system, ALWAYS default to 'day' to prevent
+        # unwanted overnight exposure.  Outside hours the order will be
+        # queued by the broker for the next session.
+        tif = 'day'
+
+        if not is_market_hours:
+            logger.info(
+                "Off-hours order: using TIF=day to prevent overnight exposure "
+                "(time=%s, weekday=%d). Pass requested_tif='gtc' to override.",
+                current_time.isoformat(), weekday,
+            )
 
         logger.debug("Smart TIF selection",
                     current_time_et=current_time.isoformat(),
@@ -62,10 +73,10 @@ def get_smart_tif(requested_tif: str | None = None) -> str:
         return tif
 
     except Exception as e:
-        # Fallback to 'gtc' if anything goes wrong (safer option)
-        logger.warning("Error determining smart TIF, defaulting to gtc",
+        # Fallback to 'day' (safer for intraday — no overnight exposure)
+        logger.warning("Error determining smart TIF, defaulting to day",
                       error=str(e))
-        return 'gtc'
+        return 'day'
 
 
 class AlpacaOutboxDispatcher:

@@ -91,68 +91,68 @@ class TestGetSmartTif:
             
             assert result == "day"
 
-    def test_smart_tif_after_hours_returns_gtc(self):
-        """Test after hours returns 'gtc' TIF."""
+    def test_smart_tif_after_hours_returns_day(self):
+        """Test after hours returns 'day' to prevent overnight exposure."""
         from backend.integrations.alpaca_outbox import get_smart_tif
-        
+
         # Mock after hours (6 PM ET on Monday)
         with patch("backend.integrations.alpaca_outbox.datetime") as mock_dt:
             mock_now = datetime(2025, 1, 6, 18, 0, 0, tzinfo=ZoneInfo("America/New_York"))  # Monday
             mock_dt.now.return_value = mock_now
-            
-            result = get_smart_tif(None)
-            
-            assert result == "gtc"
 
-    def test_smart_tif_before_market_returns_gtc(self):
-        """Test before market hours returns 'gtc' TIF."""
+            result = get_smart_tif(None)
+
+            assert result == "day"
+
+    def test_smart_tif_before_market_returns_day(self):
+        """Test before market hours returns 'day' to prevent overnight exposure."""
         from backend.integrations.alpaca_outbox import get_smart_tif
-        
+
         # Mock before market (8 AM ET on Monday)
         with patch("backend.integrations.alpaca_outbox.datetime") as mock_dt:
             mock_now = datetime(2025, 1, 6, 8, 0, 0, tzinfo=ZoneInfo("America/New_York"))  # Monday
             mock_dt.now.return_value = mock_now
-            
-            result = get_smart_tif(None)
-            
-            assert result == "gtc"
 
-    def test_smart_tif_weekend_returns_gtc(self):
-        """Test weekend returns 'gtc' TIF."""
+            result = get_smart_tif(None)
+
+            assert result == "day"
+
+    def test_smart_tif_weekend_returns_day(self):
+        """Test weekend returns 'day' to prevent overnight exposure."""
         from backend.integrations.alpaca_outbox import get_smart_tif
-        
+
         # Mock Saturday
         with patch("backend.integrations.alpaca_outbox.datetime") as mock_dt:
             mock_now = datetime(2025, 1, 4, 11, 0, 0, tzinfo=ZoneInfo("America/New_York"))  # Saturday
             mock_dt.now.return_value = mock_now
-            
-            result = get_smart_tif(None)
-            
-            assert result == "gtc"
 
-    def test_smart_tif_sunday_returns_gtc(self):
-        """Test Sunday returns 'gtc' TIF."""
+            result = get_smart_tif(None)
+
+            assert result == "day"
+
+    def test_smart_tif_sunday_returns_day(self):
+        """Test Sunday returns 'day' to prevent overnight exposure."""
         from backend.integrations.alpaca_outbox import get_smart_tif
-        
+
         # Mock Sunday
         with patch("backend.integrations.alpaca_outbox.datetime") as mock_dt:
             mock_now = datetime(2025, 1, 5, 11, 0, 0, tzinfo=ZoneInfo("America/New_York"))  # Sunday
             mock_dt.now.return_value = mock_now
-            
+
             result = get_smart_tif(None)
-            
-            assert result == "gtc"
+
+            assert result == "day"
 
     def test_smart_tif_handles_exception(self):
-        """Test exception handling defaults to 'gtc'."""
+        """Test exception handling defaults to 'day' (safe for intraday)."""
         from backend.integrations.alpaca_outbox import get_smart_tif
-        
+
         with patch("backend.integrations.alpaca_outbox.datetime") as mock_dt:
             mock_dt.now.side_effect = Exception("TZ error")
-            
+
             result = get_smart_tif(None)
-            
-            assert result == "gtc"
+
+            assert result == "day"
 
     def test_smart_tif_day_honored_during_market_hours(self):
         """Test explicit 'day' TIF during market hours."""

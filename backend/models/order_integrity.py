@@ -142,65 +142,62 @@ class TransitionTrigger(Enum):
     MANUAL_OVERRIDE = "manual_override"
 
 
-# Valid state transitions mapping
-VALID_TRANSITIONS: dict[OrderState, dict[TransitionTrigger, OrderState]] = {
+# Valid state transitions mapping.
+# Uses dict[trigger, set[state]] so triggers with multiple valid target states
+# (e.g. BROKER_UPDATE can lead to FILLED or CANCELLED) are expressed correctly.
+# Previous implementation used duplicate dict keys which silently dropped all
+# but the last target state — a critical correctness bug.
+VALID_TRANSITIONS: dict[OrderState, dict[TransitionTrigger, set[OrderState]]] = {
     OrderState.PENDING_VALIDATION: {
-        TransitionTrigger.VALIDATION_COMPLETE: OrderState.VALIDATED,
-        TransitionTrigger.USER_CANCELLATION: OrderState.CANCELLED,
-        TransitionTrigger.SYSTEM_TIMEOUT: OrderState.EXPIRED,
+        TransitionTrigger.VALIDATION_COMPLETE: {OrderState.VALIDATED},
+        TransitionTrigger.USER_CANCELLATION: {OrderState.CANCELLED},
+        TransitionTrigger.SYSTEM_TIMEOUT: {OrderState.EXPIRED},
     },
     OrderState.VALIDATED: {
-        TransitionTrigger.RISK_DECISION: OrderState.PENDING_RISK_ASSESSMENT,
-        TransitionTrigger.USER_CANCELLATION: OrderState.CANCELLED,
+        TransitionTrigger.RISK_DECISION: {OrderState.PENDING_RISK_ASSESSMENT},
+        TransitionTrigger.USER_CANCELLATION: {OrderState.CANCELLED},
     },
     OrderState.PENDING_RISK_ASSESSMENT: {
-        TransitionTrigger.RISK_DECISION: OrderState.RISK_APPROVED,
-        TransitionTrigger.RISK_DECISION: OrderState.RISK_REJECTED,
-        TransitionTrigger.USER_CANCELLATION: OrderState.CANCELLED,
-        TransitionTrigger.SYSTEM_TIMEOUT: OrderState.EXPIRED,
+        TransitionTrigger.RISK_DECISION: {OrderState.RISK_APPROVED, OrderState.RISK_REJECTED},
+        TransitionTrigger.USER_CANCELLATION: {OrderState.CANCELLED},
+        TransitionTrigger.SYSTEM_TIMEOUT: {OrderState.EXPIRED},
     },
     OrderState.RISK_APPROVED: {
-        TransitionTrigger.BROKER_SUBMISSION: OrderState.PENDING_SUBMISSION,
-        TransitionTrigger.USER_CANCELLATION: OrderState.CANCELLED,
+        TransitionTrigger.BROKER_SUBMISSION: {OrderState.PENDING_SUBMISSION},
+        TransitionTrigger.USER_CANCELLATION: {OrderState.CANCELLED},
     },
     OrderState.RISK_REJECTED: {
-        TransitionTrigger.MANUAL_OVERRIDE: OrderState.VALIDATED,
-        # Risk rejected orders can be manually reviewed
+        TransitionTrigger.MANUAL_OVERRIDE: {OrderState.VALIDATED},
     },
     OrderState.PENDING_SUBMISSION: {
-        TransitionTrigger.BROKER_SUBMISSION: OrderState.SUBMITTED,
-        TransitionTrigger.ERROR_RECOVERY: OrderState.FAILED,
-        TransitionTrigger.USER_CANCELLATION: OrderState.CANCELLED,
+        TransitionTrigger.BROKER_SUBMISSION: {OrderState.SUBMITTED},
+        TransitionTrigger.ERROR_RECOVERY: {OrderState.FAILED},
+        TransitionTrigger.USER_CANCELLATION: {OrderState.CANCELLED},
     },
     OrderState.SUBMITTED: {
-        TransitionTrigger.BROKER_UPDATE: OrderState.PENDING_EXECUTION,
-        TransitionTrigger.BROKER_UPDATE: OrderState.REJECTED,
-        TransitionTrigger.USER_CANCELLATION: OrderState.CANCELLED,
+        TransitionTrigger.BROKER_UPDATE: {OrderState.PENDING_EXECUTION, OrderState.REJECTED},
+        TransitionTrigger.USER_CANCELLATION: {OrderState.CANCELLED},
     },
     OrderState.PENDING_EXECUTION: {
-        TransitionTrigger.BROKER_UPDATE: OrderState.PARTIALLY_FILLED,
-        TransitionTrigger.BROKER_UPDATE: OrderState.FILLED,
-        TransitionTrigger.BROKER_UPDATE: OrderState.CANCELLED,
-        TransitionTrigger.SYSTEM_TIMEOUT: OrderState.EXPIRED,
+        TransitionTrigger.BROKER_UPDATE: {OrderState.PARTIALLY_FILLED, OrderState.FILLED, OrderState.CANCELLED},
+        TransitionTrigger.SYSTEM_TIMEOUT: {OrderState.EXPIRED},
     },
     OrderState.PARTIALLY_FILLED: {
-        TransitionTrigger.BROKER_UPDATE: OrderState.FILLED,
-        TransitionTrigger.BROKER_UPDATE: OrderState.CANCELLED,
-        TransitionTrigger.SYSTEM_TIMEOUT: OrderState.EXPIRED,
-        TransitionTrigger.USER_CANCELLATION: OrderState.CANCELLED,
+        TransitionTrigger.BROKER_UPDATE: {OrderState.FILLED, OrderState.CANCELLED},
+        TransitionTrigger.SYSTEM_TIMEOUT: {OrderState.EXPIRED},
+        TransitionTrigger.USER_CANCELLATION: {OrderState.CANCELLED},
     },
     OrderState.FAILED: {
-        TransitionTrigger.ERROR_RECOVERY: OrderState.PENDING_RETRY,
-        TransitionTrigger.MANUAL_OVERRIDE: OrderState.UNDER_REVIEW,
+        TransitionTrigger.ERROR_RECOVERY: {OrderState.PENDING_RETRY},
+        TransitionTrigger.MANUAL_OVERRIDE: {OrderState.UNDER_REVIEW},
     },
     OrderState.PENDING_RETRY: {
-        TransitionTrigger.VALIDATION_COMPLETE: OrderState.VALIDATED,
-        TransitionTrigger.SYSTEM_TIMEOUT: OrderState.FAILED,
-        TransitionTrigger.USER_CANCELLATION: OrderState.CANCELLED,
+        TransitionTrigger.VALIDATION_COMPLETE: {OrderState.VALIDATED},
+        TransitionTrigger.SYSTEM_TIMEOUT: {OrderState.FAILED},
+        TransitionTrigger.USER_CANCELLATION: {OrderState.CANCELLED},
     },
     OrderState.UNDER_REVIEW: {
-        TransitionTrigger.MANUAL_OVERRIDE: OrderState.VALIDATED,
-        TransitionTrigger.MANUAL_OVERRIDE: OrderState.CANCELLED,
+        TransitionTrigger.MANUAL_OVERRIDE: {OrderState.VALIDATED, OrderState.CANCELLED},
     },
 }
 
@@ -329,28 +326,23 @@ class OrderStateMachine:
     def can_transition(
         self, from_state: OrderState, to_state: OrderState, trigger: TransitionTrigger
     ) -> bool:
-        """Check if state transition is valid."""
+        """Check if state transition is valid.
+
+        Uses the set-based VALID_TRANSITIONS map so triggers with multiple
+        valid target states (e.g. BROKER_UPDATE → FILLED | CANCELLED) are
+        checked correctly.
+        """
 
         # Terminal states cannot transition
         if from_state in OrderState.terminal_states():
             return False
 
-        # Check if transition is defined in the FSM
+        # Look up valid triggers for the current state
         valid_triggers = VALID_TRANSITIONS.get(from_state, {})
-
-        # Special handling for risk decisions with different outcomes
-        if trigger == TransitionTrigger.RISK_DECISION:
-            return to_state in [OrderState.RISK_APPROVED, OrderState.RISK_REJECTED]
-
-        # Special handling for broker updates with different outcomes
-        if trigger == TransitionTrigger.BROKER_UPDATE:
-            valid_states = []
-            for t, state in valid_triggers.items():
-                if t == TransitionTrigger.BROKER_UPDATE:
-                    valid_states.append(state)
-            return to_state in valid_states or len(valid_states) == 0
-
-        return trigger in valid_triggers and valid_triggers[trigger] == to_state
+        allowed_states = valid_triggers.get(trigger)
+        if allowed_states is None:
+            return False
+        return to_state in allowed_states
 
     async def transition(
         self,
@@ -405,7 +397,7 @@ class OrderStateMachine:
 
     def get_valid_transitions(
         self, current_state: OrderState
-    ) -> dict[TransitionTrigger, OrderState]:
+    ) -> dict[TransitionTrigger, set[OrderState]]:
         """Get valid transitions for current state."""
         return VALID_TRANSITIONS.get(current_state, {})
 
@@ -415,7 +407,11 @@ class OrderStateMachine:
             return set()
 
         valid_transitions = VALID_TRANSITIONS.get(current_state, {})
-        return set(valid_transitions.values())
+        # Each value is now a set of states; union them all.
+        result: set[OrderState] = set()
+        for states in valid_transitions.values():
+            result |= states
+        return result
 
 
 class IdempotencyManager:

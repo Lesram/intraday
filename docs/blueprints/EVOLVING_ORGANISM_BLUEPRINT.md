@@ -84,7 +84,7 @@ These targets assume compounding intelligence over 50+ brain-persisted runs. The
 │  │          │           │  │  └───────┬────────┘  │  │  └─────┬──────┘ │  │
 │  │  ┌───────▼────────┐  │  │          │           │  │        │        │  │
 │  │  │ ML Feature Eng │  │  │  ┌───────▼────────┐  │  │  ┌─────▼──────┐ │  │
-│  │  │ (68 features)  │──│──│─►│ ML Signal Gen  │  │  │  │ Pyramider  │ │  │
+│  │  │ (79 features)  │──│──│─►│ ML Signal Gen  │  │  │  │ Pyramider  │ │  │
 │  │  └───────┬────────┘  │  │  │ (XGB ensemble) │  │  │  │ (3 layers) │ │  │
 │  │          │           │  │  └───────┬────────┘  │  │  └─────┬──────┘ │  │
 │  │  ┌───────▼────────┐  │  │          │           │  │        │        │  │
@@ -238,7 +238,7 @@ Every epoch (60 bars ≈ 3 months of daily data), the organism completes one ful
 **Architecture:**
 
 ```
-Input: 68 features (per symbol, per bar)
+Input: 79 features (per symbol, per bar)
        │
        ├──► XGBClassifier ──► P(up) ∈ [0,1]
        │    • 200 estimators, depth=5
@@ -324,7 +324,7 @@ Where:
 - $R_{\text{regime}}$ = regime-specific scale factor (evolved), range [0.05, 1.50]
 - $B_{\text{breakout}}$ = `1.0 + min(breakout_score × 0.5, 0.5)` — conviction bonus
 
-**Constraints:** Max 12% per position, min $2,000, max 8 concurrent positions.
+**Constraints:** Max 8% per position, min $500 (intraday), max 8 concurrent positions (env-configurable to 15).
 
 **Evolved Parameters:** All regime scale factors adapted from PnL per regime.
 
@@ -647,7 +647,7 @@ async def live_tick(engine: OrganismLiveEngine):
     # 2. FETCH LATEST DATA (real data, not historical)
     bars = await alpaca_client.get_latest_bars(symbols, lookback=250)
     
-    # 3. COMPUTE FEATURES (same 68 features as backtest)
+    # 3. COMPUTE FEATURES (same 79 features as backtest)
     features_by_symbol = {sym: compute_ml_features(df) for sym, df in bars.items()}
     
     # 4. DETECT REGIME
@@ -796,7 +796,7 @@ compute_ml_features(df, spy_df)
        └──► Regime (6 features)
        │
        ▼
-68 features per symbol per bar
+79 features per symbol per bar
        │
        ▼
 Feature Selection (EvolutionEngine)

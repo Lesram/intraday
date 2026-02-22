@@ -108,6 +108,27 @@ try:
         "organism_tick_errors_total",
         "Total errors across organism ticks",
     )
+    # ── Safety invariant monitors ──────────────────────────────
+    ORGANISM_HALTED_WITH_POSITIONS = Counter(
+        "organism_halted_with_positions_total",
+        "Ticks where trading was halted while open positions exist",
+    )
+    ORGANISM_EXITS_SKIPPED_NO_DATA = Counter(
+        "organism_exits_skipped_no_data_total",
+        "Exit checks that fell back to broker price due to missing features",
+    )
+    ORGANISM_SECTOR_CAP_BLOCKED = Counter(
+        "organism_sector_cap_blocked_total",
+        "Entries blocked by intra-tick sector limit enforcement",
+    )
+    ORGANISM_SAFETY_NET_TRIGGERED = Counter(
+        "organism_safety_net_triggered_total",
+        "Positions closed by the 15% max-loss safety net",
+    )
+    ORGANISM_ENTRIES_BLOCKED = Counter(
+        "organism_entries_blocked_total",
+        "Ticks where new entries were blocked (halt/drawdown/zero equity)",
+    )
     _PROMETHEUS_AVAILABLE = True
 except ImportError:
     _PROMETHEUS_AVAILABLE = False
@@ -588,18 +609,23 @@ class OrganismLiveEngine:
             now_iso = result.timestamp
 
             # 1. GOVERNANCE CHECK
+            # When halted, we still MUST process exits and reconciliation
+            # to manage open risk.  Only new entries are blocked.
+            entries_blocked = False
             if self.governance.is_trading_halted:
-                result.errors.append("Trading halted by governance")
+                entries_blocked = True
+                result.errors.append("Trading halted by governance — exits still active")
                 result.activity.append(ActivityEvent(
-                    event_type="skip", message="Trading halted by governance kill-switch",
+                    event_type="governance", message="Trading halted — blocking new entries, exits still running",
                     timestamp=now_iso,
                 ))
-                result.duration_s = time.time() - t0
-                return result
 
             # 1.5 MARKET SCAN (Phase 5) — discover new stocks
+            # Skip scanner when entries are blocked (halt/drawdown) — no point
+            # scanning for new candidates we won't enter.
             if (
-                self.market_scanner is not None
+                not entries_blocked
+                and self.market_scanner is not None
                 and self._tick_count % SCAN_INTERVAL_TICKS == 0
             ):
                 try:
@@ -685,15 +711,18 @@ class OrganismLiveEngine:
                 drawdown = (self._peak_equity - equity) / self._peak_equity
                 self.governance.trigger_drawdown_kill(drawdown)
                 if self.governance.is_trading_halted:
-                    result.errors.append("Drawdown kill triggered")
-                    result.duration_s = time.time() - t0
-                    return result
+                    entries_blocked = True
+                    result.errors.append("Drawdown kill triggered — exits still active")
+                    logger.warning(
+                        "Drawdown kill: blocking new entries but continuing "
+                        "exit checks for %d open positions",
+                        len(current_positions),
+                    )
             elif equity == 0:
                 self.governance.halt_trading()
-                logger.error("equity_returned_zero — halting to prevent unprotected trading")
-                result.errors.append("Equity is zero — cannot compute drawdown. Trading halted.")
-                result.duration_s = time.time() - t0
-                return result
+                entries_blocked = True
+                logger.error("equity_returned_zero — halting entries, exits still active")
+                result.errors.append("Equity is zero — exits still active, entries blocked.")
 
             # 5. CHECK EXITS on existing positions
             _MAX_LOSS_PCT = 0.15  # Absolute safety net — no position beyond -15%
@@ -701,10 +730,57 @@ class OrganismLiveEngine:
             for sym, pos_data in current_positions.items():
                 feat_df = features_by_symbol.get(sym)
                 if feat_df is None or len(feat_df) < 1:
-                    logger.warning(
-                        "No features for open position %s — exit check skipped",
-                        sym,
-                    )
+                    # Fallback: use broker position data for safety net check
+                    # even when feature computation fails.  We NEVER skip exit
+                    # checks for open positions — data outages must not disable
+                    # risk management.
+                    broker_price = float(pos_data.get("current_price", 0))
+                    avg_entry = float(pos_data.get("avg_entry_price", 0))
+                    if broker_price > 0 and avg_entry > 0:
+                        side = pos_data.get("side", "long")
+                        _dir = 1.0 if side == "long" else -1.0
+                        pnl_pct = (broker_price - avg_entry) / avg_entry * _dir
+                        if pnl_pct <= -_MAX_LOSS_PCT:
+                            from backend.organism.adaptive_exits import ExitSignal
+                            qty = abs(float(pos_data.get("qty", 0)))
+                            sell_shares = int(qty)
+                            if sell_shares > 0:
+                                try:
+                                    await self._submit_exit_order(
+                                        sym, sell_shares, "safety_net_no_features",
+                                        direction=_dir,
+                                    )
+                                    exits_submitted += 1
+                                    if _PROMETHEUS_AVAILABLE:
+                                        ORGANISM_SAFETY_NET_TRIGGERED.inc()
+                                        ORGANISM_EXITS_SKIPPED_NO_DATA.inc()
+                                    logger.warning(
+                                        "SAFETY NET (no features) triggered for %s: "
+                                        "%.1f%% loss (broker price=%.2f, entry=%.2f)",
+                                        sym, pnl_pct * 100, broker_price, avg_entry,
+                                    )
+                                    result.activity.append(ActivityEvent(
+                                        event_type="exit",
+                                        symbol=sym,
+                                        message=f"EXIT: {sym} — safety net (no features, "
+                                                f"{pnl_pct*100:.1f}% loss)",
+                                        details={"reason": "safety_net_no_features",
+                                                 "shares": sell_shares, "pnl_pct": pnl_pct,
+                                                 "broker_price": broker_price},
+                                        timestamp=now_iso,
+                                    ))
+                                except Exception as e:
+                                    result.errors.append(
+                                        f"Safety net exit (no features) failed for {sym}: {e}"
+                                    )
+                                finally:
+                                    self._exit_cooldown[sym] = self._tick_count
+                    else:
+                        logger.warning(
+                            "No features AND no valid broker price for %s — "
+                            "cannot evaluate exit (broker_price=%.2f, entry=%.2f)",
+                            sym, broker_price, avg_entry,
+                        )
                     continue
 
                 result.exits_checked += 1
@@ -735,6 +811,8 @@ class OrganismLiveEngine:
                                     )
                                     self._exit_cooldown[sym] = self._tick_count
                                     exits_submitted += 1
+                                    if _PROMETHEUS_AVAILABLE:
+                                        ORGANISM_SAFETY_NET_TRIGGERED.inc()
                                     logger.warning(
                                         "SAFETY NET triggered for %s: %.1f%% loss "
                                         "(no exit_levels)", sym, pnl_pct * 100,
@@ -817,6 +895,45 @@ class OrganismLiveEngine:
                             self._exit_cooldown[sym] = self._tick_count
             result.trades_closed = exits_submitted
 
+            # ── Steps 6-9 and 11 are gated: skip when entries are blocked ──
+            if entries_blocked:
+                if _PROMETHEUS_AVAILABLE:
+                    ORGANISM_ENTRIES_BLOCKED.inc()
+                    if current_positions:
+                        ORGANISM_HALTED_WITH_POSITIONS.inc()
+                logger.info(
+                    "Entries blocked (halt/drawdown) — skipping pyramids, "
+                    "scans, sizing, entries, and retrain. "
+                    "Exits processed: %d", exits_submitted,
+                )
+                result.activity.append(ActivityEvent(
+                    event_type="governance",
+                    message=f"Entries blocked — processed {exits_submitted} exits, "
+                            f"skipping new entries/pyramids/evolution",
+                    timestamp=now_iso,
+                ))
+                # Jump to step 10: reconcile fills (always needed)
+                await self._reconcile_fills(features_by_symbol)
+
+                # Brain save (always needed to persist exit state changes)
+                if self._tick_count % 50 == 0:
+                    await asyncio.to_thread(self._save_brain)
+                    result.brain_saved = True
+
+                # Populate metadata before returning
+                result.universe_size = len(self._universe)
+                result.scanner_candidates_count = len(self._scanner_candidates)
+                result.scanner_ran = False
+                result.training_status = self._bg_training_metadata.get("status", "")
+                result.training_metadata = dict(self._bg_training_metadata)
+
+                # Raise an exception out to the outer handler so equity curve
+                # and Prometheus metrics are still recorded (the except block
+                # at the end of the try already handles this).
+                # Actually, just let it fall through cleanly:
+                result.duration_s = time.time() - t0
+                return result
+
             # 6. CHECK PYRAMIDS
             for sym, pos_data in current_positions.items():
                 pyr = self._pyramid_positions.get(sym)
@@ -875,6 +992,11 @@ class OrganismLiveEngine:
             # Symbol fitness gate threshold — block re-entry on chronic losers
             _FITNESS_GATE = 0.35
 
+            # Track symbols planned for entry in THIS tick so the sector gate
+            # counts them when evaluating subsequent candidates.  Prevents
+            # intra-tick sector-limit violations.
+            _planned_entries: set[str] = set()
+
             cand_dicts = []
             for c in candidates:
                 if c.symbol in open_symbols:
@@ -887,11 +1009,12 @@ class OrganismLiveEngine:
                     continue  # Already tracking this position
                 if LONG_ONLY and not self.evolved_params.shorts_enabled and c.direction < 0:
                     continue
-                # Sector diversification gate
-                if not sector_gate_allows(c.symbol, open_symbols):
+                # Sector diversification gate — includes planned entries from
+                # earlier in this loop to prevent intra-tick sector breaches.
+                if not sector_gate_allows(c.symbol, open_symbols, _planned_entries):
                     logger.info(
-                        "Sector gate blocked %s (sector=%s)",
-                        c.symbol, get_sector(c.symbol),
+                        "Sector gate blocked %s (sector=%s, planned=%s)",
+                        c.symbol, get_sector(c.symbol), _planned_entries,
                     )
                     continue
                 # Block symbols with poor fitness scores from evolved params
@@ -920,6 +1043,7 @@ class OrganismLiveEngine:
                     "confidence": min(confidence, 1.0),
                     "breakout_score": breakout_score,
                 })
+                _planned_entries.add(c.symbol)
 
             # Pure breakout signals not in alpha candidates
             alpha_syms = {d["symbol"] for d in cand_dicts}
@@ -932,7 +1056,7 @@ class OrganismLiveEngine:
                     and bs.symbol not in self._entry_metadata
                     and bs.composite_score >= 0.55
                     and self.evolved_params.symbol_fitness.get(bs.symbol, 0.5) >= _FITNESS_GATE
-                    and sector_gate_allows(bs.symbol, open_symbols)
+                    and sector_gate_allows(bs.symbol, open_symbols, _planned_entries)
                 ):
                     ml_sig = ml_signals.get(bs.symbol)
                     if ml_sig and ml_sig.direction < 0:
@@ -947,6 +1071,7 @@ class OrganismLiveEngine:
                         "confidence": min(bs.composite_score, 1.0),
                         "breakout_score": bs.composite_score,
                     })
+                    _planned_entries.add(bs.symbol)
 
             cand_dicts.sort(
                 key=lambda x: x["breakout_score"] * x["confidence"],

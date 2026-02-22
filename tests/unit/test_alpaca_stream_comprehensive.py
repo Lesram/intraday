@@ -127,7 +127,8 @@ class TestAlpacaStreamClientInit:
             
             client = AlpacaStreamClient()
             
-            assert client.update_queue.maxsize == 1000
+            # Queue is unbounded (maxsize=0) — trade updates must never be dropped
+            assert client.update_queue.maxsize == 0
             assert client.heartbeat_interval == 30.0
 
     def test_init_connection_state(self, mock_env_vars):
@@ -486,29 +487,29 @@ class TestAlpacaStreamClientMessageHandling:
             await client._handle_message(message)
 
     @pytest.mark.asyncio
-    async def test_handle_queue_full_drops_message(self, mock_env_vars):
-        """Test that queue full results in message being dropped."""
+    async def test_handle_queue_never_drops_messages(self, mock_env_vars):
+        """Test that trade updates are never dropped — queue is unbounded."""
         with patch("backend.integrations.alpaca_stream.get_settings") as mock_get:
             mock_get.return_value = MagicMock()
-            
+
             from backend.integrations.alpaca_stream import AlpacaStreamClient
-            
+
             client = AlpacaStreamClient()
-            
-            # Create small queue that's already full
-            client.update_queue = asyncio.Queue(maxsize=1)
-            await client.update_queue.put({"dummy": "data"})
-            
+
+            # Pre-fill queue with many items
+            for i in range(100):
+                await client.update_queue.put({"dummy": f"data-{i}"})
+
             message = {
                 "T": "trade_updates",
                 "data": {"id": "order789"}
             }
-            
-            # Should not raise, message dropped
+
+            # New message should be accepted (not dropped)
             await client._handle_message(message)
-            
-            # Queue still has only original item
-            assert client.update_queue.qsize() == 1
+
+            # Queue now has 101 items (100 + 1 new)
+            assert client.update_queue.qsize() == 101
 
 
 # ============================================================================

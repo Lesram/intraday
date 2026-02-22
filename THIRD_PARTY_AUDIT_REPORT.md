@@ -139,7 +139,7 @@ Intra is an autonomous algorithmic trading platform built around a "Living Organ
 7. **Breakout scanning**: 6-pattern detection (squeeze, volume surge, range contraction, relative strength, pivot, institutional flow)
 8. **Kelly sizing**: Half-Kelly with drawdown scaling, volatility targeting, regime conditioning, breakout bonus
 9. **Order submission**: Market orders via Alpaca, with sector diversification gate (max 4 per sector)
-10. **Exit checking**: ATR-based stops, trailing activation after 3x ATR move, partial profit at 3R, 15% max-loss safety net
+10. **Exit checking**: ATR-based stops, trailing activation after 2x ATR move, partial profit at 2R (40%), 15% max-loss safety net
 11. **Brain save**: Full state persisted to disk (models, equity curve, trades, evolved params)
 12. **Telemetry**: Full decision snapshot recorded in ring buffer (360 ticks / ~1 hour)
 13. **Evolution**: Background training + parameter adaptation from trade outcomes
@@ -217,14 +217,14 @@ The organism is the core of the platform. Every file is listed with its purpose 
 - Volatility target: 15% annualized
 - Drawdown floor: 10% at max drawdown
 - Max drawdown cutoff: 25% (full risk-off)
-- Minimum position: $2,000
+- Minimum position: $500 (intraday-tuned)
 - Breakout bonus: 1.5x for score > 0.6, 2.0x for score > 0.8
 
 **Adaptive Exit Levels:**
 - Stop-loss: Regime-dependent ATR multiplier (trending: 2.5x, chop: 1.5x, stress: 1.0x)
 - Take-profit: R-multiple target (trending: 4.0R, chop: 2.0R, stress: 1.5R)
-- Trailing stop: Activates after 3x ATR favorable move, trails at regime-dependent ATR distance
-- Partial profit: Sells 30% at 3R, rides remaining 70%
+- Trailing stop: Activates after 2x ATR favorable move, trails at 1.5x ATR regime-dependent distance
+- Partial profit: Sells 40% at 2R, rides remaining 60%
 - Time decay: 1% per bar stop tightening after regime-specific bar count
 - Stress tightening: 40% stop tightening on regime shift to STRESS/HIGH_VOL
 - **Safety net: 15% max-loss emergency exit for ALL positions (even without exit_levels)**
@@ -531,7 +531,7 @@ Comprehensive TypeScript interfaces covering all domain objects: User, Order, Po
 |----------|---------|---------|
 | `ORGANISM_ENABLED` | 0 | Enable organism engine |
 | `ORGANISM_TICK_INTERVAL_SECONDS` | 10 | Tick frequency |
-| `ORGANISM_MAX_POSITIONS` | 15 | Max concurrent positions |
+| `ORGANISM_MAX_POSITIONS` | 8 (env override: 15) | Max concurrent positions |
 | `ORGANISM_DRAWDOWN_KILL_PCT` | 0.08 | 8% drawdown kill switch |
 | `ORGANISM_LONG_ONLY` | true | Long-only trading |
 | `ORGANISM_RETRAIN_INTERVAL` | 180 | Retraining interval (seconds) |
@@ -888,7 +888,7 @@ f1d9200 Phase 1: activate streaming data with REST pre-fill to eliminate cold st
 ```
 ORGANISM_TICK_INTERVAL_SECONDS=10
 ORGANISM_LIVE_TIMEFRAME=1Min
-ORGANISM_MAX_POSITIONS=15
+ORGANISM_MAX_POSITIONS=15  # Code default is 8; set to 15 via env
 ORGANISM_LONG_ONLY=true
 ORGANISM_RETRAIN_INTERVAL=180
 ORGANISM_ML_DECAY_RATE=0.005

@@ -67,9 +67,14 @@ class AlpacaStreamClient:
         self.max_reconnect_attempts = 10
         self.reconnect_attempts = 0
 
-        # Update queue for backpressure handling
-        self.update_queue = asyncio.Queue(maxsize=1000)
+        # Update queue for backpressure handling.
+        # UNBOUNDED for trade updates — we must NEVER drop fill/cancel/reject
+        # messages as that causes state divergence and missed exits.
+        # Non-critical messages (heartbeats, etc.) are not queued.
+        self.update_queue: asyncio.Queue = asyncio.Queue()
         self.queue_processor_task = None
+        self._queue_high_water_mark = 0
+        self._queue_overflow_count = 0
 
         # Heartbeat configuration
         self.heartbeat_interval = 30.0
@@ -310,17 +315,21 @@ class AlpacaStreamClient:
         msg_type = data.get("T") or data.get("stream")
 
         if msg_type == "trade_updates":
-            # Queue trade update for processing
-            try:
-                await asyncio.wait_for(
-                    self.update_queue.put(data),
-                    timeout=1.0
+            # Queue trade update for processing.
+            # The queue is unbounded — trade updates must NEVER be dropped
+            # because missed fills/cancels/rejects cause state divergence.
+            await self.update_queue.put(data)
+            qsize = self.update_queue.qsize()
+            self._queue_high_water_mark = max(self._queue_high_water_mark, qsize)
+            if qsize > 500:
+                self._queue_overflow_count += 1
+                logger.warning(
+                    "Trade update queue depth high: %d (hwm=%d, overflow_events=%d)",
+                    qsize, self._queue_high_water_mark, self._queue_overflow_count,
                 )
-                logger.info("Queued trade update for processing",
-                           order_id=data.get("data", {}).get("id"),
-                           status=data.get("data", {}).get("status"))
-            except TimeoutError:
-                logger.warning("Update queue full, dropping message", data=data)
+            logger.info("Queued trade update for processing",
+                       order_id=data.get("data", {}).get("id"),
+                       status=data.get("data", {}).get("status"))
 
         elif msg_type == "success":
             logger.debug("Success message received", msg=data.get("msg"))
