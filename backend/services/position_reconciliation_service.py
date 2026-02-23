@@ -214,7 +214,7 @@ class PositionReconciliationService:
                         Order.submitted_at > order.submitted_at
                     )
                     sell_result = await self.db.execute(sell_query)
-                    sell_order = sell_result.scalar_one_or_none()
+                    sell_order = sell_result.scalars().first()
 
                     if not sell_order:
                         discrepancies.append({
