@@ -304,3 +304,70 @@ class TestSafetyInvariants:
         }
         tif = order_data.get("tif", "day")
         assert tif == "gtc"
+
+    # ── 6. Reconciliation scheduler wiring ────────────────────────
+
+    def test_reconciliation_scheduler_importable(self):
+        """The reconciliation scheduler module must be importable and
+        expose start/stop/status functions."""
+        from backend.services.scheduled_reconciliation import (
+            start_reconciliation_scheduler,
+            stop_reconciliation_scheduler,
+            get_scheduler_status,
+        )
+
+        assert callable(start_reconciliation_scheduler)
+        assert callable(stop_reconciliation_scheduler)
+        assert callable(get_scheduler_status)
+
+    def test_reconciliation_scheduler_status_before_start(self):
+        """Before starting, get_scheduler_status() should report not_started."""
+        from backend.services.scheduled_reconciliation import get_scheduler_status
+
+        status = get_scheduler_status()
+        assert status["running"] is False
+
+    async def test_reconciliation_scheduler_start_stop(self):
+        """start_reconciliation_scheduler should launch a background task
+        and stop_reconciliation_scheduler should cleanly shut it down."""
+        from backend.services.scheduled_reconciliation import (
+            start_reconciliation_scheduler,
+            stop_reconciliation_scheduler,
+            get_scheduler_status,
+        )
+
+        # Patch the actual reconciliation work so it doesn't need DB/broker
+        with patch(
+            "backend.services.scheduled_reconciliation.run_scheduled_reconciliation",
+            new_callable=AsyncMock,
+            return_value={"ok": True},
+        ), patch.dict(
+            "os.environ",
+            {"RECONCILIATION_INTERVAL_MINUTES": "1", "RECONCILIATION_ENABLED": "true"},
+        ):
+            started = await start_reconciliation_scheduler()
+            assert started is True
+
+            status = get_scheduler_status()
+            assert status["running"] is True
+
+            await stop_reconciliation_scheduler()
+
+            status = get_scheduler_status()
+            assert status["running"] is False
+
+    def test_reconciliation_scheduler_wired_in_lifespan(self):
+        """The lifespan startup must reference start_reconciliation_scheduler
+        to prove it's wired into the app lifecycle."""
+        import ast
+        import pathlib
+
+        lifespan_path = pathlib.Path("backend/api/lifespan.py")
+        source = lifespan_path.read_text()
+
+        # Must import and call start_reconciliation_scheduler
+        assert "start_reconciliation_scheduler" in source
+        assert "stop_reconciliation_scheduler" in source
+
+        # Must be valid Python
+        ast.parse(source)

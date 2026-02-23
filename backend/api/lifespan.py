@@ -27,6 +27,7 @@ async def startup(app) -> dict:
         "organism_scheduler": None,
         "ml_scheduler": None,
         "stream_task": None,
+        "reconciliation_scheduler": False,
     }
 
     # ── Observability ────────────────────────────────────────────────
@@ -257,6 +258,19 @@ async def startup(app) -> dict:
         app.state.alpaca_stream_task = None
         app.state.alpaca_stream_client = None
 
+    # ── Reconciliation Scheduler ────────────────────────────────────
+    if _has_db and not _skip_bg and not os.getenv("PYTEST_CURRENT_TEST"):
+        try:
+            from backend.services.scheduled_reconciliation import start_reconciliation_scheduler
+
+            started = await start_reconciliation_scheduler()
+            ctx["reconciliation_scheduler"] = started
+            if started:
+                logger.info("Reconciliation scheduler started")
+        except Exception as e:
+            logger.warning("Reconciliation scheduler failed (non-critical)", error=str(e))
+            ctx["reconciliation_scheduler"] = False
+
     # ── Portfolio Sync ───────────────────────────────────────────────
     if not use_mock and _has_db:
         try:
@@ -349,6 +363,16 @@ async def shutdown(app, ctx: dict, baseline: set) -> None:
         await stop_auto_breakout_scanner_scheduler()
     except Exception:
         pass
+
+    # Reconciliation scheduler
+    if ctx.get("reconciliation_scheduler"):
+        try:
+            from backend.services.scheduled_reconciliation import stop_reconciliation_scheduler
+
+            await stop_reconciliation_scheduler()
+            logger.info("Reconciliation scheduler stopped")
+        except Exception as e:
+            logger.warning(f"Error stopping reconciliation scheduler: {e}")
 
     # Database engine
     if hasattr(app.state, "sessionmaker") and app.state.sessionmaker:
