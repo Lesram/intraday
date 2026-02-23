@@ -50,14 +50,31 @@ _MARKET_CLOSE = dt_time(16, 0)  # 4:00 PM ET
 _TICK_START = dt_time(9, 28)
 _TICK_STOP = dt_time(16, 1)
 
+# US market holidays for 2026 (NYSE/NASDAQ closed).
+# Source: https://www.nyse.com/markets/hours-calendars
+_MARKET_HOLIDAYS_2026 = {
+    (1, 1),    # New Year's Day
+    (1, 19),   # Martin Luther King Jr. Day
+    (2, 16),   # Presidents' Day
+    (4, 3),    # Good Friday
+    (5, 25),   # Memorial Day
+    (6, 19),   # Juneteenth
+    (7, 3),    # Independence Day (observed)
+    (9, 7),    # Labor Day
+    (11, 26),  # Thanksgiving Day
+    (12, 25),  # Christmas Day
+}
+
 
 def _is_market_tick_window() -> bool:
     """Return True if current time is within the tick window for US equities.
 
-    Checks weekday + time-of-day in Eastern Time.
+    Checks weekday, holidays, and time-of-day in Eastern Time.
     """
     now_et = datetime.now(_ET)
     if now_et.weekday() >= 5:  # Saturday / Sunday
+        return False
+    if (now_et.month, now_et.day) in _MARKET_HOLIDAYS_2026:
         return False
     t = now_et.time()
     return _TICK_START <= t <= _TICK_STOP

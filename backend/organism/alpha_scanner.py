@@ -187,6 +187,9 @@ class AlphaScanner:
                 # Scale: 0.5 = neutral, >0.5 = boost, <0.5 = penalize
                 composite *= 0.5 + fitness  # range [0.6, 1.45]
 
+            # Cap composite to [0, 1] after fitness scaling
+            composite = min(composite, 1.0)
+
             # Final NaN guard on composite — drop the symbol entirely if NaN.
             if not np.isfinite(composite):
                 logger.warning("NaN/Inf composite for %s — skipping candidate", symbol)
