@@ -73,7 +73,7 @@ class KellySizer:
 
     def __init__(
         self,
-        max_position_pct: float = 0.12,      # 12 % max per position (was 5 %)
+        max_position_pct: float = 0.10,      # 10 % max per position (was 12 %)
         max_portfolio_pct: float = 0.95,      # 95 % max total invested
         vol_target: float = 0.15,             # 15 % annualised vol target
         drawdown_floor: float = 0.1,          # Scale to 10 % at max dd
@@ -99,6 +99,7 @@ class KellySizer:
         current_drawdown: float,
         features_by_symbol: dict[str, pd.DataFrame],
         current_regime: str = "normal",
+        ml_is_trained: bool = True,
     ) -> list[PositionSize]:
         """Size positions for a list of alpha candidates.
 
@@ -141,8 +142,9 @@ class KellySizer:
             # Floor predicted_return: when ML is untrained, breakout signals
             # arrive with predicted_return=0. Use a conservative default so
             # the sizer can still allocate based on breakout score + confidence.
+            untrained_floor = 0.005 if not ml_is_trained else 0.01
             if predicted_return < 1e-6 and breakout_score > 0:
-                predicted_return = 0.01  # 1% conservative estimate
+                predicted_return = untrained_floor
 
             # Guard against NaN / Inf / invalid values
             if (
@@ -207,9 +209,13 @@ class KellySizer:
 
             # 6. Confidence scaling — wider range [0.3, 1.5] (was [0.5, 1.0])
             confidence_scale = 0.3 + min(confidence, 1.0) * 1.2
+            if not ml_is_trained:
+                confidence_scale = min(confidence_scale, 0.6)
 
             # 7. **NEW** — Breakout score bonus
             breakout_bonus = self._breakout_bonus(breakout_score)
+            if not ml_is_trained:
+                breakout_bonus = 1.0
 
             # Store intermediates for telemetry
             self._last_intermediates[symbol] = {
@@ -304,7 +310,7 @@ class KellySizer:
             "normal": 0.85,         # was 0.8
             "trending_down": 0.6,
             "chop": 0.5,
-            "high_vol": 0.7,        # was 0.4 — too conservative for intraday
+            "high_vol": 0.5,        # reduced from 0.7 — tighter brake for untrained model
             "stress": 0.3,
             "crisis": 0.1,
         }

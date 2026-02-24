@@ -31,7 +31,7 @@ logger = get_logger(__name__)
 SCAN_INTERVAL_TICKS = int(os.getenv("SCANNER_INTERVAL_TICKS", "6"))
 SCAN_TOP_ACTIVES = int(os.getenv("SCANNER_TOP_ACTIVES", "100"))
 SCAN_TOP_MOVERS = int(os.getenv("SCANNER_TOP_MOVERS", "50"))
-SCAN_MIN_PRICE = float(os.getenv("SCANNER_MIN_PRICE", "5.0"))
+SCAN_MIN_PRICE = float(os.getenv("SCANNER_MIN_PRICE", "10.0"))
 SCAN_MAX_PRICE = float(os.getenv("SCANNER_MAX_PRICE", "1500.0"))
 SCAN_MIN_VOLUME = int(os.getenv("SCANNER_MIN_VOLUME", "500000"))
 SCAN_MIN_MARKET_CAP = float(os.getenv("SCANNER_MIN_MARKET_CAP", "1e9"))  # $1B
@@ -228,6 +228,8 @@ class MarketScanner:
             volume = int(item.get("volume", 0))
             change_pct = float(item.get("change_percent", item.get("percent_change", 0)))
             if price < SCAN_MIN_PRICE or price > SCAN_MAX_PRICE:
+                continue
+            if volume < SCAN_MIN_VOLUME:
                 continue
             results.append(ScannedStock(
                 symbol=sym,

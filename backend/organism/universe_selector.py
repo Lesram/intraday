@@ -47,6 +47,7 @@ class SymbolFitness:
     avg_pnl: float = 0.0
     avg_volume_quality: float = 0.5
     last_rotated_gen: int = 0
+    rotations_observed: int = 0
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -57,6 +58,7 @@ class SymbolFitness:
             "avg_pnl": round(self.avg_pnl, 2),
             "avg_volume_quality": round(self.avg_volume_quality, 4),
             "last_rotated_gen": self.last_rotated_gen,
+            "rotations_observed": self.rotations_observed,
         }
 
 
@@ -130,6 +132,10 @@ class DynamicUniverseSelector:
         self._rotation_count += 1
         open_positions = open_positions or set()
 
+        # 0. Increment observation counter for ALL tracked symbols
+        for sf in self._fitness.values():
+            sf.rotations_observed += 1
+
         # 1. Update fitness from trade evidence
         self._update_fitness_from_trades(trades)
 
@@ -169,6 +175,9 @@ class DynamicUniverseSelector:
         # 6. Determine adds — highest-fitness inactive symbols
         #    Threshold is DEFAULT_FITNESS (not higher) so new candidates
         #    that haven't been traded yet can enter and accumulate evidence.
+        #    Observation gate: new symbols must be observed for MIN_OBSERVATIONS
+        #    rotations before they can be added (prevents untested symbols
+        #    from immediately trading).
         adds: list[str] = []
         for sf in ranked:
             if len(adds) >= TOP_ADD:
@@ -176,6 +185,11 @@ class DynamicUniverseSelector:
             if sf.symbol in active_set:
                 continue
             if sf.fitness >= DEFAULT_FITNESS:
+                # Observation gate: require enough rotations unless it's a
+                # seed symbol (total_trades == 0 and was in initial list —
+                # these already have rotations_observed from being tracked).
+                if sf.rotations_observed < MIN_OBSERVATIONS and sf.total_trades == 0:
+                    continue
                 adds.append(sf.symbol)
                 sf.last_rotated_gen = generation
 
@@ -281,7 +295,8 @@ class DynamicUniverseSelector:
         for sym, sf_dict in d.get("fitness", {}).items():
             sf = SymbolFitness(symbol=sym)
             for k in ("fitness", "total_trades", "win_rate", "avg_pnl",
-                       "avg_volume_quality", "last_rotated_gen"):
+                       "avg_volume_quality", "last_rotated_gen",
+                       "rotations_observed"):
                 if k in sf_dict:
                     setattr(sf, k, sf_dict[k])
             selector._fitness[sym] = sf

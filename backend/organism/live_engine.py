@@ -369,6 +369,12 @@ class OrganismLiveEngine:
         self._pending_entry: dict[str, int] = {}
         self._PENDING_ENTRY_TICKS = 15  # Wait 15 ticks (~2.5 min) before retrying same symbol
 
+        # Symbols with pending exit orders — prevents duplicate exits across
+        # ticks while the broker is still processing the exit.
+        # Maps symbol → tick number when exit order was submitted
+        self._pending_exit: dict[str, int] = {}
+        self._PENDING_EXIT_TICKS = 3  # Wait 3 ticks (~30s) before re-trying exit
+
         # Serialize live_tick() calls to prevent concurrent state mutation
         # (scheduler loop + manual /tick endpoint)
         self._tick_lock = asyncio.Lock()
@@ -604,6 +610,11 @@ class OrganismLiveEngine:
             sym: tick for sym, tick in self._pending_entry.items()
             if self._tick_count - tick < self._PENDING_ENTRY_TICKS
         }
+        # Expire old pending exits
+        self._pending_exit = {
+            sym: tick for sym, tick in self._pending_exit.items()
+            if self._tick_count - tick < self._PENDING_EXIT_TICKS
+        }
 
         try:
             now_iso = result.timestamp
@@ -748,6 +759,13 @@ class OrganismLiveEngine:
                         sym, pos_data.get("qty", "?"),
                     )
                     continue
+                # Skip symbols with pending exit orders (prevent duplicate exits)
+                if sym in self._pending_exit:
+                    logger.debug(
+                        "Skipping exit check for %s — pending exit from tick %d",
+                        sym, self._pending_exit[sym],
+                    )
+                    continue
                 feat_df = features_by_symbol.get(sym)
                 if feat_df is None or len(feat_df) < 1:
                     # Fallback: use broker position data for safety net check
@@ -795,6 +813,7 @@ class OrganismLiveEngine:
                                     )
                                 finally:
                                     self._exit_cooldown[sym] = self._tick_count
+                                    self._pending_exit[sym] = self._tick_count
                     else:
                         logger.warning(
                             "No features AND no valid broker price for %s — "
@@ -850,6 +869,7 @@ class OrganismLiveEngine:
                                     result.errors.append(f"Safety net exit failed for {sym}: {e}")
                                 finally:
                                     self._exit_cooldown[sym] = self._tick_count
+                                    self._pending_exit[sym] = self._tick_count
                     continue
                 exit_sig = self.exit_engine.check_exit(
                     exit_levels, current_price, regime
@@ -892,6 +912,7 @@ class OrganismLiveEngine:
                                 sym, sell_shares, exit_sig.reason, direction=_dir
                             )
                             self._exit_cooldown[sym] = self._tick_count
+                            self._pending_exit[sym] = self._tick_count
                             exits_submitted += 1
                             result.activity.append(ActivityEvent(
                                 event_type="exit",
@@ -913,6 +934,7 @@ class OrganismLiveEngine:
                         finally:
                             # Always set cooldown to prevent retry spam on failures
                             self._exit_cooldown[sym] = self._tick_count
+                            self._pending_exit[sym] = self._tick_count
             result.trades_closed = exits_submitted
 
             # ── Steps 6-9 and 11 are gated: skip when entries are blocked ──
@@ -1109,7 +1131,8 @@ class OrganismLiveEngine:
                     else 0
                 )
                 sizes = self.kelly_sizer.size_positions(
-                    cand_dicts, equity, drawdown, features_by_symbol, regime
+                    cand_dicts, equity, drawdown, features_by_symbol, regime,
+                    ml_is_trained=self.signal_gen.is_trained,
                 )
                 self._last_kelly_sizes = sizes
 
@@ -2004,7 +2027,7 @@ class OrganismLiveEngine:
             qty=shares,
             idempotency_key=idem_key,
             order_type="market",
-            tif="ioc",
+            tif="day",
             attributes={
                 "source": "organism",
                 "reason": reason,
