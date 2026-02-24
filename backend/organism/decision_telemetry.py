@@ -207,6 +207,7 @@ class KellySizingDetail:
     shares: int = 0
     notional: float = 0.0
     direction: float = 1.0
+    ml_floor_applied: bool = False
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -220,6 +221,7 @@ class KellySizingDetail:
                 "confidence_scale": round(_f(self.confidence_scale), 4),
                 "breakout_bonus": round(_f(self.breakout_bonus), 4),
                 "final_weight": round(_f(self.final_weight), 6),
+                "ml_floor_applied": _b(self.ml_floor_applied),
             },
             "position_cap": round(_f(self.position_cap), 4),
             "shares": int(self.shares),

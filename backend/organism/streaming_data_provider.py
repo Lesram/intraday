@@ -257,12 +257,64 @@ class StreamingDataProvider:
             "timestamp": quote_data.get("timestamp"),
         }
 
+    async def check_and_recover_stale_stream(
+        self, stale_threshold: float = 300.0,
+    ) -> bool:
+        """Check if all bar data is stale and force reconnect if so.
+
+        Called from the engine tick loop.  Returns True if a recovery
+        was attempted so the caller can log it.
+
+        Only triggers when *every* tracked symbol is stale (avoids false
+        positives from a single missing symbol).
+        """
+        if not self._running or not self._stream:
+            return False
+
+        if not self._last_bar_ts:
+            return False  # No data yet — don't trigger
+
+        now = time.time()
+        stale_count = sum(
+            1 for ts in self._last_bar_ts.values()
+            if now - ts > stale_threshold
+        )
+
+        if stale_count < len(self._last_bar_ts):
+            return False  # At least some symbols are fresh
+
+        # All symbols are stale — force reconnect
+        logger.warning(
+            "ALL %d symbols stale (>%.0fs) — forcing stream reconnect",
+            stale_count,
+            stale_threshold,
+        )
+
+        try:
+            stream = self._stream
+            # Disconnect + reconnect — connect() calls _resubscribe_all()
+            await stream._cleanup_connection()
+            success = await stream.connect()
+            if success:
+                logger.info("Stale stream recovery: reconnected successfully")
+            else:
+                logger.error("Stale stream recovery: reconnect failed")
+            return True
+        except Exception as e:
+            logger.error("Stale stream recovery failed: %s", e)
+            return True
+
     def get_stats(self) -> dict[str, Any]:
         """Return provider statistics."""
+        now = time.time()
+        max_staleness = 0.0
+        if self._last_bar_ts:
+            max_staleness = max(now - ts for ts in self._last_bar_ts.values())
         return {
             "running": self._running,
             "symbols_with_bars": len(self._bars),
             "symbols_with_quotes": len(self._quotes),
             "total_bars": sum(len(b) for b in self._bars.values()),
+            "max_staleness_s": round(max_staleness, 1),
             "stream_stats": self._stream.get_stats() if self._stream else None,
         }

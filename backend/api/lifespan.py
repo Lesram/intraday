@@ -443,12 +443,20 @@ async def _start_organism_scheduler(app):
                 _paper = os.getenv("ALPACA_PAPER", "true").lower() in ("1", "true")
                 if _ak and _sk:
                     _trading_client = TradingClient(api_key=_ak, secret_key=_sk, paper=_paper)
-            except Exception:
-                pass
+                    logger.info("PositionsService TradingClient created (paper=%s)", _paper)
+                else:
+                    logger.warning(
+                        "PositionsService TradingClient skipped — missing API keys "
+                        "(ALPACA_API_KEY_ID=%s, ALPACA_API_SECRET_KEY=%s)",
+                        "set" if _ak else "EMPTY",
+                        "set" if _sk else "EMPTY",
+                    )
+            except Exception as exc:
+                logger.error("Failed to create TradingClient for PositionsService: %s", exc)
             _positions_svc = PositionsService(trading_client=_trading_client)
             app.state.positions_service = _positions_svc
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.error("Failed to create PositionsService: %s", exc)
 
     if _data_client and _order_service and _positions_svc:
         # Streaming configuration

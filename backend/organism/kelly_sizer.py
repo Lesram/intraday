@@ -87,6 +87,14 @@ class KellySizer:
         self.max_drawdown_cutoff = max_drawdown_cutoff
         self.min_position_usd = min_position_usd
 
+        # ML confidence floor: when trained ML has confidence >= _ML_CONFIDENCE_MIN,
+        # use at least _ML_CONFIDENCE_FLOOR * confidence as kelly_half.
+        # This prevents the sizer from going permanently dormant in regimes
+        # where backward-looking Kelly returns are negative.
+        # 0.08 × 0.7 conf = 0.056 half-Kelly → ~2% target in high_vol
+        self._ML_CONFIDENCE_FLOOR = 0.08
+        self._ML_CONFIDENCE_MIN = 0.5
+
         # Regime-stratified Kelly stats: {regime: {wins, losses, total_pnl, total_win_pnl, total_loss_pnl}}
         self._regime_stats: dict[str, dict[str, float]] = {}
         # Last sizing intermediates for telemetry (confidence_scale, breakout_bonus per symbol)
@@ -192,10 +200,30 @@ class KellySizer:
 
             # 2. Half-Kelly (with breakout floor for intraday)
             kelly_half = kelly_raw * 0.5
+            ml_floor_applied = False
             # When Kelly says 0 but breakout score is strong, use a
             # minimum allocation so breakout signals can still trade.
             if kelly_half < 0.005 and breakout_score >= 0.55:
                 kelly_half = max(kelly_half, 0.01 * breakout_score)
+
+            # 2b. ML confidence floor — when the trained model is
+            # confident but historical returns are negative (kelly=0),
+            # allow a small position so ML predictions aren't silenced.
+            # Without this, the engine goes permanently dormant in
+            # high-vol regimes where backward-looking Kelly is zero.
+            if (
+                ml_is_trained
+                and kelly_half < 0.005
+                and confidence >= self._ML_CONFIDENCE_MIN
+            ):
+                ml_floor = self._ML_CONFIDENCE_FLOOR * confidence
+                kelly_half = max(kelly_half, ml_floor)
+                ml_floor_applied = True
+                _logger.info(
+                    "ML confidence floor for %s: kelly_half=%.4f "
+                    "(conf=%.2f, floor=%.4f)",
+                    symbol, kelly_half, confidence, ml_floor,
+                )
 
             # 3. Drawdown scaling
             drawdown_scale = self._drawdown_scale(current_drawdown)
@@ -221,6 +249,9 @@ class KellySizer:
             self._last_intermediates[symbol] = {
                 "confidence_scale": confidence_scale,
                 "breakout_bonus": breakout_bonus,
+                "ml_floor_applied": ml_floor_applied,
+                "kelly_raw": kelly_raw,
+                "kelly_half": kelly_half,
             }
 
             # Combine all factors

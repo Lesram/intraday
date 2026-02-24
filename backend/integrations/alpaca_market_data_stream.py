@@ -420,14 +420,30 @@ class AlpacaMarketDataStream:
             return False
 
     async def _resubscribe_all(self):
-        """Resubscribe to all symbols after reconnection"""
-        if self.quote_subscriptions:
-            await self.subscribe_quotes(list(self.quote_subscriptions))
+        """Resubscribe to all symbols after reconnection.
 
-        if self.trade_subscriptions:
-            await self.subscribe_trades(list(self.trade_subscriptions))
+        The subscribe_*() methods deduplicate against their tracking sets,
+        so we snapshot and clear before re-subscribing.  This ensures the
+        subscribe messages actually reach the new WebSocket connection.
+        """
+        # Snapshot desired subscriptions before clearing tracking
+        saved_quotes = list(self.quote_subscriptions)
+        saved_trades = list(self.trade_subscriptions)
+        saved_bars = {tf: list(syms) for tf, syms in self.bar_subscriptions.items()}
 
-        for timeframe, symbols in self.bar_subscriptions.items():
+        # Clear tracking so subscribe_*() won't filter them as "already subscribed"
+        self.quote_subscriptions.clear()
+        self.trade_subscriptions.clear()
+        for sym_set in self.bar_subscriptions.values():
+            sym_set.clear()
+
+        if saved_quotes:
+            await self.subscribe_quotes(saved_quotes)
+
+        if saved_trades:
+            await self.subscribe_trades(saved_trades)
+
+        for timeframe, symbols in saved_bars.items():
             if symbols:
                 await self.subscribe_bars(list(symbols), timeframe)
 

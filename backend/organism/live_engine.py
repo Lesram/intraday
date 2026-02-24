@@ -738,6 +738,23 @@ class OrganismLiveEngine:
         try:
             now_iso = result.timestamp
 
+            # 0. STREAM HEALTH — detect and recover stale WebSocket data.
+            # Run every 30 ticks (~5 min) to avoid hammering reconnect.
+            if (
+                self._streaming_provider is not None
+                and self._tick_count % 30 == 0
+            ):
+                try:
+                    recovered = await self._streaming_provider.check_and_recover_stale_stream()
+                    if recovered:
+                        result.activity.append(ActivityEvent(
+                            event_type="stream",
+                            message="Stale data detected — stream reconnect attempted",
+                            timestamp=now_iso,
+                        ))
+                except Exception as e:
+                    logger.debug("Stream staleness check error (non-fatal): %s", e)
+
             # 1. GOVERNANCE CHECK
             # When halted, we still MUST process exits and reconciliation
             # to manage open risk.  Only new entries are blocked.
@@ -1785,8 +1802,8 @@ class OrganismLiveEngine:
             intermed = kelly_intermediates.get(sz.symbol, {})
             kd = KellySizingDetail(
                 symbol=sz.symbol,
-                kelly_raw=sz.kelly_raw,
-                kelly_half=sz.kelly_half,
+                kelly_raw=intermed.get("kelly_raw", sz.kelly_raw),
+                kelly_half=intermed.get("kelly_half", sz.kelly_half),
                 drawdown_scale=sz.drawdown_scale,
                 vol_scale=sz.vol_scale,
                 regime_scale=sz.regime_scale,
@@ -1797,6 +1814,7 @@ class OrganismLiveEngine:
                 shares=sz.shares,
                 notional=sz.notional,
                 direction=sz.direction,
+                ml_floor_applied=intermed.get("ml_floor_applied", False),
             )
             snap.kelly_details.append(kd)
 
