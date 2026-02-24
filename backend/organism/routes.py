@@ -541,6 +541,120 @@ async def get_organism_orders(
     return {"orders": rows, "total": len(rows)}
 
 
+# ── Admin Maintenance Endpoints ───────────────────────────────────
+
+
+@router.post("/close-shorts")
+async def close_legacy_shorts(request: Request, _admin=Depends(require_admin)):
+    """Close legacy short positions that violate LONG_ONLY mode.
+
+    Fetches all positions from Alpaca, identifies any with negative quantity,
+    and submits buy-to-cover market orders directly via the broker client.
+    Idempotent — returns empty list if no shorts exist.
+    """
+    import os
+    long_only = os.getenv("ORGANISM_LONG_ONLY", "true").lower() in ("1", "true", "yes")
+    if not long_only:
+        raise HTTPException(
+            status_code=400,
+            detail="LONG_ONLY is not enabled — short positions are allowed",
+        )
+
+    from backend.integrations.alpaca_broker import get_alpaca_broker_client
+    broker = get_alpaca_broker_client()
+
+    try:
+        positions = await broker.get_all_positions()
+    except Exception as e:
+        logger.error("Failed to fetch positions from Alpaca: %s", e)
+        raise HTTPException(status_code=502, detail=f"Alpaca positions fetch failed: {e}")
+
+    closed = []
+    errors = []
+    for pos in (positions or []):
+        qty = float(pos.get("qty", 0))
+        if qty >= 0:
+            continue  # long or flat — skip
+
+        sym = pos.get("symbol", "UNKNOWN")
+        abs_qty = abs(int(qty))
+        logger.warning("Closing legacy short: %s qty=%d", sym, qty)
+
+        try:
+            result = await broker.place_order(
+                symbol=sym,
+                side="buy",
+                qty=abs_qty,
+                type="market",
+                tif="day",
+            )
+            closed.append({
+                "symbol": sym,
+                "qty_covered": abs_qty,
+                "broker_order_id": result.get("id"),
+                "status": result.get("status"),
+            })
+            logger.info("Short cover submitted for %s: %s", sym, result.get("id"))
+        except Exception as e:
+            logger.error("Failed to close short %s: %s", sym, e)
+            errors.append({"symbol": sym, "qty": abs_qty, "error": str(e)})
+
+    return {
+        "long_only": True,
+        "shorts_found": len(closed) + len(errors),
+        "closed": closed,
+        "errors": errors,
+    }
+
+
+@router.post("/cleanup-orders")
+async def cleanup_stuck_orders(request: Request, _admin=Depends(require_admin)):
+    """Expire stuck 'accepted' orders that have no broker_order_id.
+
+    These orders were created in the DB but never confirmed by the broker.
+    The trade stream can never update them, so they are zombie records.
+    Only touches orders older than 1 hour with status='accepted' and
+    broker_order_id IS NULL.
+    """
+    sessionmaker = getattr(request.app.state, "sessionmaker", None)
+    if not sessionmaker:
+        raise HTTPException(status_code=503, detail="Database not available")
+
+    cutoff = datetime.now(UTC) - timedelta(hours=1)
+
+    async with sessionmaker() as session:
+        # Count first
+        count_result = await session.execute(
+            text(
+                "SELECT COUNT(*) FROM orders "
+                "WHERE status = 'accepted' "
+                "AND broker_order_id IS NULL "
+                "AND submitted_at < :cutoff"
+            ),
+            {"cutoff": cutoff},
+        )
+        total = count_result.scalar() or 0
+
+        if total == 0:
+            return {"cleaned": 0, "message": "No stuck orders found"}
+
+        # Update to expired
+        await session.execute(
+            text(
+                "UPDATE orders "
+                "SET status = 'expired', updated_at = :now "
+                "WHERE status = 'accepted' "
+                "AND broker_order_id IS NULL "
+                "AND submitted_at < :cutoff"
+            ),
+            {"cutoff": cutoff, "now": datetime.now(UTC)},
+        )
+        await session.commit()
+
+    logger.info("Cleaned up %d stuck 'accepted' orders (no broker_order_id, older than 1h)", total)
+    return {"cleaned": total, "message": f"Expired {total} stuck orders"}
+
+
 # ── Decision Telemetry Endpoints ──────────────────────────────────
 
 def _get_engine(request: Request):

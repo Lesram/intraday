@@ -259,6 +259,7 @@ class OrganismLiveEngine:
         self._order_service = order_service
         self._positions_service = positions_service
         self._streaming_provider = streaming_provider
+        self._sessionmaker = sessionmaker  # For DB-based trade reconstruction
 
         self._universe = universe or [
             s.strip().upper()
@@ -437,10 +438,15 @@ class OrganismLiveEngine:
                         len(self._universe),
                     )
 
-            # Restore cumulative data
+            # Restore cumulative data — try brain first, then DB fallback
             prev_trades = self.brain.get_trade_records()
             if prev_trades:
                 self._all_trades = prev_trades
+            elif self._sessionmaker:
+                try:
+                    await self._reconstruct_trades_from_db()
+                except Exception as e:
+                    logger.warning("Trade reconstruction from DB failed: %s", e)
             if self.brain.equity_curve:
                 self._equity_curve = list(self.brain.equity_curve)
             if self.brain.epoch_metrics:
@@ -556,6 +562,113 @@ class OrganismLiveEngine:
 
         self._initialized = True
         return brain_loaded
+
+    async def _reconstruct_trades_from_db(self) -> None:
+        """Reconstruct trade history from filled organism orders in DB.
+
+        Called on startup when brain has no trade records (e.g. after a
+        Docker restart that wiped trade_history.csv before it was written).
+        Pairs entry and exit orders per symbol to build TradeRecord objects.
+        """
+        from sqlalchemy import select, text as sa_text
+        from backend.infra.schemas import Order
+
+        async with self._sessionmaker() as session:
+            stmt = (
+                select(Order)
+                .where(
+                    Order.status == "filled",
+                    sa_text("attributes->>'source' = 'organism'"),
+                )
+                .order_by(Order.submitted_at.asc())
+            )
+            result = await session.execute(stmt)
+            orders = list(result.scalars().all())
+
+        if not orders:
+            logger.info("No filled organism orders in DB — nothing to reconstruct")
+            return
+
+        # Separate entries and exits
+        entry_reasons = {"entry", "pyramid", "ml_entry", "alpha_entry", "breakout_entry"}
+        entries: dict[str, list] = {}  # symbol → [order, ...]
+        exits: dict[str, list] = {}
+
+        for o in orders:
+            attrs = o.attributes or {}
+            reason = (attrs.get("reason") or "").lower()
+            sym = o.symbol
+
+            is_entry = (
+                any(r in reason for r in entry_reasons)
+                or (o.side == "buy" and not reason)
+            )
+            if is_entry:
+                entries.setdefault(sym, []).append(o)
+            else:
+                exits.setdefault(sym, []).append(o)
+
+        # Pair exits to entries
+        reconstructed: list[TradeRecord] = []
+        entry_idx: dict[str, int] = {}  # symbol → next unmatched entry index
+
+        for sym, exit_orders in exits.items():
+            sym_entries = entries.get(sym, [])
+            idx = entry_idx.get(sym, 0)
+
+            for ex_order in exit_orders:
+                if idx >= len(sym_entries):
+                    break  # No more entries to match
+
+                en_order = sym_entries[idx]
+                idx += 1
+
+                entry_price = float(en_order.avg_fill_price or 0)
+                exit_price = float(ex_order.avg_fill_price or 0)
+                shares = int(float(en_order.filled_qty or en_order.qty or 0))
+
+                if entry_price <= 0 or exit_price <= 0 or shares <= 0:
+                    continue
+
+                pnl = (exit_price - entry_price) * shares
+                actual_return = (exit_price - entry_price) / entry_price
+
+                en_attrs = en_order.attributes or {}
+                ex_attrs = ex_order.attributes or {}
+
+                reconstructed.append(TradeRecord(
+                    symbol=sym,
+                    direction=1.0,  # LONG_ONLY
+                    entry_price=entry_price,
+                    exit_price=exit_price,
+                    entry_bar=0,
+                    exit_bar=0,
+                    shares=shares,
+                    pnl=pnl,
+                    exit_reason=ex_attrs.get("reason", "unknown"),
+                    predicted_return=0.0,
+                    actual_return=actual_return,
+                    confidence=float(en_attrs.get("confidence", 0.0)),
+                ))
+
+            entry_idx[sym] = idx
+
+        if not reconstructed:
+            logger.info("No matched entry/exit pairs found in DB")
+            return
+
+        self._all_trades = reconstructed
+        cumulative = 0.0
+        for t in reconstructed:
+            cumulative += t.pnl
+            self._equity_curve.append(cumulative)
+        self._peak_equity = max(self._equity_curve) if self._equity_curve else 0.0
+
+        logger.info(
+            "Reconstructed %d trades from DB: cumulative PnL=$%.2f",
+            len(reconstructed),
+            cumulative,
+        )
 
     async def shutdown(self) -> None:
         """Save brain state on graceful shutdown."""
@@ -1033,7 +1146,7 @@ class OrganismLiveEngine:
                         continue  # Already submitted an order recently
                     if c.symbol in self._entry_metadata:
                         continue  # Already tracking this position
-                    if LONG_ONLY and not self.evolved_params.shorts_enabled and c.direction < 0:
+                    if LONG_ONLY and c.direction < 0:
                         continue
                     # Sector diversification gate — includes planned entries from
                     # earlier in this loop to prevent intra-tick sector breaches.

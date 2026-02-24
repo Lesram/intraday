@@ -78,15 +78,14 @@ async def get_orders(
 ) -> list[dict[str, Any]]:
     """Get list of orders for the current user."""
     try:
-        from sqlalchemy import select
+        from sqlalchemy import or_, select
 
         from backend.infra.schemas import Order
 
-        # SECURITY FIX: Filter orders by user_id to prevent IDOR vulnerability
-        # Get orders for current user only, sorted by most recent first
+        # Show user's own orders + system (organism) orders for visibility
         stmt = (
             select(Order)
-            .where(Order.user_id == user.username)
+            .where(or_(Order.user_id == user.username, Order.user_id == "system"))
             .order_by(Order.created_at.desc())
             .offset(offset)
             .limit(limit)
