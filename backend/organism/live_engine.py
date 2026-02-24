@@ -28,6 +28,7 @@ from __future__ import annotations
 import asyncio
 import os
 import time
+import uuid
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from typing import Any
@@ -344,6 +345,7 @@ class OrganismLiveEngine:
         self._telemetry = DecisionTelemetryStore()
 
         # ── Live state ──────────────────────────────────────────
+        self._session_id = uuid.uuid4().hex[:8]  # unique per engine lifetime
         self._tick_count: int = 0
         self._bars_since_retrain: int = 0
         self._all_trades: list[TradeRecord] = []
@@ -1148,6 +1150,8 @@ class OrganismLiveEngine:
                     if action.action == "add" and action.shares_to_add > 0:
                         if sym in self._exit_cooldown:
                             continue  # Don't pyramid a symbol with pending exit
+                        if sym in self._pending_entry:
+                            continue  # Already submitted an order recently
                         try:
                             await self._submit_entry_order(
                                 sym,
@@ -1155,6 +1159,8 @@ class OrganismLiveEngine:
                                 confidence=0.7,
                                 reason="pyramid_add",
                             )
+                            self._pending_entry[sym] = self._tick_count
+                            result.orders_submitted += 1
                         except Exception as e:
                             result.errors.append(
                                 f"Pyramid order failed for {sym}: {e}"
@@ -2110,7 +2116,7 @@ class OrganismLiveEngine:
         idem_key = (
             f"organism_{symbol}"
             f"_{datetime.now(UTC).strftime('%Y%m%d')}"
-            f"_t{self._tick_count}"
+            f"_{self._session_id}_t{self._tick_count}"
         )
         return await self._order_service.submit_symbol_order(
             symbol=symbol,
@@ -2193,7 +2199,7 @@ class OrganismLiveEngine:
         idem_key = (
             f"organism_exit_{symbol}"
             f"_{datetime.now(UTC).strftime('%Y%m%d')}"
-            f"_t{self._tick_count}"
+            f"_{self._session_id}_t{self._tick_count}"
         )
         return await self._order_service.submit_symbol_order(
             symbol=symbol,

@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { Card, Typography } from 'antd';
+import { Card, Tag, Typography } from 'antd';
 import type { KellySizingStage } from '../organismApi';
 
 const { Text } = Typography;
@@ -75,7 +75,11 @@ const KellyPipelineWaterfall = ({ data }: { data: KellySizingStage | null }) => 
   }
 
   return (
-    <Card title={`Kelly Pipeline: ${data.symbol}`} size="small">
+    <Card
+      title={`Kelly Pipeline: ${data.symbol}`}
+      size="small"
+      extra={data.pipeline.ml_floor_applied ? <Tag color="blue">ML Floor</Tag> : null}
+    >
       <canvas ref={canvasRef} style={{ width: '100%', height: 180 }} />
       <div style={{ textAlign: 'center', marginTop: 4 }}>
         <Text type="secondary" style={{ fontSize: 11 }}>

@@ -250,6 +250,7 @@ export interface KellySizingStage {
     confidence_scale: number;
     breakout_bonus: number;
     final_weight: number;
+    ml_floor_applied: boolean;
   };
   position_cap: number;
   shares: number;

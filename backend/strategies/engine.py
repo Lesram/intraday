@@ -746,8 +746,8 @@ class StrategyEngine:
                 )
 
         except Exception as e:
-            logger.error(
-                f"Risk gating failed for {plan.symbol}",
+            logger.debug(
+                f"Risk gating failed for {plan.symbol}: {e}",
                 extra={"symbol": plan.symbol, "error": str(e)},
             )
 

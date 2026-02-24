@@ -175,9 +175,15 @@ async def startup(app) -> dict:
             app.state.organism_promotion = None
 
     # ── Multi-Strategy Live Runner (OPT-IN) ──────────────────────────
+    # Skip if the organism engine is enabled — they manage overlapping
+    # universes and running both causes spurious risk-gating errors.
+    _organism_active = os.getenv("ENABLE_ORGANISM_SCHEDULER", "0").lower() in (
+        "1", "true", "yes",
+    )
     if (
         os.getenv("MULTI_STRATEGY_LIVE_ENABLED", "0") in ("1", "true", "True", "yes")
         and not os.getenv("PYTEST_CURRENT_TEST")
+        and not _organism_active
     ):
         try:
             from backend.services.multi_strategy_live_scheduler import (
@@ -191,6 +197,8 @@ async def startup(app) -> dict:
         except Exception as e:
             logger.warning("Multi-strategy live scheduler failed", error=str(e))
             app.state.multi_strategy_live_scheduler_started = False
+    elif _organism_active and os.getenv("MULTI_STRATEGY_LIVE_ENABLED", "0") in ("1", "true", "True", "yes"):
+        logger.info("Multi-strategy live scheduler skipped — organism engine is active")
 
     # ── Auto Breakout Scanner (OPT-IN) ───────────────────────────────
     if (

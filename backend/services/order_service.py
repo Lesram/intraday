@@ -545,9 +545,10 @@ class OrderService:
                 self.outbox_repo = args[2]
 
         # P5 Patch: Fail fast if critical dependencies are missing in production
-        # Only create mocks if explicitly running tests
         import os as _os
-        if not args and not any(k in kwargs for k in ['orders_repo', 'broker', 'outbox_repo']):
+        _has_repos = args or any(k in kwargs for k in ['orders_repo', 'broker', 'outbox_repo'])
+        _has_sessionmaker = self.sessionmaker is not None
+        if not _has_repos and not _has_sessionmaker:
             import logging as _log
             env = _os.getenv("ENVIRONMENT", "development")
             if env == "production":

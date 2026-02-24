@@ -87,8 +87,9 @@ class QuoteManager:
                     self.redis_client = redis.from_url(
                         redis_url,
                         decode_responses=True,
-                        socket_timeout=1,
-                        socket_connect_timeout=1,
+                        socket_timeout=5,
+                        socket_connect_timeout=3,
+                        retry_on_timeout=True,
                         max_connections=50,
                     )
                 else:
@@ -98,8 +99,9 @@ class QuoteManager:
                         db=int(os.getenv('REDIS_DB', 0)),
                         password=os.getenv('REDIS_PASSWORD'),
                         decode_responses=True,
-                        socket_timeout=1,
-                        socket_connect_timeout=1,
+                        socket_timeout=5,
+                        socket_connect_timeout=3,
+                        retry_on_timeout=True,
                         max_connections=50,
                     )
                 logger.info("Redis cache initialized")
