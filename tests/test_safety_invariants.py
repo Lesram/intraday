@@ -371,3 +371,140 @@ class TestSafetyInvariants:
 
         # Must be valid Python
         ast.parse(source)
+
+    # ── 7. LONG_ONLY short-position prevention ─────────────────────
+
+    async def test_long_only_exit_blocks_sell_when_no_broker_position(self):
+        """When LONG_ONLY is active, _submit_exit_order must verify the
+        broker position exists before sending a sell.  If position is gone,
+        the sell must be blocked to prevent creating a short."""
+        engine, mocks = _make_engine_with_mocks()
+
+        # Broker returns no positions (position was already closed)
+        mocks["positions_service"].get_all_positions = AsyncMock(return_value={})
+
+        # Stub order service
+        mocks["order_service"].submit_symbol_order = AsyncMock()
+
+        with patch("backend.organism.live_engine.LONG_ONLY", True):
+            result = await engine._submit_exit_order("AAPL", 10, "stop_loss", direction=1.0)
+
+        # Must be blocked — no order submitted
+        assert result.get("status") == "blocked"
+        mocks["order_service"].submit_symbol_order.assert_not_awaited()
+
+    async def test_long_only_exit_clamps_shares_to_broker_qty(self):
+        """When LONG_ONLY is active, _submit_exit_order must clamp the sell
+        quantity to the actual broker position size.  If the engine tries
+        to sell 100 shares but broker only shows 50, it must sell 50."""
+        engine, mocks = _make_engine_with_mocks()
+
+        # Broker shows 50 shares
+        mocks["positions_service"].get_all_positions = AsyncMock(return_value={
+            "AAPL": {"qty": 50, "side": "long", "avg_entry_price": 150.0,
+                     "current_price": 145.0},
+        })
+        mocks["order_service"].submit_symbol_order = AsyncMock(
+            return_value={"id": "test123", "status": "accepted"}
+        )
+
+        with patch("backend.organism.live_engine.LONG_ONLY", True):
+            result = await engine._submit_exit_order("AAPL", 100, "stop_loss", direction=1.0)
+
+        # Order should be submitted with clamped qty=50
+        mocks["order_service"].submit_symbol_order.assert_awaited_once()
+        call_kwargs = mocks["order_service"].submit_symbol_order.call_args
+        assert call_kwargs[1]["qty"] == 50 or call_kwargs.kwargs["qty"] == 50
+
+    async def test_long_only_exit_blocks_sell_on_short_position(self):
+        """When LONG_ONLY is active and broker shows a SHORT position,
+        _submit_exit_order must refuse to sell (which would increase the short)."""
+        engine, mocks = _make_engine_with_mocks()
+
+        # Broker shows a short position (shouldn't exist, but does due to bug)
+        mocks["positions_service"].get_all_positions = AsyncMock(return_value={
+            "AAPL": {"qty": -50, "side": "short", "avg_entry_price": 150.0,
+                     "current_price": 155.0},
+        })
+        mocks["order_service"].submit_symbol_order = AsyncMock()
+
+        with patch("backend.organism.live_engine.LONG_ONLY", True):
+            result = await engine._submit_exit_order("AAPL", 50, "stop_loss", direction=1.0)
+
+        assert result.get("status") == "blocked"
+        mocks["order_service"].submit_symbol_order.assert_not_awaited()
+
+    async def test_long_only_exit_loop_skips_short_positions(self):
+        """The main exit loop must skip SHORT positions when LONG_ONLY is active.
+        It should log a warning and continue to the next position."""
+        engine, mocks = _make_engine_with_mocks()
+
+        # Mix of long and short positions from broker
+        mocks["positions_service"].get_all_positions = AsyncMock(return_value={
+            "AAPL": {"qty": 10, "side": "long", "avg_entry_price": 150.0,
+                     "current_price": 120.0},  # 20% loss → safety net triggers
+            "CORT": {"qty": -100, "side": "short", "avg_entry_price": 35.0,
+                     "current_price": 40.0},  # Short — should be SKIPPED
+        })
+
+        import pandas as pd
+        engine._fetch_and_compute_features = AsyncMock(return_value={
+            "SPY": pd.DataFrame({"close": [400.0]}),
+        })
+        engine._get_equity = AsyncMock(return_value=100_000.0)
+        engine._submit_exit_order = AsyncMock()
+        engine._reconcile_fills = AsyncMock()
+        engine._save_brain = MagicMock()
+        engine._check_tick_invariants = MagicMock()
+        engine._initialized = True
+
+        with patch("backend.organism.live_engine.LONG_ONLY", True):
+            result = await engine.live_tick()
+
+        # Exit should only be submitted for AAPL (long), NOT CORT (short)
+        exit_calls = engine._submit_exit_order.call_args_list
+        exit_symbols = [c[0][0] for c in exit_calls]
+        assert "AAPL" in exit_symbols
+        assert "CORT" not in exit_symbols
+
+    def test_long_only_orphan_adoption_skips_shorts(self):
+        """The orphan adoption logic in _reconcile_fills must refuse to adopt
+        SHORT positions when LONG_ONLY is active."""
+        import ast
+        import pathlib
+
+        source = pathlib.Path("backend/organism/live_engine.py").read_text()
+        tree = ast.parse(source)
+
+        # Verify the source contains the LONG_ONLY guard in orphan adoption
+        assert "LONG_ONLY: refusing to adopt orphaned SHORT" in source
+
+    def test_exit_idempotency_key_uses_tick_count(self):
+        """Exit order idempotency keys must use tick_count, not wall-clock
+        seconds.  This prevents duplicate exit orders across rapid ticks."""
+        import ast
+        import pathlib
+
+        source = pathlib.Path("backend/organism/live_engine.py").read_text()
+
+        # The exit idempotency key must contain tick_count reference
+        assert "_t{self._tick_count}" in source or "f\"_t{self._tick_count}\"" in source
+
+    def test_entry_idempotency_key_uses_tick_count(self):
+        """Entry order idempotency keys must use tick_count, not wall-clock
+        seconds, to prevent duplicate entries within the same tick."""
+        import pathlib
+
+        source = pathlib.Path("backend/organism/live_engine.py").read_text()
+
+        # Verify the entry idempotency key no longer uses %H%M%S
+        # and instead uses tick_count
+        lines = source.split("\n")
+        in_entry_method = False
+        for line in lines:
+            if "def _submit_entry_order" in line:
+                in_entry_method = True
+            elif in_entry_method and "def " in line and "def _submit_entry_order" not in line:
+                in_entry_method = False
+            if in_entry_method and "idem_key" in line and "%H%M%S" in line:
+                pytest.fail("Entry idempotency key still uses %H%M%S timestamp")

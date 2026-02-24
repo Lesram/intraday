@@ -735,7 +735,19 @@ class OrganismLiveEngine:
             # 5. CHECK EXITS on existing positions
             _MAX_LOSS_PCT = 0.15  # Absolute safety net — no position beyond -15%
             exits_submitted = 0
-            for sym, pos_data in current_positions.items():
+            for sym, pos_data in list(current_positions.items()):
+                # LONG_ONLY guard: skip exit processing for SHORT positions.
+                # Short positions should not exist when LONG_ONLY=true; they
+                # are artifacts of a previous bug.  Log and skip — they will
+                # be closed via manual liquidation or the close-shorts script.
+                pos_side = pos_data.get("side", "long")
+                if LONG_ONLY and pos_side != "long":
+                    logger.warning(
+                        "LONG_ONLY: skipping exit check for SHORT position %s "
+                        "(%s shares) — should not exist",
+                        sym, pos_data.get("qty", "?"),
+                    )
+                    continue
                 feat_df = features_by_symbol.get(sym)
                 if feat_df is None or len(feat_df) < 1:
                     # Fallback: use broker position data for safety net check
@@ -1899,7 +1911,9 @@ class OrganismLiveEngine:
         """
         side = "sell" if direction < 0 else "buy"
         idem_key = (
-            f"organism_{symbol}_{datetime.now(UTC).strftime('%Y%m%d_%H%M%S')}"
+            f"organism_{symbol}"
+            f"_{datetime.now(UTC).strftime('%Y%m%d')}"
+            f"_t{self._tick_count}"
         )
         return await self._order_service.submit_symbol_order(
             symbol=symbol,
@@ -1926,11 +1940,63 @@ class OrganismLiveEngine:
         """Submit an exit order via OrderService.
 
         For longs (direction > 0) we sell; for shorts (direction < 0) we buy-to-cover.
+
+        Safety: LONG_ONLY mode blocks sell orders that would create new short
+        positions.  The idempotency key uses tick_count (not wall-clock) so
+        the same exit intent across rapid ticks is deduplicated.
         """
         side = "buy" if direction < 0 else "sell"
+
+        # LONG_ONLY guard: never submit a sell (short-creating) exit when
+        # LONG_ONLY is active.  Only buy-to-cover (direction < 0) is allowed
+        # to close accidental shorts.
+        if LONG_ONLY and side == "sell":
+            # Verify we actually hold a long position of this size before selling
+            try:
+                broker_positions = await self._positions_service.get_all_positions()
+                broker_pos = broker_positions.get(symbol)
+                if broker_pos is None:
+                    logger.warning(
+                        "LONG_ONLY guard: skipping sell for %s — no broker position exists",
+                        symbol,
+                    )
+                    return {"status": "blocked", "reason": "no_broker_position"}
+                broker_qty = abs(float(broker_pos.get("qty", 0)))
+                broker_side = broker_pos.get("side", "long")
+                if broker_side != "long":
+                    logger.warning(
+                        "LONG_ONLY guard: skipping sell for %s — broker position is %s, not long",
+                        symbol, broker_side,
+                    )
+                    return {"status": "blocked", "reason": "position_not_long"}
+                # Clamp shares to actual broker quantity — never sell more than we own
+                if shares > int(broker_qty):
+                    logger.warning(
+                        "LONG_ONLY guard: clamping exit shares for %s from %d to %d (broker qty)",
+                        symbol, shares, int(broker_qty),
+                    )
+                    shares = int(broker_qty)
+                if shares <= 0:
+                    logger.warning(
+                        "LONG_ONLY guard: skipping sell for %s — broker qty is 0",
+                        symbol,
+                    )
+                    return {"status": "blocked", "reason": "zero_quantity"}
+            except Exception as e:
+                logger.error(
+                    "LONG_ONLY guard: broker position check failed for %s: %s — blocking sell",
+                    symbol, e,
+                )
+                return {"status": "blocked", "reason": f"broker_check_failed: {e}"}
+
+        # Idempotency key: use tick_count so the same exit intent within the
+        # same tick is deduplicated, but different ticks get different keys.
+        # This prevents the old bug where second-level timestamps caused
+        # duplicate exit orders across rapid 10s ticks.
         idem_key = (
             f"organism_exit_{symbol}"
-            f"_{datetime.now(UTC).strftime('%Y%m%d_%H%M%S')}"
+            f"_{datetime.now(UTC).strftime('%Y%m%d')}"
+            f"_t{self._tick_count}"
         )
         return await self._order_service.submit_symbol_order(
             symbol=symbol,
@@ -2100,6 +2166,16 @@ class OrganismLiveEngine:
 
             side = pos.get("side", "long")
             direction = 1.0 if side == "long" else -1.0
+
+            # LONG_ONLY guard: never adopt SHORT positions — they are artifacts
+            # of bugs (duplicate exit orders).  Log and skip.
+            if LONG_ONLY and side != "long":
+                logger.warning(
+                    "LONG_ONLY: refusing to adopt orphaned SHORT position %s "
+                    "(%d shares @ $%.2f) — this should not exist",
+                    sym, int(qty), avg_entry,
+                )
+                continue
 
             # Re-create entry metadata so reconciliation can track it
             self._entry_metadata[sym] = {
