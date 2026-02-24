@@ -564,7 +564,7 @@ async def close_legacy_shorts(request: Request, _admin=Depends(require_admin)):
     broker = get_alpaca_broker_client()
 
     try:
-        positions = await broker.get_all_positions()
+        positions = await broker.get_positions()
     except Exception as e:
         logger.error("Failed to fetch positions from Alpaca: %s", e)
         raise HTTPException(status_code=502, detail=f"Alpaca positions fetch failed: {e}")
