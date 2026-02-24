@@ -376,6 +376,12 @@ class OrganismLiveEngine:
         self._pending_exit: dict[str, int] = {}
         self._PENDING_EXIT_TICKS = 3  # Wait 3 ticks (~30s) before re-trying exit
 
+        # Consecutive equity-zero counter — avoids permanent halt on
+        # transient broker API glitches.  Requires N consecutive zeros
+        # before blocking entries (soft block, auto-recovers).
+        self._consecutive_equity_zero: int = 0
+        self._EQUITY_ZERO_THRESHOLD = 3  # 3 consecutive zeros (~30s) before blocking
+
         # Serialize live_tick() calls to prevent concurrent state mutation
         # (scheduler loop + manual /tick endpoint)
         self._tick_lock = asyncio.Lock()
@@ -836,25 +842,62 @@ class OrganismLiveEngine:
             current_positions = await self._positions_service.get_all_positions()
             open_symbols = set(current_positions.keys())
             equity = await self._get_equity()
-            self._peak_equity = max(self._peak_equity, equity)
 
-            # Check drawdown — skip when equity is 0 (broker unavailable / cold-start)
+            # Equity-zero resilience: require N consecutive zeros before
+            # blocking entries.  A single transient API glitch should NOT
+            # permanently halt the engine.  Auto-recovers when equity returns.
+            if equity > 0:
+                if self._consecutive_equity_zero > 0:
+                    logger.info(
+                        "Equity recovered after %d consecutive zero readings",
+                        self._consecutive_equity_zero,
+                    )
+                self._consecutive_equity_zero = 0
+                self._peak_equity = max(self._peak_equity, equity)
+            else:
+                self._consecutive_equity_zero += 1
+                if self._consecutive_equity_zero >= self._EQUITY_ZERO_THRESHOLD:
+                    entries_blocked = True
+                    logger.error(
+                        "equity_returned_zero for %d consecutive ticks — "
+                        "soft-blocking entries, exits still active",
+                        self._consecutive_equity_zero,
+                    )
+                    result.errors.append(
+                        f"Equity zero for {self._consecutive_equity_zero} ticks "
+                        f"— entries soft-blocked, exits still active."
+                    )
+                else:
+                    logger.warning(
+                        "equity_returned_zero (%d/%d before block) — "
+                        "skipping drawdown check this tick",
+                        self._consecutive_equity_zero,
+                        self._EQUITY_ZERO_THRESHOLD,
+                    )
+
+            # Check drawdown — only when we have valid equity readings
             if self._peak_equity > 0 and equity > 0:
                 drawdown = (self._peak_equity - equity) / self._peak_equity
+                was_halted = self.governance.is_trading_halted
                 self.governance.trigger_drawdown_kill(drawdown)
-                if self.governance.is_trading_halted:
+                if not was_halted and self.governance.is_trading_halted:
                     entries_blocked = True
-                    result.errors.append("Drawdown kill triggered — exits still active")
+                    result.errors.append(
+                        f"Drawdown kill triggered ({drawdown:.2%} >= "
+                        f"{self.governance._drawdown_limit:.0%}) — exits still active"
+                    )
                     logger.warning(
-                        "Drawdown kill: blocking new entries but continuing "
-                        "exit checks for %d open positions",
+                        "Drawdown kill: %.2f%% drawdown, blocking new entries "
+                        "but continuing exit checks for %d open positions",
+                        drawdown * 100,
                         len(current_positions),
                     )
-            elif equity == 0:
-                self.governance.halt_trading()
+
+            # Propagate any pre-existing governance halt (from manual halt
+            # or prior drawdown cooldown) — separate from drawdown check
+            if self.governance.is_trading_halted and not entries_blocked:
                 entries_blocked = True
-                logger.error("equity_returned_zero — halting entries, exits still active")
-                result.errors.append("Equity is zero — exits still active, entries blocked.")
+                result.errors.append("Trading halted by governance — exits still active")
 
             # 5. CHECK EXITS on existing positions
             _MAX_LOSS_PCT = 0.15  # Absolute safety net — no position beyond -15%
