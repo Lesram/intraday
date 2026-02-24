@@ -351,6 +351,32 @@ export interface EvolutionHistoryResponse {
   history: EvolutionSnapshot[];
 }
 
+// ── Organism Orders Types ──────────────────────────────────────────
+
+export interface OrganismOrder {
+  order_id: string;
+  symbol: string;
+  side: string;
+  qty: number;
+  filled_qty: number;
+  order_type: string;
+  tif: string;
+  status: string;
+  avg_fill_price: number | null;
+  limit_price: number | null;
+  submitted_at: string | null;
+  updated_at: string | null;
+  reason: string | null;
+  confidence: number | null;
+  tick: number | null;
+  broker_order_id: string | null;
+}
+
+export interface OrganismOrdersResponse {
+  orders: OrganismOrder[];
+  total: number;
+}
+
 export const organismApi = {
   async getStatus() {
     const { data } = await apiClient.get<OrganismStatus>('/organism/status');
@@ -394,6 +420,11 @@ export const organismApi = {
 
   async getAnalytics() {
     const { data } = await apiClient.get<OrganismAnalytics>('/organism/analytics');
+    return data;
+  },
+
+  async getOrders(limit = 200, status = 'all') {
+    const { data } = await apiClient.get<OrganismOrdersResponse>(`/organism/orders?limit=${limit}&status=${status}`);
     return data;
   },
 

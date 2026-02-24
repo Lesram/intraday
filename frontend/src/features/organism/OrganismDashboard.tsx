@@ -51,6 +51,7 @@ import PnLWaterfall from '../portfolio/components/PnLWaterfall';
 import AttributionPanel from './components/AttributionChart';
 import RegimeTimeline from './components/RegimeTimeline';
 import DecisionDashboard from './components/DecisionDashboard';
+import OrganismOrdersPanel from './components/OrganismOrdersPanel';
 
 const { Title, Text } = Typography;
 
@@ -1076,6 +1077,15 @@ ENABLE_ORGANISM_SCHEDULER=1   # optional — starts the live tick loop`}
                 </Card>
               );
             })(),
+          },
+          {
+            key: 'orders',
+            label: (
+              <span>
+                <DollarOutlined /> Orders
+              </span>
+            ),
+            children: <OrganismOrdersPanel />,
           },
           {
             key: 'scanner',

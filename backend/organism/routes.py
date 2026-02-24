@@ -17,11 +17,14 @@ Provides visibility and control endpoints for the living organism:
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
+from decimal import Decimal
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
+from sqlalchemy import select, text
 
+from backend.infra.schemas import Order
 from backend.infra.security import require_admin
 from backend.utils.logger import get_logger
 
@@ -479,6 +482,63 @@ async def get_scanner_history(request: Request):
         "scan_count": scanner.scan_count,
         "last_scan_time": scanner.last_scan_time,
     }
+
+
+# ── Organism Orders Endpoint ──────────────────────────────────────
+
+def _decimal_to_float(val: Decimal | None) -> float | None:
+    if val is None:
+        return None
+    return float(val)
+
+
+@router.get("/orders")
+async def get_organism_orders(
+    request: Request,
+    limit: int = Query(default=200, ge=1, le=1000),
+    status: str = Query(default="all"),
+):
+    """Get organism-submitted orders from the orders table."""
+    sessionmaker = getattr(request.app.state, "sessionmaker", None)
+    if not sessionmaker:
+        raise HTTPException(status_code=503, detail="Database not available")
+
+    async with sessionmaker() as session:
+        stmt = select(Order).where(
+            text("attributes->>'source' = 'organism'")
+        )
+
+        if status != "all":
+            stmt = stmt.where(Order.status == status)
+
+        stmt = stmt.order_by(Order.submitted_at.desc()).limit(limit)
+
+        result = await session.execute(stmt)
+        orders = list(result.scalars().all())
+
+    rows = []
+    for o in orders:
+        attrs = o.attributes or {}
+        rows.append({
+            "order_id": str(o.id),
+            "symbol": o.symbol,
+            "side": o.side,
+            "qty": _decimal_to_float(o.qty),
+            "filled_qty": _decimal_to_float(o.filled_qty),
+            "order_type": o.order_type,
+            "tif": o.tif,
+            "status": o.status,
+            "avg_fill_price": _decimal_to_float(o.avg_fill_price),
+            "limit_price": _decimal_to_float(o.limit_price),
+            "submitted_at": o.submitted_at.isoformat() if o.submitted_at else None,
+            "updated_at": o.updated_at.isoformat() if o.updated_at else None,
+            "reason": attrs.get("reason"),
+            "confidence": attrs.get("confidence"),
+            "tick": attrs.get("tick"),
+            "broker_order_id": o.broker_order_id,
+        })
+
+    return {"orders": rows, "total": len(rows)}
 
 
 # ── Decision Telemetry Endpoints ──────────────────────────────────
