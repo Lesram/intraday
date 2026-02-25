@@ -7,11 +7,11 @@ winner at ~$225 avg.  v2 uses ATR-distance trailing that lets winners run:
     1. Initial stop       — 1.5× ATR (tighter = smaller per-loss bite)
     2. Trailing activation — after price moves **3× ATR** in our favour
     3. Trail distance      — fixed **2.5× ATR** from highest close
-                             (3.5× in trending, 1.5× in chop)
+                             (3.5× in trending_up/down, 1.5× in chop)
     4. Partial take-profit — sell 30 % at 3R, let 70 % ride
-    5. Full TP             — 6R trending / 4R normal / 2.5R chop
-    6. Time limit          — disabled in trending; 40 bars normal; 25 chop
-    7. Regime stress       — tighten 40 % on stress/crisis transition
+    5. Full TP             — 6R trending_up/down / 4R low_vol / 2.5R chop
+    6. Time limit          — disabled in trending_up/down; 40 bars low_vol; 25 chop
+    7. Regime stress       — tighten 40 % on stress transition
 
 Ref: docs/blueprints/BREAKOUT_ALPHA_BLUEPRINT.md §Module-C
 """

@@ -402,6 +402,8 @@ class KellySizer:
         avg_win = stats["total_win_pnl"] / max(stats["wins"], 1)
         avg_loss = stats["total_loss_pnl"] / max(stats["losses"], 1)
         payoff_ratio = avg_win / avg_loss
+        if payoff_ratio <= 0:
+            return None  # No wins in this regime — cannot compute Kelly
         # Kelly: W - (1-W)/B
         kelly = win_rate - (1 - win_rate) / payoff_ratio
         return max(kelly, 0.0)

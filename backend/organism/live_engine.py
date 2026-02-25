@@ -854,6 +854,7 @@ class OrganismLiveEngine:
             # 3. DETECT REGIME (Phase 4.3: cross-asset conditioning)
             # Skip regime detection when features are insufficient — it
             # requires meaningful price data to function.
+            regime = RegimeLabel.UNKNOWN  # default — overwritten below if features are sufficient
             if not insufficient_features:
                 spy_features = features_by_symbol.get("SPY")
                 sector_features = {
@@ -987,6 +988,7 @@ class OrganismLiveEngine:
                                     await self._submit_exit_order(
                                         sym, sell_shares, "safety_net_no_features",
                                         direction=_dir,
+                                        broker_positions=current_positions,
                                     )
                                     exits_submitted += 1
                                     if _PROMETHEUS_AVAILABLE:
@@ -1047,6 +1049,7 @@ class OrganismLiveEngine:
                                     await self._submit_exit_order(
                                         sym, sell_shares, exit_sig.reason,
                                         direction=_dir,
+                                        broker_positions=current_positions,
                                     )
                                     self._exit_cooldown[sym] = self._tick_count
                                     exits_submitted += 1
@@ -1109,7 +1112,8 @@ class OrganismLiveEngine:
                         try:
                             _dir = getattr(exit_levels, "direction", 1.0)
                             await self._submit_exit_order(
-                                sym, sell_shares, exit_sig.reason, direction=_dir
+                                sym, sell_shares, exit_sig.reason, direction=_dir,
+                                broker_positions=current_positions,
                             )
                             self._exit_cooldown[sym] = self._tick_count
                             self._pending_exit[sym] = self._tick_count
@@ -1377,7 +1381,8 @@ class OrganismLiveEngine:
                 for sz in sizes:
                     # Skip if position already exists (e.g. from partial fill
                     # on a cancelled order that the earlier check missed)
-                    if sz.symbol in fresh_open:
+                    # Also enforce MAX_OPEN_POSITIONS within this tick
+                    if sz.symbol in fresh_open or len(fresh_open) >= MAX_OPEN_POSITIONS:
                         logger.info(
                             "Skipping entry for %s — position already exists at broker",
                             sz.symbol,
@@ -1404,6 +1409,7 @@ class OrganismLiveEngine:
                                 filled_shares = max(1, int(float(filled_qty)))
 
                         result.orders_submitted += 1
+                        fresh_open.add(sz.symbol)  # Track to enforce MAX_OPEN_POSITIONS within tick
                         # Mark as pending so we don't re-submit next tick
                         self._pending_entry[sz.symbol] = self._tick_count
                         result.activity.append(ActivityEvent(
@@ -2188,6 +2194,7 @@ class OrganismLiveEngine:
         shares: int,
         reason: str = "organism_exit",
         direction: float = 1.0,
+        broker_positions: dict | None = None,
     ) -> dict[str, Any]:
         """Submit an exit order via OrderService.
 
@@ -2205,7 +2212,8 @@ class OrganismLiveEngine:
         if LONG_ONLY and side == "sell":
             # Verify we actually hold a long position of this size before selling
             try:
-                broker_positions = await self._positions_service.get_all_positions()
+                if broker_positions is None:
+                    broker_positions = await self._positions_service.get_all_positions()
                 broker_pos = broker_positions.get(symbol)
                 if broker_pos is None:
                     logger.warning(

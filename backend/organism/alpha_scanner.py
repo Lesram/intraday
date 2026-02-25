@@ -256,6 +256,10 @@ class AlphaScanner:
             score = 0.7 + trend_str * 0.3  # Strong trend + buy = aligned
         elif regime in ("trending_down",) and direction < 0:
             score = 0.7 + trend_str * 0.3
+        elif regime == "trending_down" and direction > 0:
+            score = 0.3  # Counter-trend penalty: buying in a downtrend
+        elif regime == "low_vol":
+            score = 0.7  # Calm market — favorable for entries
         elif regime == "chop" and abs(direction) > 0:
             # Mean reversion in chop is good
             z_score = float(row.get("z_score_20", 0))

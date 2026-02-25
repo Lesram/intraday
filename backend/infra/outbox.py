@@ -514,7 +514,7 @@ class OutboxProcessor:
         ) as span:
             try:
                 # Route by topic with tracing
-                if event.topic == "order_submitted":
+                if event.topic == "order.submitted":
                     await self._handle_order_submitted(event)
                 else:
                     raise ValueError(f"Unknown outbox topic: {event.topic}")
@@ -643,7 +643,7 @@ class OutboxProcessor:
                     )
 
     async def _handle_order_submitted(self, event: OutboxEvent) -> None:
-        """Handle order_submitted events."""
+        """Handle order.submitted events."""
         payload = event.payload
 
         # Extract order details from payload

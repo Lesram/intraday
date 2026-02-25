@@ -268,13 +268,18 @@ class MLSignalGenerator:
 
         if len(available_cols) < len(self._feature_cols):
             logger.warning(
-                "Feature column mismatch for %s: %d/%d available — predictions may degrade",
+                "Feature column mismatch for %s: %d/%d available — zero-padding missing columns",
                 symbol,
                 len(available_cols),
                 len(self._feature_cols),
             )
 
-        X = features_df[available_cols].iloc[-1:].values
+        # Build full-width feature row: use available columns, zero-pad missing ones
+        # so XGBoost always receives the correct feature count.
+        row = features_df[available_cols].iloc[-1:]
+        full_row = pd.DataFrame(0.0, index=row.index, columns=self._feature_cols)
+        full_row[available_cols] = row[available_cols]
+        X = full_row.values
 
         # Replace nan/inf
         X = np.nan_to_num(X, nan=0.0, posinf=0.0, neginf=0.0)
@@ -283,7 +288,7 @@ class MLSignalGenerator:
         try:
             dir_proba = self._clf.predict_proba(X)[0]
             # dir_proba = [P(down), P(up)]
-            p_up = dir_proba[1] if len(dir_proba) > 1 else dir_proba[0]
+            p_up = float(dir_proba[1] if len(dir_proba) > 1 else dir_proba[0])
         except Exception as e:
             logger.warning("Direction model inference failed for %s: %s — defaulting to neutral", symbol, e)
             p_up = 0.5
@@ -366,7 +371,7 @@ class MLSignalGenerator:
     def calibrate_confidence(self, raw_confidence: float) -> float:
         """Apply calibration correction to raw confidence."""
         bin_idx = min(int(raw_confidence * 5), 4)
-        return min(raw_confidence * self._calibration_map[bin_idx], 1.0)
+        return float(min(raw_confidence * self._calibration_map[bin_idx], 1.0))
 
     def calibration_to_dict(self) -> dict[str, Any]:
         """Serialize calibration state for brain persistence."""

@@ -51,6 +51,7 @@ import PnLWaterfall from '../portfolio/components/PnLWaterfall';
 import AttributionPanel from './components/AttributionChart';
 import RegimeTimeline from './components/RegimeTimeline';
 import DecisionDashboard from './components/DecisionDashboard';
+import DiagnosticsPanel from './components/DiagnosticsPanel';
 import OrganismOrdersPanel from './components/OrganismOrdersPanel';
 
 const { Title, Text } = Typography;
@@ -1121,6 +1122,15 @@ ENABLE_ORGANISM_SCHEDULER=1   # optional — starts the live tick loop`}
                 regimeKellyStats={analyticsData?.regime_kelly_stats ?? {}}
               />
             ),
+          },
+          {
+            key: 'diagnostics',
+            label: (
+              <span>
+                <SafetyOutlined /> Diagnostics
+              </span>
+            ),
+            children: <DiagnosticsPanel />,
           },
           {
             key: 'learned',

@@ -95,14 +95,12 @@ class RegimeDetector:
         sma_period: int = 50,
         vol_lookback: int = 20,
         trend_threshold: float = 0.02,
-        vol_high_pctile: float = 0.75,
         churn_window: int = 20,
         smoothing_alpha: float = 0.3,
     ) -> None:
         self._sma_period = sma_period
         self._vol_lookback = vol_lookback
         self._trend_threshold = trend_threshold
-        self._vol_high_pctile = vol_high_pctile
         self._churn_window = churn_window
         self._alpha = smoothing_alpha
 
@@ -315,7 +313,6 @@ class RegimeDetector:
             "sma_period": self._sma_period,
             "vol_lookback": self._vol_lookback,
             "trend_threshold": self._trend_threshold,
-            "vol_high_pctile": self._vol_high_pctile,
             "churn_window": self._churn_window,
             "smoothing_alpha": self._alpha,
         }

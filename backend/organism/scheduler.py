@@ -64,6 +64,8 @@ _MARKET_HOLIDAYS_2026 = {
     (11, 26),  # Thanksgiving Day
     (12, 25),  # Christmas Day
 }
+# TODO: Update _MARKET_HOLIDAYS_2026 for 2027 before Jan 1 2027.
+# Dates shift yearly — check https://www.nyse.com/markets/hours-calendars
 
 
 def _is_market_tick_window() -> bool:
@@ -135,6 +137,16 @@ class OrganismScheduler:
         self._last_tick_result: dict[str, Any] | None = None
         self._tick_history: deque[dict[str, Any]] = deque(maxlen=self._history_limit)
 
+        # Diagnostic report store + scheduled runner
+        from backend.organism.diagnostic_scheduler import (
+            DiagnosticReportStore,
+            ScheduledDiagnosticRunner,
+        )
+        self._diag_store = DiagnosticReportStore(
+            brain_dir=brain_dir or "organism_brain",
+        )
+        self._diag_runner = ScheduledDiagnosticRunner(store=self._diag_store)
+
     # ── public API ───────────────────────────────────────────────
 
     @property
@@ -192,6 +204,9 @@ class OrganismScheduler:
 
         self._engine = OrganismLiveEngine(**kwargs)
         brain_loaded = await self._engine.initialize()
+
+        # Attach diagnostic store so engine can persist preflight/continuous reports
+        self._engine._diag_store = self._diag_store
 
         logger.info(
             "Organism scheduler starting: tick_interval=%ds, "
@@ -313,6 +328,12 @@ class OrganismScheduler:
         _last_outside_hours_log: float = 0  # throttle "outside hours" logs
 
         while not self._stop.is_set():
+            # Scheduled diagnostics (pre-open / post-close) run regardless of market hours
+            try:
+                await self._diag_runner.check_and_run(self._engine)
+            except Exception as e:
+                logger.debug("Scheduled diagnostics check error: %s", e)
+
             try:
                 if not _is_market_tick_window():
                     # Log once per 5 minutes to avoid spam

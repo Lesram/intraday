@@ -94,7 +94,7 @@ class TestMultiTickState:
         engine, mocks = _make_engine_with_mocks()
         exit_submissions = []
 
-        async def track_exit(symbol, shares, reason="exit", direction=1.0):
+        async def track_exit(symbol, shares, reason="exit", direction=1.0, **kwargs):
             exit_submissions.append({"symbol": symbol, "shares": shares})
             return {"status": "accepted"}
 
@@ -289,7 +289,7 @@ class TestMultiTickState:
         engine, mocks = _make_engine_with_mocks()
         exit_submissions = []
 
-        async def track_exit(symbol, shares, reason="exit", direction=1.0):
+        async def track_exit(symbol, shares, reason="exit", direction=1.0, **kwargs):
             exit_submissions.append({"symbol": symbol, "shares": shares})
             return {"status": "accepted"}
 

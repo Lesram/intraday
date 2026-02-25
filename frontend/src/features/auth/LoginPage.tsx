@@ -3,6 +3,7 @@
  * User authentication with email and password
  */
 
+import { useEffect, useRef } from 'react';
 import { Form, Input, Button, Card, Typography, Space } from 'antd';
 import { UserOutlined, LockOutlined } from '@ant-design/icons';
 import { Link } from 'react-router-dom';
@@ -11,8 +12,18 @@ import { colors } from '@/styles/theme';
 
 const { Title, Text } = Typography;
 
+const DEV_BYPASS_AUTH = import.meta.env.VITE_DEV_BYPASS_AUTH === 'true';
+
 const LoginPage = () => {
   const { mutate: login, isPending } = useLogin();
+  const bypassAttempted = useRef(false);
+
+  // DEV: auto-login when bypass is enabled
+  useEffect(() => {
+    if (!DEV_BYPASS_AUTH || bypassAttempted.current) return;
+    bypassAttempted.current = true;
+    login({ username: 'admin@example.com', password: 'admin123' });
+  }, [login]);
 
   const onFinish = (values: { email: string; password: string }) => {
     // Backend expects 'username' field, but we collect 'email'

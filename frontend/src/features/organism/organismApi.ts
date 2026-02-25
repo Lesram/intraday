@@ -352,6 +352,51 @@ export interface EvolutionHistoryResponse {
   history: EvolutionSnapshot[];
 }
 
+// ── Diagnostics Types ─────────────────────────────────────────────
+
+export interface DiagnosticCheckResult {
+  name: string;
+  category: string;
+  severity: 'critical' | 'warning' | 'info';
+  passed: boolean;
+  message: string;
+  duration_ms: number;
+}
+
+export interface DiagnosticReportSummary {
+  total: number;
+  passed: number;
+  failed: number;
+  warnings: number;
+  critical_failures: number;
+}
+
+export interface DiagnosticReport {
+  mode: string;
+  timestamp: string;
+  duration_ms: number;
+  all_critical_passed: boolean;
+  summary: DiagnosticReportSummary;
+  results: DiagnosticCheckResult[];
+}
+
+export interface DiagnosticsResponse {
+  active: boolean;
+  report: DiagnosticReport | null;
+}
+
+export interface DiagnosticHistoryEntry {
+  trigger: string;
+  timestamp: string;
+  report: DiagnosticReport;
+}
+
+export interface DiagnosticsHistoryResponse {
+  active: boolean;
+  count: number;
+  reports: DiagnosticHistoryEntry[];
+}
+
 // ── Organism Orders Types ──────────────────────────────────────────
 
 export interface OrganismOrder {
@@ -451,6 +496,23 @@ export const organismApi = {
 
   async getEvolutionHistory(limit = 50) {
     const { data } = await apiClient.get<EvolutionHistoryResponse>(`/organism/evolution/history?limit=${limit}`);
+    return data;
+  },
+
+  async getDiagnostics() {
+    const { data } = await apiClient.get<DiagnosticsResponse>('/organism/diagnostics');
+    return data;
+  },
+
+  async runDiagnostics() {
+    const { data } = await apiClient.post<DiagnosticsResponse>('/organism/diagnostics/run', {});
+    return data;
+  },
+
+  async getDiagnosticsHistory(limit = 20, trigger = 'all') {
+    const { data } = await apiClient.get<DiagnosticsHistoryResponse>(
+      `/organism/diagnostics/history?limit=${limit}&trigger=${trigger}`,
+    );
     return data;
   },
 };

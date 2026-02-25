@@ -766,3 +766,64 @@ async def get_evolution_history(request: Request, limit: int = Query(default=50,
         "count": len(history),
         "history": history,
     }
+
+
+# ── System Diagnostics Endpoints ─────────────────────────────────
+
+
+@router.get("/diagnostics")
+async def get_diagnostics(request: Request):
+    """Return the latest diagnostic report (preflight or continuous)."""
+    engine = _get_engine(request)
+    if engine is None:
+        return {"active": False, "report": None}
+
+    report = getattr(engine, "_last_diagnostic_report", None)
+    if report is None:
+        return {"active": True, "report": None}
+
+    return {"active": True, "report": report.to_dict()}
+
+
+@router.get("/diagnostics/history")
+async def get_diagnostics_history(
+    request: Request,
+    limit: int = Query(default=20, ge=1, le=50),
+    trigger: str = Query(default="all"),
+):
+    """Return diagnostic report history with optional trigger filter."""
+    scheduler = getattr(request.app.state, "organism_scheduler", None)
+    store = getattr(scheduler, "_diag_store", None) if scheduler else None
+
+    if store is None:
+        return {"active": False, "count": 0, "reports": []}
+
+    trigger_filter = trigger if trigger != "all" else None
+    reports = store.history(limit=limit, trigger=trigger_filter)
+    return {
+        "active": True,
+        "count": len(reports),
+        "reports": reports,
+    }
+
+
+@router.post("/diagnostics/run")
+async def run_deep_diagnostics(request: Request, _admin=Depends(require_admin)):
+    """Run a full deep diagnostic scan (admin only)."""
+    engine = _get_engine(request)
+    if engine is None:
+        raise HTTPException(status_code=409, detail="Live engine not active")
+
+    from backend.organism.diagnostics import diagnostics as _diag, CheckMode
+    import backend.organism.diagnostic_checks  # noqa: F401
+
+    report = await _diag.run(CheckMode.DEEP, engine=engine, app=request.app)
+    engine._last_diagnostic_report = report
+
+    # Persist manual run to diagnostic store
+    scheduler = getattr(request.app.state, "organism_scheduler", None)
+    store = getattr(scheduler, "_diag_store", None) if scheduler else None
+    if store:
+        await store.append(report, trigger="manual")
+
+    return {"active": True, "report": report.to_dict()}
