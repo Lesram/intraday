@@ -378,6 +378,11 @@ class OrganismLiveEngine:
         self._pending_exit: dict[str, int] = {}
         self._PENDING_EXIT_TICKS = 3  # Wait 3 ticks (~30s) before re-trying exit
 
+        # ML reversal one-shot guard — once ml_reversal fires on a symbol,
+        # it cannot fire again until the position is fully closed.  Prevents
+        # repeated 50% partials from chipping positions to 1 share.
+        self._ml_reversal_used: set[str] = set()
+
         # Consecutive equity-zero counter — avoids permanent halt on
         # transient broker API glitches.  Requires N consecutive zeros
         # before blocking entries (soft block, auto-recovers).
@@ -1078,8 +1083,13 @@ class OrganismLiveEngine:
                     exit_levels, current_price, regime
                 )
 
-                # ML reversal check: if ML signal flips, trigger partial exit
-                if not exit_sig.should_exit and self.signal_gen.is_trained:
+                # ML reversal check: if ML signal flips, trigger partial exit.
+                # One-shot guard: only fire once per position lifetime.
+                if (
+                    not exit_sig.should_exit
+                    and self.signal_gen.is_trained
+                    and sym not in self._ml_reversal_used
+                ):
                     try:
                         ml_sig = self.signal_gen.predict(feat_df, sym)
                         pos_direction = exit_levels.direction
@@ -1096,6 +1106,7 @@ class OrganismLiveEngine:
                                 partial_exit=True,
                                 partial_pct=0.50,
                             )
+                            self._ml_reversal_used.add(sym)
                     except Exception:
                         pass  # ML reversal check is non-fatal
 
@@ -2399,6 +2410,7 @@ class OrganismLiveEngine:
             # Clean up tracking state
             self._exit_levels.pop(sym, None)
             self._pyramid_positions.pop(sym, None)
+            self._ml_reversal_used.discard(sym)
 
             logger.info(
                 "Trade recorded: %s %s PnL=$%.2f",

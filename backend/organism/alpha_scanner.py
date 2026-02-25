@@ -212,7 +212,14 @@ class AlphaScanner:
         # Sort by composite score, take top N
         candidates.sort(key=lambda c: c.composite_score, reverse=True)
         self._last_full_scan = list(candidates)
-        result = [c for c in candidates[:self.top_n] if c.composite_score >= self.MIN_COMPOSITE]
+
+        # Regime-gated threshold: raise the bar in defensive regimes so
+        # only truly exceptional signals pass during high_vol/stress.
+        min_threshold = self.MIN_COMPOSITE  # 0.15 default
+        if current_regime in ("high_vol", "stress"):
+            min_threshold = 0.40 if current_regime == "high_vol" else 0.50
+
+        result = [c for c in candidates[:self.top_n] if c.composite_score >= min_threshold]
 
         if result:
             self._hit_count += 1

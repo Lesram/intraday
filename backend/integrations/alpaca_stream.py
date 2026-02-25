@@ -389,6 +389,7 @@ class AlpacaStreamClient:
             order_data = event_data.get("order", event_data)
 
             broker_order_id = order_data.get("id")
+            client_order_id = order_data.get("client_order_id")
             status = order_data.get("status")
             filled_qty = float(order_data.get("filled_qty", 0))
             avg_fill_price = float(order_data.get("filled_avg_price") or order_data.get("avg_fill_price") or 0) or None
@@ -405,6 +406,7 @@ class AlpacaStreamClient:
 
             logger.info("Processing trade update",
                        broker_order_id=broker_order_id,
+                       client_order_id=client_order_id,
                        alpaca_status=status,
                        internal_status=internal_status,
                        filled_qty=filled_qty,
@@ -414,11 +416,28 @@ class AlpacaStreamClient:
             async with get_session_context() as session:
                 orders_repo = OrdersRepo(session)
 
-                # Find order by broker_order_id
+                # Find order by broker_order_id, with fallback to client_order_id.
+                # The outbox worker may not have written broker_order_id to DB yet
+                # (race condition), but client_idempotency_key is written *before*
+                # the order is sent to Alpaca, so it's always available.
                 order = await orders_repo.get_by_broker_order_id(broker_order_id)
+                if not order and client_order_id:
+                    order = await orders_repo.get_by_client_key(client_order_id)
+                    if order:
+                        # Backfill broker_order_id so future lookups succeed
+                        await orders_repo.attach_broker_result(
+                            order.id, broker_order_id=broker_order_id
+                        )
+                        logger.info(
+                            "Order matched via client_order_id fallback, backfilled broker_order_id",
+                            order_id=order.id,
+                            broker_order_id=broker_order_id,
+                            client_order_id=client_order_id,
+                        )
                 if not order:
-                    logger.warning("Order not found for broker_order_id",
-                                 broker_order_id=broker_order_id)
+                    logger.warning("Order not found for broker_order_id or client_order_id",
+                                 broker_order_id=broker_order_id,
+                                 client_order_id=client_order_id)
                     return
 
                 # Update order status and fill information
