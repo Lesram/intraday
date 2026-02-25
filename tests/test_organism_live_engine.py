@@ -729,7 +729,7 @@ class TestPaperAccountIntegration:
             "AAPL": _make_price_df(300),
             "SPY": _make_price_df(300),
         }
-        signals = engine.generate_trading_signals(features, "normal")
+        signals = engine.generate_trading_signals(features, "unknown")
         assert isinstance(signals, list)
         # Signals may be empty if ML not trained, that's fine
         for sig in signals:

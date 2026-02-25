@@ -136,7 +136,7 @@ class TestDecisionSnapshotSerialization:
             tick_number=42,
             timestamp="2026-02-21T10:00:00Z",
             regime="trending_up",
-            regime_probabilities={"trending_up": 0.7, "normal": 0.2},
+            regime_probabilities={"trending_up": 0.7, "unknown": 0.2},
             equity=106000.0,
             peak_equity=107000.0,
             drawdown_pct=0.0093,
@@ -342,7 +342,7 @@ class TestAPIResponseStructure:
         snap = DecisionSnapshot(
             tick_number=10,
             timestamp="2026-02-21T10:00:00Z",
-            regime="normal",
+            regime="unknown",
             equity=100000.0,
         )
         d = snap.to_dict()
@@ -358,7 +358,7 @@ class TestAPIResponseStructure:
 
     def test_symbol_history_structure(self):
         store = DecisionTelemetryStore()
-        snap = DecisionSnapshot(tick_number=1, timestamp="t1", regime="normal")
+        snap = DecisionSnapshot(tick_number=1, timestamp="t1", regime="unknown")
         snap.alpha_details.append(SymbolAlphaDetail(symbol="AAPL", composite_score=0.5))
         snap.breakout_details.append(SymbolBreakoutDetail(symbol="AAPL", composite_score=0.3))
         snap.exit_details.append(PositionExitDetail(symbol="AAPL", current_price=150.0))
@@ -373,4 +373,4 @@ class TestAPIResponseStructure:
         assert "exit" in entry
         assert "kelly" in entry
         assert entry["tick_number"] == 1
-        assert entry["regime"] == "normal"
+        assert entry["regime"] == "unknown"

@@ -61,7 +61,7 @@ class RunSnapshot:
 
     run_id: int = 0
     generation: int = 0
-    regime: str = "normal"
+    regime: str = "unknown"
     # Overall performance
     total_trades: int = 0
     win_rate: float = 0.0
@@ -236,7 +236,7 @@ class TransferLearningEngine:
         trades: list[Any],
         epoch_metrics: list[Any],
         feature_importances: dict[str, float] | None = None,
-        regime: str = "normal",
+        regime: str = "unknown",
     ) -> None:
         """Record a run's outcome into the knowledge base.
 
@@ -361,7 +361,7 @@ class TransferLearningEngine:
     def warm_start_params(
         self,
         evolved_params: Any,
-        current_regime: str = "normal",
+        current_regime: str = "unknown",
     ) -> Any:
         """Apply transfer learning to warm-start evolved params.
 
@@ -404,7 +404,7 @@ class TransferLearningEngine:
 
     def get_recommended_hyperparams(
         self,
-        current_regime: str = "normal",
+        current_regime: str = "unknown",
     ) -> dict[str, Any]:
         """Get recommended XGB hyperparameters based on transfer knowledge.
 
@@ -448,7 +448,7 @@ class TransferLearningEngine:
 
     def get_most_relevant_snapshot(
         self,
-        current_regime: str = "normal",
+        current_regime: str = "unknown",
     ) -> RunSnapshot | None:
         """Find the historical run most relevant to the current regime.
 

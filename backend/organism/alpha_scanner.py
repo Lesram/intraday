@@ -88,7 +88,7 @@ class AlphaScanner:
         self,
         features_by_symbol: dict[str, pd.DataFrame],
         ml_signals: dict[str, MLSignal],
-        current_regime: str = "normal",
+        current_regime: str = "unknown",
     ) -> list[AlphaCandidate]:
         """Score all symbols, return top-N candidates sorted by alpha.
 
@@ -252,7 +252,7 @@ class AlphaScanner:
 
         score = 0.5  # Neutral
 
-        if regime in ("trending_up", "trending") and direction > 0:
+        if regime == "trending_up" and direction > 0:
             score = 0.7 + trend_str * 0.3  # Strong trend + buy = aligned
         elif regime in ("trending_down",) and direction < 0:
             score = 0.7 + trend_str * 0.3

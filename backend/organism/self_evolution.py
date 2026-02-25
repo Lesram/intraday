@@ -84,13 +84,12 @@ class EvolvedParams:
     # ── Regime-specific position sizing scales ───────────────────
     regime_size_scales: dict[str, float] = field(default_factory=lambda: {
         "trending_up": 1.20,
-        "trending": 1.00,
-        "normal": 0.85,
         "trending_down": 0.60,
         "chop": 0.50,
-        "high_vol": 0.70,      # was 0.40 — too conservative for intraday
-        "stress": 0.30,        # was 0.20
-        "crisis": 0.10,
+        "high_vol": 0.70,
+        "low_vol": 1.00,       # calm market → full sizing
+        "stress": 0.30,
+        "unknown": 0.70,       # insufficient data → conservative
     })
 
     # ── Feature importance weights (1.0 = keep, 0.0 = drop) ─────
@@ -290,7 +289,7 @@ class EvolutionEngine:
         params: EvolvedParams,
         trades: list[Any],
         feature_importances: dict[str, float] | None = None,
-        epoch_regime: str = "normal",
+        epoch_regime: str = "unknown",
         all_feature_names: list[str] | None = None,
     ) -> EvolvedParams:
         """Run one evolution step.  Returns updated EvolvedParams.

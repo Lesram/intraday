@@ -82,7 +82,7 @@ class TestMLKellyPipeline:
         if candidates:
             sizes = sizer.size_positions(
                 candidates, portfolio_value=100000, current_drawdown=0.0,
-                features_by_symbol=features, current_regime="normal",
+                features_by_symbol=features, current_regime="unknown",
             )
             for sz in sizes:
                 assert sz.shares > 0
@@ -154,18 +154,18 @@ class TestExitEngineIntegration:
 
         levels = engine.create_exit_levels(
             symbol="AAPL", direction=1.0, entry_price=100.0,
-            predicted_return=0.05, features_df=df, regime="normal",
+            predicted_return=0.05, features_df=df, regime="unknown",
         )
         assert levels.stop_loss < 100.0
         assert levels.take_profit > 100.0
         assert levels.trailing_stop == levels.stop_loss
 
         # Price goes up — no exit
-        sig = engine.check_exit(levels, 102.0, "normal")
+        sig = engine.check_exit(levels, 102.0, "unknown")
         assert not sig.should_exit
 
         # Price hits stop — exit
-        sig = engine.check_exit(levels, levels.stop_loss - 0.01, "normal")
+        sig = engine.check_exit(levels, levels.stop_loss - 0.01, "unknown")
         assert sig.should_exit
         assert sig.reason == "stop_loss"
 
@@ -177,11 +177,11 @@ class TestExitEngineIntegration:
 
         levels = engine.create_exit_levels(
             symbol="AAPL", direction=1.0, entry_price=100.0,
-            predicted_return=0.10, features_df=df, regime="normal",
+            predicted_return=0.10, features_df=df, regime="unknown",
         )
 
         # Move price above partial TP
-        sig = engine.check_exit(levels, levels.partial_tp_price + 1.0, "normal")
+        sig = engine.check_exit(levels, levels.partial_tp_price + 1.0, "unknown")
         if sig.should_exit and sig.reason == "partial_take_profit":
             assert sig.partial_exit
             assert sig.partial_pct == 0.30
@@ -197,11 +197,11 @@ class TestExitEngineIntegration:
 
         levels = engine.create_exit_levels(
             symbol="AAPL", direction=1.0, entry_price=100.0,
-            predicted_return=0.05, features_df=df, regime="normal",
+            predicted_return=0.05, features_df=df, regime="unknown",
         )
 
         # Force price down 16% — should trigger max loss safety net
-        sig = engine.check_exit(levels, 84.0, "normal")
+        sig = engine.check_exit(levels, 84.0, "unknown")
         assert sig.should_exit
         assert sig.reason == "max_loss_limit"
 

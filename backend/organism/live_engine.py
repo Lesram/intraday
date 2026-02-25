@@ -394,6 +394,9 @@ class OrganismLiveEngine:
         self._bg_training_started_tick: int = 0  # tick when bg training started
         self._BG_TRAINING_TIMEOUT_TICKS = 30  # ~5 min at 10s/tick
 
+        # ── Diagnostics ──────────────────────────────────────────
+        self._last_diagnostic_report: Any = None
+
     # ═════════════════════════════════════════════════════════════
     #  INITIALIZATION / SHUTDOWN
     # ═════════════════════════════════════════════════════════════
@@ -486,7 +489,7 @@ class OrganismLiveEngine:
                             take_profit=float(lvl_data.get("take_profit", 0)),
                             trailing_stop=float(lvl_data.get("trailing_stop", 0)),
                             atr_at_entry=float(lvl_data.get("atr", 0)),
-                            regime_at_entry=lvl_data.get("regime_at_entry", "normal"),
+                            regime_at_entry=lvl_data.get("regime_at_entry", "unknown"),
                             highest_favorable=float(lvl_data.get("highest_favorable", lvl_data.get("entry", 0))),
                             bars_held=int(lvl_data.get("bars_held", 0)),
                             partial_tp_taken=bool(lvl_data.get("partial_tp_taken", False)),
@@ -541,7 +544,7 @@ class OrganismLiveEngine:
             if tk_loaded:
                 current_regime = self.regime_detector.current_regime
                 if current_regime == RegimeLabel.UNKNOWN:
-                    current_regime = "normal"
+                    current_regime = "unknown"
                 self.evolved_params = self.transfer_engine.warm_start_params(
                     self.evolved_params,
                     current_regime=current_regime,
@@ -569,6 +572,28 @@ class OrganismLiveEngine:
         await self._bg_trainer.start()
 
         self._initialized = True
+
+        # ── Preflight diagnostics (non-fatal) ────────────────────
+        try:
+            from backend.organism.diagnostics import diagnostics as _diag, CheckMode
+            import backend.organism.diagnostic_checks  # noqa: F401 — registers checks
+            report = await _diag.run(CheckMode.PREFLIGHT, engine=self)
+            self._last_diagnostic_report = report
+            store = getattr(self, "_diag_store", None)
+            if store:
+                await store.append(report, trigger="preflight")
+            summary = report.summary
+            logger.info(
+                "PREFLIGHT: %d/%d checks passed (%d critical failures, %d warnings)",
+                summary["passed"], summary["total"],
+                summary["critical_failures"], summary["warnings"],
+            )
+            for r in report.results:
+                if not r.passed and r.severity == "critical":
+                    logger.error("PREFLIGHT CRITICAL FAIL: %s — %s", r.name, r.message)
+        except Exception as e:
+            logger.debug("Preflight diagnostics error (non-fatal): %s", e)
+
         return brain_loaded
 
     async def _reconstruct_trades_from_db(self) -> None:
@@ -1903,8 +1928,32 @@ class OrganismLiveEngine:
                 for sym in stale_pending:
                     del self._pending_entry[sym]
 
+            # INV-5: Run continuous diagnostics every 100 ticks
+            if self._tick_count > 0 and self._tick_count % 100 == 0:
+                asyncio.create_task(self._run_continuous_diagnostics())
+
         except Exception as e:
             logger.debug("Invariant check error (non-fatal): %s", e)
+
+    async def _run_continuous_diagnostics(self) -> None:
+        """Run CONTINUOUS diagnostic checks and store the report."""
+        try:
+            from backend.organism.diagnostics import diagnostics as _diag, CheckMode
+            import backend.organism.diagnostic_checks  # noqa: F401
+            report = await _diag.run(CheckMode.CONTINUOUS, engine=self)
+            self._last_diagnostic_report = report
+            store = getattr(self, "_diag_store", None)
+            if store:
+                await store.append(report, trigger="continuous")
+            if not report.all_critical_passed:
+                for r in report.results:
+                    if not r.passed and r.severity == "critical":
+                        logger.error(
+                            "CONTINUOUS DIAGNOSTIC FAIL: %s — %s",
+                            r.name, r.message,
+                        )
+        except Exception as e:
+            logger.debug("Continuous diagnostics error (non-fatal): %s", e)
 
     # ═════════════════════════════════════════════════════════════
     #  DATA PIPELINE
@@ -2328,7 +2377,7 @@ class OrganismLiveEngine:
             # Record for regime-stratified Kelly
             exit_lvl = self._exit_levels.get(sym)
             regime_at_trade = (
-                exit_lvl.regime_at_entry if exit_lvl else "normal"
+                exit_lvl.regime_at_entry if exit_lvl else "unknown"
             )
             self.kelly_sizer.record_trade(regime_at_trade, pnl)
 
@@ -2699,7 +2748,7 @@ class OrganismLiveEngine:
                 fi = self.signal_gen._get_feature_importance()
                 current_regime = self.regime_detector.current_regime
                 if current_regime == RegimeLabel.UNKNOWN:
-                    current_regime = "normal"
+                    current_regime = "unknown"
                 self.transfer_engine.record_run(
                     evolved_params=self.evolved_params,
                     trades=self._all_trades[-200:],

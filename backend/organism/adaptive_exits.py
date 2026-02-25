@@ -105,58 +105,53 @@ class AdaptiveExitEngine:
     # ── regime lookup tables ──
     # Stop width  (ATR multiplier for initial SL)
     REGIME_STOP_ATR = {
-        "trending_up": 2.0,
-        "trending":    1.8,
-        "normal":      1.5,
+        "trending_up":   2.0,
         "trending_down": 1.3,
-        "chop":        1.2,
-        "high_vol":    1.0,
-        "stress":      0.9,
-        "crisis":      0.8,
+        "chop":          1.2,
+        "high_vol":      1.0,
+        "low_vol":       1.8,   # calm → give room
+        "stress":        0.9,
+        "unknown":       1.5,   # moderate default
     }
     # Take-profit R-multiple
     REGIME_TP_R = {
-        "trending_up": 6.0,
-        "trending":    5.0,
-        "normal":      4.0,
+        "trending_up":   6.0,
         "trending_down": 3.0,
-        "chop":        2.5,
-        "high_vol":    3.0,
-        "stress":      2.0,
-        "crisis":      1.5,
+        "chop":          2.5,
+        "high_vol":      3.0,
+        "low_vol":       5.0,   # calm → bigger targets
+        "stress":        2.0,
+        "unknown":       4.0,
     }
     # Trail distance (ATR multiple from highest close)
     REGIME_TRAIL_ATR = {
-        "trending_up": 3.5,
-        "trending":    3.0,
-        "normal":      2.5,
+        "trending_up":   3.5,
         "trending_down": 2.0,
-        "chop":        1.5,
-        "high_vol":    2.0,
-        "stress":      1.5,
-        "crisis":      1.0,
+        "chop":          1.5,
+        "high_vol":      2.0,
+        "low_vol":       3.0,   # calm → wide trail
+        "stress":        1.5,
+        "unknown":       2.5,
     }
     # Max bars held (0 = disabled)
     REGIME_MAX_BARS = {
-        "trending_up": 0,
-        "trending":    0,
-        "normal":      40,
+        "trending_up":   0,
         "trending_down": 30,
-        "chop":        25,
-        "high_vol":    30,
-        "stress":      20,
-        "crisis":      15,
+        "chop":          25,
+        "high_vol":      30,
+        "low_vol":       0,     # calm → let positions run
+        "stress":        20,
+        "unknown":       40,
     }
     # Time-decay start bar
     REGIME_DECAY_START = {
-        "trending_up": 0,     # no decay in strong trends
-        "trending":    0,
-        "normal":      30,
+        "trending_up":   0,     # no decay in strong trends
         "trending_down": 20,
-        "chop":        15,
-        "high_vol":    20,
-        "stress":      10,
-        "crisis":      8,
+        "chop":          15,
+        "high_vol":      20,
+        "low_vol":       0,     # calm → no decay
+        "stress":        10,
+        "unknown":       30,
     }
 
     def __init__(
@@ -191,7 +186,7 @@ class AdaptiveExitEngine:
         entry_price: float,
         predicted_return: float,
         features_df: pd.DataFrame,
-        regime: str = "normal",
+        regime: str = "unknown",
     ) -> ExitLevels:
         """Create initial exit levels for a new position.
 
@@ -251,7 +246,7 @@ class AdaptiveExitEngine:
         self,
         levels: ExitLevels,
         current_price: float,
-        current_regime: str = "normal",
+        current_regime: str = "unknown",
     ) -> ExitSignal:
         """Check if any exit condition is triggered.
 
@@ -322,8 +317,8 @@ class AdaptiveExitEngine:
         # 7. Regime change — if regime went to stress/crisis, tighten ONCE
         if (
             not levels.stress_tightened
-            and current_regime in ("stress", "crisis")
-            and levels.regime_at_entry not in ("stress", "crisis")
+            and current_regime == "stress"
+            and levels.regime_at_entry != "stress"
         ):
             self._tighten_for_stress(levels, current_price)
             levels.stress_tightened = True
@@ -363,7 +358,7 @@ class AdaptiveExitEngine:
         self,
         levels: ExitLevels,
         current_price: float,
-        current_regime: str = "normal",
+        current_regime: str = "unknown",
     ) -> ExitSignal:
         """ATR-distance trailing from highest favorable close.
 

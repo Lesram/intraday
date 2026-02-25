@@ -221,11 +221,11 @@ class TestMultiTickState:
         features = {"AAPL": _make_features_df(60)}
 
         sizes_trained = sizer.size_positions(
-            candidates, 100_000.0, 0.0, features, "normal",
+            candidates, 100_000.0, 0.0, features, "unknown",
             ml_is_trained=True,
         )
         sizes_untrained = sizer.size_positions(
-            candidates, 100_000.0, 0.0, features, "normal",
+            candidates, 100_000.0, 0.0, features, "unknown",
             ml_is_trained=False,
         )
 

@@ -264,7 +264,7 @@ class TestBrainRoundTrip:
             take_profit=170.0,
             trailing_stop=155.0,  # Trailing has moved up
             atr_at_entry=3.5,
-            regime_at_entry="normal",
+            regime_at_entry="unknown",
             highest_favorable=162.0,  # Peak was 162
             bars_held=25,
             partial_tp_taken=True,   # Partial TP was taken
@@ -596,14 +596,14 @@ class TestMaxLossSafetyNet:
             take_profit=20.0,
             trailing_stop=10.0,
             atr_at_entry=2.0,      # ATR is large
-            regime_at_entry="normal",
+            regime_at_entry="unknown",
             highest_favorable=12.85,
             bars_held=5,
         )
 
         # Price dropped 16% → should trigger max_loss_limit
         crash_price = 12.85 * 0.84  # = ~10.794
-        signal = exit_engine.check_exit(levels, crash_price, "normal")
+        signal = exit_engine.check_exit(levels, crash_price, "unknown")
         assert signal.should_exit is True
         assert signal.reason == "max_loss_limit"
 
@@ -618,14 +618,14 @@ class TestMaxLossSafetyNet:
             take_profit=130.0,
             trailing_stop=80.0,
             atr_at_entry=5.0,
-            regime_at_entry="normal",
+            regime_at_entry="unknown",
             highest_favorable=100.0,
             bars_held=3,
         )
 
         # 14% loss — below the 15% threshold
         price_14pct = 100.0 * 0.86
-        signal = exit_engine.check_exit(levels, price_14pct, "normal")
+        signal = exit_engine.check_exit(levels, price_14pct, "unknown")
         # Should NOT fire max_loss_limit (may fire stop_loss depending on levels)
         if signal.should_exit:
             assert signal.reason != "max_loss_limit"
@@ -641,13 +641,13 @@ class TestMaxLossSafetyNet:
             take_profit=40.0,
             trailing_stop=60.0,
             atr_at_entry=2.0,
-            regime_at_entry="normal",
+            regime_at_entry="unknown",
             highest_favorable=50.0,
             bars_held=5,
         )
 
         # Short at 50, price goes to 58 = +16% adverse = -16% PnL
-        signal = exit_engine.check_exit(levels, 58.0, "normal")
+        signal = exit_engine.check_exit(levels, 58.0, "unknown")
         assert signal.should_exit is True
         assert signal.reason == "max_loss_limit"
 
@@ -886,18 +886,18 @@ class TestTrailingStopBehavior:
             take_profit=120.0,
             trailing_stop=97.0,
             atr_at_entry=1.0,
-            regime_at_entry="normal",
+            regime_at_entry="unknown",
             highest_favorable=100.0,
             bars_held=0,
         )
 
         # Price moves up 2x ATR — trail should NOT activate
-        exit_engine.check_exit(levels, 102.0, "normal")
+        exit_engine.check_exit(levels, 102.0, "unknown")
         assert levels.trailing_active is False
 
         # Price moves up 3.5x ATR — trail SHOULD activate
         levels.highest_favorable = 103.5
-        exit_engine.check_exit(levels, 103.5, "normal")
+        exit_engine.check_exit(levels, 103.5, "unknown")
         assert levels.trailing_active is True
 
     def test_trailing_never_goes_down(self):
@@ -914,7 +914,7 @@ class TestTrailingStopBehavior:
             take_profit=120.0,
             trailing_stop=97.0,
             atr_at_entry=1.0,
-            regime_at_entry="normal",
+            regime_at_entry="unknown",
             highest_favorable=100.0,
             bars_held=0,
         )
@@ -925,7 +925,7 @@ class TestTrailingStopBehavior:
 
         for price in prices:
             levels.highest_favorable = max(levels.highest_favorable, price)
-            exit_engine.check_exit(levels, price, "normal")
+            exit_engine.check_exit(levels, price, "unknown")
             assert levels.trailing_stop >= prev_trail, (
                 f"Trailing stop went DOWN from {prev_trail} to "
                 f"{levels.trailing_stop} at price {price}"
@@ -948,7 +948,7 @@ class TestTrailingStopBehavior:
             take_profit=120.0,
             trailing_stop=stop_loss,
             atr_at_entry=atr,
-            regime_at_entry="normal",
+            regime_at_entry="unknown",
             highest_favorable=entry,
             bars_held=0,
             partial_tp_price=partial_tp_price,
@@ -956,7 +956,7 @@ class TestTrailingStopBehavior:
 
         # Price hits partial TP
         levels.highest_favorable = partial_tp_price + 0.5
-        signal = exit_engine.check_exit(levels, partial_tp_price + 0.5, "normal")
+        signal = exit_engine.check_exit(levels, partial_tp_price + 0.5, "unknown")
 
         if signal.should_exit and signal.reason == "partial_take_profit":
             # After partial TP, stop should be at breakeven

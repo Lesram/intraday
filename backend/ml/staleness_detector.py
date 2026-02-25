@@ -189,7 +189,7 @@ class ModelStalenessDetector:
         baseline_precision: float = 0.0,
         baseline_recall: float = 0.0,
         feature_baseline: dict[str, Any] | None = None,
-        training_regime: str = "normal",
+        training_regime: str = "unknown",
         prediction_baseline: list[float] | None = None,
     ) -> None:
         """
@@ -284,7 +284,7 @@ class ModelStalenessDetector:
         current_features: pd.DataFrame | None = None,
         current_predictions: list[float] | None = None,
         current_performance: dict[str, float] | None = None,
-        current_regime: str = "normal",
+        current_regime: str = "unknown",
         current_confidences: list[float] | None = None,
     ) -> StalenessMetrics:
         """
@@ -360,7 +360,7 @@ class ModelStalenessDetector:
                 reasons.append(StalenessReason.PREDICTION_DRIFT)
         
         # 5. Check regime
-        training_regime = baseline.get("training_regime", "normal")
+        training_regime = baseline.get("training_regime", "unknown")
         regime_match = current_regime == training_regime
         if not regime_match:
             reasons.append(StalenessReason.REGIME_CHANGE)

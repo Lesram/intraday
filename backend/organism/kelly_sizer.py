@@ -106,7 +106,7 @@ class KellySizer:
         portfolio_value: float,
         current_drawdown: float,
         features_by_symbol: dict[str, pd.DataFrame],
-        current_regime: str = "normal",
+        current_regime: str = "unknown",
         ml_is_trained: bool = True,
     ) -> list[PositionSize]:
         """Size positions for a list of alpha candidates.
@@ -336,14 +336,13 @@ class KellySizer:
                 return float(scale)
 
         scales = {
-            "trending_up": 1.2,     # was 1.0 — lean in
-            "trending": 1.0,        # was 0.9
-            "normal": 0.85,         # was 0.8
+            "trending_up": 1.2,
             "trending_down": 0.6,
             "chop": 0.5,
-            "high_vol": 0.5,        # reduced from 0.7 — tighter brake for untrained model
+            "high_vol": 0.5,
+            "low_vol": 1.0,         # calm market → full sizing
             "stress": 0.3,
-            "crisis": 0.1,
+            "unknown": 0.7,         # insufficient data → conservative
         }
         return scales.get(regime, 0.7)
 

@@ -132,7 +132,7 @@ class TestEvolutionEngine:
         new_params = evo.evolve(
             params, trades,
             feature_importances={"rsi_14": 0.08, "macd": 0.05},
-            epoch_regime="trending",
+            epoch_regime="trending_up",
             all_feature_names=["rsi_14", "macd"],
         )
 
@@ -160,12 +160,12 @@ class TestEvolutionEngine:
     def test_regime_scales_adapted(self):
         evo = EvolutionEngine(min_trades=5)
         params = EvolvedParams()
-        original_trending = params.regime_size_scales["trending"]
+        original_trending = params.regime_size_scales["trending_up"]
         trades = _make_trades(20)
 
-        new_params = evo.evolve(params, trades, epoch_regime="trending")
+        new_params = evo.evolve(params, trades, epoch_regime="trending_up")
         # With mostly winning trades, trending scale should increase
-        assert new_params.regime_size_scales["trending"] != original_trending
+        assert new_params.regime_size_scales["trending_up"] != original_trending
 
     def test_multiple_evolution_steps(self):
         evo = EvolutionEngine(min_trades=5)
@@ -173,7 +173,7 @@ class TestEvolutionEngine:
         trades = _make_trades(20)
 
         for _ in range(5):
-            params = evo.evolve(params, trades, epoch_regime="normal")
+            params = evo.evolve(params, trades, epoch_regime="unknown")
 
         assert params.evolution_generation == 5
         assert params.total_adaptations == 5
@@ -238,11 +238,11 @@ class TestApplyEvolvedParams:
 
         sizer = KellySizer()
         params = EvolvedParams()
-        params.regime_size_scales["trending"] = 1.15
+        params.regime_size_scales["trending_up"] = 1.15
 
         apply_evolved_params(params, kelly_sizer=sizer)
 
         assert hasattr(sizer, "_evolved_regime_scales")
-        assert sizer._evolved_regime_scales["trending"] == 1.15
+        assert sizer._evolved_regime_scales["trending_up"] == 1.15
         # Verify the regime_scale method uses evolved values
-        assert sizer._regime_scale("trending") == 1.15
+        assert sizer._regime_scale("trending_up") == 1.15

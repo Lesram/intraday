@@ -145,7 +145,7 @@ class PositionExitDetail:
     time_exit_distance_pct: float = 0.0
     # ATR info
     atr_at_entry: float = 0.0
-    regime_at_entry: str = "normal"
+    regime_at_entry: str = "unknown"
     highest_favorable: float = 0.0
     # Nearest exit condition
     nearest_exit: str = ""
