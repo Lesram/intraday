@@ -31,7 +31,7 @@ import time
 import uuid
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
-from typing import Any
+from typing import Any, Callable
 
 import numpy as np
 import pandas as pd
@@ -255,6 +255,7 @@ class OrganismLiveEngine:
         universe: list[str] | None = None,
         sessionmaker: Any | None = None,  # Phase 3.3: for VersionedFeatureStore
         streaming_provider: Any | None = None,  # StreamingDataProvider
+        timeframe: str | None = None,  # Override module-level LIVE_TIMEFRAME
     ) -> None:
         self._data_client = data_client
         self._order_service = order_service
@@ -268,6 +269,10 @@ class OrganismLiveEngine:
             if s.strip()
         ]
 
+        # ── Timeframe-aware config ───────────────────────────────
+        self._timeframe = timeframe or LIVE_TIMEFRAME
+        self._is_intraday = self._timeframe in ("1Min", "5Min", "15Min", "1Hour")
+
         # ── Organism components ──────────────────────────────────
         self.signal_gen = MLSignalGenerator(
             train_window=TRAIN_WINDOW,
@@ -275,32 +280,43 @@ class OrganismLiveEngine:
             max_depth=5,
             learning_rate=0.05,
         )
-        self.alpha_scanner = AlphaScanner(top_n=MAX_OPEN_POSITIONS)
+        self.alpha_scanner = AlphaScanner(top_n=3)  # was MAX_OPEN_POSITIONS — reduce overtrading
         self.breakout_scanner = BreakoutScanner(top_n=MAX_OPEN_POSITIONS)
+        # Scale breakout scanner lookbacks for intraday bars (4x ≈ 6.5 hrs)
+        if self._is_intraday:
+            _intraday_scale = 4
+            self.breakout_scanner.BB_PERIOD = 20 * _intraday_scale      # 80
+            self.breakout_scanner.ATR_SHORT = 10 * _intraday_scale      # 40
+            self.breakout_scanner.ATR_LONG = 50 * _intraday_scale       # 200
+            self.breakout_scanner.VOL_AVG_PERIOD = 20 * _intraday_scale # 80
         self.pyramider = MomentumPyramider()
-        self.kelly_sizer = KellySizer(
-            max_position_pct=0.08,    # HFT: smaller positions, faster turns
-            max_portfolio_pct=0.95,
-            vol_target=0.15,
-            min_position_usd=500.0,   # HFT: allow small scalps ($500 min)
-        )
-        self.exit_engine = AdaptiveExitEngine(
-            atr_multiplier=1.0,        # HFT: tighter stops for intraday
-            profit_r_multiple=3.0,     # HFT: take profit sooner
-            trailing_start_atr=2.0,    # HFT: engage trailing stop sooner
-            trailing_distance_atr=1.5, # HFT: tighter trailing
-            max_bars_held=120,         # 1-min bars: 2 hours max hold
-            time_decay_start=60,       # start penalizing after 1 hour
-            partial_tp_r=2.0,          # HFT: partial take-profit sooner
-            partial_tp_pct=0.40,       # HFT: take 40% off at partial TP
-        )
+        if self._is_intraday:
+            self.kelly_sizer = KellySizer(
+                max_position_pct=0.08,    # HFT: smaller positions, faster turns
+                max_portfolio_pct=0.95,
+                vol_target=0.15,
+                min_position_usd=500.0,   # HFT: allow small scalps ($500 min)
+            )
+        else:
+            self.kelly_sizer = KellySizer(
+                max_position_pct=0.10,
+                max_portfolio_pct=0.95,
+                vol_target=0.15,
+                min_position_usd=2000.0,
+            )
+        self.exit_engine = AdaptiveExitEngine.for_timeframe(self._timeframe)
+
+        # ML reversal thresholds — higher bar for daily to reduce false chipping
+        self._ml_reversal_confidence = 0.6 if self._is_intraday else 0.65
+        self._ml_reversal_partial_pct = 0.30 if self._is_intraday else 0.25
+
         self.learner = ContinuousLearner(
             signal_generator=self.signal_gen,
             retrain_every_n_bars=RETRAIN_INTERVAL,
             min_trades_for_eval=10,
             improvement_threshold=0.05,
         )
-        self.regime_detector = RegimeDetector()
+        self.regime_detector = RegimeDetector(is_intraday=self._is_intraday)
         self.governance = GovernanceController()
         self.evolution_engine = EvolutionEngine(
             alpha=0.30,
@@ -364,13 +380,13 @@ class OrganismLiveEngine:
         # Symbols with recent exit orders — cooldown prevents wash trade rejections
         # Maps symbol → tick number when exit was submitted
         self._exit_cooldown: dict[str, int] = {}
-        self._EXIT_COOLDOWN_TICKS = 3  # Wait 3 ticks (~30s) before re-entering
+        self._EXIT_COOLDOWN_TICKS = 10  # Wait 10 ticks (~100s) wash-trade prevention (was 3)
 
         # Symbols with recent entry orders — prevents re-submitting the same
         # order every tick when the order hasn't settled or was rejected.
         # Maps symbol → tick number when entry order was submitted
         self._pending_entry: dict[str, int] = {}
-        self._PENDING_ENTRY_TICKS = 15  # Wait 15 ticks (~2.5 min) before retrying same symbol
+        self._PENDING_ENTRY_TICKS = 30  # Wait 30 ticks (~5 min) per-symbol cooldown (was 15)
 
         # Symbols with pending exit orders — prevents duplicate exits across
         # ticks while the broker is still processing the exit.
@@ -378,10 +394,22 @@ class OrganismLiveEngine:
         self._pending_exit: dict[str, int] = {}
         self._PENDING_EXIT_TICKS = 3  # Wait 3 ticks (~30s) before re-trying exit
 
+        # SPY MA filter — block long entries when SPY < SMA
+        self._spy_filter_enabled = True
+        self._spy_ma_period = 50
+
         # ML reversal one-shot guard — once ml_reversal fires on a symbol,
         # it cannot fire again until the position is fully closed.  Prevents
         # repeated 50% partials from chipping positions to 1 share.
         self._ml_reversal_used: set[str] = set()
+
+        # Global entries-per-hour throttle — prevents overtrading
+        self._entry_timestamps: list[float] = []
+        self._MAX_ENTRIES_PER_HOUR = 3
+
+        # Warmup period — skip entries for first N ticks after startup to let
+        # features stabilize and avoid cold-start entry burst.
+        self._WARMUP_TICKS = 5  # ~50s at 10s tick interval
 
         # Consecutive equity-zero counter — avoids permanent halt on
         # transient broker API glitches.  Requires N consecutive zeros
@@ -392,6 +420,10 @@ class OrganismLiveEngine:
         # Serialize live_tick() calls to prevent concurrent state mutation
         # (scheduler loop + manual /tick endpoint)
         self._tick_lock = asyncio.Lock()
+
+        # Clock overrides for replay/testing — defaults to real time
+        self._time_fn: Callable[[], float] = time.time
+        self._now_fn: Callable[[], datetime] = lambda: datetime.now(UTC)
 
         # ── Background trainer for non-blocking retraining ────────
         self._bg_trainer = BackgroundTrainer()
@@ -479,6 +511,20 @@ class OrganismLiveEngine:
                 "bars_since_retrain", 0
             )
 
+            # Restore entry timestamps — prevents cold-start burst
+            saved_ts = self.brain.extra_counters.get("entry_timestamps", [])
+            if saved_ts and isinstance(saved_ts, list):
+                now_ts = self._time_fn()
+                # Only keep timestamps from last hour (still valid for throttle)
+                self._entry_timestamps = [
+                    float(t) for t in saved_ts if now_ts - float(t) < 3600
+                ]
+                if self._entry_timestamps:
+                    logger.info(
+                        "Restored %d entry timestamps (throttle state preserved)",
+                        len(self._entry_timestamps),
+                    )
+
             # Restore exit levels — preserves trailing stop state,
             # partial_tp_taken, stress_tightened flags across restarts.
             saved_exit_levels = self.brain.extra_counters.get("exit_levels", {})
@@ -499,6 +545,7 @@ class OrganismLiveEngine:
                             bars_held=int(lvl_data.get("bars_held", 0)),
                             partial_tp_taken=bool(lvl_data.get("partial_tp_taken", False)),
                             trailing_active=bool(lvl_data.get("trailing_active", False)),
+                            profit_locked=bool(lvl_data.get("profit_locked", False)),
                         )
                     except (KeyError, ValueError, TypeError) as e:
                         logger.debug("Cannot restore exit levels for %s: %s", sym, e)
@@ -702,6 +749,18 @@ class OrganismLiveEngine:
             self._equity_curve.append(cumulative)
         self._peak_equity = max(self._equity_curve) if self._equity_curve else 0.0
 
+        # Feed reconstructed trades to learner so ML can train
+        if hasattr(self, 'learner') and self.learner:
+            for t in reconstructed:
+                try:
+                    self.learner.record_trade(t)
+                except Exception as e:
+                    logger.warning("Failed to record reconstructed trade for %s: %s", t.symbol, e)
+            logger.info(
+                "Fed %d reconstructed trades to learner (total_trades=%d)",
+                len(reconstructed), self.learner.state.total_trades,
+            )
+
         logger.info(
             "Reconstructed %d trades from DB: cumulative PnL=$%.2f",
             len(reconstructed),
@@ -748,7 +807,7 @@ class OrganismLiveEngine:
         """Inner tick logic — always called under _tick_lock."""
         t0 = time.time()
         result = LiveTickResult(
-            timestamp=datetime.now(UTC).isoformat(),
+            timestamp=self._now_fn().isoformat(),
         )
         self._tick_count += 1
         # Expire old cooldowns (keep only recent exits)
@@ -796,6 +855,19 @@ class OrganismLiveEngine:
                 result.errors.append("Trading halted by governance — exits still active")
                 result.activity.append(ActivityEvent(
                     event_type="governance", message="Trading halted — blocking new entries, exits still running",
+                    timestamp=now_iso,
+                ))
+
+            # 1.1 WARMUP GATE — let features stabilize before entering
+            if not entries_blocked and self._tick_count <= self._WARMUP_TICKS:
+                entries_blocked = True
+                logger.info(
+                    "Warmup period: %d/%d ticks — blocking entries",
+                    self._tick_count, self._WARMUP_TICKS,
+                )
+                result.activity.append(ActivityEvent(
+                    event_type="skip",
+                    message=f"Warmup: tick {self._tick_count}/{self._WARMUP_TICKS} — entries blocked",
                     timestamp=now_iso,
                 ))
 
@@ -950,7 +1022,7 @@ class OrganismLiveEngine:
                 result.errors.append("Trading halted by governance — exits still active")
 
             # 5. CHECK EXITS on existing positions
-            _MAX_LOSS_PCT = 0.15  # Absolute safety net — no position beyond -15%
+            _MAX_LOSS_PCT = self.exit_engine.max_loss_pct
             exits_submitted = 0
             for sym, pos_data in list(current_positions.items()):
                 # LONG_ONLY guard: skip exit processing for SHORT positions.
@@ -1096,7 +1168,7 @@ class OrganismLiveEngine:
                         if (
                             ml_sig.direction != 0
                             and ml_sig.direction != pos_direction
-                            and ml_sig.confidence > 0.3
+                            and ml_sig.confidence > self._ml_reversal_confidence
                         ):
                             from backend.organism.adaptive_exits import ExitSignal
                             exit_sig = ExitSignal(
@@ -1104,7 +1176,7 @@ class OrganismLiveEngine:
                                 reason="ml_reversal",
                                 exit_price=current_price,
                                 partial_exit=True,
-                                partial_pct=0.50,
+                                partial_pct=self._ml_reversal_partial_pct,
                             )
                             self._ml_reversal_used.add(sym)
                     except Exception:
@@ -1172,8 +1244,68 @@ class OrganismLiveEngine:
                 # Fall through to reconcile, brain save, metadata, and
                 # metric export — these ALWAYS run regardless of halt state.
 
+            # ── SPY MA filter: block longs when SPY < SMA ──────
+            if not entries_blocked and self._spy_filter_enabled and LONG_ONLY:
+                spy_df = features_by_symbol.get("SPY")
+                if spy_df is not None and len(spy_df) >= self._spy_ma_period:
+                    spy_close = float(spy_df["close"].iloc[-1])
+                    spy_sma = float(spy_df["close"].iloc[-self._spy_ma_period:].mean())
+                    if spy_close < spy_sma:
+                        entries_blocked = True
+                        logger.info(
+                            "SPY MA filter: SPY %.2f < SMA%d %.2f — blocking entries",
+                            spy_close, self._spy_ma_period, spy_sma,
+                        )
+                        result.activity.append(ActivityEvent(
+                            event_type="skip",
+                            message=f"SPY filter: {spy_close:.2f} < SMA{self._spy_ma_period} "
+                                    f"{spy_sma:.2f} — entries blocked",
+                            details={"spy_close": spy_close, "spy_sma": spy_sma},
+                            timestamp=now_iso,
+                        ))
+
+            # ── Fix B: Regime sit-out gate ─────────────────────
+            _regime_sit_out = False
+            _sitout_ml = None
+            if not entries_blocked and LONG_ONLY and regime in ("high_vol", "stress"):
+                _sitout_ml = self.signal_gen.predict_batch(features_by_symbol)
+                _bearish = sum(1 for s in _sitout_ml.values() if s.direction < 0)
+                _bullish = sum(1 for s in _sitout_ml.values() if s.direction > 0)
+                if _bearish > 0 and _bullish == 0:
+                    _regime_sit_out = True
+                    logger.info(
+                        "Regime sit-out: %s regime, %d bearish / %d bullish ML signals — "
+                        "skipping entries",
+                        regime, _bearish, _bullish,
+                    )
+                    result.activity.append(ActivityEvent(
+                        event_type="skip",
+                        message=f"Regime sit-out: {regime} + all bearish ({_bearish} short, 0 long)",
+                        timestamp=now_iso,
+                    ))
+
+            # ── Fix E: Global entries-per-hour throttle ───────
+            _throttled = False
+            if not entries_blocked and not _regime_sit_out:
+                now_ts = self._time_fn()
+                self._entry_timestamps = [
+                    t for t in self._entry_timestamps if now_ts - t < 3600
+                ]
+                if len(self._entry_timestamps) >= self._MAX_ENTRIES_PER_HOUR:
+                    _throttled = True
+                    logger.info(
+                        "Entry throttle: %d entries in last hour (max %d) — "
+                        "blocking new entries this tick",
+                        len(self._entry_timestamps), self._MAX_ENTRIES_PER_HOUR,
+                    )
+                    result.activity.append(ActivityEvent(
+                        event_type="skip",
+                        message=f"Entry throttle: {len(self._entry_timestamps)}/{self._MAX_ENTRIES_PER_HOUR} entries/hour — pausing",
+                        timestamp=now_iso,
+                    ))
+
             # ── Steps 6-9: Entry-side logic (gated) ─────────────
-            if not entries_blocked:
+            if not entries_blocked and not _regime_sit_out and not _throttled:
 
                 # 6. CHECK PYRAMIDS
                 for sym, pos_data in current_positions.items():
@@ -1219,8 +1351,8 @@ class OrganismLiveEngine:
                 )
                 breakout_by_sym = {s.symbol: s for s in breakout_signals}
 
-                # ML predictions
-                ml_signals = self.signal_gen.predict_batch(features_by_symbol)
+                # ML predictions — reuse sit-out batch if available
+                ml_signals = _sitout_ml if _sitout_ml else self.signal_gen.predict_batch(features_by_symbol)
 
                 # Alpha scan
                 candidates = self.alpha_scanner.scan(
@@ -1292,9 +1424,13 @@ class OrganismLiveEngine:
                     })
                     _planned_entries.add(c.symbol)
 
-                # Pure breakout signals not in alpha candidates
+                # Pure breakout signals not in alpha candidates (capped at 2)
                 alpha_syms = {d["symbol"] for d in cand_dicts}
+                _breakout_added = 0
+                _MAX_PURE_BREAKOUT = 2
                 for bs in breakout_signals:
+                    if _breakout_added >= _MAX_PURE_BREAKOUT:
+                        break
                     if (
                         bs.symbol not in alpha_syms
                         and bs.symbol not in open_symbols
@@ -1322,6 +1458,7 @@ class OrganismLiveEngine:
                             "breakout_score": bs.composite_score,
                         })
                         _planned_entries.add(bs.symbol)
+                        _breakout_added += 1
 
                 cand_dicts.sort(
                     key=lambda x: x["breakout_score"] * x["confidence"],
@@ -1357,18 +1494,13 @@ class OrganismLiveEngine:
 
                 # 8b. INTRADAY SEASONALITY FILTER — reduce allocation
                 # during first/last 15 min (highest volatility, worst fills)
-                if _IS_INTRADAY and sizes:
-                    from datetime import timezone
-                    now_et = datetime.now(UTC)
-                    # Approximate ET offset (UTC-5 EST / UTC-4 EDT)
-                    # Good enough for 15-min window checks
+                if self._is_intraday and sizes:
+                    _now = self._now_fn()
                     try:
                         import zoneinfo
-                        now_et = datetime.now(zoneinfo.ZoneInfo("America/New_York"))
+                        now_et = _now.astimezone(zoneinfo.ZoneInfo("America/New_York"))
                     except Exception:
-                        now_et = datetime.now(UTC).replace(
-                            hour=(datetime.now(UTC).hour - 5) % 24
-                        )
+                        now_et = _now
                     hhmm = now_et.hour * 100 + now_et.minute
                     if (930 <= hhmm <= 945) or (1545 <= hhmm <= 1600):
                         for sz in sizes:
@@ -1423,6 +1555,8 @@ class OrganismLiveEngine:
                         fresh_open.add(sz.symbol)  # Track to enforce MAX_OPEN_POSITIONS within tick
                         # Mark as pending so we don't re-submit next tick
                         self._pending_entry[sz.symbol] = self._tick_count
+                        # Fix E: Record entry timestamp for hourly throttle
+                        self._entry_timestamps.append(self._time_fn())
                         result.activity.append(ActivityEvent(
                             event_type="order",
                             symbol=sz.symbol,
@@ -1616,8 +1750,8 @@ class OrganismLiveEngine:
                             timestamp=now_iso,
                         ))
 
-            # 12. BRAIN SAVE (every 50 ticks — disk I/O is expensive at HFT speeds)
-            if self._tick_count % 50 == 0:
+            # 12. BRAIN SAVE (every 20 ticks ~3.3 min — was 50/~8.3 min)
+            if self._tick_count % 20 == 0:
                 await asyncio.to_thread(self._save_brain)
                 result.brain_saved = True
 
@@ -2419,6 +2553,14 @@ class OrganismLiveEngine:
                 pnl,
             )
 
+        # Save brain immediately after recording fills to prevent data loss
+        if closed:
+            try:
+                self._save_brain()
+                logger.info("Brain saved after %d fill(s) recorded", len(closed))
+            except Exception as e:
+                logger.warning("Post-fill brain save failed: %s", e)
+
         # Detect orphaned broker positions — positions that exist at the
         # broker but have no tracking metadata.  This happens when entry
         # metadata was lost (e.g. engine restart without reconstruction,
@@ -2754,6 +2896,7 @@ class OrganismLiveEngine:
                     "entry_metadata": dict(self._entry_metadata),
                     "regime_kelly_stats": self.kelly_sizer.regime_stats_to_dict(),
                     "ml_calibration": self.signal_gen.calibration_to_dict(),
+                    "entry_timestamps": list(self._entry_timestamps),
                 },
                 evolved_params=self.evolved_params.to_dict(),
                 governance_controller=self.governance,

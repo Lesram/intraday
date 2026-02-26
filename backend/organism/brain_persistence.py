@@ -661,6 +661,11 @@ class OrganismBrain:
             # Strip evolved_params from extra_counters (now in own file)
             cleaned = {k: v for k, v in extra_counters.items()
                        if k != "evolved_params"}
+            # Ensure entry_timestamps are serializable (list of floats)
+            if "entry_timestamps" in cleaned:
+                cleaned["entry_timestamps"] = [
+                    float(t) for t in cleaned["entry_timestamps"]
+                ]
             data.update(cleaned)
         _write_json(target / "extra_counters.json", data)
 

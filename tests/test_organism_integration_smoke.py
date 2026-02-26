@@ -959,9 +959,10 @@ class TestTrailingStopBehavior:
         signal = exit_engine.check_exit(levels, partial_tp_price + 0.5, "unknown")
 
         if signal.should_exit and signal.reason == "partial_take_profit":
-            # After partial TP, stop should be at breakeven
-            assert levels.stop_loss == entry, (
-                f"After partial TP, stop should be at entry ({entry}) "
+            # After partial TP, stop should be at least breakeven
+            # (profit lock at 2R may have already moved it above breakeven)
+            assert levels.stop_loss >= entry, (
+                f"After partial TP, stop should be >= entry ({entry}) "
                 f"but is {levels.stop_loss}"
             )
             assert levels.partial_tp_taken is True

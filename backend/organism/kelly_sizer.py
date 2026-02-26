@@ -206,23 +206,23 @@ class KellySizer:
             if kelly_half < 0.005 and breakout_score >= 0.55:
                 kelly_half = max(kelly_half, 0.01 * breakout_score)
 
-            # 2b. ML confidence floor — when the trained model is
-            # confident but historical returns are negative (kelly=0),
-            # allow a small position so ML predictions aren't silenced.
-            # Without this, the engine goes permanently dormant in
-            # high-vol regimes where backward-looking Kelly is zero.
-            if (
-                ml_is_trained
-                and kelly_half < 0.005
-                and confidence >= self._ML_CONFIDENCE_MIN
-            ):
-                ml_floor = self._ML_CONFIDENCE_FLOOR * confidence
+            # 2b. ML confidence floor — when the model is confident but
+            # historical returns are negative (kelly=0), allow a small
+            # position so signals aren't silenced.  Without this, the
+            # engine goes permanently dormant in high-vol regimes where
+            # backward-looking Kelly is zero.
+            if kelly_half < 0.005 and confidence >= self._ML_CONFIDENCE_MIN:
+                if ml_is_trained:
+                    ml_floor = self._ML_CONFIDENCE_FLOOR * confidence
+                else:
+                    # Untrained ML: smaller floor so sizing isn't zeroed
+                    ml_floor = (self._ML_CONFIDENCE_FLOOR / 2) * confidence
                 kelly_half = max(kelly_half, ml_floor)
                 ml_floor_applied = True
                 _logger.info(
                     "ML confidence floor for %s: kelly_half=%.4f "
-                    "(conf=%.2f, floor=%.4f)",
-                    symbol, kelly_half, confidence, ml_floor,
+                    "(conf=%.2f, floor=%.4f, trained=%s)",
+                    symbol, kelly_half, confidence, ml_floor, ml_is_trained,
                 )
 
             # 3. Drawdown scaling
@@ -271,7 +271,7 @@ class KellySizer:
             if total_weight + target_weight > self.max_portfolio_pct:
                 target_weight = max(0.0, self.max_portfolio_pct - total_weight)
 
-            if target_weight < 0.001:
+            if target_weight < 0.0005:  # was 0.001 — too aggressive in stress
                 continue
 
             # Convert to shares
@@ -341,7 +341,7 @@ class KellySizer:
             "chop": 0.5,
             "high_vol": 0.5,
             "low_vol": 1.0,         # calm market → full sizing
-            "stress": 0.3,
+            "stress": 0.4,           # was 0.3 — still 60% reduction, avoids 0-sizing cascade
             "unknown": 0.7,         # insufficient data → conservative
         }
         return scales.get(regime, 0.7)

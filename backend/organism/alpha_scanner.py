@@ -105,6 +105,23 @@ class AlphaScanner:
         candidates: list[AlphaCandidate] = []
         self._scan_count += 1
 
+        # Dynamic ML weight: reduce when ML model has low confidence
+        # (accuracy=0.0 means dead weight capping composite at ~0.65)
+        avg_ml_conf = 0.0
+        if ml_signals:
+            confs = [s.confidence for s in ml_signals.values() if s.confidence > 0]
+            avg_ml_conf = sum(confs) / len(confs) if confs else 0.0
+
+        if avg_ml_conf < 0.10:
+            effective_ml_weight = 0.05
+            ml_excess = self.WEIGHT_ML - 0.05
+            effective_breakout_weight = self.WEIGHT_BREAKOUT + ml_excess * 0.6
+            effective_momentum_weight = self.WEIGHT_MOMENTUM + ml_excess * 0.4
+        else:
+            effective_ml_weight = self.WEIGHT_ML
+            effective_breakout_weight = self.WEIGHT_BREAKOUT
+            effective_momentum_weight = self.WEIGHT_MOMENTUM
+
         # Pre-compute cross-sectional momentum rank
         mom_ranks = self._rank_momentum(features_by_symbol)
 
@@ -165,12 +182,12 @@ class AlphaScanner:
             volume_score = volume_score if np.isfinite(volume_score) else 0.0
             regime_score = regime_score if np.isfinite(regime_score) else 0.5
 
-            # Composite
+            # Composite (uses effective weights for ML/breakout/momentum)
             composite = (
-                self.WEIGHT_ML * ml_score
-                + self.WEIGHT_BREAKOUT * breakout_score
+                effective_ml_weight * ml_score
+                + effective_breakout_weight * breakout_score
                 + self.WEIGHT_INSTITUTIONAL * inst_score
-                + self.WEIGHT_MOMENTUM * momentum_score
+                + effective_momentum_weight * momentum_score
                 + self.WEIGHT_MOM_QUALITY * mom_quality
                 + self.WEIGHT_VOLUME * volume_score
                 + self.WEIGHT_REGIME * regime_score

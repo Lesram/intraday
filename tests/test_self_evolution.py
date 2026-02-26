@@ -211,16 +211,16 @@ class TestApplyEvolvedParams:
     def test_apply_to_exit_engine(self):
         from backend.organism.adaptive_exits import AdaptiveExitEngine
 
-        engine = AdaptiveExitEngine()
+        engine = AdaptiveExitEngine()  # defaults: atr_multiplier=1.5, trailing_distance_atr=2.5
         params = EvolvedParams()
         params.stop_atr_scale = 1.3
         params.trailing_distance_scale = 0.8
 
         apply_evolved_params(params, exit_engine=engine)
 
-        # Baselines match live engine's intraday config: 1.0, 2.0, 1.5, 2.0
-        assert abs(engine.atr_multiplier - 1.0 * 1.3) < 1e-6
-        assert abs(engine.trailing_distance_atr - 1.5 * 0.8) < 1e-6
+        # Evolution uses _base_* attrs (= constructor args) as baselines
+        assert abs(engine.atr_multiplier - 1.5 * 1.3) < 1e-6
+        assert abs(engine.trailing_distance_atr - 2.5 * 0.8) < 1e-6
 
     def test_apply_to_signal_gen(self):
         from backend.organism.ml_signal import MLSignalGenerator

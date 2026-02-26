@@ -43,11 +43,14 @@ class PositionDTO(BaseModel):
     updated_at: datetime | str = ""
 
 
-async def get_alpaca_positions() -> list[PositionDTO]:
+async def get_alpaca_positions(request: Request) -> list[PositionDTO]:
     """Fetch positions from Alpaca API using PositionsService."""
     try:
-        # Use the PositionsService for actual Alpaca API integration
-        positions_service = create_positions_service()
+        # Use the app-level PositionsService (has TradingClient configured)
+        positions_service = getattr(request.app.state, "positions_service", None)
+        if positions_service is None:
+            # Fallback: create fresh (will lack TradingClient → empty)
+            positions_service = create_positions_service()
         positions_dict = await positions_service.get_all_positions()
 
         now = datetime.now(UTC)
@@ -110,7 +113,7 @@ async def get_positions(
 
     if not use_mock_broker:
         # Use Alpaca API for real trading
-        positions = await get_alpaca_positions()
+        positions = await get_alpaca_positions(request)
     else:
         # Use database (no fallback to mock)
         try:

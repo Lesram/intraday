@@ -79,7 +79,7 @@ class EvolvedParams:
     trailing_start_atr_scale: float = 1.0  # scale on trailing activation
     trailing_distance_scale: float = 1.0   # scale on trailing distance
     partial_tp_r_scale: float = 1.0        # scale on partial TP R-multiple
-    partial_tp_pct: float = 0.30           # fraction to sell at partial TP
+    partial_tp_pct: float = 0.20           # fraction to sell at partial TP (was 0.30)
 
     # ── Regime-specific position sizing scales ───────────────────
     regime_size_scales: dict[str, float] = field(default_factory=lambda: {
@@ -1172,13 +1172,12 @@ def apply_evolved_params(
 
     # ── Exit Engine ──────────────────────────────────────────────
     if exit_engine is not None:
-        # Baselines MUST match the live engine's AdaptiveExitEngine
-        # constructor values (HFT/intraday config) to avoid discontinuous
-        # parameter jumps on the first evolution cycle.
-        exit_engine.atr_multiplier = 1.0 * params.stop_atr_scale
-        exit_engine.trailing_start_atr = 2.0 * params.trailing_start_atr_scale
-        exit_engine.trailing_distance_atr = 1.5 * params.trailing_distance_scale
-        exit_engine.partial_tp_r = 2.0 * params.partial_tp_r_scale
+        # Use _base_* attrs set at construction — works for any timeframe
+        # preset (intraday or daily) without hardcoding baselines.
+        exit_engine.atr_multiplier = exit_engine._base_atr_multiplier * params.stop_atr_scale
+        exit_engine.trailing_start_atr = exit_engine._base_trailing_start_atr * params.trailing_start_atr_scale
+        exit_engine.trailing_distance_atr = exit_engine._base_trailing_distance_atr * params.trailing_distance_scale
+        exit_engine.partial_tp_r = exit_engine._base_partial_tp_r * params.partial_tp_r_scale
         exit_engine.partial_tp_pct = params.partial_tp_pct
 
     # ── ML Signal Generator ──────────────────────────────────────

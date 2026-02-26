@@ -20,7 +20,7 @@ import os
 import tempfile
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -309,6 +309,29 @@ class HistoricalBarProvider:
     def bars_remaining(self) -> int:
         return max(0, self._max_idx - self._current_idx)
 
+    @property
+    def current_simulated_time(self) -> float:
+        """Return epoch seconds for current bar position.
+
+        Tries bar timestamps first, falls back to synthetic 1-minute spacing.
+        """
+        for df in self._bars.values():
+            if hasattr(df, 'index') and df.index.dtype.kind == 'M':
+                idx = min(self._current_idx - 1, len(df) - 1)
+                return pd.Timestamp(df.index[idx]).timestamp()
+            if 'timestamp' in df.columns:
+                idx = min(self._current_idx - 1, len(df) - 1)
+                return pd.Timestamp(df['timestamp'].iloc[idx]).timestamp()
+            break
+        # Synthetic fallback: 1-minute spacing from a base time
+        base = datetime(2026, 1, 2, 9, 30).timestamp()  # market open
+        return base + (self._current_idx * 60)
+
+    @property
+    def current_simulated_datetime(self) -> datetime:
+        """Return timezone-aware datetime for current bar position."""
+        return datetime.fromtimestamp(self.current_simulated_time, tz=UTC)
+
 
 # ═════════════════════════════════════════════════════════════════════════
 #  REPLAY RESULT
@@ -410,19 +433,30 @@ class ReplayEngine:
         slippage_bps: float = 5,
         universe: list[str] | None = None,
         brain_dir: str | None = None,
+        max_entries_per_hour: int = 20,
+        timeframe: str = "1Day",
+        lookback: int | None = None,
     ) -> None:
         self.bars_by_symbol = bars_by_symbol
         self.initial_cash = initial_cash
         self.slippage_bps = slippage_bps
         self.universe = universe or list(bars_by_symbol.keys())
         self.brain_dir = brain_dir
+        self.max_entries_per_hour = max_entries_per_hour
+        self.timeframe = timeframe
+
+        if lookback is not None:
+            self.lookback = lookback
+        else:
+            is_intraday = timeframe in ("1Min", "5Min", "15Min", "1Hour")
+            self.lookback = 500 if is_intraday else 200
 
     async def run(self, max_ticks: int | None = None) -> ReplayResult:
         """Run replay: create engine, loop through bars, collect results."""
         from backend.organism.live_engine import OrganismLiveEngine
 
         # Create components
-        bar_provider = HistoricalBarProvider(self.bars_by_symbol)
+        bar_provider = HistoricalBarProvider(self.bars_by_symbol, lookback=self.lookback)
         broker = SimulatedBroker(
             initial_cash=self.initial_cash,
             slippage_bps=self.slippage_bps,
@@ -437,8 +471,19 @@ class ReplayEngine:
             positions_service=broker,
             brain_dir=brain_dir,
             universe=self.universe,
+            timeframe=self.timeframe,
         )
         await engine.initialize()
+
+        # Override clock to use bar time instead of wall time
+        engine._time_fn = lambda: bar_provider.current_simulated_time
+        engine._now_fn = lambda: bar_provider.current_simulated_datetime
+
+        # Disable MarketScanner — don't hit real APIs during replay
+        engine.market_scanner = None
+
+        # Relax entry throttle for learning (production default is 3)
+        engine._MAX_ENTRIES_PER_HOUR = self.max_entries_per_hour
 
         result = ReplayResult()
         tick_count = 0
@@ -489,6 +534,7 @@ class ReplayEngine:
         timeframe: str = "1Min",
         initial_cash: float = 100_000,
         slippage_bps: float = 5,
+        lookback: int | None = None,
     ) -> ReplayEngine:
         """Fetch bars from Alpaca API and create a replay engine."""
         from backend.data.alpaca_client import AlpacaClient
@@ -506,6 +552,7 @@ class ReplayEngine:
             try:
                 df = client.get_historical_data(
                     sym, timeframe=timeframe, start=start, end=end,
+                    limit=10_000,
                 )
                 if df is not None and not df.empty:
                     # Normalize columns
@@ -525,6 +572,8 @@ class ReplayEngine:
             initial_cash=initial_cash,
             slippage_bps=slippage_bps,
             universe=symbols,
+            timeframe=timeframe,
+            lookback=lookback,
         )
 
     @classmethod
@@ -636,6 +685,8 @@ if __name__ == "__main__":
     parser.add_argument("--end", default="2026-02-25")
     parser.add_argument("--timeframe", default="1Min")
     parser.add_argument("--cash", type=float, default=100_000)
+    parser.add_argument("--lookback", type=int, default=None,
+                        help="Lookback bars for warmup (default: 200 daily, 500 intraday)")
     parser.add_argument("--max-ticks", type=int, default=None)
     args = parser.parse_args()
 
@@ -649,6 +700,7 @@ if __name__ == "__main__":
             timeframe=args.timeframe,
             initial_cash=args.cash,
             slippage_bps=5,
+            lookback=args.lookback,
         )
         result = await engine.run(max_ticks=args.max_ticks)
         print(result.summary())

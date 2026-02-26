@@ -97,12 +97,18 @@ class RegimeDetector:
         trend_threshold: float = 0.02,
         churn_window: int = 20,
         smoothing_alpha: float = 0.3,
+        is_intraday: bool = False,
     ) -> None:
-        self._sma_period = sma_period
-        self._vol_lookback = vol_lookback
+        # Scale lookbacks for intraday bars to reduce noise.
+        # 4x makes SMA_200 (~3.3hrs on 1-min) roughly analogous to a
+        # multi-day moving average — still responsive but filters noise.
+        scale = 4 if is_intraday else 1
+        self._sma_period = sma_period * scale
+        self._vol_lookback = vol_lookback * scale
         self._trend_threshold = trend_threshold
-        self._churn_window = churn_window
+        self._churn_window = churn_window * scale
         self._alpha = smoothing_alpha
+        self._is_intraday = is_intraday
 
         # Running state
         self._history: list[str] = []

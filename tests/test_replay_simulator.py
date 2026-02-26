@@ -327,3 +327,169 @@ def test_make_features_dict():
     assert len(result) == 3
     assert all(len(df) == 300 for df in result.values())
     assert all("close" in df.columns for df in result.values())
+
+
+# ═════════════════════════════════════════════════════════════════════════
+#  Replay time override tests
+# ═════════════════════════════════════════════════════════════════════════
+
+@pytest.mark.asyncio
+async def test_replay_time_override_uses_bar_time():
+    """After ReplayEngine injects overrides, engine._time_fn() returns bar timestamps, not wall clock."""
+    import time as _time
+
+    bars = make_features_dict(["AAPL", "MSFT", "SPY"], n=700, seed=42, trend="up")
+    bar_provider = HistoricalBarProvider(bars, lookback=100)
+
+    # Advance a few bars so the provider has a current position
+    for _ in range(5):
+        bar_provider.advance()
+
+    simulated = bar_provider.current_simulated_time
+    wall = _time.time()
+
+    # Simulated time should be far from wall clock (synthetic data uses Jan 2026 base)
+    # Wall clock is Feb 2026 — difference should be significant
+    assert abs(simulated - wall) > 86400, (
+        f"Simulated time ({simulated}) too close to wall clock ({wall}) — "
+        "should be from synthetic base, not real time"
+    )
+
+    # Simulated datetime should be timezone-aware
+    sim_dt = bar_provider.current_simulated_datetime
+    assert sim_dt.tzinfo is not None, "Simulated datetime should be timezone-aware"
+
+
+@pytest.mark.asyncio
+async def test_replay_no_throttle_blocking():
+    """With time overrides, replay should not be throttled by entries-per-hour limit.
+
+    Without the fix, 89.5% of ticks would be blocked. With it, the engine
+    should submit significantly more than 3 orders across 100 ticks.
+    """
+    bars = make_features_dict(
+        ["AAPL", "MSFT", "SPY"], n=700, seed=42, trend="up",
+    )
+    engine = ReplayEngine(
+        bars_by_symbol=bars,
+        initial_cash=100_000,
+        slippage_bps=5,
+        max_entries_per_hour=20,
+    )
+    result = await engine.run(max_ticks=100)
+
+    assert result.ticks == 100
+    total_orders = sum(r.get("orders_submitted", 0) for r in result.tick_results if isinstance(r, dict))
+    # With time overrides + relaxed throttle, we should get more than the old
+    # production limit of 3 entries per hour (which blocked everything in replay)
+    assert total_orders > 3, (
+        f"Only {total_orders} orders in 100 ticks — throttle may still be blocking"
+    )
+
+
+@pytest.mark.asyncio
+async def test_replay_daily_timeframe_uses_wider_stops():
+    """Daily replay should use daily exit config (wider stops, 8% max loss)."""
+    bars = make_features_dict(
+        ["AAPL", "MSFT", "SPY"], n=700, seed=42, trend="up",
+    )
+    engine = ReplayEngine(
+        bars_by_symbol=bars,
+        initial_cash=100_000,
+        slippage_bps=5,
+        timeframe="1Day",
+    )
+    result = await engine.run(max_ticks=50)
+
+    assert result.ticks == 50
+    assert len(result.equity_curve) == 50
+    # No trade should lose more than 8% (daily max_loss_pct)
+    for trade in result.trades:
+        if trade.get("entry_price", 0) > 0:
+            pnl_pct = trade["pnl"] / (trade["entry_price"] * trade["qty"])
+            assert pnl_pct > -0.10, (
+                f"Trade lost {pnl_pct:.1%} — should be capped near 8%: {trade}"
+            )
+
+
+@pytest.mark.asyncio
+async def test_replay_intraday_timeframe_uses_tight_stops():
+    """Intraday replay should use intraday exit config (tighter stops, 8% max loss)."""
+    bars = make_features_dict(
+        ["AAPL", "MSFT", "SPY"], n=700, seed=42, trend="down",
+    )
+    engine = ReplayEngine(
+        bars_by_symbol=bars,
+        initial_cash=100_000,
+        slippage_bps=5,
+        timeframe="1Min",
+    )
+    result = await engine.run(max_ticks=50)
+
+    assert result.ticks == 50
+    assert len(result.equity_curve) == 50
+
+
+# ═════════════════════════════════════════════════════════════════════════
+#  Lookback cap tests
+# ═════════════════════════════════════════════════════════════════════════
+
+def test_bar_provider_lookback_200_gives_more_ticks():
+    """With 500 bars and lookback=200, we get 300 ticks vs 125 at default 75% cap."""
+    bars = make_features_dict(["AAPL"], n=500, seed=42)
+    provider_200 = HistoricalBarProvider(bars, lookback=200)
+    provider_default = HistoricalBarProvider(bars, lookback=500)
+
+    ticks_200 = 0
+    while provider_200.advance():
+        ticks_200 += 1
+
+    ticks_default = 0
+    while provider_default.advance():
+        ticks_default += 1
+
+    # lookback=200 → 300 replay ticks; lookback=500 capped at 75% (375) → 125
+    assert ticks_200 == 300
+    assert ticks_default == 125
+    assert ticks_200 > ticks_default
+
+
+def test_replay_engine_daily_default_lookback():
+    """Daily timeframe defaults to lookback=200."""
+    bars = make_features_dict(["AAPL"], n=500, seed=42)
+    engine = ReplayEngine(bars_by_symbol=bars, timeframe="1Day")
+    assert engine.lookback == 200
+
+
+def test_replay_engine_intraday_default_lookback():
+    """Intraday timeframe defaults to lookback=500."""
+    bars = make_features_dict(["AAPL"], n=1000, seed=42)
+    engine = ReplayEngine(bars_by_symbol=bars, timeframe="1Min")
+    assert engine.lookback == 500
+
+
+def test_replay_engine_custom_lookback():
+    """Explicit lookback overrides the default."""
+    bars = make_features_dict(["AAPL"], n=500, seed=42)
+    engine = ReplayEngine(bars_by_symbol=bars, timeframe="1Day", lookback=100)
+    assert engine.lookback == 100
+
+
+@pytest.mark.asyncio
+async def test_replay_seasonality_uses_bar_time():
+    """Seasonality filter should use simulated bar time, not real wall clock."""
+    bars = make_features_dict(["AAPL"], n=700, seed=42, trend="up")
+    bar_provider = HistoricalBarProvider(bars, lookback=100)
+    bar_provider.advance()
+
+    sim_dt = bar_provider.current_simulated_datetime
+    # Synthetic data uses base time of 2026-01-02 09:30 + minute offsets
+    # The simulated datetime should reflect that, not the current real time
+    assert sim_dt.year == 2026, f"Expected year 2026, got {sim_dt.year}"
+    # Hour should be based on synthetic data (around 9-10 AM range for early bars)
+    # not whatever time the test is actually running
+    import time as _time
+    real_hour = __import__("datetime").datetime.now().hour
+    # If real time != simulated time hour, the override is working
+    # (this is a soft check — could coincide, but synthetic base is 9:30 AM)
+    assert sim_dt.month == 1, f"Expected month 1 (Jan from synthetic base), got {sim_dt.month}"

@@ -88,6 +88,7 @@ services:
     volumes:
       - ./logs:/app/logs
       - ./data:/app/data
+      - ./organism_brain:/app/organism_brain
     depends_on:
       db:
         condition: service_healthy

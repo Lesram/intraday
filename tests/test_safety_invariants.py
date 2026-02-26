@@ -227,7 +227,7 @@ class TestSafetyInvariants:
         apply_evolved_params must set exit_engine parameters to the
         intraday baseline values used by OrganismLiveEngine.__init__:
             atr_multiplier=1.0, trailing_start_atr=2.0,
-            trailing_distance_atr=1.5, partial_tp_r=2.0
+            trailing_distance_atr=1.5, partial_tp_r=3.0
         """
         from backend.organism.adaptive_exits import AdaptiveExitEngine
         from backend.organism.self_evolution import EvolvedParams, apply_evolved_params
@@ -237,7 +237,7 @@ class TestSafetyInvariants:
             atr_multiplier=1.0,
             trailing_start_atr=2.0,
             trailing_distance_atr=1.5,
-            partial_tp_r=2.0,
+            partial_tp_r=3.0,
         )
 
         apply_evolved_params(params, exit_engine=exit_engine)
@@ -246,11 +246,11 @@ class TestSafetyInvariants:
         #   atr_multiplier   = 1.0 * 1.0 = 1.0
         #   trailing_start   = 2.0 * 1.0 = 2.0
         #   trailing_distance= 1.5 * 1.0 = 1.5
-        #   partial_tp_r     = 2.0 * 1.0 = 2.0
+        #   partial_tp_r     = 3.0 * 1.0 = 3.0
         assert exit_engine.atr_multiplier == pytest.approx(1.0)
         assert exit_engine.trailing_start_atr == pytest.approx(2.0)
         assert exit_engine.trailing_distance_atr == pytest.approx(1.5)
-        assert exit_engine.partial_tp_r == pytest.approx(2.0)
+        assert exit_engine.partial_tp_r == pytest.approx(3.0)
 
     def test_apply_evolved_params_with_scaled_values(self):
         """When evolution scales differ from 1.0, the exit engine
@@ -268,7 +268,7 @@ class TestSafetyInvariants:
             atr_multiplier=1.0,
             trailing_start_atr=2.0,
             trailing_distance_atr=1.5,
-            partial_tp_r=2.0,
+            partial_tp_r=3.0,
         )
 
         apply_evolved_params(params, exit_engine=exit_engine)
@@ -276,7 +276,7 @@ class TestSafetyInvariants:
         assert exit_engine.atr_multiplier == pytest.approx(1.0 * 1.2)
         assert exit_engine.trailing_start_atr == pytest.approx(2.0 * 0.8)
         assert exit_engine.trailing_distance_atr == pytest.approx(1.5 * 1.1)
-        assert exit_engine.partial_tp_r == pytest.approx(2.0 * 0.9)
+        assert exit_engine.partial_tp_r == pytest.approx(3.0 * 0.9)
 
     # ── 5. Order service TIF default = 'day' ─────────────────────
 
@@ -508,3 +508,228 @@ class TestSafetyInvariants:
                 in_entry_method = False
             if in_entry_method and "idem_key" in line and "%H%M%S" in line:
                 pytest.fail("Entry idempotency key still uses %H%M%S timestamp")
+
+    # ── 8. Profit lock at 2R ──────────────────────────────────────
+
+    def test_profit_lock_at_2r_long(self):
+        """At 2R favorable move, stop should lock to entry + 1R."""
+        from backend.organism.adaptive_exits import AdaptiveExitEngine, ExitLevels
+
+        engine = AdaptiveExitEngine(atr_multiplier=1.5)
+        levels = ExitLevels(
+            symbol="AAPL", direction=1.0, entry_price=100.0,
+            stop_loss=97.0, take_profit=130.0, trailing_stop=97.0,
+            atr_at_entry=2.0, regime_at_entry="unknown",
+            highest_favorable=100.0,
+        )
+        # initial_risk = 2.0 (ATR) * 1.5 (REGIME_STOP_ATR["unknown"]) = 3.0
+        # 2R move = 100 + 3.0 * 2 = 106.0
+        engine._check_profit_lock(levels, 106.0)
+
+        assert levels.profit_locked is True
+        # new_stop = entry + initial_risk * direction = 100 + 3.0 = 103.0
+        assert levels.stop_loss == pytest.approx(103.0)
+
+    def test_profit_lock_at_2r_short(self):
+        """Profit lock works for shorts — stop moves down to entry - 1R."""
+        from backend.organism.adaptive_exits import AdaptiveExitEngine, ExitLevels
+
+        engine = AdaptiveExitEngine(atr_multiplier=1.5)
+        levels = ExitLevels(
+            symbol="TSLA", direction=-1.0, entry_price=200.0,
+            stop_loss=203.0, take_profit=170.0, trailing_stop=203.0,
+            atr_at_entry=2.0, regime_at_entry="unknown",
+            highest_favorable=200.0,
+        )
+        # initial_risk = 2.0 * 1.5 = 3.0
+        # 2R short move = 200 - 6.0 = 194.0
+        engine._check_profit_lock(levels, 194.0)
+
+        assert levels.profit_locked is True
+        # new_stop = 200 + 3.0 * (-1) = 197.0
+        assert levels.stop_loss == pytest.approx(197.0)
+
+    def test_profit_lock_one_shot(self):
+        """Once profit_locked=True, a second call is a no-op."""
+        from backend.organism.adaptive_exits import AdaptiveExitEngine, ExitLevels
+
+        engine = AdaptiveExitEngine(atr_multiplier=1.5)
+        levels = ExitLevels(
+            symbol="AAPL", direction=1.0, entry_price=100.0,
+            stop_loss=97.0, take_profit=130.0, trailing_stop=97.0,
+            atr_at_entry=2.0, regime_at_entry="unknown",
+            highest_favorable=100.0,
+        )
+        engine._check_profit_lock(levels, 106.0)
+        first_stop = levels.stop_loss
+
+        # Move price much higher — stop should NOT change
+        engine._check_profit_lock(levels, 120.0)
+        assert levels.stop_loss == pytest.approx(first_stop)
+
+    def test_profit_lock_never_downgrades_stop(self):
+        """If stop is already above 1R (e.g. from trailing), lock doesn't move it down."""
+        from backend.organism.adaptive_exits import AdaptiveExitEngine, ExitLevels
+
+        engine = AdaptiveExitEngine(atr_multiplier=1.5)
+        levels = ExitLevels(
+            symbol="AAPL", direction=1.0, entry_price=100.0,
+            stop_loss=105.0,  # Already above 1R (103.0)
+            take_profit=130.0, trailing_stop=105.0,
+            atr_at_entry=2.0, regime_at_entry="unknown",
+            highest_favorable=100.0,
+        )
+        engine._check_profit_lock(levels, 106.0)
+
+        assert levels.profit_locked is True
+        # Stop should stay at 105.0 (higher than 1R=103.0) due to max()
+        assert levels.stop_loss == pytest.approx(105.0)
+
+    def test_profit_lock_in_check_exit(self):
+        """Profit lock fires within the check_exit() chain."""
+        from backend.organism.adaptive_exits import AdaptiveExitEngine, ExitLevels
+
+        engine = AdaptiveExitEngine(atr_multiplier=1.5)
+        levels = ExitLevels(
+            symbol="AAPL", direction=1.0, entry_price=100.0,
+            stop_loss=97.0, take_profit=130.0, trailing_stop=97.0,
+            atr_at_entry=2.0, regime_at_entry="unknown",
+            highest_favorable=100.0,
+            partial_tp_price=109.0,  # 3R — above 106 so partial TP doesn't fire
+        )
+        # Price at 2R — should trigger profit lock but NOT exit
+        signal = engine.check_exit(levels, 106.0, current_regime="unknown")
+
+        assert levels.profit_locked is True
+        assert levels.stop_loss == pytest.approx(103.0)
+        assert signal.should_exit is False  # 106 > 103, no stop hit
+
+    def test_partial_tp_does_not_downgrade_profit_lock(self):
+        """When partial TP fires at 3R, the stop must stay at 1R (not drop to breakeven)."""
+        from backend.organism.adaptive_exits import AdaptiveExitEngine, ExitLevels
+
+        engine = AdaptiveExitEngine(atr_multiplier=1.5)
+        levels = ExitLevels(
+            symbol="AAPL", direction=1.0, entry_price=100.0,
+            stop_loss=97.0, take_profit=130.0, trailing_stop=97.0,
+            atr_at_entry=2.0, regime_at_entry="unknown",
+            highest_favorable=100.0,
+            # partial_tp_price for 3R: entry + risk*3 = 100 + 3*3 = 109
+            partial_tp_price=109.0,
+        )
+        # First: trigger profit lock at 2R
+        engine._check_profit_lock(levels, 106.0)
+        assert levels.profit_locked is True
+        profit_lock_stop = levels.stop_loss  # 103.0
+
+        # Now trigger partial TP at 3R
+        signal = engine._check_partial_tp(levels, 109.0)
+        assert signal.should_exit is True
+        assert signal.partial_exit is True
+
+        # Stop must stay at 103.0 (profit lock), NOT drop to 100.0 (breakeven)
+        assert levels.stop_loss == pytest.approx(profit_lock_stop)
+
+    # ── 9. SPY MA filter ─────────────────────────────────────────
+
+    async def test_spy_filter_blocks_below_ma(self):
+        """When SPY < SMA50, long entries should be blocked."""
+        import pandas as pd
+        engine, mocks = _make_engine_with_mocks()
+
+        mocks["positions_service"].get_all_positions = AsyncMock(return_value={})
+
+        # SPY with declining prices (current < SMA50)
+        spy_prices = list(range(150, 100, -1))  # 50 bars, declining
+        features = {
+            "SPY": pd.DataFrame({"close": spy_prices}),
+            "AAPL": pd.DataFrame({"close": [150.0] * 50}),
+            "MSFT": pd.DataFrame({"close": [300.0] * 50}),
+            "GOOGL": pd.DataFrame({"close": [140.0] * 50}),
+        }
+        engine._fetch_and_compute_features = AsyncMock(return_value=features)
+        engine._get_equity = AsyncMock(return_value=100_000.0)
+        engine._reconcile_fills = AsyncMock()
+        engine._save_brain = MagicMock()
+        engine._check_tick_invariants = MagicMock()
+        engine._initialized = True
+        engine._tick_count = 10  # bypass warmup
+        engine._WARMUP_TICKS = 0
+
+        with patch("backend.organism.live_engine.LONG_ONLY", True):
+            result = await engine.live_tick()
+
+        # Should have SPY filter activity event
+        spy_msgs = [
+            a for a in result.activity
+            if hasattr(a, "message") and "SPY filter" in a.message
+        ]
+        assert len(spy_msgs) >= 1
+        assert result.orders_submitted == 0
+
+    async def test_spy_filter_allows_above_ma(self):
+        """When SPY > SMA50, entries should not be blocked by SPY filter."""
+        import pandas as pd
+        engine, mocks = _make_engine_with_mocks()
+
+        mocks["positions_service"].get_all_positions = AsyncMock(return_value={})
+
+        # SPY with rising prices (current > SMA50)
+        spy_prices = list(range(100, 150))  # 50 bars, rising
+        features = {
+            "SPY": pd.DataFrame({"close": spy_prices}),
+            "AAPL": pd.DataFrame({"close": [150.0] * 50}),
+            "MSFT": pd.DataFrame({"close": [300.0] * 50}),
+            "GOOGL": pd.DataFrame({"close": [140.0] * 50}),
+        }
+        engine._fetch_and_compute_features = AsyncMock(return_value=features)
+        engine._get_equity = AsyncMock(return_value=100_000.0)
+        engine._reconcile_fills = AsyncMock()
+        engine._save_brain = MagicMock()
+        engine._check_tick_invariants = MagicMock()
+        engine._initialized = True
+        engine._tick_count = 10  # bypass warmup
+        engine._WARMUP_TICKS = 0
+
+        with patch("backend.organism.live_engine.LONG_ONLY", True):
+            result = await engine.live_tick()
+
+        # No SPY filter block
+        spy_msgs = [
+            a for a in result.activity
+            if hasattr(a, "message") and "SPY filter" in a.message
+        ]
+        assert len(spy_msgs) == 0
+
+    async def test_spy_filter_skips_insufficient_data(self):
+        """With < 50 bars of SPY data, the filter should not block."""
+        import pandas as pd
+        engine, mocks = _make_engine_with_mocks()
+
+        mocks["positions_service"].get_all_positions = AsyncMock(return_value={})
+
+        # Only 10 bars of SPY — not enough for SMA50
+        features = {
+            "SPY": pd.DataFrame({"close": [100.0] * 10}),
+            "AAPL": pd.DataFrame({"close": [150.0] * 50}),
+            "MSFT": pd.DataFrame({"close": [300.0] * 50}),
+            "GOOGL": pd.DataFrame({"close": [140.0] * 50}),
+        }
+        engine._fetch_and_compute_features = AsyncMock(return_value=features)
+        engine._get_equity = AsyncMock(return_value=100_000.0)
+        engine._reconcile_fills = AsyncMock()
+        engine._save_brain = MagicMock()
+        engine._check_tick_invariants = MagicMock()
+        engine._initialized = True
+        engine._tick_count = 10  # bypass warmup
+        engine._WARMUP_TICKS = 0
+
+        with patch("backend.organism.live_engine.LONG_ONLY", True):
+            result = await engine.live_tick()
+
+        # No SPY filter block
+        spy_msgs = [
+            a for a in result.activity
+            if hasattr(a, "message") and "SPY filter" in a.message
+        ]
+        assert len(spy_msgs) == 0

@@ -47,40 +47,38 @@ class TestPositionsEndpointsMocked:
         """Test Alpaca positions returns empty list when API unavailable."""
         from backend.api.routes.positions import get_alpaca_positions
 
-        # Mock the positions service to raise an exception
-        with patch('backend.api.routes.positions.create_positions_service') as mock_create:
-            mock_service = AsyncMock()
-            mock_service.get_all_positions.side_effect = Exception("API unavailable")
-            mock_create.return_value = mock_service
+        mock_svc = AsyncMock()
+        mock_svc.get_all_positions.side_effect = Exception("API unavailable")
+        mock_request = MagicMock()
+        mock_request.app.state.positions_service = mock_svc
 
-            positions = await get_alpaca_positions()
+        positions = await get_alpaca_positions(mock_request)
 
-            # Should return empty list on error (no mock fallback)
-            assert isinstance(positions, list)
+        # Should return empty list on error (no mock fallback)
+        assert isinstance(positions, list)
     
     @pytest.mark.asyncio
     async def test_get_alpaca_positions_success(self):
         """Test successful Alpaca positions fetch."""
         from backend.api.routes.positions import get_alpaca_positions
-        
-        # Mock the positions service with real data
-        with patch('backend.api.routes.positions.create_positions_service') as mock_create:
-            mock_service = AsyncMock()
-            mock_service.get_all_positions.return_value = {
-                "TSLA": {
-                    "qty": 100,
-                    "avg_entry_price": 200.0,
-                    "market_value": 25000.0,
-                    "unrealized_pl": 5000.0
-                }
-            }
-            mock_create.return_value = mock_service
-            
-            positions = await get_alpaca_positions()
 
-            assert len(positions) == 1
-            assert positions[0].symbol == "TSLA"
-            assert positions[0].quantity == 100
+        mock_svc = AsyncMock()
+        mock_svc.get_all_positions.return_value = {
+            "TSLA": {
+                "qty": 100,
+                "avg_entry_price": 200.0,
+                "market_value": 25000.0,
+                "unrealized_pl": 5000.0
+            }
+        }
+        mock_request = MagicMock()
+        mock_request.app.state.positions_service = mock_svc
+
+        positions = await get_alpaca_positions(mock_request)
+
+        assert len(positions) == 1
+        assert positions[0].symbol == "TSLA"
+        assert positions[0].quantity == 100
 
     @pytest.mark.asyncio
     async def test_get_database_positions(self):

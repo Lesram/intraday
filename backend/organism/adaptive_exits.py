@@ -47,6 +47,7 @@ class ExitLevels:
     partial_tp_taken: bool = False   # True after partials are sold
     trailing_active: bool = False    # True once trail kicks in (3× ATR move)
     stress_tightened: bool = False   # True after one-time stress regime tightening
+    profit_locked: bool = False      # True after one-time profit lock at 2R
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -63,6 +64,7 @@ class ExitLevels:
             "partial_tp_taken": self.partial_tp_taken,
             "trailing_active": self.trailing_active,
             "stress_tightened": self.stress_tightened,
+            "profit_locked": self.profit_locked,
         }
 
 
@@ -108,9 +110,9 @@ class AdaptiveExitEngine:
         "trending_up":   2.0,
         "trending_down": 1.3,
         "chop":          1.2,
-        "high_vol":      1.0,
+        "high_vol":      1.5,   # widened from 1.0 — too tight, caused premature stops
         "low_vol":       1.8,   # calm → give room
-        "stress":        0.9,
+        "stress":        1.2,   # widened from 0.9 — too tight, caused premature stops
         "unknown":       1.5,   # moderate default
     }
     # Take-profit R-multiple
@@ -164,6 +166,8 @@ class AdaptiveExitEngine:
         time_decay_start: int = 30,          # Default (regime overrides)
         partial_tp_r: float = 3.0,           # Partial TP at 3R
         partial_tp_pct: float = 0.30,        # Sell 30 % at partial TP
+        max_loss_pct: float = 0.15,          # Absolute safety net
+        profit_lock_r: float = 2.0,          # Lock stop to 1R after 2R move
         # Legacy compat — ignored in v2 logic but kept for API compat
         trailing_start_pct: float | None = None,
         trailing_step_pct: float | None = None,
@@ -176,6 +180,36 @@ class AdaptiveExitEngine:
         self.time_decay_start = time_decay_start
         self.partial_tp_r = partial_tp_r
         self.partial_tp_pct = partial_tp_pct
+        self.max_loss_pct = max_loss_pct
+        self.profit_lock_r = profit_lock_r
+
+        # Base values for evolution scaling — evolution multiplies these
+        self._base_atr_multiplier = atr_multiplier
+        self._base_trailing_start_atr = trailing_start_atr
+        self._base_trailing_distance_atr = trailing_distance_atr
+        self._base_partial_tp_r = partial_tp_r
+        self._base_profit_lock_r = profit_lock_r
+
+    @classmethod
+    def for_timeframe(cls, timeframe: str) -> "AdaptiveExitEngine":
+        """Factory that returns an exit engine tuned for the given bar timeframe."""
+        is_intraday = timeframe in ("1Min", "5Min", "15Min", "1Hour")
+        if is_intraday:
+            return cls(
+                atr_multiplier=1.0, profit_r_multiple=3.0,
+                trailing_start_atr=2.0, trailing_distance_atr=1.5,
+                max_bars_held=120, time_decay_start=60,
+                partial_tp_r=3.0, partial_tp_pct=0.20,
+                max_loss_pct=0.08, profit_lock_r=2.0,
+            )
+        else:  # daily
+            return cls(
+                atr_multiplier=1.5, profit_r_multiple=4.0,
+                trailing_start_atr=2.0, trailing_distance_atr=2.5,
+                max_bars_held=40, time_decay_start=30,
+                partial_tp_r=3.0, partial_tp_pct=0.25,
+                max_loss_pct=0.08, profit_lock_r=2.0,
+            )
 
     # ── public API ────────────────────────────────────────────────────────
 
@@ -272,10 +306,9 @@ class AdaptiveExitEngine:
             levels.highest_favorable = min(levels.highest_favorable, current_price)
 
         # 0. ABSOLUTE MAX LOSS — safety net regardless of ATR calculations.
-        #    No position should ever lose more than 15%.
         if levels.entry_price > 0:
             pnl_pct = (current_price - levels.entry_price) / levels.entry_price * direction
-            if pnl_pct <= -0.15:
+            if pnl_pct <= -self.max_loss_pct:
                 return ExitSignal(True, "max_loss_limit", current_price)
 
         # 1. Hard stop-loss check
@@ -283,6 +316,9 @@ class AdaptiveExitEngine:
             return ExitSignal(True, "stop_loss", levels.stop_loss)
         if direction < 0 and current_price >= levels.stop_loss:
             return ExitSignal(True, "stop_loss", levels.stop_loss)
+
+        # 1.5. PROFIT LOCK — at 2R, move stop to 1R (one-shot)
+        self._check_profit_lock(levels, current_price)
 
         # 2. Partial take-profit at 3R (sell 30 %, let rest ride)
         partial_signal = self._check_partial_tp(levels, current_price)
@@ -327,6 +363,25 @@ class AdaptiveExitEngine:
 
     # ── private helpers ───────────────────────────────────────────────────
 
+    def _check_profit_lock(self, levels: ExitLevels, current_price: float) -> None:
+        """At 2R favorable move, lock stop to 1R profit (one-shot)."""
+        if levels.profit_locked or self.profit_lock_r <= 0:
+            return
+        direction = levels.direction
+        atr = levels.atr_at_entry
+        if atr < 1e-6:
+            return
+        stop_atr_mult = self.REGIME_STOP_ATR.get(levels.regime_at_entry, self.atr_multiplier)
+        initial_risk = atr * stop_atr_mult
+        favorable_move = (current_price - levels.entry_price) * direction
+        if favorable_move >= initial_risk * self.profit_lock_r:
+            new_stop = levels.entry_price + initial_risk * direction
+            if direction > 0:
+                levels.stop_loss = max(levels.stop_loss, new_stop)
+            else:
+                levels.stop_loss = min(levels.stop_loss, new_stop)
+            levels.profit_locked = True
+
     def _check_partial_tp(
         self, levels: ExitLevels, current_price: float
     ) -> ExitSignal:
@@ -343,8 +398,13 @@ class AdaptiveExitEngine:
 
         if hit:
             levels.partial_tp_taken = True
-            # After partial TP, move stop to breakeven
-            levels.stop_loss = levels.entry_price
+            # After partial TP, move stop to at least breakeven
+            # (never downgrade an existing profit lock)
+            breakeven = levels.entry_price
+            if direction > 0:
+                levels.stop_loss = max(levels.stop_loss, breakeven)
+            else:
+                levels.stop_loss = min(levels.stop_loss, breakeven)
             return ExitSignal(
                 should_exit=True,
                 reason="partial_take_profit",

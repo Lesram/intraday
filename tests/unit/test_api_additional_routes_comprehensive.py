@@ -96,16 +96,16 @@ class TestPositionsAsyncFunctions:
     async def test_get_alpaca_positions_returns_list(self):
         """Test get_alpaca_positions returns list."""
         from backend.api.routes.positions import get_alpaca_positions
-        
-        with patch('backend.api.routes.positions.create_positions_service') as mock_service:
-            mock_svc = MagicMock()
-            mock_svc.get_all_positions = AsyncMock(return_value={})
-            mock_service.return_value = mock_svc
-            
-            positions = await get_alpaca_positions()
-            
-            # Should return mock positions as fallback
-            assert isinstance(positions, list)
+
+        mock_svc = MagicMock()
+        mock_svc.get_all_positions = AsyncMock(return_value={})
+        mock_request = MagicMock()
+        mock_request.app.state.positions_service = mock_svc
+
+        positions = await get_alpaca_positions(mock_request)
+
+        # Should return mock positions as fallback
+        assert isinstance(positions, list)
 
     async def test_get_database_positions(self):
         """Test get_database_positions returns list."""
