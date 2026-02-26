@@ -395,7 +395,8 @@ class OrganismLiveEngine:
         self._PENDING_EXIT_TICKS = 3  # Wait 3 ticks (~30s) before re-trying exit
 
         # SPY MA filter — block long entries when SPY < SMA
-        self._spy_filter_enabled = True
+        # Disabled: individual stock gates (ML, alpha, breakout) are more granular
+        self._spy_filter_enabled = False
         self._spy_ma_period = 50
 
         # ML reversal one-shot guard — once ml_reversal fires on a symbol,
