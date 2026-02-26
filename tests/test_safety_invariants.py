@@ -596,6 +596,7 @@ class TestSafetyInvariants:
             atr_at_entry=2.0, regime_at_entry="unknown",
             highest_favorable=100.0,
             partial_tp_price=109.0,  # 3R — above 106 so partial TP doesn't fire
+            bars_held=17,  # Pass min hold guard (becomes 18 after check)
         )
         # Price at 2R — should trigger profit lock but NOT exit
         signal = engine.check_exit(levels, 106.0, current_regime="unknown")
@@ -636,6 +637,7 @@ class TestSafetyInvariants:
         """When SPY < SMA50, long entries should be blocked."""
         import pandas as pd
         engine, mocks = _make_engine_with_mocks()
+        engine._spy_filter_enabled = True  # Explicitly enable (disabled by default)
 
         mocks["positions_service"].get_all_positions = AsyncMock(return_value={})
 

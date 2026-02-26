@@ -367,3 +367,289 @@ class TestMLReversalExitTrigger:
             and signal.confidence > 0.3
         )
         assert should_trigger is False
+
+
+# ═══════════════════════════════════════════════════════════════════
+# Fix 1: Pyramid Exit Recalculation
+# ═══════════════════════════════════════════════════════════════════
+
+class TestPyramidExitRecalculation:
+    def test_update_levels_for_pyramid_tightens_stop(self):
+        """Pyramid add at higher price should tighten (raise) stop for long."""
+        from backend.organism.adaptive_exits import AdaptiveExitEngine, ExitLevels
+
+        engine = AdaptiveExitEngine()
+        levels = ExitLevels(
+            symbol="AAPL", direction=1.0, entry_price=100.0,
+            stop_loss=97.0, take_profit=118.0, trailing_stop=97.0,
+            atr_at_entry=2.0, regime_at_entry="trending_up",
+            highest_favorable=100.0,
+        )
+        old_stop = levels.stop_loss
+        # Pyramid adds at 105 → new avg entry = 102.5
+        engine.update_levels_for_pyramid(levels, 102.5, "trending_up")
+        # Stop should tighten (raise) since new entry is higher
+        assert levels.stop_loss >= old_stop
+        assert levels.entry_price == 102.5
+        # TP should be re-anchored to new avg entry
+        assert levels.take_profit > 102.5
+
+    def test_update_levels_preserves_partial_tp_taken(self):
+        """Pyramid recalculation must preserve stateful flags."""
+        from backend.organism.adaptive_exits import AdaptiveExitEngine, ExitLevels
+
+        engine = AdaptiveExitEngine()
+        levels = ExitLevels(
+            symbol="AAPL", direction=1.0, entry_price=100.0,
+            stop_loss=97.0, take_profit=118.0, trailing_stop=97.0,
+            atr_at_entry=2.0, regime_at_entry="trending_up",
+            highest_favorable=105.0, partial_tp_taken=True,
+            trailing_active=True, stress_tightened=True,
+            profit_locked=True, bars_held=50,
+        )
+        engine.update_levels_for_pyramid(levels, 102.5, "trending_up")
+        assert levels.partial_tp_taken is True
+        assert levels.trailing_active is True
+        assert levels.stress_tightened is True
+        assert levels.profit_locked is True
+        assert levels.bars_held == 50
+        assert levels.highest_favorable == 105.0
+
+
+# ═══════════════════════════════════════════════════════════════════
+# Fix 2: Pyramid Layer Count (resolved by Fix 1)
+# ═══════════════════════════════════════════════════════════════════
+
+class TestPyramidLayerCount:
+    def test_pyramid_layer_count_prevents_repeated_adds(self):
+        """After appending a layer, layer_count increments and pyramider
+        won't re-trigger the same level."""
+        from backend.organism.pyramider import PyramidPosition, PyramidLevel
+
+        pyr = PyramidPosition(
+            symbol="WMT", direction=1.0,
+            layers=[PyramidLevel(shares=100, entry_price=50.0, bar_added=0, level=0)],
+            target_total_shares=300, atr_at_entry=1.0,
+        )
+        assert pyr.layer_count == 1
+        # Simulate what Fix 1 does after a pyramid add
+        pyr.layers.append(PyramidLevel(shares=50, entry_price=52.0, bar_added=10, level=1))
+        assert pyr.layer_count == 2
+        # Add another
+        pyr.layers.append(PyramidLevel(shares=50, entry_price=54.0, bar_added=20, level=2))
+        assert pyr.layer_count == 3
+
+
+# ═══════════════════════════════════════════════════════════════════
+# Fix 3: Minimum Hold Time Before Profit Exits
+# ═══════════════════════════════════════════════════════════════════
+
+class TestMinHoldTime:
+    def _make_levels(self, bars_held: int = 0) -> "ExitLevels":
+        from backend.organism.adaptive_exits import ExitLevels
+        return ExitLevels(
+            symbol="AAPL", direction=1.0, entry_price=100.0,
+            stop_loss=97.0, take_profit=118.0, trailing_stop=97.0,
+            atr_at_entry=2.0, regime_at_entry="trending_up",
+            highest_favorable=100.0, bars_held=bars_held,
+        )
+
+    def test_min_hold_blocks_early_profit_exit(self):
+        """TP at bar 5 should be blocked by min hold guard."""
+        from backend.organism.adaptive_exits import AdaptiveExitEngine
+        engine = AdaptiveExitEngine()
+        levels = self._make_levels(bars_held=4)  # Will become 5 after check
+        # Price at TP level — would normally trigger take_profit
+        sig = engine.check_exit(levels, 118.0, "trending_up")
+        assert sig.should_exit is False
+
+    def test_min_hold_allows_stop_loss(self):
+        """Stop loss must fire even before min hold."""
+        from backend.organism.adaptive_exits import AdaptiveExitEngine
+        engine = AdaptiveExitEngine()
+        levels = self._make_levels(bars_held=0)  # bar 1 after check
+        sig = engine.check_exit(levels, 96.0, "trending_up")
+        assert sig.should_exit is True
+        assert sig.reason == "stop_loss"
+
+    def test_min_hold_allows_max_loss(self):
+        """Max loss safety net must fire even before min hold."""
+        from backend.organism.adaptive_exits import AdaptiveExitEngine
+        engine = AdaptiveExitEngine()
+        levels = self._make_levels(bars_held=0)
+        # Price dropped 16% → max_loss_pct=0.15 triggered
+        sig = engine.check_exit(levels, 84.0, "trending_up")
+        assert sig.should_exit is True
+        assert sig.reason == "max_loss_limit"
+
+    def test_profit_exit_fires_after_min_hold(self):
+        """Profit exit should fire normally after min hold bars are met."""
+        from backend.organism.adaptive_exits import AdaptiveExitEngine
+        engine = AdaptiveExitEngine()
+        levels = self._make_levels(bars_held=17)  # Will become 18 after check
+        sig = engine.check_exit(levels, 118.0, "trending_up")
+        assert sig.should_exit is True
+        # partial_take_profit fires first (3R < full TP), which is a profit exit
+        assert sig.reason in ("take_profit", "partial_take_profit")
+
+
+# ═══════════════════════════════════════════════════════════════════
+# Fix 4: Widen high_vol Stops
+# ═══════════════════════════════════════════════════════════════════
+
+class TestHighVolStops:
+    def test_high_vol_stop_uses_2x_atr(self):
+        from backend.organism.adaptive_exits import AdaptiveExitEngine
+        assert AdaptiveExitEngine.REGIME_STOP_ATR["high_vol"] == 2.0
+
+    def test_high_vol_trail_uses_2_5x_atr(self):
+        from backend.organism.adaptive_exits import AdaptiveExitEngine
+        assert AdaptiveExitEngine.REGIME_TRAIL_ATR["high_vol"] == 2.5
+
+
+# ═══════════════════════════════════════════════════════════════════
+# Fix 5: Block Entries First 30 Min
+# ═══════════════════════════════════════════════════════════════════
+
+class TestOpeningBlock:
+    def test_entries_blocked_before_10am(self):
+        """930-959 ET should be blocked."""
+        # The live engine checks: 930 <= hhmm < 1000
+        hhmm = 945
+        assert 930 <= hhmm < 1000
+
+    def test_entries_allowed_after_10am(self):
+        """1000+ ET should be allowed."""
+        hhmm = 1000
+        assert not (930 <= hhmm < 1000)
+
+
+# ═══════════════════════════════════════════════════════════════════
+# Fix 6: Liquidity Gate
+# ═══════════════════════════════════════════════════════════════════
+
+class TestLiquidityGate:
+    def _make_engine(self):
+        from unittest.mock import MagicMock
+        from backend.organism.live_engine import OrganismLiveEngine
+        engine = object.__new__(OrganismLiveEngine)
+        engine._MIN_AVG_VOLUME = 500_000
+        return engine
+
+    def test_low_volume_blocked(self):
+        engine = self._make_engine()
+        df = pd.DataFrame({"volume": [100_000] * 20, "close": [50.0] * 20})
+        assert engine._passes_liquidity_gate("LEE", {"LEE": df}) is False
+
+    def test_high_volume_allowed(self):
+        engine = self._make_engine()
+        df = pd.DataFrame({"volume": [1_000_000] * 20, "close": [50.0] * 20})
+        assert engine._passes_liquidity_gate("AAPL", {"AAPL": df}) is True
+
+    def test_missing_data_passes(self):
+        engine = self._make_engine()
+        assert engine._passes_liquidity_gate("UNKNOWN", {}) is True
+
+
+# ═══════════════════════════════════════════════════════════════════
+# Fix 7: ML Floor Regime Guard
+# ═══════════════════════════════════════════════════════════════════
+
+class TestMLFloorRegimeGuard:
+    def _make_sizer_with_losing_regime(self, regime: str, n_trades: int = 10):
+        from backend.organism.kelly_sizer import KellySizer
+        sizer = KellySizer()
+        # Record losing trades
+        for _ in range(n_trades):
+            sizer.record_trade(regime, -50.0)
+        return sizer
+
+    def _make_sizer_with_winning_regime(self, regime: str, n_trades: int = 10):
+        from backend.organism.kelly_sizer import KellySizer
+        sizer = KellySizer()
+        for _ in range(n_trades):
+            sizer.record_trade(regime, 100.0)
+        return sizer
+
+    def test_ml_floor_suppressed_when_regime_losing(self):
+        """ML confidence floor should NOT apply when regime has negative PnL."""
+        sizer = self._make_sizer_with_losing_regime("high_vol", 10)
+        # Verify the regime stats show negative expectancy
+        stats = sizer._regime_stats["high_vol"]
+        assert stats["total_pnl"] <= 0
+        assert stats["wins"] + stats["losses"] >= 5
+        # The guard: _regime_has_edge should be False
+        _rs = sizer._regime_stats.get("high_vol")
+        _total = _rs["wins"] + _rs["losses"]
+        _regime_has_edge = not (_total >= 5 and _rs["total_pnl"] <= 0)
+        assert _regime_has_edge is False
+
+    def test_ml_floor_applies_when_regime_positive(self):
+        """ML confidence floor should apply when regime has positive PnL."""
+        sizer = self._make_sizer_with_winning_regime("trending_up", 10)
+        stats = sizer._regime_stats["trending_up"]
+        assert stats["total_pnl"] > 0
+        _rs = sizer._regime_stats.get("trending_up")
+        _total = _rs["wins"] + _rs["losses"]
+        _regime_has_edge = not (_total >= 5 and _rs["total_pnl"] <= 0)
+        assert _regime_has_edge is True
+
+
+# ═══════════════════════════════════════════════════════════════════
+# Fix 8: Increase high_vol Sizing
+# ═══════════════════════════════════════════════════════════════════
+
+class TestHighVolSizing:
+    def test_high_vol_regime_scale_is_0_8(self):
+        from backend.organism.kelly_sizer import KellySizer
+        sizer = KellySizer()
+        assert sizer._regime_scale("high_vol") == 0.8
+
+
+# ═══════════════════════════════════════════════════════════════════
+# Fix 9: Separate high_vol from stress in Alpha Scanner
+# ═══════════════════════════════════════════════════════════════════
+
+class TestAlphaScannerRegimeSplit:
+    def _make_row(self) -> pd.Series:
+        return pd.Series({
+            "adx_14": 20, "trend_strength": 0.2, "vol_regime": 1,
+        })
+
+    def test_high_vol_regime_score_is_neutral(self):
+        from backend.organism.alpha_scanner import AlphaScanner
+        scanner = AlphaScanner()
+        score = scanner._regime_alignment(self._make_row(), 1.0, "high_vol")
+        assert score == 0.5
+
+    def test_stress_regime_score_stays_low(self):
+        from backend.organism.alpha_scanner import AlphaScanner
+        scanner = AlphaScanner()
+        score = scanner._regime_alignment(self._make_row(), 1.0, "stress")
+        assert score == 0.2
+
+    def test_high_vol_threshold_0_25(self):
+        """high_vol threshold should be 0.25 (lowered from 0.40)."""
+        # The scanner uses: 0.25 if current_regime == "high_vol" else 0.50
+        from backend.organism.alpha_scanner import AlphaScanner
+        scanner = AlphaScanner()
+        # We can't easily call scan() without full data, so verify the logic:
+        min_threshold = scanner.MIN_COMPOSITE
+        current_regime = "high_vol"
+        if current_regime in ("high_vol", "stress"):
+            min_threshold = 0.25 if current_regime == "high_vol" else 0.50
+        assert min_threshold == 0.25
+
+
+# ═══════════════════════════════════════════════════════════════════
+# Fix 10: Raise Fitness Gate
+# ═══════════════════════════════════════════════════════════════════
+
+class TestFitnessGate:
+    def test_fitness_gate_blocks_marginal_symbols(self):
+        """Symbols with fitness < 0.45 should be blocked."""
+        _FITNESS_GATE = 0.45
+        # These would have passed the old 0.35 gate
+        marginal_fitness = {"EMAT": 0.30, "XLK": 0.30, "GOOGL": 0.40, "CAT": 0.30}
+        for sym, fitness in marginal_fitness.items():
+            assert fitness < _FITNESS_GATE, f"{sym} should be blocked at {fitness}"

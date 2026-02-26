@@ -234,7 +234,7 @@ class AlphaScanner:
         # only truly exceptional signals pass during high_vol/stress.
         min_threshold = self.MIN_COMPOSITE  # 0.15 default
         if current_regime in ("high_vol", "stress"):
-            min_threshold = 0.40 if current_regime == "high_vol" else 0.50
+            min_threshold = 0.25 if current_regime == "high_vol" else 0.50
 
         result = [c for c in candidates[:self.top_n] if c.composite_score >= min_threshold]
 
@@ -291,7 +291,9 @@ class AlphaScanner:
                 score = 0.8
             else:
                 score = 0.3  # Chop + momentum = bad
-        elif regime in ("high_vol", "stress"):
-            score = 0.2  # Reduce in high vol
+        elif regime == "high_vol":
+            score = 0.5  # Neutral — high_vol still tradeable, not stress
+        elif regime == "stress":
+            score = 0.2  # Reduce in stress
 
         return min(max(score, 0.0), 1.0)

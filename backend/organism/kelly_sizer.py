@@ -211,7 +211,17 @@ class KellySizer:
             # position so signals aren't silenced.  Without this, the
             # engine goes permanently dormant in high-vol regimes where
             # backward-looking Kelly is zero.
-            if kelly_half < 0.005 and confidence >= self._ML_CONFIDENCE_MIN:
+            #
+            # Guard: suppress floor when the current regime has a track
+            # record of negative expectancy (>= 5 trades, total_pnl <= 0).
+            _regime_has_edge = True
+            _rs = self._regime_stats.get(current_regime)
+            if _rs:
+                _total_trades = _rs["wins"] + _rs["losses"]
+                if _total_trades >= 5 and _rs["total_pnl"] <= 0:
+                    _regime_has_edge = False
+
+            if kelly_half < 0.005 and confidence >= self._ML_CONFIDENCE_MIN and _regime_has_edge:
                 if ml_is_trained:
                     ml_floor = self._ML_CONFIDENCE_FLOOR * confidence
                 else:
@@ -223,6 +233,14 @@ class KellySizer:
                     "ML confidence floor for %s: kelly_half=%.4f "
                     "(conf=%.2f, floor=%.4f, trained=%s)",
                     symbol, kelly_half, confidence, ml_floor, ml_is_trained,
+                )
+            elif not _regime_has_edge and kelly_half < 0.005:
+                _logger.info(
+                    "ML floor suppressed for %s: regime=%s has negative expectancy "
+                    "(trades=%d, pnl=%.2f)",
+                    symbol, current_regime,
+                    int(_rs["wins"] + _rs["losses"]) if _rs else 0,
+                    _rs["total_pnl"] if _rs else 0,
                 )
 
             # 3. Drawdown scaling
@@ -339,7 +357,7 @@ class KellySizer:
             "trending_up": 1.2,
             "trending_down": 0.6,
             "chop": 0.5,
-            "high_vol": 0.5,
+            "high_vol": 0.8,    # was 0.5 — winners undersized while stops deliver full-sized losses
             "low_vol": 1.0,         # calm market → full sizing
             "stress": 0.4,           # was 0.3 — still 60% reduction, avoids 0-sizing cascade
             "unknown": 0.7,         # insufficient data → conservative

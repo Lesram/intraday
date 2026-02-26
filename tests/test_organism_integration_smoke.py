@@ -888,7 +888,7 @@ class TestTrailingStopBehavior:
             atr_at_entry=1.0,
             regime_at_entry="unknown",
             highest_favorable=100.0,
-            bars_held=0,
+            bars_held=17,  # Past min hold guard (becomes 18+ after check)
         )
 
         # Price moves up 2x ATR — trail should NOT activate

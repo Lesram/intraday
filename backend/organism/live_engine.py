@@ -388,6 +388,9 @@ class OrganismLiveEngine:
         self._pending_entry: dict[str, int] = {}
         self._PENDING_ENTRY_TICKS = 30  # Wait 30 ticks (~5 min) per-symbol cooldown (was 15)
 
+        # Liquidity gate — block entries on illiquid symbols (seed universe bypass)
+        self._MIN_AVG_VOLUME = 500_000
+
         # Symbols with pending exit orders — prevents duplicate exits across
         # ticks while the broker is still processing the exit.
         # Maps symbol → tick number when exit order was submitted
@@ -434,6 +437,20 @@ class OrganismLiveEngine:
 
         # ── Diagnostics ──────────────────────────────────────────
         self._last_diagnostic_report: Any = None
+
+    # ── Private helpers ────────────────────────────────────────
+
+    def _passes_liquidity_gate(
+        self,
+        symbol: str,
+        features_by_symbol: dict[str, pd.DataFrame],
+    ) -> bool:
+        """Return False if symbol's avg volume over last 20 bars < minimum."""
+        df = features_by_symbol.get(symbol)
+        if df is None or "volume" not in df.columns or len(df) < 20:
+            return True  # No data → conservative pass
+        avg_vol = float(df["volume"].iloc[-20:].mean())
+        return avg_vol >= self._MIN_AVG_VOLUME
 
     # ═════════════════════════════════════════════════════════════
     #  INITIALIZATION / SHUTDOWN
@@ -1265,6 +1282,27 @@ class OrganismLiveEngine:
                             timestamp=now_iso,
                         ))
 
+            # ── Opening 30-min block: no entries 9:30-10:00 AM ET ──
+            if not entries_blocked and self._is_intraday:
+                _now_open = self._now_fn()
+                try:
+                    import zoneinfo
+                    _now_et = _now_open.astimezone(zoneinfo.ZoneInfo("America/New_York"))
+                except Exception:
+                    _now_et = _now_open
+                _hhmm_open = _now_et.hour * 100 + _now_et.minute
+                if 930 <= _hhmm_open < 1000:
+                    entries_blocked = True
+                    logger.info(
+                        "Opening block: %d ET — no entries first 30 min",
+                        _hhmm_open,
+                    )
+                    result.activity.append(ActivityEvent(
+                        event_type="skip",
+                        message=f"Opening 30-min block: {_hhmm_open} ET — entries paused",
+                        timestamp=now_iso,
+                    ))
+
             # ── Fix B: Regime sit-out gate ─────────────────────
             _regime_sit_out = False
             _sitout_ml = None
@@ -1334,6 +1372,21 @@ class OrganismLiveEngine:
                             )
                             self._pending_entry[sym] = self._tick_count
                             result.orders_submitted += 1
+
+                            # Record the pyramid layer so layer_count increments
+                            # and the pyramider won't re-trigger the same level.
+                            pyr.layers.append(PyramidLevel(
+                                shares=action.shares_to_add,
+                                entry_price=current_price,
+                                bar_added=self._tick_count,
+                                level=pyr.layer_count - 1,  # just appended
+                            ))
+                            # Re-anchor exit levels to new weighted avg entry
+                            exit_lvl = self._exit_levels.get(sym)
+                            if exit_lvl is not None:
+                                self.exit_engine.update_levels_for_pyramid(
+                                    exit_lvl, pyr.avg_entry, regime,
+                                )
                         except Exception as e:
                             result.errors.append(
                                 f"Pyramid order failed for {sym}: {e}"
@@ -1368,7 +1421,7 @@ class OrganismLiveEngine:
                         _tension_lookup[ss.symbol] = ss.tension_score
 
                 # Symbol fitness gate threshold — block re-entry on chronic losers
-                _FITNESS_GATE = 0.35
+                _FITNESS_GATE = 0.45
 
                 # Track symbols planned for entry in THIS tick so the sector gate
                 # counts them when evaluating subsequent candidates.  Prevents
@@ -1404,6 +1457,10 @@ class OrganismLiveEngine:
                             "Fitness gate blocked %s (fitness=%.2f < %.2f)",
                             c.symbol, sym_fitness, _FITNESS_GATE,
                         )
+                        continue
+                    # Liquidity gate — block illiquid symbols that gap violently
+                    if not self._passes_liquidity_gate(c.symbol, features_by_symbol):
+                        logger.info("Liquidity gate blocked %s", c.symbol)
                         continue
 
                     bs = breakout_by_sym.get(c.symbol)
@@ -1503,7 +1560,7 @@ class OrganismLiveEngine:
                     except Exception:
                         now_et = _now
                     hhmm = now_et.hour * 100 + now_et.minute
-                    if (930 <= hhmm <= 945) or (1545 <= hhmm <= 1600):
+                    if 1545 <= hhmm <= 1600:
                         for sz in sizes:
                             sz.shares = max(1, int(sz.shares * 0.6))
                             sz.notional = sz.notional * 0.6

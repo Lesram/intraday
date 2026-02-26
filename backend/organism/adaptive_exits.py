@@ -110,7 +110,7 @@ class AdaptiveExitEngine:
         "trending_up":   2.0,
         "trending_down": 1.3,
         "chop":          1.2,
-        "high_vol":      1.5,   # widened from 1.0 — too tight, caused premature stops
+        "high_vol":      2.0,   # widened from 1.5 — intraday noise triggers premature exits
         "low_vol":       1.8,   # calm → give room
         "stress":        1.2,   # widened from 0.9 — too tight, caused premature stops
         "unknown":       1.5,   # moderate default
@@ -130,7 +130,7 @@ class AdaptiveExitEngine:
         "trending_up":   3.5,
         "trending_down": 2.0,
         "chop":          1.5,
-        "high_vol":      2.0,
+        "high_vol":      2.5,   # widened from 2.0 — match wider stop
         "low_vol":       3.0,   # calm → wide trail
         "stress":        1.5,
         "unknown":       2.5,
@@ -155,6 +155,9 @@ class AdaptiveExitEngine:
         "stress":        10,
         "unknown":       30,
     }
+
+    # Minimum bars held before profit exits fire (stop_loss/max_loss always active)
+    MIN_HOLD_BARS_PROFIT = 18  # 18 bars × 10s = 3 min — avoids noise exits
 
     def __init__(
         self,
@@ -276,6 +279,40 @@ class AdaptiveExitEngine:
             trailing_active=False,
         )
 
+    def update_levels_for_pyramid(
+        self,
+        levels: ExitLevels,
+        new_avg_entry: float,
+        regime: str = "unknown",
+    ) -> None:
+        """Recalculate exit levels after a pyramid add.
+
+        Re-anchors stop_loss (only tightens via max for longs / min for
+        shorts), take_profit, and partial_tp_price from the new weighted
+        average entry.  Preserves trailing state and flags.
+        """
+        atr = levels.atr_at_entry
+        if atr < 1e-6:
+            return
+
+        stop_atr_mult = self.REGIME_STOP_ATR.get(regime, self.atr_multiplier)
+        tp_r = self.REGIME_TP_R.get(regime, self.profit_r_multiple)
+        risk_distance = atr * stop_atr_mult
+
+        if levels.direction > 0:
+            new_stop = new_avg_entry - risk_distance
+            # Only tighten (raise) the stop — never loosen it
+            levels.stop_loss = max(levels.stop_loss, new_stop)
+            levels.take_profit = new_avg_entry + risk_distance * tp_r
+            levels.partial_tp_price = new_avg_entry + risk_distance * self.partial_tp_r
+        else:
+            new_stop = new_avg_entry + risk_distance
+            levels.stop_loss = min(levels.stop_loss, new_stop)
+            levels.take_profit = new_avg_entry - risk_distance * tp_r
+            levels.partial_tp_price = new_avg_entry - risk_distance * self.partial_tp_r
+
+        levels.entry_price = new_avg_entry
+
     def check_exit(
         self,
         levels: ExitLevels,
@@ -316,6 +353,11 @@ class AdaptiveExitEngine:
             return ExitSignal(True, "stop_loss", levels.stop_loss)
         if direction < 0 and current_price >= levels.stop_loss:
             return ExitSignal(True, "stop_loss", levels.stop_loss)
+
+        # 1a. MINIMUM HOLD TIME — all profit exits require minimum bars held.
+        # Stop-loss (priority 1) and max_loss (priority 0) remain always active.
+        if levels.bars_held < self.MIN_HOLD_BARS_PROFIT:
+            return ExitSignal(False)
 
         # 1.5. PROFIT LOCK — at 2R, move stop to 1R (one-shot)
         self._check_profit_lock(levels, current_price)
