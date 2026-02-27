@@ -1,0 +1,4168 @@
+# INTRA PLATFORM — COMPLETE SYSTEM MAP
+
+> Every system, every flow, every threshold, every decision path. From raw market data to trade execution, from infrastructure to ML deployment.
+
+---
+
+## TABLE OF CONTENTS
+
+### Layer 1: Architecture Overview
+1. [System Architecture](#1-system-architecture)
+
+### Layer 2: Trading Algorithm — Tick Lifecycle
+2. [Tick Lifecycle Overview](#2-tick-lifecycle-overview)
+3. [Phase 0: Preamble & Housekeeping](#3-phase-0-preamble--housekeeping)
+4. [Phase 1: Governance Gate](#4-phase-1-governance-gate)
+5. [Phase 2: Data Acquisition & Feature Engineering](#5-phase-2-data-acquisition--feature-engineering)
+6. [Phase 3: Regime Detection](#6-phase-3-regime-detection)
+7. [Phase 4: Portfolio State & Drawdown](#7-phase-4-portfolio-state--drawdown)
+8. [Phase 5: Exit Decisions](#8-phase-5-exit-decisions)
+9. [Phase 6: Pyramid Checks](#9-phase-6-pyramid-checks)
+10. [Phase 7: New Entry Scanning](#10-phase-7-new-entry-scanning)
+11. [Phase 8: Kelly Position Sizing](#11-phase-8-kelly-position-sizing)
+12. [Phase 9: Order Submission](#12-phase-9-order-submission)
+13. [Phase 10: Fill Reconciliation](#13-phase-10-fill-reconciliation)
+14. [Phase 11: Retrain & Evolve](#14-phase-11-retrain--evolve)
+15. [Phase 12: Brain Persistence](#15-phase-12-brain-persistence)
+
+### Layer 3: Algorithm Deep Dives
+16. [ML Signal Generation](#16-ml-signal-generation)
+17. [Feature Engineering (79 Features)](#17-feature-engineering-79-features)
+18. [Alpha Scanner](#18-alpha-scanner)
+19. [Breakout Scanner](#19-breakout-scanner)
+20. [Kelly Sizer](#20-kelly-sizer)
+21. [Adaptive Exit Engine](#21-adaptive-exit-engine)
+22. [Regime Detector](#22-regime-detector)
+23. [Self-Evolution Engine](#23-self-evolution-engine)
+24. [Universe & Sector Management](#24-universe--sector-management)
+25. [Background Training & Transfer Learning](#25-background-training--transfer-learning)
+25a. [Decision Telemetry](#25a-decision-telemetry)
+25b. [Replay Simulator](#25b-replay-simulator)
+25c. [Ensemble Models](#25c-ensemble-models)
+25d. [Composite Indicators](#25d-composite-indicators)
+25e. [Feature Store](#25e-feature-store)
+25f. [Multi-Timeframe Features](#25f-multi-timeframe-features)
+
+### Layer 4: External Integration — Alpaca Broker
+26. [Order Submission Pipeline](#26-order-submission-pipeline)
+27. [Outbox Dispatcher](#27-outbox-dispatcher)
+28. [Idempotency & Deduplication](#28-idempotency--deduplication)
+29. [WebSocket Trade Updates](#29-websocket-trade-updates)
+30. [Market Data Stream](#30-market-data-stream)
+31. [Historical Data & Positions](#31-historical-data--positions)
+31a. [Production Stream Client](#31a-production-stream-client)
+
+### Layer 5: Infrastructure
+32. [Transactional Outbox & DLQ](#32-transactional-outbox--dlq)
+33. [Order Guardrails](#33-order-guardrails)
+34. [Resilience Layer](#34-resilience-layer)
+35. [Alert System](#35-alert-system)
+36. [Database Schema](#36-database-schema)
+37. [Observability Stack](#37-observability-stack)
+
+### Layer 6: ML Deployment Pipeline
+38. [Promotion Controller](#38-promotion-controller)
+39. [Training Orchestrator](#39-training-orchestrator)
+40. [Nightly Scheduler](#40-nightly-scheduler)
+41. [Attribution Service](#41-attribution-service)
+42. [Walk-Forward Evaluator](#42-walk-forward-evaluator)
+
+### Layer 7: Operations
+43. [Docker Orchestration](#43-docker-orchestration)
+44. [Engine Startup Sequence](#44-engine-startup-sequence)
+45. [Streaming Data Provider](#45-streaming-data-provider)
+46. [Diagnostic System](#46-diagnostic-system)
+47. [API Surface & Security](#47-api-surface--security)
+48. [Brain Persistence & Caching](#48-brain-persistence--caching)
+
+### Layer 8: Platform Services & Architecture
+49. [Dual-Path Engine Architecture](#49-dual-path-engine-architecture)
+50. [Multi-Strategy Live System](#50-multi-strategy-live-system)
+51. [Services Layer](#51-services-layer)
+52. [Dual WebSocket Stacks](#52-dual-websocket-stacks)
+53. [Trading Execution Mode](#53-trading-execution-mode)
+54. [Redis Architecture](#54-redis-architecture)
+55. [Risk Management System](#55-risk-management-system)
+56. [Inter-Module Dependency Map](#56-inter-module-dependency-map)
+
+### Layer 9: ML Infrastructure (backend/ml/)
+57. [ML Pipeline Architecture](#57-ml-pipeline-architecture)
+58. [Feature Engineering & Data Processing](#58-feature-engineering--data-processing)
+59. [Model Training & Validation](#59-model-training--validation)
+60. [Model Registry & Lifecycle](#60-model-registry--lifecycle)
+61. [Ensemble Framework & Prediction Service](#61-ensemble-framework--prediction-service)
+62. [Drift Detection & Monitoring](#62-drift-detection--monitoring)
+
+### Appendices
+A. [Configuration Reference](#a-configuration-reference)
+B. [Key Thresholds Summary](#b-key-thresholds-summary)
+C. [Data Flow Summary](#c-data-flow-summary)
+D. [Error Handling Hierarchy](#d-error-handling-hierarchy)
+E. [Module Index](#e-module-index)
+F. [Full API Route Reference](#f-full-api-route-reference)
+G. [ORM Models & Configuration](#g-orm-models--configuration)
+
+---
+
+# LAYER 1: ARCHITECTURE OVERVIEW
+
+## 1. SYSTEM ARCHITECTURE
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                              INTRA PLATFORM                                      │
+│                                                                                  │
+│  ┌──────────────────────────┐    ┌────────────────────────────────────────────┐  │
+│  │   FRONTEND (React/Vite)  │    │          BACKEND (FastAPI)                 │  │
+│  │   Port 5173 (dev)        │    │          Port 8000                         │  │
+│  │                          │    │                                            │  │
+│  │  Ant Design UI           │◄──►│  REST API (/api/v1/*, 152+ endpoints)     │  │
+│  │  Decision Dashboard      │    │  Socket.IO (order/portfolio updates)       │  │
+│  │  Diagnostics Panel       │    │  WebSocket Manager (market data/scanner)   │  │
+│  │  Organism Dashboard      │    │                                            │  │
+│  └──────────────────────────┘    │  ┌──────── DUAL ENGINE PATHS ──────────┐  │  │
+│                                   │  │                                      │  │  │
+│                                   │  │  PATH A: OrganismScheduler           │  │  │
+│                                   │  │    ENABLE_ORGANISM_SCHEDULER=1       │  │  │
+│                                   │  │    OrganismLiveEngine tick loop (10s)│  │  │
+│                                   │  │    ML → Alpha → Kelly → Exits        │  │  │
+│                                   │  │                                      │  │  │
+│                                   │  │  PATH B: MultiStrategyLiveScheduler  │  │  │
+│                                   │  │    MULTI_STRATEGY_LIVE_ENABLED=1     │  │  │
+│                                   │  │    10 independent strategies (300s)  │  │  │
+│                                   │  │    OrganismRunner governance hooks   │  │  │
+│                                   │  │                                      │  │  │
+│                                   │  │  *** MUTUALLY EXCLUSIVE ***          │  │  │
+│                                   │  └──────────────────────────────────────┘  │  │
+│                                   │                                            │  │
+│                                   │  ┌──────────────────────────────────────┐  │  │
+│                                   │  │  SERVICES (services/, 27 modules)    │  │  │
+│                                   │  │  OrderService → Outbox → Broker      │  │  │
+│                                   │  │  Risk, Analytics, Audit, Lots, Cache │  │  │
+│                                   │  └──────────────────────────────────────┘  │  │
+│                                   │                                            │  │
+│                                   │  ┌──────────────────────────────────────┐  │  │
+│                                   │  │  INFRASTRUCTURE (infra/)              │  │  │
+│                                   │  │  Outbox → Guardrails → Resilience     │  │  │
+│                                   │  │  Auth (JWT) → Alerting → Metrics      │  │  │
+│                                   │  └──────────────────────────────────────┘  │  │
+│                                   └────────────────────────────────────────────┘  │
+│                                                                                  │
+│  ┌──────────────────────────┐    ┌──────────────────────────────────────────┐    │
+│  │   PostgreSQL 16          │    │   Redis 7                                │    │
+│  │   Docker (intra-db-1)    │    │   Docker (intra-redis-1)                │    │
+│  │   Port 5432 (localhost)  │    │   Port 6379 (localhost)                 │    │
+│  │   DB: algotrading        │    │   256MB maxmemory                       │    │
+│  │   User: trading          │    │   allkeys-lru eviction                  │    │
+│  │   24 tables              │    │   AOF persistence                       │    │
+│  └──────────────────────────┘    └──────────────────────────────────────────┘    │
+│                                                                                  │
+│  ┌──────────────────────────────────────────────────────────────────────────┐    │
+│  │                    EXTERNAL: ALPACA BROKER                                │    │
+│  │  REST: paper-api.alpaca.markets/v2   (orders, positions, account)        │    │
+│  │  WS:   paper-api.alpaca.markets/stream (trade updates)                   │    │
+│  │  WS:   stream.data.alpaca.markets/v2/{feed} (quotes, trades, bars)       │    │
+│  │  REST: data.alpaca.markets/v2 (historical bars)                          │    │
+│  └──────────────────────────────────────────────────────────────────────────┘    │
+└─────────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Technology Stack
+
+| Layer | Technology | Version |
+|---|---|---|
+| Frontend | React + Vite + Ant Design | TypeScript |
+| Backend | FastAPI + async SQLAlchemy | Python 3.12 |
+| Database | PostgreSQL | 16-alpine |
+| Cache/Queue | Redis | 7-alpine |
+| ML | XGBoost + LightGBM + scikit-learn | — |
+| Broker | Alpaca Markets API v2 | Paper trading |
+| Observability | Prometheus + Grafana + OpenTelemetry | Optional profile |
+| Container | Docker Compose | 3 core + 3 observability |
+
+### Data Flow Paths
+
+```
+ORDER EXECUTION:
+  Engine Decision → DB Order → Outbox Event → Dispatcher → Alpaca REST
+  Alpaca Fill → WebSocket Stream → DB Update → Socket.IO → Frontend
+
+MARKET DATA:
+  Alpaca WS (real-time bars) → StreamingDataProvider → Ring Buffer → Engine
+  Alpaca REST (historical) → DataClient → Feature Engineering → ML/Alpha
+
+BRAIN STATE:
+  Engine State → JSON files (organism_brain/) → Load on restart
+  ML Models → Pickle/JSON → Transfer Learning → Cross-run knowledge
+```
+
+---
+
+# LAYER 2: TRADING ALGORITHM — TICK LIFECYCLE
+
+## 2. TICK LIFECYCLE OVERVIEW
+
+**Source**: `backend/organism/live_engine.py`
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                        TICK BEGINS (~10s)                           │
+│                                                                     │
+│  ┌──── ALWAYS ─────────────────────────────────────────────────┐   │
+│  │  [0] Housekeeping: expire cooldowns, stream health          │   │
+│  │  [1] Governance halt check → entries_blocked?               │   │
+│  │  [2] Fetch data + compute 79 features per symbol            │   │
+│  │  [3] Detect market regime (3-tier priority)                 │   │
+│  │  [4] Get positions + equity, drawdown kill check            │   │
+│  │  [5] EXIT CHECKS for all open positions                     │   │
+│  └─────────────────────────────────────────────────────────────┘   │
+│                                                                     │
+│  ┌──── IF entries NOT blocked ─────────────────────────────────┐   │
+│  │  [6] Pyramid checks on existing positions                   │   │
+│  │  [7] Scan new entries: Alpha + Breakout + ML                │   │
+│  │  [8] Kelly position sizing                                  │   │
+│  │  [9] Submit entry orders                                    │   │
+│  │  [11] Retrain ML + evolve parameters                        │   │
+│  └─────────────────────────────────────────────────────────────┘   │
+│                                                                     │
+│  ┌──── ALWAYS ─────────────────────────────────────────────────┐   │
+│  │  [10] Reconcile fills (detect closed + orphaned positions)  │   │
+│  │  [12] Brain save (every 50 ticks, with walk-forward gate)   │   │
+│  │  [POST] Equity curve, Prometheus, telemetry, invariants     │   │
+│  └─────────────────────────────────────────────────────────────┘   │
+│                                                                     │
+│                         TICK ENDS                                   │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+**Critical insight**: Exits ALWAYS run, even when governance has halted trading. Only new entries are blocked.
+
+---
+
+## 3. PHASE 0: PREAMBLE & HOUSEKEEPING
+
+```
+START TICK
+  │
+  ├── Acquire async tick lock (serializes execution)
+  ├── Increment _tick_count
+  │
+  ├── Expire cooldowns:
+  │   ├── _exit_cooldown:   symbols older than 10 ticks removed
+  │   ├── _pending_entry:   symbols older than 30 ticks removed
+  │   └── _pending_exit:    symbols older than 3 ticks removed
+  │
+  └── Stream health check (every 30 ticks ≈ 5 min):
+      └── IF streaming provider active:
+          └── check_and_recover_stale_stream()
+```
+
+### Cooldown Constants
+
+| Cooldown | Ticks | Real Time (~10s ticks) | Purpose |
+|---|---|---|---|
+| `_EXIT_COOLDOWN_TICKS` | 10 | ~100s | Prevents re-entering a recently exited symbol |
+| `_PENDING_ENTRY_TICKS` | 30 | ~5 min | Prevents duplicate entry submissions |
+| `_PENDING_EXIT_TICKS` | 3 | ~30s | Prevents duplicate exit submissions |
+
+---
+
+## 4. PHASE 1: GOVERNANCE GATE
+
+**Source**: `backend/organism/governance.py`
+
+```
+GOVERNANCE CHECK
+  │
+  ├── Is trading halted?
+  │   ├── Manual halt (ORGANISM_HALT_TRADING=1 or /halt endpoint)
+  │   ├── Drawdown kill active (cooldown not expired)
+  │   │   └── Adaptive cooldown: base_1hr × (1 + min(2, excess/0.05))
+  │   │       ├── At 8% limit exactly → 1 hour cooldown
+  │   │       ├── 3% over limit (11%) → 1.6 hours
+  │   │       ├── 5% over (13%) → 2 hours
+  │   │       └── 10%+ over (18%) → 3 hours (max)
+  │   └── Auto-resumes when cooldown expires
+  │
+  ├── IF halted → entries_blocked = True
+  │   └── Exits STILL run. Only entries blocked.
+  │
+  ├── Is adaptation frozen? (ORGANISM_FREEZE_ADAPTATION=1)
+  │   └── Blocks parameter evolution, NOT trading
+  │
+  ├── Change budget exhausted? (default 100/day, resets midnight UTC)
+  │   └── Blocks evolution parameter changes, NOT trading
+  │
+  └── Strategy disabled? (ORGANISM_DISABLED_STRATEGIES=...)
+      └── Per-strategy disable (not currently used in tick loop)
+```
+
+### Governance Environment Variables
+
+| Variable | Default | Production | Effect |
+|---|---|---|---|
+| `ORGANISM_DRAWDOWN_KILL_PCT` | 0.05 | **0.08** | Drawdown % that triggers kill switch |
+| `ORGANISM_DRAWDOWN_COOLDOWN_S` | 3600 | 3600 | Base cooldown after kill (1 hour) |
+| `ORGANISM_MAX_CHANGES_PER_DAY` | 100 | 100 | Daily evolution budget |
+| `ORGANISM_HALT_TRADING` | 0 | 0 | Manual trading halt |
+| `ORGANISM_FREEZE_ADAPTATION` | 0 | 0 | Freeze all adaptation |
+
+---
+
+## 5. PHASE 2: DATA ACQUISITION & FEATURE ENGINEERING
+
+**Source**: `backend/organism/live_engine.py`, `backend/organism/ml_features.py`
+
+```
+FETCH DATA
+  │
+  ├── Fetch SPY first (always needed for cross-asset features)
+  │
+  ├── For each symbol in universe (parallelized, semaphore=10):
+  │   ├── Priority 1: Streaming provider (fast-path)
+  │   │   └── Falls through to REST if unavailable or < MIN_BARS
+  │   ├── Priority 2: REST API (get_historical_bars_df or get_historical_data)
+  │   │
+  │   ├── Minimum bars check:
+  │   │   └── IF len(bars) < MIN_BARS (50 for intraday) → SKIP symbol
+  │   │
+  │   └── Compute features (79 total):
+  │       ├── compute_ml_features(raw_df, spy_df)  → 75 base features
+  │       ├── add_multi_timeframe_features()         → additional MTF features
+  │       └── NaN/Inf → 0.0 (global safety net)
+  │
+  ├── Also fetch features for open positions NOT in universe
+  │   └── (symbols rotated out but still held — exits must still work)
+  │
+  └── IF fewer than 3 symbols have features:
+      └── entries_blocked = True (but exits still run via broker price fallback)
+```
+
+### Data Pipeline Config
+
+| Parameter | Default | Intraday Override |
+|---|---|---|
+| `LIVE_LOOKBACK` | 500 bars | — |
+| `LIVE_TIMEFRAME` | `"1Day"` | `"1Min"` in production |
+| `MIN_BARS` | 200 | **50** (auto-adjusted for intraday) |
+| `RETRAIN_INTERVAL` | 60 | **200** (auto-adjusted for intraday) |
+
+---
+
+## 6. PHASE 3: REGIME DETECTION
+
+**Source**: `backend/organism/regime.py`
+
+```
+DETECT REGIME (only if features sufficient)
+  │
+  ├── Priority 1: Cross-Asset Regime
+  │   ├── Needs sector ETF features (XLK, XLE, XLF, XLV, XLI, XLU, XLP, XLY, XLB, XLRE)
+  │   ├── Each ETF must have >= 10 bars of features
+  │   ├── Computes per-sector regimes, then breadth conditioning:
+  │   │   ├── breadth_up > 0.5 → boost trending_up × (1 + 0.3 × breadth_up)
+  │   │   ├── breadth_down > 0.5 → boost trending_down × (1 + 0.3 × breadth_down)
+  │   │   └── stress_pct > 0.4 → boost stress × (1 + 0.5 × stress_pct)
+  │   └── Re-normalize probabilities
+  │
+  ├── Priority 2: SPY-Based
+  │   └── detect(spy_features) — needs SPY with >= 10 bars
+  │
+  └── Priority 3: Market Aggregate
+      └── Average regime probabilities across all symbols
+```
+
+### Regime Classification Logic
+
+From feature data, 4 signals are extracted:
+
+| Signal | Source | Decision |
+|---|---|---|
+| Trend slope | SMA slope over 10 bars | > 0.02 → trending_up(+2), < -0.02 → trending_down(+2), else → chop(+1.5) |
+| Price vs SMA | (close - SMA) / SMA | > 0.02 → trending_up(+1), < -0.02 → trending_down(+1), else → chop(+0.5) |
+| Volatility | ATR ratio + returns vol | ATR > 0.04 → high_vol(+2), ATR < 0.015 → low_vol(+1.5), ret_vol > 0.03 → high_vol(+1) |
+| Stress | Volume anomaly + ATR | vol_anomaly > 0.5 AND ATR > 0.04 → stress(+2) |
+
+Scores → softmax → EMA smoothing (α=0.3) → argmax = primary regime.
+
+### Regime Labels
+
+`trending_up`, `trending_down`, `chop`, `high_vol`, `low_vol`, `stress`, `unknown`
+
+---
+
+## 7. PHASE 4: PORTFOLIO STATE & DRAWDOWN
+
+```
+GET POSITIONS + EQUITY
+  │
+  ├── Fetch all positions from broker
+  ├── Fetch equity (portfolio value, fallback to buying power, fallback to 0)
+  │
+  ├── Equity-Zero Resilience:
+  │   ├── equity > 0 → reset counter, update peak
+  │   └── equity == 0 →
+  │       ├── Increment _consecutive_equity_zero
+  │       ├── IF >= 3 consecutive zeros → entries_blocked = True
+  │       └── ELSE → warning, skip drawdown check this tick
+  │
+  ├── Drawdown Check (if peak > 0 AND equity > 0):
+  │   ├── drawdown = (peak - equity) / peak
+  │   ├── governance.trigger_drawdown_kill(drawdown)
+  │   └── IF drawdown >= 8% → kill switch fires → entries_blocked
+  │
+  └── Propagate existing halt:
+      └── IF governance already halted → entries_blocked = True
+```
+
+---
+
+## 8. PHASE 5: EXIT DECISIONS
+
+**This is the most critical phase. It ALWAYS runs, even when entries are blocked.**
+
+**Source**: `backend/organism/adaptive_exits.py`, `backend/organism/live_engine.py`
+
+```
+FOR EACH OPEN POSITION:
+  │
+  ├── FILTER: LONG_ONLY and side != "long" → SKIP (artifact short)
+  ├── FILTER: sym in _pending_exit → SKIP (exit already submitted)
+  │
+  ├── PATH A: No features available for this symbol
+  │   ├── Get broker_price and avg_entry from position data
+  │   ├── Compute pnl_pct = (broker_price - entry) / entry × direction
+  │   ├── IF pnl_pct <= -15% → SAFETY NET EXIT
+  │   │   └── Submit full exit, reason: "safety_net_no_features"
+  │   └── ELSE → no action (can't evaluate without features)
+  │
+  ├── PATH B: Features available but NO exit_levels for this symbol
+  │   ├── Get avg_entry from position data
+  │   ├── Compute pnl_pct
+  │   ├── IF pnl_pct <= -15% → SAFETY NET EXIT
+  │   │   └── Submit full exit, reason: "max_loss_safety_net"
+  │   └── ELSE → no action (position adopted mid-session, exits will be created)
+  │
+  └── PATH C: Normal exit check (features + exit_levels both available)
+      │
+      ├── Run adaptive exit engine: check_exit(exit_levels, price, regime)
+      │   │
+      │   ├── Priority 0: 15% MAX LOSS safety net
+      │   │   └── pnl_pct <= -0.15 → EXIT, reason: "max_loss_limit"
+      │   │
+      │   ├── Priority 1: HARD STOP LOSS
+      │   │   ├── Long: price <= stop_loss → EXIT
+      │   │   └── Short: price >= stop_loss → EXIT
+      │   │
+      │   ├── Priority 1.5: PROFIT LOCK (2R, one-shot)
+      │   │   ├── Triggers when favorable move >= 2× initial risk
+      │   │   ├── Moves stop to entry + 1R (locks in 1R of profit)
+      │   │   └── Sets profit_locked = True (never fires again)
+      │   │
+      │   ├── Priority 2: PARTIAL TAKE PROFIT (3R, fires once)
+      │   │   ├── Long: price >= partial_tp → SELL 30%
+      │   │   ├── Short: price <= partial_tp → COVER 30%
+      │   │   └── Side effect: move stop to BREAKEVEN
+      │   │
+      │   ├── Priority 3: FULL TAKE PROFIT
+      │   │   └── price crosses TP level → EXIT
+      │   │
+      │   ├── Priority 4: ATR TRAILING STOP
+      │   │   ├── Activates when price moves 3.0× ATR from entry
+      │   │   ├── Trail distance: ATR × regime_trail_atr_mult
+      │   │   ├── Ratchet: only tightens, never loosens
+      │   │   ├── Long trail floor: never below entry price
+      │   │   └── price crosses trail → EXIT
+      │   │
+      │   ├── Priority 5: TIME-BASED EXIT (regime-adaptive)
+      │   │   ├── max_bars varies by regime (0=disabled for trending)
+      │   │   └── Only exits positions IN PROFIT (losers stay)
+      │   │
+      │   ├── Priority 6: TIME DECAY (non-exiting, tightens stop)
+      │   │   ├── After decay_start bars: stop tightens 1%/bar
+      │   │   └── Maximum tightening: 40%
+      │   │
+      │   └── Priority 7: STRESS REGIME TIGHTENING (one-time)
+      │       ├── Fires if regime changes to stress mid-trade
+      │       └── Tightens stop by 40% immediately
+      │
+      ├── ML Reversal Check (if exit engine says NO exit):
+      │   ├── Condition: ML trained AND signal flips direction AND confidence > 0.3
+      │   └── IF reversal detected → PARTIAL EXIT (50%)
+      │       └── reason: "ml_reversal"
+      │
+      └── IF exit signal fired:
+          ├── Compute shares to sell (full or partial)
+          ├── Submit exit order
+          └── Set cooldowns (_exit_cooldown, _pending_exit)
+```
+
+### Exit Regime Parameters
+
+| Regime | Stop ATR | TP R-Multiple | Trail ATR | Max Bars | Decay Start |
+|---|---|---|---|---|---|
+| `trending_up` | 2.0 | 6.0 | 3.5 | ∞ | none |
+| `trending_down` | 1.3 | 3.0 | 2.0 | 30 | bar 20 |
+| `chop` | 1.2 | 2.5 | 1.5 | 25 | bar 15 |
+| `high_vol` | 2.0 | 3.0 | 2.5 | 30 | bar 20 |
+| `low_vol` | 1.8 | 5.0 | 3.0 | ∞ | none |
+| `stress` | 1.2 | 2.0 | 1.5 | 20 | bar 10 |
+| `unknown` | 1.5 | 4.0 | 2.5 | 40 | bar 30 |
+
+---
+
+## 9. PHASE 6: PYRAMID CHECKS
+
+**Only runs if entries NOT blocked.**
+
+**Source**: `backend/organism/pyramider.py`
+
+```
+FOR EACH OPEN POSITION WITH PYRAMID TRACKER:
+  │
+  ├── SKIP if no features or no pyramid position
+  │
+  ├── Compute R-multiple: (favorable_move) / ATR_at_entry
+  │
+  ├── ANTI-PYRAMID (loss cutting, checked first):
+  │   ├── R <= -1.0 → CLOSE FULL position (reason: "cut_full")
+  │   └── R <= -0.7 AND only 1 layer → CUT 50% (reason: "cut_partial")
+  │
+  ├── AT MAX LAYERS (3):
+  │   └── R > 3.0 → Tighten trail to peak - 2×ATR
+  │
+  ├── LAYER 1 ADD (at +1.5R):
+  │   ├── Must have exactly 1 layer
+  │   ├── Add 30% of target shares
+  │   └── Move stop to BREAKEVEN
+  │
+  ├── LAYER 2 ADD (at +3.0R):
+  │   ├── Must have exactly 2 layers
+  │   ├── Add 10% of target shares
+  │   └── Trail stop to price - 1.5×ATR
+  │
+  └── PROFIT TIGHTENING (fallthrough):
+      └── R > 2.0 AND >= 2 layers → trail to peak - 2.5×ATR
+```
+
+### Pyramid Layer Allocation
+
+| Layer | % of Target | R Threshold | Stop Action |
+|---|---|---|---|
+| 0 (initial) | 60% | at entry | Initial ATR stop |
+| 1 (first add) | 30% | +1.5R | Move to breakeven |
+| 2 (second add) | 10% | +3.0R | Trail at price - 1.5×ATR |
+
+---
+
+## 10. PHASE 7: NEW ENTRY SCANNING
+
+**Only runs if entries NOT blocked.**
+
+**Source**: `backend/organism/alpha_scanner.py`, `backend/organism/breakout_scanner.py`, `backend/organism/ml_signal.py`
+
+```
+ENTRY SCANNING PIPELINE
+  │
+  ├── [7a] BREAKOUT SCAN
+  │   ├── Filter: symbols with >= 20 bars of features
+  │   ├── 6 detectors scored and weighted (see §19)
+  │   └── Returns top-8 BreakoutSignals with composite >= 0.20
+  │
+  ├── [7b] ML PREDICTIONS
+  │   ├── Batch predict on all symbols with features
+  │   └── Returns MLSignal per symbol: direction, confidence, predicted_return
+  │
+  ├── [7c] ALPHA SCAN
+  │   ├── Combines ML + 6 other factors (see §18)
+  │   └── Returns top-5 AlphaCandidates with composite >= 0.15
+  │
+  ├── [7d] FILTER CANDIDATES (7 gates):
+  │   │
+  │   │  For each AlphaCandidate:
+  │   ├── Gate 1: Already have position? → REJECT
+  │   ├── Gate 2: In exit cooldown? → REJECT (wash trade prevention)
+  │   ├── Gate 3: Pending entry order? → REJECT (duplicate prevention)
+  │   ├── Gate 4: Already in entry_metadata? → REJECT
+  │   ├── Gate 5: LONG_ONLY and direction < 0? → REJECT
+  │   ├── Gate 6: Sector gate (max 4 per sector)? → REJECT
+  │   └── Gate 7: Symbol fitness < 0.35? → REJECT (chronic loser gate)
+  │
+  │   IF passes all 7 gates:
+  │   ├── Compute blended confidence:
+  │   │   confidence = ML_confidence × (1 + breakout_score) × (1 + tension × 0.5)
+  │   │   capped at 1.0
+  │   └── Add to candidate list
+  │
+  ├── [7e] PURE BREAKOUT ADDITIONS (not in alpha candidates):
+  │   ├── Same 7 gates PLUS:
+  │   │   ├── composite_score >= 0.55
+  │   │   ├── fitness >= 0.35
+  │   │   └── ML direction not negative (don't fight ML)
+  │   ├── Forced direction = +1.0 (always long)
+  │   └── predicted_return floor = max(ml_return, 0.01)
+  │
+  └── [7f] SORT + TRUNCATE
+      ├── Sort by breakout_score × confidence (descending)
+      └── Truncate to: MAX_POSITIONS - current_positions
+```
+
+### SPY MA Filter (Currently Disabled)
+
+A broad market gate that blocks all long entries when SPY < SMA(50). Infrastructure exists but `_spy_filter_enabled = False` since commit 2a92ec6. Individual stock gates (ML, alpha, breakout, regime, sector) are more granular.
+
+### Entry Filter Funnel (Typical Numbers)
+
+```
+30 symbols in universe
+  → ~25 with sufficient features
+    → ~5 pass alpha threshold (0.15)
+      → ~3-4 pass all 7 gates
+        → ~2-3 after Kelly sizing
+          → ~1-2 orders submitted
+```
+
+---
+
+## 11. PHASE 8: KELLY POSITION SIZING
+
+**Only runs if entries NOT blocked and candidates exist.**
+
+**Source**: `backend/organism/kelly_sizer.py`
+
+```
+KELLY SIZING PIPELINE
+  │
+  ├── PORTFOLIO-LEVEL GATES:
+  │   ├── equity <= 0 → SKIP ALL
+  │   └── drawdown >= 25% → SKIP ALL (full risk-off)
+  │
+  ├── Sort candidates by conviction: abs(predicted_return) × confidence
+  │
+  ├── FOR EACH CANDIDATE:
+  │   │
+  │   ├── PER-CANDIDATE GUARDS:
+  │   │   ├── direction == 0 → SKIP
+  │   │   ├── predicted_return < 1e-6 (after floor) → SKIP
+  │   │   ├── Features < 30 rows → SKIP
+  │   │   └── < 20 usable returns → SKIP
+  │   │
+  │   ├── STEP 1: Raw Kelly
+  │   │   ├── Preferred: Regime-stratified (if >= 10 trades in regime)
+  │   │   │   └── Kelly = win_rate - (1 - win_rate) / payoff_ratio
+  │   │   └── Fallback: Global = mean_return / variance_return
+  │   │
+  │   ├── STEP 2: Half-Kelly + Floors
+  │   │   ├── kelly_half = kelly_raw × 0.5
+  │   │   ├── Breakout floor: kelly < 0.005 AND breakout >= 0.55
+  │   │   │   → kelly_half = max(kelly, 0.01 × breakout_score)
+  │   │   └── ML floor: trained AND kelly < 0.005 AND confidence >= 0.5
+  │   │       → kelly_half = max(kelly, 0.08 × confidence)
+  │   │
+  │   ├── STEP 3: Drawdown Scaling
+  │   │   └── Linear: 1.0 at 0% drawdown → 0.1 at 25% drawdown
+  │   │
+  │   ├── STEP 4: Volatility Targeting
+  │   │   └── vol_scale = 0.15 / annualized_vol (capped at 2.0)
+  │   │
+  │   ├── STEP 5: Regime Scaling
+  │   │   ├── trending_up: 1.20    stress: 0.40
+  │   │   ├── trending_down: 0.60  chop: 0.50
+  │   │   ├── high_vol: 0.80       low_vol: 1.00
+  │   │   └── unknown: 0.70
+  │   │
+  │   ├── STEP 6: Confidence Scaling
+  │   │   ├── scale = 0.3 + confidence × 1.2 → range [0.3, 1.5]
+  │   │   └── IF ML untrained: capped at 0.6
+  │   │
+  │   ├── STEP 7: Breakout Bonus
+  │   │   ├── < 0.50: ×1.0    0.70-0.85: ×1.5-2.0
+  │   │   ├── 0.50-0.70: ×1.0-1.5   >= 0.85: ×2.0
+  │   │   └── IF ML untrained: forced ×1.0
+  │   │
+  │   ├── COMBINE:
+  │   │   target_weight = kelly_half × dd_scale × vol_scale
+  │   │                   × regime_scale × conf_scale × brk_bonus
+  │   │
+  │   ├── CAPS + FILTERS:
+  │   │   ├── Per-position cap: 10% of equity
+  │   │   ├── Portfolio cap: running total cannot exceed 95%
+  │   │   ├── Minimum weight: 0.1%
+  │   │   ├── Minimum notional: $2,000
+  │   │   └── Minimum shares: 1
+  │   │
+  │   └── CONVERT TO SHARES:
+  │       └── shares = int(equity × target_weight / current_price)
+  │
+  └── INTRADAY SEASONALITY FILTER:
+      ├── First 15 min (9:30-9:45 ET): ALL sizes × 0.60
+      └── Last 15 min (3:45-4:00 ET): ALL sizes × 0.60
+```
+
+---
+
+## 12. PHASE 9: ORDER SUBMISSION
+
+```
+SUBMIT ENTRY ORDERS
+  │
+  ├── Re-fetch positions from broker (catch partial fills)
+  │
+  ├── FOR EACH SIZED POSITION:
+  │   ├── Already have position at broker? → SKIP
+  │   │
+  │   ├── Pyramid initial sizing: shares × 0.60 (layer 0)
+  │   │   └── Fallback: full shares if pyramid < 1
+  │   │
+  │   ├── Submit order:
+  │   │   ├── Type: MARKET
+  │   │   ├── TIF: IOC (Immediate-Or-Cancel)
+  │   │   ├── Idempotency key: organism_{sym}_{date}_{session}_{tick}
+  │   │   └── Attributes: source=organism, reason, confidence, tick
+  │   │
+  │   ├── POST-ORDER SETUP (if features available):
+  │   │   ├── Create ExitLevels (stop, TP, trailing, partial TP)
+  │   │   ├── Create PyramidPosition (layer 0, target = shares/0.6)
+  │   │   └── Create _entry_metadata record
+  │   │
+  │   └── Set _pending_entry[sym] cooldown
+  │
+  └── EXIT ORDER FLOW:
+      ├── Type: MARKET
+      ├── TIF: DAY
+      ├── LONG_ONLY safety: verify broker position before selling
+      │   ├── No position → BLOCKED
+      │   ├── Not long → BLOCKED
+      │   ├── Clamp shares to actual broker qty
+      │   └── Broker check fails → BLOCKED
+      └── Idempotency key: organism_exit_{sym}_{date}_{session}_{tick}
+```
+
+---
+
+## 13. PHASE 10: FILL RECONCILIATION
+
+**ALWAYS runs, even when entries blocked.**
+
+```
+RECONCILE FILLS
+  │
+  ├── DETECT CLOSED POSITIONS:
+  │   ├── tracked_symbols = symbols in _entry_metadata
+  │   ├── broker_symbols = symbols at broker
+  │   ├── candidates = tracked - broker (gone from broker)
+  │   │
+  │   ├── Grace period: skip if held < 3 ticks (may still be settling)
+  │   │
+  │   └── FOR EACH confirmed closed:
+  │       ├── Pop _entry_metadata[sym]
+  │       ├── Get exit price (features fallback to entry price)
+  │       ├── Get shares (pyramid layers fallback to filled_shares)
+  │       ├── Compute PnL = (exit - entry) × shares × direction
+  │       ├── Create TradeRecord
+  │       ├── Record to continuous_learner
+  │       ├── Record to kelly_sizer (regime-stratified)
+  │       ├── Record to signal_gen calibration
+  │       └── Clean up _exit_levels, _pyramid_positions
+  │
+  └── DETECT ORPHANED POSITIONS (at broker but no metadata):
+      ├── SKIP if in _exit_levels (actively managed)
+      ├── SKIP if qty <= 0 or avg_entry <= 0
+      ├── SKIP if LONG_ONLY and not long
+      │
+      └── ADOPT:
+          ├── Create _entry_metadata stub
+          ├── Create exit levels (if features available)
+          ├── Create pyramid position
+          └── Log adoption
+```
+
+---
+
+## 14. PHASE 11: RETRAIN & EVOLVE
+
+**Source**: `backend/organism/background_trainer.py`, `backend/organism/continuous_learner.py`, `backend/organism/self_evolution.py`
+
+```
+RETRAIN + EVOLVE (every RETRAIN_INTERVAL ticks, or 30 ticks if untrained)
+  │
+  ├── Background Training Path (primary):
+  │   ├── Submit to ProcessPoolExecutor (separate CPU)
+  │   ├── Stuck detection: if running > 30 ticks → force-reset, fall back to sync
+  │   ├── On completion:
+  │   │   ├── Accepted → atomically swap model weights + evolved params
+  │   │   └── Rejected → fall back to synchronous retrain
+  │   └── Training includes: ML fit + evolution step (all 10 sub-steps)
+  │
+  ├── Synchronous Fallback:
+  │   ├── learner.retrain(features) → (accepted, metrics)
+  │   ├── Update ML calibration
+  │   ├── Evolution (on last 200 trades):
+  │   │   └── 10 evolution sub-steps (see §23)
+  │   └── Universe rotation
+  │
+  └── Validation Gate (continuous_learner):
+      ├── Composite score = hit_rate×0.4 + accuracy×0.3 + (dir_acc-0.5)×0.6
+      ├── No old model: accept if score > 0.25
+      └── Old model exists: accept if improvement >= 5% OR
+          (score >= 0.40 AND hit_rate >= 0.48)
+```
+
+---
+
+## 15. PHASE 12: BRAIN PERSISTENCE
+
+**Source**: `backend/organism/brain_persistence.py`
+
+```
+BRAIN SAVE (every 50 ticks ≈ 8 min)
+  │
+  ├── Walk-forward gate:
+  │   ├── Checks last 100 trades (needs >= 10)
+  │   ├── Regression threshold: 0.95
+  │   └── IF gate rejects → DO NOT SAVE (prevents persisting regression)
+  │
+  ├── Full save → see §48 for complete contents list
+  │   └── ML models, learning state, evolved params, exits, Kelly stats, calibration
+  │
+  └── Transfer learning:
+      └── Record run snapshot for cross-run knowledge transfer
+```
+
+---
+
+# LAYER 3: ALGORITHM DEEP DIVES
+
+## 16. ML SIGNAL GENERATION
+
+**Source**: `backend/organism/ml_signal.py`, `backend/organism/ensemble_models.py`
+
+### Dual-Model Architecture
+
+```
+Features (79)
+  │
+  ├── XGBClassifier → P(up) ∈ [0, 1]
+  │   └── Time-decay weighted: newest sample ≈ 3.5× oldest (decay_rate=0.005)
+  │
+  ├── XGBRegressor → predicted_return ∈ [-0.5, 0.5]
+  │   └── Same time-decay weighting
+  │
+  ├── Optional Ensemble (40% blend):
+  │   ├── Random Forest (30% weight within ensemble)
+  │   ├── LightGBM (25% weight, if installed)
+  │   └── XGBoost (45% weight)
+  │
+  └── Final blend:
+      ├── p_up = 0.6 × primary + 0.4 × ensemble
+      └── pred_return = 0.6 × primary + 0.4 × ensemble
+```
+
+### Direction Decision
+
+| P(up) | Direction | Meaning |
+|---|---|---|
+| > 0.52 | +1.0 (BUY) | Model is bullish |
+| < 0.48 | -1.0 (SELL) | Model is bearish |
+| 0.48 — 0.52 | 0.0 (HOLD) | Dead zone, no signal |
+
+Thresholds are evolved by the evolution engine. Range [0.50, 0.70] for buy.
+
+### Confidence Calibration
+
+```
+raw_confidence = abs(p_up - 0.5) × 2     # [0, 1]
+bin_idx = int(raw_confidence × 5)          # 5 bins: [0-0.2, 0.2-0.4, ...]
+multiplier = actual_accuracy / bin_midpoint # capped at 2.0
+calibrated = raw_confidence × multiplier   # capped at 1.0
+```
+
+Requires 10+ predictions per bin before adjusting.
+
+### Training Data Requirements
+
+- Minimum 50 total samples across all symbols
+- Per-symbol: >= 60 bars required
+- Feature selection: features with evolved weight < 0.20 dropped (floor: 15 features minimum)
+- Temporal split: 80% train, 20% validation (per-symbol to avoid cross-contamination)
+
+---
+
+## 17. FEATURE ENGINEERING (79 FEATURES)
+
+**Source**: `backend/organism/ml_features.py`, `backend/organism/composite_indicators.py`, `backend/organism/multi_timeframe.py`
+
+### 79 Features by Category
+
+**Price Action (15):** ret_1d, ret_2d, ret_3d, ret_5d, ret_10d, ret_20d, log_ret_1d, momentum_accel, close_to_high, close_to_low, range_pct, gap_pct, body_ratio, upper_shadow, lower_shadow
+
+**Trend (8):** sma_5, sma_10, sma_20, sma_50 (all as ratio to price), macd, macd_signal, macd_hist (all normalized), adx_14
+
+**Mean Reversion (8):** rsi_14, rsi_5, bb_position, bb_width, z_score_20, z_score_50, stoch_k, stoch_d
+
+**Volatility (10):** atr_14, atr_ratio, realized_vol_5, realized_vol_20, vol_ratio_5_20, parkinson_vol, garman_klass_vol, vol_regime, bb_squeeze, vol_expansion
+
+**Volume (8):** vol_sma_ratio, obv_slope, vol_momentum_5, vol_momentum_10, mfi_14, vwap_distance, volume_breakout, pv_divergence
+
+**Cross-Sectional (5, requires SPY):** rel_strength_spy, beta_20d, corr_to_market, idio_vol, sector_momentum
+
+**Microstructure (5):** spread_proxy, price_impact, tick_direction, close_location, true_range_pct
+
+**Temporal (5):** day_of_week, month_sin, month_cos, pct_from_52w_high, pct_from_52w_low
+
+**Regime (4):** trend_strength, choppiness, hurst, regime_encoded
+
+**Momentum Persistence (4):** ret_autocorr_1, ret_autocorr_5, ret_autocorr_10, hurst_exponent
+
+**Composite Indicators (7):** comp_squeeze_momentum, comp_vol_price_div, comp_trend_alignment, comp_institutional_acc, comp_mean_rev_extreme, comp_breakout_readiness, comp_momentum_quality
+
+### Global NaN Safety
+
+All features: `inf → NaN → 0.0` (at the end of compute_ml_features)
+
+### Feature Store
+
+**Source**: `backend/organism/feature_store.py`
+
+- SHA256 config hashing (16 chars) for versioning
+- QA gates: missing bar rate > 10% = issue, NaN rate > 20% = issue, outlier count > 5 (>10 std) = issue
+- DB snapshot persistence for audit trail
+
+---
+
+## 18. ALPHA SCANNER
+
+**Source**: `backend/organism/alpha_scanner.py`
+
+### 7-Factor Weighted Score
+
+```
+COMPOSITE = 0.25 × ml_score
+          + 0.20 × breakout_score
+          + 0.15 × institutional_score
+          + 0.15 × momentum_score (cross-sectional rank)
+          + 0.10 × momentum_quality
+          + 0.10 × volume_score
+          + 0.05 × regime_alignment
+```
+
+### Factor Details
+
+| Factor | Weight | Computation | Score Range |
+|---|---|---|---|
+| ML Score | 0.25 | `confidence × abs(predicted_return) × 20`, cap 1.0 | [0, 1] |
+| Breakout | 0.20 | `breakout_readiness × 0.6 + squeeze_momentum × 0.4` | [0, 1] |
+| Institutional | 0.15 | `comp_institutional_acc` composite | [0, 1] |
+| Momentum | 0.15 | Cross-sectional percentile rank of ret_20d | [0, 1] |
+| Mom Quality | 0.10 | `comp_momentum_quality` composite | [0, 1] |
+| Volume | 0.10 | `0.5 × vol_surge + 0.5 × vol_price_div` | [0, 1] |
+| Regime | 0.05 | Regime-direction alignment table | [0.2, 1.0] |
+
+### Modifiers
+
+- **ML Hold penalty**: direction == 0 → composite × 0.30 (70% penalty)
+- **Symbol fitness**: composite × (0.5 + fitness) → range [0.6×, 1.45×]
+- **NaN guard**: each factor individually checked; NaN → default (0.0 or 0.5)
+- **Dynamic ML weight**: if avg_conf < 0.10, ml_weight drops to 0.05
+- **Regime stress threshold**: MIN_COMPOSITE raised to 0.50 in stress, 0.25 in high_vol
+
+### Selection Gate
+
+- Minimum composite: **0.15**
+- Minimum bars: 50
+- Top-N: 5 candidates
+
+---
+
+## 19. BREAKOUT SCANNER
+
+**Source**: `backend/organism/breakout_scanner.py`
+
+### 6-Detector Weighted Score
+
+```
+COMPOSITE = 0.25 × squeeze
+          + 0.25 × volume_surge
+          + 0.15 × range_contraction
+          + 0.15 × relative_strength
+          + 0.15 × pivot_breakout
+          + 0.05 × institutional_flow
+```
+
+### Detector Details
+
+| Detector | Weight | Key Threshold | Signal |
+|---|---|---|---|
+| Squeeze | 0.25 | BB inside KC, width < 35th pctile, expanding | [0, 1] + fired bool |
+| Volume Surge | 0.25 | (max_3bar / avg_20bar - 1) / 4 | [0, 1] + ratio |
+| Range Contraction | 0.15 | 1 - ATR_10 / ATR_50 | [0, 1] |
+| Relative Strength | 0.15 | Cross-sectional return rank | [0, 1] |
+| Pivot Breakout | 0.15 | Price vs 20-bar high/low | [0, 1] + direction |
+| Institutional Flow | 0.05 | Bars with volume > 5× median / 3 | [0, 1] |
+
+### Bonuses and Gates
+
+- **Squeeze + Volume fired** (vol_ratio > 1.5): composite × 1.30 (30% bonus)
+- **Trend-fighting penalty**: shorting with RS > 0.5 → squeeze & pivot halved
+- **Pre-filter**: composite < 0.15 → not created
+- **Post-filter**: composite < 0.20 → filtered out
+- **Top-N**: 8 breakout signals
+
+---
+
+## 20. KELLY SIZER
+
+**Source**: `backend/organism/kelly_sizer.py`
+
+### Complete Sizing Formula
+
+```
+target_weight = (kelly_raw × 0.5)                    # Half-Kelly
+              × drawdown_scale(dd)                     # [0.1, 1.0]
+              × vol_scale(stock_vol)                   # [0, 2.0]
+              × regime_scale(regime)                    # [0.1, 1.2]
+              × confidence_scale(conf, ml_trained)     # [0.3, 1.5]
+              × breakout_bonus(brk_score, ml_trained)  # [1.0, 2.0]
+```
+
+### Example Calculation
+
+```
+Scenario: stress regime, 5% drawdown, stock vol 20%, ML confidence 0.6,
+          breakout score 0.4, regime Kelly = 0.12
+
+kelly_raw = 0.12
+kelly_half = 0.06
+dd_scale = 1.0 - (0.05/0.25) × 0.9 = 0.82
+vol_scale = min(0.15/0.20, 2.0) = 0.75
+regime_scale = 0.40 (stress)
+conf_scale = 0.3 + 0.6 × 1.2 = 1.02
+brk_bonus = 1.0 (< 0.5)
+
+target_weight = 0.06 × 0.82 × 0.75 × 0.40 × 1.02 × 1.0 = 0.0151 (1.51%)
+
+On $112K equity: notional = $1,691
+→ SKIP: below $2,000 minimum
+```
+
+---
+
+## 21. ADAPTIVE EXIT ENGINE
+
+**Source**: `backend/organism/adaptive_exits.py`
+
+### Exit Level Creation from Entry
+
+```
+entry_price = $150.00
+ATR(14) = $3.00
+regime = "unknown" (default)
+
+risk_distance = $3.00 × 1.5 (unknown stop ATR) = $4.50
+
+stop_loss     = $150.00 - $4.50 = $145.50
+take_profit   = $150.00 + $4.50 × 4.0 (unknown TP R) = $168.00
+partial_tp    = $150.00 + $4.50 × 3.0 = $163.50
+trailing_stop = $145.50 (starts at stop loss)
+trailing_activation = $150.00 + $3.00 × 3.0 = $159.00
+```
+
+### Trailing Stop Mechanics
+
+```
+When price reaches $159 (3 ATR above entry):
+  → trailing_active = True
+
+At peak $165 (regime still "unknown"):
+  trail_distance = $3.00 × 2.5 = $7.50
+  new_trail = $165 - $7.50 = $157.50
+  trailing_stop = max($145.50, $157.50) = $157.50  ← RATCHETED UP
+
+If price drops to $157.50 → EXIT via trailing stop
+```
+
+---
+
+## 22. REGIME DETECTOR
+
+**Source**: `backend/organism/regime.py`
+
+### Feature Extraction → Probability → Smoothing → Label
+
+```
+Raw Data → 4 Signals:
+  ├── Trend slope (SMA slope over 10 bars)
+  ├── Price vs SMA distance
+  ├── ATR ratio + returns vol
+  └── Volume anomaly
+
+Signals → Raw Scores (additive):
+  ├── trending_up: +2 (strong trend) or +1 (above SMA)
+  ├── trending_down: +2 or +1
+  ├── chop: +1.5 (no trend) or +0.5 (near SMA)
+  ├── high_vol: +2 (high ATR) or +1 (high returns vol)
+  ├── low_vol: +1.5 (low ATR)
+  └── stress: +2 (vol anomaly + high ATR) or +1 (extreme vol anomaly)
+
+Scores → Softmax → Probabilities (sum to 1.0)
+
+Probabilities → EMA Smoothing (α=0.3) → prevent whipsaw
+
+Smoothed → argmax → Primary Regime Label
+```
+
+### Additional Components
+
+- **RegimeConditionedEnsemble**: Blends strategy weights per regime
+- **DriftDetector**: PSI-based feature drift detection
+- **Churn Detection**: Window of 20 labels; changes / (window - 1) = churn rate
+
+---
+
+## 23. SELF-EVOLUTION ENGINE
+
+**Source**: `backend/organism/self_evolution.py`
+
+### 10 Evolution Sub-Steps (per epoch)
+
+```
+EVOLUTION (requires >= 8 trades)
+  │
+  ├── Step 1: Signal Weight Adaptation
+  │   ├── High-conf vs low-conf win rate comparison
+  │   ├── ML weight boost if high-conf outperforms by 5%+
+  │   ├── Momentum boost/cut based on direction accuracy
+  │   └── Normalize 5 weights to sum = 1.0
+  │
+  ├── Step 2: Exit Parameter Tuning
+  │   ├── Stop too tight? (>45% stopped out) → widen ×1.10
+  │   ├── Stop too loose? (<15% stopped out) → tighten ×0.95
+  │   ├── Trail profitable? → widen trail for bigger captures
+  │   └── Partial TP calibration based on full TP comparison
+  │
+  ├── Step 3: Regime-Size Scaling
+  │   ├── Profitable regime → scale up ×1.08
+  │   └── Losing regime → scale down ×0.90
+  │
+  ├── Step 4: Feature Selection/Weighting
+  │   ├── Trust = f(direction_accuracy)
+  │   ├── Important features → weight up to 2.0
+  │   └── Unimportant features → gradually decay toward 0.3
+  │
+  ├── Step 5: Symbol Fitness
+  │   ├── Winners → fitness up toward 0.95
+  │   └── Losers → fitness down toward 0.10
+  │
+  ├── Step 6: Direction Threshold Calibration
+  │   ├── High-conf poor WR → tighten thresholds (fewer trades)
+  │   └── High-conf good WR → loosen thresholds (more trades)
+  │
+  ├── Step 7: Breakout Weight Adaptation
+  │   ├── Breakout trades profitable → boost squeeze+volume weights
+  │   └── Breakout trades losing → reduce squeeze+volume weights
+  │
+  ├── Step 8: Breakout Period Adaptation
+  │   ├── Losing + long holds → shorten periods
+  │   └── Losing + short holds → lengthen periods
+  │
+  ├── Step 9: Short-Side Resurrection
+  │   ├── Enable: WR >= 55% AND avg PnL > $10 AND >= 10 trades
+  │   └── Disable: WR < 35%
+  │
+  └── Step 10: XGBoost Hyperparameter Evolution
+      ├── Good accuracy (>60%) → increase capacity
+      ├── Poor accuracy (<50%) → regularize harder
+      └── Middling → gentle regularization nudge
+```
+
+### EMA Update (Safety-Bounded)
+
+```
+delta = α × new + (1-α) × old - old
+max_delta = |old| × 0.20 + 0.005     # max 20% shift per step
+clamped_delta = clamp(delta, -max_delta, max_delta)
+result = old + clamped_delta
+```
+
+### Key Evolved Parameters
+
+`stop_atr_mult`, `tp_r_mult`, `trail_atr_mult`, `kelly_fraction`, `breakout_score_threshold`, `momentum_decay`, `regime_size_scales` (7-regime dict), `shorts_enabled`, `max_bars_in_trade`
+
+---
+
+## 24. UNIVERSE & SECTOR MANAGEMENT
+
+**Source**: `backend/organism/universe_selector.py`, `backend/organism/sector_map.py`, `backend/organism/market_scanner.py`
+
+### Dynamic Universe Rotation
+
+```
+ROTATION (on retrain):
+  │
+  ├── Update fitness from recent trades:
+  │   └── fitness = 0.6 × win_rate + 0.4 × (0.5 + pnl_norm/2)
+  │
+  ├── Decay all fitness toward 0.50 (×0.95)
+  │
+  ├── DROP (up to 5 symbols):
+  │   ├── No open position
+  │   ├── >= 3 observed rotations
+  │   └── fitness < 0.40
+  │
+  ├── ADD (up to 10 symbols):
+  │   ├── Not currently active
+  │   ├── fitness >= 0.50
+  │   └── >= 3 rotations OR already traded
+  │
+  └── Enforce bounds: [15, 80] symbols
+      └── NEVER drop symbols with open positions
+```
+
+### Sector Diversification Gate
+
+| Sector | Symbols | Max Positions |
+|---|---|---|
+| Technology | AAPL, MSFT, NVDA, AMD, AVGO, INTC, MU, ADBE, CRM, SNOW, PLTR | 4 |
+| Communication | GOOGL, META, NFLX | 4 |
+| Consumer Discretionary | AMZN, TSLA, COST, WMT, UBER, ABNB | 4 |
+| ETF | SPY, QQQ, IWM, XLK, XLE | 4 |
+| Healthcare | LLY | 4 |
+| Energy | XOM | 4 |
+| Industrials | CAT | 4 |
+| Financials | COIN, SQ | 4 |
+| Unknown | Any new scanner finds | NEVER BLOCKED |
+
+Tracks `planned_entries` within a single tick to prevent multiple same-sector entries in one cycle.
+
+### Market Scanner
+
+```
+MARKET SCANNER (every 6 ticks ≈ 60s)
+  │
+  ├── 3 concurrent API calls:
+  │   ├── Most-actives by volume (top 100)
+  │   ├── Top gainers (top 50)
+  │   └── Top losers (top 50)
+  │
+  ├── Exclusion: 30 leveraged/inverse ETFs
+  ├── Price filter: [$10, $1500]
+  ├── Volume filter: >= 500,000
+  │
+  ├── 7-dimension tension score:
+  │   ├── Range compression (0.18)
+  │   ├── Volume surge (0.18)
+  │   ├── Breakout proximity (0.18)
+  │   ├── Gap momentum (0.12)
+  │   ├── Minute-bar acceleration (0.12)
+  │   ├── Body-to-range ratio (0.12)
+  │   └── Range narrowing (0.10)
+  │
+  ├── Tension threshold: >= 0.30
+  └── Max candidates: 80, top 20 injected into universe
+```
+
+---
+
+## 25. BACKGROUND TRAINING & TRANSFER LEARNING
+
+**Source**: `backend/organism/background_trainer.py`, `backend/organism/transfer_learning.py`
+
+### Background Training
+
+```
+BACKGROUND TRAINER (ProcessPoolExecutor)
+  │
+  ├── Serialize: features, model state, last 200 trades, evolution params
+  ├── Separate process: train ML + evolve params
+  ├── Stuck detection: > 30 ticks → force-reset
+  │
+  └── Atomic swap on completion:
+      ├── New classifier + regressor + ensemble
+      ├── New feature columns
+      └── New evolved params → applied to all live components
+```
+
+### Transfer Learning
+
+```
+CROSS-RUN KNOWLEDGE (persisted in transfer_knowledge.json)
+  │
+  ├── Last 20 run snapshots (decay-weighted, newest = 1.0)
+  ├── Global feature importance (EMA across all runs)
+  ├── Best-ever Sharpe params
+  ├── Per-regime best config
+  │
+  └── Warm-start priority:
+      ├── 1. Regime-specific best (if Sharpe > 0)
+      ├── 2. Decay-weighted average of all snapshots
+      └── 3. Seed feature weights from global importance
+```
+
+---
+
+## 25a. DECISION TELEMETRY
+
+**Source**: `backend/organism/decision_telemetry.py`
+
+Per-tick transparency layer capturing every indicator, threshold, and decision gate for frontend visualization.
+
+### Data Structures
+
+```
+SymbolAlphaDetail:
+  - 7-factor alpha breakdown with composite score
+  - min_composite_threshold: 0.15
+  - fitness_gate: 0.35
+
+DecisionSnapshot:
+  - timestamp, regime, portfolio state
+  - all symbol alpha details
+  - entry/exit decisions and reasons
+  - ML signal values
+
+Ring Buffer:
+  - Capacity: 360 ticks (~1 hour at 10s intervals)
+  - In-memory only, no DB persistence
+  - Ephemeral diagnostic data
+```
+
+### Safe Type Conversion
+
+```python
+_f(val)  # numpy.float64 → Python float (handles NaN/inf → None)
+_b(val)  # numpy.bool_ → Python bool (handles non-bool → False)
+```
+
+Required because FastAPI cannot serialize numpy types.
+
+### API Endpoints
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| GET | `/organism/decisions` | Latest decision snapshot |
+| GET | `/organism/decisions/history` | Full ring buffer contents |
+| GET | `/organism/decisions/symbol/{sym}` | Symbol-specific decision trail |
+| GET | `/organism/decisions/exits` | Exit decision history |
+| GET | `/organism/evolution/history` | Evolution parameter history |
+
+---
+
+## 25b. REPLAY SIMULATOR
+
+**Source**: `backend/organism/replay_simulator.py`
+
+Historical bar replay engine for backtesting. Feeds historical bars through the actual `live_tick()` pipeline one-at-a-time.
+
+### Components
+
+```
+SimulatedBroker:
+  - Implements PositionsService + OrderService interfaces
+  - Tracks: fills, positions, cash, equity
+  - Configurable slippage_bps (default: 0)
+  - initial_cash: $100,000
+
+HistoricalBarProvider:
+  - Feeds bars sequentially from historical data
+  - One bar per tick (no look-ahead)
+
+ReplayEngine:
+  - Orchestrates replay through OrganismLiveEngine.live_tick()
+  - Uses real engine code path — not a separate backtester
+
+ReplayResult:
+  - trades: list of executed trades
+  - equity_curve: time series of portfolio value
+  - metrics: Sharpe, max drawdown, win rate, etc.
+```
+
+### CLI Usage
+
+```bash
+python -m backend.organism.replay_simulator \
+  --symbols AAPL,MSFT,SPY \
+  --start 2026-02-01 \
+  --end 2026-02-25
+```
+
+---
+
+## 25c. ENSEMBLE MODELS
+
+**Source**: `backend/organism/ensemble_models.py`
+
+Phase 4.4 — Wraps XGBoost with Random Forest + optional LightGBM using soft-vote strategy.
+
+### Soft-Vote Ensemble
+
+```
+EnsemblePredictor:
+  │
+  ├── Model A: XGBoost classifier → P(up)_A, return_A
+  ├── Model B: RandomForest → P(up)_B, return_B
+  └── Model C: LightGBM (optional) → P(up)_C, return_C
+
+  Final P(up) = Σ(weight_i × P(up)_i) / Σ(weight_i)
+  Final return = Σ(weight_i × return_i) / Σ(weight_i)
+
+  Weights: start equal, adapted by EvolutionEngine
+           based on per-model accuracy
+```
+
+### Optional Dependencies
+
+- XGBoost (primary)
+- sklearn RandomForest + GradientBoosting
+- LightGBM (optional, gracefully degraded)
+- Model stubs return neutral predictions (0.0) when libraries unavailable
+
+---
+
+## 25d. COMPOSITE INDICATORS
+
+**Source**: `backend/organism/composite_indicators.py`
+
+7 proprietary composite trading indicators combining 3-5 base indicators into normalized [0, 1] scores.
+
+### Composites
+
+| # | Name | What It Measures |
+|---|---|---|
+| 1 | Squeeze Momentum | Volatility compression + directional energy |
+| 2 | Volume-Price Divergence | Smart money vs dumb money flow |
+| 3 | Trend Alignment | Multi-timeframe trend consensus |
+| 4 | Institutional Accumulation | Large block flow detection |
+| 5 | Mean Reversion Extremity | Multi-indicator oversold/overbought |
+| 6 | Breakout Readiness | Pre-breakout tension scoring |
+| 7 | Momentum Quality | Sustainable vs fading momentum |
+
+### Normalization
+
+```
+_norm_01(series, window=60):
+  60-bar rolling percentile rank → [0, 1]
+  Uses ranking rather than min/max to handle outliers
+```
+
+---
+
+## 25e. FEATURE STORE
+
+**Source**: `backend/organism/feature_store.py`
+
+Phase 2 — Versioned feature store ensuring online/offline parity.
+
+### Architecture
+
+```
+FeatureStore:
+  │
+  ├── Config versioning (hash-based)
+  │     feature_groups: [trend, mean_reversion, volatility, liquidity, regime]
+  │     feature_mode: "realtime_light"
+  │     enable_heavy_features: false
+  │     enable_autocorr_features: false
+  │
+  ├── Snapshot persistence (disk-based)
+  │
+  └── Data QA gates:
+      FeatureQAReport:
+        - passed: bool
+        - nan_pct: float (% missing values)
+        - outlier_count: int
+        - issues: list[str]
+        - row_count validation
+```
+
+---
+
+## 25f. MULTI-TIMEFRAME FEATURES
+
+**Source**: `backend/organism/multi_timeframe.py`
+
+Phase 4.2 — Derives higher-timeframe features from bar stream without lookahead bias.
+
+### Resampling Rules
+
+| Input Timeframe | Higher TF 1 | Higher TF 2 |
+|---|---|---|
+| Daily bars | Weekly (5 bars) | Monthly (21 bars) |
+| 15Min bars | Daily (26 bars) | Weekly (130 bars) |
+
+### Implementation
+
+```
+Rolling aggregation (NOT calendar resample):
+  - Uses N-bar rolling window to prevent lookahead bias
+  - Feature naming: mtf_{timeframe}_{indicator}
+  - Examples: mtf_w_rsi_14, mtf_m_sma_trend
+
+Bars-per-day map:
+  1min: 390, 5min: 78, 15min: 26, 30min: 13, 1hour: 7
+```
+
+---
+
+# LAYER 4: EXTERNAL INTEGRATION — ALPACA BROKER
+
+## 26. ORDER SUBMISSION PIPELINE
+
+**Source**: `backend/integrations/alpaca_broker.py`
+
+### Place Order Parameters
+
+```python
+symbol:          str          # Uppercase stock symbol
+side:            str          # "buy"/"sell"/"long"/"short" (mapped to buy/sell)
+qty:             int          # Number of shares (integer)
+type:            str          # "market" (default), "limit", "stop", "stop_limit"
+tif:             str          # "day" (default), "gtc", "opg", "cls", "ioc", "fok"
+limit_price:     float|None   # Required for limit/stop_limit orders
+stop_price:      float|None   # Required for stop/stop_limit orders
+client_order_id: str|None     # Optional idempotency key
+```
+
+### HTTP Request to Alpaca
+
+```
+POST {base_url}/v2/orders
+  Paper: https://paper-api.alpaca.markets/v2/orders
+  Live:  https://api.alpaca.markets/v2/orders
+
+Payload:
+{
+  "symbol": "AAPL",
+  "side": "buy" | "sell",
+  "type": "market" | "limit" | "stop" | "stop_limit" | "trailing_stop",
+  "time_in_force": "day" | "gtc" | "opg" | "cls" | "ioc" | "fok",
+  "qty": "100",                        # String (not integer)
+  "client_order_id": "order_abc12345", # For idempotency
+  "limit_price": "150.25",            # Optional, string
+  "stop_price": "149.50"              # Optional, string
+}
+```
+
+### Response Format
+
+```json
+{
+  "id": "uuid-order-id",
+  "client_order_id": "order_abc12345",
+  "status": "new" | "accepted" | "partially_filled" | "filled" | "canceled" | "expired" | "rejected",
+  "symbol": "AAPL",
+  "qty": "100",
+  "filled_qty": "50",
+  "filled_avg_price": "150.24" | null,
+  "type": "market",
+  "side": "buy",
+  "time_in_force": "day",
+  "created_at": "2025-02-26T14:30:00Z"
+}
+```
+
+### Retry Strategy
+
+```
+max_retries: 3
+backoff_factor: 1.0
+  Attempt 0: 1s
+  Attempt 1: 2s
+  Attempt 2: 4s
+  Attempt 3: Final, no retry
+
+Retryable: 429, 500, 502, 503, 504, TimeoutException, ConnectError
+Non-retryable: 400-499 (except 429)
+```
+
+### Order Status Mapping (Alpaca → Internal)
+
+| Alpaca Status | Internal Status |
+|---|---|
+| new | submitted |
+| accepted | accepted |
+| pending_new | pending |
+| pending_cancel | pending_cancel |
+| partially_filled | partially_filled |
+| filled | filled |
+| canceled | cancelled |
+| expired | expired |
+| rejected | rejected |
+
+---
+
+## 27. OUTBOX DISPATCHER
+
+**Source**: `backend/integrations/alpaca_outbox.py`
+
+### Smart Time-In-Force Selection
+
+- Default to `day` (intraday-only system prevents overnight exposure)
+- Check market hours: 9:30 AM - 4:00 PM ET, Monday-Friday
+- GTC only used when explicitly requested
+- Falls back to `day` if timezone parsing fails
+
+### Dispatch Flow
+
+```
+AlpacaOutboxDispatcher:
+  1. Routes to mock broker (if USE_MOCK_BROKER=true) OR real Alpaca
+  2. Extracts: symbol, side, qty, order_type, limit_price, stop_price, client_key
+  3. Converts qty to int: int(float(event_data.get("qty", 0)))
+  4. Calls broker.place_order() with smart TIF
+  5. Returns: {success, broker_order_id, status, message}
+```
+
+---
+
+## 28. IDEMPOTENCY & DEDUPLICATION
+
+**Source**: `backend/integrations/alpaca_broker.py`
+
+```
+BEFORE PLACING ORDER:
+  1. Check if order already exists: get_order(client_order_id)
+  2. If found → return existing order (idempotent)
+  3. If not found (404/422/502) → proceed with placement
+
+ON DUPLICATE (422 "client_order_id must be unique"):
+  → GET /v2/orders:by_client_order_id?client_order_id={id}
+  → Return recovered existing order instead of failing
+```
+
+---
+
+## 29. WEBSOCKET TRADE UPDATES
+
+**Source**: `backend/integrations/alpaca_stream.py`
+
+### Connection
+
+```
+WebSocket URL:
+  Paper: wss://paper-api.alpaca.markets/stream
+  Live:  wss://api.alpaca.markets/stream
+
+Parameters:
+  ping_interval: 30s
+  ping_timeout: 10s
+  close_timeout: 10s
+
+Auth: {"action": "auth", "key": "{API_KEY}", "secret": "{SECRET}"}
+Subscribe: {"action": "listen", "data": {"streams": ["trade_updates"]}}
+```
+
+### Incoming Trade Update Format (Alpaca v2)
+
+```json
+{
+  "T": "trade_updates",
+  "data": {
+    "event": "fill" | "partial_fill" | "canceled" | "rejected",
+    "order": {
+      "id": "broker-order-uuid",
+      "client_order_id": "order_abc12345",
+      "status": "filled",
+      "filled_qty": "100",
+      "filled_avg_price": "150.24"
+    }
+  }
+}
+```
+
+### Processing Pipeline
+
+```
+1. Extract order data: event_data.get("order", event_data)
+2. Map status: _map_alpaca_status(status)
+3. Find order in DB:
+   - Primary: get_by_broker_order_id(broker_order_id)
+   - Fallback: get_by_client_key(client_order_id)
+   - Backfill broker_order_id if found via client_key
+4. Update DB: attach_broker_result(order_id, status, filled_qty, avg_fill_price)
+5. Broadcast to frontend via Socket.IO
+```
+
+### Queue Management
+
+- Unbounded asyncio.Queue (trade updates MUST NOT be dropped)
+- High water mark tracking at 500 items
+- Queue overflow triggers warning
+
+### Reconnection Strategy
+
+```
+reconnect_delay: 1.0s (initial)
+max_reconnect_delay: 60.0s
+reconnect_multiplier: 2.0x
+max_reconnect_attempts: 10
+
+Schedule: 1s → 2s → 4s → 8s → 16s → 32s → 60s (capped)
+
+Slow-Retry Mode (after 10 failures):
+  5m → 10m → 20m → 30m (capped)
+  Emits CRITICAL alert
+```
+
+### Heartbeat
+
+- Ping every 30s
+- Stale detection: no heartbeat in 60s → warning
+
+---
+
+## 30. MARKET DATA STREAM
+
+**Source**: `backend/integrations/alpaca_market_data_stream.py`
+
+### Connection
+
+```
+WebSocket URL: wss://stream.data.alpaca.markets/v2/{feed}
+  feed: "sip" (paid, full consolidated) or "iex" (free, single exchange)
+
+Parameters:
+  ping_interval: 20s
+  ping_timeout: 10s
+  close_timeout: 10s
+```
+
+### Subscription Types
+
+```
+Bars:   {"action": "subscribe", "bars": ["AAPL", "TSLA"]}
+Quotes: {"action": "subscribe", "quotes": ["AAPL", "TSLA"]}
+Trades: {"action": "subscribe", "trades": ["AAPL", "TSLA"]}
+```
+
+### Message Formats
+
+**Bar** (`T: "b"`): open, high, low, close, volume, trade_count, vwap, timestamp
+**Quote** (`T: "q"`): bid/ask price+size+exchange, conditions, mid (calculated), spread (calculated)
+**Trade** (`T: "t"`): price, size, exchange, conditions, tape, timestamp
+
+### Callbacks
+
+```python
+on_quote: Callable[[str, dict], Any]  # (symbol, quote_data)
+on_trade: Callable[[str, dict], Any]  # (symbol, trade_data)
+on_bar:   Callable[[str, dict], Any]  # (symbol, bar_data)
+on_error: Callable[[str], Any]        # (error_msg)
+```
+
+### Reconnection
+
+```
+INITIAL_BACKOFF: 1.0s
+MAX_BACKOFF: 300.0s (5 minutes)
+BACKOFF_MULTIPLIER: 1.5x
+MAX_RECONNECT_ATTEMPTS: 10
+Jitter: ±10% random
+
+On reconnect: snapshot desired subscriptions → clear tracking → re-subscribe all
+```
+
+---
+
+## 31. HISTORICAL DATA & POSITIONS
+
+**Source**: `backend/integrations/alpaca_data.py`, `backend/integrations/alpaca_broker.py`
+
+### Historical Bars
+
+```
+GET {data_url}/v2/stocks/{symbol}/bars
+  data_url: https://data.alpaca.markets/v2
+
+Parameters:
+  timeframe:  "1Day" | "1Hour" | "5Min" | "15Min" | "1Min"
+  adjustment: "split"
+  limit:      lookback × 2 (filtering buffer)
+  sort:       "asc"
+  feed:       "sip" | "iex"
+
+Retry: 2 attempts, 200ms base backoff (fail-fast for HFT)
+```
+
+### Positions
+
+```
+GET /v2/positions         → List[Position] (all open positions)
+GET /v2/positions/{sym}   → Position | None (404 = no position, not error)
+GET /v2/account           → Account (equity, cash, buying_power, etc.)
+DELETE /v2/orders/{id}    → 204 success, 404/422 already filled/expired
+```
+
+### Order Cancellation Response Handling
+
+- 204: Success (order canceled)
+- 404: Order not found (already filled or expired)
+- 422: Order cannot be canceled
+- 502/503: Server error (retryable)
+
+---
+
+## 31a. PRODUCTION STREAM CLIENT
+
+**Source**: `backend/integrations/alpaca_stream_production.py`
+
+Production-hardened WebSocket stream with gap-filling and robustness enhancements beyond `alpaca_stream.py`.
+
+### Features Beyond Base Stream
+
+```
+StreamState (persistent):
+  - Tracks last_event_ts in DB for gap detection
+  - load_from_db() on startup
+  - update_last_event() on each message
+
+Gap-Fill on Reconnect:
+  - Queries REST API for events since last_event_ts
+  - Default: start from 1 hour ago if no events exist
+  - Deduplicates against order_events table
+
+Robustness:
+  - Jittered exponential backoff for reconnections
+  - Comprehensive error classification
+  - Circuit breaker integration (infra/resilience.py)
+  - Event deduplication using order_events table
+```
+
+### Dependencies
+
+Uses `TransactionalGuardrails`, `OrdersRepo`, `AlpacaBrokerClient`, and `LotTracker` for fill processing within DB transactions.
+
+---
+
+# LAYER 5: INFRASTRUCTURE
+
+## 32. TRANSACTIONAL OUTBOX & DLQ
+
+**Source**: `backend/infra/outbox.py`, `backend/infra/outbox_worker.py`
+
+### Outbox Pattern
+
+```
+APPLICATION TRANSACTION:
+  1. Create Order in DB
+  2. Enqueue OutboxEvent (topic="order.submitted") in SAME transaction
+  3. Commit — both or neither persist (atomicity)
+
+OUTBOX WORKER (background, 100ms poll):
+  1. claim_batch(10) with FOR UPDATE SKIP LOCKED (no contention)
+  2. For each event:
+     ├── Route by topic: "order.submitted" → broker dispatch
+     ├── Shadow/dry_run/mock/real broker based on execution mode
+     ├── Success → mark_sent()
+     ├── Retryable failure → mark_retry() with backoff
+     └── Max retries (5) or validation error → DLQ
+  3. DLQ: mark_failed() + broadcast "order.rejected" via WebSocket
+```
+
+### Backoff Calculator
+
+```
+base_delay_ms: 200
+max_delay_ms: 10000
+jitter_ms: 150
+delay = min(base × 2^attempt + random(0, jitter), max_delay)
+```
+
+### Outbox Worker Config
+
+| Parameter | Value | Purpose |
+|---|---|---|
+| `poll_interval` | 0.1s (100ms) | HFT-optimized polling |
+| `max_retries` | 5 | Before DLQ |
+| `initial_backoff` | 1.0s | First retry delay |
+| `max_backoff` | 300s | Cap on retry delay |
+| `jitter_factor` | 0.1 | Prevents thundering herd |
+
+### Prometheus Metrics
+
+`outbox_polled_total`, `outbox_dispatched_total[topic,status]`, `outbox_dispatch_latency_seconds[topic]`, `outbox_queue_gauge[status]`, `broker_submit_total[result]`, `broker_submit_latency_seconds`
+
+---
+
+## 33. ORDER GUARDRAILS
+
+**Source**: `backend/infra/guardrails.py`, `backend/infra/guardrails_production.py`, `backend/infra/order_guardrails.py`
+
+### 8-Layer Validation (Pre-Submission)
+
+```
+ORDER REQUEST
+  │
+  ├── Layer 1: Trading paused? → REJECT
+  ├── Layer 2: Within trading window? (9:30-16:00 ET) → REJECT
+  ├── Layer 3: Symbol in whitelist? → REJECT
+  ├── Layer 4: Order size <= max? (100 shares default) → REJECT
+  ├── Layer 5: Daily order count <= max? (100/day default) → REJECT
+  ├── Layer 6: Daily notional <= cap? ($10K default) → REJECT
+  ├── Layer 7: Rate limit? (10/min default) → REJECT
+  └── Layer 8: Circuit breaker open? → REJECT
+```
+
+### Production Guardrails (Atomic)
+
+```
+TransactionalGuardrails:
+  - SELECT FOR UPDATE on DailyLedger (race-condition-free)
+  - Atomic check + increment of daily counters
+  - Circuit breaker: opens after 10 consecutive BROKER_DOWN/NETWORK_ERROR in 5 min
+  - Deduplication via unique constraint
+```
+
+### Post-Submission Safety
+
+```
+OrderGuardrails:
+  - ALPACA_ORDER_TIMEOUT: 30s (submission timeout)
+  - ALPACA_VERIFY_TIMEOUT: 10s (verification timeout)
+  - STALE_PENDING_THRESHOLD: 5 min → mark as failed
+  - STALE_ACCEPTED_THRESHOLD: 24 hr → flag for reconciliation
+  - Stale cleanup runs every 15 min
+```
+
+### Guardrail Config
+
+| Parameter | Default | Env Variable |
+|---|---|---|
+| Symbol whitelist | AAPL,MSFT,GOOGL,TSLA,NVDA,SPY,QQQ | `SYMBOL_WHITELIST` |
+| Daily notional cap | $10,000 | `DAILY_NOTIONAL_CAP_USD` |
+| Max daily orders | 100 | `MAX_DAILY_ORDERS` |
+| Max order size | 100 shares | `MAX_ORDER_SIZE` |
+| Max orders/min | 10 | `MAX_ORDERS_PER_MINUTE` |
+| Circuit breaker | 5.0% | `CIRCUIT_BREAKER_PCT` |
+| Admin override | true | `RISK_ALLOW_ADMIN_OVERRIDE` |
+| Fallback price | $500/share | (hardcoded, conservative) |
+
+---
+
+## 34. RESILIENCE LAYER
+
+**Source**: `backend/infra/resilience.py`
+
+### Circuit Breaker
+
+```
+States: CLOSED → OPEN → HALF_OPEN → CLOSED (or back to OPEN)
+
+Config:
+  failure_threshold: 5 consecutive failures → OPEN
+  recovery_timeout: 60s in OPEN → try HALF_OPEN
+  success_threshold: 3 successes in HALF_OPEN → CLOSED
+  timeout: 30s per call
+
+Prometheus: state_changes_total, requests_total, timeout_occurrences_total
+```
+
+### Exponential Backoff
+
+```
+RetryConfig:
+  max_attempts: 3
+  base_delay: 1.0s
+  max_delay: 60s
+  backoff_multiplier: 2.0
+  jitter: True (prevents thundering herd)
+
+delay = min(base × multiplier^attempt + random_jitter, max_delay)
+```
+
+### Retry Manager
+
+- Executes with retry around any async function
+- Best-effort session rollback between attempts
+- DLQ on max retries exhausted
+- Prometheus: `retry_attempts_total`, `dlq_messages_total`, `backoff_delay_seconds`
+
+### OrderService Circuit Breaker (Redis-Backed)
+
+**Source**: `backend/services/order_service.py`
+
+A **separate** circuit breaker from infra/resilience.py, with Redis persistence for distributed state.
+
+```
+OrderService CircuitBreaker:
+  │
+  ├── States: CLOSED → OPEN → HALF_OPEN → CLOSED
+  │
+  ├── Trip Conditions (ANY):
+  │   ├── 5 consecutive failures within 300s window → OPEN
+  │   └── Daily PnL loss >= 5% → OPEN (PnL-triggered kill)
+  │
+  ├── Recovery:
+  │   ├── 60s in OPEN → transition to HALF_OPEN
+  │   └── 3 successes in HALF_OPEN → CLOSED
+  │
+  ├── Redis Keys:
+  │   ├── circuit_breaker:order_flow:state
+  │   ├── circuit_breaker:order_flow:failures
+  │   ├── circuit_breaker:order_flow:opened_at
+  │   ├── circuit_breaker:order_flow:daily_pnl
+  │   └── circuit_breaker:order_flow:last_reset_date
+  │
+  └── Fallback: In-memory state if Redis unavailable
+      └── Uses both epoch (persistence) and monotonic (time windows) clocks
+```
+
+| Parameter | Value | Purpose |
+|---|---|---|
+| `failure_threshold` | 5 | Failures to trip |
+| `success_threshold` | 3 | Successes to recover |
+| `timeout_seconds` | 60 | Time before half-open attempt |
+| `window_seconds` | 300 | Failure counting window |
+| `loss_threshold_pct` | 5% | Daily PnL loss kill switch |
+
+**Key difference from infra/resilience.py**: This circuit breaker is **PnL-aware** — it trips on financial losses, not just technical failures. The infra circuit breaker only tracks call failures.
+
+---
+
+## 35. ALERT SYSTEM
+
+**Source**: `backend/infra/alerting.py`
+
+### Alert Architecture
+
+```
+AlertManager (global singleton)
+  │
+  ├── Channels:
+  │   ├── Slack (via webhook): all severities
+  │   └── PagerDuty (via routing key): ERROR + CRITICAL always, WARNING in prod only
+  │
+  ├── Deduplication:
+  │   ├── SHA-256 content hash
+  │   ├── 300s dedup window
+  │   └── Async lock for thread safety
+  │
+  ├── Rate Limiting:
+  │   ├── Sliding window: 30 alerts/min
+  │   └── Excess alerts dropped with warning
+  │
+  └── Market Hours Suppression:
+      ├── Extended hours: 4:00 AM - 8:00 PM ET
+      └── INFO/WARNING suppressed outside extended hours
+      └── ERROR/CRITICAL always delivered
+```
+
+### Alert Categories
+
+| Category | Examples |
+|---|---|
+| RISK_VIOLATION | Drawdown kill, position limit, notional cap |
+| ORDER_FAILURE | Broker reject, timeout, DLQ |
+| SYSTEM_ERROR | DB down, Redis down, unhandled exception |
+| CONNECTIVITY | WebSocket disconnect, API timeout |
+| PERFORMANCE | Tick latency, queue overflow |
+| SECURITY | Auth failure, rate limit, suspicious activity |
+
+### Convenience Methods
+
+`risk_violation()`, `order_failure()`, `system_error()`, `connectivity_issue()`
+
+---
+
+## 36. DATABASE SCHEMA
+
+**Source**: `backend/infra/schemas.py`, `backend/infra/repositories/`
+
+### Tables (24 ORM tables)
+
+| Table | Key Columns | Purpose |
+|---|---|---|
+| `users` | id, username (unique), email (unique), hashed_password, roles (ARRAY), failed_login_attempts, locked_until | Auth + RBAC |
+| `orders` | id (UUID), user_id, client_idempotency_key (unique), symbol, side, qty, order_type, tif, status, broker_order_id, attributes (JSONB) | Order lifecycle |
+| `executions` | id (UUID), order_id (FK), fill_qty, fill_price, ts, venue | Fill records |
+| `outbox_events` | id, topic, payload (JSONB), status, attempts, next_attempt_at, last_error | Transactional outbox |
+| `model_lifecycle_events` | id, model_id, model_name, model_version, event_type, payload | ML model audit trail |
+| `signals` | id, symbol, model_name, signal_type, direction, strength, confidence, target_price, expiry | Trading signals |
+| `positions` | id, symbol, qty, avg_cost, market_value, unrealized_pnl, attributes | Position state |
+| `audit_logs` | id, action, entity, entity_id, actor, ts | Audit trail |
+| `model_registry` | id, name, version, model_type, status, metadata, config, performance_metrics | ML model registry |
+| `strategies` | id, name, strategy_type, description, status, symbols, parameters, total_pnl, win_rate | Strategy config |
+| `risk_limits` | id (UUID), user_id (FK), limit_name, limit_value, warning_threshold (80%), critical_threshold (95%), enabled | Risk limit definitions |
+| `risk_metrics` | id (UUID), user_id (FK), metric_name, current_value, limit_value, percent_used, status (normal/warning/critical/breached) | Live risk measurements |
+| `risk_violations` | id (UUID), user_id (FK), metric_name, violation_type, current_value, limit_value, severity, message, resolved | Risk breach records |
+| `emergency_stops` | id (UUID), user_id (FK), triggered_by (FK), reason, strategies_stopped, orders_cancelled, status (active/resolved) | Emergency stop events |
+| `portfolio_history` | id, user_id (FK), timestamp, total_equity, cash, positions_value, daily_pnl, daily_pnl_percent, snapshot_type | Equity time series |
+| `position_lots` | id (UUID), user_id (FK), symbol, qty, remaining_qty, cost_basis, order_id (FK), open_date, status (open/closed) | FIFO tax lot tracking |
+| `realized_trades` | id (UUID), user_id (FK), symbol, qty, open_price, close_price, realized_pnl, realized_pnl_percent, lot_id (FK) | Closed trade records |
+| `backtests` | id (UUID), strategy_id (FK), user_id, start/end_date, initial_capital, parameters, metrics (JSON), status, equity_curve (JSON) | Backtest results |
+| `order_events` | id, order_id (FK), event_type, data (JSONB), ts | Order lifecycle event log |
+| `model_monitoring_snapshots` | id, model_id (FK), metrics (JSONB), ts | ML model performance snapshots |
+| `watchlists` | id, user_id (FK), name, symbols (ARRAY), created_at | User watchlists |
+| `watchlist_symbols` | id, watchlist_id (FK), symbol, added_at | Watchlist symbol membership |
+| `chart_templates` | id, user_id (FK), name, config (JSONB), created_at | Saved chart configurations |
+| `drawings` | id, user_id (FK), symbol, drawing_type, data (JSONB), created_at | TradingView-style chart drawings |
+
+### Repositories
+
+| Repository | Key Operations |
+|---|---|
+| `OrdersRepo` | `upsert_by_idempotency()`, `attach_broker_result()`, `get_by_broker_order_id()`, `batch_create_orders()` |
+| `PositionsRepo` | `upsert_position()`, `update_market_data()`, `get_portfolio_summary()`, `batch_update_market_data()` |
+| `ExecutionsRepo` | `upsert_by_execution_id()`, `get_volume_weighted_avg_price()`, `calculate_pnl_impact()` |
+| `SignalsRepo` | `get_high_confidence_signals(min_conf=0.8)`, `get_consensus_signals()`, `expire_signals_by_model()` |
+| `ModelsRepo` | `register_model()`, `promote_model_to_production()`, `get_model_performance_comparison()` |
+| `AuditsRepo` | `log_order_action()`, `get_security_events()`, `cleanup_old_logs(90 days)` |
+| `StrategiesRepo` | Strategy CRUD, lifecycle management, dedup |
+
+### Repository Pattern
+
+All repositories follow async SQLAlchemy pattern with:
+- Custom exceptions: `{Entity}NotFoundError`, `Duplicate{Entity}Error`
+- IntegrityError handling for concurrent writes
+- Decimal precision for financial values
+- Composite query support (`and_`/`or_` composition)
+
+**Source**: `backend/infra/repositories.py` (base) + `backend/infra/repositories/{entity}.py`
+
+### ORM Models
+
+**Source**: `backend/infra/schemas.py` (SQLAlchemy tables), `backend/models/*.py` (Pydantic validation)
+
+| Model File | Key Models | Purpose |
+|---|---|---|
+| `models/backtest.py` | `BacktestRequest`, `EquityPoint`, `Trade` | Backtest I/O validation (capital: 1K-10M, max 5yr) |
+| `models/ml_models.py` | `ModelTrainingRequest`, `ModelStatus`, `TrainingStatus` | ML model management (6 model types, 5 statuses) |
+| `models/risk.py` | `RiskStatus`, `ViolationType`, `Severity`, `EmergencyStopStatus` | Risk metric enums + request models |
+| `models/order_integrity.py` | Order FSM, audit log, idempotency | Order state machine + Prometheus metrics (5 counters) |
+| `models/ensemble_model.py` | Ensemble model stubs | LSTM+XGBoost+RF combination with graceful degradation |
+
+### Input Validation
+
+**Source**: `backend/infra/validation.py`
+
+| Validator | Rules |
+|---|---|
+| `validate_symbol()` | Max 10 chars, letters/numbers/dots/hyphens, case-insensitive |
+| `validate_price()` | Positive, max $100M/share, 4 decimal places max |
+
+### User Management
+
+**Source**: `backend/infra/users.py`
+
+```
+UserRepository (DB-backed):
+  - Brute force protection: 5 failed attempts → 15 min lockout
+  - Fields: id, username, email, hashed_password, roles, is_active,
+            failed_login_attempts, locked_until, last_login
+  - SQLite compatibility for test environments
+```
+
+---
+
+## 37. OBSERVABILITY STACK
+
+**Source**: `backend/infra/observability.py`, `backend/infra/metrics.py`, `backend/infra/logging.py`, `backend/infra/observability_contracts.py`
+
+### Prometheus Metrics
+
+```
+Namespace: "intraday"
+
+HTTP:
+  http_requests_total{method, route, status}
+  http_request_duration_seconds{method, route}
+
+Alpaca:
+  alpaca_request_duration_seconds{endpoint, method, status_code}
+
+Outbox:
+  outbox_polled_total, outbox_dispatched_total{topic, status}
+  outbox_dispatch_latency_seconds{topic}
+  outbox_queue_gauge{status}
+
+Broker:
+  broker_submit_total{result}
+  broker_submit_latency_seconds
+
+Resilience:
+  resilience_circuit_breaker_state_changes_total
+  resilience_retry_attempts_total
+  resilience_timeout_occurrences_total
+
+Object Pool:
+  object_pool_acquisitions_total{pool_name, source}
+  object_pool_size
+```
+
+Label cardinality is enforced via `LABEL_ALLOWLIST` and `LABEL_VALUE_ALLOWLIST`.
+
+### OpenTelemetry Tracing
+
+- Default sampler: `traceidratio=0.5` (50% of requests traced)
+- OTLP export: every 30s to `otel-collector:4317`
+- Auto-instrumentation: FastAPI, requests, SQLAlchemy, asyncpg
+- `trace_span(name, attributes)` context manager for custom spans
+
+### Structured Logging
+
+```
+Format: JSON with fields: timestamp, level, message, service, version, trace_id, span_id
+Service: "intraday-trading", version "2.0.0"
+
+Domain methods:
+  log_http_request(), log_database_operation(), log_alpaca_request(),
+  log_order_event(), log_outbox_event(), log_auth_event()
+
+Noise reduction: uvicorn.access, sqlalchemy.engine, asyncpg → WARNING
+```
+
+### Histogram Bucket Definitions
+
+| Metric Type | Buckets (ms) |
+|---|---|
+| HTTP requests | 1, 5, 10, 25, 50, 100, 250, 500, 1000, 2500, 5000, 10000 |
+| Alpaca latency | 50ms–60s range (timeout-aware) |
+| Outbox dispatch | 1ms–250ms range |
+| Object pool acquire | 0.01, 0.05, 0.1, 0.5, 1, 5, 10 ms |
+
+---
+
+# LAYER 6: ML DEPLOYMENT PIPELINE
+
+## 38. PROMOTION CONTROLLER
+
+**Source**: `backend/organism/promotion.py`
+
+### 6-Stage State Machine
+
+```
+SHADOW → PAPER_EXECUTE → CANARY → RAMP → ACTIVE → (ROLLED_BACK)
+
+Each transition:
+  1. Validate minimum stage duration met
+  2. Check rollback triggers not firing
+  3. Persist as ModelLifecycleEvent
+  4. Apply new risk caps
+```
+
+### Stage Configuration
+
+| Stage | Risk Cap (Exposure) | Min Duration | Description |
+|---|---|---|---|
+| SHADOW | 0% | 1 hour | Model runs but no orders placed |
+| PAPER_EXECUTE | 20% | 24 hours | Paper trades only |
+| CANARY | 5% | 24 hours | Small real allocation |
+| RAMP | 15% | 48 hours | Gradual ramp-up |
+| ACTIVE | 25% | — | Full production |
+| ROLLED_BACK | 0% | — | Emergency stop |
+
+### Rollback Triggers
+
+| Trigger | Threshold | Action |
+|---|---|---|
+| Max drawdown | 8% | Immediate rollback |
+| Max slippage | 50 bps | Immediate rollback |
+| Max turnover ratio | 10.0× | Immediate rollback |
+| Max regime churn rate | 0.50 | Immediate rollback |
+
+Rollback auto-freezes governance to prevent further parameter changes.
+
+---
+
+## 39. TRAINING ORCHESTRATOR
+
+**Source**: `backend/organism/training.py`
+
+### "Slow Brain" Training Pipeline
+
+```
+TRAINING ORCHESTRATOR:
+  │
+  ├── 1. Attribution: compute per-strategy reward signals from DB fills
+  ├── 2. Candidate Weights:
+  │       new_w = current_w × (1 + alpha × reward)
+  │       normalized, clamped to [0.10, 2.50]
+  │       alpha = 0.3
+  ├── 3. Walk-forward evaluation: test candidate vs baseline
+  ├── 4. IF accepted → register new weights
+  └── 5. IF rejected → keep baseline
+
+Regime boost: +0.05 weight for strategies aligned with current regime
+Default universe: AAPL, MSFT, GOOGL, AMZN, TSLA, NVDA, META, SPY, QQQ, IWM
+```
+
+---
+
+## 40. NIGHTLY SCHEDULER
+
+**Source**: `backend/organism/nightly_scheduler.py`
+
+### Configuration
+
+```
+ORGANISM_NIGHTLY_ENABLED: 0 (off by default)
+ORGANISM_NIGHTLY_INTERVAL_S: 86400 (24 hours)
+
+Backoff on failure:
+  _BASE_BACKOFF_S: 60
+  _MAX_BACKOFF_S: 3600
+  _JITTER_FRACTION: 0.25
+
+Loop: _nightly_loop() → _run_nightly_tick() → full retrain cycle
+```
+
+---
+
+## 41. ATTRIBUTION SERVICE
+
+**Source**: `backend/organism/attribution.py`
+
+### Per-Strategy Reward Signals
+
+```
+TradeAttribution:
+  - Links fills from DB to strategy that generated them
+  - Computes PnL per strategy per time window
+
+AttributionSummary:
+  - Aggregated metrics for training orchestrator
+  - Drives weight updates in §39
+```
+
+---
+
+## 42. WALK-FORWARD EVALUATOR
+
+**Source**: `backend/organism/walk_forward.py`
+
+### Sliding Window Evaluation
+
+```
+WalkForwardEvaluator:
+  │
+  ├── Split data into walk-forward windows
+  ├── Train on window N, test on window N+1
+  ├── Compare candidate vs baseline policy
+  │
+  └── AcceptanceGates:
+      ├── Minimum composite score
+      ├── No regression vs baseline
+      └── Stable across multiple windows
+```
+
+### Brain Save Gate
+
+- Checks last 100 trades (needs >= 10)
+- Regression threshold: 0.95
+- Rejects brain save if model is regressing
+
+---
+
+# LAYER 7: OPERATIONS
+
+## 43. DOCKER ORCHESTRATION
+
+**Source**: `docker-compose.yml`
+
+### Services
+
+| Service | Image | Port | Health Check |
+|---|---|---|---|
+| **api** | Custom Dockerfile | 8000:8000 | `curl /healthz` every 30s, 3 retries, 60s start |
+| **db** | postgres:16-alpine | 127.0.0.1:5432 | `pg_isready` every 10s |
+| **redis** | redis:7-alpine | 127.0.0.1:6379 | `redis-cli ping` every 10s |
+| **otel-collector** | otel/opentelemetry-collector-contrib | 4317, 4318, 8889 | Profile: observability |
+| **prometheus** | prom/prometheus | 9090 | 200h retention, profile: observability |
+| **grafana** | grafana/grafana | 3000 | Profile: observability |
+
+### Database Tuning (PostgreSQL)
+
+```
+shared_buffers: 256MB
+work_mem: 16MB
+effective_cache_size: 768MB
+statement_timeout: 30000ms
+log_min_duration_statement: 500ms
+```
+
+### Redis Configuration
+
+```
+maxmemory: 256mb
+eviction: allkeys-lru
+persistence: AOF (appendonly yes)
+password: requirepass
+```
+
+### Network
+
+`trading-network` (bridge, subnet `172.20.0.0/16`). DB and Redis bound to `127.0.0.1` only.
+
+---
+
+## 44. ENGINE STARTUP SEQUENCE
+
+**Source**: `backend/api/lifespan.py`
+
+### Boot Order
+
+```
+APPLICATION STARTUP (lifespan context manager):
+  │
+  ├──  1. Observability (OTel + Prometheus) — non-critical
+  ├──  2. SLO metrics collector — non-critical
+  ├──  3. Database init + pool pre-warming (5 connections)
+  ├──  4. Outbox worker start (if DB available, not reload mode)
+  ├──  5. Living strategy policy (LIVING_STRATEGY_ENABLED=true, opt-out)
+  ├──  6. Living organism (ORGANISM_ENABLED=0, opt-in)
+  ├──  7. Multi-strategy runner (MULTI_STRATEGY_LIVE_ENABLED=0, opt-in)
+  │       └── Skipped if organism active (mutually exclusive)
+  ├──  8. Auto breakout scanner (AUTO_BREAKOUT_SCAN_ENABLED=0, opt-in)
+  ├──  9. ML lifecycle scheduler (ENABLE_ML_LIFECYCLE_SCHEDULER=0, opt-in)
+  ├── 10. Organism scheduler (ENABLE_ORGANISM_SCHEDULER=0, opt-in)
+  │       └── Also cancels stale open Alpaca orders before start
+  ├── 11. Alpaca WebSocket stream (real broker only)
+  ├── 12. Reconciliation scheduler (15-min default)
+  ├── 13. Portfolio sync
+  └── 14. Order sync from Alpaca (500 most recent)
+
+SHUTDOWN: Reverse order with individual error handling
+```
+
+### Middleware Stack (installed order)
+
+```
+1. CORS (CORSMiddleware) — credentials, 13 local origins
+2. GZip (minimum 500 bytes)
+3. Request deduplication (TTL=300s, max_cache=10000)
+4. Rate limiting (exempt: health/metrics/docs)
+5. HTTP metrics (counter + histogram)
+6. Security headers (HSTS, CSP, X-Frame-Options, etc.)
+```
+
+---
+
+## 45. STREAMING DATA PROVIDER
+
+**Source**: `backend/organism/streaming_data_provider.py`
+
+### Ring Buffer Architecture
+
+```
+StreamingDataProvider:
+  │
+  ├── Manages Alpaca WebSocket bar stream
+  ├── Ring buffer per symbol (fixed-size, O(1) insert)
+  ├── Prefill from REST on subscribe (fills buffer with history)
+  │
+  ├── On new bar:
+  │   ├── Append to ring buffer
+  │   └── Available immediately for next tick
+  │
+  ├── Stale detection:
+  │   └── check_and_recover_stale_stream() every 30 ticks
+  │
+  └── Reconnect:
+      └── Re-subscribe all symbols on WebSocket reconnect
+```
+
+---
+
+## 46. DIAGNOSTIC SYSTEM
+
+**Source**: `backend/organism/diagnostics.py`, `backend/organism/diagnostic_checks.py`, `backend/organism/diagnostic_scheduler.py`
+
+### 36 Diagnostic Checks Across 8 Categories
+
+```
+DiagnosticEngine:
+  │
+  ├── Data Quality: bar freshness, NaN rates, feature completeness
+  ├── Positions: broker vs DB sync, orphaned positions, stale exits
+  ├── Orders: stuck orders, zombie orders, DLQ depth
+  ├── ML: model staleness, prediction drift, accuracy degradation
+  ├── Regime: label consistency, churn rate, detector health
+  ├── Risk: drawdown proximity, exposure limits, sector concentration
+  ├── Connectivity: broker API, WebSocket, Redis, DB
+  └── Performance: tick latency, queue depths, memory usage
+```
+
+### Entry Points
+
+- `run_preflight_check()` — pre-market comprehensive check
+- `run_continuous_check()` — lightweight check during trading
+- `run_diagnostics()` — full 36-check suite
+
+### Scheduled Runs
+
+```
+DiagnosticReportStore:
+  - Ring buffer: 50 reports max
+  - Persisted to: organism_brain/diagnostics/history.json
+
+ScheduledDiagnosticRunner:
+  - Pre-open: 9:25 AM ET
+  - Post-close: 4:05 PM ET
+  - Skips weekends and holidays
+  - Date-idempotent (won't re-run same day/trigger)
+
+Alert Rules:
+  Pre-open critical  → CRITICAL (Slack + PagerDuty, bypasses market hours)
+  Pre-open warnings  → WARNING (Slack)
+  Pre-open all-pass  → INFO "Engine ready" (Slack)
+  Post-close critical → CRITICAL
+  Post-close warnings → WARNING
+  Post-close all-pass → no alert (noise reduction)
+```
+
+---
+
+## 47. API SURFACE & SECURITY
+
+**Source**: `backend/organism/routes.py`, `backend/api/routes_setup.py`, `backend/infra/security.py`, `backend/infra/security_hardening.py`
+
+### API Routes (152+ endpoints across 27 route files)
+
+**Organism Engine** (prefix `/api/v1/organism`):
+- `GET /status` — engine state, regime, positions
+- `GET /attribution` — per-strategy attribution
+- `GET /analytics` — performance analytics
+- `GET /brain` — brain state summary
+- `GET /universe` — current symbol universe
+- `GET /scanner` — market scanner results
+- `GET /decisions` — latest tick decisions
+- `GET /decisions/history` — decision history buffer
+- `GET /decisions/symbol/{sym}` — per-symbol decisions
+- `GET /decisions/exits` — exit decisions
+- `GET /evolution/history` — evolution timeline
+- `GET /diagnostics` — latest diagnostic report
+- `GET /diagnostics/history` — diagnostic history
+- `POST /tick` — manual tick trigger
+- `POST /train` — manual retrain
+- `POST /freeze` / `POST /unfreeze` — adaptation control
+- `POST /halt` / `POST /resume` — trading control
+- `POST /promote` / `POST /rollback` — model promotion
+- `POST /close-shorts` — buy-to-cover all shorts
+- `POST /cleanup-orders` — expire stuck orders
+- `POST /diagnostics/run` — manual diagnostic run
+- `POST /compute-attribution` — manual attribution
+
+**Core Platform** (prefix `/api/v1`): See [Appendix F](#f-full-api-route-reference) for complete endpoint listing.
+
+| Route File | Endpoints | Domain |
+|---|---|---|
+| `auth.py` | 11 | Login, register, token refresh, password reset, /me |
+| `orders.py` | 10 | Place, list, cancel, bulk, audit, close-position |
+| `risk.py` | 10 | Dashboard, metrics, limits, violations, emergency stop |
+| `scanner.py` | 10 | Scan, presets, export (CSV/JSON), WebSocket |
+| `strategy.py` | 16 | CRUD, start/stop/pause, performance, signals, templates |
+| `models.py` | 21 | ML model registry, train, predict, lifecycle, health |
+| `watchlists.py` | 9 | CRUD, symbols, reorder, quotes |
+| `observability.py` | 8 | Health probes (live/ready), metrics, dashboard, alerts |
+| `system.py` | 8 | Status, metrics, health, SLI |
+| `settings.py` | 7 | Organism/trading/ML settings CRUD, engine restart |
+| `audit.py` | 6 | Compliance audit trail queries |
+| `chart_templates.py` | 6 | Chart template CRUD, apply |
+| `drawings.py` | 5 | TradingView-style drawings CRUD |
+| `signals.py` | 5 | Signal storage, retrieval, act |
+| `backtest.py` | 5 | Create, list, results, delete |
+| `positions.py` | 4 | List, import preview, import, close |
+| `market_data.py` | 4 | Stats, health, bars, WebSocket |
+| `lots.py` | 4 | Open lots, realized trades, cost basis, unrealized PnL |
+| `trades.py` | 3 | Trade history retrieval |
+| `admin_trading.py` | 3 | Execution mode GET/PUT/DELETE |
+| `position_import.py` | 3 | Preview, import, clear |
+| `optimizations.py` | 3 | Strategy optimization runs |
+| `indicators.py` | 2 | Calculate, list available |
+| `auto_breakout_scanner.py` | 2 | Latest scan, manual trigger |
+| `monitoring.py` | 2 | SLI metrics, SLO status |
+| `multi_strategy_live.py` | 1 | Manual run-once trigger |
+
+### Per-Endpoint Rate Limiting
+
+**Source**: `backend/api/middleware/rate_limit.py`
+
+Sliding window algorithm with sub-second precision. Key format: `user:{id}:{path}` or `ip:{client_ip}:{path}`.
+
+| Endpoint Pattern | Requests/Min | Burst | Purpose |
+|---|---|---|---|
+| `/api/v1/auth/login` | 5 | 3 | Brute-force protection |
+| `/api/v1/auth/token` | 5 | 3 | Token auth throttle |
+| `/api/v1/auth/register` | 3 | 2 | Account creation throttle |
+| `/api/v1/auth/password-reset` | 3 | 2 | Reset abuse prevention |
+| `/api/v1/orders` | 30 | 5 | Order submission throttle |
+| `/api/v1/portfolio` | 120 | 10 | Portfolio reads |
+| `/api/v1/positions` | 120 | 10 | Position reads |
+| `/api/v1/trades` | 60 | 10 | Trade history |
+| `/api/v1/models` | 30 | 5 | ML model operations |
+| `/api/v1/strategies` | 60 | 10 | Strategy management |
+| `/api/v1/health` | 300 | 50 | Health probes (monitoring) |
+| `/api/v1/system` | 120 | 20 | System status |
+| **Default** | 60 | 15 | All other endpoints |
+
+Response headers: `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-Reset`. Returns `429 + Retry-After` on limit breach. Exempt: `/health`, `/metrics`, `/docs`, `/openapi.json`.
+
+### Request Deduplication
+
+**Source**: `backend/api/middleware/deduplication.py`
+
+Prevents duplicate POST/PUT/PATCH requests (double-submit protection).
+
+```
+REQUEST DEDUPLICATION:
+  │
+  ├── Applies to: POST, PUT, PATCH methods
+  │
+  ├── Key Generation:
+  │   ├── Explicit: X-Idempotency-Key header → user_id:{key}
+  │   └── Automatic (strict paths only): SHA-256(body)[:16]
+  │       └── Strict paths: /api/v1/orders, /api/v1/trades
+  │
+  ├── Cache:
+  │   ├── TTL: 300 seconds (5 minutes)
+  │   ├── Max entries: 10,000 (LRU eviction)
+  │   ├── ~1KB per entry
+  │   └── Only caches 2xx responses
+  │
+  └── On cache hit:
+      └── Return cached response + X-Idempotency-Status: cached
+```
+
+### Security Stack
+
+```
+JWT Authentication:
+  Algorithm: HS256
+  Issuer: "algotrading-platform"
+  Audience: "algotrading-api"
+  Clock skew: 60s
+  Refresh tokens: 7 day expiry
+  Blacklist: dual Redis + in-memory (fail-CLOSED)
+
+Password:
+  bcrypt hashing, rejects > 72 bytes
+  Brute-force protection: 5 attempts → 15 min lockout
+
+Rate Limiting:
+  60 req/min per IP (burst: 10)
+  10 orders/sec per user
+  Exempt: /health, /healthz, /readyz, /metrics
+
+Security Headers:
+  HSTS: max-age=31536000
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  CSP: default-src 'self'
+  Referrer-Policy: strict-origin-when-cross-origin
+  CORS: no wildcard in production
+
+RBAC Roles:
+  require_admin — admin-only endpoints
+  require_trader — trading endpoints
+  require_api — API access
+```
+
+---
+
+## 48. BRAIN PERSISTENCE & CACHING
+
+### Brain Persistence
+
+**Source**: `backend/organism/brain_persistence.py`
+
+```
+Storage: organism_brain/ (gitignored)
+Format: JSON + CSV files
+
+Save contents:
+  ├── ML models (classifier + regressor + ensemble)
+  ├── Learning state + trade history + equity curve
+  ├── Evolved params + governance state
+  ├── Regime detector state
+  ├── Exit levels + entry metadata
+  ├── Kelly regime-stratified stats
+  ├── Universe selector state
+  ├── ML calibration data
+  └── Transfer learning snapshots
+
+Save frequency: every 50 ticks (~8 min)
+Gate: walk-forward check must pass (regression threshold 0.95)
+Startup: reconstruct trades from DB if brain has no records
+```
+
+### Caching Architecture
+
+**Source**: `backend/infra/cache.py`, `backend/infra/performance.py`
+
+```
+HOT DATA CACHE (global singleton):
+  max_size: 5000 entries
+  default_ttl: 30s
+  cleanup_interval: 60s
+
+PRE-CONFIGURED CACHES:
+  quote_cache:     1000 entries, 1s TTL (HFT-grade freshness)
+  position_cache:  500 entries,  5s TTL
+  order_cache:     2000 entries, 30s TTL
+  indicator_cache: 10000 entries, 60s TTL
+
+OBJECT POOL (order objects):
+  initial: 20, max: 200
+  Purpose: reduce GC pressure in hot order paths
+  Prometheus-instrumented
+```
+
+---
+
+# LAYER 8: PLATFORM SERVICES & ARCHITECTURE
+
+## 49. DUAL-PATH ENGINE ARCHITECTURE
+
+**Source**: `backend/organism/runner.py`, `backend/organism/scheduler.py`, `backend/api/lifespan.py`
+
+The platform has **two mutually exclusive** engine paths. Only one runs at a time, controlled by environment flags.
+
+```
+ENGINE PATH SELECTION (lifespan.py startup):
+  │
+  ├── PATH A: OrganismScheduler
+  │   ├── Flag: ENABLE_ORGANISM_SCHEDULER=1
+  │   ├── Creates: OrganismLiveEngine (full pipeline)
+  │   ├── Tick interval: ORGANISM_TICK_INTERVAL_SECONDS (default 60s, prod 10s)
+  │   ├── Market hours: 9:28 AM – 4:01 PM ET (strict)
+  │   ├── Signal generation: Single unified pipeline
+  │   │   └── ML → Alpha Scan → Breakout → Kelly → Exits → Evolution
+  │   ├── Order routing: LiveEngine → OrderService → Outbox → Broker
+  │   └── Includes: Diagnostic scheduler (pre-open/post-close)
+  │
+  ├── PATH B: MultiStrategyLiveScheduler
+  │   ├── Flag: MULTI_STRATEGY_LIVE_ENABLED=1
+  │   ├── Creates: MultiStrategyLiveRunner (10 strategies)
+  │   ├── Tick interval: MULTI_STRATEGY_LIVE_INTERVAL_SECONDS (default 300s)
+  │   ├── Signal generation: 10 independent strategies in parallel
+  │   ├── Order routing: Runner → StrategyEngine → OrderService → Outbox → Broker
+  │   └── Integrates: OrganismRunner governance hooks (if ORGANISM_ENABLED=1)
+  │
+  └── MUTUAL EXCLUSION:
+      └── If ENABLE_ORGANISM_SCHEDULER=1, MultiStrategyLiveScheduler is SKIPPED
+          (explicit check in lifespan.py step 7)
+```
+
+### OrganismRunner (Governance Layer)
+
+**Source**: `backend/organism/runner.py`
+
+**Not an engine** — a governance wrapper used by the multi-strategy path.
+
+```
+OrganismRunner (activated by ORGANISM_ENABLED=1):
+  │
+  ├── Manages 4 subsystems:
+  │   ├── GovernanceController — halt/resume, drawdown kill
+  │   ├── RegimeDetector — 7-label regime classification
+  │   ├── RegimeConditionedEnsemble — regime-aware weight blending
+  │   └── DriftDetector — periodic feature drift (PSI, default 3600s)
+  │
+  ├── pre_execution_hook() — called BEFORE strategy tick:
+  │   ├── Check governance halts
+  │   ├── Detect regime, blend strategy weights
+  │   ├── Run periodic drift checks
+  │   └── Returns: {final_weights, regime, trading_allowed, drift}
+  │
+  └── post_execution_hook() — called AFTER strategy tick:
+      ├── Monitor drawdown vs limit
+      ├── Trigger kill switch if breached
+      └── Returns: list of triggered actions
+```
+
+### OrganismScheduler (Full Engine)
+
+**Source**: `backend/organism/scheduler.py`
+
+```
+OrganismScheduler:
+  │
+  ├── Creates OrganismLiveEngine with injected dependencies:
+  │   ├── data_client (Alpaca)
+  │   ├── order_service (OrderService)
+  │   ├── positions_service (PositionsService)
+  │   └── brain_dir, universe, use_streaming
+  │
+  ├── _run_loop():
+  │   ├── Run scheduled diagnostics (regardless of market hours)
+  │   ├── Check market hours (9:28 AM – 4:01 PM ET)
+  │   ├── Call engine.live_tick() with 60s timeout
+  │   ├── Broadcast result via WebSocket + Socket.IO
+  │   └── Exponential backoff on errors (2s → 30s)
+  │
+  └── Market hours: skips weekends + US market holidays (2026 calendar)
+```
+
+### Comparison Table
+
+| Feature | OrganismScheduler (Path A) | MultiStrategyLive (Path B) |
+|---|---|---|
+| **Flag** | `ENABLE_ORGANISM_SCHEDULER=1` | `MULTI_STRATEGY_LIVE_ENABLED=1` |
+| **Tick interval** | 10-60s | 300s |
+| **Signal source** | Single unified ML pipeline | 10 independent strategies |
+| **Universe** | 30 symbols (ORGANISM_LIVE_SYMBOLS) | Dynamic (base + breakout candidates) |
+| **Market hours** | Strict 9:28 AM – 4:01 PM ET | Not explicitly enforced |
+| **Governance** | Built-in (GovernanceController) | Via OrganismRunner hooks |
+| **Diagnostics** | Integrated scheduler | Not included |
+| **Brain persistence** | Every 50 ticks | Not applicable |
+| **ML retraining** | Automatic (RETRAIN_INTERVAL) | Not applicable |
+
+---
+
+## 50. MULTI-STRATEGY LIVE SYSTEM
+
+**Source**: `backend/services/multi_strategy_live_runner.py`, `backend/services/multi_strategy_live_scheduler.py`
+
+### 10 Independent Strategies
+
+| # | Key | Class | Style |
+|---|---|---|---|
+| 1 | `momentum` | MomentumStrategy | Trend following |
+| 2 | `mean_reversion` | MeanReversionStrategy | Statistical mean reversion |
+| 3 | `stat_arb` | StatisticalArbitrageStrategy | Pairs/statistical arbitrage |
+| 4 | `regime_momentum` | RegimeFilteredMomentumStrategy | Regime-conditioned momentum |
+| 5 | `breakout` | BreakoutStrategy | Range breakout detection |
+| 6 | `adaptive_regime` | AdaptiveRegimeMomentumStrategy | Adaptive regime-aware momentum |
+| 7 | `order_flow` | OrderFlowImbalanceStrategy | Order flow imbalance |
+| 8 | `vol_structure` | VolatilityStructureStrategy | Volatility term structure |
+| 9 | `cross_momentum` | CrossSectionalMomentumStrategy | Cross-sectional momentum |
+| 10 | `microstructure` | MicrostructureAlphaStrategy | Microstructure alpha |
+
+### Execution Pipeline
+
+```
+MultiStrategyLiveRunner.run_once():
+  │
+  ├── Fetch price_df for each symbol (parallel, semaphore-limited)
+  │   ├── Validate freshness: reject bars > 3 days stale
+  │   └── Filter illiquid: min 50K avg daily volume
+  │
+  ├── Compute features (realtime_light mode)
+  │
+  ├── For each strategy (independent, exception-isolated):
+  │   ├── strategy.generate_signal(features)
+  │   └── Failure in one strategy does NOT block others
+  │
+  ├── Record signal directions (30-bar rolling correlation)
+  │   └── Log warning if two strategies > 80% correlated
+  │
+  └── Route all signals → OrderService.plan_and_submit()
+```
+
+### Scheduler Coordination
+
+```
+MultiStrategyLiveScheduler (background asyncio task):
+  │
+  ├── Interval: MULTI_STRATEGY_LIVE_INTERVAL_SECONDS (default 300s)
+  ├── Lookback: MULTI_STRATEGY_LIVE_LOOKBACK (default 200 bars)
+  │
+  ├── Dynamic universe construction:
+  │   ├── Base symbols (MULTI_STRATEGY_LIVE_SYMBOLS)
+  │   └── + Breakout candidates (score >= 55, limit 20)
+  │       └── LIVING_STRATEGY_MAX_TOTAL_POSITIONS: 40
+  │
+  ├── Pre-execution: organism_runner.pre_execution_hook()
+  │   ├── Get regime-conditioned weights
+  │   └── Check trading_allowed (governance gate)
+  │
+  ├── Execute: MultiStrategyLiveRunner.run_once()
+  │
+  └── Post-execution: organism_runner.post_execution_hook()
+      └── Drawdown kill-switch monitoring
+```
+
+### Configuration
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `MULTI_STRATEGY_LIVE_ENABLED` | 0 | Enable multi-strategy path |
+| `MULTI_STRATEGY_LIVE_INTERVAL_SECONDS` | 300 | Tick interval (5 min) |
+| `MULTI_STRATEGY_LIVE_LOOKBACK` | 200 | Historical bars to fetch |
+| `MULTI_STRATEGY_LIVE_TIMEFRAME` | 1Day | Bar timeframe |
+| `LIVING_STRATEGY_INCLUDE_BREAKOUT_CANDIDATES` | 1 | Extend universe with breakouts |
+| `LIVING_STRATEGY_BREAKOUT_CANDIDATES_LIMIT` | 20 | Max breakout candidates |
+| `LIVING_STRATEGY_BREAKOUT_MIN_SCORE` | 55.0 | Min breakout score for inclusion |
+| `LIVING_STRATEGY_MAX_TOTAL_POSITIONS` | 40 | Total position limit |
+
+---
+
+## 51. SERVICES LAYER
+
+**Source**: `backend/services/` (27 modules)
+
+### Service Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                      SERVICES LAYER                          │
+│                                                              │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────────┐  │
+│  │ OrderService  │  │ RiskManager  │  │ AuditService     │  │
+│  │ (orders,     │  │ (metrics,    │  │ (SEC 17a-4,      │  │
+│  │  outbox, CB) │  │  limits,     │  │  hash chain,     │  │
+│  └──────┬───────┘  │  emergency)  │  │  compliance)     │  │
+│         │          └──────────────┘  └──────────────────┘  │
+│         ▼                                                    │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────────┐  │
+│  │ LotTracker   │  │ SlippageModel│  │ InstitutionalAn. │  │
+│  │ (FIFO lots,  │  │ (Almgren-    │  │ (Sharpe, Sortino │  │
+│  │  cost basis, │  │  Chriss,     │  │  Calmar, profit  │  │
+│  │  tax lots)   │  │  time-of-day)│  │  factor, streaks)│  │
+│  └──────────────┘  └──────────────┘  └──────────────────┘  │
+│                                                              │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────────┐  │
+│  │ CacheService │  │ StrategyServ.│  │ BreakoutScanner  │  │
+│  │ (3-layer     │  │ (CRUD, ver-  │  │ (auto, $5-2K,    │  │
+│  │  Redis+mem)  │  │  sioning,    │  │  20-bar lookback, │  │
+│  │              │  │  rollback)   │  │  0-100 score)    │  │
+│  └──────────────┘  └──────────────┘  └──────────────────┘  │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Key Services
+
+**OrderService** (`order_service.py`):
+- Creates orders in DB + enqueues outbox events atomically
+- Redis-backed circuit breaker (5% daily PnL kill, see §34)
+- Idempotency via `client_idempotency_key`
+
+**ComplianceAuditService** (`audit_service.py`):
+- SEC 17a-4 compliance audit trail
+- SHA-256 hash chain: each record includes hash of previous (tamper detection)
+- 24 action types across 8 entity categories (ORDER, POSITION, STRATEGY, MODEL, USER, RISK, CONFIG, SYSTEM)
+- `verify_chain_integrity()` — validates entire hash chain
+- `export_for_compliance()` — SEC/FINRA export format
+
+**LotTracker** (`lot_tracker_service.py`):
+- FIFO lot matching for accurate cost basis
+- `create_lot()` on buy → `close_lots_fifo()` on sell
+- Supports partial lot closes
+- RealizedTrade records with `realized_pnl_percent` for tax reporting
+- Tax-loss harvesting support (wash-sale detection via realized trades)
+
+**InstitutionalAnalytics** (`trade_analytics_service.py`):
+- Sharpe, Sortino, Calmar ratios (annualized, √252)
+- Max drawdown (%, $, duration)
+- Profit factor, expectancy, recovery factor
+- Win/loss streak analysis
+- Monthly return breakdown
+- R-multiple distribution
+
+**SlippageModel** (`slippage_model.py`):
+- Almgren-Chriss market impact model: `α × σ × √(Q/V)` (α=0.1, exponent=0.5)
+- Time-of-day adjustments: pre-market 2.0×, open auction 1.5×, after-hours 2.5×
+- Market condition multipliers: normal 1.0×, high_vol 1.5×, low_liquidity 2.0×, stress 3.0×
+- Order urgency: passive 0.5×, normal 1.0×, aggressive 1.5×, urgent 2.5×
+- Self-calibrating: `record_actual_slippage()` tracks last 1000 observations
+
+**CacheService** (`cache.py`):
+- 3-layer Redis cache: L1 quotes (5s), L2 bars (60s), L3 indicators (30s)
+- High availability: standalone, Sentinel (auto-failover), Cluster (horizontal scaling)
+- In-memory fallback when Redis unavailable
+- Connection pool: 50 max, 1s socket timeout
+
+**StrategyService** (`strategy_service.py`):
+- Strategy lifecycle: inactive → active → paused → inactive (or error)
+- Version snapshots with compare and rollback
+- WebSocket broadcasts on state changes
+
+**AutoBreakoutScanner** (`auto_breakout_scanner.py`):
+- Scores 0-100: base 50 + breakout strength (+35) + volume expansion (+25) + type bonus
+- Types: standard, atr_expansion (+8 bonus), volume_climax (-5 penalty)
+- Filters: price $5-2K, volume spike ≥1.5×, data completeness
+- Persists `_latest_scan` for living scheduler integration
+
+**TechnicalIndicators** (`indicators.py`):
+- 25+ indicators: SMA, EMA, MACD, RSI, Stochastic, ADX, ATR, Bollinger, Keltner, OBV, MFI, VWAP, Ichimoku, Parabolic SAR, etc.
+- Squeeze detection (BB inside KC)
+- Pivot points: standard, fibonacci, woodie, camarilla
+
+**Additional Services**:
+- `PositionsService` — wraps Alpaca position API, portfolio value, buying power
+- `PositionImportService` — imports pre-existing Alpaca positions with dedup (skips if filled buy orders exist)
+- `SignalService` — signal cache/relay layer (real generation in MultiStrategyLiveRunner)
+- `TradeService` — trade history, CSV export, institutional analytics integration
+- `SymbolValidator` — validates against Alpaca `/v2/assets/{symbol}` (tradable + active), fail-open on API errors
+- `QuoteManager` — Redis-cached real-time quotes (5s TTL)
+- `PortfolioService` — portfolio aggregation
+- `PortfolioSyncService` — Alpaca → DB position sync on startup
+- `PositionReconciliationService` — DB vs broker discrepancy detection
+- `ScheduledReconciliation` — 15-min reconciliation scheduler
+- `ObservabilityService` — aggregated health checks
+- `MarketDataService` — Alpaca market data wrapper
+- `BacktestService` — strategy backtesting engine
+
+---
+
+## 52. DUAL WEBSOCKET STACKS
+
+**Source**: `backend/api/socketio_server.py`, `backend/api/websocket_manager.py`
+
+The platform runs **two separate** real-time communication systems in parallel.
+
+```
+┌───────────────────────────────────────────────────────────────┐
+│                   DUAL WEBSOCKET ARCHITECTURE                  │
+│                                                                │
+│  ┌─────────────────────────────┐  ┌─────────────────────────┐ │
+│  │  SOCKET.IO (ASGI mount)     │  │  NATIVE FASTAPI WS      │ │
+│  │  Port 8000 (shared)         │  │  Port 8000 (shared)      │ │
+│  │                             │  │                           │ │
+│  │  Purpose:                   │  │  Purpose:                 │ │
+│  │  - Order status updates     │  │  - Market data stream     │ │
+│  │  - Portfolio updates        │  │  - Scanner WebSocket      │ │
+│  │  - Strategy state changes   │  │  - Client management      │ │
+│  │  - Settings broadcasts      │  │                           │ │
+│  │                             │  │  Backpressure:            │ │
+│  │  Auth: JWT in auth.token    │  │  - Queue per client (100) │ │
+│  │  Ping: 25s interval/20s TO  │  │  - Drop oldest on full   │ │
+│  │  Rooms: topic-based (O(1))  │  │  - Heartbeat: 30s        │ │
+│  │  Session: async sio.session │  │  - Stale timeout: 60s    │ │
+│  └─────────────────────────────┘  └─────────────────────────┘ │
+└───────────────────────────────────────────────────────────────┘
+```
+
+### Socket.IO Server
+
+7 broadcast functions:
+
+| Function | Purpose | Target |
+|---|---|---|
+| `broadcast_to_topic(topic, event, data)` | Room-based broadcast | All subscribers in topic room |
+| `broadcast_to_user(user_id, event, data)` | Per-user delivery | All sessions of a user |
+| `broadcast_to_all(event, data)` | Global broadcast | All connected clients |
+| `broadcast_portfolio_update(user_id, data)` | Portfolio state change | Specific user |
+| `broadcast_order_update(user_id, data)` | Order fill/status | Specific user |
+| `broadcast_strategy_update(topic, data)` | Strategy state change | Topic subscribers |
+| `broadcast_settings_update(data)` | Settings broadcast | All clients |
+
+Events: `connect`, `disconnect`, `subscribe`, `unsubscribe`, `heartbeat`, `connected`.
+
+4 callers of `broadcast_order_update`: lifespan startup, alpaca_stream, alpaca_stream_production, orders route.
+
+### WebSocket Manager
+
+- Per-client bounded queue: `asyncio.Queue(maxsize=100)` + internal unbounded send queue
+- Backpressure: drop oldest message on full, increment `ws_messages_dropped_total` counter
+- Heartbeat: `websocket.ping()` per client, auto-remove stale connections after timeout
+- Prometheus: `websocket_connections_total`, `websocket_messages_total`, `ws_messages_dropped_total`
+
+---
+
+## 53. TRADING EXECUTION MODE
+
+**Source**: `backend/services/trading_execution_mode.py`
+
+Controls how orders flow through the outbox worker to the broker.
+
+```
+EXECUTION MODE ROUTING (outbox_worker._process_order_submitted):
+  │
+  ├── "execute" (real mode):
+  │   └── Orders sent to Alpaca broker (real or paper API)
+  │
+  ├── "shadow" (intent-only):
+  │   └── Records intent in DB, skips broker entirely
+  │       └── Used for monitoring model performance without risk
+  │
+  ├── "dry_run" (simulated):
+  │   └── Simulates broker response (_simulate_broker_order)
+  │       └── Returns fake fill at current price
+  │
+  └── Additional: USE_MOCK_BROKER=true
+      └── Uses mock broker client (testing)
+```
+
+### Mode Management
+
+```
+TradingExecutionModeState:
+  │
+  ├── mode: "execute" | "shadow" | "dry_run"
+  ├── source: "override" | "env"
+  │
+  ├── Override (runtime, thread-safe):
+  │   ├── set_trading_execution_mode_override(mode, actor="admin")
+  │   └── clear_trading_execution_mode_override(actor="admin")
+  │
+  └── Default: from environment or "execute"
+      └── Aliases: "paper" → "execute", "live" → "execute"
+```
+
+Admin API: `GET/PUT/DELETE /api/v1/admin/execution-mode`
+
+---
+
+## 54. REDIS ARCHITECTURE
+
+**Source**: Multiple files across backend
+
+Redis serves **6 distinct roles** in the platform:
+
+```
+REDIS USAGE MAP:
+  │
+  ├── 1. TOKEN BLACKLIST (infra/security.py)
+  │   ├── Keys: token:blacklist:{jti}
+  │   ├── TTL: 7 days
+  │   ├── Fail-CLOSED: denies access if Redis unavailable and token not in memory
+  │   └── In-memory fallback: 10K max entries
+  │
+  ├── 2. MULTI-LAYER CACHE (services/cache.py)
+  │   ├── L1: quote:* (5s TTL) — hot quote data
+  │   ├── L2: bars:* (60s TTL) — historical bar data
+  │   ├── L3: indicators:* (30s TTL) — indicator calculations
+  │   ├── HA modes: standalone / Sentinel / Cluster
+  │   └── Serialization: pickle (ephemeral data)
+  │
+  ├── 3. QUOTE CACHE (services/quote_manager.py)
+  │   ├── 5s TTL per symbol
+  │   ├── Connection pool: 50 max
+  │   └── In-memory fallback if unavailable
+  │
+  ├── 4. CIRCUIT BREAKER STATE (services/order_service.py)
+  │   ├── Keys: circuit_breaker:order_flow:*
+  │   ├── State, failures, opened_at, daily_pnl, last_reset_date
+  │   └── Pipelined load on startup
+  │
+  ├── 5. SOCKET.IO SESSION (api/socketio_server.py)
+  │   └── Client auth/roles storage via sio.session(sid)
+  │
+  └── 6. DIAGNOSTIC STATE (organism/diagnostic_checks.py)
+      └── Diagnostic caching
+```
+
+### Redis Configuration
+
+| Setting | Value | Source |
+|---|---|---|
+| Host | `redis` (Docker) or `localhost` | `REDIS_HOST` |
+| Port | 6379 | `REDIS_PORT` |
+| Password | required | `REDIS_PASSWORD` |
+| Max memory | 256MB | Docker config |
+| Eviction | allkeys-lru | Docker config |
+| Persistence | AOF (appendonly) | Docker config |
+| Connection pool | 50 max | cache.py |
+| Socket timeout | 1.0s | cache.py |
+| HA mode | standalone / sentinel / cluster | `REDIS_MODE` |
+
+### Failover Strategy
+
+- **Cache layers**: Graceful degradation to in-memory dict
+- **Token blacklist**: Fail-CLOSED (denies access if Redis down and token not in memory)
+- **Circuit breaker**: Fall back to in-memory state
+- **Quotes**: In-memory fallback with same TTL
+
+---
+
+## 55. RISK MANAGEMENT SYSTEM
+
+**Source**: `backend/services/risk_manager.py`
+
+### Two Risk Manager Classes
+
+The platform has **two separate** RiskManager implementations:
+
+```
+RISK MANAGEMENT:
+  │
+  ├── 1. Platform RiskManager (services/risk_manager.py)
+  │   ├── DB-backed (RiskLimit, RiskMetric, RiskViolation tables)
+  │   ├── Metrics: daily_loss, max_drawdown, position_count,
+  │   │           total_exposure, order_count_daily, buying_power_used
+  │   ├── Dashboard: GET /api/v1/risk/dashboard
+  │   ├── Limits: configurable per-user with warning/critical thresholds
+  │   ├── Violations: recorded with severity (low/medium/high/critical)
+  │   └── Emergency stop:
+  │       ├── POST /api/v1/risk/emergency-stop
+  │       ├── Stops all strategies, cancels open orders
+  │       └── Records strategies_stopped + orders_cancelled
+  │
+  └── 2. Organism Governance (organism/governance.py)
+      ├── In-memory state (brain-persisted)
+      ├── Drawdown kill switch (8% default)
+      ├── Adaptive cooldown (1-3 hours)
+      ├── Trading halt (manual or automatic)
+      ├── Adaptation freeze
+      └── Change budget (100/day)
+```
+
+### Platform RiskManager Details
+
+| Metric | Computation | Status Levels |
+|---|---|---|
+| `daily_loss` | Today's realized + unrealized PnL | normal → warning (80%) → critical (95%) → breached |
+| `max_drawdown` | Peak-to-trough equity decline | Same 4 levels |
+| `position_count` | Active open positions | Same 4 levels |
+| `total_exposure` | Sum of absolute position values / equity | Same 4 levels |
+| `order_count_daily` | Orders placed today | Same 4 levels |
+| `buying_power_used` | (equity - buying_power) / equity | Same 4 levels |
+
+Emergency stop workflow:
+1. Admin triggers via API
+2. All active strategies → stopped
+3. All open orders → cancelled via broker
+4. EmergencyStop record created (status=active)
+5. Manual resolution required (POST /emergency-stop/{id}/resolve)
+
+---
+
+## 56. INTER-MODULE DEPENDENCY MAP
+
+### Order Flow (Critical Path)
+
+```
+┌──────────────────────────────────────────────────────────────────────────┐
+│                        ORDER EXECUTION FLOW                               │
+│                                                                           │
+│  LiveEngine.live_tick()                                                   │
+│       │                                                                   │
+│       ▼                                                                   │
+│  OrderService.submit_symbol_order()                                       │
+│       │                                                                   │
+│       ├── 1. Check CircuitBreaker (Redis-backed, 5% PnL kill)            │
+│       ├── 2. Create Order record in DB (status: submitted)               │
+│       ├── 3. Enqueue OutboxEvent (topic: order.submitted) — SAME TX      │
+│       └── 4. Return immediately (async, <1ms)                            │
+│                                                                           │
+│  OutboxWorker._dispatcher() (100ms poll loop)                            │
+│       │                                                                   │
+│       ├── 5. Claim batch (10 events, FOR UPDATE SKIP LOCKED)             │
+│       ├── 6. Resolve execution mode (execute/shadow/dry_run)             │
+│       │       ├── shadow → record intent, skip broker                    │
+│       │       ├── dry_run → simulate fill                                │
+│       │       └── execute → continue to broker                           │
+│       ├── 7. Call AlpacaOutboxDispatcher                                 │
+│       │       └── broker.place_order() → Alpaca REST API                 │
+│       ├── 8. Update Order status in DB (broker_order_id, fill data)      │
+│       └── 9. Broadcast via Socket.IO (order_update)                      │
+│                                                                           │
+│  AlpacaStream (WebSocket listener)                                        │
+│       │                                                                   │
+│       ├── 10. Receive fill/cancel/reject from Alpaca                     │
+│       ├── 11. Find order in DB (by broker_order_id or client_key)        │
+│       ├── 12. Update DB with fill details                                │
+│       └── 13. Broadcast via Socket.IO                                    │
+└──────────────────────────────────────────────────────────────────────────┘
+```
+
+### Engine → Component Dependencies
+
+```
+OrganismLiveEngine (constructor injection):
+  │
+  ├── data_client ────────────→ AlpacaDataClient (REST bars)
+  ├── order_service ──────────→ OrderService → OutboxRepo → DB
+  ├── positions_service ──────→ PositionsService → Alpaca REST
+  │
+  ├── Internal (created by engine):
+  │   ├── MLSignalGenerator ──→ XGBClassifier + XGBRegressor + Ensemble
+  │   ├── AlphaScanner ───────→ 7-factor scoring (ML + breakout + momentum)
+  │   ├── BreakoutScanner ────→ 6-detector scoring
+  │   ├── KellySizer ─────────→ Regime-stratified Kelly + scaling
+  │   ├── AdaptiveExitEngine ─→ 8-priority exit levels
+  │   ├── MomentumPyramider ──→ 3-layer pyramid management
+  │   ├── RegimeDetector ─────→ 7-label detection + EMA smoothing
+  │   ├── GovernanceController → Kill switch + halt + freeze
+  │   ├── EvolutionEngine ────→ 10-step self-evolution
+  │   ├── TransferLearning ───→ Cross-run knowledge (20 snapshots)
+  │   ├── BackgroundTrainer ──→ ProcessPoolExecutor (separate CPU)
+  │   └── DecisionTelemetry ──→ Ring buffer (360 ticks)
+  │
+  └── KEY INSIGHT: LiveEngine has ZERO direct infra/broker imports
+      └── All external I/O injected via constructor
+```
+
+### Startup Boot Chain
+
+> See [§44 Engine Startup Sequence](#44-engine-startup-sequence) for the full 14-step boot order and middleware stack. Summary: Observability → DB → Outbox → Strategies → Organism/MultiStrategy (mutex) → Scanners → WebSocket → Reconciliation → Sync.
+
+### Middleware Chain
+
+```
+REQUEST → CORS → GZip → Deduplication → Rate Limiting → HTTP Metrics → Security Headers → ROUTE
+```
+> Detail in [§44 Middleware Stack](#44-engine-startup-sequence).
+
+---
+
+# LAYER 9: ML INFRASTRUCTURE (backend/ml/)
+
+> The `backend/ml/` directory contains 17 modules that form the platform-level ML infrastructure. These are **separate from** the organism ML modules (`backend/organism/ml_signal.py`, `ensemble_models.py`, etc.) which are organism-specific. The `backend/ml/` modules provide general-purpose ML capabilities used by multiple consumers.
+
+## 57. ML PIPELINE ARCHITECTURE
+
+**Source**: `backend/ml/pipeline.py`
+
+### Pipeline Stages
+
+```
+PipelineStage (8 stages):
+  1. DATA_INGESTION        → Raw data collection
+  2. FEATURE_ENGINEERING   → Feature extraction
+  3. FEATURE_VALIDATION    → Feature QA gates
+  4. MODEL_TRAINING        → Model fitting
+  5. MODEL_VALIDATION      → Performance evaluation
+  6. MODEL_DEPLOYMENT      → Model promotion
+  7. INFERENCE             → Live predictions
+  8. MONITORING            → Drift + performance tracking
+
+PipelineStatus: idle → running → completed | failed | cancelled
+
+PipelineConfig:
+  - feature_cache_ttl_seconds: 3600 (1 hour)
+  - A/B testing support
+  - Model versioning
+  - Drift monitoring integration
+```
+
+### Pipeline Flow
+
+```
+                ┌──────────────────────────────────────────────────────┐
+                │                 ML PIPELINE                          │
+                │                                                      │
+  Training ─────┤  data_processing → feature_engineering → training    │
+  Path          │  → validation → active_model_pointer (write)         │
+                │                                                      │
+  Inference ────┤  active_model_pointer (read) → prediction_service    │
+  Path          │  → ensemble_framework                                │
+                │                                                      │
+  Monitoring ───┤  monitoring.py (retrain decision) → lifecycle.py     │
+  Path          │  → lifecycle_scheduler.py (execution)                │
+                │                                                      │
+  Staleness ────┤  staleness_detector (5D) + drift (PSI)               │
+  Check         │  → decide_retrain() → retraining trigger             │
+                └──────────────────────────────────────────────────────┘
+```
+
+---
+
+## 58. FEATURE ENGINEERING & DATA PROCESSING
+
+### Data Processing
+
+**Source**: `backend/ml/data_processing.py`
+
+```
+SimpleScaler (no sklearn dependency):
+  │
+  ├── Standard scaling: (x - mean) / std
+  ├── MinMax scaling: (x - min) / (max - min)
+  └── Robust scaling: (x - median) / MAD
+
+  epsilon: 1e-8 (prevents division by zero)
+  Fit/transform pattern for ML preprocessing
+```
+
+### Feature Engineering
+
+**Source**: `backend/ml/feature_engineering.py`
+
+```
+FeatureConfig:
+  feature_types:
+    - technical    (SMA, RSI, MACD, Bollinger, etc.)
+    - statistical  (variance, skew, kurtosis)
+    - categorical  (sector, market cap bucket)
+    - temporal     (hour, day-of-week, month)
+    - derived      (cross-feature interactions)
+
+  Prometheus metrics:
+    - feature_engineering_transforms_total
+    - feature_engineering_duration_seconds
+```
+
+### Sentiment
+
+**Source**: `backend/ml/sentiment.py`
+
+Wrapper module re-exporting `SocialSentimentAnalyzer` from `backend/data/social_sentiment.py`. Provides sentiment-based features for the ML pipeline.
+
+---
+
+## 59. MODEL TRAINING & VALIDATION
+
+### Training
+
+**Source**: `backend/ml/training.py`
+
+```
+TrainingStatus: pending → running → completed | failed
+
+Supported Algorithms (requires scikit-learn):
+  - RandomForestClassifier / Regressor
+  - LogisticRegression / LinearRegression
+  - SVM (SVC / SVR)
+  - GradientBoosting
+
+Cross-Validation Methods:
+  - GridSearchCV
+  - RandomizedSearchCV
+  - TimeSeriesSplit (walk-forward)
+  - KFold / StratifiedKFold
+
+Security: secure_load() wrapper for model deserialization
+Raises: RuntimeError if sklearn not installed
+```
+
+### Validation
+
+**Source**: `backend/ml/validation.py`
+
+```
+KFoldSplitter:
+  - Real K-Fold cross-validation (numpy-based, no sklearn mocks)
+
+Metrics computed:
+  - accuracy, precision, recall, f1_score
+  - confusion matrix (multi-class support)
+  - Handles zero-division and degenerate cases
+
+_compute_binary_metrics():
+  - True numpy implementation
+  - Edge case: all-same-class → accuracy=1.0, precision/recall=0.0
+```
+
+### Model Selection
+
+**Source**: `backend/ml/model_selection.py`
+
+```
+BacktestEvalResult:
+  - n_samples, total_return, cagr, sharpe, max_drawdown
+
+Target kinds:
+  - "next_close"    → regression
+  - "direction_up"  → classification (threshold: 0.5 default)
+
+Methods:
+  - time_split_by_fraction()   → train/test split respecting time order
+  - positions_from_predictions() → convert signals to position sizing
+  - simulate_pnl_long_flat()   → long-flat equity curve simulation
+```
+
+---
+
+## 60. MODEL REGISTRY & LIFECYCLE
+
+### Model Management
+
+**Source**: `backend/ml/model_management.py`
+
+```
+ModelStatus flow:
+  registered → training → trained → deployed → retired
+                                  └→ failed
+
+ModelMetadata:
+  - name, version, status, timestamps
+  - performance metrics, config
+  - Serialization: joblib, pickle, JSON
+  - Checksum validation (file integrity)
+  - File size tracking, tag-based organization
+```
+
+### Model Registry
+
+**Source**: `backend/ml/model_manager.py`
+
+```
+InMemoryModelRegistry:
+  - Keyed by (name, version) tuple → (model, ModelVersion)
+  - Feature schema lock for consistency
+  - PSI drift detection integration
+  - Respects DISABLE_ML env var (set to "0" by default)
+  - In-memory for Light Mode / testing
+```
+
+### Active Model Pointer
+
+**Source**: `backend/ml/active_model_pointer.py`
+
+```
+Disk-based pointer system:
+  - Bridges training jobs → live inference
+  - JSON pointer files in active_models/ subdirectory
+  - ActiveModelInfo dataclass: model path, metadata
+  - write_active_model_pointer() — called after training
+  - read_active_model_pointer()  — called by inference
+
+Config:
+  - ACTIVE_MODEL_POINTER_DIR env var
+  - MODEL_STORE_PATH env var
+```
+
+### Lifecycle Orchestrator
+
+**Source**: `backend/ml/lifecycle.py`, `backend/ml/lifecycle_scheduler.py`
+
+```
+Lifecycle cadence:
+  - Daily:   snapshot + monitoring
+  - Weekly:  retrain cycle
+  - Monthly: promotion review
+
+LifecycleJobResult: { ok: bool, message: str, details: dict }
+Events logged to ModelLifecycleEvent table for audit trail
+
+Scheduler:
+  - In-process (ENABLE_ML_LIFECYCLE_SCHEDULER=1)
+  - Accepts HH:MM config via env vars
+  - Respects market hours and weekends
+  - WARNING: Multi-worker risk — use external cron in production
+```
+
+---
+
+## 61. ENSEMBLE FRAMEWORK & PREDICTION SERVICE
+
+### Ensemble Framework
+
+**Source**: `backend/ml/ensemble_framework.py`
+
+```
+VotingStrategy (5 modes):
+  - weighted_average      — weighted mean of predictions
+  - majority_vote         — democratic decision
+  - confidence_weighted   — scale by model confidence
+  - stacking              — meta-learner on base predictions
+  - dynamic               — adjust weights based on recent performance
+
+ModelPredictionResult:
+  - prediction, confidence, signal_strength
+  - direction: long / short / neutral
+  - latency tracking
+
+EnsemblePredictionResult:
+  - Aggregated across all base models
+  - Combined confidence + signal strength
+```
+
+### Prediction Service
+
+**Source**: `backend/ml/prediction_service.py`
+
+```
+PredictionRequest → PredictionResult
+
+PredictionType:
+  - classification, regression, forecast, anomaly_detection
+
+PredictionStatus:
+  - pending → processing → completed | failed | cached
+
+Execution:
+  - ThreadPoolExecutor for async predictions
+  - Timeout: 30s default
+  - Cache-enabled by default
+  - Supports probability return
+```
+
+---
+
+## 62. DRIFT DETECTION & MONITORING
+
+### Drift Detection
+
+**Source**: `backend/ml/drift.py`
+
+```
+Population Stability Index (PSI):
+  - Measures feature distribution shift between training and live data
+  - Quantile binning: 10 bins default
+  - epsilon handling for edge cases
+
+DriftResult:
+  - psi_score: float (overall)
+  - feature_psi: dict (per-feature breakdown)
+  - affected_features: list[str]
+
+Handles degenerate distributions (zero-size bins → fallback)
+```
+
+### Retraining Monitor
+
+**Source**: `backend/ml/monitoring.py`
+
+```
+decide_retrain() → RetrainDecision:
+  - should_retrain: bool
+  - reasons: list[str] (human-readable justifications)
+
+Retrain Triggers:
+  │
+  ├── PSI >= 0.15 → feature drift detected
+  ├── Performance drop >= 2% (min_return_drop)
+  └── Negative recent returns → fallback retrain
+```
+
+### Staleness Detector
+
+**Source**: `backend/organism/ml/staleness_detector.py`
+
+```
+5-Dimension Staleness Analysis:
+  │
+  ├── 1. Age (days since training)
+  ├── 2. Performance decay (accuracy drop %)
+  ├── 3. Feature drift (PSI score)
+  ├── 4. Prediction drift (distribution shift)
+  └── 5. Regime change (new regime since training)
+
+StalenessLevel: fresh → aging → stale → critical
+
+StalenessReasons (enum):
+  age, performance_decay, feature_drift,
+  prediction_drift, regime_change, low_confidence, manual
+```
+
+---
+
+# APPENDICES
+
+## A. CONFIGURATION REFERENCE
+
+### Engine Configuration (.env)
+
+| Variable | Default | Production | Effect |
+|---|---|---|---|
+| `ORGANISM_TICK_INTERVAL_SECONDS` | 60 | **10** | Tick frequency |
+| `ORGANISM_LIVE_TIMEFRAME` | 1Day | **1Min** | Bar timeframe |
+| `ORGANISM_MAX_POSITIONS` | 15 | 15 | Max simultaneous positions |
+| `ORGANISM_LONG_ONLY` | true | true | Block all short entries |
+| `ORGANISM_RETRAIN_INTERVAL` | 60 | **200** | Ticks between retrains |
+| `ORGANISM_ML_DECAY_RATE` | 0.005 | 0.005 | Time-decay on training samples |
+| `ORGANISM_MAX_PER_SECTOR` | 4 | 4 | Sector concentration limit |
+| `ORGANISM_DRAWDOWN_KILL_PCT` | 0.03 | **0.08** | Drawdown kill switch |
+| `ORGANISM_LIVE_LOOKBACK` | 500 | 500 | Bars of history to fetch |
+| `ORGANISM_MIN_BARS` | 200 | **50** | Minimum bars for a symbol |
+| `ORGANISM_NIGHTLY_ENABLED` | 0 | 0 | Nightly training cycle |
+| `ORGANISM_HALT_TRADING` | 0 | 0 | Manual trading halt |
+| `ORGANISM_FREEZE_ADAPTATION` | 0 | 0 | Freeze all adaptation |
+
+### Alpaca Configuration
+
+| Variable | Default | Notes |
+|---|---|---|
+| `ALPACA_API_KEY_ID` | — | Also: `ALPACA_API_KEY`, `APCA_API_KEY_ID` |
+| `ALPACA_API_SECRET_KEY` | — | Also: `ALPACA_SECRET_KEY`, `APCA_API_SECRET_KEY` |
+| `ALPACA_PAPER` | true | true=paper, false=live |
+| `ALPACA_DATA_FEED` | sip | sip (paid) or iex (free) |
+| `USE_MOCK_BROKER` | false | true=mock broker for testing |
+
+### Infrastructure Configuration
+
+| Variable | Default | Notes |
+|---|---|---|
+| `DATABASE_URL` | — | `postgresql+asyncpg://...` |
+| `DATABASE_POOL_SIZE` | 20 | Connection pool |
+| `DATABASE_MAX_OVERFLOW` | 10 (30 in Docker) | Pool overflow |
+| `REDIS_URL` | — | `redis://:password@host:port/db` |
+| `JWT_SECRET_KEY` | — | Required, min 32 chars |
+| `OUTBOX_POLL_INTERVAL` | 0.1 | Seconds (100ms) |
+| `RECONCILIATION_INTERVAL_MINUTES` | 15 | Position reconciliation |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | http://otel-collector:4317 | Tracing endpoint |
+
+---
+
+## B. KEY THRESHOLDS SUMMARY
+
+| Threshold | Value | Location | Purpose |
+|---|---|---|---|
+| Alpha composite minimum | 0.15 | alpha_scanner | Minimum score to be a candidate |
+| Breakout composite minimum | 0.20 | breakout_scanner | Minimum breakout score |
+| Pure breakout entry threshold | 0.55 | live_engine | Breakout-only entries need high score |
+| Symbol fitness gate | 0.35 | live_engine | Chronic loser rejection |
+| ML confidence reversal | 0.30 | live_engine | ML reversal exit confidence floor |
+| Max loss safety net | 15% | adaptive_exits | Absolute loss limit |
+| Kelly ML floor | 0.08×conf | kelly_sizer | Minimum sizing when ML confident |
+| Kelly breakout floor | 0.01×score | kelly_sizer | Minimum sizing on strong breakout |
+| Kelly min notional | $2,000 | kelly_sizer | Minimum position size |
+| Kelly max per position | 10% | kelly_sizer | Position concentration limit |
+| Kelly max portfolio | 95% | kelly_sizer | Total exposure limit |
+| Drawdown risk-off | 25% | kelly_sizer | No new positions at all |
+| Drawdown kill switch | 8% | governance | Halt all entries |
+| Intraday size reduction | 40% | live_engine | First/last 15 min of session |
+| Equity-zero threshold | 3 consecutive | live_engine | Block entries on stale data |
+| Walk-forward regression | 0.95 | brain_persistence | Don't persist regressing model |
+| Feature QA NaN rate | 20% | feature_store | Reject feature set |
+| Feature QA missing bars | 10% | feature_store | Flag data quality issue |
+| Circuit breaker failures | 5 | resilience | Open circuit breaker |
+| Circuit breaker recovery | 60s | resilience | Try half-open |
+| Alert dedup window | 300s | alerting | Suppress duplicates |
+| Alert rate limit | 30/min | alerting | Cap alert volume |
+| Stale order pending | 5 min | order_guardrails | Mark as failed |
+| Stale order accepted | 24 hr | order_guardrails | Flag for reconciliation |
+
+---
+
+## C. DATA FLOW SUMMARY
+
+| Path | Direction | Protocol | Format | Latency |
+|---|---|---|---|---|
+| Order Placement | OUT | REST/HTTP | JSON | ~100ms |
+| Order Fill Update | IN | WebSocket | JSON | Real-time (<100ms) |
+| Historical Bars | OUT | REST/HTTP | JSON | ~500ms |
+| Real-time Quote | IN | WebSocket | JSON Array | Real-time |
+| Real-time Trade | IN | WebSocket | JSON Array | Real-time |
+| Real-time Bar | IN | WebSocket | JSON Array | Real-time |
+| Position Check | OUT | REST/HTTP | JSON | ~100ms |
+| Account Status | OUT | REST/HTTP | JSON | ~100ms |
+| Frontend Updates | OUT | Socket.IO | JSON | Real-time |
+| Metrics Scrape | OUT | HTTP | Prometheus text | ~50ms |
+| Brain Save | Local | File I/O | JSON/CSV | ~200ms |
+
+---
+
+## D. ERROR HANDLING HIERARCHY
+
+### Recoverable Errors (with retry)
+
+1. **Network**: httpx.TimeoutException, httpx.ConnectError
+2. **API**: 429 (rate limit), 500, 502, 503, 504
+3. **WebSocket**: Connection lost → reconnect with backoff
+
+### Non-Recoverable Errors (fail fast)
+
+1. **Client**: 400, 401, 403, 404 (except expected 404s), 422 (unless duplicate order)
+2. **Auth**: Missing credentials
+3. **Config**: Invalid symbols, malformed requests
+
+### Duplicate Order Recovery
+
+- 422 with "client_order_id must be unique" → GET /orders:by_client_order_id → return recovered order
+
+### DLQ Escalation
+
+- Outbox: 5 retries → DLQ + WebSocket "order.rejected" broadcast
+- Circuit breaker: 5 failures → OPEN → 60s recovery → HALF_OPEN
+- Alert escalation: WARNING → ERROR → CRITICAL (PagerDuty)
+
+---
+
+## E. MODULE INDEX
+
+### organism/ (37 modules)
+
+| Module | Purpose |
+|---|---|
+| `live_engine.py` | Core tick loop, telemetry, trade reconstruction |
+| `adaptive_exits.py` | ATR-based exits, 15% safety net, regime-adaptive |
+| `alpha_scanner.py` | 7-factor alpha scoring, top-5 candidates |
+| `attribution.py` | Per-strategy reward signals from DB fills |
+| `background_trainer.py` | ProcessPoolExecutor ML retraining |
+| `brain_persistence.py` | Save/load brain state to JSON |
+| `breakout_scanner.py` | 6-detector breakout scoring |
+| `composite_indicators.py` | 7 proprietary composite indicators |
+| `continuous_learner.py` | Online incremental learning |
+| `decision_telemetry.py` | Ring buffer (360 ticks) for decisions dashboard |
+| `diagnostic_checks.py` | 36 diagnostic checks, 8 categories |
+| `diagnostic_scheduler.py` | Report store + pre-open/post-close scheduler |
+| `diagnostics.py` | Entry points: preflight, continuous, full suite |
+| `ensemble_models.py` | Combined classifier + regressor ensemble |
+| `feature_store.py` | Versioned features with QA gates |
+| `governance.py` | Kill switch, halt, freeze, change budget |
+| `kelly_sizer.py` | Half-Kelly sizing, regime-stratified |
+| `market_scanner.py` | Broad universe scan (most-actives, gainers, losers) |
+| `ml_features.py` | 79 ML features across 11 categories |
+| `ml_signal.py` | Dual XGBoost + ensemble, confidence calibration |
+| `multi_timeframe.py` | MTF signal alignment (1m/5m/15m/1h/1d) |
+| `nightly_scheduler.py` | Nightly training cycle with backoff |
+| `promotion.py` | 6-stage model promotion state machine |
+| `pyramider.py` | 3-layer momentum pyramid (60/30/10%) |
+| `regime.py` | Regime detection (7 labels), drift detection |
+| `replay_simulator.py` | Historical tick replay for backtesting |
+| `routes.py` | 24+ FastAPI endpoints for organism |
+| `runner.py` | Unified tick coordinator |
+| `scheduler.py` | APScheduler tick loop + diagnostics wiring |
+| `sector_map.py` | GICS sector mapping, diversification gate |
+| `self_evolution.py` | 10-step meta-learning parameter evolution |
+| `streaming_data_provider.py` | WebSocket bar stream + ring buffers |
+| `training.py` | Training orchestrator (slow brain) |
+| `transfer_learning.py` | Cross-run knowledge transfer |
+| `universe_selector.py` | Fitness-based symbol rotation |
+| `walk_forward.py` | Walk-forward evaluation + acceptance gates |
+| `ml/staleness_detector.py` | Stale ML model detection |
+
+### infra/ (24 modules)
+
+| Module | Purpose |
+|---|---|
+| `alerting.py` | Slack + PagerDuty alerts, dedup, rate limiting |
+| `broker.py` | Redis health check |
+| `cache.py` | LRU+TTL memory cache, hot data singleton |
+| `db.py` | Async PostgreSQL engine, sessions, pool config |
+| `guardrails.py` | 8-layer order validation |
+| `guardrails_production.py` | Atomic daily caps, circuit breaker |
+| `logging.py` | Structured JSON logging, OTel correlation |
+| `metrics.py` | Prometheus registry, cardinality enforcement |
+| `object_pool.py` | Thread-safe object pool for orders |
+| `observability.py` | OTel tracing, auto-instrumentation |
+| `observability_contracts.py` | Fixed histogram bucket definitions |
+| `order_guardrails.py` | Post-submission timeout + stale cleanup |
+| `outbox.py` | Transactional outbox pattern + DLQ |
+| `outbox_worker.py` | Background dispatcher (100ms poll) |
+| `performance.py` | LRU cache, batch processor, ring buffer |
+| `production.py` | Health checks, graceful shutdown, feature flags |
+| `resilience.py` | Circuit breaker, retry with backoff |
+| `schemas.py` | SQLAlchemy ORM models (24 tables) |
+| `security.py` | JWT auth, bcrypt, RBAC, token blacklist |
+| `security_hardening.py` | Rate limit, security headers, input validation |
+| `unified_database.py` | DEPRECATED — migrated to `infra/db.py` |
+| `users.py` | User repository, brute force protection (5 attempts → 15 min lockout) |
+| `validation.py` | Symbol validation (max 10 chars), price validation (max $100M, 4 dp) |
+| `repositories/*.py` | 7 repositories: orders, positions, executions, signals, models, audits, strategies |
+
+### integrations/ (6 modules)
+
+| Module | Purpose |
+|---|---|
+| `alpaca_broker.py` | REST client for Alpaca order/position/account API |
+| `alpaca_data.py` | Alpaca historical bar fetcher with retry, split adjustment, observability |
+| `alpaca_outbox.py` | Outbox dispatcher to Alpaca with smart TIF |
+| `alpaca_stream.py` | WebSocket client for trade updates (dev/paper) |
+| `alpaca_market_data_stream.py` | WebSocket client for real-time market data |
+| `alpaca_stream_production.py` | Production stream with gap-fill, dedup, circuit breaker |
+
+### api/ (15+ modules)
+
+| Module | Purpose |
+|---|---|
+| `lifespan.py` | Startup/shutdown orchestrator (14 steps) |
+| `factory.py` | FastAPI app assembly |
+| `middleware_setup.py` | CORS, GZip, dedup, rate limit, metrics |
+| `routes_setup.py` | Route registration at /api/v1 |
+| `socketio_server.py` | Socket.IO for real-time broadcasts |
+| `websocket_manager.py` | WS client management with backpressure |
+| `routes/health.py` | /health, /livez, /readyz probes |
+| `routes/orders.py` | Order CRUD with rate limiting |
+| `routes/auth.py` | JWT login, refresh, logout |
+| `routes/monitoring.py` | Prometheus /metrics endpoint |
+| `routes/observability.py` | Health dashboard, alerts |
+
+### services/ (27 modules)
+
+| Module | Purpose |
+|---|---|
+| `risk_manager.py` | Risk metrics, limits, violations, emergency stop |
+| `order_service.py` | Order creation via outbox + Redis-backed circuit breaker |
+| `portfolio_service.py` | Portfolio aggregation |
+| `portfolio_sync_service.py` | Alpaca → DB sync on startup |
+| `position_reconciliation_service.py` | DB vs broker discrepancy detection |
+| `scheduled_reconciliation.py` | 15-min reconciliation scheduler |
+| `market_data_service.py` | Alpaca market data wrapper + WS pub/sub bridge |
+| `quote_manager.py` | Redis-cached real-time quotes (5s TTL) |
+| `trading_execution_mode.py` | execute/shadow/dry_run mode with runtime override |
+| `observability_service.py` | Aggregated health checks |
+| `multi_strategy_live_runner.py` | 10 independent strategy engine coordinator |
+| `multi_strategy_live_scheduler.py` | Background scheduler for multi-strategy path |
+| `audit_service.py` | SEC 17a-4 compliance, SHA-256 hash chain, 24 action types |
+| `backtest_service.py` | Strategy backtesting engine (equity curve, trade log) |
+| `lot_tracker_service.py` | FIFO lot matching, cost basis, tax lot tracking |
+| `trade_analytics_service.py` | Institutional analytics (Sharpe, Sortino, Calmar, profit factor) |
+| `slippage_model.py` | Almgren-Chriss market impact model, time-of-day adjustments |
+| `strategy_service.py` | Strategy CRUD, lifecycle, versioning, rollback |
+| `auto_breakout_scanner.py` | Standalone breakout scanner (0-100 score, $5-2K filter) |
+| `cache.py` | 3-layer Redis cache (quotes/bars/indicators) with HA support |
+| `indicators.py` | 25+ technical indicators (SMA, RSI, MACD, Bollinger, Ichimoku...) |
+| `symbol_validator.py` | Alpaca asset validation (tradable + active), fail-open |
+| `positions_service.py` | Alpaca position API wrapper, portfolio value |
+| `position_import_service.py` | Import pre-existing Alpaca positions with dedup |
+| `signal_service.py` | Signal cache/relay layer for multi-strategy runner |
+| `trade_service.py` | Trade history, CSV export, realized PnL integration |
+| `auto_breakout_scanner_scheduler.py` | Background scheduler for breakout scanner runs |
+
+### ml/ (17 modules)
+
+| Module | Purpose |
+|---|---|
+| `active_model_pointer.py` | Disk-based pointer bridging training → live inference |
+| `data_processing.py` | SimpleScaler (standard/minmax/robust), no sklearn dependency |
+| `drift.py` | PSI-based feature drift detection (10 quantile bins) |
+| `ensemble_framework.py` | 5 voting strategies (weighted, majority, confidence, stacking, dynamic) |
+| `feature_engineering.py` | 5 feature types (technical, statistical, categorical, temporal, derived) |
+| `lifecycle.py` | Daily snapshots, weekly retrains, monthly promotion reviews |
+| `lifecycle_scheduler.py` | In-process scheduler (ENABLE_ML_LIFECYCLE_SCHEDULER=1) |
+| `model_management.py` | Metadata, versioning, serialization (joblib/pickle/JSON) |
+| `model_manager.py` | In-memory registry with feature schema lock + PSI drift |
+| `model_selection.py` | Backtest evaluation (Sharpe, CAGR, max drawdown) |
+| `monitoring.py` | Retrain decision logic (PSI >= 0.15, perf drop >= 2%) |
+| `pipeline.py` | 8-stage ML pipeline orchestration with caching |
+| `prediction_service.py` | Async predictions (ThreadPool, 30s timeout, caching) |
+| `sentiment.py` | Re-exports SocialSentimentAnalyzer from data/ |
+| `staleness_detector.py` | 5-dimension staleness (age, decay, drift, prediction, regime) |
+| `training.py` | sklearn training (RF, LR, SVM, GB) + cross-validation |
+| `validation.py` | K-Fold CV, binary metrics, confusion matrix (numpy-based) |
+
+### models/ (6 modules)
+
+| Module | Purpose |
+|---|---|
+| `backtest.py` | Backtest request/response validation (capital: 1K-10M, max 5yr) |
+| `ml_models.py` | ML model types (6), statuses (5), training config |
+| `risk.py` | Risk status/violation/severity enums + request models |
+| `order_integrity.py` | Order FSM, audit log, idempotency, 5 Prometheus metrics |
+| `ensemble_model.py` | LSTM+XGBoost+RF combination with graceful degradation |
+| `user.py` | Minimal user model (test compatibility shim) |
+
+### config/ (5 modules)
+
+| Module | Purpose |
+|---|---|
+| `base_settings.py` | Pydantic V2 BaseSettings with nested config sections + .env loading |
+| `settings.py` | Active settings API (LRU-cached singleton, dual dataclass/pydantic) |
+| `config.py` | DEPRECATED — use `settings.get_settings()` |
+| `coordinator.py` | DEPRECATED — use `settings.get_settings()` |
+| `unified.py` | DEPRECATED — use `settings.get_settings()` |
+
+### data/ (5 modules)
+
+| Module | Purpose |
+|---|---|
+| `alpaca_client.py` | Alpaca API client with observability (tracing, metrics, latency) |
+| `market_data.py` | Resilient OHLCV processing with error handling |
+| `models.py` | Pydantic data models for financial data structures |
+| `social_sentiment.py` | Social sentiment analysis (Twitter/Reddit + FinBERT), dev fallbacks |
+| `strategy_templates.py` | Strategy parameter templates for wizard builder |
+
+### utils/ (8 modules)
+
+| Module | Purpose |
+|---|---|
+| `helpers.py` | Math functions, financial calculations, UUID generation, hashing |
+| `import_tracker.py` | Centralized import error tracking with fallback management |
+| `logger.py` | Logger stub class for infrastructure compatibility |
+| `logging.py` | Structured logging with PII/secret scrubbing (API keys, tokens, passwords) |
+| `port_management.py` | Dynamic port allocation for tests (avoid conflicts) |
+| `secure_pickle.py` | HMAC-SHA256 signed pickle serialization (prevents code execution attacks) |
+| `utilities.py` | async_retry with exponential backoff/jitter, timezone helpers |
+| `validators.py` | Validation stubs: ValidationError, Validator base, field validators |
+
+---
+
+---
+
+## F. FULL API ROUTE REFERENCE
+
+### Authentication (`/api/v1/auth/`)
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| POST | `/login` | Username/password login → JWT |
+| POST | `/token` | Token-based auth |
+| GET | `/verify` | Verify token validity |
+| POST | `/token/validate` | Validate token |
+| POST | `/logout` | Blacklist token |
+| GET | `/me` | Current user profile |
+| POST | `/register` | Create account |
+| POST | `/token/refresh` | Refresh JWT |
+| POST | `/password-reset/request` | Request password reset |
+| POST | `/password-reset/confirm` | Confirm password reset |
+| POST | `/password-change` | Change password |
+
+### Orders (`/api/v1/orders/`)
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| GET | `/` | List orders (includes system orders) |
+| POST | `/` | Place single order |
+| POST | `/bulk` | Place bulk orders |
+| GET | `/{order_id}` | Get order details |
+| GET | `/{order_id}/status` | Get order status |
+| PATCH | `/{order_id}` | Modify order |
+| DELETE | `/{order_id}` | Cancel order |
+| POST | `/{order_id}/cancel` | Cancel order (alternative) |
+| GET | `/{order_id}/audit` | Order audit trail |
+| POST | `/{order_id}/close-position` | Close position via order |
+
+### Risk (`/api/v1/risk/`)
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| GET | `/dashboard` | Full risk dashboard |
+| GET | `/metrics` | Current risk metrics |
+| POST | `/metrics/calculate` | Recalculate metrics |
+| GET | `/violations` | Risk violations list |
+| GET | `/limits` | Risk limit definitions |
+| PUT | `/limits/{limit_name}` | Update risk limit |
+| DELETE | `/limits/{limit_id}` | Remove risk limit |
+| POST | `/emergency-stop` | Trigger emergency stop |
+| POST | `/emergency-stop/{id}/resolve` | Resolve emergency stop |
+| GET | `/emergency-stop/active` | Active emergency stops |
+
+### Strategies (`/api/v1/strategies/`)
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| GET | `/templates` | Available strategy templates |
+| GET | `/templates/{type}` | Template by type |
+| GET | `/status` | All strategy statuses |
+| GET | `/` | List strategies |
+| GET | `/{id}` | Get strategy |
+| POST | `/` | Create strategy |
+| PATCH | `/{id}` | Update strategy |
+| DELETE | `/{id}` | Delete strategy |
+| POST | `/{id}/start` | Start strategy |
+| POST | `/{id}/stop` | Stop strategy |
+| POST | `/{id}/pause` | Pause strategy |
+| GET | `/{id}/performance` | Strategy performance |
+| PUT | `/{id}/performance` | Update performance metrics |
+| POST | `/features/ingest` | Ingest features |
+| POST | `/signals/batch` | Batch signal submission |
+| POST | `/signals/submit` | Submit signals |
+
+### ML Models (`/api/v1/models/`)
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| GET | `/` | List models |
+| GET | `/stats` | Model statistics |
+| GET | `/{id}` | Get model |
+| DELETE | `/{id}` | Delete model |
+| POST | `/{id}/activate` | Activate model |
+| POST | `/train` | Train new model |
+| GET | `/training/{id}` | Training job status |
+| POST | `/predict` | Generate prediction |
+| GET | `/{id}/features` | Model features |
+| POST | `/compare` | Compare models |
+| GET | `/{id}/health` | Model health |
+| GET | `/{id}/monitor/snapshots` | Monitoring snapshots |
+| POST | `/{id}/monitor/run` | Run monitoring |
+| POST | `/{id}/retrain-if-needed` | Conditional retrain |
+| GET | `/lifecycle/summary` | Lifecycle summary |
+| POST | `/lifecycle/run/daily-monitoring` | Daily monitoring |
+| POST | `/lifecycle/run/weekly-retrain` | Weekly retrain |
+| POST | `/lifecycle/run/monthly-review` | Monthly review |
+| GET | `/{name}/versions` | Model versions |
+| GET | `/admin/training-jobs` | All training jobs |
+| POST | `/admin/cleanup-jobs` | Clean old jobs |
+
+### Scanner (`/api/v1/scanner/`)
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| POST | `/scan` | Run market scan |
+| GET | `/presets` | Built-in presets |
+| POST | `/export/csv` | Export scan as CSV |
+| POST | `/export/json` | Export scan as JSON |
+| GET | `/presets/custom` | Custom presets |
+| POST | `/presets/custom` | Create custom preset |
+| PUT | `/presets/custom/{id}` | Update preset |
+| DELETE | `/presets/custom/{id}` | Delete preset |
+| GET | `/symbols` | Scannable symbols |
+| WS | `/ws` | Scanner WebSocket stream |
+
+### Watchlists (`/api/v1/watchlists/`)
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| GET | `/` | List watchlists |
+| POST | `/` | Create watchlist |
+| GET | `/{id}` | Get watchlist |
+| PUT | `/{id}` | Update watchlist |
+| DELETE | `/{id}` | Delete watchlist |
+| POST | `/{id}/symbols` | Add symbols |
+| DELETE | `/{id}/symbols/{sym}` | Remove symbol |
+| PUT | `/{id}/symbols/reorder` | Reorder symbols |
+| GET | `/{id}/quotes` | Quotes for watchlist symbols |
+
+### Other Routes (summarized)
+
+| Route File | Endpoints | Key Operations |
+|---|---|---|
+| `observability.py` | 8 | Health (live/ready), metrics, trading, dashboard, alerts, thresholds |
+| `system.py` | 8 | System status, metrics, health, SLI, test endpoint |
+| `settings.py` | 7 | Organism/trading/ML settings CRUD, engine restart |
+| `audit.py` | 6 | Compliance audit trail queries |
+| `chart_templates.py` | 6 | Chart template CRUD + apply |
+| `drawings.py` | 5 | TradingView-style drawings CRUD |
+| `signals.py` | 5 | Signal storage, retrieval, act on signal |
+| `backtest.py` | 5 | Create, list, results, delete |
+| `positions.py` | 4 | List, import preview, import, close |
+| `market_data.py` | 4 | Stats, health, bars, WebSocket |
+| `lots.py` | 4 | Open lots, realized trades, cost basis, unrealized PnL |
+| `admin_trading.py` | 3 | Execution mode GET/PUT/DELETE |
+| `position_import.py` | 3 | Preview, import, clear |
+| `trades.py` | 3 | Trade history retrieval |
+| `optimizations.py` | 3 | Strategy optimization runs |
+| `indicators.py` | 2 | Calculate indicator, list available |
+| `auto_breakout_scanner.py` | 2 | Latest scan, manual trigger |
+| `monitoring.py` | 2 | SLI metrics, SLO status |
+| `multi_strategy_live.py` | 1 | Manual run-once trigger |
+
+---
+
+## G. ORM MODELS & CONFIGURATION
+
+### Order Integrity FSM
+
+**Source**: `backend/models/order_integrity.py`
+
+```
+Order State Machine:
+  pending → submitted → accepted → filled
+                     └→ rejected
+                     └→ cancelled
+                     └→ expired
+
+Append-only audit log for traceability
+Idempotency at 3 layers: API, service, outbox
+
+Prometheus Metrics:
+  - order_state_transitions_total [from_state, to_state, trigger]
+  - order_integrity_violations_total [type]
+  - audit_log_entries_total [event_type, entity_type]
+  - idempotency_cache_hits_total [layer: api|service|outbox]
+  - order_processing_duration_seconds [state, operation]
+    buckets: [0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0]
+```
+
+### Configuration Architecture
+
+```
+Settings Hierarchy:
+  │
+  ├── backend/config/base_settings.py  ← Pydantic V2 BaseSettings
+  │     Nested sections: AppConfig, DatabaseConfig, DataConfig,
+  │     MetricsConfig, AlpacaConfig
+  │     .env file loading via python-dotenv
+  │
+  ├── backend/config/settings.py  ← Active API (get_settings())
+  │     LRU-cached singleton pattern
+  │     Dual dataclass + pydantic implementation
+  │     Re-exports all config classes for backward compat
+  │
+  └── DEPRECATED:
+      ├── config/config.py       → use settings.get_settings()
+      ├── config/coordinator.py  → use settings.get_settings()
+      └── config/unified.py      → use settings.get_settings()
+
+Environment Variables:
+  .env file (gitignored) → loaded by base_settings.py
+  docker-compose.yml → overrides for container environment
+  Organism vars MUST be in docker-compose.yml (not just .env)
+```
+
+### ML Model Types
+
+```
+ModelType (enum):
+  ENSEMBLE | LSTM | XGBOOST | RANDOM_FOREST | REGRESSION | CLASSIFICATION
+
+ModelStatus (enum):
+  TRAINING | READY | FAILED | INACTIVE | DEPRECATED
+
+TrainingStatus (enum):
+  PENDING | RUNNING | COMPLETED | FAILED | CANCELLED
+
+Default training config:
+  features: ["technical", "sentiment"]
+  symbols: ["AAPL", "MSFT", "GOOGL"]
+  lookback_days: 90 (range: 30-365)
+  test_size: 0.2 (range: 0.1-0.4)
+```
+
+---
+
+*This document covers 100% of the platform's Python modules across organism/ (37), infra/ (24), integrations/ (6), api/ (15+), services/ (27), ml/ (17), models/ (6), config/ (5), data/ (5), and utils/ (8). Every threshold, every flow, every decision path, every endpoint, and every inter-module dependency is documented for visual diagramming.*
