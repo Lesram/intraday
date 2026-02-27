@@ -16,6 +16,7 @@ import {
   HistoryOutlined,
   ExperimentOutlined,
   ApartmentOutlined,
+  DeploymentUnitOutlined,
 } from '@ant-design/icons';
 import type { MenuProps } from 'antd';
 import { colors } from '../../styles/theme';
@@ -46,6 +47,7 @@ const AppSidebar = () => {
       { key: '/market-data', icon: <SearchOutlined />, label: 'Market Scanner' },
       { key: '/organism', icon: <ApartmentOutlined />, label: 'Living Organism' },
       { type: 'divider' },
+      { key: '/architecture', icon: <DeploymentUnitOutlined />, label: 'Architecture Map' },
       { key: '/reports', icon: <FileTextOutlined />, label: 'Reports' },
     ];
 

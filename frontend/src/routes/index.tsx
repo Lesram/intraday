@@ -40,6 +40,7 @@ const RiskManagement = lazy(() => import('../features/risk').then(m => ({ defaul
 const PortfolioPage = lazy(() => import('../features/portfolio/PortfolioPage'));
 const OrganismDashboard = lazy(() => import('../features/organism/OrganismDashboard'));
 const SettingsPage = lazy(() => import('../features/settings/SettingsPage'));
+const ArchitecturePage = lazy(() => import('../features/architecture/ArchitecturePage'));
 
 // Suspense wrapper for lazy components
 const LazyRoute = ({ children }: { children: React.ReactNode }) => (
@@ -89,6 +90,7 @@ const AppRoutes = () => {
         <Route path="risk" element={<LazyRoute><RiskManagement /></LazyRoute>} />
         <Route path="organism" element={<LazyRoute><OrganismDashboard /></LazyRoute>} />
         <Route path="market-data" element={<LazyRoute><ScannerPage /></LazyRoute>} />
+        <Route path="architecture" element={<LazyRoute><ArchitecturePage /></LazyRoute>} />
         <Route path="reports" element={<LazyRoute><ComingSoon title="Reports" /></LazyRoute>} />
         <Route path="admin" element={<LazyRoute><ComingSoon title="Admin" /></LazyRoute>} />
         <Route path="settings" element={<LazyRoute><SettingsPage /></LazyRoute>} />

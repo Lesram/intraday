@@ -115,6 +115,10 @@ export default defineConfig({
             if (id.includes('@dnd-kit')) {
               return 'dnd';
             }
+            // Mermaid (large diagram library)
+            if (id.includes('mermaid')) {
+              return 'mermaid';
+            }
             // Validation
             if (id.includes('zod')) {
               return 'validation';
