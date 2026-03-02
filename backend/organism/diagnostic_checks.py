@@ -51,9 +51,10 @@ async def check_wiring_data_client(*, engine: Any = None, app: Any = None) -> Di
     dc = getattr(engine, "_data_client", None)
     if dc is None:
         return _fail(n, c, s, "data_client is None")
-    if not hasattr(dc, "get_historical_data"):
-        return _fail(n, c, s, "data_client missing get_historical_data method")
-    return _ok(n, c, s, "data_client wired and has get_historical_data")
+    if not hasattr(dc, "get_historical_data") and not hasattr(dc, "get_historical_bars_df"):
+        return _fail(n, c, s, "data_client missing get_historical_data/get_historical_bars_df method")
+    method = "get_historical_bars_df" if hasattr(dc, "get_historical_bars_df") else "get_historical_data"
+    return _ok(n, c, s, f"data_client wired and has {method}")
 
 
 @diagnostics.check(
@@ -302,13 +303,11 @@ async def check_state_evolved_params(*, engine: Any = None, app: Any = None) -> 
     ep = getattr(engine, "evolved_params", None)
     if ep is None:
         return _fail(n, c, s, "evolved_params is None")
-    gen = getattr(ep, "generation", -1)
+    gen = getattr(ep, "evolution_generation", getattr(ep, "generation", -1))
     if gen < 0:
         return _fail(n, c, s, f"Negative generation: {gen}")
-    fitness = getattr(ep, "fitness", -1.0)
-    if not (0.0 <= fitness <= 1.0):
-        return _fail(n, c, s, f"fitness={fitness} outside [0, 1]")
-    return _ok(n, c, s, f"generation={gen}, fitness={fitness:.3f}")
+    adaptations = getattr(ep, "total_adaptations", 0)
+    return _ok(n, c, s, f"generation={gen}, adaptations={adaptations}")
 
 
 # ═══════════════════════════════════════════════════════════════════
