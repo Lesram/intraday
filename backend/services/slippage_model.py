@@ -317,20 +317,13 @@ class SlippageModel:
     
     def _get_time_period(self, dt: datetime) -> str:
         """Determine time period for time-of-day adjustment."""
-        # Convert to US/Eastern properly handling EST/EDT
-        try:
-            from zoneinfo import ZoneInfo
-            eastern = ZoneInfo("America/New_York")
-            if dt.tzinfo is None:
-                from datetime import timezone
-                dt = dt.replace(tzinfo=timezone.utc)
-            et_time = dt.astimezone(eastern)
-            hour = et_time.hour
-            minute = et_time.minute
-        except Exception:
-            # Fallback: assume UTC, subtract 5 hours for EST
-            hour = (dt.hour - 5) % 24
-            minute = dt.minute
+        from backend.utils.market_hours import ET
+        if dt.tzinfo is None:
+            from datetime import timezone
+            dt = dt.replace(tzinfo=timezone.utc)
+        et_time = dt.astimezone(ET)
+        hour = et_time.hour
+        minute = et_time.minute
         time_minutes = hour * 60 + minute
         
         # Market hours in minutes from midnight ET

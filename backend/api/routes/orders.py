@@ -536,10 +536,8 @@ async def validate_order_pre_trade(
                     estimated_price = market_price
                     # Check if this is real-time or last close
                     # (After hours, get_current_price returns last bar close)
-                    import datetime
-                    now = datetime.datetime.now()
-                    is_market_hours = (now.weekday() < 5 and
-                                     9 <= now.hour < 16)  # Rough check
+                    from backend.utils.market_hours import is_market_open
+                    is_market_hours = is_market_open()
 
                     if is_market_hours:
                         logger.info(f"Fetched real-time market price for {symbol}: ${market_price:.2f}")

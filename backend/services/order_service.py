@@ -40,9 +40,8 @@ CB_OPENED_AT_KEY = "circuit_breaker:order_flow:opened_at"
 CB_DAILY_PNL_KEY = "circuit_breaker:order_flow:daily_pnl"
 CB_LAST_RESET_DATE_KEY = "circuit_breaker:order_flow:last_reset_date"
 
-# Market timezone for daily reset
-MARKET_TIMEZONE = ZoneInfo("America/New_York")
-MARKET_OPEN_TIME = dt_time(9, 30)  # 9:30 AM ET
+# Market timezone for daily reset — canonical source in market_hours
+from backend.utils.market_hours import ET as MARKET_TIMEZONE, MARKET_OPEN as MARKET_OPEN_TIME
 
 
 class CircuitBreaker:
@@ -699,6 +698,7 @@ class OrderService:
         tif: str = "ioc",
         attributes: dict[str, Any] | None = None,
         daily_pnl: float | None = None,
+        reduce_only: bool = False,
     ) -> dict[str, Any]:
         """
         Submit a single order through the idempotent order+outbox flow.
@@ -715,12 +715,13 @@ class OrderService:
             tif: Time in force
             attributes: Additional order attributes
             daily_pnl: Optional daily P&L for circuit breaker check
+            reduce_only: If True, bypass PnL circuit breaker (exit/risk-reducing orders)
 
         Returns:
             Order submission result
 
         Raises:
-            RuntimeError: If circuit breaker is tripped
+            RuntimeError: If circuit breaker is tripped (and not reduce_only)
         """
         # If repos are missing but sessionmaker is available, use per-call session
         if self.orders_repo is None and self.sessionmaker is not None:
@@ -728,10 +729,13 @@ class OrderService:
                 symbol=symbol, side=side, qty=qty, idempotency_key=idempotency_key,
                 user_id=user_id, order_type=order_type, tif=tif,
                 attributes=attributes, daily_pnl=daily_pnl,
+                reduce_only=reduce_only,
             )
-        # Circuit breaker check - protect against runaway losses
+        # Circuit breaker check — bypass for reduce_only (exit) orders so
+        # risk-reducing exits are never blocked by the PnL loss threshold.
+        # Technical-failure breakers (broker down) still apply at the broker level.
         circuit_breaker = get_circuit_breaker()
-        if circuit_breaker.check(daily_pnl):
+        if not reduce_only and circuit_breaker.check(daily_pnl):
             cb_status = circuit_breaker.get_status()
             logger.warning(
                 "Order rejected by circuit breaker",
@@ -873,6 +877,7 @@ class OrderService:
         tif: str = "ioc",
         attributes: dict[str, Any] | None = None,
         daily_pnl: float | None = None,
+        reduce_only: bool = False,
     ) -> dict[str, Any]:
         """Fallback path: create a fresh DB session and repos per order call.
 
@@ -899,6 +904,7 @@ class OrderService:
                         tif=tif,
                         attributes=attributes,
                         daily_pnl=daily_pnl,
+                        reduce_only=reduce_only,
                     )
                     return result
                 finally:

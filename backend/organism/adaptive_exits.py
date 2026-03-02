@@ -378,14 +378,38 @@ class AdaptiveExitEngine:
         if trail_signal.should_exit:
             return trail_signal
 
-        # 5. Time-based exit (regime-adaptive — disabled in trending)
+        # 4b. Failure to follow through — exit if < 0.5R after progress_check bars.
+        # Uses max_bars when finite, otherwise a universal fallback (30 bars)
+        # so this check works even in trending_up/low_vol (max_bars=0/∞).
         max_bars = self.REGIME_MAX_BARS.get(current_regime, self.max_bars_held)
+        _PROGRESS_CHECK_FALLBACK = 30  # universal fallback for ∞ regimes
+        progress_ref = max_bars if max_bars > 0 else _PROGRESS_CHECK_FALLBACK
+        early_check = max(progress_ref // 4, 5)
+        if levels.bars_held >= early_check and not levels.trailing_active:
+            pnl_dir = (current_price - levels.entry_price) * direction
+            initial_risk = max(abs(levels.entry_price - levels.stop_loss), 0.01)
+            r_achieved = pnl_dir / initial_risk
+            if r_achieved < 0.5:
+                return ExitSignal(True, "failure_to_follow", current_price)
+
+        # 5. Time-based exit (regime-adaptive — disabled in trending)
         if max_bars > 0 and levels.bars_held >= max_bars:
             # Only force exit if position is in profit — give losers more room
             # to recover rather than locking in a loss at time limit
             pnl_dir = (current_price - levels.entry_price) * direction
             if pnl_dir > 0:
                 return ExitSignal(True, "max_holding_period", current_price)
+
+        # 5b. Loser time-stop — losers get 1.5× max_bars then forced exit.
+        # For ∞ regimes (trending_up/low_vol), use a universal cap (200 bars)
+        # so capital can't be stranded indefinitely on a regime misclassification.
+        _LOSER_MAX_FALLBACK = 200  # ~33 min at 10s ticks
+        loser_ref = max_bars if max_bars > 0 else _LOSER_MAX_FALLBACK
+        loser_max = int(loser_ref * 1.5)
+        if levels.bars_held >= loser_max:
+            pnl_dir = (current_price - levels.entry_price) * direction
+            if pnl_dir <= 0:
+                return ExitSignal(True, "loser_time_stop", current_price)
 
         # 6. Time decay — very gentle, only in non-trending
         decay_start = self.REGIME_DECAY_START.get(current_regime, self.time_decay_start)

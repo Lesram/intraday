@@ -67,6 +67,7 @@ def _adx(high: pd.Series, low: pd.Series, close: pd.Series, period: int = 14) ->
 def compute_ml_features(
     df: pd.DataFrame,
     spy_df: pd.DataFrame | None = None,
+    bars_per_day: int = 1,
 ) -> pd.DataFrame:
     """Compute 70+ ML features.  No lookahead.
 
@@ -81,6 +82,7 @@ def compute_ml_features(
     """
     f = df.copy()
     c, h, l, o, v = f["close"], f["high"], f["low"], f["open"], f["volume"]
+    _ann_factor = math.sqrt(252 * bars_per_day)
 
     # ═══════════════════════════════════════════════════════
     # PRICE ACTION (15)
@@ -153,21 +155,21 @@ def compute_ml_features(
     f["atr_ratio"] = _atr(h, l, c, 5) / _atr(h, l, c, 20).replace(0, 1e-10)
 
     log_ret = np.log(c / c.shift(1))
-    f["realized_vol_5"] = log_ret.rolling(5, min_periods=1).std() * math.sqrt(252)
-    f["realized_vol_20"] = log_ret.rolling(20, min_periods=1).std() * math.sqrt(252)
+    f["realized_vol_5"] = log_ret.rolling(5, min_periods=1).std() * _ann_factor
+    f["realized_vol_20"] = log_ret.rolling(20, min_periods=1).std() * _ann_factor
     f["vol_ratio_5_20"] = f["realized_vol_5"] / f["realized_vol_20"].replace(0, 1e-10)
 
     # Parkinson volatility: uses high-low range
     f["parkinson_vol"] = (
         np.log(h / l.replace(0, 1e-10)) ** 2 / (4 * math.log(2))
-    ).rolling(20, min_periods=1).mean().apply(lambda x: math.sqrt(max(x, 0)) * math.sqrt(252))
+    ).rolling(20, min_periods=1).mean().apply(lambda x: math.sqrt(max(x, 0)) * _ann_factor)
 
     # Garman-Klass volatility
     log_hl = np.log(h / l.replace(0, 1e-10))
     log_co = np.log(c / o.replace(0, 1e-10))
     gk_var = 0.5 * log_hl**2 - (2 * math.log(2) - 1) * log_co**2
     f["garman_klass_vol"] = gk_var.rolling(20, min_periods=1).mean().apply(
-        lambda x: math.sqrt(max(x, 0)) * math.sqrt(252)
+        lambda x: math.sqrt(max(x, 0)) * _ann_factor
     )
 
     # Volatility regime: low/normal/high based on percentile
@@ -300,9 +302,10 @@ def compute_ml_features(
         f["month_sin"] = 0.0
         f["month_cos"] = 0.0
 
-    # Days since 52-week high/low
-    high_52w = h.rolling(252, min_periods=20).max()
-    low_52w = l.rolling(252, min_periods=20).min()
+    # Session/52-week high/low (uses session window for intraday, 252 for daily)
+    _hl_window = min(len(h), bars_per_day) if bars_per_day > 1 else 252
+    high_52w = h.rolling(_hl_window, min_periods=min(20, _hl_window)).max()
+    low_52w = l.rolling(_hl_window, min_periods=min(20, _hl_window)).min()
     f["pct_from_52w_high"] = (c - high_52w) / high_52w.replace(0, 1e-10)
     f["pct_from_52w_low"] = (c - low_52w) / low_52w.replace(0, 1e-10)
 
@@ -397,9 +400,15 @@ def compute_ml_features(
         if col in f.columns:
             f.drop(columns=[col], inplace=True)
 
-    # Replace inf/nan
+    # Replace inf/nan — but first measure missingness so callers can gate
     f.replace([np.inf, -np.inf], np.nan, inplace=True)
+    last_row_nans = int(f.iloc[-1].isna().sum()) if len(f) > 0 else 0
+    total_cols = len(f.columns)
+    missingness_ratio = last_row_nans / total_cols if total_cols > 0 else 0.0
     f.fillna(0.0, inplace=True)
+
+    # Store missingness as a feature so the engine can gate entries
+    f["_nan_missingness"] = missingness_ratio  # constant per call
 
     return f
 
@@ -445,4 +454,4 @@ FEATURE_COLUMNS: list[str] = [
     "comp_mean_rev_extreme", "comp_breakout_readiness",
     "comp_momentum_quality",
 ]
-"""All 75 feature column names produced by compute_ml_features()."""
+"""All 79 feature column names produced by compute_ml_features()."""

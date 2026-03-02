@@ -9,10 +9,10 @@ import asyncio
 from datetime import datetime
 import os
 from typing import Any
-from zoneinfo import ZoneInfo
 
 from backend.config import get_settings
 from backend.utils.logger import get_structured_logger
+from backend.utils.market_hours import ET, is_market_open
 
 logger = get_structured_logger(__name__)
 
@@ -38,36 +38,24 @@ def get_smart_tif(requested_tif: str | None = None) -> str:
         return requested_tif.lower()
 
     try:
-        # Get current time in Eastern Time
-        et_tz = ZoneInfo('America/New_York')
-        now_et = datetime.now(et_tz)
-
-        # Check market hours (9:30 AM - 4:00 PM ET, Mon-Fri)
-        weekday = now_et.weekday()
-        current_time = now_et.time()
-        market_open = current_time.replace(hour=9, minute=30, second=0, microsecond=0)
-        market_close = current_time.replace(hour=16, minute=0, second=0, microsecond=0)
-
-        is_market_hours = (
-            weekday < 5
-            and market_open <= current_time <= market_close
-        )
+        now_et = datetime.now(ET)
+        in_market = is_market_open()
 
         # For an intraday system, ALWAYS default to 'day' to prevent
         # unwanted overnight exposure.  Outside hours the order will be
         # queued by the broker for the next session.
         tif = 'day'
 
-        if not is_market_hours:
+        if not in_market:
             logger.info(
                 "Off-hours order: using TIF=day to prevent overnight exposure "
                 "(time=%s, weekday=%d). Pass requested_tif='gtc' to override.",
-                current_time.isoformat(), weekday,
+                now_et.time().isoformat(), now_et.weekday(),
             )
 
         logger.debug("Smart TIF selection",
-                    current_time_et=current_time.isoformat(),
-                    is_market_hours=is_market_hours,
+                    current_time_et=now_et.time().isoformat(),
+                    is_market_hours=in_market,
                     selected_tif=tif)
 
         return tif

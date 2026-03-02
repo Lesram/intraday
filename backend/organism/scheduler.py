@@ -33,39 +33,18 @@ import asyncio
 from collections import deque
 import os
 import random
-from datetime import UTC, datetime, time as dt_time
+from datetime import UTC, datetime
 from typing import Any
-from zoneinfo import ZoneInfo
 
 from backend.utils.logger import get_logger
+from backend.utils.market_hours import (
+    ET as _ET,
+    TICK_START as _TICK_START,
+    TICK_STOP as _TICK_STOP,
+    is_trading_day,
+)
 
 logger = get_logger(__name__)
-
-# ── US equity market hours (Eastern Time) ─────────────────────────
-_ET = ZoneInfo("America/New_York")
-_MARKET_OPEN = dt_time(9, 30)   # 9:30 AM ET
-_MARKET_CLOSE = dt_time(16, 0)  # 4:00 PM ET
-# Buffer: start ticking 2 min before open, stop 1 min after close
-# so the engine is warm when market opens and can catch late fills.
-_TICK_START = dt_time(9, 28)
-_TICK_STOP = dt_time(16, 1)
-
-# US market holidays for 2026 (NYSE/NASDAQ closed).
-# Source: https://www.nyse.com/markets/hours-calendars
-_MARKET_HOLIDAYS_2026 = {
-    (1, 1),    # New Year's Day
-    (1, 19),   # Martin Luther King Jr. Day
-    (2, 16),   # Presidents' Day
-    (4, 3),    # Good Friday
-    (5, 25),   # Memorial Day
-    (6, 19),   # Juneteenth
-    (7, 3),    # Independence Day (observed)
-    (9, 7),    # Labor Day
-    (11, 26),  # Thanksgiving Day
-    (12, 25),  # Christmas Day
-}
-# TODO: Update _MARKET_HOLIDAYS_2026 for 2027 before Jan 1 2027.
-# Dates shift yearly — check https://www.nyse.com/markets/hours-calendars
 
 
 def _is_market_tick_window() -> bool:
@@ -74,9 +53,7 @@ def _is_market_tick_window() -> bool:
     Checks weekday, holidays, and time-of-day in Eastern Time.
     """
     now_et = datetime.now(_ET)
-    if now_et.weekday() >= 5:  # Saturday / Sunday
-        return False
-    if (now_et.month, now_et.day) in _MARKET_HOLIDAYS_2026:
+    if not is_trading_day(now_et.date()):
         return False
     t = now_et.time()
     return _TICK_START <= t <= _TICK_STOP

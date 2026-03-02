@@ -122,11 +122,12 @@ class DiagnosticReportStore:
 
 # ── Scheduled Runner ──────────────────────────────────────────────
 
-# Reuse holiday set from scheduler.py
-from backend.organism.scheduler import _MARKET_HOLIDAYS_2026  # noqa: E402
-
-_PRE_OPEN_TIME = dt_time(9, 25)
-_POST_CLOSE_TIME = dt_time(16, 5)
+# Canonical market hours
+from backend.utils.market_hours import (
+    PRE_OPEN_TIME as _PRE_OPEN_TIME,
+    POST_CLOSE_TIME as _POST_CLOSE_TIME,
+    is_trading_day as _is_trading_day,
+)
 
 
 class ScheduledDiagnosticRunner:
@@ -147,9 +148,7 @@ class ScheduledDiagnosticRunner:
         now_et = datetime.now(_ET)
 
         # Skip weekends and holidays
-        if now_et.weekday() >= 5:
-            return
-        if (now_et.month, now_et.day) in _MARKET_HOLIDAYS_2026:
+        if not _is_trading_day(now_et.date()):
             return
 
         today = now_et.date()

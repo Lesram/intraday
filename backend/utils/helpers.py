@@ -295,36 +295,13 @@ def hash_string(text: str) -> str:
 def is_market_hours(
     dt: datetime | None = None, timezone_name: str = "America/New_York"
 ) -> bool:
+    """Check if given datetime is during market hours.
+
+    Delegates to :mod:`backend.utils.market_hours` canonical implementation
+    (handles holidays, early closes, weekends).
     """
-    Check if given datetime is during market hours.
-
-    Args:
-        dt: Datetime to check (defaults to now)
-        timezone_name: Market timezone
-
-    Returns:
-        True if during market hours
-    """
-    import pytz
-
-    if dt is None:
-        dt = datetime.now()
-
-    tz = pytz.timezone(timezone_name)
-    if dt.tzinfo is None:
-        dt = tz.localize(dt)
-    else:
-        dt = dt.astimezone(tz)
-
-    # Check if it's a weekday
-    if dt.weekday() >= 5:  # Saturday = 5, Sunday = 6
-        return False
-
-    # Check if it's within trading hours (9:30 AM - 4:00 PM ET)
-    market_open = dt.replace(hour=9, minute=30, second=0, microsecond=0)
-    market_close = dt.replace(hour=16, minute=0, second=0, microsecond=0)
-
-    return market_open <= dt <= market_close
+    from backend.utils.market_hours import is_market_open
+    return is_market_open(dt)
 
 
 def round_to_tick_size(price: float, tick_size: float = 0.01) -> float:
@@ -455,43 +432,15 @@ def format_currency(amount: float, currency: str = "USD") -> str:
 
 
 def time_to_market_open() -> int | None:
+    """Calculate seconds until next market open, or None if open now.
+
+    Delegates to :mod:`backend.utils.market_hours`.
     """
-    Calculate seconds until next market open.
+    from backend.utils.market_hours import is_market_open, get_next_market_open, ET
+    from datetime import timezone
 
-    Returns:
-        Seconds until market open, or None if market is currently open
-    """
-    from datetime import time, timedelta
-
-    import pytz
-
-    et = pytz.timezone("America/New_York")
-    now = datetime.now(et)
-
-    # If it's currently market hours and a weekday
-    if is_market_hours(now):
+    now = datetime.now(timezone.utc)
+    if is_market_open(now):
         return None
-
-    # Find next market open
-    market_open_time = time(9, 30)
-
-    if now.weekday() < 5:  # Monday-Friday
-        if now.time() < market_open_time:
-            # Today before market open
-            market_open = now.replace(hour=9, minute=30, second=0, microsecond=0)
-        else:
-            # Today after market close, next trading day
-            market_open = now.replace(
-                hour=9, minute=30, second=0, microsecond=0
-            ) + timedelta(days=1)
-            # Skip weekends
-            while market_open.weekday() >= 5:
-                market_open += timedelta(days=1)
-    else:
-        # Weekend - next Monday
-        days_until_monday = 7 - now.weekday()
-        market_open = now.replace(
-            hour=9, minute=30, second=0, microsecond=0
-        ) + timedelta(days=days_until_monday)
-
-    return int((market_open - now).total_seconds())
+    next_open = get_next_market_open(now)
+    return int((next_open - now).total_seconds())

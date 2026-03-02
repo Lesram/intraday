@@ -227,7 +227,7 @@ BRAIN STATE:
 │                                                                     │
 │  ┌──── ALWAYS ─────────────────────────────────────────────────┐   │
 │  │  [10] Reconcile fills (detect closed + orphaned positions)  │   │
-│  │  [12] Brain save (every 50 ticks, with walk-forward gate)   │   │
+│  │  [12] Brain save (every 20 ticks, with walk-forward gate)   │   │
 │  │  [POST] Equity curve, Prometheus, telemetry, invariants     │   │
 │  └─────────────────────────────────────────────────────────────┘   │
 │                                                                     │
@@ -305,7 +305,7 @@ GOVERNANCE CHECK
 | `ORGANISM_DRAWDOWN_COOLDOWN_S` | 3600 | 3600 | Base cooldown after kill (1 hour) |
 | `ORGANISM_MAX_CHANGES_PER_DAY` | 100 | 100 | Daily evolution budget |
 | `ORGANISM_HALT_TRADING` | 0 | 0 | Manual trading halt |
-| `ORGANISM_FREEZE_ADAPTATION` | 0 | 0 | Freeze all adaptation |
+| `ORGANISM_FREEZE_ADAPTATION` | 0 | **1** | Freeze all adaptation (enabled during structural fixes) |
 
 ---
 
@@ -327,9 +327,11 @@ FETCH DATA
   │   │   └── IF len(bars) < MIN_BARS (50 for intraday) → SKIP symbol
   │   │
   │   └── Compute features (79 total):
-  │       ├── compute_ml_features(raw_df, spy_df)  → 75 base features
+  │       ├── compute_ml_features(raw_df, spy_df, bars_per_day)  → 75 base features
+  │       │   └── bars_per_day flows from live_engine (390 for 1Min, 78 for 5Min, etc.)
   │       ├── add_multi_timeframe_features()         → additional MTF features
-  │       └── NaN/Inf → 0.0 (global safety net)
+  │       ├── NaN/Inf → 0.0 (global safety net)
+  │       └── _nan_missingness column: ratio of NaN/Inf in last row (for entry gate)
   │
   ├── Also fetch features for open positions NOT in universe
   │   └── (symbols rotated out but still held — exits must still work)
@@ -345,7 +347,7 @@ FETCH DATA
 | `LIVE_LOOKBACK` | 500 bars | — |
 | `LIVE_TIMEFRAME` | `"1Day"` | `"1Min"` in production |
 | `MIN_BARS` | 200 | **50** (auto-adjusted for intraday) |
-| `RETRAIN_INTERVAL` | 60 | **200** (auto-adjusted for intraday) |
+| `RETRAIN_INTERVAL` | 60 | **600** (docker-compose default, ~100 min at 10s ticks) |
 
 ---
 
@@ -376,12 +378,15 @@ DETECT REGIME (only if features sufficient)
 
 From feature data, 4 signals are extracted:
 
-| Signal | Source | Decision |
-|---|---|---|
-| Trend slope | SMA slope over 10 bars | > 0.02 → trending_up(+2), < -0.02 → trending_down(+2), else → chop(+1.5) |
-| Price vs SMA | (close - SMA) / SMA | > 0.02 → trending_up(+1), < -0.02 → trending_down(+1), else → chop(+0.5) |
-| Volatility | ATR ratio + returns vol | ATR > 0.04 → high_vol(+2), ATR < 0.015 → low_vol(+1.5), ret_vol > 0.03 → high_vol(+1) |
-| Stress | Volume anomaly + ATR | vol_anomaly > 0.5 AND ATR > 0.04 → stress(+2) |
+| Signal | Source | Daily Threshold | Intraday Threshold (×tf_scale) | Decision |
+|---|---|---|---|---|
+| Trend slope | SMA slope over 10 bars | ±0.02 | ±0.02 (no scaling) | > thresh → trending_up(+2), < -thresh → trending_down(+2), else → chop(+1.5) |
+| Price vs SMA | (close - SMA) / SMA | ±0.02 | ±0.001 (1Min) | > thresh → trending_up(+1), < -thresh → trending_down(+1), else → chop(+0.5) |
+| Volatility | ATR ratio | 0.04 / 0.015 | 0.002 / 0.0008 (1Min) | ATR > high → high_vol(+2), ATR < low → low_vol(+1.5) |
+| Returns vol | returns std | 0.03 | 0.0015 (1Min) | ret_vol > thresh → high_vol(+1) |
+| Stress | Volume anomaly + ATR | vol_anomaly > 0.5 AND ATR > 0.04 | vol_anomaly > 0.5 AND ATR > atr_high | stress(+2) |
+
+**Intraday threshold scaling**: `tf_scale = 1 / sqrt(bars_per_day)`. For 1-min bars (390 bpd), tf_scale ≈ 0.0507. This scales per-bar thresholds to match the magnitude of single-bar returns/volatility at that timeframe. Lookback periods are separately scaled 4× via `is_intraday`.
 
 Scores → softmax → EMA smoothing (α=0.3) → argmax = primary regime.
 
@@ -432,14 +437,14 @@ FOR EACH OPEN POSITION:
   ├── PATH A: No features available for this symbol
   │   ├── Get broker_price and avg_entry from position data
   │   ├── Compute pnl_pct = (broker_price - entry) / entry × direction
-  │   ├── IF pnl_pct <= -15% → SAFETY NET EXIT
+  │   ├── IF pnl_pct <= -max_loss_pct (8%) → SAFETY NET EXIT
   │   │   └── Submit full exit, reason: "safety_net_no_features"
   │   └── ELSE → no action (can't evaluate without features)
   │
   ├── PATH B: Features available but NO exit_levels for this symbol
   │   ├── Get avg_entry from position data
   │   ├── Compute pnl_pct
-  │   ├── IF pnl_pct <= -15% → SAFETY NET EXIT
+  │   ├── IF pnl_pct <= -max_loss_pct (8%) → SAFETY NET EXIT
   │   │   └── Submit full exit, reason: "max_loss_safety_net"
   │   └── ELSE → no action (position adopted mid-session, exits will be created)
   │
@@ -447,8 +452,8 @@ FOR EACH OPEN POSITION:
       │
       ├── Run adaptive exit engine: check_exit(exit_levels, price, regime)
       │   │
-      │   ├── Priority 0: 15% MAX LOSS safety net
-      │   │   └── pnl_pct <= -0.15 → EXIT, reason: "max_loss_limit"
+      │   ├── Priority 0: MAX LOSS safety net (8% intraday, 8% daily via for_timeframe)
+      │   │   └── pnl_pct <= -max_loss_pct → EXIT, reason: "max_loss_limit"
       │   │
       │   ├── Priority 1: HARD STOP LOSS
       │   │   ├── Long: price <= stop_loss → EXIT
@@ -474,9 +479,20 @@ FOR EACH OPEN POSITION:
       │   │   ├── Long trail floor: never below entry price
       │   │   └── price crosses trail → EXIT
       │   │
+      │   ├── Priority 4b: FAILURE TO FOLLOW THROUGH
+      │   │   ├── progress_ref = max_bars if max_bars > 0 else 30 (fallback)
+      │   │   ├── After 25% of progress_ref (min 5 bars), if trailing not yet active:
+      │   │   │   compute R-achieved = pnl / initial_risk
+      │   │   └── If R < 0.5 → EXIT, reason: "failure_to_follow"
+      │   │
       │   ├── Priority 5: TIME-BASED EXIT (regime-adaptive)
       │   │   ├── max_bars varies by regime (0=disabled for trending)
       │   │   └── Only exits positions IN PROFIT (losers stay)
+      │   │
+      │   ├── Priority 5b: LOSER TIME-STOP
+      │   │   ├── loser_ref = max_bars if max_bars > 0 else 200 (fallback ~33min @10s)
+      │   │   ├── loser_max = loser_ref × 1.5 (losers get extra time, not infinite)
+      │   │   └── If bars_held >= loser_max AND pnl <= 0 → EXIT, reason: "loser_time_stop"
       │   │
       │   ├── Priority 6: TIME DECAY (non-exiting, tightens stop)
       │   │   ├── After decay_start bars: stop tightens 1%/bar
@@ -487,8 +503,9 @@ FOR EACH OPEN POSITION:
       │       └── Tightens stop by 40% immediately
       │
       ├── ML Reversal Check (if exit engine says NO exit):
-      │   ├── Condition: ML trained AND signal flips direction AND confidence > 0.3
-      │   └── IF reversal detected → PARTIAL EXIT (50%)
+      │   ├── Condition: ML trained AND signal flips direction
+      │   │   AND confidence > 0.60 (intraday) / 0.65 (daily)
+      │   └── IF reversal detected → PARTIAL EXIT 30% (intraday) / 25% (daily)
       │       └── reason: "ml_reversal"
       │
       └── IF exit signal fired:
@@ -559,6 +576,27 @@ FOR EACH OPEN POSITION WITH PYRAMID TRACKER:
 
 **Only runs if entries NOT blocked.**
 
+### Pre-Scan Entry Gates (before scanning begins)
+
+```
+PRE-SCAN GATES (evaluated in order, any block stops all new entries this tick)
+  │
+  ├── Opening 30-min block (intraday only):
+  │   └── 9:30-10:00 AM ET → entries_blocked = True
+  │       (avoids noisy open auction; lets regime/features stabilize)
+  │
+  ├── Regime sit-out gate (LONG_ONLY mode):
+  │   ├── Active in: high_vol, stress regimes
+  │   ├── Runs ML predict_batch on all symbols
+  │   └── IF all bearish (direction < 0) AND zero bullish → entries_blocked
+  │       (prevents catching falling knives when everything is selling)
+  │
+  └── Entry throttle (3 entries/hour):
+      ├── Tracks timestamps of recent entries (rolling 3600s window)
+      └── IF >= 3 entries in last hour → block new entries this tick
+          (prevents rapid-fire entry cascades during volatile periods)
+```
+
 **Source**: `backend/organism/alpha_scanner.py`, `backend/organism/breakout_scanner.py`, `backend/organism/ml_signal.py`
 
 ```
@@ -586,21 +624,26 @@ ENTRY SCANNING PIPELINE
   │   ├── Gate 4: Already in entry_metadata? → REJECT
   │   ├── Gate 5: LONG_ONLY and direction < 0? → REJECT
   │   ├── Gate 6: Sector gate (max 4 per sector)? → REJECT
-  │   └── Gate 7: Symbol fitness < 0.35? → REJECT (chronic loser gate)
+  │   └── Gate 7: Symbol fitness < 0.45? → REJECT (chronic loser gate)
   │
   │   IF passes all 7 gates:
-  │   ├── Compute blended confidence:
-  │   │   confidence = ML_confidence × (1 + breakout_score) × (1 + tension × 0.5)
-  │   │   capped at 1.0
+  │   ├── Compute blended confidence (additive):
+  │   │   confidence = 0.50 × ML_confidence
+  │   │              + 0.30 × breakout_score
+  │   │              + 0.20 × min(tension, 1.0)
+  │   │   (no cap needed — weighted sum of [0,1] inputs stays in [0,1])
+  │   │   NOTE: ML=0.0 when no signal (not 0.5 like old multiplicative formula)
   │   └── Add to candidate list
   │
   ├── [7e] PURE BREAKOUT ADDITIONS (not in alpha candidates):
   │   ├── Same 7 gates PLUS:
   │   │   ├── composite_score >= 0.55
-  │   │   ├── fitness >= 0.35
+  │   │   ├── fitness >= 0.45
   │   │   └── ML direction not negative (don't fight ML)
   │   ├── Forced direction = +1.0 (always long)
-  │   └── predicted_return floor = max(ml_return, 0.01)
+  │   └── predicted_return:
+  │       ├── ML present: max(ml_return, 0.003)  (0.3% min floor)
+  │       └── ML absent:  0.005 + 0.015 × breakout_score  (0.5%–2.0% range)
   │
   └── [7f] SORT + TRUNCATE
       ├── Sort by breakout_score × confidence (descending)
@@ -645,25 +688,38 @@ KELLY SIZING PIPELINE
   │   │   ├── direction == 0 → SKIP
   │   │   ├── predicted_return < 1e-6 (after floor) → SKIP
   │   │   ├── Features < 30 rows → SKIP
-  │   │   └── < 20 usable returns → SKIP
+  │   │   ├── < 20 usable returns → SKIP
+  │   │   └── _nan_missingness > 0.25 → SKIP (>25% features degraded)
   │   │
   │   ├── STEP 1: Raw Kelly
   │   │   ├── Preferred: Regime-stratified (if >= 10 trades in regime)
   │   │   │   └── Kelly = win_rate - (1 - win_rate) / payoff_ratio
   │   │   └── Fallback: Global = mean_return / variance_return
   │   │
-  │   ├── STEP 2: Half-Kelly + Floors
+  │   ├── STEP 2: Half-Kelly + Edge Gate + Floors
   │   │   ├── kelly_half = kelly_raw × 0.5
-  │   │   ├── Breakout floor: kelly < 0.005 AND breakout >= 0.55
-  │   │   │   → kelly_half = max(kelly, 0.01 × breakout_score)
-  │   │   └── ML floor: trained AND kelly < 0.005 AND confidence >= 0.5
-  │   │       → kelly_half = max(kelly, 0.08 × confidence)
+  │   │   ├── Edge-over-cost gate (state-dependent cost model):
+  │   │   │   ├── spread_cost = _estimate_spread_cost(symbol, quote_provider, features)
+  │   │   │   │   ├── base_spread = (ask - bid) / mid_price  (fallback: 10bps if no quote)
+  │   │   │   │   ├── time_mult = get_slippage_multiplier()  (0.9 midday → 2.5 after-hours)
+  │   │   │   │   ├── liquidity_mult = 1.0 + max(0, 1.0 - vol_sma_ratio) × 0.5  (up to 1.5×)
+  │   │   │   │   ├── spread_cost = base_spread × time_mult × liquidity_mult
+  │   │   │   │   └── Clamped to [3bps, 50bps]
+  │   │   │   ├── edge_clears_cost = predicted_return >= spread_cost × 2
+  │   │   │   └── If NOT edge_clears_cost AND kelly < 0.005 → kelly = 0 (skip)
+  │   │   ├── Breakout floor: kelly < 0.005 AND breakout >= 0.55 AND edge_clears_cost
+  │   │   │   → kelly_half = max(kelly, 0.003 × breakout_score)
+  │   │   └── ML floor: kelly < 0.005 AND conf >= 0.5 AND regime_has_edge AND edge_clears_cost
+  │   │       ├── Trained ML:   kelly_half = max(kelly, 0.04 × confidence)
+  │   │       └── Untrained ML: kelly_half = max(kelly, 0.02 × confidence)
   │   │
   │   ├── STEP 3: Drawdown Scaling
   │   │   └── Linear: 1.0 at 0% drawdown → 0.1 at 25% drawdown
   │   │
-  │   ├── STEP 4: Volatility Targeting
-  │   │   └── vol_scale = 0.15 / annualized_vol (capped at 2.0)
+  │   ├── STEP 4: Volatility Targeting (timeframe-aware)
+  │   │   ├── ann_vol = std(returns) × sqrt(252 × bars_per_day)
+  │   │   │   bars_per_day: 390 (1Min), 78 (5Min), 26 (15Min), 7 (1Hour), 1 (1Day)
+  │   │   └── vol_scale = 0.15 / ann_vol (capped at 2.0)
   │   │
   │   ├── STEP 5: Regime Scaling
   │   │   ├── trending_up: 1.20    stress: 0.40
@@ -687,7 +743,7 @@ KELLY SIZING PIPELINE
   │   ├── CAPS + FILTERS:
   │   │   ├── Per-position cap: 10% of equity
   │   │   ├── Portfolio cap: running total cannot exceed 95%
-  │   │   ├── Minimum weight: 0.1%
+  │   │   ├── Minimum weight: 0.05%
   │   │   ├── Minimum notional: $2,000
   │   │   └── Minimum shares: 1
   │   │
@@ -695,7 +751,6 @@ KELLY SIZING PIPELINE
   │       └── shares = int(equity × target_weight / current_price)
   │
   └── INTRADAY SEASONALITY FILTER:
-      ├── First 15 min (9:30-9:45 ET): ALL sizes × 0.60
       └── Last 15 min (3:45-4:00 ET): ALL sizes × 0.60
 ```
 
@@ -756,7 +811,10 @@ RECONCILE FILLS
   │   │
   │   └── FOR EACH confirmed closed:
   │       ├── Pop _entry_metadata[sym]
-  │       ├── Get exit price (features fallback to entry price)
+  │       ├── Get exit price:
+  │       │   ├── 1st: features DataFrame close price
+  │       │   ├── 2nd: broker quote midpoint (bid+ask)/2
+  │       │   └── 3rd: SKIP trade record (no phantom 0-PnL trades)
   │       ├── Get shares (pyramid layers fallback to filled_shares)
   │       ├── Compute PnL = (exit - entry) × shares × direction
   │       ├── Create TradeRecord
@@ -815,7 +873,7 @@ RETRAIN + EVOLVE (every RETRAIN_INTERVAL ticks, or 30 ticks if untrained)
 **Source**: `backend/organism/brain_persistence.py`
 
 ```
-BRAIN SAVE (every 50 ticks ≈ 8 min)
+BRAIN SAVE (every 20 ticks ≈ 3.3 min)
   │
   ├── Walk-forward gate:
   │   ├── Checks last 100 trades (needs >= 10)
@@ -900,7 +958,7 @@ Requires 10+ predictions per bin before adjusting.
 
 **Mean Reversion (8):** rsi_14, rsi_5, bb_position, bb_width, z_score_20, z_score_50, stoch_k, stoch_d
 
-**Volatility (10):** atr_14, atr_ratio, realized_vol_5, realized_vol_20, vol_ratio_5_20, parkinson_vol, garman_klass_vol, vol_regime, bb_squeeze, vol_expansion
+**Volatility (10):** atr_14, atr_ratio, realized_vol_5, realized_vol_20, vol_ratio_5_20, parkinson_vol, garman_klass_vol, vol_regime, bb_squeeze, vol_expansion — all annualized with `sqrt(252 × bars_per_day)` (timeframe-aware)
 
 **Volume (8):** vol_sma_ratio, obv_slope, vol_momentum_5, vol_momentum_10, mfi_14, vwap_distance, volume_breakout, pv_divergence
 
@@ -908,7 +966,7 @@ Requires 10+ predictions per bin before adjusting.
 
 **Microstructure (5):** spread_proxy, price_impact, tick_direction, close_location, true_range_pct
 
-**Temporal (5):** day_of_week, month_sin, month_cos, pct_from_52w_high, pct_from_52w_low
+**Temporal (5):** day_of_week, month_sin, month_cos, pct_from_52w_high, pct_from_52w_low — intraday: uses session window (bars_per_day) instead of rolling(252); daily: true 252-bar window
 
 **Regime (4):** trend_strength, choppiness, hurst, regime_encoded
 
@@ -1017,32 +1075,40 @@ COMPOSITE = 0.25 × squeeze
 ### Complete Sizing Formula
 
 ```
-target_weight = (kelly_raw × 0.5)                    # Half-Kelly
-              × drawdown_scale(dd)                     # [0.1, 1.0]
-              × vol_scale(stock_vol)                   # [0, 2.0]
-              × regime_scale(regime)                    # [0.1, 1.2]
-              × confidence_scale(conf, ml_trained)     # [0.3, 1.5]
-              × breakout_bonus(brk_score, ml_trained)  # [1.0, 2.0]
+spread_cost = _estimate_spread_cost(symbol, quote_provider, features)  # [3bps, 50bps] — per-symbol dynamic cost
+            = base_spread × time_mult × liquidity_mult  # bid-ask × time-of-day × volume ratio
+edge_clears_cost = predicted_return >= spread_cost × 2  # edge must clear 2× cost
+
+target_weight = (kelly_raw × 0.5)                     # Half-Kelly (requires edge-over-cost gate)
+              × drawdown_scale(dd)                      # [0.1, 1.0]
+              × vol_scale(stock_vol, bars_per_day)      # [0, 2.0] — ann_vol = std × √(252 × bpd)
+              × regime_scale(regime)                     # [0.4, 1.2]
+              × confidence_scale(conf, ml_trained)      # [0.3, 1.5]
+              × breakout_bonus(brk_score, ml_trained)   # [1.0, 2.0]
 ```
 
 ### Example Calculation
 
 ```
-Scenario: stress regime, 5% drawdown, stock vol 20%, ML confidence 0.6,
-          breakout score 0.4, regime Kelly = 0.12
+Scenario: stress regime, 5% drawdown, per-bar std 0.001 on 1-min bars,
+          ML confidence 0.6, breakout score 0.4, regime Kelly = 0.12
 
 kelly_raw = 0.12
 kelly_half = 0.06
 dd_scale = 1.0 - (0.05/0.25) × 0.9 = 0.82
-vol_scale = min(0.15/0.20, 2.0) = 0.75
+ann_vol = 0.001 × √(252 × 390) = 0.001 × 313.5 = 0.3135 (31.4%)
+vol_scale = min(0.15/0.3135, 2.0) = 0.48
 regime_scale = 0.40 (stress)
 conf_scale = 0.3 + 0.6 × 1.2 = 1.02
 brk_bonus = 1.0 (< 0.5)
 
-target_weight = 0.06 × 0.82 × 0.75 × 0.40 × 1.02 × 1.0 = 0.0151 (1.51%)
+target_weight = 0.06 × 0.82 × 0.48 × 0.40 × 1.02 × 1.0 = 0.0096 (0.96%)
 
-On $112K equity: notional = $1,691
-→ SKIP: below $2,000 minimum
+On $112K equity: notional = $1,078
+→ SKIP: below $2,000 minimum (intraday min is $500 → 2 shares ≈ $1,078)
+
+NOTE: Before fix, vol was computed as 0.001 × √252 = 0.016 (1.6%, absurdly low),
+causing vol_scale to hit the 2.0 cap and over-size positions by ~4×.
 ```
 
 ---
@@ -1312,7 +1378,7 @@ Per-tick transparency layer capturing every indicator, threshold, and decision g
 SymbolAlphaDetail:
   - 7-factor alpha breakdown with composite score
   - min_composite_threshold: 0.15
-  - fitness_gate: 0.35
+  - fitness_gate: 0.35 (telemetry display; actual entry gate = 0.45)
 
 DecisionSnapshot:
   - timestamp, regime, portfolio state
@@ -1990,6 +2056,9 @@ OrderService CircuitBreaker:
   ├── Trip Conditions (ANY):
   │   ├── 5 consecutive failures within 300s window → OPEN
   │   └── Daily PnL loss >= 5% → OPEN (PnL-triggered kill)
+  │
+  ├── reduce_only Bypass:
+  │   └── Exit orders (reduce_only=True) skip the PnL check — never block risk-reducing orders
   │
   ├── Recovery:
   │   ├── 60s in OPEN → transition to HALF_OPEN
@@ -2679,7 +2748,7 @@ Save contents:
   ├── ML calibration data
   └── Transfer learning snapshots
 
-Save frequency: every 50 ticks (~8 min)
+Save frequency: every 20 ticks (~3.3 min)
 Gate: walk-forward check must pass (regression threshold 0.95)
 Startup: reconstruct trades from DB if brain has no records
 ```
@@ -2803,7 +2872,7 @@ OrganismScheduler:
 | **Market hours** | Strict 9:28 AM – 4:01 PM ET | Not explicitly enforced |
 | **Governance** | Built-in (GovernanceController) | Via OrganismRunner hooks |
 | **Diagnostics** | Integrated scheduler | Not included |
-| **Brain persistence** | Every 50 ticks | Not applicable |
+| **Brain persistence** | Every 20 ticks | Not applicable |
 | **ML retraining** | Automatic (RETRAIN_INTERVAL) | Not applicable |
 
 ---
@@ -3221,6 +3290,7 @@ Emergency stop workflow:
 │  OrderService.submit_symbol_order()                                       │
 │       │                                                                   │
 │       ├── 1. Check CircuitBreaker (Redis-backed, 5% PnL kill)            │
+│       │       └── Bypassed if reduce_only=True (exit orders)            │
 │       ├── 2. Create Order record in DB (status: submitted)               │
 │       ├── 3. Enqueue OutboxEvent (topic: order.submitted) — SAME TX      │
 │       └── 4. Return immediately (async, <1ms)                            │
@@ -3631,7 +3701,7 @@ StalenessReasons (enum):
 | `ORGANISM_LIVE_TIMEFRAME` | 1Day | **1Min** | Bar timeframe |
 | `ORGANISM_MAX_POSITIONS` | 15 | 15 | Max simultaneous positions |
 | `ORGANISM_LONG_ONLY` | true | true | Block all short entries |
-| `ORGANISM_RETRAIN_INTERVAL` | 60 | **200** | Ticks between retrains |
+| `ORGANISM_RETRAIN_INTERVAL` | 60 | **600** | Ticks between retrains (~100 min at 10s ticks) |
 | `ORGANISM_ML_DECAY_RATE` | 0.005 | 0.005 | Time-decay on training samples |
 | `ORGANISM_MAX_PER_SECTOR` | 4 | 4 | Sector concentration limit |
 | `ORGANISM_DRAWDOWN_KILL_PCT` | 0.03 | **0.08** | Drawdown kill switch |
@@ -3639,7 +3709,7 @@ StalenessReasons (enum):
 | `ORGANISM_MIN_BARS` | 200 | **50** | Minimum bars for a symbol |
 | `ORGANISM_NIGHTLY_ENABLED` | 0 | 0 | Nightly training cycle |
 | `ORGANISM_HALT_TRADING` | 0 | 0 | Manual trading halt |
-| `ORGANISM_FREEZE_ADAPTATION` | 0 | 0 | Freeze all adaptation |
+| `ORGANISM_FREEZE_ADAPTATION` | 0 | **1** | Freeze all adaptation (enabled during structural fixes) |
 
 ### Alpaca Configuration
 
@@ -3673,21 +3743,31 @@ StalenessReasons (enum):
 | Alpha composite minimum | 0.15 | alpha_scanner | Minimum score to be a candidate |
 | Breakout composite minimum | 0.20 | breakout_scanner | Minimum breakout score |
 | Pure breakout entry threshold | 0.55 | live_engine | Breakout-only entries need high score |
-| Symbol fitness gate | 0.35 | live_engine | Chronic loser rejection |
-| ML confidence reversal | 0.30 | live_engine | ML reversal exit confidence floor |
-| Max loss safety net | 15% | adaptive_exits | Absolute loss limit |
-| Kelly ML floor | 0.08×conf | kelly_sizer | Minimum sizing when ML confident |
-| Kelly breakout floor | 0.01×score | kelly_sizer | Minimum sizing on strong breakout |
+| Symbol fitness gate | 0.45 | live_engine | Chronic loser rejection |
+| ML confidence reversal | 0.60 (intraday) / 0.65 (daily) | live_engine | ML reversal exit — partial exit 30%/25% of position |
+| Max loss safety net | 8% | adaptive_exits | Absolute loss limit (via for_timeframe) |
+| Edge-over-cost gate | 2× spread_cost (dynamic) | kelly_sizer | Predicted return must clear 2× per-symbol cost [3-50bps] |
+| Kelly ML floor | 0.04×conf (trained) / 0.02×conf (untrained) | kelly_sizer | Minimum sizing when ML confident + edge clears cost |
+| Kelly breakout floor | 0.003×score | kelly_sizer | Minimum sizing on strong breakout + edge clears cost |
 | Kelly min notional | $2,000 | kelly_sizer | Minimum position size |
 | Kelly max per position | 10% | kelly_sizer | Position concentration limit |
 | Kelly max portfolio | 95% | kelly_sizer | Total exposure limit |
 | Drawdown risk-off | 25% | kelly_sizer | No new positions at all |
 | Drawdown kill switch | 8% | governance | Halt all entries |
-| Intraday size reduction | 40% | live_engine | First/last 15 min of session |
+| Intraday size reduction | 40% | live_engine | Last 15 min of session (3:45-4:00 ET) |
+| Opening block window | 30 min (9:30-10:00 ET) | live_engine | No entries during open auction (intraday only) |
+| Regime sit-out | high_vol/stress + all bearish ML | live_engine | Block entries when all ML signals are short |
+| Entry throttle | 3 entries/hour | live_engine | Prevents rapid-fire entry cascades |
+| ML reversal partial exit | 30% (intraday) / 25% (daily) | live_engine | Partial position exit on ML reversal |
 | Equity-zero threshold | 3 consecutive | live_engine | Block entries on stale data |
 | Walk-forward regression | 0.95 | brain_persistence | Don't persist regressing model |
 | Feature QA NaN rate | 20% | feature_store | Reject feature set |
+| NaN missingness gate | 25% | live_engine | Block entries when >25% features are NaN/Inf |
 | Feature QA missing bars | 10% | feature_store | Flag data quality issue |
+| Failure-to-follow fallback | 30 bars | adaptive_exits | Used when max_bars=0 (trending_up, low_vol) |
+| Loser time-stop fallback | 200 bars | adaptive_exits | Used when max_bars=0 (~33 min @10s ticks) |
+| Predicted return ML floor | 0.3% | live_engine | Min predicted_return when ML signal present |
+| Predicted return no-ML range | 0.5%–2.0% | live_engine | 0.005 + 0.015×breakout_score when no ML |
 | Circuit breaker failures | 5 | resilience | Open circuit breaker |
 | Circuit breaker recovery | 60s | resilience | Try half-open |
 | Alert dedup window | 300s | alerting | Suppress duplicates |
@@ -3748,7 +3828,7 @@ StalenessReasons (enum):
 | Module | Purpose |
 |---|---|
 | `live_engine.py` | Core tick loop, telemetry, trade reconstruction |
-| `adaptive_exits.py` | ATR-based exits, 15% safety net, regime-adaptive |
+| `adaptive_exits.py` | ATR-based exits, 8% safety net, failure-to-follow (fallback=30), loser time-stop (fallback=200), regime-adaptive |
 | `alpha_scanner.py` | 7-factor alpha scoring, top-5 candidates |
 | `attribution.py` | Per-strategy reward signals from DB fills |
 | `background_trainer.py` | ProcessPoolExecutor ML retraining |
@@ -3763,9 +3843,9 @@ StalenessReasons (enum):
 | `ensemble_models.py` | Combined classifier + regressor ensemble |
 | `feature_store.py` | Versioned features with QA gates |
 | `governance.py` | Kill switch, halt, freeze, change budget |
-| `kelly_sizer.py` | Half-Kelly sizing, regime-stratified |
+| `kelly_sizer.py` | Half-Kelly sizing, regime-stratified, state-dependent cost model, timeframe-aware annualization |
 | `market_scanner.py` | Broad universe scan (most-actives, gainers, losers) |
-| `ml_features.py` | 79 ML features across 11 categories |
+| `ml_features.py` | 79 ML features across 11 categories, _nan_missingness column for data quality gating |
 | `ml_signal.py` | Dual XGBoost + ensemble, confidence calibration |
 | `multi_timeframe.py` | MTF signal alignment (1m/5m/15m/1h/1d) |
 | `nightly_scheduler.py` | Nightly training cycle with backoff |
@@ -3846,7 +3926,7 @@ StalenessReasons (enum):
 | Module | Purpose |
 |---|---|
 | `risk_manager.py` | Risk metrics, limits, violations, emergency stop |
-| `order_service.py` | Order creation via outbox + Redis-backed circuit breaker |
+| `order_service.py` | Order creation via outbox + Redis-backed circuit breaker + reduce_only bypass for exits |
 | `portfolio_service.py` | Portfolio aggregation |
 | `portfolio_sync_service.py` | Alpaca → DB sync on startup |
 | `position_reconciliation_service.py` | DB vs broker discrepancy detection |
@@ -3926,7 +4006,7 @@ StalenessReasons (enum):
 | `social_sentiment.py` | Social sentiment analysis (Twitter/Reddit + FinBERT), dev fallbacks |
 | `strategy_templates.py` | Strategy parameter templates for wizard builder |
 
-### utils/ (8 modules)
+### utils/ (9 modules)
 
 | Module | Purpose |
 |---|---|
@@ -3936,6 +4016,7 @@ StalenessReasons (enum):
 | `logging.py` | Structured logging with PII/secret scrubbing (API keys, tokens, passwords) |
 | `port_management.py` | Dynamic port allocation for tests (avoid conflicts) |
 | `secure_pickle.py` | HMAC-SHA256 signed pickle serialization (prevents code execution attacks) |
+| `market_hours.py` | **Single source of truth**: NYSE open/close, holidays, early closes, extended hours (used by 8+ modules) |
 | `utilities.py` | async_retry with exponential backoff/jitter, timezone helpers |
 | `validators.py` | Validation stubs: ValidationError, Validator base, field validators |
 

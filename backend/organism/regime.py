@@ -98,6 +98,7 @@ class RegimeDetector:
         churn_window: int = 20,
         smoothing_alpha: float = 0.3,
         is_intraday: bool = False,
+        bars_per_day: int = 1,
     ) -> None:
         # Scale lookbacks for intraday bars to reduce noise.
         # 4x makes SMA_200 (~3.3hrs on 1-min) roughly analogous to a
@@ -109,6 +110,15 @@ class RegimeDetector:
         self._churn_window = churn_window * scale
         self._alpha = smoothing_alpha
         self._is_intraday = is_intraday
+        self._bars_per_day = bars_per_day
+
+        # Scale vol/atr thresholds for intraday — per-bar returns are
+        # sqrt(bars_per_day) times smaller than daily returns.
+        tf_scale = 1.0 / math.sqrt(bars_per_day) if is_intraday else 1.0
+        self._atr_high_thresh = 0.04 * tf_scale
+        self._atr_low_thresh = 0.015 * tf_scale
+        self._ret_vol_thresh = 0.03 * tf_scale
+        self._pct_above_thresh = 0.02 * tf_scale
 
         # Running state
         self._history: list[str] = []
@@ -254,23 +264,23 @@ class RegimeDetector:
         # Price vs SMA
         if sma > 0:
             pct_above = (close - sma) / sma
-            if pct_above > 0.02:
+            if pct_above > self._pct_above_thresh:
                 scores[RegimeLabel.TRENDING_UP] += 1.0
-            elif pct_above < -0.02:
+            elif pct_above < -self._pct_above_thresh:
                 scores[RegimeLabel.TRENDING_DOWN] += 1.0
             else:
                 scores[RegimeLabel.CHOP] += 0.5
 
         # Volatility scoring
-        if atr_ratio > 0.04:
+        if atr_ratio > self._atr_high_thresh:
             scores[RegimeLabel.HIGH_VOL] += 2.0
-        elif atr_ratio < 0.015:
+        elif atr_ratio < self._atr_low_thresh:
             scores[RegimeLabel.LOW_VOL] += 1.5
-        if returns_vol > 0.03:
+        if returns_vol > self._ret_vol_thresh:
             scores[RegimeLabel.HIGH_VOL] += 1.0
 
         # Stress scoring
-        if vol_anomaly > 0.5 and atr_ratio > 0.04:
+        if vol_anomaly > 0.5 and atr_ratio > self._atr_high_thresh:
             scores[RegimeLabel.STRESS] += 2.0
         elif vol_anomaly > 1.0:
             scores[RegimeLabel.STRESS] += 1.0

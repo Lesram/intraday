@@ -25,37 +25,13 @@ import httpx
 
 logger = logging.getLogger(__name__)
 
-# L-25: Market hours constants for alert suppression
-MARKET_TIMEZONE = ZoneInfo("America/New_York")
-MARKET_OPEN_TIME = dt_time(9, 30)  # 9:30 AM ET
-MARKET_CLOSE_TIME = dt_time(16, 0)  # 4:00 PM ET
-# Extended hours: 4:00 AM - 8:00 PM ET
-EXTENDED_OPEN_TIME = dt_time(4, 0)
-EXTENDED_CLOSE_TIME = dt_time(20, 0)
+# L-25: Market hours — import from canonical source
+from backend.utils.market_hours import is_market_open as _is_market_open
 
 
 def is_market_hours(include_extended: bool = True) -> bool:
-    """
-    Check if current time is within market hours (L-25).
-    
-    Args:
-        include_extended: If True, include pre/post market hours (4 AM - 8 PM ET)
-        
-    Returns:
-        True if within market hours, False otherwise
-    """
-    now_et = datetime.now(MARKET_TIMEZONE)
-    current_time = now_et.time()
-    weekday = now_et.weekday()
-    
-    # Market closed on weekends
-    if weekday >= 5:  # Saturday = 5, Sunday = 6
-        return False
-    
-    if include_extended:
-        return EXTENDED_OPEN_TIME <= current_time <= EXTENDED_CLOSE_TIME
-    else:
-        return MARKET_OPEN_TIME <= current_time <= MARKET_CLOSE_TIME
+    """Check if current time is within market hours (L-25)."""
+    return _is_market_open(include_extended=include_extended)
 
 
 class AlertSeverity(Enum):

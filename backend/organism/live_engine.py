@@ -272,6 +272,8 @@ class OrganismLiveEngine:
         # ── Timeframe-aware config ───────────────────────────────
         self._timeframe = timeframe or LIVE_TIMEFRAME
         self._is_intraday = self._timeframe in ("1Min", "5Min", "15Min", "1Hour")
+        _TIMEFRAME_BPD = {"1Min": 390, "5Min": 78, "15Min": 26, "1Hour": 7, "1Day": 1}
+        self._bars_per_day = _TIMEFRAME_BPD.get(self._timeframe, 1)
 
         # ── Organism components ──────────────────────────────────
         self.signal_gen = MLSignalGenerator(
@@ -296,6 +298,7 @@ class OrganismLiveEngine:
                 max_portfolio_pct=0.95,
                 vol_target=0.15,
                 min_position_usd=500.0,   # HFT: allow small scalps ($500 min)
+                bars_per_day=self._bars_per_day,
             )
         else:
             self.kelly_sizer = KellySizer(
@@ -303,6 +306,7 @@ class OrganismLiveEngine:
                 max_portfolio_pct=0.95,
                 vol_target=0.15,
                 min_position_usd=2000.0,
+                bars_per_day=self._bars_per_day,
             )
         self.exit_engine = AdaptiveExitEngine.for_timeframe(self._timeframe)
 
@@ -316,7 +320,7 @@ class OrganismLiveEngine:
             min_trades_for_eval=10,
             improvement_threshold=0.05,
         )
-        self.regime_detector = RegimeDetector(is_intraday=self._is_intraday)
+        self.regime_detector = RegimeDetector(is_intraday=self._is_intraday, bars_per_day=self._bars_per_day)
         self.governance = GovernanceController()
         self.evolution_engine = EvolutionEngine(
             alpha=0.30,
@@ -1466,10 +1470,12 @@ class OrganismLiveEngine:
                     bs = breakout_by_sym.get(c.symbol)
                     breakout_score = bs.composite_score if bs else 0.0
                     tension = _tension_lookup.get(c.symbol, 0.0)
+                    # Additive confidence — preserves ranking granularity
+                    ml_conf = c.ml_signal.confidence if c.ml_signal else 0.0
                     confidence = (
-                        (c.ml_signal.confidence if c.ml_signal else 0.5)
-                        * (1.0 + breakout_score)
-                        * (1.0 + tension * 0.5)  # Phase 5: scanner tension boost
+                        0.50 * ml_conf
+                        + 0.30 * breakout_score
+                        + 0.20 * min(tension, 1.0)
                     )
                     cand_dicts.append({
                         "symbol": c.symbol,
@@ -1477,7 +1483,7 @@ class OrganismLiveEngine:
                         "predicted_return": (
                             c.ml_signal.predicted_return if c.ml_signal else 0.01
                         ),
-                        "confidence": min(confidence, 1.0),
+                        "confidence": confidence,
                         "breakout_score": breakout_score,
                     })
                     _planned_entries.add(c.symbol)
@@ -1505,13 +1511,17 @@ class OrganismLiveEngine:
                         ml_sig = ml_signals.get(bs.symbol)
                         if ml_sig and ml_sig.direction < 0:
                             continue
+                        # Predicted return: use ML when available (minimal 0.3%
+                        # floor to avoid zero), otherwise scale from breakout
+                        # score (0.5%-2.0% range avoids flat over-estimation).
+                        if ml_sig:
+                            pred_ret = max(ml_sig.predicted_return, 0.003)
+                        else:
+                            pred_ret = 0.005 + 0.015 * bs.composite_score
                         cand_dicts.append({
                             "symbol": bs.symbol,
                             "direction": 1.0,
-                            "predicted_return": max(
-                                ml_sig.predicted_return if ml_sig else 0.02,
-                                0.01,  # Floor: breakout signals always get min 1%
-                            ),
+                            "predicted_return": pred_ret,
                             "confidence": min(bs.composite_score, 1.0),
                             "breakout_score": bs.composite_score,
                         })
@@ -1525,6 +1535,26 @@ class OrganismLiveEngine:
 
                 open_slots = MAX_OPEN_POSITIONS - len(open_symbols)
                 cand_dicts = cand_dicts[: max(0, open_slots)]
+
+                # 7b. MISSINGNESS GATE — block entries when feature data is
+                # degraded (too many NaN/Inf replaced with 0.0).
+                _NAN_MISS_THRESHOLD = 0.25  # >25% features missing → skip
+                _filtered = []
+                for cd in cand_dicts:
+                    feat_df = features_by_symbol.get(cd["symbol"])
+                    if feat_df is not None and len(feat_df) > 0:
+                        miss = feat_df["_nan_missingness"].iloc[-1]
+                        if miss > _NAN_MISS_THRESHOLD:
+                            logger.warning(
+                                "Blocking entry for %s — %.0f%% feature "
+                                "missingness (threshold %.0f%%)",
+                                cd["symbol"],
+                                miss * 100,
+                                _NAN_MISS_THRESHOLD * 100,
+                            )
+                            continue
+                    _filtered.append(cd)
+                cand_dicts = _filtered
                 result.signals_generated = len(cand_dicts)
 
                 # Log signal activity
@@ -1547,6 +1577,11 @@ class OrganismLiveEngine:
                 sizes = self.kelly_sizer.size_positions(
                     cand_dicts, equity, drawdown, features_by_symbol, regime,
                     ml_is_trained=self.signal_gen.is_trained,
+                    quote_provider=(
+                        self._streaming_provider.get_latest_quote
+                        if self._streaming_provider is not None
+                        else None
+                    ),
                 )
                 self._last_kelly_sizes = sizes
 
@@ -2197,6 +2232,7 @@ class OrganismLiveEngine:
                 feats_ml = compute_ml_features(
                     raw_df,
                     spy_df=spy_ref if sym != "SPY" else None,
+                    bars_per_day=self._bars_per_day,
                 )
                 feats = feats.reset_index(drop=True)
                 feats_ml = feats_ml.reset_index(drop=True)
@@ -2211,6 +2247,7 @@ class OrganismLiveEngine:
                 feats = compute_ml_features(
                     raw_df,
                     spy_df=spy_ref if sym != "SPY" else None,
+                    bars_per_day=self._bars_per_day,
                 )
                 feats = feats.reset_index(drop=True)
 
@@ -2468,6 +2505,7 @@ class OrganismLiveEngine:
             idempotency_key=idem_key,
             order_type="market",
             tif="day",
+            reduce_only=True,  # Exit orders bypass PnL circuit breaker
             attributes={
                 "source": "organism",
                 "reason": reason,
@@ -2537,11 +2575,40 @@ class OrganismLiveEngine:
             if meta is None:
                 continue
 
-            # Get last known price for exit
+            # Get last known price for exit — never fall back to entry_price
+            # (that would create phantom 0-PnL trades).
             feat_df = features_by_symbol.get(sym)
-            exit_price = meta["entry_price"]  # fallback
+            exit_price: float | None = None
             if feat_df is not None and len(feat_df) > 0:
                 exit_price = float(feat_df["close"].iloc[-1])
+            else:
+                # Try latest quote from streaming data provider
+                quote = self._data_client.get_latest_quote(sym)
+                bid = quote.get("bid")
+                ask = quote.get("ask")
+                if bid and ask and bid > 0 and ask > 0:
+                    exit_price = (bid + ask) / 2.0
+                    logger.info(
+                        "Using quote midpoint for %s exit price: $%.2f "
+                        "(no bar features available)",
+                        sym, exit_price,
+                    )
+                elif bid and bid > 0:
+                    exit_price = bid
+                elif ask and ask > 0:
+                    exit_price = ask
+
+            if exit_price is None:
+                logger.warning(
+                    "Skipping trade record for %s — no exit price available "
+                    "(features and quotes both missing). Entry was $%.2f",
+                    sym, meta["entry_price"],
+                )
+                # Still clean up tracking state so we don't leak metadata
+                self._exit_levels.pop(sym, None)
+                self._pyramid_positions.pop(sym, None)
+                self._ml_reversal_used.discard(sym)
+                continue
 
             direction = meta.get("direction", 1.0)
             entry_price = meta["entry_price"]

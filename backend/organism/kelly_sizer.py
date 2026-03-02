@@ -2,7 +2,7 @@
 Module 4 — Kelly Position Sizer **v2**.
 
 v2 changes (per BREAKOUT_ALPHA_BLUEPRINT.md §Module-D):
-    * max_position_pct  5% → 12%  (bigger bets on high-conviction)
+    * max_position_pct  5% → 10%  (bigger bets on high-conviction; was 12%, reduced)
     * min_position_usd  $500 → $2 000  (no micro-positions)
     * Breakout-score bonus sizing: 1.5× if score >0.7, 2.0× if >0.85
     * Confidence scaling widened: [0.3, 1.5] (was [0.5, 1.0])
@@ -17,7 +17,7 @@ from __future__ import annotations
 import logging
 import math
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Callable
 
 import numpy as np
 import pandas as pd
@@ -65,7 +65,7 @@ class KellySizer:
         5. Scale by regime (more aggressive in trending)
         6. Scale by confidence [0.3 … 1.5] (wider than v1)
         7. **NEW** — breakout score bonus (1.5× / 2.0×)
-        8. Enforce per-position max (12 %), total portfolio max (95 %)
+        8. Enforce per-position max (10 %), total portfolio max (95 %)
         9. Convert to shares; min position $2 000
 
     v3 addition: regime-stratified Kelly — per-regime win_rate/payoff tracking.
@@ -79,6 +79,7 @@ class KellySizer:
         drawdown_floor: float = 0.1,          # Scale to 10 % at max dd
         max_drawdown_cutoff: float = 0.25,    # Full risk-off threshold
         min_position_usd: float = 2000.0,     # Min position (was $500)
+        bars_per_day: int = 1,                # 390 for 1Min, 78 for 5Min, etc.
     ):
         self.max_position_pct = max_position_pct
         self.max_portfolio_pct = max_portfolio_pct
@@ -86,19 +87,57 @@ class KellySizer:
         self.drawdown_floor = drawdown_floor
         self.max_drawdown_cutoff = max_drawdown_cutoff
         self.min_position_usd = min_position_usd
+        self._bars_per_day = bars_per_day
 
         # ML confidence floor: when trained ML has confidence >= _ML_CONFIDENCE_MIN,
-        # use at least _ML_CONFIDENCE_FLOOR * confidence as kelly_half.
-        # This prevents the sizer from going permanently dormant in regimes
-        # where backward-looking Kelly returns are negative.
-        # 0.08 × 0.7 conf = 0.056 half-Kelly → ~2% target in high_vol
-        self._ML_CONFIDENCE_FLOOR = 0.08
+        # allow a small position so signals aren't silenced.
+        # Trained: 0.04 × conf, Untrained: 0.02 × conf (inline in size_positions)
+        # Both require edge_clears_cost gate to pass.
         self._ML_CONFIDENCE_MIN = 0.5
 
         # Regime-stratified Kelly stats: {regime: {wins, losses, total_pnl, total_win_pnl, total_loss_pnl}}
         self._regime_stats: dict[str, dict[str, float]] = {}
         # Last sizing intermediates for telemetry (confidence_scale, breakout_bonus per symbol)
         self._last_intermediates: dict[str, dict[str, float]] = {}
+
+    def _estimate_spread_cost(
+        self,
+        symbol: str,
+        quote_provider: Callable[[str], dict[str, Any]] | None,
+        features_by_symbol: dict[str, pd.DataFrame],
+    ) -> float:
+        """Per-symbol dynamic spread cost from live quote, time-of-day, and liquidity.
+
+        Returns spread_cost_pct clamped to [3bps, 50bps].
+        """
+        from backend.utils.market_hours import get_slippage_multiplier
+
+        # 1. Base spread from live bid/ask (fallback: 10bps)
+        base_spread = 0.0010
+        if quote_provider is not None:
+            try:
+                quote = quote_provider(symbol)
+                bid = quote.get("bid")
+                ask = quote.get("ask")
+                if bid and ask and bid > 0 and ask > 0:
+                    mid = (bid + ask) / 2.0
+                    base_spread = (ask - bid) / mid
+            except Exception:
+                pass  # keep default
+
+        # 2. Time-of-day multiplier
+        time_mult = get_slippage_multiplier()
+
+        # 3. Liquidity adjustment from vol_sma_ratio
+        liquidity_mult = 1.0
+        df = features_by_symbol.get(symbol)
+        if df is not None and "vol_sma_ratio" in df.columns and len(df) > 0:
+            vol_ratio = float(df["vol_sma_ratio"].iloc[-1])
+            if math.isfinite(vol_ratio) and vol_ratio > 0:
+                liquidity_mult = 1.0 + max(0.0, 1.0 - vol_ratio) * 0.5
+
+        cost = base_spread * time_mult * liquidity_mult
+        return max(0.0003, min(cost, 0.0050))
 
     def size_positions(
         self,
@@ -108,6 +147,7 @@ class KellySizer:
         features_by_symbol: dict[str, pd.DataFrame],
         current_regime: str = "unknown",
         ml_is_trained: bool = True,
+        quote_provider: Callable[[str], dict[str, Any]] | None = None,
     ) -> list[PositionSize]:
         """Size positions for a list of alpha candidates.
 
@@ -198,20 +238,24 @@ class KellySizer:
                 else:
                     kelly_raw = min(mean_r / var_r, 1.0)  # Cap raw Kelly at 100%
 
-            # 2. Half-Kelly (with breakout floor for intraday)
+            # 2. Half-Kelly
             kelly_half = kelly_raw * 0.5
             ml_floor_applied = False
-            # When Kelly says 0 but breakout score is strong, use a
-            # minimum allocation so breakout signals can still trade.
-            if kelly_half < 0.005 and breakout_score >= 0.55:
-                kelly_half = max(kelly_half, 0.01 * breakout_score)
 
-            # 2b. ML confidence floor — when the model is confident but
-            # historical returns are negative (kelly=0), allow a small
-            # position so signals aren't silenced.  Without this, the
-            # engine goes permanently dormant in high-vol regimes where
-            # backward-looking Kelly is zero.
-            #
+            # Edge-over-cost gate: predicted edge must clear 2x estimated
+            # round-trip spread+slippage cost to justify the trade.
+            spread_cost_pct = self._estimate_spread_cost(
+                symbol, quote_provider, features_by_symbol,
+            )
+            _COST_MULT = 2.0
+            edge_clears_cost = predicted_return >= spread_cost_pct * _COST_MULT
+
+            # Breakout floor — halved, requires edge to clear cost
+            if kelly_half < 0.005 and breakout_score >= 0.55:
+                if edge_clears_cost:
+                    kelly_half = max(kelly_half, 0.003 * breakout_score)
+
+            # ML confidence floor — halved, requires edge to clear cost.
             # Guard: suppress floor when the current regime has a track
             # record of negative expectancy (>= 5 trades, total_pnl <= 0).
             _regime_has_edge = True
@@ -221,12 +265,11 @@ class KellySizer:
                 if _total_trades >= 5 and _rs["total_pnl"] <= 0:
                     _regime_has_edge = False
 
-            if kelly_half < 0.005 and confidence >= self._ML_CONFIDENCE_MIN and _regime_has_edge:
+            if kelly_half < 0.005 and confidence >= self._ML_CONFIDENCE_MIN and _regime_has_edge and edge_clears_cost:
                 if ml_is_trained:
-                    ml_floor = self._ML_CONFIDENCE_FLOOR * confidence
+                    ml_floor = 0.04 * confidence  # halved from 0.08
                 else:
-                    # Untrained ML: smaller floor so sizing isn't zeroed
-                    ml_floor = (self._ML_CONFIDENCE_FLOOR / 2) * confidence
+                    ml_floor = 0.02 * confidence
                 kelly_half = max(kelly_half, ml_floor)
                 ml_floor_applied = True
                 _logger.info(
@@ -243,11 +286,15 @@ class KellySizer:
                     _rs["total_pnl"] if _rs else 0,
                 )
 
+            # If edge doesn't clear cost and kelly is near-zero, skip trade
+            if not edge_clears_cost and kelly_half < 0.005:
+                kelly_half = 0.0
+
             # 3. Drawdown scaling
             drawdown_scale = self._drawdown_scale(current_drawdown)
 
             # 4. Volatility targeting
-            ann_vol = float(np.std(returns, ddof=1)) * np.sqrt(252)
+            ann_vol = float(np.std(returns, ddof=1)) * np.sqrt(252 * self._bars_per_day)
             vol_scale = min(self.vol_target / max(ann_vol, 0.01), 2.0)
 
             # 5. Regime scaling (v2: more aggressive in trending)
@@ -270,6 +317,7 @@ class KellySizer:
                 "ml_floor_applied": ml_floor_applied,
                 "kelly_raw": kelly_raw,
                 "kelly_half": kelly_half,
+                "spread_cost_pct": spread_cost_pct,
             }
 
             # Combine all factors
