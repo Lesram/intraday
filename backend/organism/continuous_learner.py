@@ -71,6 +71,7 @@ class TradeRecord:
     predicted_return: float
     actual_return: float
     confidence: float
+    is_exploration: bool = False
 
     @property
     def correct_direction(self) -> bool:

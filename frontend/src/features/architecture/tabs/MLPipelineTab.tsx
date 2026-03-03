@@ -23,6 +23,37 @@ const rollbackTriggers = [
   { trigger: 'Max regime churn rate', threshold: '0.50', action: 'Immediate rollback' },
 ];
 
+const brainContents = [
+  { item: 'ML models', detail: 'Classifier + regressor, HMAC-signed via secure_pickle' },
+  { item: 'Learning state', detail: 'learning_state.json + trade history (CSV) + equity curve (CSV)' },
+  { item: 'Evolved params', detail: 'evolved_params.json + governance_state.json' },
+  { item: 'Regime state', detail: 'regime_state.json' },
+  { item: 'Extra counters', detail: 'Exit levels, entry metadata, Kelly stats, universe, ML calibration, tick_count' },
+  { item: 'Manifest', detail: 'Format version, generation, trade count, best Sharpe' },
+];
+
+const validationGates = [
+  { gate: '1', check: 'NaN/Inf in evolved_params' },
+  { gate: '2', check: 'Alpha weight normalization (sum ≈ 1.0, tolerance 0.05)' },
+  { gate: '3', check: 'Breakout weight normalization check' },
+  { gate: '4', check: 'ML model sanity (predict_proba test on zeros)' },
+  { gate: '5', check: 'Feature schema drift detection (added/removed features)' },
+];
+
+const stalenessDimensions = [
+  { dimension: '1. Age', detail: 'Days since training' },
+  { dimension: '2. Performance decay', detail: 'Accuracy drop %' },
+  { dimension: '3. Feature drift', detail: 'PSI score' },
+  { dimension: '4. Prediction drift', detail: 'Distribution shift' },
+  { dimension: '5. Regime change', detail: 'New regime since training' },
+];
+
+const driftThresholds = [
+  { trigger: 'PSI >= 0.15', action: 'Feature drift detected → early retrain' },
+  { trigger: 'Performance drop >= 2%', action: 'min_return_drop trigger → retrain' },
+  { trigger: 'Negative recent returns', action: 'Fallback retrain' },
+];
+
 const MLPipelineTab = () => (
   <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
     <Title level={4} style={{ margin: 0 }}>ML Deployment Pipeline</Title>
@@ -76,6 +107,66 @@ const MLPipelineTab = () => (
 
     <CollapsibleSection title="Drift Detection & Retrain Trigger" subtitle="PSI-based feature drift + regime churn monitoring">
       <MermaidDiagram definition={driftDetection} />
+      <ThresholdTable
+        data={driftThresholds}
+        columns={[
+          { title: 'Trigger', dataIndex: 'trigger', key: 'trigger', render: (v: string) => <code>{v}</code> },
+          { title: 'Action', dataIndex: 'action', key: 'action' },
+        ]}
+      />
+    </CollapsibleSection>
+
+    <CollapsibleSection title="Brain Persistence" subtitle="Format v2, HMAC-signed, 5 validation gates, walk-forward 0.95">
+      <Card size="small" style={{ background: colors.backgrounds.tertiary, marginBottom: 12 }}>
+        <Text strong style={{ color: colors.text.primary }}>Storage</Text>
+        <div style={{ marginTop: 8, fontSize: 13, color: colors.text.secondary }}>
+          <div>Directory: organism_brain/ (gitignored)</div>
+          <div>Format: JSON + CSV files (v2, auto-migrates v1 → v2)</div>
+          <div>Save frequency: every 20 ticks (~3.3 min) + event-driven (after fill reconciliation)</div>
+          <div>Gate: walk-forward check must pass (regression threshold 0.95)</div>
+          <div>If gate rejects: best_sharpe decayed by 5% to prevent permanent blocking</div>
+          <div>Trade history: archived to gzipped CSV when {'>'} 10,000 rows, max 10 archives</div>
+        </div>
+      </Card>
+      <ThresholdTable
+        data={brainContents}
+        columns={[
+          { title: 'Item', dataIndex: 'item', key: 'item', render: (v: string) => <Text strong>{v}</Text> },
+          { title: 'Detail', dataIndex: 'detail', key: 'detail' },
+        ]}
+      />
+      <Text strong style={{ color: colors.text.primary, display: 'block', marginTop: 16, marginBottom: 8 }}>
+        5 Validation Gates (on load)
+      </Text>
+      <ThresholdTable
+        data={validationGates}
+        columns={[
+          { title: '#', dataIndex: 'gate', key: 'gate', width: 40 },
+          { title: 'Integrity Check', dataIndex: 'check', key: 'check' },
+        ]}
+      />
+    </CollapsibleSection>
+
+    <CollapsibleSection title="Staleness Detector" subtitle="5 dimensions: age → perf → drift → prediction → regime">
+      <Card size="small" style={{ background: colors.backgrounds.tertiary, marginBottom: 12 }}>
+        <Text strong style={{ color: colors.text.primary }}>Staleness Levels</Text>
+        <div style={{ marginTop: 8, display: 'flex', gap: 8 }}>
+          <Tag color="green">fresh</Tag>
+          <Text style={{ color: colors.text.tertiary }}>→</Text>
+          <Tag color="gold">aging</Tag>
+          <Text style={{ color: colors.text.tertiary }}>→</Text>
+          <Tag color="orange">stale</Tag>
+          <Text style={{ color: colors.text.tertiary }}>→</Text>
+          <Tag color="red">critical</Tag>
+        </div>
+      </Card>
+      <ThresholdTable
+        data={stalenessDimensions}
+        columns={[
+          { title: 'Dimension', dataIndex: 'dimension', key: 'dimension', render: (v: string) => <Text strong>{v}</Text> },
+          { title: 'Detail', dataIndex: 'detail', key: 'detail' },
+        ]}
+      />
     </CollapsibleSection>
   </div>
 );

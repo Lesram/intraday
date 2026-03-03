@@ -169,6 +169,18 @@ LONG_ONLY = _env_bool("ORGANISM_LONG_ONLY", True)
 SCANNER_ENABLED = _env_bool("SCANNER_ENABLED", True)
 USE_STREAMING = _env_bool("ORGANISM_USE_STREAMING", False)
 
+# Multi-bar prediction horizon — aligns ML target with typical holding period
+_HORIZON_DEFAULTS = {"1Min": 15, "5Min": 6, "15Min": 3, "1Hour": 2, "1Day": 1}
+PREDICTION_HORIZON = _env_int(
+    "ORGANISM_PREDICTION_HORIZON",
+    _HORIZON_DEFAULTS.get(LIVE_TIMEFRAME, 1),
+)
+
+# Exploration bucket — micro-size trades on rejected candidates to prevent data starvation
+EXPLORATION_ENABLED = _env_bool("ORGANISM_EXPLORATION_ENABLED", False)
+EXPLORATION_MAX_NOTIONAL = _env_float("ORGANISM_EXPLORATION_MAX_NOTIONAL", 200.0)
+EXPLORATION_MAX_POSITIONS = _env_int("ORGANISM_EXPLORATION_MAX_POSITIONS", 3)
+
 # ── Dynamic intraday adjustments ────────────────────────────────
 _IS_INTRADAY = LIVE_TIMEFRAME in ("1Min", "5Min", "15Min", "1Hour")
 if _IS_INTRADAY and MIN_BARS == 200:
@@ -281,6 +293,7 @@ class OrganismLiveEngine:
             n_estimators=200,
             max_depth=5,
             learning_rate=0.05,
+            prediction_horizon=PREDICTION_HORIZON,
         )
         self.alpha_scanner = AlphaScanner(top_n=3)  # was MAX_OPEN_POSITIONS — reduce overtrading
         self.breakout_scanner = BreakoutScanner(top_n=MAX_OPEN_POSITIONS)
@@ -412,6 +425,10 @@ class OrganismLiveEngine:
         # it cannot fire again until the position is fully closed.  Prevents
         # repeated 50% partials from chipping positions to 1 share.
         self._ml_reversal_used: set[str] = set()
+
+        # Exit attribution — capture real exit reasons and fill prices
+        self._last_exit_reason: dict[str, str] = {}
+        self._last_exit_fill_price: dict[str, float] = {}
 
         # Global entries-per-hour throttle — prevents overtrading
         self._entry_timestamps: list[float] = []
@@ -834,6 +851,9 @@ class OrganismLiveEngine:
             timestamp=self._now_fn().isoformat(),
         )
         self._tick_count += 1
+        # Gate-level rejection telemetry (reset each tick)
+        self._last_gate_rejections: dict[str, int] = {}
+        self._last_entries_blocked_reason: str = ""
         # Expire old cooldowns (keep only recent exits)
         self._exit_cooldown = {
             sym: tick for sym, tick in self._exit_cooldown.items()
@@ -876,6 +896,7 @@ class OrganismLiveEngine:
             entries_blocked = False
             if self.governance.is_trading_halted:
                 entries_blocked = True
+                self._last_entries_blocked_reason = "governance_halt"
                 result.errors.append("Trading halted by governance — exits still active")
                 result.activity.append(ActivityEvent(
                     event_type="governance", message="Trading halted — blocking new entries, exits still running",
@@ -885,6 +906,7 @@ class OrganismLiveEngine:
             # 1.1 WARMUP GATE — let features stabilize before entering
             if not entries_blocked and self._tick_count <= self._WARMUP_TICKS:
                 entries_blocked = True
+                self._last_entries_blocked_reason = "warmup"
                 logger.info(
                     "Warmup period: %d/%d ticks — blocking entries",
                     self._tick_count, self._WARMUP_TICKS,
@@ -946,6 +968,7 @@ class OrganismLiveEngine:
                     f"Insufficient data: got {len(features_by_symbol)} symbols"
                 )
                 entries_blocked = True
+                self._last_entries_blocked_reason = "insufficient_data"
                 logger.warning(
                     "Insufficient features (%d symbols) — blocking entries, "
                     "exits still active via broker price fallback",
@@ -1004,6 +1027,7 @@ class OrganismLiveEngine:
                 self._consecutive_equity_zero += 1
                 if self._consecutive_equity_zero >= self._EQUITY_ZERO_THRESHOLD:
                     entries_blocked = True
+                    self._last_entries_blocked_reason = "equity_zero"
                     logger.error(
                         "equity_returned_zero for %d consecutive ticks — "
                         "soft-blocking entries, exits still active",
@@ -1028,6 +1052,7 @@ class OrganismLiveEngine:
                 self.governance.trigger_drawdown_kill(drawdown)
                 if not was_halted and self.governance.is_trading_halted:
                     entries_blocked = True
+                    self._last_entries_blocked_reason = "drawdown_kill"
                     result.errors.append(
                         f"Drawdown kill triggered ({drawdown:.2%} >= "
                         f"{self.governance._drawdown_limit:.0%}) — exits still active"
@@ -1043,6 +1068,7 @@ class OrganismLiveEngine:
             # or prior drawdown cooldown) — separate from drawdown check
             if self.governance.is_trading_halted and not entries_blocked:
                 entries_blocked = True
+                self._last_entries_blocked_reason = "governance_halt"
                 result.errors.append("Trading halted by governance — exits still active")
 
             # 5. CHECK EXITS on existing positions
@@ -1276,6 +1302,7 @@ class OrganismLiveEngine:
                     spy_sma = float(spy_df["close"].iloc[-self._spy_ma_period:].mean())
                     if spy_close < spy_sma:
                         entries_blocked = True
+                        self._last_entries_blocked_reason = "spy_ma_filter"
                         logger.info(
                             "SPY MA filter: SPY %.2f < SMA%d %.2f — blocking entries",
                             spy_close, self._spy_ma_period, spy_sma,
@@ -1299,6 +1326,7 @@ class OrganismLiveEngine:
                 _hhmm_open = _now_et.hour * 100 + _now_et.minute
                 if 930 <= _hhmm_open < 1000:
                     entries_blocked = True
+                    self._last_entries_blocked_reason = "opening_block"
                     logger.info(
                         "Opening block: %d ET — no entries first 30 min",
                         _hhmm_open,
@@ -1318,6 +1346,7 @@ class OrganismLiveEngine:
                 _bullish = sum(1 for s in _sitout_ml.values() if s.direction > 0)
                 if _bearish > 0 and _bullish == 0:
                     _regime_sit_out = True
+                    self._last_entries_blocked_reason = "regime_sitout"
                     logger.info(
                         "Regime sit-out: %s regime, %d bearish / %d bullish ML signals — "
                         "skipping entries",
@@ -1338,6 +1367,7 @@ class OrganismLiveEngine:
                 ]
                 if len(self._entry_timestamps) >= self._MAX_ENTRIES_PER_HOUR:
                     _throttled = True
+                    self._last_entries_blocked_reason = "throttle"
                     logger.info(
                         "Entry throttle: %d entries in last hour (max %d) — "
                         "blocking new entries this tick",
@@ -1434,21 +1464,36 @@ class OrganismLiveEngine:
                 # intra-tick sector-limit violations.
                 _planned_entries: set[str] = set()
 
+                _rej_open = 0
+                _rej_cooldown = 0
+                _rej_pending = 0
+                _rej_metadata = 0
+                _rej_long_only = 0
+                _rej_sector = 0
+                _rej_fitness = 0
+                _rej_liquidity = 0
+
                 cand_dicts = []
                 for c in candidates:
                     if c.symbol in open_symbols:
+                        _rej_open += 1
                         continue
                     if c.symbol in self._exit_cooldown:
+                        _rej_cooldown += 1
                         continue  # Wash trade cooldown
                     if c.symbol in self._pending_entry:
+                        _rej_pending += 1
                         continue  # Already submitted an order recently
                     if c.symbol in self._entry_metadata:
+                        _rej_metadata += 1
                         continue  # Already tracking this position
                     if LONG_ONLY and c.direction < 0:
+                        _rej_long_only += 1
                         continue
                     # Sector diversification gate — includes planned entries from
                     # earlier in this loop to prevent intra-tick sector breaches.
                     if not sector_gate_allows(c.symbol, open_symbols, _planned_entries):
+                        _rej_sector += 1
                         logger.info(
                             "Sector gate blocked %s (sector=%s, planned=%s)",
                             c.symbol, get_sector(c.symbol), _planned_entries,
@@ -1459,6 +1504,7 @@ class OrganismLiveEngine:
                     # Block symbols with poor fitness scores from evolved params
                     sym_fitness = self.evolved_params.symbol_fitness.get(c.symbol, 0.5)
                     if sym_fitness < _FITNESS_GATE:
+                        _rej_fitness += 1
                         logger.info(
                             "Fitness gate blocked %s (fitness=%.2f < %.2f)",
                             c.symbol, sym_fitness, _FITNESS_GATE,
@@ -1466,6 +1512,7 @@ class OrganismLiveEngine:
                         continue
                     # Liquidity gate — block illiquid symbols that gap violently
                     if not self._passes_liquidity_gate(c.symbol, features_by_symbol):
+                        _rej_liquidity += 1
                         logger.info("Liquidity gate blocked %s", c.symbol)
                         continue
 
@@ -1541,12 +1588,14 @@ class OrganismLiveEngine:
                 # 7b. MISSINGNESS GATE — block entries when feature data is
                 # degraded (too many NaN/Inf replaced with 0.0).
                 _NAN_MISS_THRESHOLD = 0.25  # >25% features missing → skip
+                _rej_missingness = 0
                 _filtered = []
                 for cd in cand_dicts:
                     feat_df = features_by_symbol.get(cd["symbol"])
                     if feat_df is not None and len(feat_df) > 0:
                         miss = feat_df["_nan_missingness"].iloc[-1]
                         if miss > _NAN_MISS_THRESHOLD:
+                            _rej_missingness += 1
                             logger.warning(
                                 "Blocking entry for %s — %.0f%% feature "
                                 "missingness (threshold %.0f%%)",
@@ -1558,6 +1607,19 @@ class OrganismLiveEngine:
                     _filtered.append(cd)
                 cand_dicts = _filtered
                 result.signals_generated = len(cand_dicts)
+
+                # Store gate-level rejection counts for telemetry
+                self._last_gate_rejections = {
+                    "open_position": _rej_open,
+                    "exit_cooldown": _rej_cooldown,
+                    "pending_entry": _rej_pending,
+                    "entry_metadata": _rej_metadata,
+                    "long_only": _rej_long_only,
+                    "sector_gate": _rej_sector,
+                    "fitness_gate": _rej_fitness,
+                    "liquidity": _rej_liquidity,
+                    "missingness": _rej_missingness,
+                }
 
                 # Log signal activity
                 for cd in cand_dicts[:10]:
@@ -1586,6 +1648,13 @@ class OrganismLiveEngine:
                     ),
                 )
                 self._last_kelly_sizes = sizes
+
+                # Wire sizer-level rejections into gate telemetry
+                _sizer_rejects = getattr(self.kelly_sizer, "_exploration_rejects", [])
+                _rej_cost_gate = sum(1 for r in _sizer_rejects if r.get("reason") == "weight_too_small")
+                _rej_min_notional = sum(1 for r in _sizer_rejects if r.get("reason") == "below_min_notional")
+                self._last_gate_rejections["cost_gate"] = _rej_cost_gate
+                self._last_gate_rejections["min_notional"] = _rej_min_notional
 
                 # 8b. INTRADAY SEASONALITY FILTER — reduce allocation
                 # during first/last 15 min (highest volatility, worst fills)
@@ -1634,7 +1703,7 @@ class OrganismLiveEngine:
                             sz.symbol,
                             initial_shares,
                             direction=sz.direction,
-                            confidence=getattr(sz, "confidence", 0.6),
+                            confidence=sz.confidence,
                             reason="organism_entry",
                         )
 
@@ -1661,7 +1730,7 @@ class OrganismLiveEngine:
                                 "shares_requested": initial_shares,
                                 "shares_filled": filled_shares,
                                 "direction": sz.direction,
-                                "confidence": getattr(sz, "confidence", 0.6),
+                                "confidence": sz.confidence,
                             },
                             timestamp=now_iso,
                         ))
@@ -1670,11 +1739,7 @@ class OrganismLiveEngine:
                         feat_df = features_by_symbol.get(sz.symbol)
                         if feat_df is not None and len(feat_df) > 0:
                             price = float(feat_df["close"].iloc[-1])
-                            predicted_return = 0.01
-                            if self.signal_gen.is_trained:
-                                sig = self.signal_gen.predict(feat_df, sz.symbol)
-                                if sig:
-                                    predicted_return = abs(sig.predicted_return)
+                            predicted_return = abs(sz.predicted_return) if sz.predicted_return else 0.01
 
                             exit_lvl = self.exit_engine.create_exit_levels(
                                 symbol=sz.symbol,
@@ -1714,13 +1779,88 @@ class OrganismLiveEngine:
                                 "direction": sz.direction,
                                 "filled_shares": filled_shares,
                                 "predicted_return": predicted_return,
-                                "confidence": 0.6,
+                                "confidence": sz.confidence,
                             }
 
                     except Exception as e:
                         result.errors.append(
                             f"Entry order failed for {sz.symbol}: {e}"
                         )
+
+                # 9b. EXPLORATION BUCKET — micro-size trades on rejects
+                if EXPLORATION_ENABLED and not entries_blocked:
+                    try:
+                        exploration_rejects = getattr(self.kelly_sizer, "_exploration_rejects", [])
+                        # Filter for decent alpha candidates
+                        exploration_cands = [
+                            r for r in exploration_rejects
+                            if (r.get("breakout_score", 0) >= 0.4
+                                or r.get("confidence", 0) >= 0.5)
+                            and r["symbol"] not in fresh_open
+                            and r["symbol"] not in self._exit_cooldown
+                            and r["symbol"] not in self._pending_entry
+                        ]
+                        # Count current exploration positions
+                        _expl_open = sum(
+                            1 for m in self._entry_metadata.values()
+                            if m.get("exploration", False)
+                        )
+                        for ec in exploration_cands[:EXPLORATION_MAX_POSITIONS - _expl_open]:
+                            sym = ec["symbol"]
+                            feat_df = features_by_symbol.get(sym)
+                            if feat_df is None or len(feat_df) < 1:
+                                continue
+                            price = float(feat_df["close"].iloc[-1])
+                            if price <= 0:
+                                continue
+                            # Size at min(1 share, max notional)
+                            expl_shares = max(1, int(EXPLORATION_MAX_NOTIONAL / price))
+                            expl_shares = min(expl_shares, 1)  # cap at 1 share
+                            try:
+                                await self._submit_entry_order(
+                                    sym, expl_shares,
+                                    direction=ec.get("direction", 1.0),
+                                    confidence=ec.get("confidence", 0.5),
+                                    reason="exploration_entry",
+                                )
+                                self._pending_entry[sym] = self._tick_count
+                                fresh_open.add(sym)
+                                result.orders_submitted += 1
+                                # Track entry metadata
+                                self._entry_metadata[sym] = {
+                                    "entry_price": price,
+                                    "entry_tick": self._tick_count,
+                                    "direction": ec.get("direction", 1.0),
+                                    "filled_shares": expl_shares,
+                                    "predicted_return": ec.get("predicted_return", 0.01),
+                                    "confidence": ec.get("confidence", 0.5),
+                                    "exploration": True,
+                                }
+                                # Create exit levels
+                                exit_lvl = self.exit_engine.create_exit_levels(
+                                    symbol=sym,
+                                    direction=ec.get("direction", 1.0),
+                                    entry_price=price,
+                                    predicted_return=ec.get("predicted_return", 0.01),
+                                    features_df=feat_df,
+                                    regime=regime,
+                                )
+                                self._exit_levels[sym] = exit_lvl
+                                result.activity.append(ActivityEvent(
+                                    event_type="order",
+                                    symbol=sym,
+                                    message=f"EXPLORATION: BUY {expl_shares} share of {sym}",
+                                    details={"exploration": True, "shares": expl_shares},
+                                    timestamp=now_iso,
+                                ))
+                                logger.info(
+                                    "Exploration entry: %s (%d shares @ $%.2f)",
+                                    sym, expl_shares, price,
+                                )
+                            except Exception as e:
+                                logger.warning("Exploration entry failed for %s: %s", sym, e)
+                    except Exception as e:
+                        logger.debug("Exploration bucket error (non-fatal): %s", e)
 
             # 10. RECORD TRADE OUTCOMES from closed positions
             await self._reconcile_fills(features_by_symbol)
@@ -2096,21 +2236,40 @@ class OrganismLiveEngine:
             snap.kelly_details.append(kd)
 
         # Filtering funnel
+        rej = getattr(self, "_last_gate_rejections", {})
+        _above_alpha = sum(
+            1 for c in full_alpha
+            if c.composite_score >= self.alpha_scanner.MIN_COMPOSITE
+        )
         snap.filtering = FilteringSummary(
             total_universe=len(self._universe),
             had_features=getattr(self, "_last_features_count", 0),
             alpha_scored=len(full_alpha),
-            above_alpha_threshold=sum(
-                1 for c in full_alpha
-                if c.composite_score >= self.alpha_scanner.MIN_COMPOSITE
-            ),
+            above_alpha_threshold=_above_alpha,
             breakout_scored=len(full_breakout),
             above_breakout_threshold=sum(
                 1 for s in full_breakout
                 if s.composite_score >= self.breakout_scanner.MIN_BREAKOUT_SCORE
             ),
+            passed_sector_gate=_above_alpha - rej.get("sector_gate", 0),
+            passed_fitness_gate=_above_alpha - rej.get("fitness_gate", 0),
+            passed_cooldown=_above_alpha - rej.get("exit_cooldown", 0) - rej.get("pending_entry", 0),
+            passed_position_limit=_above_alpha - rej.get("open_position", 0),
             kelly_sized=len(snap.kelly_details),
             orders_submitted=result.orders_submitted,
+            # Gate-level rejection counters
+            rejected_by_open_position=rej.get("open_position", 0),
+            rejected_by_exit_cooldown=rej.get("exit_cooldown", 0),
+            rejected_by_pending_entry=rej.get("pending_entry", 0),
+            rejected_by_entry_metadata=rej.get("entry_metadata", 0),
+            rejected_by_long_only=rej.get("long_only", 0),
+            rejected_by_sector_gate=rej.get("sector_gate", 0),
+            rejected_by_fitness_gate=rej.get("fitness_gate", 0),
+            rejected_by_liquidity=rej.get("liquidity", 0),
+            rejected_by_missingness=rej.get("missingness", 0),
+            rejected_by_cost_gate=rej.get("cost_gate", 0),
+            rejected_by_min_notional=rej.get("min_notional", 0),
+            entries_blocked_reason=getattr(self, "_last_entries_blocked_reason", ""),
         )
 
         return snap
@@ -2446,6 +2605,8 @@ class OrganismLiveEngine:
         positions.  The idempotency key uses tick_count (not wall-clock) so
         the same exit intent across rapid ticks is deduplicated.
         """
+        # Track exit reason for trade attribution
+        self._last_exit_reason[symbol] = reason
         side = "buy" if direction < 0 else "sell"
 
         # LONG_ONLY guard: never submit a sell (short-creating) exit when
@@ -2500,7 +2661,7 @@ class OrganismLiveEngine:
             f"_{datetime.now(UTC).strftime('%Y%m%d')}"
             f"_{self._session_id}_t{self._tick_count}"
         )
-        return await self._order_service.submit_symbol_order(
+        result = await self._order_service.submit_symbol_order(
             symbol=symbol,
             side=side,
             qty=shares,
@@ -2514,6 +2675,12 @@ class OrganismLiveEngine:
                 "tick": self._tick_count,
             },
         )
+        # Capture fill price for trade attribution
+        if isinstance(result, dict):
+            fp = result.get("avg_fill_price")
+            if fp and float(fp) > 0:
+                self._last_exit_fill_price[symbol] = float(fp)
+        return result
 
     # ═════════════════════════════════════════════════════════════
     #  FILL RECONCILIATION (Phase 2.4)
@@ -2577,28 +2744,36 @@ class OrganismLiveEngine:
             if meta is None:
                 continue
 
-            # Get last known price for exit — never fall back to entry_price
-            # (that would create phantom 0-PnL trades).
-            feat_df = features_by_symbol.get(sym)
+            # Use real fill price from exit order when available
+            real_fill = self._last_exit_fill_price.pop(sym, None)
             exit_price: float | None = None
-            if feat_df is not None and len(feat_df) > 0:
-                exit_price = float(feat_df["close"].iloc[-1])
+            if real_fill and real_fill > 0:
+                exit_price = real_fill
             else:
-                # Try latest quote from streaming data provider
-                quote = self._data_client.get_latest_quote(sym)
-                bid = quote.get("bid")
-                ask = quote.get("ask")
-                if bid and ask and bid > 0 and ask > 0:
-                    exit_price = (bid + ask) / 2.0
-                    logger.info(
-                        "Using quote midpoint for %s exit price: $%.2f "
-                        "(no bar features available)",
-                        sym, exit_price,
-                    )
-                elif bid and bid > 0:
-                    exit_price = bid
-                elif ask and ask > 0:
-                    exit_price = ask
+                # Try DB-based fill price (actual filled exit order)
+                exit_price = await self._lookup_exit_fill_from_db(sym)
+                if exit_price is None:
+                    # Get last known price for exit — never fall back to entry_price
+                    # (that would create phantom 0-PnL trades).
+                    feat_df = features_by_symbol.get(sym)
+                    if feat_df is not None and len(feat_df) > 0:
+                        exit_price = float(feat_df["close"].iloc[-1])
+                    else:
+                        # Try latest quote from streaming data provider
+                        quote = self._data_client.get_latest_quote(sym)
+                        bid = quote.get("bid")
+                        ask = quote.get("ask")
+                        if bid and ask and bid > 0 and ask > 0:
+                            exit_price = (bid + ask) / 2.0
+                            logger.info(
+                                "Using quote midpoint for %s exit price: $%.2f "
+                                "(no bar features available)",
+                                sym, exit_price,
+                            )
+                        elif bid and bid > 0:
+                            exit_price = bid
+                        elif ask and ask > 0:
+                            exit_price = ask
 
             if exit_price is None:
                 logger.warning(
@@ -2637,6 +2812,7 @@ class OrganismLiveEngine:
                 else 0
             )
 
+            _is_exploration = meta.get("exploration", False)
             trade = TradeRecord(
                 symbol=sym,
                 direction=direction,
@@ -2646,20 +2822,23 @@ class OrganismLiveEngine:
                 exit_bar=self._tick_count,
                 shares=shares,
                 pnl=pnl,
-                exit_reason="live_close",
+                exit_reason=self._last_exit_reason.pop(sym, "live_close"),
                 predicted_return=meta.get("predicted_return", 0),
                 actual_return=actual_return,
                 confidence=meta.get("confidence", 0),
+                is_exploration=_is_exploration,
             )
             self._all_trades.append(trade)
             self.learner.record_trade(trade)
 
-            # Record for regime-stratified Kelly
-            exit_lvl = self._exit_levels.get(sym)
-            regime_at_trade = (
-                exit_lvl.regime_at_entry if exit_lvl else "unknown"
-            )
-            self.kelly_sizer.record_trade(regime_at_trade, pnl)
+            # Record for regime-stratified Kelly (skip exploration to prevent
+            # micro-size trades from polluting main Kelly statistics)
+            if not _is_exploration:
+                exit_lvl = self._exit_levels.get(sym)
+                regime_at_trade = (
+                    exit_lvl.regime_at_entry if exit_lvl else "unknown"
+                )
+                self.kelly_sizer.record_trade(regime_at_trade, pnl)
 
             # Record for ML calibration
             if meta.get("confidence") is not None:
@@ -2672,6 +2851,8 @@ class OrganismLiveEngine:
             self._exit_levels.pop(sym, None)
             self._pyramid_positions.pop(sym, None)
             self._ml_reversal_used.discard(sym)
+            self._last_exit_reason.pop(sym, None)
+            self._last_exit_fill_price.pop(sym, None)
 
             logger.info(
                 "Trade recorded: %s %s PnL=$%.2f",
@@ -2770,6 +2951,43 @@ class OrganismLiveEngine:
                 int(qty),
                 avg_entry,
             )
+
+    async def _lookup_exit_fill_from_db(self, symbol: str) -> float | None:
+        """Look up actual exit fill price from DB for a recently closed position.
+
+        Queries the most recent filled sell order for this symbol with
+        organism source attribution.  Returns the avg_fill_price if found,
+        or None if no DB session is available or no matching order exists.
+        """
+        if not self._sessionmaker:
+            return None
+        try:
+            from sqlalchemy import select, text as sa_text
+            from backend.infra.schemas import Order
+
+            async with self._sessionmaker() as session:
+                stmt = (
+                    select(Order.avg_fill_price)
+                    .where(
+                        Order.symbol == symbol,
+                        Order.side == "sell",
+                        Order.status == "filled",
+                        sa_text("attributes->>'source' = 'organism'"),
+                    )
+                    .order_by(Order.updated_at.desc())
+                    .limit(1)
+                )
+                result = await session.execute(stmt)
+                row = result.scalar_one_or_none()
+                if row is not None and float(row) > 0:
+                    price = float(row)
+                    logger.info(
+                        "DB fill price for %s exit: $%.2f", symbol, price,
+                    )
+                    return price
+        except Exception as e:
+            logger.debug("DB exit fill lookup failed for %s: %s", symbol, e)
+        return None
 
     # ═════════════════════════════════════════════════════════════
     #  POSITION STATE RECONSTRUCTION (Phase 2.5)

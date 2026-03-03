@@ -36,6 +36,22 @@ const guardrailLayers = [
   { layer: '8', check: 'Circuit breaker open?', rejection: 'REJECT' },
 ];
 
+const orderServiceCB = [
+  { param: 'trip_condition_1', value: '5 failures within 300s window', purpose: 'Trip circuit breaker' },
+  { param: 'trip_condition_2', value: 'Daily PnL loss > 5%', purpose: 'PnL-triggered kill switch' },
+  { param: 'reduce_only_bypass', value: 'True', purpose: 'Exit orders skip circuit breaker entirely' },
+  { param: 'daily_reset', value: '9:30 AM ET', purpose: 'Reset PnL + failure counts on new trading day' },
+  { param: 'recovery_timeout', value: '60s → HALF_OPEN', purpose: 'Try probe request after timeout' },
+  { param: 'recovery_successes', value: '3 in HALF_OPEN → CLOSED', purpose: 'Full recovery' },
+  { param: 'persistence', value: 'Redis-backed (24h TTL)', purpose: 'Distributed state across restarts' },
+];
+
+const postSubmissionSafety = [
+  { check: 'Order submission timeout', value: '30s', action: 'Mark as failed' },
+  { check: 'Stale pending orders', value: '5 min', action: 'Auto-fail stale pending orders' },
+  { check: 'Stale accepted orders', value: '24 hr', action: 'Flag for reconciliation review' },
+];
+
 const InfrastructureTab = () => (
   <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
     <Title level={4} style={{ margin: 0 }}>Infrastructure & Order Execution</Title>
@@ -72,7 +88,7 @@ const InfrastructureTab = () => (
       />
     </CollapsibleSection>
 
-    <CollapsibleSection title="Circuit Breaker State Machine" subtitle="CLOSED ↔ OPEN ↔ HALF_OPEN">
+    <CollapsibleSection title="Circuit Breaker State Machine" subtitle="CLOSED ↔ OPEN ↔ HALF_OPEN (infra/resilience.py)">
       <MermaidDiagram definition={circuitBreaker} />
       <ThresholdTable
         data={cbConfig}
@@ -80,6 +96,32 @@ const InfrastructureTab = () => (
           { title: 'Parameter', dataIndex: 'param', key: 'param', render: (v: string) => <code>{v}</code> },
           { title: 'Value', dataIndex: 'value', key: 'value' },
           { title: 'Purpose', dataIndex: 'purpose', key: 'purpose' },
+        ]}
+      />
+    </CollapsibleSection>
+
+    <CollapsibleSection title="OrderService Circuit Breaker (Redis-Backed)" subtitle="Separate from infra CB — services/order_service.py">
+      <Text style={{ color: colors.text.tertiary, fontSize: 12, display: 'block', marginBottom: 12 }}>
+        A <strong>separate</strong> circuit breaker from infra/resilience.py, with Redis persistence for distributed state.
+        Exit orders (reduce_only=True) bypass the ENTIRE circuit breaker — never block risk-reducing orders.
+      </Text>
+      <ThresholdTable
+        data={orderServiceCB}
+        columns={[
+          { title: 'Parameter', dataIndex: 'param', key: 'param', render: (v: string) => <code>{v}</code> },
+          { title: 'Value', dataIndex: 'value', key: 'value' },
+          { title: 'Purpose', dataIndex: 'purpose', key: 'purpose' },
+        ]}
+      />
+    </CollapsibleSection>
+
+    <CollapsibleSection title="Post-Submission Safety" subtitle="Timeout and stale order detection">
+      <ThresholdTable
+        data={postSubmissionSafety}
+        columns={[
+          { title: 'Check', dataIndex: 'check', key: 'check' },
+          { title: 'Threshold', dataIndex: 'value', key: 'value' },
+          { title: 'Action', dataIndex: 'action', key: 'action' },
         ]}
       />
     </CollapsibleSection>

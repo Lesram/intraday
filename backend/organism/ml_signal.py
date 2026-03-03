@@ -102,8 +102,10 @@ class MLSignalGenerator:
         colsample_bytree: float = 0.8,
         reg_alpha: float = 0.1,
         reg_lambda: float = 1.0,
+        prediction_horizon: int = 1,
     ):
         self.train_window = train_window
+        self.prediction_horizon = max(1, prediction_horizon)
         self.generation = 0
         self._feature_cols: list[str] = []
         self._is_trained = False
@@ -444,28 +446,30 @@ class MLSignalGenerator:
     ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         """Stack all symbols into training matrices with targets.
 
-        Target direction: 1 if next-day close > today's close, else 0
-        Target return: (next_close - close) / close
+        Target direction: 1 if close[t+H] > close[t], else 0
+        Target return: (close[t+H] - close[t]) / close[t]
+        where H = prediction_horizon (default 1 = next bar).
 
         Also stores ``_chunk_sizes`` for temporal splitting.
         """
         all_X, all_y_dir, all_y_ret = [], [], []
         chunk_sizes: list[int] = []
+        H = self.prediction_horizon
 
         for symbol, df in features_by_symbol.items():
-            if len(df) < 60 or "close" not in df.columns:
+            if len(df) < max(60, H + 10) or "close" not in df.columns:
                 continue
 
-            # Features (current bar)
-            X = df[self._feature_cols].values[:-1]  # all but last (no target for last)
+            # Features (current bar) — drop last H bars (no target available)
+            X = df[self._feature_cols].values[:-H]
             close = df["close"].values
 
-            # Targets (next bar)
-            next_close = close[1:]
-            current_close = close[:-1]
+            # Targets (H bars ahead)
+            future_close = close[H:]
+            current_close = close[:-H]
 
-            y_dir = (next_close > current_close).astype(int)
-            y_ret = (next_close - current_close) / np.where(
+            y_dir = (future_close > current_close).astype(int)
+            y_ret = (future_close - current_close) / np.where(
                 current_close > 0, current_close, 1.0
             )
 

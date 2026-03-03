@@ -1,4 +1,4 @@
-import { Typography } from 'antd';
+import { Typography, Card } from 'antd';
 import MermaidDiagram from '../components/MermaidDiagram';
 import CollapsibleSection from '../components/CollapsibleSection';
 import FormulaBlock from '../components/FormulaBlock';
@@ -6,10 +6,38 @@ import ThresholdTable from '../components/ThresholdTable';
 import {
   mlSignalGeneration, alphaScanner, breakoutScanner,
   kellySizer, adaptiveExitCascade, regimeDetection, selfEvolution,
+  stateDependentCost,
 } from '../data/mermaidDefinitions';
-import { exitRegimeParams, regimeScales } from '../data/thresholds';
+import { exitRegimeParams, regimeScales, evolutionBounds } from '../data/thresholds';
+import { colors } from '@styles/theme';
 
-const { Title } = Typography;
+const { Title, Text } = Typography;
+
+const featureCategories = [
+  { category: 'Price Action', count: 15, examples: 'ret_1d..ret_20d, log_ret_1d, momentum_accel, range_pct, gap_pct, body_ratio' },
+  { category: 'Trend', count: 8, examples: 'sma_5/10/20/50 (ratio to price), macd/signal/hist, adx_14' },
+  { category: 'Mean Reversion', count: 8, examples: 'rsi_14, rsi_5, bb_position/width, z_score_20/50, stoch_k/d' },
+  { category: 'Volatility', count: 10, examples: 'atr_14, atr_ratio, realized_vol_5/20, parkinson/garman_klass, bb_squeeze' },
+  { category: 'Volume', count: 8, examples: 'vol_sma_ratio, obv_slope, mfi_14, vwap_distance, volume_breakout' },
+  { category: 'Cross-Sectional', count: 5, examples: 'rel_strength_spy, beta_20d, corr_to_market, idio_vol, sector_momentum' },
+  { category: 'Microstructure', count: 5, examples: 'spread_proxy, price_impact, tick_direction, close_location, true_range_pct' },
+  { category: 'Temporal', count: 5, examples: 'day_of_week, month_sin/cos, pct_from_52w_high/low' },
+  { category: 'Regime', count: 4, examples: 'trend_strength, choppiness, hurst, regime_encoded' },
+  { category: 'Momentum Persistence', count: 4, examples: 'ret_autocorr_1/5/10, hurst_exponent' },
+  { category: 'Composite Indicators', count: 7, examples: 'squeeze_momentum, vol_price_div, trend_alignment, institutional_acc, breakout_readiness' },
+];
+
+const sectorMap = [
+  { sector: 'Technology', symbols: 'AAPL, MSFT, NVDA, AMD, AVGO, INTC, MU, ADBE, CRM, SNOW, PLTR', max: '4' },
+  { sector: 'Communication', symbols: 'GOOGL, META, NFLX', max: '4' },
+  { sector: 'Consumer Disc.', symbols: 'AMZN, TSLA, COST, WMT, UBER, ABNB', max: '4' },
+  { sector: 'ETF', symbols: 'SPY, QQQ, IWM, XLK, XLE', max: '4' },
+  { sector: 'Healthcare', symbols: 'LLY', max: '4' },
+  { sector: 'Energy', symbols: 'XOM', max: '4' },
+  { sector: 'Industrials', symbols: 'CAT', max: '4' },
+  { sector: 'Financials', symbols: 'COIN, SQ', max: '4' },
+  { sector: 'Unknown', symbols: 'New scanner finds', max: 'Never blocked' },
+];
 
 const AlgorithmEngineTab = () => (
   <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -41,7 +69,7 @@ calibrated = raw_confidence × multiplier   → capped at 1.0`}
 Modifiers:
   ML Hold penalty:  direction == 0 → composite × 0.30
   Symbol fitness:   composite × (0.5 + fitness) → [0.6×, 1.45×]
-  Min composite:    0.15 | Top-N: 5 candidates`}
+  Min composite:    0.15 | Top-N: 3 candidates (live_engine override)`}
       />
     </CollapsibleSection>
 
@@ -58,22 +86,23 @@ Modifiers:
 
 Bonuses: Squeeze + Volume fired → ×1.30
 Post-filter: composite < 0.20 → filtered out
-Top-N: 8 breakout signals`}
+Top-N: MAX_OPEN_POSITIONS breakout signals (code: 8, docker: 15)`}
       />
     </CollapsibleSection>
 
-    <CollapsibleSection title="Kelly Position Sizer" subtitle="7-step multiplication chain">
+    <CollapsibleSection title="Kelly Position Sizer" subtitle="7-step multiplication chain + cost model">
       <MermaidDiagram definition={kellySizer} />
       <FormulaBlock
         label="Kelly Sizing Formula"
-        formula={`target_weight = (kelly_raw × 0.5)                    # Half-Kelly
+        formula={`target_weight = (kelly_raw × 0.5)                    # Half-Kelly (requires edge-over-cost gate)
               × drawdown_scale(dd)                     # [0.1, 1.0]
-              × vol_scale(stock_vol)                   # [0, 2.0]
-              × regime_scale(regime)                   # [0.1, 1.2]
+              × vol_scale(stock_vol, bars_per_day)     # [0, 2.0] — ann_vol = std × √(252 × bpd)
+              × regime_scale(regime)                   # [0.40, 1.20] hardcoded / [0.05, 1.50] evolved
               × confidence_scale(conf, ml_trained)     # [0.3, 1.5]
               × breakout_bonus(brk_score, ml_trained)  # [1.0, 2.0]
 
-Caps: 10% per position | 95% portfolio | Min $2,000`}
+Caps: 10% per position (intraday: 8%) | 95% portfolio | Min $2,000 (intraday: $500)
+Intraday seasonality: Last 15 min (3:45-4:00 ET) → ALL sizes × 0.60`}
       />
       <ThresholdTable
         data={regimeScales}
@@ -81,6 +110,25 @@ Caps: 10% per position | 95% portfolio | Min $2,000`}
           { title: 'Regime', dataIndex: 'regime', key: 'regime' },
           { title: 'Kelly Scale', dataIndex: 'scale', key: 'scale' },
         ]}
+      />
+    </CollapsibleSection>
+
+    <CollapsibleSection title="State-Dependent Cost Model" subtitle="Per-symbol dynamic spread cost → edge-over-cost gate">
+      <MermaidDiagram definition={stateDependentCost} />
+      <FormulaBlock
+        label="Edge-Over-Cost Gate"
+        formula={`spread_cost = _estimate_spread_cost(symbol, quote_provider, features)
+           = base_spread × time_mult × liquidity_mult
+           → Clamped to [3bps, 50bps]
+
+edge_clears_cost = predicted_return >= spread_cost × 2
+
+If NOT edge_clears_cost AND kelly < 0.005 → kelly = 0 (skip)
+Breakout floor: kelly < 0.005 AND score >= 0.55 AND edge_clears_cost
+  → kelly_half = max(kelly, 0.003 × breakout_score)
+ML floor: kelly < 0.005 AND conf >= 0.5 AND regime_has_edge AND edge_clears_cost
+  → Trained:   kelly_half = max(kelly, 0.04 × confidence)
+  → Untrained: kelly_half = max(kelly, 0.02 × confidence)`}
       />
     </CollapsibleSection>
 
@@ -124,6 +172,56 @@ max_delta = |old| × 0.20 + 0.005     # max 20% shift per step
 clamped_delta = clamp(delta, -max_delta, max_delta)
 result = old + clamped_delta`}
       />
+      <ThresholdTable
+        data={evolutionBounds}
+        columns={[
+          { title: 'Parameter', dataIndex: 'parameter', key: 'parameter', render: (v: string) => <code>{v}</code> },
+          { title: 'Lower Bound', dataIndex: 'lower', key: 'lower' },
+          { title: 'Upper Bound', dataIndex: 'upper', key: 'upper' },
+        ]}
+      />
+      <Card size="small" style={{ background: colors.backgrounds.tertiary, marginTop: 12 }}>
+        <Text style={{ color: colors.text.secondary, fontSize: 13 }}>
+          Hard floor enforcement on restore: high_vol {'>='} 0.70, stress {'>='} 0.30.
+          Breakout weights re-normalized to sum=1.0 after each step, clamped to [0.10, 0.40].
+        </Text>
+      </Card>
+    </CollapsibleSection>
+
+    <CollapsibleSection title="Universe & Sector Management" subtitle="Dynamic rotation + 8 GICS sectors + market scanner">
+      <FormulaBlock
+        label="Universe Rotation (on retrain)"
+        formula={`fitness = 0.6 × win_rate + 0.4 × (0.5 + pnl_norm/2)
+Decay all fitness toward 0.50 (×0.95)
+DROP: up to 5 symbols (no open position, >= 3 trades, fitness < 0.40)
+ADD:  up to 10 symbols (not active, fitness >= 0.50, >= 3 rotations)
+Bounds: [15, 80] symbols — NEVER drop with open positions`}
+      />
+      <ThresholdTable
+        data={sectorMap}
+        columns={[
+          { title: 'Sector', dataIndex: 'sector', key: 'sector' },
+          { title: 'Symbols', dataIndex: 'symbols', key: 'symbols', render: (v: string) => <Text style={{ fontSize: 12 }}>{v}</Text> },
+          { title: 'Max Positions', dataIndex: 'max', key: 'max' },
+        ]}
+      />
+    </CollapsibleSection>
+
+    <CollapsibleSection title="Feature Engineering (79 Features)" subtitle="11 categories across ml_features.py + composite_indicators.py">
+      <ThresholdTable
+        data={featureCategories}
+        columns={[
+          { title: 'Category', dataIndex: 'category', key: 'category', render: (v: string) => <Text strong>{v}</Text> },
+          { title: 'Count', dataIndex: 'count', key: 'count', width: 70 },
+          { title: 'Examples', dataIndex: 'examples', key: 'examples', render: (v: string) => <Text style={{ fontSize: 12, color: colors.text.secondary }}>{v}</Text> },
+        ]}
+      />
+      <Card size="small" style={{ background: colors.backgrounds.tertiary, marginTop: 12 }}>
+        <Text style={{ color: colors.text.secondary, fontSize: 13 }}>
+          Global NaN safety: inf → NaN → 0.0 (end of compute_ml_features).
+          QA gates: missing bars {'>'} 10% = issue, NaN rate {'>'} 20% = issue, outliers {'>'} 5 (10 std) = issue.
+        </Text>
+      </Card>
     </CollapsibleSection>
   </div>
 );

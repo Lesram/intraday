@@ -14,7 +14,7 @@ const tiers = [
     name: 'Backend',
     color: colors.semantic.profit,
     items: ['FastAPI + async SQLAlchemy', 'Python 3.12', 'Port 8000'],
-    desc: '152+ REST endpoints, Socket.IO, WebSocket Manager',
+    desc: '210+ REST endpoints, Socket.IO, WebSocket Manager',
   },
   {
     name: 'Data Layer',
@@ -151,6 +151,66 @@ const SystemOverviewTab = ({ onNavigateTab }: SystemOverviewTabProps) => (
               <div>MULTI_STRATEGY_LIVE_ENABLED=1</div>
               <div>10 independent strategies (300s)</div>
               <div>OrganismRunner governance hooks</div>
+            </div>
+          </Card>
+        </Col>
+      </Row>
+    </Card>
+
+    <Card title="3 Risk Management Layers" size="small" style={{ background: colors.backgrounds.secondary }}>
+      <Row gutter={16}>
+        <Col xs={24} md={8}>
+          <Card size="small" style={{ background: colors.backgrounds.tertiary, borderColor: colors.semantic.profit }}>
+            <Text strong style={{ color: colors.semantic.profit }}>Platform RiskManager</Text>
+            <div style={{ marginTop: 8, color: colors.text.secondary, fontSize: 13 }}>
+              <div>DB-backed (services/risk_manager.py)</div>
+              <div>Daily loss limit ($5K), drawdown 10%</div>
+              <div>Emergency stop endpoint</div>
+            </div>
+          </Card>
+        </Col>
+        <Col xs={24} md={8}>
+          <Card size="small" style={{ background: colors.backgrounds.tertiary, borderColor: colors.brand.primary }}>
+            <Text strong style={{ color: colors.brand.primary }}>AsyncRiskManager</Text>
+            <div style={{ marginTop: 8, color: colors.text.secondary, fontSize: 13 }}>
+              <div>VaR/CVaR (risk/risk_manager.py)</div>
+              <div>3 profiles: strict / staging / relaxed</div>
+              <div>Position limit 50%, sector limits</div>
+            </div>
+          </Card>
+        </Col>
+        <Col xs={24} md={8}>
+          <Card size="small" style={{ background: colors.backgrounds.tertiary, borderColor: colors.semantic.warning }}>
+            <Text strong style={{ color: colors.semantic.warning }}>Organism Governance</Text>
+            <div style={{ marginTop: 8, color: colors.text.secondary, fontSize: 13 }}>
+              <div>Brain-persisted (organism/governance.py)</div>
+              <div>Drawdown kill: 5%/3%/8%</div>
+              <div>Adaptive cooldown, change budget</div>
+            </div>
+          </Card>
+        </Col>
+      </Row>
+    </Card>
+
+    <Card title="Dual WebSocket Stacks" size="small" style={{ background: colors.backgrounds.secondary }}>
+      <Row gutter={16}>
+        <Col xs={24} md={12}>
+          <Card size="small" style={{ background: colors.backgrounds.tertiary, borderColor: colors.brand.primary }}>
+            <Text strong style={{ color: colors.brand.primary }}>Socket.IO (ASGI mount)</Text>
+            <div style={{ marginTop: 8, color: colors.text.secondary, fontSize: 13 }}>
+              <div>Order status + portfolio updates</div>
+              <div>Strategy state + settings broadcasts</div>
+              <div>JWT auth, topic-based rooms, 25s ping</div>
+            </div>
+          </Card>
+        </Col>
+        <Col xs={24} md={12}>
+          <Card size="small" style={{ background: colors.backgrounds.tertiary, borderColor: colors.semantic.profit }}>
+            <Text strong style={{ color: colors.semantic.profit }}>Native FastAPI WebSocket</Text>
+            <div style={{ marginTop: 8, color: colors.text.secondary, fontSize: 13 }}>
+              <div>Market data stream + scanner</div>
+              <div>Per-client queue (100), drop oldest</div>
+              <div>Heartbeat 30s, stale timeout 60s</div>
             </div>
           </Card>
         </Col>

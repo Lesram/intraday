@@ -245,6 +245,19 @@ class FilteringSummary:
     passed_position_limit: int = 0
     kelly_sized: int = 0
     orders_submitted: int = 0
+    # Gate-level rejection counters
+    rejected_by_open_position: int = 0
+    rejected_by_exit_cooldown: int = 0
+    rejected_by_pending_entry: int = 0
+    rejected_by_entry_metadata: int = 0
+    rejected_by_long_only: int = 0
+    rejected_by_sector_gate: int = 0
+    rejected_by_fitness_gate: int = 0
+    rejected_by_liquidity: int = 0
+    rejected_by_missingness: int = 0
+    rejected_by_cost_gate: int = 0
+    rejected_by_min_notional: int = 0
+    entries_blocked_reason: str = ""
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -260,6 +273,20 @@ class FilteringSummary:
             "passed_position_limit": self.passed_position_limit,
             "kelly_sized": self.kelly_sized,
             "orders_submitted": self.orders_submitted,
+            "rejections": {
+                "open_position": self.rejected_by_open_position,
+                "exit_cooldown": self.rejected_by_exit_cooldown,
+                "pending_entry": self.rejected_by_pending_entry,
+                "entry_metadata": self.rejected_by_entry_metadata,
+                "long_only": self.rejected_by_long_only,
+                "sector_gate": self.rejected_by_sector_gate,
+                "fitness_gate": self.rejected_by_fitness_gate,
+                "liquidity": self.rejected_by_liquidity,
+                "missingness": self.rejected_by_missingness,
+                "cost_gate": self.rejected_by_cost_gate,
+                "min_notional": self.rejected_by_min_notional,
+            },
+            "entries_blocked_reason": self.entries_blocked_reason,
         }
 
 

@@ -26,7 +26,7 @@ flowchart TD
 
 export const exitDecisionTree = `
 flowchart TD
-  START([Exit Check]) --> P0{P0: PnL <= -15%?}
+  START([Exit Check]) --> P0{P0: PnL <= -8%?}
   P0 -->|Yes| SAFETY[Safety Net EXIT]
   P0 -->|No| P1{P1: Price <= Stop?}
   P1 -->|Yes| STOP[Hard Stop EXIT]
@@ -38,9 +38,15 @@ flowchart TD
   P3 -->|Yes| FULLTP[Full TP EXIT]
   P3 -->|No| P4{P4: Trail stop hit?}
   P4 -->|Yes| TRAIL[Trailing Stop EXIT]
-  P4 -->|No| P5{P5: Time expired?}
-  P5 -->|Yes & in profit| TIME[Time EXIT]
-  P5 -->|No| P6[P6: Time decay tightens stop]
+  P4 -->|No| P4B{"P4b: Failure to follow?
+  25% of max_bars, R < 0.5"}
+  P4B -->|Yes| FTF[Failure-to-Follow EXIT]
+  P4B -->|No| P5{P5: Time expired?}
+  P5 -->|"Yes & in profit"| TIME[Time EXIT]
+  P5 -->|No| P5B{"P5b: Loser time-stop?
+  1.5× max_bars & PnL <= 0"}
+  P5B -->|Yes| LOSER[Loser Time-Stop EXIT]
+  P5B -->|No| P6[P6: Time decay tightens stop]
   P6 --> P7{P7: Stress regime?}
   P7 -->|Yes| STRESS[Tighten stop 40%]
   P7 -->|No| HOLD([No exit])
@@ -50,6 +56,8 @@ flowchart TD
   style FULLTP fill:#52c41a,color:#fff
   style TRAIL fill:#faad14,color:#000
   style PARTIAL fill:#1890ff,color:#fff
+  style FTF fill:#faad14,color:#000
+  style LOSER fill:#f5222d,color:#fff
   style HOLD fill:#374151,color:#fff
 `;
 
@@ -123,7 +131,7 @@ flowchart TD
   MOD --> FIT["Fitness → ×(0.5+f)"]
 
   FIT --> GATE{"Composite >= 0.15?"}
-  GATE -->|Yes| TOP5[Top 5 Candidates]
+  GATE -->|Yes| TOP5[Top 3 Candidates]
   GATE -->|No| REJECT[Rejected]
 
   style TOP5 fill:#52c41a,color:#fff
@@ -151,10 +159,12 @@ flowchart TD
   BONUS -->|No| RAW[Raw score]
   BOOST --> FILTER{"Composite >= 0.20?"}
   RAW --> FILTER
-  FILTER -->|Yes| TOP8[Top 8 Signals]
+  FILTER -->|Yes| TOP8[Top N Signals]
   FILTER -->|No| DROP[Dropped]
 
   style TOP8 fill:#52c41a,color:#fff
+  TOP8 -.->|"N = MAX_OPEN_POSITIONS (15)"| NOTE[ ]
+  style NOTE fill:none,stroke:none
   style DROP fill:#f5222d,color:#fff
 `;
 
@@ -205,17 +215,25 @@ export const regimeDetection = `
 flowchart LR
   DATA[Raw Data] --> S1[Trend Slope]
   DATA --> S2[Price vs SMA]
-  DATA --> S3[ATR + Vol]
-  DATA --> S4[Volume Anomaly]
+  DATA --> S3[ATR Volatility]
+  DATA --> S4[Returns Vol]
+  DATA --> S5[Volume Anomaly]
 
   S1 --> SCORES[Raw Scores]
   S2 --> SCORES
   S3 --> SCORES
   S4 --> SCORES
+  S5 --> SCORES
 
   SCORES --> SOFTMAX[Softmax]
   SOFTMAX --> EMA["EMA Smoothing α=0.3"]
-  EMA --> ARGMAX[argmax]
+  EMA --> PRIORITY{"3-Tier Priority"}
+  PRIORITY -->|"1. Cross-Asset"| CA[Sector ETF Breadth]
+  PRIORITY -->|"2. SPY-Based"| SPY[SPY Features]
+  PRIORITY -->|"3. Aggregate"| AGG[All Symbols Avg]
+  CA --> ARGMAX[argmax]
+  SPY --> ARGMAX
+  AGG --> ARGMAX
   ARGMAX --> LABEL{Regime Label}
 
   LABEL --> TU[trending_up]
@@ -283,7 +301,7 @@ flowchart TD
   DISPATCH --> SEND[Send to Alpaca]
   SEND --> OK{Success?}
   OK -->|Yes| MARK[Mark dispatched]
-  OK -->|No| RETRY{Attempts < 3?}
+  OK -->|No| RETRY{Attempts < 5?}
   RETRY -->|Yes| BACKOFF["Backoff: 2^attempt × 1s"]
   BACKOFF --> SEND
   RETRY -->|No| DLQ[Move to DLQ]
@@ -431,4 +449,84 @@ sequenceDiagram
   SCH->>SCH: schedule tick every 10s
   SCH->>SCH: schedule diagnostics (pre-open/post-close)
   Note over SCH,ENG: Engine is now live
+`;
+
+// ── New: State-Dependent Cost Model ─────────────────────────
+
+export const stateDependentCost = `
+flowchart TD
+  QUOTE["Real-Time Quote (bid/ask)"] --> BASE["base_spread = (ask-bid)/mid"]
+  NOQUOTE["No Quote Available"] --> FALLBACK["Fallback: 10bps"]
+  BASE --> MULT["Apply Multipliers"]
+  FALLBACK --> MULT
+
+  MULT --> TIME["time_mult (time of day)"]
+  MULT --> LIQ["liquidity_mult (volume ratio)"]
+
+  TIME --> CALC["spread_cost = base × time × liquidity"]
+  LIQ --> CALC
+
+  CALC --> CLAMP["Clamp to [3bps, 50bps]"]
+  CLAMP --> GATE{"predicted_return >= cost × 2?"}
+  GATE -->|Yes| PASS([Edge Clears Cost])
+  GATE -->|No| BLOCK([Skip — Insufficient Edge])
+
+  subgraph Time Multipliers
+    T1["Pre-market: 2.0×"]
+    T2["Open (9:30-9:45): 1.5×"]
+    T3["Morning: 0.9×"]
+    T4["Midday: 1.0×"]
+    T5["Afternoon: 0.95×"]
+    T6["Close (3:45-4:00): 1.3×"]
+    T7["After-hours: 2.5×"]
+  end
+
+  style PASS fill:#52c41a,color:#fff
+  style BLOCK fill:#f5222d,color:#fff
+  style CLAMP fill:#1890ff,color:#fff
+`;
+
+// ── New: Entry Scanning Pipeline ─────────────────────────────
+
+export const entryScanningPipeline = `
+flowchart TD
+  START([Phase 7: Entry Scan]) --> BRK["7a: Breakout Scan
+  6 detectors → Top N signals"]
+  BRK --> ML["7b: ML Predictions
+  Batch predict all symbols"]
+  ML --> ALPHA["7c: Alpha Scan
+  7-factor composite → Top 3"]
+  ALPHA --> GATES["7d: Filter (8 Gates)"]
+
+  GATES --> G1{Already have position?}
+  G1 -->|No| G2{In exit cooldown?}
+  G2 -->|No| G3{Pending entry order?}
+  G3 -->|No| G4{In entry_metadata?}
+  G4 -->|No| G5{LONG_ONLY + short?}
+  G5 -->|No| G6{Sector gate 4/sector?}
+  G6 -->|No| G7{Fitness < 0.45?}
+  G7 -->|No| G8{Liquidity < 10K vol?}
+
+  G1 -->|Yes| REJ[REJECT]
+  G2 -->|Yes| REJ
+  G3 -->|Yes| REJ
+  G4 -->|Yes| REJ
+  G5 -->|Yes| REJ
+  G6 -->|Yes| REJ
+  G7 -->|Yes| REJ
+  G8 -->|Yes| REJ
+
+  G8 -->|No| CONF["Blended Confidence
+  0.50×ML + 0.30×breakout + 0.20×tension"]
+
+  CONF --> PURE["7e: Pure Breakout Additions
+  Max 2/tick, score >= 0.55"]
+
+  PURE --> SORT["7f: Sort by score×confidence
+  Truncate to available slots"]
+
+  style START fill:#1890ff,color:#fff
+  style REJ fill:#f5222d,color:#fff
+  style SORT fill:#52c41a,color:#fff
+  style CONF fill:#faad14,color:#000
 `;

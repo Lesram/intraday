@@ -38,6 +38,9 @@ class PositionSize:
     vol_scale: float            # Volatility-target multiplier
     regime_scale: float         # Regime-based multiplier
     direction: float            # +1 long, -1 short
+    confidence: float = 0.0
+    predicted_return: float = 0.0
+    breakout_score: float = 0.0
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -51,6 +54,9 @@ class PositionSize:
             "vol_scale": round(self.vol_scale, 4),
             "regime_scale": round(self.regime_scale, 4),
             "direction": self.direction,
+            "confidence": round(self.confidence, 4),
+            "predicted_return": round(self.predicted_return, 6),
+            "breakout_score": round(self.breakout_score, 4),
         }
 
 
@@ -179,6 +185,7 @@ class KellySizer:
         sizes: list[PositionSize] = []
         total_weight = 0.0
         self._last_intermediates = {}
+        self._exploration_rejects: list[dict[str, Any]] = []
 
         for cand in candidates:
             symbol = cand["symbol"]
@@ -338,6 +345,11 @@ class KellySizer:
                 target_weight = max(0.0, self.max_portfolio_pct - total_weight)
 
             if target_weight < 0.0005:  # was 0.001 — too aggressive in stress
+                self._exploration_rejects.append({
+                    "symbol": symbol, "reason": "weight_too_small",
+                    "confidence": confidence, "breakout_score": breakout_score,
+                    "predicted_return": predicted_return, "direction": direction,
+                })
                 continue
 
             # Convert to shares
@@ -348,6 +360,11 @@ class KellySizer:
             notional = portfolio_value * target_weight
             if notional < self.min_position_usd:
                 _logger.info("Kelly skip %s: notional=%.0f < min=%d", symbol, notional, self.min_position_usd)
+                self._exploration_rejects.append({
+                    "symbol": symbol, "reason": "below_min_notional",
+                    "confidence": confidence, "breakout_score": breakout_score,
+                    "predicted_return": predicted_return, "direction": direction,
+                })
                 continue
 
             shares = int(notional / current_price)
@@ -370,6 +387,9 @@ class KellySizer:
                 vol_scale=vol_scale,
                 regime_scale=regime_scale,
                 direction=direction,
+                confidence=confidence,
+                predicted_return=predicted_return,
+                breakout_score=breakout_score,
             ))
 
         sizes.sort(key=lambda s: s.target_weight, reverse=True)
