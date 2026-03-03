@@ -171,7 +171,7 @@ class RegimeDetector:
 
         # Volatility
         atr_ratio = 0.02  # default moderate
-        for c in ["atr_ratio", "ATR_ratio", "atr_14_ratio"]:
+        for c in ["atr_14", "atr_14_ratio", "ATR_ratio"]:
             if c in features_df.columns:
                 val = features_df[c].iloc[-1]
                 if not pd.isna(val):

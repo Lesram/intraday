@@ -393,7 +393,9 @@ class OrganismLiveEngine:
         self._PENDING_ENTRY_TICKS = 30  # Wait 30 ticks (~5 min) per-symbol cooldown (was 15)
 
         # Liquidity gate — block entries on illiquid symbols (seed universe bypass)
-        self._MIN_AVG_VOLUME = 500_000
+        # NOTE: This is per-bar volume, not daily. For 1-min bars, mega-caps
+        # do 50K-200K/bar. 10K/bar ≈ 3.9M daily — filters out true penny stocks.
+        self._MIN_AVG_VOLUME = 10_000
 
         # Symbols with pending exit orders — prevents duplicate exits across
         # ticks while the broker is still processing the exit.
@@ -1637,7 +1639,7 @@ class OrganismLiveEngine:
                         )
 
                         # Use filled qty from broker response when available
-                        # (IOC orders may partially fill)
+                        # (partial fills may occur)
                         filled_shares = initial_shares
                         if isinstance(order_result, dict):
                             filled_qty = order_result.get("filled_qty")
@@ -2419,7 +2421,7 @@ class OrganismLiveEngine:
             qty=shares,
             idempotency_key=idem_key,
             order_type="market",
-            tif="ioc",
+            tif="day",
             attributes={
                 "source": "organism",
                 "reason": reason,
