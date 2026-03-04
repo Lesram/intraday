@@ -154,7 +154,7 @@ G. [ORM Models & Configuration](#g-orm-models--configuration)
 │  │   Port 5432 (localhost)  │    │   Port 6379 (localhost)                 │    │
 │  │   DB: algotrading        │    │   256MB maxmemory                       │    │
 │  │   User: trading          │    │   allkeys-lru eviction                  │    │
-│  │   24 tables              │    │   AOF persistence                       │    │
+│  │   25 tables              │    │   AOF persistence                       │    │
 │  └──────────────────────────┘    └──────────────────────────────────────────┘    │
 │                                                                                  │
 │  ┌──────────────────────────────────────────────────────────────────────────┐    │
@@ -683,6 +683,9 @@ PRE-SCAN GATES (NOTE: these are scattered across the tick, not a single block)
   ├── Equity-zero gate [step 4, AFTER data fetch + regime]: 3+ consecutive zero-equity readings → entries_blocked
   │   (_EQUITY_ZERO_THRESHOLD = 3 — detects stale broker data; auto-recovers)
   │
+  ├── Background training timeout: _BG_TRAINING_TIMEOUT_TICKS = 30 (~5 min at 10s/tick)
+  │   (auto-cancels stuck background retrain jobs)
+  │
   ├── Opening 30-min block [AFTER exit checks] (intraday only):
   │   └── 9:30-10:00 AM ET → entries_blocked = True
   │       (avoids noisy open auction; lets regime/features stabilize)
@@ -878,11 +881,11 @@ KELLY SIZING PIPELINE
   │   │   └── Ensures cold-start positions are meaningfully sized, not microscopic
   │   │
   │   ├── CAPS + FILTERS:
-  │   │   ├── Per-position cap: 10% of equity
+  │   │   ├── Per-position cap: 8% intraday / 10% daily (of equity)
   │   │   ├── Portfolio cap: running total cannot exceed 95%
   │   │   ├── Minimum weight: 0.05%
   │   │   │   └── Rejects captured in _exploration_rejects (reason="weight_too_small")
-  │   │   ├── Minimum notional: $2,000
+  │   │   ├── Minimum notional: $500 intraday / $2,000 daily
   │   │   │   └── Rejects captured in _exploration_rejects (reason="below_min_notional")
   │   │   └── Minimum shares: 1
   │   │
@@ -4230,8 +4233,8 @@ StalenessReasons (enum):
 | Kelly confidence cap (untrained) | 0.9 | kelly_sizer | Confidence scaling ceiling when ML untrained (was 0.6 — prevented cold-start sizing) |
 | Kelly risk-budget floor | 0.25% equity / (atr × 1.5) | kelly_sizer | Pre-Kelly sizing floor when trade_count < 200 |
 | Kelly raw cap | 1.0 (100%) | kelly_sizer | Prevents oversized raw Kelly fractions |
-| Kelly min notional | $2,000 | kelly_sizer | Minimum position size |
-| Kelly max per position | 10% | kelly_sizer | Position concentration limit |
+| Kelly min notional | $500 intraday / $2,000 daily | kelly_sizer | Minimum position size (set by live_engine per timeframe) |
+| Kelly max per position | 8% intraday / 10% daily | kelly_sizer | Position concentration limit (set by live_engine per timeframe) |
 | Kelly max portfolio | 95% | kelly_sizer | Total exposure limit |
 | Drawdown risk-off | 25% | kelly_sizer | No new positions at all |
 | Drawdown kill switch | code: 5%, docker: 3%, .env: 8% | governance | Halt all entries |
@@ -4374,7 +4377,7 @@ StalenessReasons (enum):
 | `performance.py` | LRU cache, batch processor, ring buffer |
 | `production.py` | Health checks, graceful shutdown, feature flags |
 | `resilience.py` | Circuit breaker, retry with backoff |
-| `schemas.py` | SQLAlchemy ORM models (24 tables) |
+| `schemas.py` | SQLAlchemy ORM models (25 tables, incl. TickTelemetry) |
 | `security.py` | JWT auth, bcrypt, RBAC, token blacklist |
 | `security_hardening.py` | Rate limit, security headers, input validation |
 | `unified_database.py` | DEPRECATED — migrated to `infra/db.py` |

@@ -290,7 +290,7 @@ def compute_ml_features(
     f["true_range_pct"] = _true_range(h, l, c) / c.replace(0, 1e-10)
 
     # ═══════════════════════════════════════════════════════
-    # TEMPORAL (4)
+    # TEMPORAL (5)
     # ═══════════════════════════════════════════════════════
     if "timestamp" in f.columns:
         ts = pd.to_datetime(f["timestamp"])
