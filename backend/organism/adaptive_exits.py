@@ -52,6 +52,7 @@ class ExitLevels:
     # ── v3 additions (improve4) ──
     last_bar_time: str = ""          # Timestamp of last bar boundary seen
     prediction_horizon: int = 15     # ML prediction horizon in bars
+    price_at_prior_bar: float = 0.0  # Price at previous bar (for FTF momentum check)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -72,6 +73,7 @@ class ExitLevels:
             "profit_locked": self.profit_locked,
             "last_bar_time": self.last_bar_time,
             "prediction_horizon": self.prediction_horizon,
+            "price_at_prior_bar": round(self.price_at_prior_bar, 4),
         }
 
 
@@ -378,7 +380,9 @@ class AdaptiveExitEngine:
         if not is_new_bar:
             return ExitSignal(False)
 
-        # ── NEW BAR: advance bars_held and run all profit/time exits ──
+        # ── NEW BAR: advance bars_held, update prior-bar price tracker ──
+        _prev_price = levels.price_at_prior_bar
+        levels.price_at_prior_bar = current_price
         levels.bars_held += 1
 
         # 1a. MINIMUM HOLD TIME — all profit exits require minimum bars held.
@@ -407,24 +411,30 @@ class AdaptiveExitEngine:
             return trail_signal
 
         # 4b. Failure to follow through — horizon-delay + regime-dependent R.
-        # Disabled for trending_up and low_vol — let winners run in favorable regimes.
-        # Wait at least H//2 bars (half the prediction horizon) before checking.
+        # Disabled for trending_up, low_vol, and high_vol — let winners run.
+        # Wait at least H//2 bars, AND confirm lack of momentum (improve5).
         max_bars = self.REGIME_MAX_BARS.get(current_regime, self.max_bars_held)
-        _FTF_DISABLED_REGIMES = {"trending_up", "low_vol"}
+        _FTF_DISABLED_REGIMES = {"trending_up", "low_vol", "high_vol"}
         if current_regime not in _FTF_DISABLED_REGIMES:
             early_check = max(levels.prediction_horizon // 2, 3)
             if levels.bars_held >= early_check and not levels.trailing_active:
                 pnl_dir = (current_price - levels.entry_price) * direction
                 initial_risk = max(abs(levels.entry_price - levels.stop_loss), 0.01)
                 r_achieved = pnl_dir / initial_risk
-                # Regime-dependent R threshold
+                # Regime-dependent R threshold (lowered from 0.25→0.15)
                 _FTF_R_THRESHOLDS = {
-                    "chop": 0.25, "high_vol": 0.25,
-                    "stress": 0.15,
-                    "trending_down": 0.35, "unknown": 0.35,
+                    "chop": 0.15,
+                    "stress": 0.10,
+                    "trending_down": 0.25, "unknown": 0.25,
                 }
-                r_threshold = _FTF_R_THRESHOLDS.get(current_regime, 0.35)
-                if r_achieved < r_threshold:
+                r_threshold = _FTF_R_THRESHOLDS.get(current_regime, 0.25)
+                # Momentum confirmation: only fire FTF if price hasn't
+                # improved since prior bar (no positive momentum).
+                _has_momentum = (
+                    _prev_price > 0
+                    and (current_price - _prev_price) * direction > 0
+                )
+                if r_achieved < r_threshold and not _has_momentum:
                     return ExitSignal(True, "failure_to_follow", current_price)
 
         # 5. Time-based exit (regime-adaptive — disabled in trending)

@@ -469,10 +469,10 @@ FOR EACH OPEN POSITION:
   └── PATH C: Normal exit check (features + exit_levels both available)
       │
       ├── Bar boundary detection (per symbol):
-      │   ├── Extract timestamp from features_df (column or index)
-      │   ├── Compare to _last_bar_times[symbol]
-      │   ├── is_new_bar = True when timestamp changes (or first tick)
-      │   └── Update _last_bar_times[symbol] on every tick
+      │   ├── Use wall-clock UTC minute boundary (not Alpaca bar timestamp — avoids 2-3 min lag)
+      │   ├── Compare current minute to _last_bar_times[symbol]
+      │   ├── is_new_bar = True when minute changes (exactly 1 bar per minute)
+      │   └── Update _last_bar_times[symbol] on new bar only
       │
       ├── Run adaptive exit engine: check_exit(exit_levels, price, regime, is_new_bar)
       │   │
@@ -524,12 +524,13 @@ FOR EACH OPEN POSITION:
       │   │   ├── Horizon delay: early_check = max(prediction_horizon // 2, 3)
       │   │   │   For H=15: don't check until bar 7 (7 min)
       │   │   ├── Only checked when trailing NOT yet active
+      │   │   ├── Momentum confirmation: FTF only fires if price has NOT improved since prior bar
       │   │   ├── Regime-dependent R thresholds:
-      │   │   │   ├── trending_up / low_vol: **DISABLED** (let winners run in favorable regimes)
-      │   │   │   ├── chop / high_vol: 0.25R
-      │   │   │   ├── stress: 0.15R
-      │   │   │   └── trending_down / unknown: 0.35R
-      │   │   └── If R_achieved < R_threshold → EXIT, reason: "failure_to_follow"
+      │   │   │   ├── trending_up / low_vol / high_vol: **DISABLED** (let winners run)
+      │   │   │   ├── chop: 0.15R
+      │   │   │   ├── stress: 0.10R
+      │   │   │   └── trending_down / unknown: 0.25R
+      │   │   └── If R_achieved < R_threshold AND no positive momentum → EXIT, reason: "failure_to_follow"
       │   │
       │   ├── Priority 5: TIME-BASED EXIT (regime-adaptive, 1-min bar units)
       │   │   ├── max_bars varies by regime (0=disabled for trending_up AND low_vol; trending_down=45)
@@ -606,11 +607,11 @@ These override the base class defaults when the engine calls `AdaptiveExitEngine
 | `_LOSER_MAX_FALLBACK` | **120** (2 hours) | Loser time-stop uses 120 bars when max_bars=0. Was 200 ticks (~33 min). |
 | `TIME_DECAY_RATE` | **0.003** (0.3%/bar) | Tightens stop after decay_start bars. Was 1%/tick (6× too fast). |
 | Time decay floor | 0.6 | Maximum 40% tightening from time decay |
-| Failure-to-follow R thresholds | Regime-dependent | trending_up/low_vol=**disabled**, chop/high_vol=0.25R, stress=0.15R, others=0.35R |
+| Failure-to-follow R thresholds | Regime-dependent | trending_up/low_vol/high_vol=**disabled**, chop=0.15R, stress=0.10R, others=0.25R; momentum-confirmed |
 | Failure-to-follow delay | `max(H//2, 3)` = **7** for H=15 | Don't check until bar 7. Was ~25% of max_bars. |
 | ATR fallback | 2% of entry | Used when ATR data unavailable |
 | ATR computation | EMA-based (α=2/(period+1)), init=mean of first period TRs | Falls back to abs(close.diff()).mean() |
-| `is_new_bar` | per-symbol timestamp tracking | Risk checks (max_loss, stop_loss) run every 10s tick; all other exits only on new 1-min bars |
+| `is_new_bar` | wall-clock UTC minute boundary | Risk checks (max_loss, stop_loss) run every 10s tick; all other exits only on new 1-min bars. Uses wall clock (not Alpaca bar timestamp) for consistent 1-bar/min counting. |
 
 **Exit levels brain persistence**: ExitLevels (trailing state, partial_tp_taken, stress_tightened, profit_locked, last_bar_time, prediction_horizon flags) are saved to `extra_counters["exit_levels"]` and restored on startup. Symbols with brain-restored exit levels skip `_reconstruct_position_state()` to preserve richer state.
 
@@ -1348,7 +1349,8 @@ ExitLevels fields:
   symbol, direction, entry_price, stop_loss, take_profit, trailing_stop,
   atr_at_entry, regime_at_entry, highest_favorable, bars_held (1-min bars, NOT 10s ticks),
   partial_tp_price, partial_tp_taken, trailing_active, stress_tightened, profit_locked,
-  last_bar_time (v3: bar boundary tracking), prediction_horizon (v3: ML horizon, default=15)
+  last_bar_time (v3: bar boundary tracking), prediction_horizon (v3: ML horizon, default=15),
+  price_at_prior_bar (v4: FTF momentum confirmation — tracks price at previous bar)
 ```
 
 ### Exit Level Creation from Entry
@@ -4243,7 +4245,7 @@ StalenessReasons (enum):
 | NaN missingness gate | 25% | live_engine | Block entries when >25% features are NaN/Inf |
 | Feature QA missing bars | 10% | feature_store | Flag data quality issue |
 | Failure-to-follow delay | max(H//2, 3) = **7 bars** for H=15 | adaptive_exits | Horizon-aware delay before checking follow-through |
-| Failure-to-follow R thresholds | regime-dependent (0.15R–0.35R) | adaptive_exits | trending_up/low_vol=disabled, chop/high_vol=0.25R, stress=0.15R, others=0.35R |
+| Failure-to-follow R thresholds | regime-dependent (0.10R–0.25R) | adaptive_exits | trending_up/low_vol/high_vol=disabled, chop=0.15R, stress=0.10R, others=0.25R; momentum-confirmed |
 | Loser time-stop fallback | **120 bars** (2 hours) | adaptive_exits | Used when max_bars=0 (trending_up, low_vol). Was 200 ticks (~33 min). |
 | Time decay rate | **0.3%/bar** | adaptive_exits | Tightens stop after decay_start. Was 1%/tick (6× too fast). |
 | Entry slippage cap | 0.1% | live_engine | Marketable limit orders cap slippage at 0.1% above ask / below bid |
@@ -4310,7 +4312,7 @@ StalenessReasons (enum):
 | Module | Purpose |
 |---|---|
 | `live_engine.py` | Core tick loop, telemetry, trade reconstruction |
-| `adaptive_exits.py` | ATR-based exits, 15% base safety net (8% via for_timeframe), failure-to-follow (regime R thresholds, delay=H//2), loser time-stop (fallback=120), bar-boundary gating, regime-adaptive |
+| `adaptive_exits.py` | ATR-based exits, 15% base safety net (8% via for_timeframe), failure-to-follow (momentum-confirmed, regime R thresholds, delay=H//2, disabled for trending_up/low_vol/high_vol), loser time-stop (fallback=120), wall-clock bar-boundary gating, regime-adaptive |
 | `alpha_scanner.py` | 7-factor alpha scoring, top-3 candidates (live_engine overrides default of 5) |
 | `attribution.py` | Per-strategy reward signals from DB fills |
 | `background_trainer.py` | ProcessPoolExecutor ML retraining |

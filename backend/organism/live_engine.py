@@ -623,6 +623,7 @@ class OrganismLiveEngine:
                             profit_locked=bool(lvl_data.get("profit_locked", False)),
                             last_bar_time=str(lvl_data.get("last_bar_time", "")),
                             prediction_horizon=int(lvl_data.get("prediction_horizon", PREDICTION_HORIZON)),
+                            price_at_prior_bar=float(lvl_data.get("price_at_prior_bar", 0.0)),
                         )
                     except (KeyError, ValueError, TypeError) as e:
                         logger.debug("Cannot restore exit levels for %s: %s", sym, e)
@@ -1222,16 +1223,14 @@ class OrganismLiveEngine:
                 exit_levels = self._exit_levels.get(sym)
                 current_price = float(feat_df["close"].iloc[-1])
 
-                # Bar boundary detection: compare latest bar timestamp
-                # to the last seen timestamp for this symbol.
-                _bar_ts = ""
-                if "timestamp" in feat_df.columns:
-                    _bar_ts = str(feat_df["timestamp"].iloc[-1])
-                elif feat_df.index.name == "timestamp":
-                    _bar_ts = str(feat_df.index[-1])
+                # Bar boundary detection: use wall-clock minute boundary.
+                # Alpaca historical bar timestamps lag 2-3 min, causing
+                # bars_held to advance too slowly. Wall clock gives
+                # consistent 1-bar-per-minute counting.
+                _bar_ts = datetime.now(UTC).strftime("%Y-%m-%d %H:%M")
                 _prev_bar_ts = self._last_bar_times.get(sym, "")
-                _is_new_bar = (_bar_ts != _prev_bar_ts) if _bar_ts else True
-                if _bar_ts:
+                _is_new_bar = (_bar_ts != _prev_bar_ts)
+                if _is_new_bar:
                     self._last_bar_times[sym] = _bar_ts
 
                 # SAFETY NET: enforce max loss even without exit_levels.
