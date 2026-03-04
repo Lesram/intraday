@@ -222,7 +222,7 @@ BRAIN STATE:
 │  │  [3] Detect market regime (3-tier priority)                 │   │
 │  │  [4] Get positions + equity, drawdown kill check            │   │
 │  │  [5] EXIT CHECKS for all open positions                     │   │
-│  │      ├── Bar boundary detection per symbol (timestamp-based)│   │
+│  │      ├── Bar boundary detection per symbol (wall-clock minute)│   │
 │  │      ├── Risk checks (max_loss, stop_loss) run EVERY tick   │   │
 │  │      └── Time/profit exits run ONLY on new 1-min bars       │   │
 │  └─────────────────────────────────────────────────────────────┘   │
@@ -492,6 +492,7 @@ FOR EACH OPEN POSITION:
       │   │
       │   │  ═══ NEW BAR ONLY: advance bars_held + run profit/time exits ═══
       │   │
+      │   ├── Save price_at_prior_bar = current_price (for FTF momentum check)
       │   ├── Increment bars_held by 1 (now counts 1-min bars, NOT 10s ticks)
       │   │
       │   ├── ** MIN_HOLD gate: dynamic = max(prediction_horizon // 3, 3) **
@@ -805,6 +806,9 @@ KELLY SIZING PIPELINE
   │   │   └── < 20 usable returns (last 60 bars lookback) → SKIP
   │   │   (NOTE: _nan_missingness > 0.25 gate is pre-Kelly, in live_engine step 7b before sizing)
   │   │
+  │   ├── PRE-STEP: atr_pct computed UNCONDITIONALLY before regime branch
+  │   │   └── atr_pct = std(returns, ddof=1) or 0.01 fallback (used by signal-Kelly AND risk-budget floor)
+  │   │
   │   ├── STEP 1: Raw Kelly (capped at 1.0)
   │   │   ├── Preferred: Regime-stratified (if >= 10 trades in regime)
   │   │   │   ├── Kelly = win_rate - (1 - win_rate) / payoff_ratio
@@ -849,9 +853,9 @@ KELLY SIZING PIPELINE
   │   │   │   trending_up: 1.20  trending_down: 0.60  chop: 0.50
   │   │   │   high_vol: 0.80    low_vol: 1.00        stress: 0.40
   │   │   │   unknown: 0.70
-  │   │   ├── Evolved_params overrides (from brain, currently):
-  │   │   │   chop: 0.75  high_vol: 0.70  stress: 0.30
-  │   │   │   (other regimes inherit hardcoded values)
+  │   │   ├── Evolved_params overrides (from brain, as of 2026-03-04):
+  │   │   │   chop: 0.485  high_vol: 0.70  stress: 0.30
+  │   │   │   (other regimes inherit hardcoded values; values evolve over time)
   │   │   └── NOTE: evolved_params take precedence when present
   │   │
   │   ├── STEP 6: Confidence Scaling
@@ -1342,7 +1346,7 @@ causing vol_scale to hit the 2.0 cap and over-size positions by ~4×.
 
 **Source**: `backend/organism/adaptive_exits.py`
 
-### ExitLevels Dataclass (v3)
+### ExitLevels Dataclass (v4)
 
 ```
 ExitLevels fields:
@@ -1714,8 +1718,8 @@ FilteringSummary:
   - entries_blocked_reason: "" | "governance_halt" | "warmup" | "insufficient_data" |
     "equity_zero" | "drawdown_kill" | "spy_ma_filter" | "opening_block" |
     "regime_sitout" | "throttle" | "stale_data"
-  - learning_mode: bool (True when < 50 completed trades)
-  - effective_max_entries_per_hour: int (8 in learning, max(3, 6-open_positions) in production)
+  - learning_mode: bool (True when < 200 completed trades)
+  - effective_max_entries_per_hour: int (12 in learning, max(3, 6-open_positions) in production)
   - cost_gate and min_notional wired from kelly_sizer._exploration_rejects
 
 DecisionSnapshot:
