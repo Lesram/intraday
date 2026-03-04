@@ -49,7 +49,7 @@ class SymbolAlphaDetail:
     passed_threshold: bool = False
     # Fitness gate
     symbol_fitness: float = 0.5
-    fitness_gate: float = 0.35
+    fitness_gate: float = 0.45
     passed_fitness: bool = True
 
     def to_dict(self) -> dict[str, Any]:
@@ -258,6 +258,9 @@ class FilteringSummary:
     rejected_by_cost_gate: int = 0
     rejected_by_min_notional: int = 0
     entries_blocked_reason: str = ""
+    # M3: Learning mode throttle telemetry
+    learning_mode: bool = False
+    effective_max_entries_per_hour: int = 3
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -287,6 +290,8 @@ class FilteringSummary:
                 "min_notional": self.rejected_by_min_notional,
             },
             "entries_blocked_reason": self.entries_blocked_reason,
+            "learning_mode": _b(self.learning_mode),
+            "effective_max_entries_per_hour": int(self.effective_max_entries_per_hour),
         }
 
 

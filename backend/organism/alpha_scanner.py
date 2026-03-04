@@ -89,6 +89,7 @@ class AlphaScanner:
         features_by_symbol: dict[str, pd.DataFrame],
         ml_signals: dict[str, MLSignal],
         current_regime: str = "unknown",
+        ml_is_trained: bool = True,
     ) -> list[AlphaCandidate]:
         """Score all symbols, return top-N candidates sorted by alpha.
 
@@ -97,6 +98,7 @@ class AlphaScanner:
         features_by_symbol : {symbol: DataFrame with features}
         ml_signals : {symbol: MLSignal from MLSignalGenerator}
         current_regime : regime label from RegimeDetector
+        ml_is_trained : whether the ML model has been trained
 
         Returns
         -------
@@ -193,9 +195,19 @@ class AlphaScanner:
                 + self.WEIGHT_REGIME * regime_score
             )
 
-            # If ML says hold, penalize heavily
+            # If ML says hold, penalize — but less when untrained
             if direction == 0:
-                composite *= 0.3
+                if not ml_is_trained:
+                    # Derive direction from momentum/breakout when ML is untrained
+                    ret_5d = float(row.get("ret_5d", 0.0))
+                    _bo_readiness = float(row.get("comp_breakout_readiness", 0.0))
+                    if ret_5d > 0.005 or _bo_readiness > 0.6:
+                        direction = 1.0
+                    elif ret_5d < -0.005:
+                        direction = -1.0
+                    composite *= 0.7  # Mild penalty (was 0.3x)
+                else:
+                    composite *= 0.3
 
             # Symbol fitness: evolved from historical performance
             # (set by EvolutionEngine via apply_evolved_params)

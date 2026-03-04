@@ -426,13 +426,24 @@ class OrganismLiveEngine:
         # repeated 50% partials from chipping positions to 1 share.
         self._ml_reversal_used: set[str] = set()
 
+        # Bar boundary detection — track last bar timestamp per symbol
+        # to only advance bars_held on actual new bars, not 10s sub-ticks.
+        self._last_bar_times: dict[str, str] = {}
+
         # Exit attribution — capture real exit reasons and fill prices
         self._last_exit_reason: dict[str, str] = {}
         self._last_exit_fill_price: dict[str, float] = {}
 
         # Global entries-per-hour throttle — prevents overtrading
         self._entry_timestamps: list[float] = []
+        # Static fallback; overridden by _dynamic_max_entries_per_hour property
         self._MAX_ENTRIES_PER_HOUR = 3
+        # Learning mode threshold: < 200 completed trades = learning (was 50)
+        self._LEARNING_MODE_TRADES = 200
+
+        # Stale data gating — block entries when WebSocket data is stale
+        self._data_stale: bool = False
+        self._DATA_STALE_THRESHOLD_S = 120.0  # 2 minutes
 
         # Warmup period — skip entries for first N ticks after startup to let
         # features stabilize and avoid cold-start entry burst.
@@ -460,6 +471,21 @@ class OrganismLiveEngine:
 
         # ── Diagnostics ──────────────────────────────────────────
         self._last_diagnostic_report: Any = None
+
+    # ── Dynamic throttle ──────────────────────────────────────
+
+    @property
+    def _is_learning_mode(self) -> bool:
+        """True when engine has < 200 completed trades (still learning)."""
+        return len(self._all_trades) < self._LEARNING_MODE_TRADES
+
+    @property
+    def _dynamic_max_entries_per_hour(self) -> int:
+        """Learning mode: 12/hr. Production: max(3, 6 - open_positions)."""
+        if self._is_learning_mode:
+            return 12  # was 8 — more entries for faster data collection
+        open_pos = len(self._exit_levels)
+        return max(3, 6 - open_pos)
 
     # ── Private helpers ────────────────────────────────────────
 
@@ -573,20 +599,30 @@ class OrganismLiveEngine:
                 from backend.organism.adaptive_exits import ExitLevels
                 for sym, lvl_data in saved_exit_levels.items():
                     try:
+                        _entry = float(lvl_data.get("entry", 0))
+                        _atr = float(lvl_data.get("atr", 0))
+                        # ATR floor: prevent zero/NaN ATR from disabling
+                        # trailing, profit lock, and pyramid adjustments
+                        if _atr < 1e-6 and _entry > 0:
+                            _atr = _entry * 0.02
                         self._exit_levels[sym] = ExitLevels(
                             symbol=lvl_data.get("symbol", sym),
                             direction=float(lvl_data.get("direction", 1.0)),
-                            entry_price=float(lvl_data.get("entry", 0)),
+                            entry_price=_entry,
                             stop_loss=float(lvl_data.get("stop_loss", 0)),
                             take_profit=float(lvl_data.get("take_profit", 0)),
                             trailing_stop=float(lvl_data.get("trailing_stop", 0)),
-                            atr_at_entry=float(lvl_data.get("atr", 0)),
+                            atr_at_entry=_atr,
                             regime_at_entry=lvl_data.get("regime_at_entry", "unknown"),
                             highest_favorable=float(lvl_data.get("highest_favorable", lvl_data.get("entry", 0))),
                             bars_held=int(lvl_data.get("bars_held", 0)),
+                            partial_tp_price=float(lvl_data.get("partial_tp_price", 0)),
                             partial_tp_taken=bool(lvl_data.get("partial_tp_taken", False)),
                             trailing_active=bool(lvl_data.get("trailing_active", False)),
+                            stress_tightened=bool(lvl_data.get("stress_tightened", False)),
                             profit_locked=bool(lvl_data.get("profit_locked", False)),
+                            last_bar_time=str(lvl_data.get("last_bar_time", "")),
+                            prediction_horizon=int(lvl_data.get("prediction_horizon", PREDICTION_HORIZON)),
                         )
                     except (KeyError, ValueError, TypeError) as e:
                         logger.debug("Cannot restore exit levels for %s: %s", sym, e)
@@ -890,6 +926,27 @@ class OrganismLiveEngine:
                 except Exception as e:
                     logger.debug("Stream staleness check error (non-fatal): %s", e)
 
+            # 0.5 STALE DATA GATE — check streaming provider freshness
+            _was_stale = self._data_stale
+            if self._streaming_provider is not None:
+                try:
+                    last_update = getattr(self._streaming_provider, "last_update_time", None)
+                    if last_update is not None:
+                        staleness_s = self._time_fn() - last_update
+                        self._data_stale = staleness_s > self._DATA_STALE_THRESHOLD_S
+                        if self._data_stale and not _was_stale:
+                            logger.warning(
+                                "Data stream stale: %.0fs since last update "
+                                "(threshold=%.0fs) — blocking entries",
+                                staleness_s, self._DATA_STALE_THRESHOLD_S,
+                            )
+                        elif not self._data_stale and _was_stale:
+                            logger.info("Data stream fresh again — entries unblocked")
+                    else:
+                        self._data_stale = False
+                except Exception:
+                    pass  # Non-fatal — default to not-stale
+
             # 1. GOVERNANCE CHECK
             # When halted, we still MUST process exits and reconciliation
             # to manage open risk.  Only new entries are blocked.
@@ -914,6 +971,16 @@ class OrganismLiveEngine:
                 result.activity.append(ActivityEvent(
                     event_type="skip",
                     message=f"Warmup: tick {self._tick_count}/{self._WARMUP_TICKS} — entries blocked",
+                    timestamp=now_iso,
+                ))
+
+            # 1.2 STALE DATA GATE — block entries when data > 2 min stale
+            if not entries_blocked and self._data_stale:
+                entries_blocked = True
+                self._last_entries_blocked_reason = "stale_data"
+                result.activity.append(ActivityEvent(
+                    event_type="skip",
+                    message="Stale data — blocking entries (exits still active)",
                     timestamp=now_iso,
                 ))
 
@@ -1155,6 +1222,18 @@ class OrganismLiveEngine:
                 exit_levels = self._exit_levels.get(sym)
                 current_price = float(feat_df["close"].iloc[-1])
 
+                # Bar boundary detection: compare latest bar timestamp
+                # to the last seen timestamp for this symbol.
+                _bar_ts = ""
+                if "timestamp" in feat_df.columns:
+                    _bar_ts = str(feat_df["timestamp"].iloc[-1])
+                elif feat_df.index.name == "timestamp":
+                    _bar_ts = str(feat_df.index[-1])
+                _prev_bar_ts = self._last_bar_times.get(sym, "")
+                _is_new_bar = (_bar_ts != _prev_bar_ts) if _bar_ts else True
+                if _bar_ts:
+                    self._last_bar_times[sym] = _bar_ts
+
                 # SAFETY NET: enforce max loss even without exit_levels.
                 # This prevents positions from losing >15% when exit_levels
                 # are missing (e.g. after restart with failed reconstruction).
@@ -1202,7 +1281,8 @@ class OrganismLiveEngine:
                                     self._pending_exit[sym] = self._tick_count
                     continue
                 exit_sig = self.exit_engine.check_exit(
-                    exit_levels, current_price, regime
+                    exit_levels, current_price, regime,
+                    is_new_bar=_is_new_bar,
                 )
 
                 # ML reversal check: if ML signal flips, trigger partial exit.
@@ -1365,17 +1445,19 @@ class OrganismLiveEngine:
                 self._entry_timestamps = [
                     t for t in self._entry_timestamps if now_ts - t < 3600
                 ]
-                if len(self._entry_timestamps) >= self._MAX_ENTRIES_PER_HOUR:
+                _effective_max = self._dynamic_max_entries_per_hour
+                if len(self._entry_timestamps) >= _effective_max:
                     _throttled = True
                     self._last_entries_blocked_reason = "throttle"
                     logger.info(
-                        "Entry throttle: %d entries in last hour (max %d) — "
+                        "Entry throttle: %d entries in last hour (max %d, %s) — "
                         "blocking new entries this tick",
-                        len(self._entry_timestamps), self._MAX_ENTRIES_PER_HOUR,
+                        len(self._entry_timestamps), _effective_max,
+                        "learning" if self._is_learning_mode else "production",
                     )
                     result.activity.append(ActivityEvent(
                         event_type="skip",
-                        message=f"Entry throttle: {len(self._entry_timestamps)}/{self._MAX_ENTRIES_PER_HOUR} entries/hour — pausing",
+                        message=f"Entry throttle: {len(self._entry_timestamps)}/{_effective_max} entries/hour — pausing",
                         timestamp=now_iso,
                     ))
 
@@ -1446,7 +1528,8 @@ class OrganismLiveEngine:
 
                 # Alpha scan
                 candidates = self.alpha_scanner.scan(
-                    features_by_symbol, ml_signals, regime
+                    features_by_symbol, ml_signals, regime,
+                    ml_is_trained=self.signal_gen.is_trained,
                 )
 
                 # Build candidate list
@@ -1646,6 +1729,7 @@ class OrganismLiveEngine:
                         if self._streaming_provider is not None
                         else None
                     ),
+                    trade_count=len(self._all_trades),
                 )
                 self._last_kelly_sizes = sizes
 
@@ -1748,6 +1832,7 @@ class OrganismLiveEngine:
                                 predicted_return=predicted_return,
                                 features_df=feat_df,
                                 regime=regime,
+                                prediction_horizon=PREDICTION_HORIZON,
                             )
                             self._exit_levels[sz.symbol] = exit_lvl
 
@@ -1844,6 +1929,7 @@ class OrganismLiveEngine:
                                     predicted_return=ec.get("predicted_return", 0.01),
                                     features_df=feat_df,
                                     regime=regime,
+                                    prediction_horizon=PREDICTION_HORIZON,
                                 )
                                 self._exit_levels[sym] = exit_lvl
                                 result.activity.append(ActivityEvent(
@@ -2042,6 +2128,12 @@ class OrganismLiveEngine:
         try:
             snapshot = self._build_decision_snapshot(result)
             self._telemetry.append(snapshot)
+            # Persist to DB every 6th tick (~1/min)
+            if self._tick_count % 6 == 0:
+                await self._persist_telemetry_to_db()
+            # Daily cleanup (every ~2160 ticks ≈ 6 hours at 10s/tick)
+            if self._tick_count % 2160 == 0:
+                await self._cleanup_old_telemetry()
         except Exception:
             pass  # Telemetry must never break the tick loop
 
@@ -2093,7 +2185,7 @@ class OrganismLiveEngine:
 
         # Alpha details — from _last_full_scan
         full_alpha = getattr(self.alpha_scanner, "_last_full_scan", [])
-        fitness_gate = 0.35
+        fitness_gate = 0.45  # must match _FITNESS_GATE used in entry gating
         for c in full_alpha:
             sym_fitness = self.evolved_params.symbol_fitness.get(c.symbol, 0.5)
             ad = SymbolAlphaDetail(
@@ -2270,6 +2362,8 @@ class OrganismLiveEngine:
             rejected_by_cost_gate=rej.get("cost_gate", 0),
             rejected_by_min_notional=rej.get("min_notional", 0),
             entries_blocked_reason=getattr(self, "_last_entries_blocked_reason", ""),
+            learning_mode=self._is_learning_mode,
+            effective_max_entries_per_hour=self._dynamic_max_entries_per_hour,
         )
 
         return snap
@@ -2555,6 +2649,9 @@ class OrganismLiveEngine:
     #  ORDER SUBMISSION
     # ═════════════════════════════════════════════════════════════
 
+    # Slippage cap for marketable limit orders (0.1% above ask / below bid)
+    _ENTRY_SLIPPAGE_CAP = 0.001
+
     async def _submit_entry_order(
         self,
         symbol: str,
@@ -2565,6 +2662,9 @@ class OrganismLiveEngine:
     ) -> dict[str, Any]:
         """Submit an entry order via OrderService.
 
+        Uses marketable limit orders when a live quote is available to cap
+        slippage. Falls back to market orders when no quote data exists.
+
         Uses *direction* to decide the order side:
         direction >= 0 → buy, direction < 0 → sell (short).
         """
@@ -2574,13 +2674,34 @@ class OrganismLiveEngine:
             f"_{datetime.now(UTC).strftime('%Y%m%d')}"
             f"_{self._session_id}_t{self._tick_count}"
         )
+
+        # Try to compute a marketable limit price from live quote
+        _order_type = "market"
+        _limit_price: float | None = None
+        if self._streaming_provider is not None:
+            try:
+                quote = self._streaming_provider.get_latest_quote(symbol)
+                bid = quote.get("bid")
+                ask = quote.get("ask")
+                if bid and ask and bid > 0 and ask > 0:
+                    if side == "buy":
+                        # Cap slippage above the ask
+                        _limit_price = round(ask * (1 + self._ENTRY_SLIPPAGE_CAP), 2)
+                    else:
+                        # Cap slippage below the bid
+                        _limit_price = round(bid * (1 - self._ENTRY_SLIPPAGE_CAP), 2)
+                    _order_type = "limit"
+            except Exception:
+                pass  # Fallback to market order
+
         return await self._order_service.submit_symbol_order(
             symbol=symbol,
             side=side,
             qty=shares,
             idempotency_key=idem_key,
-            order_type="market",
+            order_type=_order_type,
             tif="day",
+            limit_price=_limit_price,
             attributes={
                 "source": "organism",
                 "reason": reason,
@@ -2785,6 +2906,7 @@ class OrganismLiveEngine:
                 self._exit_levels.pop(sym, None)
                 self._pyramid_positions.pop(sym, None)
                 self._ml_reversal_used.discard(sym)
+                self._last_bar_times.pop(sym, None)
                 continue
 
             direction = meta.get("direction", 1.0)
@@ -2851,6 +2973,7 @@ class OrganismLiveEngine:
             self._exit_levels.pop(sym, None)
             self._pyramid_positions.pop(sym, None)
             self._ml_reversal_used.discard(sym)
+            self._last_bar_times.pop(sym, None)
             self._last_exit_reason.pop(sym, None)
             self._last_exit_fill_price.pop(sym, None)
 
@@ -2919,6 +3042,7 @@ class OrganismLiveEngine:
                         predicted_return=0.02,
                         features_df=feat_df,
                         regime=RegimeLabel.UNKNOWN,
+                        prediction_horizon=PREDICTION_HORIZON,
                     )
                     self._exit_levels[sym] = exit_lvl
 
@@ -3053,6 +3177,7 @@ class OrganismLiveEngine:
                         predicted_return=0.02,
                         features_df=feat_df,
                         regime=RegimeLabel.UNKNOWN,
+                        prediction_horizon=PREDICTION_HORIZON,
                     )
                 else:
                     # Fallback: create exit levels with a 2% ATR estimate.
@@ -3072,6 +3197,7 @@ class OrganismLiveEngine:
                         predicted_return=0.02,
                         features_df=fallback_df,
                         regime=RegimeLabel.UNKNOWN,
+                        prediction_horizon=PREDICTION_HORIZON,
                     )
                     logger.warning(
                         "Using fallback ATR ($%.2f) for %s — "
@@ -3207,6 +3333,66 @@ class OrganismLiveEngine:
     # ═════════════════════════════════════════════════════════════
     #  BRAIN PERSISTENCE
     # ═════════════════════════════════════════════════════════════
+
+    async def _persist_telemetry_to_db(self) -> None:
+        """Write latest telemetry snapshot to DB (every 6th tick ≈ 1/min)."""
+        if self._sessionmaker is None:
+            return
+        snap = self._telemetry.latest
+        if snap is None:
+            return
+        try:
+            from backend.infra.schemas import TickTelemetry
+            from backend.infra.database import get_session_context
+
+            # Top candidates summary (compact)
+            top_cands = [
+                {"sym": ad.symbol, "score": round(ad.composite_score, 4), "dir": ad.direction}
+                for ad in snap.alpha_details[:5]
+            ]
+            # Exit decisions summary
+            exit_decs = [
+                {"sym": ed.symbol, "bars": ed.bars_held, "pnl": round(ed.pnl_pct, 4),
+                 "nearest": ed.nearest_exit}
+                for ed in snap.exit_details
+            ]
+
+            async with get_session_context() as session:
+                row = TickTelemetry(
+                    tick_number=snap.tick_number,
+                    regime=snap.regime,
+                    equity=snap.equity,
+                    drawdown_pct=snap.drawdown_pct,
+                    open_positions=snap.open_positions,
+                    entries_blocked_reason=snap.filtering.entries_blocked_reason,
+                    orders_submitted=snap.filtering.orders_submitted,
+                    gate_rejections=snap.filtering.to_dict().get("rejections", {}),
+                    top_candidates=top_cands,
+                    exit_decisions=exit_decs,
+                )
+                session.add(row)
+                await session.commit()
+        except Exception as e:
+            logger.debug("Telemetry DB write skipped: %s", e)
+
+    async def _cleanup_old_telemetry(self) -> None:
+        """Delete telemetry rows older than 7 days."""
+        if self._sessionmaker is None:
+            return
+        try:
+            from backend.infra.schemas import TickTelemetry
+            from backend.infra.database import get_session_context
+
+            import sqlalchemy as sa
+            cutoff = self._now_fn() - timedelta(days=7)
+            async with get_session_context() as session:
+                await session.execute(
+                    sa.delete(TickTelemetry).where(TickTelemetry.timestamp < cutoff)
+                )
+                await session.commit()
+            logger.info("Cleaned up telemetry rows older than 7 days")
+        except Exception as e:
+            logger.debug("Telemetry cleanup skipped: %s", e)
 
     def _save_brain(self) -> None:
         """Save full brain state to disk (with walk-forward gate)."""
@@ -3345,6 +3531,8 @@ class OrganismLiveEngine:
             "training_history": training_history,
             "regime": self.regime_detector.current_regime,
             "shorts_enabled": self.evolved_params.shorts_enabled,
+            "data_stale": self._data_stale,
+            "learning_mode": self._is_learning_mode,
             **scanner_info,
         }
 
@@ -3432,7 +3620,8 @@ class OrganismLiveEngine:
         """
         ml_signals = self.signal_gen.predict_batch(features_by_symbol)
         candidates = self.alpha_scanner.scan(
-            features_by_symbol, ml_signals, regime
+            features_by_symbol, ml_signals, regime,
+            ml_is_trained=self.signal_gen.is_trained,
         )
 
         signals = []

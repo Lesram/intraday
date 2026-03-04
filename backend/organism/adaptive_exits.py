@@ -49,6 +49,10 @@ class ExitLevels:
     stress_tightened: bool = False   # True after one-time stress regime tightening
     profit_locked: bool = False      # True after one-time profit lock at 2R
 
+    # ── v3 additions (improve4) ──
+    last_bar_time: str = ""          # Timestamp of last bar boundary seen
+    prediction_horizon: int = 15     # ML prediction horizon in bars
+
     def to_dict(self) -> dict[str, Any]:
         return {
             "symbol": self.symbol,
@@ -61,10 +65,13 @@ class ExitLevels:
             "regime_at_entry": self.regime_at_entry,
             "highest_favorable": round(self.highest_favorable, 4),
             "bars_held": self.bars_held,
+            "partial_tp_price": round(self.partial_tp_price, 4),
             "partial_tp_taken": self.partial_tp_taken,
             "trailing_active": self.trailing_active,
             "stress_tightened": self.stress_tightened,
             "profit_locked": self.profit_locked,
+            "last_bar_time": self.last_bar_time,
+            "prediction_horizon": self.prediction_horizon,
         }
 
 
@@ -135,29 +142,29 @@ class AdaptiveExitEngine:
         "stress":        1.5,
         "unknown":       2.5,
     }
-    # Max bars held (0 = disabled)
+    # Max bars held (0 = disabled) — calibrated in 1-min bars (not 10s ticks)
     REGIME_MAX_BARS = {
         "trending_up":   0,
-        "trending_down": 30,
-        "chop":          25,
-        "high_vol":      30,
+        "trending_down": 45,    # 45 min (was 30 ticks = 5 min)
+        "chop":          30,    # 30 min (was 25 ticks = 4.2 min)
+        "high_vol":      45,    # 45 min (was 30 ticks = 5 min)
         "low_vol":       0,     # calm → let positions run
-        "stress":        20,
-        "unknown":       40,
+        "stress":        20,    # 20 min (was 20 ticks = 3.3 min)
+        "unknown":       60,    # 60 min (was 40 ticks = 6.7 min)
     }
-    # Time-decay start bar
+    # Time-decay start bar — calibrated in 1-min bars
     REGIME_DECAY_START = {
         "trending_up":   0,     # no decay in strong trends
-        "trending_down": 20,
-        "chop":          15,
-        "high_vol":      20,
+        "trending_down": 30,    # 30 min (was 20 ticks = 3.3 min)
+        "chop":          20,    # 20 min (was 15 ticks = 2.5 min)
+        "high_vol":      30,    # 30 min (was 20 ticks = 3.3 min)
         "low_vol":       0,     # calm → no decay
-        "stress":        10,
-        "unknown":       30,
+        "stress":        15,    # 15 min (was 10 ticks = 1.7 min)
+        "unknown":       40,    # 40 min (was 30 ticks = 5 min)
     }
 
-    # Minimum bars held before profit exits fire (stop_loss/max_loss always active)
-    MIN_HOLD_BARS_PROFIT = 18  # 18 bars × 10s = 3 min — avoids noise exits
+    # Time-decay rate per bar (0.3%/bar instead of 1%/tick to avoid 6x over-decay)
+    TIME_DECAY_RATE = 0.003
 
     def __init__(
         self,
@@ -201,7 +208,7 @@ class AdaptiveExitEngine:
             return cls(
                 atr_multiplier=1.0, profit_r_multiple=3.0,
                 trailing_start_atr=2.0, trailing_distance_atr=1.5,
-                max_bars_held=120, time_decay_start=60,
+                max_bars_held=60, time_decay_start=40,  # 60 min max, 40 min decay (bar-based)
                 partial_tp_r=3.0, partial_tp_pct=0.20,
                 max_loss_pct=0.08, profit_lock_r=2.0,
             )
@@ -224,6 +231,7 @@ class AdaptiveExitEngine:
         predicted_return: float,
         features_df: pd.DataFrame,
         regime: str = "unknown",
+        prediction_horizon: int = 15,
     ) -> ExitLevels:
         """Create initial exit levels for a new position.
 
@@ -235,9 +243,10 @@ class AdaptiveExitEngine:
         predicted_return : ML-predicted return (positive = favorable)
         features_df : feature DataFrame for ATR computation
         regime : current market regime
+        prediction_horizon : ML prediction horizon in bars
         """
         atr = self._compute_atr(features_df, period=14)
-        if atr < 1e-6:
+        if atr < 1e-6 or np.isnan(atr):
             atr = entry_price * 0.02  # 2 % fallback
 
         # Regime-adjusted stop distance
@@ -277,6 +286,7 @@ class AdaptiveExitEngine:
             partial_tp_price=partial_tp_price,
             partial_tp_taken=False,
             trailing_active=False,
+            prediction_horizon=prediction_horizon,
         )
 
     def update_levels_for_pyramid(
@@ -313,11 +323,17 @@ class AdaptiveExitEngine:
 
         levels.entry_price = new_avg_entry
 
+    @staticmethod
+    def _min_hold_bars(prediction_horizon: int) -> int:
+        """Dynamic minimum hold: H//3 bars, floor 3."""
+        return max(prediction_horizon // 3, 3)
+
     def check_exit(
         self,
         levels: ExitLevels,
         current_price: float,
         current_regime: str = "unknown",
+        is_new_bar: bool = True,
     ) -> ExitSignal:
         """Check if any exit condition is triggered.
 
@@ -326,13 +342,17 @@ class AdaptiveExitEngine:
         levels : current ExitLevels (will be mutated for trailing updates)
         current_price : latest price
         current_regime : current regime (for dynamic adjustments)
+        is_new_bar : True when a new 1-min bar boundary has been detected.
+            Risk checks (max_loss, stop_loss) run every tick.
+            Time/profit exits only run on new bars.
 
         Returns
         -------
         ExitSignal with should_exit flag and reason.
         """
-        levels.bars_held += 1
         direction = levels.direction
+
+        # ── ALWAYS (every 10s tick): update tracking + risk checks ──
 
         # Update highest favorable price
         if direction > 0:
@@ -348,15 +368,23 @@ class AdaptiveExitEngine:
             if pnl_pct <= -self.max_loss_pct:
                 return ExitSignal(True, "max_loss_limit", current_price)
 
-        # 1. Hard stop-loss check
+        # 1. Hard stop-loss check — always active
         if direction > 0 and current_price <= levels.stop_loss:
             return ExitSignal(True, "stop_loss", levels.stop_loss)
         if direction < 0 and current_price >= levels.stop_loss:
             return ExitSignal(True, "stop_loss", levels.stop_loss)
 
+        # ── Sub-tick fast path: skip time/profit exits until next bar ──
+        if not is_new_bar:
+            return ExitSignal(False)
+
+        # ── NEW BAR: advance bars_held and run all profit/time exits ──
+        levels.bars_held += 1
+
         # 1a. MINIMUM HOLD TIME — all profit exits require minimum bars held.
         # Stop-loss (priority 1) and max_loss (priority 0) remain always active.
-        if levels.bars_held < self.MIN_HOLD_BARS_PROFIT:
+        min_hold = self._min_hold_bars(levels.prediction_horizon)
+        if levels.bars_held < min_hold:
             return ExitSignal(False)
 
         # 1.5. PROFIT LOCK — at 2R, move stop to 1R (one-shot)
@@ -378,19 +406,26 @@ class AdaptiveExitEngine:
         if trail_signal.should_exit:
             return trail_signal
 
-        # 4b. Failure to follow through — exit if < 0.5R after progress_check bars.
-        # Uses max_bars when finite, otherwise a universal fallback (30 bars)
-        # so this check works even in trending_up/low_vol (max_bars=0/∞).
+        # 4b. Failure to follow through — horizon-delay + regime-dependent R.
+        # Disabled for trending_up and low_vol — let winners run in favorable regimes.
+        # Wait at least H//2 bars (half the prediction horizon) before checking.
         max_bars = self.REGIME_MAX_BARS.get(current_regime, self.max_bars_held)
-        _PROGRESS_CHECK_FALLBACK = 30  # universal fallback for ∞ regimes
-        progress_ref = max_bars if max_bars > 0 else _PROGRESS_CHECK_FALLBACK
-        early_check = max(progress_ref // 4, 5)
-        if levels.bars_held >= early_check and not levels.trailing_active:
-            pnl_dir = (current_price - levels.entry_price) * direction
-            initial_risk = max(abs(levels.entry_price - levels.stop_loss), 0.01)
-            r_achieved = pnl_dir / initial_risk
-            if r_achieved < 0.5:
-                return ExitSignal(True, "failure_to_follow", current_price)
+        _FTF_DISABLED_REGIMES = {"trending_up", "low_vol"}
+        if current_regime not in _FTF_DISABLED_REGIMES:
+            early_check = max(levels.prediction_horizon // 2, 3)
+            if levels.bars_held >= early_check and not levels.trailing_active:
+                pnl_dir = (current_price - levels.entry_price) * direction
+                initial_risk = max(abs(levels.entry_price - levels.stop_loss), 0.01)
+                r_achieved = pnl_dir / initial_risk
+                # Regime-dependent R threshold
+                _FTF_R_THRESHOLDS = {
+                    "chop": 0.25, "high_vol": 0.25,
+                    "stress": 0.15,
+                    "trending_down": 0.35, "unknown": 0.35,
+                }
+                r_threshold = _FTF_R_THRESHOLDS.get(current_regime, 0.35)
+                if r_achieved < r_threshold:
+                    return ExitSignal(True, "failure_to_follow", current_price)
 
         # 5. Time-based exit (regime-adaptive — disabled in trending)
         if max_bars > 0 and levels.bars_held >= max_bars:
@@ -401,9 +436,8 @@ class AdaptiveExitEngine:
                 return ExitSignal(True, "max_holding_period", current_price)
 
         # 5b. Loser time-stop — losers get 1.5× max_bars then forced exit.
-        # For ∞ regimes (trending_up/low_vol), use a universal cap (200 bars)
-        # so capital can't be stranded indefinitely on a regime misclassification.
-        _LOSER_MAX_FALLBACK = 200  # ~33 min at 10s ticks
+        # For ∞ regimes (trending_up/low_vol), use a universal cap (120 bars = 2 hrs)
+        _LOSER_MAX_FALLBACK = 120  # 2 hours at 1-min bars
         loser_ref = max_bars if max_bars > 0 else _LOSER_MAX_FALLBACK
         loser_max = int(loser_ref * 1.5)
         if levels.bars_held >= loser_max:
@@ -411,7 +445,7 @@ class AdaptiveExitEngine:
             if pnl_dir <= 0:
                 return ExitSignal(True, "loser_time_stop", current_price)
 
-        # 6. Time decay — very gentle, only in non-trending
+        # 6. Time decay — 0.3% per bar (was 1%/tick — 6x too fast)
         decay_start = self.REGIME_DECAY_START.get(current_regime, self.time_decay_start)
         if decay_start > 0 and levels.bars_held >= decay_start:
             self._apply_time_decay(levels, decay_start)
@@ -535,9 +569,9 @@ class AdaptiveExitEngine:
         return ExitSignal(False)
 
     def _apply_time_decay(self, levels: ExitLevels, decay_start: int) -> None:
-        """Gentle stop tightening — 1 % per bar (was 2 % in v1)."""
+        """Gentle stop tightening — 0.3% per bar (was 1%/tick — 6x too fast)."""
         decay_bars = levels.bars_held - decay_start
-        decay_factor = 1.0 - decay_bars * 0.01  # 1 % per bar (gentler)
+        decay_factor = 1.0 - decay_bars * self.TIME_DECAY_RATE
         decay_factor = max(decay_factor, 0.6)    # Don't tighten more than 40 %
 
         if levels.direction > 0:

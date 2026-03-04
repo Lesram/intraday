@@ -145,6 +145,11 @@ class KellySizer:
         cost = base_spread * time_mult * liquidity_mult
         return max(0.0003, min(cost, 0.0050))
 
+    # Pre-Kelly risk-budget sizing constants
+    _RISK_BUDGET_PER_TRADE = 0.0025   # 0.25% of equity risked per trade
+    _RISK_BUDGET_STOP_ATR = 1.5       # Assumed stop distance in ATR multiples
+    _RISK_BUDGET_TRADE_THRESHOLD = 200 # Use risk-budget floor below this trade count
+
     def size_positions(
         self,
         candidates: list[dict[str, Any]],
@@ -154,6 +159,7 @@ class KellySizer:
         current_regime: str = "unknown",
         ml_is_trained: bool = True,
         quote_provider: Callable[[str], dict[str, Any]] | None = None,
+        trade_count: int | None = None,
     ) -> list[PositionSize]:
         """Size positions for a list of alpha candidates.
 
@@ -241,9 +247,22 @@ class KellySizer:
                 var_r = float(np.var(dir_returns, ddof=1))
 
                 if var_r < 1e-8 or mean_r <= 0 or not math.isfinite(mean_r) or not math.isfinite(var_r):
-                    kelly_raw = 0.0
+                    unconditional_kelly = 0.0
                 else:
-                    kelly_raw = min(mean_r / var_r, 1.0)  # Cap raw Kelly at 100%
+                    unconditional_kelly = min(mean_r / var_r, 1.0)
+
+                # Signal-based Kelly: predicted_return / horizon-matched variance
+                # Scale per-bar std by sqrt(horizon_bars) to match the return horizon.
+                # Without this, 1-min bar variance (~1e-6) vs H-bar predicted_return (~1%)
+                # always saturates to the 1.0 cap, giving zero differentiation.
+                _horizon_bars = 15  # default prediction horizon for 1Min
+                atr_pct = float(np.std(returns, ddof=1)) if len(returns) > 1 else 0.01
+                atr_pct_horizon = atr_pct * math.sqrt(_horizon_bars)
+                atr_var = max(atr_pct_horizon ** 2, 1e-6)
+                signal_kelly = min(predicted_return / atr_var, 1.0) if predicted_return > 0 else 0.0
+
+                # Use the better of signal-based and unconditional as raw Kelly
+                kelly_raw = min(max(signal_kelly, unconditional_kelly), 1.0)
 
             # 2. Half-Kelly
             kelly_half = kelly_raw * 0.5
@@ -310,22 +329,12 @@ class KellySizer:
             # 6. Confidence scaling — wider range [0.3, 1.5] (was [0.5, 1.0])
             confidence_scale = 0.3 + min(confidence, 1.0) * 1.2
             if not ml_is_trained:
-                confidence_scale = min(confidence_scale, 0.6)
+                confidence_scale = min(confidence_scale, 0.9)  # was 0.6 — prevent cold-start under-sizing
 
-            # 7. **NEW** — Breakout score bonus
+            # 7. **NEW** — Breakout score bonus (capped at 1.5x when ML untrained)
             breakout_bonus = self._breakout_bonus(breakout_score)
             if not ml_is_trained:
-                breakout_bonus = 1.0
-
-            # Store intermediates for telemetry
-            self._last_intermediates[symbol] = {
-                "confidence_scale": confidence_scale,
-                "breakout_bonus": breakout_bonus,
-                "ml_floor_applied": ml_floor_applied,
-                "kelly_raw": kelly_raw,
-                "kelly_half": kelly_half,
-                "spread_cost_pct": spread_cost_pct,
-            }
+                breakout_bonus = min(breakout_bonus, 1.5)
 
             # Combine all factors
             target_weight = (
@@ -336,6 +345,32 @@ class KellySizer:
                 * confidence_scale
                 * breakout_bonus
             )
+
+            # Pre-Kelly risk-budget floor: when trade count is low, Kelly
+            # estimates are unstable. Use deterministic risk-budget sizing
+            # as a floor so cold-start positions aren't microscopic.
+            # risk_weight = risk_per_trade / (atr_pct * stop_atr_mult)
+            _risk_budget_applied = False
+            if trade_count is not None and trade_count < self._RISK_BUDGET_TRADE_THRESHOLD:
+                _stop_dist = atr_pct * self._RISK_BUDGET_STOP_ATR
+                if _stop_dist > 1e-6:
+                    risk_budget_weight = self._RISK_BUDGET_PER_TRADE / _stop_dist
+                    # Apply drawdown scaling to risk-budget too
+                    risk_budget_weight *= drawdown_scale
+                    if target_weight < risk_budget_weight:
+                        target_weight = risk_budget_weight
+                        _risk_budget_applied = True
+
+            # Store intermediates for telemetry
+            self._last_intermediates[symbol] = {
+                "confidence_scale": confidence_scale,
+                "breakout_bonus": breakout_bonus,
+                "ml_floor_applied": ml_floor_applied,
+                "risk_budget_applied": _risk_budget_applied,
+                "kelly_raw": kelly_raw,
+                "kelly_half": kelly_half,
+                "spread_cost_pct": spread_cost_pct,
+            }
 
             # Enforce per-position cap
             target_weight = max(0.0, min(target_weight, self.max_position_pct))

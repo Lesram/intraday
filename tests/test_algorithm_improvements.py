@@ -455,10 +455,10 @@ class TestMinHoldTime:
         )
 
     def test_min_hold_blocks_early_profit_exit(self):
-        """TP at bar 5 should be blocked by min hold guard."""
+        """TP at bar 4 should be blocked by min hold guard (dynamic: H//3=5)."""
         from backend.organism.adaptive_exits import AdaptiveExitEngine
         engine = AdaptiveExitEngine()
-        levels = self._make_levels(bars_held=4)  # Will become 5 after check
+        levels = self._make_levels(bars_held=3)  # Will become 4 after check (< 5 min hold)
         # Price at TP level — would normally trigger take_profit
         sig = engine.check_exit(levels, 118.0, "trending_up")
         assert sig.should_exit is False
@@ -486,7 +486,7 @@ class TestMinHoldTime:
         """Profit exit should fire normally after min hold bars are met."""
         from backend.organism.adaptive_exits import AdaptiveExitEngine
         engine = AdaptiveExitEngine()
-        levels = self._make_levels(bars_held=17)  # Will become 18 after check
+        levels = self._make_levels(bars_held=4)  # Will become 5 after check (= min hold)
         sig = engine.check_exit(levels, 118.0, "trending_up")
         assert sig.should_exit is True
         # partial_take_profit fires first (3R < full TP), which is a profit exit

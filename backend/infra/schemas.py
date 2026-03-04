@@ -1412,3 +1412,33 @@ class Drawing(Base):
             "created_at": self.created_at,
             "updated_at": self.updated_at,
         }
+
+
+class TickTelemetry(Base):
+    """Persisted per-tick telemetry snapshots for post-session analysis.
+
+    Written every 6th tick (~1/min at 10s interval).
+    7-day retention with daily cleanup.
+    ~1.2 MB/day at 390 rows/day.
+    """
+
+    __tablename__ = "tick_telemetry"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    tick_number: Mapped[int] = mapped_column(Integer, nullable=False)
+    timestamp: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=sa.func.now(), nullable=False, index=True
+    )
+    regime: Mapped[str] = mapped_column(String(32), nullable=False, default="unknown")
+    equity: Mapped[float] = mapped_column(DECIMAL(14, 2), nullable=False, default=0)
+    drawdown_pct: Mapped[float] = mapped_column(DECIMAL(6, 4), nullable=False, default=0)
+    open_positions: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    entries_blocked_reason: Mapped[str] = mapped_column(String(64), nullable=False, default="")
+    orders_submitted: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    gate_rejections: Mapped[dict] = mapped_column(get_json_type(), nullable=False, default=dict)
+    top_candidates: Mapped[list] = mapped_column(get_json_type(), nullable=False, default=list)
+    exit_decisions: Mapped[list] = mapped_column(get_json_type(), nullable=False, default=list)
+
+    __table_args__ = (
+        Index("ix_tick_telemetry_tick_number", "tick_number"),
+    )

@@ -699,6 +699,7 @@ class OrderService:
         attributes: dict[str, Any] | None = None,
         daily_pnl: float | None = None,
         reduce_only: bool = False,
+        limit_price: float | None = None,
     ) -> dict[str, Any]:
         """
         Submit a single order through the idempotent order+outbox flow.
@@ -729,7 +730,7 @@ class OrderService:
                 symbol=symbol, side=side, qty=qty, idempotency_key=idempotency_key,
                 user_id=user_id, order_type=order_type, tif=tif,
                 attributes=attributes, daily_pnl=daily_pnl,
-                reduce_only=reduce_only,
+                reduce_only=reduce_only, limit_price=limit_price,
             )
         # Circuit breaker check — bypass for reduce_only (exit) orders so
         # risk-reducing exits are never blocked by the PnL loss threshold.
@@ -809,7 +810,7 @@ class OrderService:
                             raise
 
                 # Add to outbox for broker submission
-                await self.outbox_repo.add_order_submit_event(
+                _outbox_kwargs: dict[str, Any] = dict(
                     order_id=str(order.id),
                     symbol=symbol,
                     side=side,
@@ -819,6 +820,9 @@ class OrderService:
                     client_key=idempotency_key,
                     attributes=attributes or {},
                 )
+                if limit_price is not None:
+                    _outbox_kwargs["limit_price"] = str(limit_price)
+                await self.outbox_repo.add_order_submit_event(**_outbox_kwargs)
 
                 # Cache the result for duplicate requests
                 result = {
@@ -878,6 +882,7 @@ class OrderService:
         attributes: dict[str, Any] | None = None,
         daily_pnl: float | None = None,
         reduce_only: bool = False,
+        limit_price: float | None = None,
     ) -> dict[str, Any]:
         """Fallback path: create a fresh DB session and repos per order call.
 
@@ -905,6 +910,7 @@ class OrderService:
                         attributes=attributes,
                         daily_pnl=daily_pnl,
                         reduce_only=reduce_only,
+                        limit_price=limit_price,
                     )
                     return result
                 finally:
