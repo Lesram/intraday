@@ -238,6 +238,9 @@ class KellySizer:
             # Directional returns based on signal
             dir_returns = returns * direction
 
+            # Compute atr_pct unconditionally (needed by risk-budget floor below)
+            atr_pct = float(np.std(returns, ddof=1)) if len(returns) > 1 else 0.01
+
             # 1. Raw Kelly (try regime-stratified first, fallback to global)
             regime_kelly = self.get_regime_kelly(current_regime)
             if regime_kelly is not None:
@@ -256,7 +259,6 @@ class KellySizer:
                 # Without this, 1-min bar variance (~1e-6) vs H-bar predicted_return (~1%)
                 # always saturates to the 1.0 cap, giving zero differentiation.
                 _horizon_bars = 15  # default prediction horizon for 1Min
-                atr_pct = float(np.std(returns, ddof=1)) if len(returns) > 1 else 0.01
                 atr_pct_horizon = atr_pct * math.sqrt(_horizon_bars)
                 atr_var = max(atr_pct_horizon ** 2, 1e-6)
                 signal_kelly = min(predicted_return / atr_var, 1.0) if predicted_return > 0 else 0.0
