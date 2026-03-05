@@ -106,15 +106,21 @@ class RegimeDetector:
         scale = 4 if is_intraday else 1
         self._sma_period = sma_period * scale
         self._vol_lookback = vol_lookback * scale
-        self._trend_threshold = trend_threshold
         self._churn_window = churn_window * scale
         self._alpha = smoothing_alpha
         self._is_intraday = is_intraday
         self._bars_per_day = bars_per_day
 
+        # v4 (improve7): Scale trend threshold for intraday.
+        # SMA slope over 10 intraday bars is much smaller than daily —
+        # the 0.02 daily threshold effectively prevents trending_up from
+        # ever triggering on 1-min bars, keeping the system stuck in chop.
+        # Divide by sqrt(bars_per_day) to make thresholds comparable.
+        tf_scale = 1.0 / math.sqrt(bars_per_day) if is_intraday else 1.0
+        self._trend_threshold = trend_threshold * tf_scale if is_intraday else trend_threshold
+
         # Scale vol/atr thresholds for intraday — per-bar returns are
         # sqrt(bars_per_day) times smaller than daily returns.
-        tf_scale = 1.0 / math.sqrt(bars_per_day) if is_intraday else 1.0
         self._atr_high_thresh = 0.04 * tf_scale
         self._atr_low_thresh = 0.015 * tf_scale
         self._ret_vol_thresh = 0.03 * tf_scale

@@ -445,6 +445,15 @@ class OrganismLiveEngine:
         self._data_stale: bool = False
         self._DATA_STALE_THRESHOLD_S = 120.0  # 2 minutes
 
+        # v4 (improve7): Per-symbol intraday circuit breaker
+        # Tracks daily P&L and consecutive losses per symbol.
+        # Ban new entries after 2 consecutive losers or -$15 intraday.
+        self._symbol_daily_pnl: dict[str, float] = {}         # symbol → cumulative daily P&L
+        self._symbol_consecutive_losses: dict[str, int] = {}   # symbol → consecutive loss count
+        self._symbol_banned: set[str] = set()                  # banned symbols for the session
+        self._SYMBOL_BAN_PNL = -15.0       # ban after losing this much on a symbol
+        self._SYMBOL_BAN_CONSEC_LOSSES = 2  # ban after this many consecutive losers
+
         # Warmup period — skip entries for first N ticks after startup to let
         # features stabilize and avoid cold-start entry burst.
         self._WARMUP_TICKS = 5  # ~50s at 10s tick interval
@@ -985,6 +994,29 @@ class OrganismLiveEngine:
                     timestamp=now_iso,
                 ))
 
+            # 1.3 EOD ENTRY BLOCK + FLATTEN (improve7)
+            # Block new entries after 15:45 ET, force close all by 15:58 ET.
+            _eod_flatten_triggered = False
+            if self._is_intraday:
+                try:
+                    import zoneinfo
+                    _now_utc = self._now_fn()
+                    _now_et = _now_utc.astimezone(zoneinfo.ZoneInfo("America/New_York"))
+                    _hhmm_eod = _now_et.hour * 100 + _now_et.minute
+                    if _hhmm_eod >= 1545:
+                        if not entries_blocked:
+                            entries_blocked = True
+                            self._last_entries_blocked_reason = "eod_entry_block"
+                            result.activity.append(ActivityEvent(
+                                event_type="skip",
+                                message=f"EOD entry block — no new entries after 15:45 ET ({_hhmm_eod})",
+                                timestamp=now_iso,
+                            ))
+                    if _hhmm_eod >= 1558:
+                        _eod_flatten_triggered = True
+                except Exception:
+                    pass  # timezone parsing failure is non-fatal
+
             # 1.5 MARKET SCAN (Phase 5) — discover new stocks
             # Skip scanner when entries are blocked (halt/drawdown) — no point
             # scanning for new candidates we won't enter.
@@ -1353,6 +1385,40 @@ class OrganismLiveEngine:
                             self._pending_exit[sym] = self._tick_count
             result.trades_closed = exits_submitted
 
+            # v4 (improve7): EOD FLATTEN — force close all positions at 15:58 ET
+            if _eod_flatten_triggered and current_positions:
+                for sym, pos_data in list(current_positions.items()):
+                    if sym in self._pending_exit:
+                        continue  # already has a pending exit
+                    qty = abs(float(pos_data.get("qty", 0)))
+                    sell_shares = int(qty)
+                    if sell_shares > 0:
+                        try:
+                            _dir = 1.0 if pos_data.get("side", "long") == "long" else -1.0
+                            await self._submit_exit_order(
+                                sym, sell_shares, "eod_flatten",
+                                direction=_dir,
+                                broker_positions=current_positions,
+                            )
+                            self._exit_cooldown[sym] = self._tick_count
+                            self._pending_exit[sym] = self._tick_count
+                            result.trades_closed += 1
+                            result.activity.append(ActivityEvent(
+                                event_type="exit",
+                                symbol=sym,
+                                message=f"EOD FLATTEN: {sym} — closing {sell_shares} shares before market close",
+                                details={"reason": "eod_flatten", "shares": sell_shares},
+                                timestamp=now_iso,
+                            ))
+                            logger.info(
+                                "EOD flatten: closing %s (%d shares)", sym, sell_shares,
+                            )
+                        except Exception as e:
+                            result.errors.append(f"EOD flatten failed for {sym}: {e}")
+                        finally:
+                            self._exit_cooldown[sym] = self._tick_count
+                            self._pending_exit[sym] = self._tick_count
+
             # ── Steps 6-9 and 11 are gated: skip when entries are blocked ──
             if entries_blocked:
                 if _PROMETHEUS_AVAILABLE:
@@ -1554,6 +1620,8 @@ class OrganismLiveEngine:
                 _rej_sector = 0
                 _rej_fitness = 0
                 _rej_liquidity = 0
+                _rej_circuit_breaker = 0
+                _rej_confidence = 0
 
                 cand_dicts = []
                 for c in candidates:
@@ -1597,6 +1665,11 @@ class OrganismLiveEngine:
                         _rej_liquidity += 1
                         logger.info("Liquidity gate blocked %s", c.symbol)
                         continue
+                    # v4 (improve7): Symbol circuit breaker — ban symbols that
+                    # are structurally bad today (2 consecutive losers or -$15)
+                    if c.symbol in self._symbol_banned:
+                        _rej_circuit_breaker += 1
+                        continue
 
                     bs = breakout_by_sym.get(c.symbol)
                     breakout_score = bs.composite_score if bs else 0.0
@@ -1608,6 +1681,30 @@ class OrganismLiveEngine:
                         + 0.30 * breakout_score
                         + 0.20 * min(tension, 1.0)
                     )
+                    # v4 (improve7): Confidence-based entry gate
+                    # Main-book requires MIN_MAIN_CONF (higher in chop).
+                    # Below-threshold candidates are routed to exploration.
+                    _MIN_MAIN_CONF = 0.35 if regime == "chop" else 0.30
+                    if confidence < _MIN_MAIN_CONF:
+                        _rej_confidence += 1
+                        # Route to exploration bucket instead of discarding
+                        if not hasattr(self, "_confidence_exploration_queue"):
+                            self._confidence_exploration_queue: list[dict[str, Any]] = []
+                        self._confidence_exploration_queue.append({
+                            "symbol": c.symbol,
+                            "direction": c.direction,
+                            "predicted_return": (
+                                c.ml_signal.predicted_return if c.ml_signal else 0.01
+                            ),
+                            "confidence": confidence,
+                            "breakout_score": breakout_score,
+                        })
+                        logger.info(
+                            "Confidence gate: %s routed to exploration "
+                            "(conf=%.2f < %.2f, regime=%s)",
+                            c.symbol, confidence, _MIN_MAIN_CONF, regime,
+                        )
+                        continue
                     cand_dicts.append({
                         "symbol": c.symbol,
                         "direction": c.direction,
@@ -1632,6 +1729,7 @@ class OrganismLiveEngine:
                         and bs.symbol not in self._exit_cooldown
                         and bs.symbol not in self._pending_entry
                         and bs.symbol not in self._entry_metadata
+                        and bs.symbol not in self._symbol_banned
                         and bs.composite_score >= 0.55
                         and self.evolved_params.symbol_fitness.get(bs.symbol, 0.5) >= _FITNESS_GATE
                     ):
@@ -1700,6 +1798,8 @@ class OrganismLiveEngine:
                     "sector_gate": _rej_sector,
                     "fitness_gate": _rej_fitness,
                     "liquidity": _rej_liquidity,
+                    "circuit_breaker": _rej_circuit_breaker,
+                    "confidence_gate": _rej_confidence,
                     "missingness": _rej_missingness,
                 }
 
@@ -1857,13 +1957,24 @@ class OrganismLiveEngine:
                             )
 
                             # Track entry metadata for TradeRecord
+                            # Determine entry source from breakout score
+                            _entry_source = "alpha"
+                            if sz.breakout_score >= 0.55 and (
+                                not hasattr(sz, 'predicted_return') or abs(sz.predicted_return) < 0.003
+                            ):
+                                _entry_source = "breakout"
+                            elif sz.breakout_score >= 0.4:
+                                _entry_source = "alpha+breakout"
                             self._entry_metadata[sz.symbol] = {
                                 "entry_price": price,
                                 "entry_tick": self._tick_count,
+                                "entry_time": self._time_fn(),
                                 "direction": sz.direction,
                                 "filled_shares": filled_shares,
                                 "predicted_return": predicted_return,
                                 "confidence": sz.confidence,
+                                "entry_source": _entry_source,
+                                "regime_at_entry": regime,
                             }
 
                     except Exception as e:
@@ -1872,17 +1983,25 @@ class OrganismLiveEngine:
                         )
 
                 # 9b. EXPLORATION BUCKET — micro-size trades on rejects
-                if EXPLORATION_ENABLED and not entries_blocked:
+                # v4 (improve7): Always enabled for intraday to route
+                # low-confidence candidates for learning without full sizing
+                _exploration_active = EXPLORATION_ENABLED or self._is_intraday
+                if _exploration_active and not entries_blocked:
                     try:
                         exploration_rejects = getattr(self.kelly_sizer, "_exploration_rejects", [])
+                        # Also include confidence-gated candidates (improve7)
+                        _conf_queue = getattr(self, "_confidence_exploration_queue", [])
+                        exploration_rejects = exploration_rejects + _conf_queue
+                        self._confidence_exploration_queue = []  # reset
                         # Filter for decent alpha candidates
                         exploration_cands = [
                             r for r in exploration_rejects
                             if (r.get("breakout_score", 0) >= 0.4
-                                or r.get("confidence", 0) >= 0.5)
+                                or r.get("confidence", 0) >= 0.20)
                             and r["symbol"] not in fresh_open
                             and r["symbol"] not in self._exit_cooldown
                             and r["symbol"] not in self._pending_entry
+                            and r["symbol"] not in self._symbol_banned
                         ]
                         # Count current exploration positions
                         _expl_open = sum(
@@ -1914,11 +2033,14 @@ class OrganismLiveEngine:
                                 self._entry_metadata[sym] = {
                                     "entry_price": price,
                                     "entry_tick": self._tick_count,
+                                    "entry_time": self._time_fn(),
                                     "direction": ec.get("direction", 1.0),
                                     "filled_shares": expl_shares,
                                     "predicted_return": ec.get("predicted_return", 0.01),
                                     "confidence": ec.get("confidence", 0.5),
                                     "exploration": True,
+                                    "entry_source": "exploration",
+                                    "regime_at_entry": regime,
                                 }
                                 # Create exit levels
                                 exit_lvl = self.exit_engine.create_exit_levels(
@@ -2934,6 +3056,26 @@ class OrganismLiveEngine:
             )
 
             _is_exploration = meta.get("exploration", False)
+
+            # Compute causal fields (improve7)
+            _exit_lvl = self._exit_levels.get(sym)
+            _mfe = 0.0
+            _mae = 0.0
+            _bars_held = 0
+            _regime_at_entry = meta.get("regime_at_entry", "unknown")
+            _regime_at_exit = getattr(self.regime_detector, "current_regime", "unknown")
+            if _exit_lvl is not None:
+                _bars_held = _exit_lvl.bars_held
+                # MFE: max favorable excursion in dollars
+                _highest = _exit_lvl.highest_favorable
+                _mfe = (_highest - entry_price) * direction * shares
+                # MAE: max adverse excursion (worst unrealized loss)
+                # Use stop_loss distance as proxy for MAE (conservative)
+                _stop_dist = abs(entry_price - _exit_lvl.stop_loss)
+                _mae = _stop_dist * shares
+            _entry_time = meta.get("entry_time", 0)
+            _time_in_trade = self._time_fn() - _entry_time if _entry_time > 0 else 0.0
+
             trade = TradeRecord(
                 symbol=sym,
                 direction=direction,
@@ -2948,9 +3090,42 @@ class OrganismLiveEngine:
                 actual_return=actual_return,
                 confidence=meta.get("confidence", 0),
                 is_exploration=_is_exploration,
+                entry_source=meta.get("entry_source", ""),
+                regime_at_entry=_regime_at_entry,
+                regime_at_exit=_regime_at_exit,
+                mfe=round(_mfe, 2),
+                mae=round(_mae, 2),
+                bars_held_at_exit=_bars_held,
+                time_in_trade_seconds=round(_time_in_trade, 1),
             )
             self._all_trades.append(trade)
             self.learner.record_trade(trade)
+
+            # v4 (improve7): Update per-symbol circuit breaker tracking
+            if not _is_exploration:
+                self._symbol_daily_pnl[sym] = self._symbol_daily_pnl.get(sym, 0.0) + pnl
+                if pnl <= 0:
+                    self._symbol_consecutive_losses[sym] = (
+                        self._symbol_consecutive_losses.get(sym, 0) + 1
+                    )
+                else:
+                    self._symbol_consecutive_losses[sym] = 0
+                # Check ban conditions
+                if (
+                    sym not in self._symbol_banned
+                    and (
+                        self._symbol_consecutive_losses.get(sym, 0) >= self._SYMBOL_BAN_CONSEC_LOSSES
+                        or self._symbol_daily_pnl.get(sym, 0) <= self._SYMBOL_BAN_PNL
+                    )
+                ):
+                    self._symbol_banned.add(sym)
+                    logger.warning(
+                        "Symbol circuit breaker: %s BANNED for session "
+                        "(daily_pnl=$%.2f, consec_losses=%d)",
+                        sym,
+                        self._symbol_daily_pnl.get(sym, 0),
+                        self._symbol_consecutive_losses.get(sym, 0),
+                    )
 
             # Record for regime-stratified Kelly (skip exploration to prevent
             # micro-size trades from polluting main Kelly statistics)

@@ -522,16 +522,21 @@ FOR EACH OPEN POSITION:
       │   │   └── price crosses trail → EXIT
       │   │
       │   ├── Priority 4b: FAILURE TO FOLLOW THROUGH (horizon-delay + regime R)
-      │   │   ├── Horizon delay: early_check = max(prediction_horizon // 2, 3)
-      │   │   │   For H=15: don't check until bar 7 (7 min)
-      │   │   ├── Only checked when trailing NOT yet active
-      │   │   ├── Momentum confirmation: FTF only fires if price has NOT improved since prior bar
+      │   │   ├── **SKIPPED entirely when trailing_active = True** (trailing governs)
+      │   │   ├── Horizon delay (regime-adaptive):
+      │   │   │   ├── chop: max(H × 4/5, 5) = **12 bars** for H=15 (don't judge early in chop)
+      │   │   │   └── other: max(H // 2, 3) = **7 bars** for H=15
+      │   │   ├── Multi-bar momentum: tracks price_at_prior_bar AND price_two_bars_ago
       │   │   ├── Regime-dependent R thresholds:
       │   │   │   ├── trending_up / low_vol / high_vol: **DISABLED** (let winners run)
-      │   │   │   ├── chop: 0.15R
+      │   │   │   ├── chop: 0.15R — **REDESIGNED (improve7)**:
+      │   │   │   │   ├── If PnL ≤ 0 AND 2-bar negative momentum → EXIT "failure_to_follow"
+      │   │   │   │   ├── If PnL > 0 AND not yet tightened → TIGHTEN stop (ftf_stop_tighten)
+      │   │   │   │   │   └── Moves stop to midpoint between entry and current price (one-shot)
+      │   │   │   │   └── If already tightened or no momentum signal → HOLD (do not exit)
       │   │   │   ├── stress: 0.10R
-      │   │   │   └── trending_down / unknown: 0.25R
-      │   │   └── If R_achieved < R_threshold AND no positive momentum → EXIT, reason: "failure_to_follow"
+      │   │   │   └── trending_down / unknown: 0.25R (original logic: exit if no positive momentum)
+      │   │   └── New ExitLevels fields: ftf_stop_tightened (bool), price_two_bars_ago (float)
       │   │
       │   ├── Priority 5: TIME-BASED EXIT (regime-adaptive, 1-min bar units)
       │   │   ├── max_bars varies by regime (0=disabled for trending_up AND low_vol; trending_down=45)
@@ -565,7 +570,8 @@ FOR EACH OPEN POSITION:
           │   ├── Capture synchronous fill price in _last_exit_fill_price[symbol]
           │   └── Set cooldowns (_exit_cooldown, _pending_exit)
           └── Reasons: "stop_loss", "trailing_stop", "take_profit", "partial_take_profit",
-              "failure_to_follow", "loser_time_stop", "ml_reversal", "max_loss_limit", etc.
+              "failure_to_follow", "loser_time_stop", "ml_reversal", "max_loss_limit",
+              "eod_flatten" (improve7: forced close at market close), etc.
 ```
 
 ### Exit Regime Parameters (REGIME_* lookup tables in adaptive_exits.py)
@@ -608,8 +614,9 @@ These override the base class defaults when the engine calls `AdaptiveExitEngine
 | `_LOSER_MAX_FALLBACK` | **120** (2 hours) | Loser time-stop uses 120 bars when max_bars=0. Was 200 ticks (~33 min). |
 | `TIME_DECAY_RATE` | **0.003** (0.3%/bar) | Tightens stop after decay_start bars. Was 1%/tick (6× too fast). |
 | Time decay floor | 0.6 | Maximum 40% tightening from time decay |
-| Failure-to-follow R thresholds | Regime-dependent | trending_up/low_vol/high_vol=**disabled**, chop=0.15R, stress=0.10R, others=0.25R; momentum-confirmed |
-| Failure-to-follow delay | `max(H//2, 3)` = **7** for H=15 | Don't check until bar 7. Was ~25% of max_bars. |
+| Failure-to-follow R thresholds | Regime-dependent | trending_up/low_vol/high_vol=**disabled**; chop=0.15R (**losers-only exit + stop tighten for winners**); stress=0.10R; others=0.25R |
+| Failure-to-follow delay | chop: `max(H×4/5, 5)` = **12**; other: `max(H//2, 3)` = **7** for H=15 | Chop gets longer delay (don't judge 15-bar thesis at 7 bars) |
+| FTF stop tighten (chop) | midpoint(entry, current) | One-shot: if PnL > 0 in chop, tighten stop instead of exiting. Sets `ftf_stop_tightened = True`. |
 | ATR fallback | 2% of entry | Used when ATR data unavailable |
 | ATR computation | EMA-based (α=2/(period+1)), init=mean of first period TRs | Falls back to abs(close.diff()).mean() |
 | `is_new_bar` | wall-clock UTC minute boundary | Risk checks (max_loss, stop_loss) run every 10s tick; all other exits only on new 1-min bars. Uses wall clock (not Alpaca bar timestamp) for consistent 1-bar/min counting. |
@@ -683,6 +690,12 @@ PRE-SCAN GATES (NOTE: these are scattered across the tick, not a single block)
   ├── Equity-zero gate [step 4, AFTER data fetch + regime]: 3+ consecutive zero-equity readings → entries_blocked
   │   (_EQUITY_ZERO_THRESHOLD = 3 — detects stale broker data; auto-recovers)
   │
+  ├── EOD entry block [step 1.3] (intraday only, improve7):
+  │   ├── After 15:45 ET → entries_blocked = True (no new entries)
+  │   └── After 15:58 ET → _eod_flatten_triggered = True
+  │       └── Force close ALL open positions, reason: "eod_flatten"
+  │       (prevents overnight exposure; aligns intraday mandate with equity curve)
+  │
   ├── Background training timeout: _BG_TRAINING_TIMEOUT_TICKS = 30 (~5 min at 10s/tick)
   │   (auto-cancels stuck background retrain jobs)
   │
@@ -725,7 +738,7 @@ ENTRY SCANNING PIPELINE
   │   ├── Combines ML + 6 other factors (see §18)
   │   └── Returns top-3 AlphaCandidates with composite >= 0.15 (live_engine overrides default of 5)
   │
-  ├── [7d] FILTER CANDIDATES (9 gates):
+  ├── [7d] FILTER CANDIDATES (11 gates):
   │   │
   │   │  For each AlphaCandidate:
   │   ├── Gate 1: Already have position? → REJECT
@@ -736,9 +749,14 @@ ENTRY SCANNING PIPELINE
   │   ├── Gate 6: Sector gate (max 4 per sector)? → REJECT
   │   ├── Gate 7: Symbol fitness < 0.45? → REJECT (chronic loser gate)
   │   ├── Gate 8: Liquidity gate (avg 20-bar volume < 10,000)? → REJECT
-  │   └── Gate 9: Missingness gate (last-row NaN/Inf > 25%)? → REJECT
+  │   ├── Gate 9: Symbol circuit breaker (improve7)? → REJECT
+  │   │   └── Banned if: 2+ consecutive losers OR daily P&L ≤ -$15 on this symbol
+  │   ├── Gate 10: Missingness gate (last-row NaN/Inf > 25%)? → REJECT
+  │   └── Gate 11: Confidence gate (improve7):
+  │       └── MIN_MAIN_CONF = 0.35 in chop, 0.30 otherwise
+  │           Below threshold → routed to exploration bucket (not discarded)
   │
-  │   IF passes all 9 gates:
+  │   IF passes all 11 gates:
   │   ├── Compute blended confidence (additive):
   │   │   confidence = 0.50 × ML_confidence
   │   │              + 0.30 × breakout_score
@@ -752,6 +770,7 @@ ENTRY SCANNING PIPELINE
   │   ├── Gates (subset — NOT same as alpha gates):
   │   │   ├── Not in alpha candidates, not in open positions
   │   │   ├── Not in exit cooldown, pending entry, or entry_metadata
+  │   │   ├── Not in _symbol_banned (circuit breaker, improve7)
   │   │   ├── composite_score >= 0.55
   │   │   ├── fitness >= 0.45
   │   │   ├── Sector gate allows
@@ -777,7 +796,8 @@ A broad market gate that blocks all long entries when SPY < SMA(50). Infrastruct
 30 symbols in universe
   → ~25 with sufficient features
     → ~5 pass alpha threshold (0.15)
-      → ~3-4 pass all 8 gates
+      → ~3-4 pass all 11 gates (improve7: +circuit breaker, +confidence gate)
+        → low-confidence candidates routed to exploration bucket
         → ~2-3 after Kelly sizing
           → ~1-2 orders submitted
 ```
@@ -856,10 +876,14 @@ KELLY SIZING PIPELINE
   │   │   │   trending_up: 1.20  trending_down: 0.60  chop: 0.50
   │   │   │   high_vol: 0.80    low_vol: 1.00        stress: 0.40
   │   │   │   unknown: 0.70
-  │   │   ├── Evolved_params overrides (from brain, as of 2026-03-04):
+  │   │   ├── Evolved_params overrides (from brain):
   │   │   │   chop: 0.485  high_vol: 0.70  stress: 0.30
   │   │   │   (other regimes inherit hardcoded values; values evolve over time)
-  │   │   └── NOTE: evolved_params take precedence when present
+  │   │   ├── **Evolution freeze (improve7)**: Evolved scales ONLY used when:
+  │   │   │   ├── Total trades across all regimes >= 200
+  │   │   │   └── Trades in THIS specific regime >= 30
+  │   │   │   Otherwise: hardcoded fallbacks used (early evolved scales are unstable)
+  │   │   └── NOTE: evolved_params take precedence when present AND statistically stable
   │   │
   │   ├── STEP 6: Confidence Scaling
   │   │   ├── scale = 0.3 + confidence × 1.2 → range [0.3, 1.5]
@@ -877,8 +901,11 @@ KELLY SIZING PIPELINE
   │   ├── PRE-KELLY RISK-BUDGET FLOOR (when trade_count < 200):
   │   │   ├── risk_weight = 0.25% equity / (atr_pct × 1.5 stop_mult)
   │   │   ├── Applied after Kelly combine, before caps
-  │   │   ├── target_weight = max(kelly_target, risk_budget_weight × dd_scale)
-  │   │   └── Ensures cold-start positions are meaningfully sized, not microscopic
+  │   │   ├── **Confidence-scaled (improve7)**: risk_weight × dd_scale × conf_floor_scale
+  │   │   │   └── conf_floor_scale = clamp(0.5 + 0.8 × confidence, 0.5, 1.1)
+  │   │   │       Low-confidence trades: 0.5× floor. High-confidence: 1.1× floor.
+  │   │   │       Restores conviction sizing differentiation (was near-constant notional).
+  │   │   └── target_weight = max(kelly_target, scaled_risk_budget_weight)
   │   │
   │   ├── CAPS + FILTERS:
   │   │   ├── Per-position cap: 8% intraday / 10% daily (of equity)
@@ -897,7 +924,8 @@ KELLY SIZING PIPELINE
   │       └── breakout_score (from breakout scanner)
   │
   └── INTRADAY SEASONALITY FILTER:
-      └── Last 15 min (3:45-4:00 ET): ALL sizes × 0.60
+      ├── 3:45-3:58 ET: ALL sizes × 0.60 (entries still blocked by EOD gate above)
+      └── 3:58+ ET: EOD FLATTEN triggered — all open positions force closed (improve7)
 ```
 
 ---
@@ -926,7 +954,11 @@ SUBMIT ENTRY ORDERS
   │   ├── POST-ORDER SETUP (if features available):
   │   │   ├── Create ExitLevels (stop, TP, trailing, partial TP)
   │   │   ├── Create PyramidPosition (layer 0, target = shares/0.6)
-  │   │   └── Create _entry_metadata record
+  │   │   └── Create _entry_metadata record:
+  │   │       ├── entry_price, entry_tick, entry_time (wall clock), direction
+  │   │       ├── filled_shares, predicted_return, confidence
+  │   │       ├── entry_source: "alpha", "breakout", "alpha+breakout", or "exploration" (improve7)
+  │   │       └── regime_at_entry: regime label at entry time (improve7)
   │   │
   │   └── Set _pending_entry[sym] cooldown
   │
@@ -945,31 +977,35 @@ SUBMIT ENTRY ORDERS
 
 **Source**: `backend/organism/live_engine.py` (step 9b), `backend/organism/kelly_sizer.py` (`_exploration_rejects`)
 
-Micro-size trades on Kelly-rejected candidates to prevent data starvation. **Off by default.**
+Micro-size trades on Kelly-rejected AND confidence-gated candidates to prevent data starvation.
+**Auto-enabled for all intraday modes** (improve7); configurable OFF for daily via env var.
 
 ```
-EXPLORATION BUCKET (only if ORGANISM_EXPLORATION_ENABLED=true AND entries not blocked)
+EXPLORATION BUCKET (if EXPLORATION_ENABLED or intraday, AND entries not blocked)
   │
-  ├── Source: kelly_sizer._exploration_rejects
-  │   └── Populated with candidates that failed weight_too_small or below_min_notional
+  ├── Sources (merged):
+  │   ├── kelly_sizer._exploration_rejects (weight_too_small, below_min_notional)
+  │   └── Confidence-gated candidates (improve7): below MIN_MAIN_CONF threshold
+  │       └── _confidence_exploration_queue populated by gate 11, reset each tick
   │
   ├── Quality filter:
-  │   ├── breakout_score >= 0.4 OR confidence >= 0.5
-  │   ├── Symbol not in fresh_open, _exit_cooldown, or _pending_entry
+  │   ├── breakout_score >= 0.4 OR confidence >= 0.20 (relaxed from 0.5 for confidence-routed)
+  │   ├── Symbol not in fresh_open, _exit_cooldown, _pending_entry, or _symbol_banned
   │   └── Current exploration positions < EXPLORATION_MAX_POSITIONS (3)
   │
   ├── Sizing: 1 share per symbol (capped), max $200 notional (EXPLORATION_MAX_NOTIONAL)
   │
-  ├── Entry metadata tagged: "exploration": True
+  ├── Entry metadata tagged: "exploration": True, entry_source: "exploration"
   │   └── This flag propagates to TradeRecord.is_exploration
   │
   ├── Exit levels created normally (same ATR-based exits as main entries)
   │
-  └── ISOLATION: Exploration trades are EXCLUDED from regime-stratified Kelly stats
-      └── Prevents micro-size trades from polluting main position sizing statistics
+  └── ISOLATION: Exploration trades are EXCLUDED from:
+      ├── Regime-stratified Kelly stats (prevents pollution)
+      └── Symbol circuit breaker tracking (micro-trades don't trigger bans)
 
 Configuration:
-  ORGANISM_EXPLORATION_ENABLED      = false  (default: OFF)
+  ORGANISM_EXPLORATION_ENABLED      = false  (default: OFF, but auto-ON for intraday)
   ORGANISM_EXPLORATION_MAX_NOTIONAL = 200.0  (max $ per exploration position)
   ORGANISM_EXPLORATION_MAX_POSITIONS = 3     (max concurrent exploration positions)
 ```
@@ -1007,7 +1043,20 @@ RECONCILE FILLS
   │       │   ├── exit_reason = _last_exit_reason.pop(sym, "live_close")
   │       │   │   (real reason from _submit_exit_order, NOT hard-coded)
   │       │   ├── confidence = real blended confidence from entry metadata
-  │       │   └── is_exploration = meta.get("exploration", False)
+  │       │   ├── is_exploration = meta.get("exploration", False)
+  │       │   └── Causal provenance fields (improve7):
+  │       │       ├── entry_source: from entry metadata ("alpha"/"breakout"/"alpha+breakout"/"exploration")
+  │       │       ├── regime_at_entry: from entry metadata
+  │       │       ├── regime_at_exit: current regime at close
+  │       │       ├── mfe: (highest_favorable - entry) × direction × shares ($)
+  │       │       ├── mae: stop_distance × shares ($, conservative proxy)
+  │       │       ├── bars_held_at_exit: from ExitLevels.bars_held
+  │       │       └── time_in_trade_seconds: wall-clock from entry_time to now
+  │       │
+  │       ├── Update symbol circuit breaker (improve7, non-exploration only):
+  │       │   ├── _symbol_daily_pnl[sym] += pnl
+  │       │   ├── _symbol_consecutive_losses[sym] (reset on win, increment on loss)
+  │       │   └── BAN if: consec_losses >= 2 OR daily_pnl <= -$15
   │       │
   │       ├── Record to continuous_learner (ALL trades including exploration)
   │       ├── Record to kelly_sizer (regime-stratified) — SKIP if exploration trade
@@ -1349,7 +1398,7 @@ causing vol_scale to hit the 2.0 cap and over-size positions by ~4×.
 
 **Source**: `backend/organism/adaptive_exits.py`
 
-### ExitLevels Dataclass (v4)
+### ExitLevels Dataclass (v5, improve7)
 
 ```
 ExitLevels fields:
@@ -1357,7 +1406,9 @@ ExitLevels fields:
   atr_at_entry, regime_at_entry, highest_favorable, bars_held (1-min bars, NOT 10s ticks),
   partial_tp_price, partial_tp_taken, trailing_active, stress_tightened, profit_locked,
   last_bar_time (v3: bar boundary tracking), prediction_horizon (v3: ML horizon, default=15),
-  price_at_prior_bar (v4: FTF momentum confirmation — tracks price at previous bar)
+  price_at_prior_bar (v4: FTF momentum confirmation — tracks price at previous bar),
+  ftf_stop_tightened (v5: True after FTF tightened stop in chop, one-shot),
+  price_two_bars_ago (v5: 2-bar-ago price for multi-bar FTF momentum check)
 ```
 
 ### Exit Level Creation from Entry
@@ -1377,7 +1428,7 @@ trailing_stop = $145.50 (starts at stop loss)
 trailing_activation = $150.00 + $3.00 × 2.0 = $156.00  (for_timeframe sets 2.0 for both intraday/daily)
 
 min_hold = max(15 // 3, 3) = 5 bars (5 min)
-failure_to_follow_delay = max(15 // 2, 3) = 7 bars (7 min)
+failure_to_follow_delay = chop: max(15 × 4/5, 5) = 12 bars; other: max(15 // 2, 3) = 7 bars
 ```
 
 ### Trailing Stop Mechanics
@@ -1404,14 +1455,17 @@ If price drops to $157.50 → EXIT via trailing stop
 
 ```
 Raw Data → 4 Signals (RegimeDetector defaults: sma_period=50, vol_lookback=20, churn_window=20):
-  ├── Trend slope (SMA slope over 10 bars, threshold=±0.02)
+  ├── Trend slope (SMA slope over 10 bars, threshold=±0.02 daily)
+  │   **improve7**: trend_threshold now scaled by 1/√bpd for intraday
+  │   (was static 0.02, which effectively prevented trending_up from ever triggering on 1-min bars)
   ├── Price vs SMA distance (threshold=±0.02, scaled by 1/√bpd for intraday)
   ├── atr_14 (ATR(14)/price): atr_high=0.04, atr_low=0.015 (scaled for intraday)
   │   + returns vol threshold=0.03 (scaled for intraday)
   └── Volume anomaly
 
-  Intraday scaling: 4× lookback periods, thresholds × (1/√bpd)
-  For 1Min: trend=0.02, pct_above=~0.001, atr_high=~0.002, atr_low=~0.0008, ret_vol=~0.0015
+  Intraday scaling: 4× lookback periods, ALL thresholds × (1/√bpd) including trend
+  For 1Min (bpd=390): trend=~0.001, pct_above=~0.001, atr_high=~0.002, atr_low=~0.0008, ret_vol=~0.0015
+  (trend threshold reduction allows micro-trends to be detected, preventing permanent chop classification)
 
 Signals → Raw Scores (additive):
   ├── trending_up: +2 (strong trend) or +1 (above SMA)
@@ -1561,6 +1615,8 @@ The brain file `organism_brain/evolved_params.json` stores the current evolved s
 Breakout period bounds: `breakout_bb_period (10,40)`, `breakout_atr_short (5,20)`, `breakout_atr_long (20,80)`, `breakout_pivot_lookback (10,40)`, `breakout_vol_avg_period (10,40)`, `breakout_rs_period (10,40)`.
 
 Hard floor enforcement on restore: `high_vol >= 0.70`, `stress >= 0.30` (from `EvolvedParams.from_dict()`).
+
+**Regime evolution freeze (improve7)**: `_regime_scale()` in kelly_sizer only uses evolved scales when total trades >= 200 AND trades in the specific regime >= 30. Below that threshold, hardcoded static scales are used. This prevents statistically unstable early evolved values from causing mis-sizing.
 
 Step 2 guard: stop tightening requires `>= 2` stop-loss trades.
 Step 7 detail: after adjusting individual breakout weights, `_normalize_breakout_weights()` re-normalizes all 6 to sum=1.0; each clamped to [0.10, 0.40] before normalization.
@@ -1754,6 +1810,14 @@ TradeRecord (continuous_learner.py):
   - symbol, direction, entry_price, exit_price, entry_bar, exit_bar
   - shares, pnl, exit_reason, predicted_return, actual_return, confidence
   - is_exploration: bool (False for main trades, True for exploration bucket)
+  - Causal provenance fields (improve7):
+    - entry_source: str ("alpha", "breakout", "alpha+breakout", "exploration")
+    - regime_at_entry: str (regime label at position open)
+    - regime_at_exit: str (regime label at position close)
+    - mfe: float (max favorable excursion in $)
+    - mae: float (max adverse excursion in $)
+    - bars_held_at_exit: int (actual 1-min bars held)
+    - time_in_trade_seconds: float (wall-clock duration)
 ```
 
 ### Safe Type Conversion
@@ -4231,7 +4295,7 @@ StalenessReasons (enum):
 | Kelly ML floor | 0.04×conf (trained) / 0.02×conf (untrained) | kelly_sizer | Minimum sizing when ML confident + edge clears cost |
 | Kelly breakout floor | 0.003×score (requires kelly<0.005, score>=0.55) | kelly_sizer | Minimum sizing on strong breakout + edge clears cost |
 | Kelly confidence cap (untrained) | 0.9 | kelly_sizer | Confidence scaling ceiling when ML untrained (was 0.6 — prevented cold-start sizing) |
-| Kelly risk-budget floor | 0.25% equity / (atr × 1.5) | kelly_sizer | Pre-Kelly sizing floor when trade_count < 200 |
+| Kelly risk-budget floor | 0.25% equity / (atr × 1.5) × conf_floor_scale | kelly_sizer | Pre-Kelly sizing floor when trade_count < 200. conf_floor_scale = clamp(0.5+0.8×conf, 0.5, 1.1) |
 | Kelly raw cap | 1.0 (100%) | kelly_sizer | Prevents oversized raw Kelly fractions |
 | Kelly min notional | $500 intraday / $2,000 daily | kelly_sizer | Minimum position size (set by live_engine per timeframe) |
 | Kelly max per position | 8% intraday / 10% daily | kelly_sizer | Position concentration limit (set by live_engine per timeframe) |
@@ -4239,6 +4303,8 @@ StalenessReasons (enum):
 | Drawdown risk-off | 25% | kelly_sizer | No new positions at all |
 | Drawdown kill switch | code: 5%, docker: 3%, .env: 8% | governance | Halt all entries |
 | Intraday size reduction | 40% | live_engine | Last 15 min of session (3:45-4:00 ET) |
+| EOD entry block | 15:45 ET | live_engine | Block all new entries (improve7) |
+| EOD flatten | 15:58 ET | live_engine | Force close all open positions (improve7) |
 | Opening block window | 30 min (9:30-10:00 ET) | live_engine | No entries during open auction (intraday only) |
 | Regime sit-out | high_vol/stress + all bearish ML | live_engine | Block entries when all ML signals are short |
 | Entry throttle | dynamic: 12/hr (learning) or max(3, 6-open) (production) | live_engine | Learning mode (< 200 trades) gets more entries for data collection |
@@ -4251,8 +4317,11 @@ StalenessReasons (enum):
 | Feature QA NaN rate | 20% | feature_store | Reject feature set |
 | NaN missingness gate | 25% | live_engine | Block entries when >25% features are NaN/Inf |
 | Feature QA missing bars | 10% | feature_store | Flag data quality issue |
-| Failure-to-follow delay | max(H//2, 3) = **7 bars** for H=15 | adaptive_exits | Horizon-aware delay before checking follow-through |
-| Failure-to-follow R thresholds | regime-dependent (0.10R–0.25R) | adaptive_exits | trending_up/low_vol/high_vol=disabled, chop=0.15R, stress=0.10R, others=0.25R; momentum-confirmed |
+| Failure-to-follow delay | chop: max(H×4/5, 5) = **12 bars**; other: max(H//2, 3) = **7** for H=15 | adaptive_exits | Chop gets longer delay (improve7) |
+| Failure-to-follow R thresholds | regime-dependent (0.10R–0.25R) | adaptive_exits | trending_up/low_vol/high_vol=disabled; chop=0.15R (**losers-only exit, winners get stop tightened**); stress=0.10R; others=0.25R |
+| Confidence entry gate | 0.30 (0.35 in chop) | live_engine | Below-threshold candidates routed to exploration (improve7) |
+| Symbol circuit breaker | 2 consecutive losers OR -$15 daily | live_engine | Ban symbol for remainder of session (improve7) |
+| Regime evolution freeze | 200+ total trades AND 30+ per regime | kelly_sizer | Evolved regime scales locked until statistically stable (improve7) |
 | Loser time-stop fallback | **120 bars** (2 hours) | adaptive_exits | Used when max_bars=0 (trending_up, low_vol). Was 200 ticks (~33 min). |
 | Time decay rate | **0.3%/bar** | adaptive_exits | Tightens stop after decay_start. Was 1%/tick (6× too fast). |
 | Entry slippage cap | 0.1% | live_engine | Marketable limit orders cap slippage at 0.1% above ask / below bid |

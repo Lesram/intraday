@@ -351,7 +351,10 @@ class KellySizer:
             # Pre-Kelly risk-budget floor: when trade count is low, Kelly
             # estimates are unstable. Use deterministic risk-budget sizing
             # as a floor so cold-start positions aren't microscopic.
-            # risk_weight = risk_per_trade / (atr_pct * stop_atr_mult)
+            # v4 (improve7): Scale floor by confidence to restore conviction
+            # sizing differentiation. Without this, all trades converge to
+            # near-identical notional (floor dominates Kelly).
+            # confidence_floor_scale = clip(0.5 + 0.8 * confidence, 0.5, 1.1)
             _risk_budget_applied = False
             if trade_count is not None and trade_count < self._RISK_BUDGET_TRADE_THRESHOLD:
                 _stop_dist = atr_pct * self._RISK_BUDGET_STOP_ATR
@@ -359,6 +362,10 @@ class KellySizer:
                     risk_budget_weight = self._RISK_BUDGET_PER_TRADE / _stop_dist
                     # Apply drawdown scaling to risk-budget too
                     risk_budget_weight *= drawdown_scale
+                    # Scale floor by confidence — low-conf trades get smaller
+                    # floor, high-conf trades get near-full floor
+                    _conf_floor_scale = max(0.5, min(0.5 + 0.8 * confidence, 1.1))
+                    risk_budget_weight *= _conf_floor_scale
                     if target_weight < risk_budget_weight:
                         target_weight = risk_budget_weight
                         _risk_budget_applied = True
@@ -451,12 +458,26 @@ class KellySizer:
         If EvolutionEngine has set ``_evolved_regime_scales``, those
         override the static defaults (EvolutionEngine learns which
         regimes are truly profitable from trade outcomes).
+
+        v4 (improve7): Freeze evolved scales until we have 200+ trades
+        AND 30+ trades in each major regime. Early evolved scales are
+        statistically unstable and can cause mis-sizing.
         """
-        # Use evolved scales if available
+        # Use evolved scales if available AND statistically stable
         if hasattr(self, "_evolved_regime_scales") and self._evolved_regime_scales:
-            scale = self._evolved_regime_scales.get(regime)
-            if scale is not None:
-                return float(scale)
+            # Check if we have enough data for stable evolved scales
+            _total_trades = sum(
+                s["wins"] + s["losses"] for s in self._regime_stats.values()
+            ) if self._regime_stats else 0
+            _regime_trades = 0
+            if regime in self._regime_stats:
+                rs = self._regime_stats[regime]
+                _regime_trades = int(rs["wins"] + rs["losses"])
+            # Only use evolved scales with 200+ total trades and 30+ in this regime
+            if _total_trades >= 200 and _regime_trades >= 30:
+                scale = self._evolved_regime_scales.get(regime)
+                if scale is not None:
+                    return float(scale)
 
         scales = {
             "trending_up": 1.2,

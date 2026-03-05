@@ -73,6 +73,15 @@ class TradeRecord:
     confidence: float
     is_exploration: bool = False
 
+    # v4 (improve7): causal provenance fields for forensic analysis
+    entry_source: str = ""         # "alpha", "breakout", "exploration"
+    regime_at_entry: str = ""      # regime label at position open
+    regime_at_exit: str = ""       # regime label at position close
+    mfe: float = 0.0              # max favorable excursion ($)
+    mae: float = 0.0              # max adverse excursion ($)
+    bars_held_at_exit: int = 0    # actual bars held when exited
+    time_in_trade_seconds: float = 0.0  # wall-clock seconds in trade
+
     @property
     def correct_direction(self) -> bool:
         return (self.direction > 0 and self.actual_return > 0) or \

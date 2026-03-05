@@ -54,6 +54,10 @@ class ExitLevels:
     prediction_horizon: int = 15     # ML prediction horizon in bars
     price_at_prior_bar: float = 0.0  # Price at previous bar (for FTF momentum check)
 
+    # ── v4 additions (improve7) ──
+    ftf_stop_tightened: bool = False  # True after FTF tightened stop in chop (one-shot)
+    price_two_bars_ago: float = 0.0   # Price 2 bars ago (for multi-bar momentum)
+
     def to_dict(self) -> dict[str, Any]:
         return {
             "symbol": self.symbol,
@@ -74,6 +78,8 @@ class ExitLevels:
             "last_bar_time": self.last_bar_time,
             "prediction_horizon": self.prediction_horizon,
             "price_at_prior_bar": round(self.price_at_prior_bar, 4),
+            "ftf_stop_tightened": self.ftf_stop_tightened,
+            "price_two_bars_ago": round(self.price_two_bars_ago, 4),
         }
 
 
@@ -382,6 +388,8 @@ class AdaptiveExitEngine:
 
         # ── NEW BAR: advance bars_held, update prior-bar price tracker ──
         _prev_price = levels.price_at_prior_bar
+        _two_bars_ago = levels.price_two_bars_ago
+        levels.price_two_bars_ago = _prev_price  # shift window
         levels.price_at_prior_bar = current_price
         levels.bars_held += 1
 
@@ -412,30 +420,58 @@ class AdaptiveExitEngine:
 
         # 4b. Failure to follow through — horizon-delay + regime-dependent R.
         # Disabled for trending_up, low_vol, and high_vol — let winners run.
-        # Wait at least H//2 bars, AND confirm lack of momentum (improve5).
+        # Skip when trailing is active (trailing governs once activated).
+        # v4 (improve7): In chop, FTF only exits losers with confirmed
+        # multi-bar negative momentum. Winners get stop tightened instead.
         max_bars = self.REGIME_MAX_BARS.get(current_regime, self.max_bars_held)
         _FTF_DISABLED_REGIMES = {"trending_up", "low_vol", "high_vol"}
-        if current_regime not in _FTF_DISABLED_REGIMES:
-            early_check = max(levels.prediction_horizon // 2, 3)
-            if levels.bars_held >= early_check and not levels.trailing_active:
+        if current_regime not in _FTF_DISABLED_REGIMES and not levels.trailing_active:
+            # In chop, use longer delay (~prediction horizon) to give
+            # the thesis time to play out. Other regimes: H//2.
+            if current_regime == "chop":
+                early_check = max(levels.prediction_horizon * 4 // 5, 5)  # ~12 bars for H=15
+            else:
+                early_check = max(levels.prediction_horizon // 2, 3)
+            if levels.bars_held >= early_check:
                 pnl_dir = (current_price - levels.entry_price) * direction
                 initial_risk = max(abs(levels.entry_price - levels.stop_loss), 0.01)
                 r_achieved = pnl_dir / initial_risk
-                # Regime-dependent R threshold (lowered from 0.25→0.15)
+                # Regime-dependent R threshold
                 _FTF_R_THRESHOLDS = {
                     "chop": 0.15,
                     "stress": 0.10,
                     "trending_down": 0.25, "unknown": 0.25,
                 }
                 r_threshold = _FTF_R_THRESHOLDS.get(current_regime, 0.25)
-                # Momentum confirmation: only fire FTF if price hasn't
-                # improved since prior bar (no positive momentum).
+                # Multi-bar momentum confirmation: negative momentum over
+                # BOTH prior bars (not just one) to avoid noise exits.
                 _has_momentum = (
                     _prev_price > 0
                     and (current_price - _prev_price) * direction > 0
                 )
-                if r_achieved < r_threshold and not _has_momentum:
-                    return ExitSignal(True, "failure_to_follow", current_price)
+                _multi_bar_neg_momentum = (
+                    _prev_price > 0
+                    and _two_bars_ago > 0
+                    and (current_price - _prev_price) * direction <= 0
+                    and (_prev_price - _two_bars_ago) * direction <= 0
+                )
+
+                if r_achieved < r_threshold:
+                    if current_regime == "chop":
+                        # Chop-specific FTF: only exit if LOSING + multi-bar
+                        # negative momentum. Winners get stop tightened.
+                        if pnl_dir <= 0 and _multi_bar_neg_momentum:
+                            return ExitSignal(True, "failure_to_follow", current_price)
+                        elif pnl_dir > 0 and not levels.ftf_stop_tightened:
+                            # Tighten stop instead of exiting — preserve
+                            # the chance for the trade to reach trailing/TP.
+                            self._ftf_tighten_stop(levels, current_price)
+                            levels.ftf_stop_tightened = True
+                        # else: already tightened or losing without momentum → hold
+                    else:
+                        # Non-chop regimes: original FTF logic with momentum
+                        if not _has_momentum:
+                            return ExitSignal(True, "failure_to_follow", current_price)
 
         # 5. Time-based exit (regime-adaptive — disabled in trending)
         if max_bars > 0 and levels.bars_held >= max_bars:
@@ -472,6 +508,21 @@ class AdaptiveExitEngine:
         return ExitSignal(False)
 
     # ── private helpers ───────────────────────────────────────────────────
+
+    def _ftf_tighten_stop(self, levels: ExitLevels, current_price: float) -> None:
+        """FTF stop tighten in chop: move stop to halfway between entry and current.
+
+        This preserves winning positions while reducing downside risk,
+        converting FTF from an exit event to a risk-management modifier.
+        """
+        direction = levels.direction
+        if direction > 0:
+            # Tighten stop to midpoint between entry and current price
+            new_stop = (levels.entry_price + current_price) / 2
+            levels.stop_loss = max(levels.stop_loss, new_stop)
+        else:
+            new_stop = (levels.entry_price + current_price) / 2
+            levels.stop_loss = min(levels.stop_loss, new_stop)
 
     def _check_profit_lock(self, levels: ExitLevels, current_price: float) -> None:
         """At 2R favorable move, lock stop to 1R profit (one-shot)."""
