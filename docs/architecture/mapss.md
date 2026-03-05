@@ -747,7 +747,7 @@ ENTRY SCANNING PIPELINE
   │   ├── Gate 4: Already in entry_metadata? → REJECT
   │   ├── Gate 5: LONG_ONLY and direction < 0? → REJECT
   │   ├── Gate 6: Sector gate (max 4 per sector)? → REJECT
-  │   ├── Gate 7: Symbol fitness < 0.45? → REJECT (chronic loser gate)
+  │   ├── Gate 7: Symbol fitness < 0.30 (learning) / 0.45 (production)? → REJECT (chronic loser gate)
   │   ├── Gate 8: Liquidity gate (avg 20-bar volume < 10,000)? → REJECT
   │   ├── Gate 9: Symbol circuit breaker (improve7)? → REJECT
   │   │   └── Banned if: 2+ consecutive losers OR daily P&L ≤ -$15 on this symbol
@@ -772,7 +772,7 @@ ENTRY SCANNING PIPELINE
   │   │   ├── Not in exit cooldown, pending entry, or entry_metadata
   │   │   ├── Not in _symbol_banned (circuit breaker, improve7)
   │   │   ├── composite_score >= 0.55
-  │   │   ├── fitness >= 0.45
+  │   │   ├── fitness >= effective_fitness_gate (0.30 learning / 0.45 production)
   │   │   ├── Sector gate allows
   │   │   └── ML direction not negative (don't fight ML)
   │   │   (NOTE: skips LONG_ONLY direction check and liquidity gate)
@@ -1752,7 +1752,7 @@ Per-tick transparency layer capturing every indicator, threshold, and decision g
 SymbolAlphaDetail:
   - 7-factor alpha breakdown with composite score
   - min_composite_threshold: 0.15
-  - fitness_gate: 0.35 (telemetry display; actual entry gate = 0.45)
+  - fitness_gate: 0.30 (learning mode) / 0.45 (production); telemetry uses matching value
 
 SymbolBreakoutDetail:
   - 6-pattern breakout breakdown (squeeze, volume, contraction, RS, pivot, flow)
@@ -1779,6 +1779,7 @@ FilteringSummary:
     "regime_sitout" | "throttle" | "stale_data"
   - learning_mode: bool (True when < 200 completed trades)
   - effective_max_entries_per_hour: int (12 in learning, max(3, 6-open_positions) in production)
+  - effective_fitness_gate: float (0.30 in learning, 0.45 in production — relaxed to let engine learn)
   - cost_gate and min_notional wired from kelly_sizer._exploration_rejects
 
 DecisionSnapshot:
@@ -2997,6 +2998,8 @@ StreamingDataProvider:
   │
   ├── On new bar:
   │   ├── Append to ring buffer
+  │   ├── Update _last_bar_ts[symbol] = time.time()
+  │   ├── Update last_update_time = time.time()  (global, used by engine stale gate)
   │   └── Available immediately for next tick
   │
   ├── Quote data stored per symbol:
@@ -4285,7 +4288,7 @@ StalenessReasons (enum):
 | Alpha composite minimum | 0.15 | alpha_scanner | Minimum score to be a candidate |
 | Breakout composite minimum | 0.20 | breakout_scanner | Minimum breakout score |
 | Pure breakout entry threshold | 0.55 | live_engine | Breakout-only entries need high score |
-| Symbol fitness gate | 0.45 | live_engine | Chronic loser rejection |
+| Symbol fitness gate | 0.30 (learning) / 0.45 (production) | live_engine | Chronic loser rejection; relaxed in learning mode to allow data collection |
 | Liquidity gate | 10K avg vol/bar | live_engine | Block illiquid symbols (per-bar, not daily) |
 | ML confidence reversal | 0.60 (intraday) / 0.65 (daily) | live_engine | ML reversal exit — partial exit 30%/25% of position |
 | Min hold before profit exits | dynamic: max(H//3, 3) = **5 bars** (5 min) for H=15 | adaptive_exits | _min_hold_bars(prediction_horizon) — suppresses all profit exits |
@@ -4325,7 +4328,7 @@ StalenessReasons (enum):
 | Loser time-stop fallback | **120 bars** (2 hours) | adaptive_exits | Used when max_bars=0 (trending_up, low_vol). Was 200 ticks (~33 min). |
 | Time decay rate | **0.3%/bar** | adaptive_exits | Tightens stop after decay_start. Was 1%/tick (6× too fast). |
 | Entry slippage cap | 0.1% | live_engine | Marketable limit orders cap slippage at 0.1% above ask / below bid |
-| Stale data threshold | 120s | live_engine | Block entries when WebSocket data > 2 min stale (exits still run) |
+| Stale data threshold | 120s | live_engine | Block entries when streaming_provider.last_update_time > 2 min stale (exits still run) |
 | Predicted return ML floor | 0.3% | live_engine | Min predicted_return when ML signal present |
 | Predicted return no-ML range | 0.5%–2.0% | live_engine | 0.005 + 0.015×breakout_score when no ML |
 | Circuit breaker failures | 5 | resilience | Open circuit breaker |

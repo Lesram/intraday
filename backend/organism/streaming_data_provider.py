@@ -44,6 +44,8 @@ class StreamingDataProvider:
         self._quotes: dict[str, dict[str, Any]] = {}
         # Track last bar timestamp per symbol for freshness checks
         self._last_bar_ts: dict[str, float] = {}
+        # Global last-update time (max across all symbols) for engine stale gate
+        self.last_update_time: float | None = None
 
         self._running = False
 
@@ -220,7 +222,9 @@ class StreamingDataProvider:
                         "volume": row.get("volume"),
                     })
                 self._bars[symbol] = buf
-                self._last_bar_ts[symbol] = time.time()
+                _now = time.time()
+                self._last_bar_ts[symbol] = _now
+                self.last_update_time = _now
                 filled += 1
             except Exception as e:
                 logger.warning("Pre-fill failed for %s: %s", symbol, e)
@@ -243,7 +247,9 @@ class StreamingDataProvider:
             "close": bar_data.get("close"),
             "volume": bar_data.get("volume"),
         })
-        self._last_bar_ts[symbol] = time.time()
+        _now = time.time()
+        self._last_bar_ts[symbol] = _now
+        self.last_update_time = _now
 
     async def _on_quote(self, symbol: str, quote_data: dict[str, Any]) -> None:
         """Callback from AlpacaMarketDataStream for quote messages."""

@@ -1606,6 +1606,8 @@ class OrganismLiveEngine:
 
                 # Symbol fitness gate threshold — block re-entry on chronic losers
                 _FITNESS_GATE = 0.45
+                # Learning mode: relax to 0.30 so engine can trade & learn
+                _eff_fitness_gate = 0.30 if self._is_learning_mode else _FITNESS_GATE
 
                 # Track symbols planned for entry in THIS tick so the sector gate
                 # counts them when evaluating subsequent candidates.  Prevents
@@ -1653,11 +1655,11 @@ class OrganismLiveEngine:
                         continue
                     # Block symbols with poor fitness scores from evolved params
                     sym_fitness = self.evolved_params.symbol_fitness.get(c.symbol, 0.5)
-                    if sym_fitness < _FITNESS_GATE:
+                    if sym_fitness < _eff_fitness_gate:
                         _rej_fitness += 1
                         logger.info(
                             "Fitness gate blocked %s (fitness=%.2f < %.2f)",
-                            c.symbol, sym_fitness, _FITNESS_GATE,
+                            c.symbol, sym_fitness, _eff_fitness_gate,
                         )
                         continue
                     # Liquidity gate — block illiquid symbols that gap violently
@@ -1731,7 +1733,7 @@ class OrganismLiveEngine:
                         and bs.symbol not in self._entry_metadata
                         and bs.symbol not in self._symbol_banned
                         and bs.composite_score >= 0.55
-                        and self.evolved_params.symbol_fitness.get(bs.symbol, 0.5) >= _FITNESS_GATE
+                        and self.evolved_params.symbol_fitness.get(bs.symbol, 0.5) >= _eff_fitness_gate
                     ):
                         if not sector_gate_allows(bs.symbol, open_symbols, _planned_entries):
                             if _PROMETHEUS_AVAILABLE:
@@ -2306,7 +2308,7 @@ class OrganismLiveEngine:
 
         # Alpha details — from _last_full_scan
         full_alpha = getattr(self.alpha_scanner, "_last_full_scan", [])
-        fitness_gate = 0.45  # must match _FITNESS_GATE used in entry gating
+        fitness_gate = 0.30 if self._is_learning_mode else 0.45  # must match _eff_fitness_gate
         for c in full_alpha:
             sym_fitness = self.evolved_params.symbol_fitness.get(c.symbol, 0.5)
             ad = SymbolAlphaDetail(
