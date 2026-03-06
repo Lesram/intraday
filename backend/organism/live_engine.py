@@ -1095,6 +1095,7 @@ class OrganismLiveEngine:
             # Skip regime detection when features are insufficient — it
             # requires meaningful price data to function.
             regime = RegimeLabel.UNKNOWN  # default — overwritten below if features are sufficient
+            _regime_conf = 0.0  # confidence of regime label
             if not insufficient_features:
                 spy_features = features_by_symbol.get("SPY")
                 sector_features = {
@@ -1115,6 +1116,7 @@ class OrganismLiveEngine:
                         features_by_symbol
                     )
                 regime = regime_state.primary
+                _regime_conf = getattr(regime_state, "confidence", 0.0)
                 result.regime = regime
                 result.activity.append(ActivityEvent(
                     event_type="regime",
@@ -1784,14 +1786,30 @@ class OrganismLiveEngine:
                     )
                     # A2 (improve8): Two-tier confidence gate
                     # Main-book: baseline 0.40, higher in defensive regimes
-                    _MIN_MAIN_CONF = (
-                        _MAIN_CONF_DEFENSIVE
-                        if regime in ("chop", "high_vol", "trending_down")
-                        else _MAIN_CONF_BASELINE
-                    )
+                    # Learning-mode refinement: only apply defensive gate
+                    # when regime label confidence >= 0.50; otherwise use
+                    # baseline to avoid over-constraining on noisy regime.
+                    if (
+                        not self._is_learning_mode
+                        or (regime in ("chop", "high_vol", "trending_down")
+                            and _regime_conf >= 0.50)
+                    ):
+                        _MIN_MAIN_CONF = (
+                            _MAIN_CONF_DEFENSIVE
+                            if regime in ("chop", "high_vol", "trending_down")
+                            else _MAIN_CONF_BASELINE
+                        )
+                    else:
+                        _MIN_MAIN_CONF = _MAIN_CONF_BASELINE
 
                     # B1 (improve8): Heuristic expected_return → exploration only
-                    _is_heuristic = c.expected_return_source == "heuristic"
+                    # Exception: in learning mode, allow heuristic through main-book
+                    # (A4 risk caps protect sizing). Otherwise engine can never
+                    # accumulate 200 trades to train ML.
+                    _is_heuristic = (
+                        c.expected_return_source == "heuristic"
+                        and not self._is_learning_mode
+                    )
 
                     # Use effective_confidence for gating (B2 improve8)
                     _eff_conf = (
