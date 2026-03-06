@@ -603,7 +603,8 @@ class TestHighVolSizing:
     def test_high_vol_regime_scale_is_0_8(self):
         from backend.organism.kelly_sizer import KellySizer
         sizer = KellySizer()
-        assert sizer._regime_scale("high_vol") == 0.8
+        scale, source, count = sizer._regime_scale("high_vol")
+        assert scale == 0.8
 
 
 # ═══════════════════════════════════════════════════════════════════

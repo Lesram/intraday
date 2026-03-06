@@ -41,6 +41,10 @@ class PositionSize:
     confidence: float = 0.0
     predicted_return: float = 0.0
     breakout_score: float = 0.0
+    regime_scale_source: str = "static"        # "static_frozen" or "evolved"
+    regime_trade_count: int = 0                # trades in current regime
+    expected_return_source: str = "heuristic"  # "ml", "calibrated_breakout", "heuristic"
+    dollar_risk_cap_applied: bool = False
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -57,6 +61,10 @@ class PositionSize:
             "confidence": round(self.confidence, 4),
             "predicted_return": round(self.predicted_return, 6),
             "breakout_score": round(self.breakout_score, 4),
+            "regime_scale_source": self.regime_scale_source,
+            "regime_trade_count": self.regime_trade_count,
+            "expected_return_source": self.expected_return_source,
+            "dollar_risk_cap_applied": self.dollar_risk_cap_applied,
         }
 
 
@@ -146,7 +154,8 @@ class KellySizer:
         return max(0.0003, min(cost, 0.0050))
 
     # Pre-Kelly risk-budget sizing constants
-    _RISK_BUDGET_PER_TRADE = 0.0025   # 0.25% of equity risked per trade
+    _RISK_BUDGET_PER_TRADE = 0.0025   # 0.25% of equity risked per trade (production)
+    _RISK_BUDGET_PER_TRADE_LEARNING = 0.0010  # 0.10% of equity risked per trade (learning mode)
     _RISK_BUDGET_STOP_ATR = 1.5       # Assumed stop distance in ATR multiples
     _RISK_BUDGET_TRADE_THRESHOLD = 200 # Use risk-budget floor below this trade count
 
@@ -326,10 +335,11 @@ class KellySizer:
             vol_scale = min(self.vol_target / max(ann_vol, 0.01), 2.0)
 
             # 5. Regime scaling (v2: more aggressive in trending)
-            regime_scale = self._regime_scale(current_regime)
+            regime_scale, _regime_scale_source, _regime_trade_count = self._regime_scale(current_regime)
 
-            # 6. Confidence scaling — wider range [0.3, 1.5] (was [0.5, 1.0])
-            confidence_scale = 0.3 + min(confidence, 1.0) * 1.2
+            # 6. Confidence scaling — use effective_confidence when available (B2 improve8)
+            _eff_conf = cand.get("effective_confidence", confidence)
+            confidence_scale = 0.3 + min(_eff_conf, 1.0) * 1.2
             if not ml_is_trained:
                 confidence_scale = min(confidence_scale, 0.9)  # was 0.6 — prevent cold-start under-sizing
 
@@ -348,6 +358,9 @@ class KellySizer:
                 * breakout_bonus
             )
 
+            # Dollar-risk cap tracking (set in learning-mode block below)
+            _dollar_risk_cap_applied = False
+
             # Pre-Kelly risk-budget floor: when trade count is low, Kelly
             # estimates are unstable. Use deterministic risk-budget sizing
             # as a floor so cold-start positions aren't microscopic.
@@ -356,14 +369,13 @@ class KellySizer:
             # near-identical notional (floor dominates Kelly).
             # confidence_floor_scale = clip(0.5 + 0.8 * confidence, 0.5, 1.1)
             _risk_budget_applied = False
-            if trade_count is not None and trade_count < self._RISK_BUDGET_TRADE_THRESHOLD:
+            _is_learning = trade_count is not None and trade_count < self._RISK_BUDGET_TRADE_THRESHOLD
+            if _is_learning:
+                _risk_rate = self._RISK_BUDGET_PER_TRADE_LEARNING
                 _stop_dist = atr_pct * self._RISK_BUDGET_STOP_ATR
                 if _stop_dist > 1e-6:
-                    risk_budget_weight = self._RISK_BUDGET_PER_TRADE / _stop_dist
-                    # Apply drawdown scaling to risk-budget too
+                    risk_budget_weight = _risk_rate / _stop_dist
                     risk_budget_weight *= drawdown_scale
-                    # Scale floor by confidence — low-conf trades get smaller
-                    # floor, high-conf trades get near-full floor
                     _conf_floor_scale = max(0.5, min(0.5 + 0.8 * confidence, 1.1))
                     risk_budget_weight *= _conf_floor_scale
                     if target_weight < risk_budget_weight:
@@ -379,6 +391,10 @@ class KellySizer:
                 "kelly_raw": kelly_raw,
                 "kelly_half": kelly_half,
                 "spread_cost_pct": spread_cost_pct,
+                "regime_scale_source": _regime_scale_source,
+                "regime_trade_count": _regime_trade_count,
+                "expected_return_source": cand.get("expected_return_source", "heuristic"),
+                "dollar_risk_cap_applied": _dollar_risk_cap_applied,
             }
 
             # Enforce per-position cap
@@ -415,6 +431,23 @@ class KellySizer:
             if shares < 1:
                 continue
 
+            # A4 (improve8): Learning-mode dollar-risk cap + notional cap
+            if _is_learning:
+                # Dollar-risk cap: max risk = 0.10% of equity
+                _max_risk_dollars = portfolio_value * 0.0010
+                _stop_dist_price = atr_pct * self._RISK_BUDGET_STOP_ATR * current_price
+                if _stop_dist_price > 0:
+                    _risk_capped_shares = int(_max_risk_dollars / _stop_dist_price)
+                    if shares > _risk_capped_shares and _risk_capped_shares >= 1:
+                        shares = _risk_capped_shares
+                        _dollar_risk_cap_applied = True
+                # Notional cap: max 5% of equity per position in learning mode
+                _max_notional = portfolio_value * 0.05
+                _notional_capped_shares = int(_max_notional / current_price)
+                if shares > _notional_capped_shares and _notional_capped_shares >= 1:
+                    shares = _notional_capped_shares
+                    _dollar_risk_cap_applied = True
+
             actual_notional = shares * current_price
             actual_weight = actual_notional / portfolio_value
 
@@ -434,6 +467,10 @@ class KellySizer:
                 confidence=confidence,
                 predicted_return=predicted_return,
                 breakout_score=breakout_score,
+                regime_scale_source=_regime_scale_source,
+                regime_trade_count=_regime_trade_count,
+                expected_return_source=cand.get("expected_return_source", "heuristic"),
+                dollar_risk_cap_applied=_dollar_risk_cap_applied,
             ))
 
         sizes.sort(key=lambda s: s.target_weight, reverse=True)
@@ -452,7 +489,7 @@ class KellySizer:
         frac = drawdown / self.max_drawdown_cutoff
         return 1.0 - frac * (1.0 - self.drawdown_floor)
 
-    def _regime_scale(self, regime: str) -> float:
+    def _regime_scale(self, regime: str) -> tuple[float, str, int]:
         """Reduce sizing in unfavorable regimes — v2 more aggressive in trends.
 
         If EvolutionEngine has set ``_evolved_regime_scales``, those
@@ -462,22 +499,24 @@ class KellySizer:
         v4 (improve7): Freeze evolved scales until we have 200+ trades
         AND 30+ trades in each major regime. Early evolved scales are
         statistically unstable and can cause mis-sizing.
+
+        Returns (scale, source, regime_trade_count).
         """
+        _regime_trades = 0
+        if regime in self._regime_stats:
+            rs = self._regime_stats[regime]
+            _regime_trades = int(rs["wins"] + rs["losses"])
+
         # Use evolved scales if available AND statistically stable
         if hasattr(self, "_evolved_regime_scales") and self._evolved_regime_scales:
-            # Check if we have enough data for stable evolved scales
             _total_trades = sum(
                 s["wins"] + s["losses"] for s in self._regime_stats.values()
             ) if self._regime_stats else 0
-            _regime_trades = 0
-            if regime in self._regime_stats:
-                rs = self._regime_stats[regime]
-                _regime_trades = int(rs["wins"] + rs["losses"])
             # Only use evolved scales with 200+ total trades and 30+ in this regime
             if _total_trades >= 200 and _regime_trades >= 30:
                 scale = self._evolved_regime_scales.get(regime)
                 if scale is not None:
-                    return float(scale)
+                    return (float(scale), "evolved", _regime_trades)
 
         scales = {
             "trending_up": 1.2,
@@ -488,7 +527,7 @@ class KellySizer:
             "stress": 0.4,           # was 0.3 — still 60% reduction, avoids 0-sizing cascade
             "unknown": 0.7,         # insufficient data → conservative
         }
-        return scales.get(regime, 0.7)
+        return (scales.get(regime, 0.7), "static_frozen", _regime_trades)
 
     @staticmethod
     def _breakout_bonus(breakout_score: float) -> float:

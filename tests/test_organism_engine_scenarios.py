@@ -226,7 +226,7 @@ async def test_regime_unknown_doesnt_oversize(broker, brain_dir):
     engine = _make_engine(broker, brain_dir=brain_dir)
     await engine.initialize()
 
-    scale = engine.kelly_sizer._regime_scale(RegimeLabel.UNKNOWN)
+    scale, source, count = engine.kelly_sizer._regime_scale(RegimeLabel.UNKNOWN)
     assert scale <= 1.0, f"UNKNOWN regime scale {scale} exceeds 1.0"
 
 

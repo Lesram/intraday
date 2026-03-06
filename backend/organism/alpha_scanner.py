@@ -36,6 +36,7 @@ class AlphaCandidate:
     momentum_quality_score: float = 0.0
     ml_signal: MLSignal | None = None
     direction: float = 0.0  # +1 buy, -1 sell
+    expected_return_source: str = "heuristic"  # "ml", "calibrated_breakout", "heuristic"
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -49,6 +50,7 @@ class AlphaCandidate:
             "institutional": round(self.institutional_score, 4),
             "momentum_quality": round(self.momentum_quality_score, 4),
             "direction": self.direction,
+            "expected_return_source": self.expected_return_source,
         }
 
 
@@ -134,11 +136,12 @@ class AlphaScanner:
             row = df.iloc[-1]
             ml_sig = ml_signals.get(symbol)
 
-            # 1. ML score
+            # 1. ML score — use effective_confidence (B2 improve8)
             ml_score = 0.0
             direction = 0.0
             if ml_sig and ml_sig.direction != 0:
-                ml_score = ml_sig.confidence * abs(ml_sig.predicted_return) * 20  # Scale up
+                _eff_conf = ml_sig.effective_confidence if ml_sig.effective_confidence > 0 else ml_sig.confidence
+                ml_score = _eff_conf * abs(ml_sig.predicted_return) * 20  # Scale up
                 ml_score = min(ml_score, 1.0)
                 direction = ml_sig.direction
 
@@ -224,6 +227,16 @@ class AlphaScanner:
                 logger.warning("NaN/Inf composite for %s — skipping candidate", symbol)
                 continue
 
+            # B1 (improve8): Determine expected_return_source
+            # "ml" if trained model produced a real signal
+            # "calibrated_breakout" if breakout + ML confirms direction
+            # "heuristic" if no ML or synthetic floor
+            _exp_ret_source = "heuristic"
+            if ml_is_trained and ml_sig and ml_sig.direction != 0 and abs(ml_sig.predicted_return) > 1e-6:
+                _exp_ret_source = "ml"
+            elif breakout_score >= 0.4 and ml_is_trained and ml_sig and ml_sig.direction != 0:
+                _exp_ret_source = "calibrated_breakout"
+
             candidates.append(AlphaCandidate(
                 symbol=symbol,
                 composite_score=composite,
@@ -236,6 +249,7 @@ class AlphaScanner:
                 momentum_quality_score=mom_quality,
                 ml_signal=ml_sig,
                 direction=direction,
+                expected_return_source=_exp_ret_source,
             ))
 
         # Sort by composite score, take top N

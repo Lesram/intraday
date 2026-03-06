@@ -263,6 +263,16 @@ class StreamingDataProvider:
             "timestamp": quote_data.get("timestamp"),
         }
 
+    def get_bar_age(self, symbol: str) -> float:
+        """Return seconds since last bar update for symbol.
+
+        Returns float('inf') if no bar data exists for the symbol.
+        """
+        ts = self._last_bar_ts.get(symbol.upper())
+        if ts is None:
+            return float("inf")
+        return time.time() - ts
+
     async def check_and_recover_stale_stream(
         self, stale_threshold: float = 300.0,
     ) -> bool:

@@ -257,4 +257,5 @@ class TestApplyEvolvedParams:
             "total_win_pnl": 200.0, "total_loss_pnl": 220.0,
         }
         # Verify the regime_scale method uses evolved values
-        assert sizer._regime_scale("trending_up") == 1.15
+        scale, source, count = sizer._regime_scale("trending_up")
+        assert scale == 1.15

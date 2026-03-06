@@ -208,6 +208,10 @@ class KellySizingDetail:
     notional: float = 0.0
     direction: float = 1.0
     ml_floor_applied: bool = False
+    # improve8 additions
+    regime_scale_source: str = "static_frozen"
+    expected_return_source: str = "heuristic"
+    dollar_risk_cap_applied: bool = False
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -222,6 +226,9 @@ class KellySizingDetail:
                 "breakout_bonus": round(_f(self.breakout_bonus), 4),
                 "final_weight": round(_f(self.final_weight), 6),
                 "ml_floor_applied": _b(self.ml_floor_applied),
+                "regime_scale_source": str(self.regime_scale_source),
+                "expected_return_source": str(self.expected_return_source),
+                "dollar_risk_cap_applied": _b(self.dollar_risk_cap_applied),
             },
             "position_cap": round(_f(self.position_cap), 4),
             "shares": int(self.shares),
@@ -261,6 +268,12 @@ class FilteringSummary:
     # M3: Learning mode throttle telemetry
     learning_mode: bool = False
     effective_max_entries_per_hour: int = 3
+    # improve8 additions
+    regime_scale_source: str = ""
+    effective_fitness_gate: float = 0.45
+    effective_confidence_gate: float = 0.30
+    burst_cap_remaining: int = 4
+    data_source_summary: str = ""
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -292,6 +305,11 @@ class FilteringSummary:
             "entries_blocked_reason": self.entries_blocked_reason,
             "learning_mode": _b(self.learning_mode),
             "effective_max_entries_per_hour": int(self.effective_max_entries_per_hour),
+            "regime_scale_source": str(self.regime_scale_source),
+            "effective_fitness_gate": round(_f(self.effective_fitness_gate), 2),
+            "effective_confidence_gate": round(_f(self.effective_confidence_gate), 2),
+            "burst_cap_remaining": int(self.burst_cap_remaining),
+            "data_source_summary": str(self.data_source_summary),
         }
 
 

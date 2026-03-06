@@ -441,18 +441,34 @@ class OrganismLiveEngine:
         # Learning mode threshold: < 200 completed trades = learning (was 50)
         self._LEARNING_MODE_TRADES = 200
 
+        # C2 (improve8): Burst cap — rolling 15-min window
+        self._entry_timestamps_15m: list[float] = []
+        self._MAX_ENTRIES_15M = 4  # max 4 entries per rolling 15 minutes
+        # Per-exit-type symbol cooldowns
+        self._symbol_exit_type: dict[str, str] = {}  # symbol → last exit type
+        self._symbol_exit_tick: dict[str, int] = {}   # symbol → tick of last exit
+        self._STOP_LOSS_REENTRY_TICKS = 180   # 30 min at 10s/tick
+        self._FTF_LOSS_REENTRY_TICKS = 60     # 10 min at 10s/tick
+        self._PROFIT_EXIT_REENTRY_TICKS = 10  # keep current 10 ticks
+
         # Stale data gating — block entries when WebSocket data is stale
         self._data_stale: bool = False
         self._DATA_STALE_THRESHOLD_S = 120.0  # 2 minutes
 
-        # v4 (improve7): Per-symbol intraday circuit breaker
-        # Tracks daily P&L and consecutive losses per symbol.
-        # Ban new entries after 2 consecutive losers or -$15 intraday.
+        # v5 (improve8): Session-aware symbol loss gating
+        # Tracks daily wins/losses, PnL, and stop-loss times per symbol.
         self._symbol_daily_pnl: dict[str, float] = {}         # symbol → cumulative daily P&L
         self._symbol_consecutive_losses: dict[str, int] = {}   # symbol → consecutive loss count
+        self._symbol_wins_today: dict[str, int] = {}           # symbol → win count today
+        self._symbol_closed_today: dict[str, int] = {}         # symbol → total closed count today
+        self._symbol_stop_loss_times: dict[str, list[float]] = {}  # symbol → timestamps of stop-loss exits
         self._symbol_banned: set[str] = set()                  # banned symbols for the session
-        self._SYMBOL_BAN_PNL = -15.0       # ban after losing this much on a symbol
-        self._SYMBOL_BAN_CONSEC_LOSSES = 2  # ban after this many consecutive losers
+        self._SYMBOL_BAN_CONSEC_LOSSES = 2  # ban after this many consecutive losers with 0 wins
+
+        # A5 (improve8): Regime transition cooldown
+        self._last_regime: str = "unknown"
+        self._regime_change_tick: int = 0
+        self._REGIME_COOLDOWN_TICKS = 12  # 120s at 10s/tick
 
         # Warmup period — skip entries for first N ticks after startup to let
         # features stabilize and avoid cold-start entry burst.
@@ -1503,6 +1519,41 @@ class OrganismLiveEngine:
                         timestamp=now_iso,
                     ))
 
+            # ── A5 (improve8): Regime transition cooldown ──────
+            _regime_cooldown_active = False
+            if regime != self._last_regime:
+                _prev = self._last_regime
+                self._last_regime = regime
+                self._regime_change_tick = self._tick_count
+                # Cooldown on adverse transitions
+                if _prev in ("trending_up",) and regime in ("high_vol", "trending_down"):
+                    _regime_cooldown_active = True
+                    logger.info(
+                        "Regime transition cooldown: %s → %s — blocking main-book for %d ticks",
+                        _prev, regime, self._REGIME_COOLDOWN_TICKS,
+                    )
+            elif (
+                self._regime_change_tick > 0
+                and self._tick_count - self._regime_change_tick < self._REGIME_COOLDOWN_TICKS
+            ):
+                _regime_cooldown_active = True
+
+            # ── A5 (improve8): Block trending_down main-book after 10:00 ET
+            _trending_down_block = False
+            if not entries_blocked and LONG_ONLY and regime == "trending_down":
+                try:
+                    import zoneinfo
+                    _now_td = self._now_fn().astimezone(zoneinfo.ZoneInfo("America/New_York"))
+                except Exception:
+                    _now_td = self._now_fn()
+                _hhmm_td = _now_td.hour * 100 + _now_td.minute
+                if _hhmm_td >= 1000:
+                    _trending_down_block = True
+                    logger.info(
+                        "Trending-down block: %s regime after 10:00 ET — main-book blocked",
+                        regime,
+                    )
+
             # ── Fix E: Global entries-per-hour throttle ───────
             _throttled = False
             if not entries_blocked and not _regime_sit_out:
@@ -1526,8 +1577,25 @@ class OrganismLiveEngine:
                         timestamp=now_iso,
                     ))
 
-            # ── Steps 6-9: Entry-side logic (gated) ─────────────
+            # ── C2 (improve8): Burst cap — 15-min rolling window ──
+            _burst_capped = False
+            _burst_remaining = self._MAX_ENTRIES_15M
             if not entries_blocked and not _regime_sit_out and not _throttled:
+                now_ts_burst = self._time_fn()
+                self._entry_timestamps_15m = [
+                    t for t in self._entry_timestamps_15m if now_ts_burst - t < 900
+                ]
+                _burst_remaining = max(0, self._MAX_ENTRIES_15M - len(self._entry_timestamps_15m))
+                if _burst_remaining == 0:
+                    _burst_capped = True
+                    self._last_entries_blocked_reason = "burst_cap"
+                    logger.info(
+                        "Burst cap: %d entries in last 15 min (max %d)",
+                        len(self._entry_timestamps_15m), self._MAX_ENTRIES_15M,
+                    )
+
+            # ── Steps 6-9: Entry-side logic (gated) ─────────────
+            if not entries_blocked and not _regime_sit_out and not _throttled and not _burst_capped:
 
                 # 6. CHECK PYRAMIDS
                 for sym, pos_data in current_positions.items():
@@ -1604,10 +1672,16 @@ class OrganismLiveEngine:
                     for ss in self.market_scanner.scanned_stocks:
                         _tension_lookup[ss.symbol] = ss.tension_score
 
-                # Symbol fitness gate threshold — block re-entry on chronic losers
-                _FITNESS_GATE = 0.45
-                # Learning mode: relax to 0.30 so engine can trade & learn
-                _eff_fitness_gate = 0.30 if self._is_learning_mode else _FITNESS_GATE
+                # A2 (improve8): Two-tier entry quality gates
+                # Main-book: strict gates for full-sized positions
+                # Exploration: relaxed gates for micro-size learning trades
+                _MAIN_FITNESS_GATE = 0.45
+                _EXPL_FITNESS_GATE = 0.30
+                _eff_fitness_gate = _MAIN_FITNESS_GATE  # main-book default
+                # Main-book confidence gates (per-regime)
+                _MAIN_CONF_BASELINE = 0.40
+                _MAIN_CONF_DEFENSIVE = 0.45  # chop/high_vol/trending_down
+                _EXPL_CONF_GATE = 0.25
 
                 # Track symbols planned for entry in THIS tick so the sector gate
                 # counts them when evaluating subsequent candidates.  Prevents
@@ -1625,6 +1699,11 @@ class OrganismLiveEngine:
                 _rej_circuit_breaker = 0
                 _rej_confidence = 0
 
+                # Store gate thresholds for telemetry
+                self._last_eff_fitness_gate = _eff_fitness_gate
+                self._last_eff_conf_gate = _MAIN_CONF_BASELINE
+                self._last_burst_remaining = _burst_remaining
+
                 cand_dicts = []
                 for c in candidates:
                     if c.symbol in open_symbols:
@@ -1633,6 +1712,17 @@ class OrganismLiveEngine:
                     if c.symbol in self._exit_cooldown:
                         _rej_cooldown += 1
                         continue  # Wash trade cooldown
+                    # C2 (improve8): Per-exit-type re-entry cooldown
+                    _last_exit_type = self._symbol_exit_type.get(c.symbol)
+                    _last_exit_tick = self._symbol_exit_tick.get(c.symbol, 0)
+                    if _last_exit_type and _last_exit_tick > 0:
+                        _ticks_since = self._tick_count - _last_exit_tick
+                        if _last_exit_type in ("stop_loss", "safety_net") and _ticks_since < self._STOP_LOSS_REENTRY_TICKS:
+                            _rej_cooldown += 1
+                            continue
+                        elif _last_exit_type == "ftf_loss" and _ticks_since < self._FTF_LOSS_REENTRY_TICKS:
+                            _rej_cooldown += 1
+                            continue
                     if c.symbol in self._pending_entry:
                         _rej_pending += 1
                         continue  # Already submitted an order recently
@@ -1673,6 +1763,15 @@ class OrganismLiveEngine:
                         _rej_circuit_breaker += 1
                         continue
 
+                    # B3 (improve8): Data-source provenance — determine freshness
+                    _data_source = "rest_fallback"
+                    if self._streaming_provider is not None:
+                        _bar_age = self._streaming_provider.get_bar_age(c.symbol)
+                        if _bar_age < 20.0:
+                            _data_source = "streaming"
+                        elif _bar_age > 120.0:
+                            _data_source = "stale"
+
                     bs = breakout_by_sym.get(c.symbol)
                     breakout_score = bs.composite_score if bs else 0.0
                     tension = _tension_lookup.get(c.symbol, 0.0)
@@ -1683,13 +1782,46 @@ class OrganismLiveEngine:
                         + 0.30 * breakout_score
                         + 0.20 * min(tension, 1.0)
                     )
-                    # v4 (improve7): Confidence-based entry gate
-                    # Main-book requires MIN_MAIN_CONF (higher in chop).
-                    # Below-threshold candidates are routed to exploration.
-                    _MIN_MAIN_CONF = 0.35 if regime == "chop" else 0.30
-                    if confidence < _MIN_MAIN_CONF:
+                    # A2 (improve8): Two-tier confidence gate
+                    # Main-book: baseline 0.40, higher in defensive regimes
+                    _MIN_MAIN_CONF = (
+                        _MAIN_CONF_DEFENSIVE
+                        if regime in ("chop", "high_vol", "trending_down")
+                        else _MAIN_CONF_BASELINE
+                    )
+
+                    # B1 (improve8): Heuristic expected_return → exploration only
+                    _is_heuristic = c.expected_return_source == "heuristic"
+
+                    # Use effective_confidence for gating (B2 improve8)
+                    _eff_conf = (
+                        c.ml_signal.effective_confidence
+                        if c.ml_signal and c.ml_signal.effective_confidence > 0
+                        else confidence
+                    )
+
+                    _route_exploration = False
+                    if _is_heuristic:
+                        _route_exploration = True
+                    elif _trending_down_block or _regime_cooldown_active:
+                        # A5: Route to exploration during trending-down / regime cooldown
+                        _route_exploration = True
+                    elif _data_source != "streaming" and self._streaming_provider is not None:
+                        # B3: Main-book requires streaming data; rest/stale → exploration
+                        _route_exploration = True
+                    elif _eff_conf < _EXPL_CONF_GATE:
+                        # Below exploration gate → reject outright
                         _rej_confidence += 1
-                        # Route to exploration bucket instead of discarding
+                        logger.info(
+                            "Confidence reject: %s (eff_conf=%.2f < %.2f)",
+                            c.symbol, _eff_conf, _EXPL_CONF_GATE,
+                        )
+                        continue
+                    elif _eff_conf < _MIN_MAIN_CONF:
+                        _route_exploration = True
+
+                    if _route_exploration:
+                        _rej_confidence += 1
                         if not hasattr(self, "_confidence_exploration_queue"):
                             self._confidence_exploration_queue: list[dict[str, Any]] = []
                         self._confidence_exploration_queue.append({
@@ -1700,11 +1832,12 @@ class OrganismLiveEngine:
                             ),
                             "confidence": confidence,
                             "breakout_score": breakout_score,
+                            "expected_return_source": c.expected_return_source,
                         })
                         logger.info(
-                            "Confidence gate: %s routed to exploration "
-                            "(conf=%.2f < %.2f, regime=%s)",
-                            c.symbol, confidence, _MIN_MAIN_CONF, regime,
+                            "Entry routed to exploration: %s "
+                            "(eff_conf=%.2f, heuristic=%s, regime=%s)",
+                            c.symbol, _eff_conf, _is_heuristic, regime,
                         )
                         continue
                     cand_dicts.append({
@@ -1714,7 +1847,9 @@ class OrganismLiveEngine:
                             c.ml_signal.predicted_return if c.ml_signal else 0.01
                         ),
                         "confidence": confidence,
+                        "effective_confidence": _eff_conf,
                         "breakout_score": breakout_score,
+                        "expected_return_source": c.expected_return_source,
                     })
                     _planned_entries.add(c.symbol)
 
@@ -1733,7 +1868,7 @@ class OrganismLiveEngine:
                         and bs.symbol not in self._entry_metadata
                         and bs.symbol not in self._symbol_banned
                         and bs.composite_score >= 0.55
-                        and self.evolved_params.symbol_fitness.get(bs.symbol, 0.5) >= _eff_fitness_gate
+                        and self.evolved_params.symbol_fitness.get(bs.symbol, 0.5) >= _MAIN_FITNESS_GATE
                     ):
                         if not sector_gate_allows(bs.symbol, open_symbols, _planned_entries):
                             if _PROMETHEUS_AVAILABLE:
@@ -1749,12 +1884,18 @@ class OrganismLiveEngine:
                             pred_ret = max(ml_sig.predicted_return, 0.003)
                         else:
                             pred_ret = 0.005 + 0.015 * bs.composite_score
+                        # Determine expected_return_source for breakout
+                        _bo_ret_source = "heuristic"
+                        if ml_sig and ml_sig.direction > 0 and abs(ml_sig.predicted_return) > 1e-6:
+                            _bo_ret_source = "calibrated_breakout"
                         cand_dicts.append({
                             "symbol": bs.symbol,
                             "direction": 1.0,
                             "predicted_return": pred_ret,
                             "confidence": min(bs.composite_score, 1.0),
+                            "effective_confidence": min(bs.composite_score, 1.0),
                             "breakout_score": bs.composite_score,
+                            "expected_return_source": _bo_ret_source,
                         })
                         _planned_entries.add(bs.symbol)
                         _breakout_added += 1
@@ -1766,6 +1907,10 @@ class OrganismLiveEngine:
 
                 open_slots = MAX_OPEN_POSITIONS - len(open_symbols)
                 cand_dicts = cand_dicts[: max(0, open_slots)]
+                # C2 (improve8): Max 2 new symbols per tick
+                cand_dicts = cand_dicts[:2]
+                # Also cap by burst remaining
+                cand_dicts = cand_dicts[:max(0, _burst_remaining)]
 
                 # 7b. MISSINGNESS GATE — block entries when feature data is
                 # degraded (too many NaN/Inf replaced with 0.0).
@@ -1905,7 +2050,10 @@ class OrganismLiveEngine:
                         # Mark as pending so we don't re-submit next tick
                         self._pending_entry[sz.symbol] = self._tick_count
                         # Fix E: Record entry timestamp for hourly throttle
-                        self._entry_timestamps.append(self._time_fn())
+                        _entry_ts = self._time_fn()
+                        self._entry_timestamps.append(_entry_ts)
+                        # C2 (improve8): Also record 15-min burst timestamp
+                        self._entry_timestamps_15m.append(_entry_ts)
                         result.activity.append(ActivityEvent(
                             event_type="order",
                             symbol=sz.symbol,
@@ -2264,7 +2412,9 @@ class OrganismLiveEngine:
         # These catch state inconsistencies before they compound into
         # silent bugs.  Violations are logged as warnings (not exceptions)
         # so the tick loop keeps running.
-        self._check_tick_invariants()
+        self._check_tick_invariants(
+            broker_positions=getattr(self, "_last_positions", None),
+        )
 
         return result
 
@@ -2447,6 +2597,9 @@ class OrganismLiveEngine:
                 notional=sz.notional,
                 direction=sz.direction,
                 ml_floor_applied=intermed.get("ml_floor_applied", False),
+                regime_scale_source=intermed.get("regime_scale_source", sz.regime_scale_source),
+                expected_return_source=intermed.get("expected_return_source", sz.expected_return_source),
+                dollar_risk_cap_applied=intermed.get("dollar_risk_cap_applied", sz.dollar_risk_cap_applied),
             )
             snap.kelly_details.append(kd)
 
@@ -2487,11 +2640,14 @@ class OrganismLiveEngine:
             entries_blocked_reason=getattr(self, "_last_entries_blocked_reason", ""),
             learning_mode=self._is_learning_mode,
             effective_max_entries_per_hour=self._dynamic_max_entries_per_hour,
+            effective_fitness_gate=getattr(self, "_last_eff_fitness_gate", 0.45),
+            effective_confidence_gate=getattr(self, "_last_eff_conf_gate", 0.30),
+            burst_cap_remaining=getattr(self, "_last_burst_remaining", 4),
         )
 
         return snap
 
-    def _check_tick_invariants(self) -> None:
+    def _check_tick_invariants(self, broker_positions: dict[str, Any] | None = None) -> None:
         """Runtime invariant checks — called at the end of every tick.
 
         Catches:
@@ -2499,24 +2655,37 @@ class OrganismLiveEngine:
             - Stale pending entries / exit cooldowns
             - Entry metadata for symbols with no position and no exit levels
             - Tick count sanity
+            - Orphan broker positions without tracking
         """
+        _broker_syms = set(broker_positions.keys()) if broker_positions else set()
         try:
             # INV-1: Every symbol in _exit_levels should have entry_metadata
+            # A6 (improve8): Enhanced — if broker also has no position, purge
             for sym in list(self._exit_levels.keys()):
                 if sym not in self._entry_metadata:
-                    logger.warning(
-                        "INVARIANT: exit_levels exists for %s but no "
-                        "entry_metadata — creating stub",
-                        sym,
-                    )
-                    lvl = self._exit_levels[sym]
-                    self._entry_metadata[sym] = {
-                        "entry_price": getattr(lvl, "entry_price", 0),
-                        "entry_tick": 0,
-                        "direction": getattr(lvl, "direction", 1.0),
-                        "predicted_return": 0.01,
-                        "confidence": 0.5,
-                    }
+                    if _broker_syms and sym not in _broker_syms:
+                        # No broker position + no metadata → orphan state, purge
+                        del self._exit_levels[sym]
+                        self._pyramid_positions.pop(sym, None)
+                        logger.warning(
+                            "INVARIANT: orphan_state_purged for %s "
+                            "(exit_levels existed, no metadata, no broker position)",
+                            sym,
+                        )
+                    else:
+                        logger.warning(
+                            "INVARIANT: exit_levels exists for %s but no "
+                            "entry_metadata — creating stub",
+                            sym,
+                        )
+                        lvl = self._exit_levels[sym]
+                        self._entry_metadata[sym] = {
+                            "entry_price": getattr(lvl, "entry_price", 0),
+                            "entry_tick": 0,
+                            "direction": getattr(lvl, "direction", 1.0),
+                            "predicted_return": 0.01,
+                            "confidence": 0.5,
+                        }
 
             # INV-2: _tick_count must be positive after first tick
             if self._tick_count < 0:
@@ -2553,6 +2722,20 @@ class OrganismLiveEngine:
             # INV-5: Run continuous diagnostics every 100 ticks
             if self._tick_count > 0 and self._tick_count % 100 == 0:
                 asyncio.create_task(self._run_continuous_diagnostics())
+
+            # INV-6 (A6 improve8): Broker has position but no tracking
+            if _broker_syms:
+                for sym in _broker_syms:
+                    if sym not in self._entry_metadata and sym not in self._exit_levels:
+                        # Skip if pending entry/exit
+                        if sym in self._pending_entry or sym in self._pending_exit:
+                            continue
+                        logger.warning(
+                            "INVARIANT INV-6: broker position for %s has no "
+                            "entry_metadata or exit_levels — will be adopted "
+                            "by orphan handler",
+                            sym,
+                        )
 
         except Exception as e:
             logger.debug("Invariant check error (non-fatal): %s", e)
@@ -3103,31 +3286,61 @@ class OrganismLiveEngine:
             self._all_trades.append(trade)
             self.learner.record_trade(trade)
 
-            # v4 (improve7): Update per-symbol circuit breaker tracking
+            # v5 (improve8): Session-aware symbol loss gating
             if not _is_exploration:
                 self._symbol_daily_pnl[sym] = self._symbol_daily_pnl.get(sym, 0.0) + pnl
+                self._symbol_closed_today[sym] = self._symbol_closed_today.get(sym, 0) + 1
                 if pnl <= 0:
                     self._symbol_consecutive_losses[sym] = (
                         self._symbol_consecutive_losses.get(sym, 0) + 1
                     )
                 else:
                     self._symbol_consecutive_losses[sym] = 0
-                # Check ban conditions
-                if (
-                    sym not in self._symbol_banned
-                    and (
-                        self._symbol_consecutive_losses.get(sym, 0) >= self._SYMBOL_BAN_CONSEC_LOSSES
-                        or self._symbol_daily_pnl.get(sym, 0) <= self._SYMBOL_BAN_PNL
-                    )
+                    self._symbol_wins_today[sym] = self._symbol_wins_today.get(sym, 0) + 1
+
+                # Track stop-loss exit timestamps for rolling 30-min window
+                _exit_reason = trade.exit_reason
+                if _exit_reason in ("stop_loss", "safety_net"):
+                    if sym not in self._symbol_stop_loss_times:
+                        self._symbol_stop_loss_times[sym] = []
+                    self._symbol_stop_loss_times[sym].append(self._time_fn())
+
+                # A3 (improve8): Session-aware ban conditions
+                _equity = self._peak_equity if self._peak_equity > 0 else 100000.0
+                _ban_pnl_threshold = -max(25.0, _equity * 0.0010)
+                _sym_wins = self._symbol_wins_today.get(sym, 0)
+                _sym_consec = self._symbol_consecutive_losses.get(sym, 0)
+                _sym_pnl = self._symbol_daily_pnl.get(sym, 0.0)
+
+                # Rolling 30-min stop-loss window
+                _now_ts = self._time_fn()
+                _sl_times = self._symbol_stop_loss_times.get(sym, [])
+                _sl_times_30m = [t for t in _sl_times if _now_ts - t < 1800]
+                self._symbol_stop_loss_times[sym] = _sl_times_30m
+
+                if sym not in self._symbol_banned and (
+                    (_sym_consec >= self._SYMBOL_BAN_CONSEC_LOSSES and _sym_wins == 0)
+                    or _sym_pnl <= _ban_pnl_threshold
+                    or len(_sl_times_30m) >= 2
                 ):
                     self._symbol_banned.add(sym)
                     logger.warning(
                         "Symbol circuit breaker: %s BANNED for session "
-                        "(daily_pnl=$%.2f, consec_losses=%d)",
-                        sym,
-                        self._symbol_daily_pnl.get(sym, 0),
-                        self._symbol_consecutive_losses.get(sym, 0),
+                        "(daily_pnl=$%.2f, consec_losses=%d, wins=%d, "
+                        "stop_losses_30m=%d, ban_threshold=$%.2f)",
+                        sym, _sym_pnl, _sym_consec, _sym_wins,
+                        len(_sl_times_30m), _ban_pnl_threshold,
                     )
+
+            # C2 (improve8): Track per-exit-type cooldowns
+            _exit_type = trade.exit_reason
+            if _exit_type in ("stop_loss", "safety_net"):
+                self._symbol_exit_type[sym] = "stop_loss"
+            elif _exit_type == "ftf_loss" or (_exit_type == "ftf_chop" and pnl <= 0):
+                self._symbol_exit_type[sym] = "ftf_loss"
+            else:
+                self._symbol_exit_type[sym] = _exit_type
+            self._symbol_exit_tick[sym] = self._tick_count
 
             # Record for regime-stratified Kelly (skip exploration to prevent
             # micro-size trades from polluting main Kelly statistics)

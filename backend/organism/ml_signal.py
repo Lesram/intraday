@@ -44,9 +44,10 @@ class MLSignal:
     """One ML-generated trading signal."""
     symbol: str
     direction: float       # +1 buy, -1 sell, 0 hold
-    confidence: float      # [0, 1]
+    confidence: float      # [0, 1] — raw model confidence
     predicted_return: float  # expected next-bar return
     feature_importance: dict[str, float] = field(default_factory=dict)
+    effective_confidence: float = 0.0  # min(raw, empirical_precision) or raw * 0.75
 
 
 @dataclass
@@ -261,7 +262,7 @@ class MLSignalGenerator:
         MLSignal with direction, confidence, predicted_return.
         """
         if not self._is_trained:
-            return MLSignal(symbol=symbol, direction=0, confidence=0, predicted_return=0)
+            return MLSignal(symbol=symbol, direction=0, confidence=0, predicted_return=0, effective_confidence=0)
 
         # Use only feature columns that were available during training
         available_cols = [c for c in self._feature_cols if c in features_df.columns]
@@ -329,12 +330,17 @@ class MLSignalGenerator:
         # Feature importance
         fi = self._get_feature_importance()
 
+        # B2 (improve8): effective_confidence — cap raw confidence by
+        # empirical precision from calibration data when available.
+        eff_conf = self._compute_effective_confidence(confidence)
+
         return MLSignal(
             symbol=symbol,
             direction=direction,
             confidence=confidence,
             predicted_return=pred_return,
             feature_importance=fi,
+            effective_confidence=eff_conf,
         )
 
     def predict_batch(
@@ -369,6 +375,20 @@ class MLSignalGenerator:
                 self._calibration_map[i] = 1.0
             else:
                 self._calibration_map[i] = min(actual_rate / bin_midpoint, 2.0)
+
+    def _compute_effective_confidence(self, raw_confidence: float) -> float:
+        """Compute effective_confidence = min(raw, empirical_precision).
+
+        If calibration data exists (>= 10 observations in bin), cap raw
+        confidence by the actual precision rate. Otherwise, apply a 0.75
+        discount to account for overconfident untested predictions.
+        """
+        bin_idx = min(int(raw_confidence * 5), 4)
+        total = self._calibration_counts[bin_idx][1]
+        if total >= 10:
+            empirical = self._calibration_counts[bin_idx][0] / total
+            return min(raw_confidence, empirical)
+        return raw_confidence * 0.75
 
     def calibrate_confidence(self, raw_confidence: float) -> float:
         """Apply calibration correction to raw confidence."""
