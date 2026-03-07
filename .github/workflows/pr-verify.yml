@@ -1,0 +1,87 @@
+name: intra-pr-verify
+
+on:
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  detect:
+    runs-on: ubuntu-latest
+    outputs:
+      changed_organism: ${{ steps.filter.outputs.organism }}
+      changed_config: ${{ steps.filter.outputs.config }}
+      changed_tests: ${{ steps.filter.outputs.tests }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            organism:
+              - 'backend/organism/**'
+            config:
+              - '.env*'
+              - 'docker-compose*.yml'
+              - 'backend/config/**'
+            tests:
+              - 'tests/**'
+
+  organism-tests:
+    needs: detect
+    if: needs.detect.outputs.changed_organism == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
+          pip install pytest pytest-asyncio pytest-timeout
+      - name: Run organism regression suite
+        run: |
+          python -m pytest -q tests/test_organism_live_engine.py --timeout=30
+          python -m pytest -q tests/test_organism_engine_scenarios.py --timeout=30
+          python -m pytest -q tests/test_multi_tick_state.py --timeout=30
+          python -m pytest -q tests/test_safety_invariants.py --timeout=30
+          python -m pytest -q tests/test_replay_simulator.py --timeout=60
+          python -m pytest -q tests/test_self_evolution.py --timeout=30
+      - name: Write runtime snapshot
+        run: python scripts/runtime/write_runtime_snapshot.py || true
+      - uses: actions/upload-artifact@v4
+        with:
+          name: organism-artifacts
+          path: artifacts/
+
+  config-tests:
+    needs: detect
+    if: needs.detect.outputs.changed_config == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
+          pip install pytest pytest-asyncio pytest-timeout
+      - name: Run config regression suite
+        run: |
+          python -m pytest -q tests/test_settings_comprehensive.py --timeout=30
+          python -m pytest -q tests/test_config_coordinator_comprehensive.py --timeout=30
+          python -m pytest -q tests/test_system_integration.py --timeout=30
+
+  secret-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Secret scan
+        run: |
+          if grep -R -nE 'APCA-API-(KEY|SECRET)-KEY|sk_live|BEGIN PRIVATE KEY' . --exclude-dir=.git; then
+            echo 'Potential secret detected'; exit 1; fi

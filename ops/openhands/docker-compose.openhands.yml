@@ -1,0 +1,15 @@
+services:
+  openhands:
+    image: docker.all-hands.dev/all-hands-ai/openhands:0.59
+    container_name: intra-openhands
+    ports:
+      - "3000:3000"
+    environment:
+      SANDBOX_RUNTIME_CONTAINER_IMAGE: docker.all-hands.dev/all-hands-ai/runtime:0.59-nikolaik
+      LOG_ALL_EVENTS: "true"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ~/.openhands:/.openhands
+      - ../..:/workspace:rw
+    extra_hosts:
+      - "host.docker.internal:host-gateway"

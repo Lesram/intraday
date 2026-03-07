@@ -338,6 +338,18 @@ All 5 Phase B items implemented, tested (7,136 + 26 replay), Docker deployed.
 
 **Test results**: 7,136 backend passed (4 flaky async), 26 replay passed. Docker rebuilt.
 
+### Hardening (AIA audit follow-up, Mar 7)
+
+| # | Fix | File | Notes |
+|---|-----|------|-------|
+| H1 | Remove live exploration execution block | live_engine.py (step 9b) | Entire block deleted. No code path can submit exploration orders. |
+| H2 | Learning-mode confidence ignores ML effective_confidence | live_engine.py | `_eff_conf = confidence` (breakout+tension only) when `_is_learning_mode`. |
+| H3 | Alpha scanner zeros ML by `learning_mode`, not `ml_is_trained` | alpha_scanner.py | New `learning_mode` param. Prevents ML influence after retrain while still < 200 trades. |
+| H4 | Block warm-start / historical evolved params during 300-trade freeze | live_engine.py (initialize) | Brain bookkeeping restored, but `apply_evolved_params` skipped until 300 trades. Transfer learning warm-start also gated. |
+| H5 | Restore all ExitLevels v4 fields on restart | live_engine.py (initialize) | Added `ftf_stop_tightened` and `price_two_bars_ago` to restore path. |
+| H6 | Unify alpha and pure-breakout entry gates | live_engine.py | Pure breakout path now shares liquidity gate + confidence threshold with alpha path. |
+| H7 | Separate `alpha_top_n` from `max_positions` | live_engine.py | New `ALPHA_TOP_N` env-configurable constant (default 5), independent of `MAX_OPEN_POSITIONS` (default 8). |
+
 ### Phase C — Planned (next 2 weeks)
 
 | # | Change | Status | Notes |

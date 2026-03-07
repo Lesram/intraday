@@ -1,0 +1,31 @@
+name: Strategy bug / behavior regression
+description: Use for trading-strategy, organism, or runtime-behavior issues.
+title: "[Strategy Bug]: "
+labels: [strategy, organism, bug]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What went wrong in live/paper behavior?
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence
+      description: Report links, replay output, symbols, timestamps, screenshots.
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: What must be true after the fix?
+    validations:
+      required: true
+  - type: dropdown
+    id: risk
+    attributes:
+      label: Risk level
+      options: [critical, high, medium, low]
+    validations:
+      required: true

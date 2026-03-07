@@ -1,0 +1,13 @@
+name: codex-review-trigger
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  note:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          echo "Enable Codex automatic PR review from the Codex app / GitHub integration for this repo."
+          echo "This workflow is a placeholder so the process is visible in-repo."

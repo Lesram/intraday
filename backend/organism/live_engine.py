@@ -163,6 +163,7 @@ LIVE_UNIVERSE_CSV = _env_str(
     "COST,WMT,LLY,XOM,CAT,SPY,QQQ,IWM,XLK,XLE,SH,PSQ",
 )
 MAX_OPEN_POSITIONS = _env_int("ORGANISM_MAX_POSITIONS", 8)
+ALPHA_TOP_N = _env_int("ORGANISM_ALPHA_TOP_N", 5)
 BRAIN_DIR = _env_str("ORGANISM_BRAIN_DIR", "organism_brain")
 RETRAIN_INTERVAL = _env_int("ORGANISM_RETRAIN_INTERVAL", 60)
 TRAIN_WINDOW = _env_int("ORGANISM_TRAIN_WINDOW", 200)
@@ -297,9 +298,9 @@ class OrganismLiveEngine:
             learning_rate=0.05,
             prediction_horizon=PREDICTION_HORIZON,
         )
-        # improve9 B2: top_n=5 — reduce concentration risk in learning mode.
+        # improve9 B2: top_n separate from max_positions.
         # Burst cap (4/15min) and position limits still prevent overtrading.
-        self.alpha_scanner = AlphaScanner(top_n=5)
+        self.alpha_scanner = AlphaScanner(top_n=ALPHA_TOP_N)
         self.breakout_scanner = BreakoutScanner(top_n=MAX_OPEN_POSITIONS)
         # Scale breakout scanner lookbacks for intraday bars (4x ≈ 6.5 hrs)
         if self._is_intraday:
@@ -547,21 +548,35 @@ class OrganismLiveEngine:
             lr_ok = self.brain.apply_to_learner(self.learner)
 
             # Restore evolved params (Phase 1.1 — own file)
+            # Hardening: only restore bookkeeping fields (symbol_fitness,
+            # symbol_trade_counts, metadata) during the 300-trade freeze
+            # window. Do NOT apply strategy-param overrides (signal weights,
+            # exit scales, regime scales) until enough trades exist to
+            # validate them.
             if self.brain.evolved_params:
                 self.evolved_params = EvolvedParams.from_dict(
                     self.brain.evolved_params
                 )
-                apply_evolved_params(
-                    self.evolved_params,
-                    alpha_scanner=self.alpha_scanner,
-                    breakout_scanner=self.breakout_scanner,
-                    kelly_sizer=self.kelly_sizer,
-                    exit_engine=self.exit_engine,
-                    signal_gen=self.signal_gen,
-                )
-                if self.evolved_params.feature_weights:
-                    self.signal_gen._evolved_feature_weights = (
-                        self.evolved_params.feature_weights
+                _EVOLUTION_FREEZE_TRADES = 300
+                _trade_count = len(self.brain.get_trade_records() or [])
+                if _trade_count >= _EVOLUTION_FREEZE_TRADES:
+                    apply_evolved_params(
+                        self.evolved_params,
+                        alpha_scanner=self.alpha_scanner,
+                        breakout_scanner=self.breakout_scanner,
+                        kelly_sizer=self.kelly_sizer,
+                        exit_engine=self.exit_engine,
+                        signal_gen=self.signal_gen,
+                    )
+                    if self.evolved_params.feature_weights:
+                        self.signal_gen._evolved_feature_weights = (
+                            self.evolved_params.feature_weights
+                        )
+                else:
+                    logger.info(
+                        "Evolution freeze active (%d/%d trades) — "
+                        "restoring bookkeeping only, not applying param overrides",
+                        _trade_count, _EVOLUTION_FREEZE_TRADES,
                     )
 
             # Restore governance & regime (Phase 1.2-1.3)
@@ -653,6 +668,8 @@ class OrganismLiveEngine:
                             last_bar_time=str(lvl_data.get("last_bar_time", "")),
                             prediction_horizon=int(lvl_data.get("prediction_horizon", PREDICTION_HORIZON)),
                             price_at_prior_bar=float(lvl_data.get("price_at_prior_bar", 0.0)),
+                            ftf_stop_tightened=bool(lvl_data.get("ftf_stop_tightened", False)),
+                            price_two_bars_ago=float(lvl_data.get("price_two_bars_ago", 0.0)),
                         )
                     except (KeyError, ValueError, TypeError) as e:
                         logger.debug("Cannot restore exit levels for %s: %s", sym, e)
@@ -698,31 +715,41 @@ class OrganismLiveEngine:
             logger.info("Organism live engine starting fresh (no brain)")
 
         # ── Phase 4.7: Transfer learning warm-start ──────────────
-        try:
-            tk_loaded = self.transfer_engine.load_knowledge()
-            if tk_loaded:
-                current_regime = self.regime_detector.current_regime
-                if current_regime == RegimeLabel.UNKNOWN:
-                    current_regime = "unknown"
-                self.evolved_params = self.transfer_engine.warm_start_params(
-                    self.evolved_params,
-                    current_regime=current_regime,
-                )
-                # Push warm-started params to components
-                apply_evolved_params(
-                    self.evolved_params,
-                    alpha_scanner=self.alpha_scanner,
-                    breakout_scanner=self.breakout_scanner,
-                    kelly_sizer=self.kelly_sizer,
-                    exit_engine=self.exit_engine,
-                    signal_gen=self.signal_gen,
-                )
-                logger.info(
-                    "Transfer learning applied: %d historical runs",
-                    len(self.transfer_engine.knowledge.snapshots),
-                )
-        except Exception as e:
-            logger.debug("Transfer learning warm-start skipped: %s", e)
+        # Hardening: skip warm-start during 300-trade evolution freeze.
+        # Historical params may not be valid for the current post-reset
+        # learning phase and can override the conservative defaults.
+        _EVOLUTION_FREEZE_TRADES = 300
+        _current_trade_count = len(self._all_trades)
+        if _current_trade_count >= _EVOLUTION_FREEZE_TRADES:
+            try:
+                tk_loaded = self.transfer_engine.load_knowledge()
+                if tk_loaded:
+                    current_regime = self.regime_detector.current_regime
+                    if current_regime == RegimeLabel.UNKNOWN:
+                        current_regime = "unknown"
+                    self.evolved_params = self.transfer_engine.warm_start_params(
+                        self.evolved_params,
+                        current_regime=current_regime,
+                    )
+                    apply_evolved_params(
+                        self.evolved_params,
+                        alpha_scanner=self.alpha_scanner,
+                        breakout_scanner=self.breakout_scanner,
+                        kelly_sizer=self.kelly_sizer,
+                        exit_engine=self.exit_engine,
+                        signal_gen=self.signal_gen,
+                    )
+                    logger.info(
+                        "Transfer learning applied: %d historical runs",
+                        len(self.transfer_engine.knowledge.snapshots),
+                    )
+            except Exception as e:
+                logger.debug("Transfer learning warm-start skipped: %s", e)
+        else:
+            logger.info(
+                "Transfer learning warm-start skipped — evolution freeze "
+                "active (%d/%d trades)", _current_trade_count, _EVOLUTION_FREEZE_TRADES,
+            )
 
         # Reconstruct live positions → exit levels + pyramid state
         await self._reconstruct_position_state()
@@ -1680,6 +1707,7 @@ class OrganismLiveEngine:
                 candidates = self.alpha_scanner.scan(
                     features_by_symbol, ml_signals, regime,
                     ml_is_trained=self.signal_gen.is_trained,
+                    learning_mode=self._is_learning_mode,
                 )
 
                 # Build candidate list
@@ -1848,11 +1876,17 @@ class OrganismLiveEngine:
                     )
 
                     # Use effective_confidence for gating (B2 improve8)
-                    _eff_conf = (
-                        c.ml_signal.effective_confidence
-                        if c.ml_signal and c.ml_signal.effective_confidence > 0
-                        else confidence
-                    )
+                    # Hardening: in learning mode, ML is untrained and
+                    # effective_confidence is unreliable — use the pure
+                    # breakout+tension confidence computed above instead.
+                    if self._is_learning_mode:
+                        _eff_conf = confidence
+                    else:
+                        _eff_conf = (
+                            c.ml_signal.effective_confidence
+                            if c.ml_signal and c.ml_signal.effective_confidence > 0
+                            else confidence
+                        )
 
                     _route_exploration = False
                     if _is_heuristic:
@@ -1899,6 +1933,8 @@ class OrganismLiveEngine:
                     _planned_entries.add(c.symbol)
 
                 # Pure breakout signals not in alpha candidates (capped at 2)
+                # Hardening: pure-breakout path now shares all safety gates
+                # with the alpha path (liquidity, confidence, data provenance).
                 alpha_syms = {d["symbol"] for d in cand_dicts}
                 _breakout_added = 0
                 _MAX_PURE_BREAKOUT = 2
@@ -1919,6 +1955,13 @@ class OrganismLiveEngine:
                             or self.evolved_params.symbol_fitness.get(bs.symbol, 0.5) >= _MAIN_FITNESS_GATE
                         )
                     ):
+                        # Shared gate: liquidity
+                        if not self._passes_liquidity_gate(bs.symbol, features_by_symbol):
+                            continue
+                        # Shared gate: confidence threshold
+                        _bo_conf = min(bs.composite_score, 1.0)
+                        if _bo_conf < _MAIN_CONF_BASELINE:
+                            continue
                         if not sector_gate_allows(bs.symbol, open_symbols, _planned_entries):
                             if _PROMETHEUS_AVAILABLE:
                                 ORGANISM_SECTOR_CAP_BLOCKED.inc()
@@ -2181,92 +2224,11 @@ class OrganismLiveEngine:
                             f"Entry order failed for {sz.symbol}: {e}"
                         )
 
-                # 9b. EXPLORATION BUCKET — micro-size trades on rejects
-                # v4 (improve7): Always enabled for intraday to route
-                # low-confidence candidates for learning without full sizing
-                _exploration_active = EXPLORATION_ENABLED or self._is_intraday
-                if _exploration_active and not entries_blocked:
-                    try:
-                        exploration_rejects = getattr(self.kelly_sizer, "_exploration_rejects", [])
-                        # Also include confidence-gated candidates (improve7)
-                        _conf_queue = getattr(self, "_confidence_exploration_queue", [])
-                        exploration_rejects = exploration_rejects + _conf_queue
-                        self._confidence_exploration_queue = []  # reset
-                        # Filter for decent alpha candidates
-                        exploration_cands = [
-                            r for r in exploration_rejects
-                            if (r.get("breakout_score", 0) >= 0.4
-                                or r.get("confidence", 0) >= 0.20)
-                            and r["symbol"] not in fresh_open
-                            and r["symbol"] not in self._exit_cooldown
-                            and r["symbol"] not in self._pending_entry
-                            and r["symbol"] not in self._symbol_banned
-                        ]
-                        # Count current exploration positions
-                        _expl_open = sum(
-                            1 for m in self._entry_metadata.values()
-                            if m.get("exploration", False)
-                        )
-                        for ec in exploration_cands[:EXPLORATION_MAX_POSITIONS - _expl_open]:
-                            sym = ec["symbol"]
-                            feat_df = features_by_symbol.get(sym)
-                            if feat_df is None or len(feat_df) < 1:
-                                continue
-                            price = float(feat_df["close"].iloc[-1])
-                            if price <= 0:
-                                continue
-                            # Size at min(1 share, max notional)
-                            expl_shares = max(1, int(EXPLORATION_MAX_NOTIONAL / price))
-                            expl_shares = min(expl_shares, 1)  # cap at 1 share
-                            try:
-                                await self._submit_entry_order(
-                                    sym, expl_shares,
-                                    direction=ec.get("direction", 1.0),
-                                    confidence=ec.get("confidence", 0.5),
-                                    reason="exploration_entry",
-                                )
-                                self._pending_entry[sym] = self._tick_count
-                                fresh_open.add(sym)
-                                result.orders_submitted += 1
-                                # Track entry metadata
-                                self._entry_metadata[sym] = {
-                                    "entry_price": price,
-                                    "entry_tick": self._tick_count,
-                                    "entry_time": self._time_fn(),
-                                    "direction": ec.get("direction", 1.0),
-                                    "filled_shares": expl_shares,
-                                    "predicted_return": ec.get("predicted_return", 0.01),
-                                    "confidence": ec.get("confidence", 0.5),
-                                    "exploration": True,
-                                    "entry_source": "exploration",
-                                    "regime_at_entry": regime,
-                                }
-                                # Create exit levels
-                                exit_lvl = self.exit_engine.create_exit_levels(
-                                    symbol=sym,
-                                    direction=ec.get("direction", 1.0),
-                                    entry_price=price,
-                                    predicted_return=ec.get("predicted_return", 0.01),
-                                    features_df=feat_df,
-                                    regime=regime,
-                                    prediction_horizon=PREDICTION_HORIZON,
-                                )
-                                self._exit_levels[sym] = exit_lvl
-                                result.activity.append(ActivityEvent(
-                                    event_type="order",
-                                    symbol=sym,
-                                    message=f"EXPLORATION: BUY {expl_shares} share of {sym}",
-                                    details={"exploration": True, "shares": expl_shares},
-                                    timestamp=now_iso,
-                                ))
-                                logger.info(
-                                    "Exploration entry: %s (%d shares @ $%.2f)",
-                                    sym, expl_shares, price,
-                                )
-                            except Exception as e:
-                                logger.warning("Exploration entry failed for %s: %s", sym, e)
-                    except Exception as e:
-                        logger.debug("Exploration bucket error (non-fatal): %s", e)
+                # 9b. EXPLORATION BUCKET — REMOVED (improve9 hardening)
+                # The exploration execution path submitted live orders for
+                # rejected candidates. This violated the "no live exploration
+                # execution" invariant. Exploration-eligible candidates are
+                # now logged only (see improve9 A7 above) and never executed.
 
             # 10. RECORD TRADE OUTCOMES from closed positions
             await self._reconcile_fills(features_by_symbol)
@@ -4008,7 +3970,7 @@ class OrganismLiveEngine:
 
         if "max_positions" in config:
             MAX_OPEN_POSITIONS = int(config["max_positions"])
-            self.alpha_scanner = AlphaScanner(top_n=MAX_OPEN_POSITIONS)
+            self.alpha_scanner = AlphaScanner(top_n=ALPHA_TOP_N)
             self.breakout_scanner = BreakoutScanner(top_n=MAX_OPEN_POSITIONS)
             changed["max_positions"] = MAX_OPEN_POSITIONS
 
@@ -4080,6 +4042,7 @@ class OrganismLiveEngine:
         candidates = self.alpha_scanner.scan(
             features_by_symbol, ml_signals, regime,
             ml_is_trained=self.signal_gen.is_trained,
+            learning_mode=self._is_learning_mode,
         )
 
         signals = []

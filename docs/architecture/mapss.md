@@ -1010,9 +1010,9 @@ SUBMIT ENTRY ORDERS
 
 **Source**: `backend/organism/live_engine.py` (step 9b)
 
-**improve9 A7**: Exploration queue routing removed. Low-confidence candidates are logged but NOT routed to any execution path. The exploration queue was dead code — candidates accumulated but never executed, causing misleading data collection.
+**improve9 A7 + hardening**: Exploration execution block completely removed from live_engine step 9b. No code path exists that can submit a live order for exploration-classified candidates. Low-confidence candidates are logged only.
 
-Previously, micro-size trades on Kelly-rejected and confidence-gated candidates were auto-enabled for intraday modes. That infrastructure is preserved in kelly_sizer._exploration_rejects for diagnostics but no longer produces live orders.
+Previously, micro-size trades on Kelly-rejected and confidence-gated candidates were auto-enabled for intraday modes. That entire execution block has been deleted (not just disabled). kelly_sizer._exploration_rejects is preserved for diagnostics only.
 
 Configuration (legacy, no effect):
   ORGANISM_EXPLORATION_ENABLED      = false

@@ -1,0 +1,7 @@
+{
+  "env": {
+    "INTRA_OPENAI_CODEX_REVIEW": "1",
+    "INTRA_ENABLE_REAL_TESTS": "0",
+    "INTRA_PAPER_DEPLOY_ALLOWED": "0"
+  }
+}

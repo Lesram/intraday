@@ -159,6 +159,9 @@ models/active_models/
 *.h5
 *.joblib
 
+# CI/agent artifacts (generated per session)
+artifacts/
+
 # Generated reports and artifacts (never commit)
 reports/*.txt
 reports/*.csv

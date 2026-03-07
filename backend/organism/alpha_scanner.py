@@ -96,6 +96,7 @@ class AlphaScanner:
         ml_signals: dict[str, MLSignal],
         current_regime: str = "unknown",
         ml_is_trained: bool = True,
+        learning_mode: bool = False,
     ) -> list[AlphaCandidate]:
         """Score all symbols, return top-N candidates sorted by alpha.
 
@@ -105,6 +106,7 @@ class AlphaScanner:
         ml_signals : {symbol: MLSignal from MLSignalGenerator}
         current_regime : regime label from RegimeDetector
         ml_is_trained : whether the ML model has been trained
+        learning_mode : whether the organism is in learning mode
 
         Returns
         -------
@@ -113,11 +115,11 @@ class AlphaScanner:
         candidates: list[AlphaCandidate] = []
         self._scan_count += 1
 
-        # improve9: ML weight = 0 when untrained. ML is anti-predictive
-        # during learning mode — it should be in shadow only.
-        # Learning alpha weights: breakout 0.40, momentum 0.20,
-        # institutional 0.15, volume 0.10, quality 0.10, regime 0.05
-        if not ml_is_trained:
+        # Hardening: zero ML weight when in learning mode OR when the
+        # model is untrained. The previous check on ml_is_trained alone
+        # allowed ML influence after retraining while still in learning
+        # mode (< 200 trades), which is anti-predictive.
+        if learning_mode or not ml_is_trained:
             effective_ml_weight = 0.0
             effective_breakout_weight = 0.40
             effective_momentum_weight = 0.20
