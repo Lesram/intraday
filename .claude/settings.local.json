@@ -11,7 +11,32 @@
       "Bash(tasklist:*)",
       "Read(//c/tmp/**)",
       "Bash(npx vite build:*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(find:*)",
+      "Bash(wc:*)",
+      "Bash(python3:*)",
+      "Bash(ls:*)",
+      "Bash(./venv/bin/python:*)",
+      "Bash(git status:*)",
+      "Bash(lsof:*)",
+      "Bash(ss:*)",
+      "Bash(curl -s http://localhost:8000/health)",
+      "Bash(curl:*)",
+      "Bash(psql:*)",
+      "Bash(docker ps:*)",
+      "Bash(kill:*)",
+      "Bash(venv/bin/python3:*)",
+      "Bash(grep:*)",
+      "Bash(sleep 15 grep -i \"outside market\\\\|market hours\\\\|skipping tick\\\\|Organism tick:\" /tmp/intra_backend.log)",
+      "Bash(docker exec:*)",
+      "Bash(./venv/bin/pip install aiosqlite PyJWT)",
+      "Bash(./venv/bin/pip install pytest-timeout)",
+      "Bash(pkill:*)",
+      "Bash(pgrep:*)",
+      "Bash(git push:*)",
+      "Bash(docker-compose exec:*)"
     ]
   }
 }

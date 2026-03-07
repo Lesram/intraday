@@ -365,5 +365,3 @@ This diagram contains two critical structural changes versus your current behavi
 2. **Sizing becomes phase-dependent**, starting with deterministic risk sizing until enough clean data exists for Kelly-style adaptation.
 
 ---
-
-If you implement only one thing first: **fix the timebase and the exit eligibility**. Until that is correct, you are tuning a broken measuring instrument—every downstream “fix” will look like progress but will not change the dominant failure mode.
