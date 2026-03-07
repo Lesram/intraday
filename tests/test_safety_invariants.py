@@ -518,17 +518,17 @@ class TestSafetyInvariants:
         engine = AdaptiveExitEngine(atr_multiplier=1.5)
         levels = ExitLevels(
             symbol="AAPL", direction=1.0, entry_price=100.0,
-            stop_loss=97.0, take_profit=130.0, trailing_stop=97.0,
+            stop_loss=94.0, take_profit=130.0, trailing_stop=94.0,
             atr_at_entry=2.0, regime_at_entry="unknown",
             highest_favorable=100.0,
         )
-        # initial_risk = 2.0 (ATR) * 1.5 (REGIME_STOP_ATR["unknown"]) = 3.0
-        # 2R move = 100 + 3.0 * 2 = 106.0
-        engine._check_profit_lock(levels, 106.0)
+        # initial_risk = 2.0 (ATR) * 3.0 (REGIME_STOP_ATR["unknown"]) = 6.0
+        # 2R move = 100 + 6.0 * 2 = 112.0
+        engine._check_profit_lock(levels, 112.0)
 
         assert levels.profit_locked is True
-        # new_stop = entry + initial_risk * direction = 100 + 3.0 = 103.0
-        assert levels.stop_loss == pytest.approx(103.0)
+        # new_stop = entry + initial_risk * direction = 100 + 6.0 = 106.0
+        assert levels.stop_loss == pytest.approx(106.0)
 
     def test_profit_lock_at_2r_short(self):
         """Profit lock works for shorts — stop moves down to entry - 1R."""
@@ -537,17 +537,17 @@ class TestSafetyInvariants:
         engine = AdaptiveExitEngine(atr_multiplier=1.5)
         levels = ExitLevels(
             symbol="TSLA", direction=-1.0, entry_price=200.0,
-            stop_loss=203.0, take_profit=170.0, trailing_stop=203.0,
+            stop_loss=206.0, take_profit=170.0, trailing_stop=206.0,
             atr_at_entry=2.0, regime_at_entry="unknown",
             highest_favorable=200.0,
         )
-        # initial_risk = 2.0 * 1.5 = 3.0
-        # 2R short move = 200 - 6.0 = 194.0
-        engine._check_profit_lock(levels, 194.0)
+        # initial_risk = 2.0 * 3.0 = 6.0
+        # 2R short move = 200 - 12.0 = 188.0
+        engine._check_profit_lock(levels, 188.0)
 
         assert levels.profit_locked is True
-        # new_stop = 200 + 3.0 * (-1) = 197.0
-        assert levels.stop_loss == pytest.approx(197.0)
+        # new_stop = 200 + 6.0 * (-1) = 194.0
+        assert levels.stop_loss == pytest.approx(194.0)
 
     def test_profit_lock_one_shot(self):
         """Once profit_locked=True, a second call is a no-op."""
@@ -556,11 +556,12 @@ class TestSafetyInvariants:
         engine = AdaptiveExitEngine(atr_multiplier=1.5)
         levels = ExitLevels(
             symbol="AAPL", direction=1.0, entry_price=100.0,
-            stop_loss=97.0, take_profit=130.0, trailing_stop=97.0,
+            stop_loss=94.0, take_profit=130.0, trailing_stop=94.0,
             atr_at_entry=2.0, regime_at_entry="unknown",
             highest_favorable=100.0,
         )
-        engine._check_profit_lock(levels, 106.0)
+        # 2R = 100 + 6.0*2 = 112.0
+        engine._check_profit_lock(levels, 112.0)
         first_stop = levels.stop_loss
 
         # Move price much higher — stop should NOT change
@@ -574,16 +575,17 @@ class TestSafetyInvariants:
         engine = AdaptiveExitEngine(atr_multiplier=1.5)
         levels = ExitLevels(
             symbol="AAPL", direction=1.0, entry_price=100.0,
-            stop_loss=105.0,  # Already above 1R (103.0)
-            take_profit=130.0, trailing_stop=105.0,
+            stop_loss=108.0,  # Already above 1R (106.0)
+            take_profit=130.0, trailing_stop=108.0,
             atr_at_entry=2.0, regime_at_entry="unknown",
             highest_favorable=100.0,
         )
-        engine._check_profit_lock(levels, 106.0)
+        # 2R = 112.0
+        engine._check_profit_lock(levels, 112.0)
 
         assert levels.profit_locked is True
-        # Stop should stay at 105.0 (higher than 1R=103.0) due to max()
-        assert levels.stop_loss == pytest.approx(105.0)
+        # Stop should stay at 108.0 (higher than 1R=106.0) due to max()
+        assert levels.stop_loss == pytest.approx(108.0)
 
     def test_profit_lock_in_check_exit(self):
         """Profit lock fires within the check_exit() chain."""
@@ -592,18 +594,18 @@ class TestSafetyInvariants:
         engine = AdaptiveExitEngine(atr_multiplier=1.5)
         levels = ExitLevels(
             symbol="AAPL", direction=1.0, entry_price=100.0,
-            stop_loss=97.0, take_profit=130.0, trailing_stop=97.0,
+            stop_loss=94.0, take_profit=150.0, trailing_stop=94.0,
             atr_at_entry=2.0, regime_at_entry="unknown",
             highest_favorable=100.0,
-            partial_tp_price=109.0,  # 3R — above 106 so partial TP doesn't fire
+            partial_tp_price=118.0,  # 3R — above 112 so partial TP doesn't fire
             bars_held=17,  # Pass min hold guard (becomes 18 after check)
         )
-        # Price at 2R — should trigger profit lock but NOT exit
-        signal = engine.check_exit(levels, 106.0, current_regime="unknown")
+        # Price at 2R (112.0) — should trigger profit lock but NOT exit
+        signal = engine.check_exit(levels, 112.0, current_regime="unknown")
 
         assert levels.profit_locked is True
-        assert levels.stop_loss == pytest.approx(103.0)
-        assert signal.should_exit is False  # 106 > 103, no stop hit
+        assert levels.stop_loss == pytest.approx(106.0)
+        assert signal.should_exit is False  # 112 > 106, no stop hit
 
     def test_partial_tp_does_not_downgrade_profit_lock(self):
         """When partial TP fires at 3R, the stop must stay at 1R (not drop to breakeven)."""
@@ -612,23 +614,23 @@ class TestSafetyInvariants:
         engine = AdaptiveExitEngine(atr_multiplier=1.5)
         levels = ExitLevels(
             symbol="AAPL", direction=1.0, entry_price=100.0,
-            stop_loss=97.0, take_profit=130.0, trailing_stop=97.0,
+            stop_loss=94.0, take_profit=150.0, trailing_stop=94.0,
             atr_at_entry=2.0, regime_at_entry="unknown",
             highest_favorable=100.0,
-            # partial_tp_price for 3R: entry + risk*3 = 100 + 3*3 = 109
-            partial_tp_price=109.0,
+            # partial_tp_price for 3R: entry + risk*3 = 100 + 6*3 = 118
+            partial_tp_price=118.0,
         )
-        # First: trigger profit lock at 2R
-        engine._check_profit_lock(levels, 106.0)
+        # First: trigger profit lock at 2R (112.0)
+        engine._check_profit_lock(levels, 112.0)
         assert levels.profit_locked is True
-        profit_lock_stop = levels.stop_loss  # 103.0
+        profit_lock_stop = levels.stop_loss  # 106.0
 
         # Now trigger partial TP at 3R
-        signal = engine._check_partial_tp(levels, 109.0)
+        signal = engine._check_partial_tp(levels, 118.0)
         assert signal.should_exit is True
         assert signal.partial_exit is True
 
-        # Stop must stay at 103.0 (profit lock), NOT drop to 100.0 (breakeven)
+        # Stop must stay at 106.0 (profit lock), NOT drop to 100.0 (breakeven)
         assert levels.stop_loss == pytest.approx(profit_lock_stop)
 
     # ── 9. SPY MA filter ─────────────────────────────────────────

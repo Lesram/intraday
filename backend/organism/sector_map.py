@@ -52,6 +52,9 @@ SECTOR_MAP: dict[str, str] = {
     "IWM": "ETF",
     "XLK": "ETF",
     "XLE": "ETF",
+    # improve9 B4: Inverse ETFs for bearish participation (long-only)
+    "SH": "ETF",
+    "PSQ": "ETF",
 }
 
 

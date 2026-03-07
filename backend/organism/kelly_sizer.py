@@ -247,140 +247,119 @@ class KellySizer:
             # Directional returns based on signal
             dir_returns = returns * direction
 
-            # Compute atr_pct unconditionally (needed by risk-budget floor below)
+            # Compute atr_pct unconditionally (needed by risk-budget sizing)
             atr_pct = float(np.std(returns, ddof=1)) if len(returns) > 1 else 0.01
 
-            # 1. Raw Kelly (try regime-stratified first, fallback to global)
-            regime_kelly = self.get_regime_kelly(current_regime)
-            if regime_kelly is not None:
-                kelly_raw = min(regime_kelly, 1.0)
-            else:
-                mean_r = float(np.mean(dir_returns))
-                var_r = float(np.var(dir_returns, ddof=1))
-
-                if var_r < 1e-8 or mean_r <= 0 or not math.isfinite(mean_r) or not math.isfinite(var_r):
-                    unconditional_kelly = 0.0
-                else:
-                    unconditional_kelly = min(mean_r / var_r, 1.0)
-
-                # Signal-based Kelly: predicted_return / horizon-matched variance
-                # Scale per-bar std by sqrt(horizon_bars) to match the return horizon.
-                # Without this, 1-min bar variance (~1e-6) vs H-bar predicted_return (~1%)
-                # always saturates to the 1.0 cap, giving zero differentiation.
-                _horizon_bars = 15  # default prediction horizon for 1Min
-                atr_pct_horizon = atr_pct * math.sqrt(_horizon_bars)
-                atr_var = max(atr_pct_horizon ** 2, 1e-6)
-                signal_kelly = min(predicted_return / atr_var, 1.0) if predicted_return > 0 else 0.0
-
-                # Use the better of signal-based and unconditional as raw Kelly
-                kelly_raw = min(max(signal_kelly, unconditional_kelly), 1.0)
-
-            # 2. Half-Kelly
-            kelly_half = kelly_raw * 0.5
+            # ── Learning mode vs Production sizing ──
+            # improve9: In learning mode, Kelly is OFF. Predicted returns are
+            # 22x overstated and ML is uncalibrated — feeding these into Kelly
+            # produces noise-driven leverage, not edge-driven sizing.
+            # Instead: fixed ATR-dollar risk sizing only.
+            _is_learning = (trade_count is not None and trade_count < self._RISK_BUDGET_TRADE_THRESHOLD)
             ml_floor_applied = False
+            _risk_budget_applied = False
+            _dollar_risk_cap_applied = False
+            kelly_raw = 0.0
+            kelly_half = 0.0
+            confidence_scale = 1.0
+            breakout_bonus = 1.0
+            regime_scale = 1.0
+            vol_scale = 1.0
+            _regime_scale_source = "static_frozen"
+            _regime_trade_count = 0
+            spread_cost_pct = 0.0
 
-            # Edge-over-cost gate: predicted edge must clear 2x estimated
-            # round-trip spread+slippage cost to justify the trade.
-            spread_cost_pct = self._estimate_spread_cost(
-                symbol, quote_provider, features_by_symbol,
-            )
-            _COST_MULT = 2.0
-            edge_clears_cost = predicted_return >= spread_cost_pct * _COST_MULT
-
-            # Breakout floor — halved, requires edge to clear cost
-            if kelly_half < 0.005 and breakout_score >= 0.55:
-                if edge_clears_cost:
-                    kelly_half = max(kelly_half, 0.003 * breakout_score)
-
-            # ML confidence floor — halved, requires edge to clear cost.
-            # Guard: suppress floor when the current regime has a track
-            # record of negative expectancy (>= 5 trades, total_pnl <= 0).
-            _regime_has_edge = True
-            _rs = self._regime_stats.get(current_regime)
-            if _rs:
-                _total_trades = _rs["wins"] + _rs["losses"]
-                if _total_trades >= 5 and _rs["total_pnl"] <= 0:
-                    _regime_has_edge = False
-
-            if kelly_half < 0.005 and confidence >= self._ML_CONFIDENCE_MIN and _regime_has_edge and edge_clears_cost:
-                if ml_is_trained:
-                    ml_floor = 0.04 * confidence  # halved from 0.08
-                else:
-                    ml_floor = 0.02 * confidence
-                kelly_half = max(kelly_half, ml_floor)
-                ml_floor_applied = True
-                _logger.info(
-                    "ML confidence floor for %s: kelly_half=%.4f "
-                    "(conf=%.2f, floor=%.4f, trained=%s)",
-                    symbol, kelly_half, confidence, ml_floor, ml_is_trained,
-                )
-            elif not _regime_has_edge and kelly_half < 0.005:
-                _logger.info(
-                    "ML floor suppressed for %s: regime=%s has negative expectancy "
-                    "(trades=%d, pnl=%.2f)",
-                    symbol, current_regime,
-                    int(_rs["wins"] + _rs["losses"]) if _rs else 0,
-                    _rs["total_pnl"] if _rs else 0,
-                )
-
-            # If edge doesn't clear cost and kelly is near-zero, skip trade
-            if not edge_clears_cost and kelly_half < 0.005:
-                kelly_half = 0.0
-
-            # 3. Drawdown scaling
+            # 3. Drawdown scaling (always active)
             drawdown_scale = self._drawdown_scale(current_drawdown)
 
-            # 4. Volatility targeting
-            ann_vol = float(np.std(returns, ddof=1)) * np.sqrt(252 * self._bars_per_day)
-            vol_scale = min(self.vol_target / max(ann_vol, 0.01), 2.0)
-
-            # 5. Regime scaling (v2: more aggressive in trending)
+            # 5. Regime scaling (always active for safety)
             regime_scale, _regime_scale_source, _regime_trade_count = self._regime_scale(current_regime)
 
-            # 6. Confidence scaling — use effective_confidence when available (B2 improve8)
-            _eff_conf = cand.get("effective_confidence", confidence)
-            confidence_scale = 0.3 + min(_eff_conf, 1.0) * 1.2
-            if not ml_is_trained:
-                confidence_scale = min(confidence_scale, 0.9)  # was 0.6 — prevent cold-start under-sizing
-
-            # 7. **NEW** — Breakout score bonus (capped at 1.5x when ML untrained)
-            breakout_bonus = self._breakout_bonus(breakout_score)
-            if not ml_is_trained:
-                breakout_bonus = min(breakout_bonus, 1.5)
-
-            # Combine all factors
-            target_weight = (
-                kelly_half
-                * drawdown_scale
-                * vol_scale
-                * regime_scale
-                * confidence_scale
-                * breakout_bonus
-            )
-
-            # Dollar-risk cap tracking (set in learning-mode block below)
-            _dollar_risk_cap_applied = False
-
-            # Pre-Kelly risk-budget floor: when trade count is low, Kelly
-            # estimates are unstable. Use deterministic risk-budget sizing
-            # as a floor so cold-start positions aren't microscopic.
-            # v4 (improve7): Scale floor by confidence to restore conviction
-            # sizing differentiation. Without this, all trades converge to
-            # near-identical notional (floor dominates Kelly).
-            # confidence_floor_scale = clip(0.5 + 0.8 * confidence, 0.5, 1.1)
-            _risk_budget_applied = False
-            _is_learning = trade_count is not None and trade_count < self._RISK_BUDGET_TRADE_THRESHOLD
             if _is_learning:
-                _risk_rate = self._RISK_BUDGET_PER_TRADE_LEARNING
+                # ── LEARNING MODE: Fixed ATR-dollar risk sizing ──
+                # No Kelly, no confidence scaling, no breakout bonus.
+                # Size = risk_budget / stop_distance, capped by notional.
+                _risk_rate = self._RISK_BUDGET_PER_TRADE_LEARNING  # 0.10% equity
                 _stop_dist = atr_pct * self._RISK_BUDGET_STOP_ATR
                 if _stop_dist > 1e-6:
-                    risk_budget_weight = _risk_rate / _stop_dist
-                    risk_budget_weight *= drawdown_scale
-                    _conf_floor_scale = max(0.5, min(0.5 + 0.8 * confidence, 1.1))
-                    risk_budget_weight *= _conf_floor_scale
-                    if target_weight < risk_budget_weight:
-                        target_weight = risk_budget_weight
-                        _risk_budget_applied = True
+                    target_weight = _risk_rate / _stop_dist
+                else:
+                    target_weight = _risk_rate / 0.01  # fallback
+                target_weight *= drawdown_scale
+                target_weight *= regime_scale
+                _risk_budget_applied = True
+
+            else:
+                # ── PRODUCTION MODE: Full Kelly stack ──
+                # 1. Raw Kelly (try regime-stratified first, fallback to global)
+                regime_kelly = self.get_regime_kelly(current_regime)
+                if regime_kelly is not None:
+                    kelly_raw = min(regime_kelly, 1.0)
+                else:
+                    mean_r = float(np.mean(dir_returns))
+                    var_r = float(np.var(dir_returns, ddof=1))
+
+                    if var_r < 1e-8 or mean_r <= 0 or not math.isfinite(mean_r) or not math.isfinite(var_r):
+                        unconditional_kelly = 0.0
+                    else:
+                        unconditional_kelly = min(mean_r / var_r, 1.0)
+
+                    _horizon_bars = 15
+                    atr_pct_horizon = atr_pct * math.sqrt(_horizon_bars)
+                    atr_var = max(atr_pct_horizon ** 2, 1e-6)
+                    signal_kelly = min(predicted_return / atr_var, 1.0) if predicted_return > 0 else 0.0
+                    kelly_raw = min(max(signal_kelly, unconditional_kelly), 1.0)
+
+                # 2. Half-Kelly
+                kelly_half = kelly_raw * 0.5
+
+                # Edge-over-cost gate
+                spread_cost_pct = self._estimate_spread_cost(
+                    symbol, quote_provider, features_by_symbol,
+                )
+                _COST_MULT = 2.0
+                edge_clears_cost = predicted_return >= spread_cost_pct * _COST_MULT
+
+                # Breakout floor
+                if kelly_half < 0.005 and breakout_score >= 0.55:
+                    if edge_clears_cost:
+                        kelly_half = max(kelly_half, 0.003 * breakout_score)
+
+                # ML confidence floor
+                _regime_has_edge = True
+                _rs = self._regime_stats.get(current_regime)
+                if _rs:
+                    _total_trades = _rs["wins"] + _rs["losses"]
+                    if _total_trades >= 5 and _rs["total_pnl"] <= 0:
+                        _regime_has_edge = False
+
+                if kelly_half < 0.005 and confidence >= self._ML_CONFIDENCE_MIN and _regime_has_edge and edge_clears_cost:
+                    ml_floor = 0.04 * confidence
+                    kelly_half = max(kelly_half, ml_floor)
+                    ml_floor_applied = True
+
+                if not edge_clears_cost and kelly_half < 0.005:
+                    kelly_half = 0.0
+
+                # 4. Volatility targeting
+                ann_vol = float(np.std(returns, ddof=1)) * np.sqrt(252 * self._bars_per_day)
+                vol_scale = min(self.vol_target / max(ann_vol, 0.01), 2.0)
+
+                # 6. Confidence scaling
+                _eff_conf = cand.get("effective_confidence", confidence)
+                confidence_scale = 0.3 + min(_eff_conf, 1.0) * 1.2
+
+                # 7. Breakout bonus
+                breakout_bonus = self._breakout_bonus(breakout_score)
+
+                target_weight = (
+                    kelly_half
+                    * drawdown_scale
+                    * vol_scale
+                    * regime_scale
+                    * confidence_scale
+                    * breakout_bonus
+                )
 
             # Store intermediates for telemetry
             self._last_intermediates[symbol] = {

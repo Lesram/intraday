@@ -77,6 +77,10 @@ class AlphaScanner:
 
     MIN_COMPOSITE = 0.15  # HFT: lower gate = more intraday candidates (was 0.25)
 
+    # improve9 B4: Inverse ETFs — long-only bearish participation.
+    # Buying these is economically equivalent to being short the index.
+    INVERSE_ETFS = {"SH", "PSQ", "DOG", "RWM"}
+
     def __init__(self, top_n: int = 5):
         self.top_n = top_n
         self._hit_count = 0
@@ -109,22 +113,30 @@ class AlphaScanner:
         candidates: list[AlphaCandidate] = []
         self._scan_count += 1
 
-        # Dynamic ML weight: reduce when ML model has low confidence
-        # (accuracy=0.0 means dead weight capping composite at ~0.65)
-        avg_ml_conf = 0.0
-        if ml_signals:
-            confs = [s.confidence for s in ml_signals.values() if s.confidence > 0]
-            avg_ml_conf = sum(confs) / len(confs) if confs else 0.0
-
-        if avg_ml_conf < 0.10:
-            effective_ml_weight = 0.05
-            ml_excess = self.WEIGHT_ML - 0.05
-            effective_breakout_weight = self.WEIGHT_BREAKOUT + ml_excess * 0.6
-            effective_momentum_weight = self.WEIGHT_MOMENTUM + ml_excess * 0.4
+        # improve9: ML weight = 0 when untrained. ML is anti-predictive
+        # during learning mode — it should be in shadow only.
+        # Learning alpha weights: breakout 0.40, momentum 0.20,
+        # institutional 0.15, volume 0.10, quality 0.10, regime 0.05
+        if not ml_is_trained:
+            effective_ml_weight = 0.0
+            effective_breakout_weight = 0.40
+            effective_momentum_weight = 0.20
         else:
-            effective_ml_weight = self.WEIGHT_ML
-            effective_breakout_weight = self.WEIGHT_BREAKOUT
-            effective_momentum_weight = self.WEIGHT_MOMENTUM
+            # Dynamic ML weight: reduce when ML model has low confidence
+            avg_ml_conf = 0.0
+            if ml_signals:
+                confs = [s.confidence for s in ml_signals.values() if s.confidence > 0]
+                avg_ml_conf = sum(confs) / len(confs) if confs else 0.0
+
+            if avg_ml_conf < 0.10:
+                effective_ml_weight = 0.05
+                ml_excess = self.WEIGHT_ML - 0.05
+                effective_breakout_weight = self.WEIGHT_BREAKOUT + ml_excess * 0.6
+                effective_momentum_weight = self.WEIGHT_MOMENTUM + ml_excess * 0.4
+            else:
+                effective_ml_weight = self.WEIGHT_ML
+                effective_breakout_weight = self.WEIGHT_BREAKOUT
+                effective_momentum_weight = self.WEIGHT_MOMENTUM
 
         # Pre-compute cross-sectional momentum rank
         mom_ranks = self._rank_momentum(features_by_symbol)
@@ -166,7 +178,7 @@ class AlphaScanner:
             volume_score = min(max(vol_ratio - 1.0, 0.0) / 2.0, 1.0) * 0.5 + vol_div * 0.5
 
             # 7. Regime alignment score
-            regime_score = self._regime_alignment(row, direction, current_regime)
+            regime_score = self._regime_alignment(row, direction, current_regime, symbol)
 
             # NaN guard: sanitize every factor before composing.
             # A single NaN from missing data would silently produce a NaN
@@ -214,12 +226,22 @@ class AlphaScanner:
 
             # Symbol fitness: evolved from historical performance
             # (set by EvolutionEngine via apply_evolved_params)
+            # improve9 B1: Narrower range — fitness is a soft ranking
+            # multiplier, not a dramatic swing. Session bans in live_engine
+            # handle hard protection.
             if hasattr(self, "_symbol_fitness") and self._symbol_fitness:
                 fitness = self._symbol_fitness.get(symbol, 0.5)
-                # Scale: 0.5 = neutral, >0.5 = boost, <0.5 = penalize
-                composite *= 0.5 + fitness  # range [0.6, 1.45]
+                # Scale: 0.5 = neutral (1.0x), 0.1 = 0.88x, 0.95 = 1.09x
+                # Old range was [0.6, 1.45] — too wide for bootstrap data
+                composite *= 0.8 + fitness * 0.4  # range [0.84, 1.18]
 
-            # Cap composite to [0, 1] after fitness scaling
+            # improve9 B3: Stocks in Play overlay — boost names with
+            # abnormal relative volume and/or notable gap. Literature shows
+            # short-horizon intraday alpha concentrates in "stocks in play."
+            _in_play_boost = self._stocks_in_play_score(row)
+            composite *= _in_play_boost  # range [1.0, 1.25]
+
+            # Cap composite to [0, 1] after fitness + in-play scaling
             composite = min(composite, 1.0)
 
             # Final NaN guard on composite — drop the symbol entirely if NaN.
@@ -293,33 +315,80 @@ class AlphaScanner:
         return {sym: (i / max(n - 1, 1)) for i, sym in enumerate(sorted_syms)}
 
     def _regime_alignment(
-        self, row: pd.Series, direction: float, regime: str
+        self, row: pd.Series, direction: float, regime: str,
+        symbol: str = "",
     ) -> float:
-        """Score how well the signal aligns with the current regime."""
-        adx = float(row.get("adx_14", 20))
+        """Score how well the signal aligns with the current regime.
+
+        improve9 B4: Inverse ETFs (SH, PSQ) get inverted regime logic —
+        buying them in trending_down is aligned, not counter-trend.
+        """
         trend_str = float(row.get("trend_strength", 0.2))
-        vol_regime = int(row.get("vol_regime", 1))
+
+        # B4: For inverse ETFs, flip the regime interpretation.
+        # Buying SH in trending_down is economically = shorting S&P = aligned.
+        _is_inverse = symbol in self.INVERSE_ETFS
+        _effective_regime = regime
+        if _is_inverse:
+            if regime == "trending_down":
+                _effective_regime = "trending_up"
+            elif regime == "trending_up":
+                _effective_regime = "trending_down"
 
         score = 0.5  # Neutral
 
-        if regime == "trending_up" and direction > 0:
+        if _effective_regime == "trending_up" and direction > 0:
             score = 0.7 + trend_str * 0.3  # Strong trend + buy = aligned
-        elif regime in ("trending_down",) and direction < 0:
+        elif _effective_regime == "trending_down" and direction < 0:
             score = 0.7 + trend_str * 0.3
-        elif regime == "trending_down" and direction > 0:
+        elif _effective_regime == "trending_down" and direction > 0:
             score = 0.3  # Counter-trend penalty: buying in a downtrend
-        elif regime == "low_vol":
+        elif _effective_regime == "low_vol":
             score = 0.7  # Calm market — favorable for entries
-        elif regime == "chop" and abs(direction) > 0:
+        elif _effective_regime == "chop" and abs(direction) > 0:
             # Mean reversion in chop is good
             z_score = float(row.get("z_score_20", 0))
             if (z_score < -1.5 and direction > 0) or (z_score > 1.5 and direction < 0):
                 score = 0.8
             else:
                 score = 0.3  # Chop + momentum = bad
-        elif regime == "high_vol":
+        elif _effective_regime == "high_vol":
             score = 0.5  # Neutral — high_vol still tradeable, not stress
-        elif regime == "stress":
+        elif _effective_regime == "stress":
             score = 0.2  # Reduce in stress
 
         return min(max(score, 0.0), 1.0)
+
+    @staticmethod
+    def _stocks_in_play_score(row: pd.Series) -> float:
+        """Compute a Stocks-in-Play boost from relative volume and gap.
+
+        improve9 B3: Literature shows short-horizon intraday alpha
+        concentrates in names with abnormal activity. We use two
+        features already computed in ml_features:
+        - vol_sma_ratio: current volume / 20-bar SMA volume
+        - gap_pct: (open - prev_close) / prev_close
+
+        Returns a multiplicative boost in [1.0, 1.25]:
+        - 1.0 = normal stock, no boost
+        - 1.25 = highly in-play (2x+ relative volume AND 1%+ gap)
+        """
+        rvol = float(row.get("vol_sma_ratio", 1.0))
+        gap = abs(float(row.get("gap_pct", 0.0)))
+
+        if not np.isfinite(rvol):
+            rvol = 1.0
+        if not np.isfinite(gap):
+            gap = 0.0
+
+        # Relative volume score: 1.5x = starts boosting, 3x = max
+        # Linear ramp: (rvol - 1.5) / 1.5, clamped [0, 1]
+        rvol_score = max(0.0, min((rvol - 1.5) / 1.5, 1.0))
+
+        # Gap score: 0.5% = starts boosting, 2% = max
+        # Linear ramp: (gap - 0.005) / 0.015, clamped [0, 1]
+        gap_score = max(0.0, min((gap - 0.005) / 0.015, 1.0))
+
+        # Combined: average of both signals, scaled to [1.0, 1.25]
+        in_play = (rvol_score * 0.6 + gap_score * 0.4)
+        return 1.0 + in_play * 0.25

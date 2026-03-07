@@ -157,8 +157,10 @@ LIVE_LOOKBACK = _env_int("ORGANISM_LIVE_LOOKBACK", 500)
 LIVE_TIMEFRAME = _env_str("ORGANISM_LIVE_TIMEFRAME", "1Day")
 LIVE_UNIVERSE_CSV = _env_str(
     "ORGANISM_LIVE_SYMBOLS",
+    # improve9 B4: Added SH (inverse S&P) and PSQ (inverse Nasdaq) so the
+    # long-only framework can participate in bearish tapes without shorting.
     "AAPL,MSFT,GOOGL,AMZN,NVDA,META,TSLA,AMD,AVGO,CRM,"
-    "COST,WMT,LLY,XOM,CAT,SPY,QQQ,IWM,XLK,XLE",
+    "COST,WMT,LLY,XOM,CAT,SPY,QQQ,IWM,XLK,XLE,SH,PSQ",
 )
 MAX_OPEN_POSITIONS = _env_int("ORGANISM_MAX_POSITIONS", 8)
 BRAIN_DIR = _env_str("ORGANISM_BRAIN_DIR", "organism_brain")
@@ -295,7 +297,9 @@ class OrganismLiveEngine:
             learning_rate=0.05,
             prediction_horizon=PREDICTION_HORIZON,
         )
-        self.alpha_scanner = AlphaScanner(top_n=3)  # was MAX_OPEN_POSITIONS — reduce overtrading
+        # improve9 B2: top_n=5 — reduce concentration risk in learning mode.
+        # Burst cap (4/15min) and position limits still prevent overtrading.
+        self.alpha_scanner = AlphaScanner(top_n=5)
         self.breakout_scanner = BreakoutScanner(top_n=MAX_OPEN_POSITIONS)
         # Scale breakout scanner lookbacks for intraday bars (4x ≈ 6.5 hrs)
         if self._is_intraday:
@@ -1190,6 +1194,9 @@ class OrganismLiveEngine:
                 result.errors.append("Trading halted by governance — exits still active")
 
             # 5. CHECK EXITS on existing positions
+            # improve9: Set learning_mode on exit engine for horizon timeout
+            # and partial TP disable.
+            self.exit_engine.learning_mode = self._is_learning_mode
             _MAX_LOSS_PCT = self.exit_engine.max_loss_pct
             exits_submitted = 0
             for sym, pos_data in list(current_positions.items()):
@@ -1596,8 +1603,16 @@ class OrganismLiveEngine:
                         len(self._entry_timestamps_15m), self._MAX_ENTRIES_15M,
                     )
 
+            # improve9 A6: Entries only on completed 1-min bars.
+            # Exits/risk checks run every 10s tick, but new entries only
+            # when a new minute boundary is reached. Reduces same-bar churn.
+            _current_minute = self._now_fn().strftime("%Y-%m-%d %H:%M")
+            _is_entry_bar = (_current_minute != getattr(self, "_last_entry_bar", ""))
+            if _is_entry_bar:
+                self._last_entry_bar = _current_minute
+
             # ── Steps 6-9: Entry-side logic (gated) ─────────────
-            if not entries_blocked and not _regime_sit_out and not _throttled and not _burst_capped:
+            if not entries_blocked and not _regime_sit_out and not _throttled and not _burst_capped and _is_entry_bar:
 
                 # 6. CHECK PYRAMIDS
                 for sym, pos_data in current_positions.items():
@@ -1677,9 +1692,12 @@ class OrganismLiveEngine:
                 # A2 (improve8): Two-tier entry quality gates
                 # Main-book: strict gates for full-sized positions
                 # Exploration: relaxed gates for micro-size learning trades
+                # improve9 B1: Unified fitness system — canonical rules:
+                # - Learning mode: fitness is soft ranking only (A5), no gate
+                # - Production: hard gate at 0.45, but only for symbols with
+                #   10+ closed trades (canonical trade count in evolved_params)
                 _MAIN_FITNESS_GATE = 0.45
-                _EXPL_FITNESS_GATE = 0.30
-                _eff_fitness_gate = _MAIN_FITNESS_GATE  # main-book default
+                _MIN_TRADES_FOR_FITNESS_GATE = 10
                 # Main-book confidence gates (per-regime)
                 _MAIN_CONF_BASELINE = 0.40
                 _MAIN_CONF_DEFENSIVE = 0.45  # chop/high_vol/trending_down
@@ -1702,7 +1720,7 @@ class OrganismLiveEngine:
                 _rej_confidence = 0
 
                 # Store gate thresholds for telemetry
-                self._last_eff_fitness_gate = _eff_fitness_gate
+                self._last_eff_fitness_gate = 0.0 if self._is_learning_mode else _MAIN_FITNESS_GATE
                 self._last_eff_conf_gate = _MAIN_CONF_BASELINE
                 self._last_burst_remaining = _burst_remaining
 
@@ -1745,13 +1763,22 @@ class OrganismLiveEngine:
                         if _PROMETHEUS_AVAILABLE:
                             ORGANISM_SECTOR_CAP_BLOCKED.inc()
                         continue
-                    # Block symbols with poor fitness scores from evolved params
+                    # improve9 B1: Unified canonical fitness system.
+                    # Learning mode: fitness is soft ranking only (no gate).
+                    # Production mode: hard gate only for symbols with 10+
+                    # closed trades AND fitness < 0.45. Session bans provide
+                    # hard protection for all modes.
                     sym_fitness = self.evolved_params.symbol_fitness.get(c.symbol, 0.5)
-                    if sym_fitness < _eff_fitness_gate:
+                    _sym_trade_count = self.evolved_params.symbol_trade_counts.get(c.symbol, 0)
+                    if (
+                        not self._is_learning_mode
+                        and _sym_trade_count >= _MIN_TRADES_FOR_FITNESS_GATE
+                        and sym_fitness < _MAIN_FITNESS_GATE
+                    ):
                         _rej_fitness += 1
                         logger.info(
-                            "Fitness gate blocked %s (fitness=%.2f < %.2f)",
-                            c.symbol, sym_fitness, _eff_fitness_gate,
+                            "Fitness gate blocked %s (fitness=%.2f < %.2f, trades=%d)",
+                            c.symbol, sym_fitness, _MAIN_FITNESS_GATE, _sym_trade_count,
                         )
                         continue
                     # Liquidity gate — block illiquid symbols that gap violently
@@ -1778,12 +1805,21 @@ class OrganismLiveEngine:
                     breakout_score = bs.composite_score if bs else 0.0
                     tension = _tension_lookup.get(c.symbol, 0.0)
                     # Additive confidence — preserves ranking granularity
-                    ml_conf = c.ml_signal.confidence if c.ml_signal else 0.0
-                    confidence = (
-                        0.50 * ml_conf
-                        + 0.30 * breakout_score
-                        + 0.20 * min(tension, 1.0)
-                    )
+                    if self._is_learning_mode:
+                        # improve9: ML weight = 0 in learning mode. ML is
+                        # untrained and anti-predictive (high conf = worse
+                        # outcomes on Mar 6). Use only observable signals.
+                        confidence = (
+                            0.65 * breakout_score
+                            + 0.35 * min(tension, 1.0)
+                        )
+                    else:
+                        ml_conf = c.ml_signal.confidence if c.ml_signal else 0.0
+                        confidence = (
+                            0.50 * ml_conf
+                            + 0.30 * breakout_score
+                            + 0.20 * min(tension, 1.0)
+                        )
                     # A2 (improve8): Two-tier confidence gate
                     # Main-book: baseline 0.40, higher in defensive regimes
                     # Learning-mode refinement: only apply defensive gate
@@ -1840,20 +1876,11 @@ class OrganismLiveEngine:
 
                     if _route_exploration:
                         _rej_confidence += 1
-                        if not hasattr(self, "_confidence_exploration_queue"):
-                            self._confidence_exploration_queue: list[dict[str, Any]] = []
-                        self._confidence_exploration_queue.append({
-                            "symbol": c.symbol,
-                            "direction": c.direction,
-                            "predicted_return": (
-                                c.ml_signal.predicted_return if c.ml_signal else 0.01
-                            ),
-                            "confidence": confidence,
-                            "breakout_score": breakout_score,
-                            "expected_return_source": c.expected_return_source,
-                        })
+                        # improve9 A7: Log exploration-eligible candidates
+                        # instead of routing to dead queue. The exploration
+                        # queue was dead code — no executor ever processed it.
                         logger.info(
-                            "Entry routed to exploration: %s "
+                            "Entry below main-book threshold: %s "
                             "(eff_conf=%.2f, heuristic=%s, regime=%s)",
                             c.symbol, _eff_conf, _is_heuristic, regime,
                         )
@@ -1886,7 +1913,11 @@ class OrganismLiveEngine:
                         and bs.symbol not in self._entry_metadata
                         and bs.symbol not in self._symbol_banned
                         and bs.composite_score >= 0.55
-                        and self.evolved_params.symbol_fitness.get(bs.symbol, 0.5) >= _MAIN_FITNESS_GATE
+                        and (
+                            self._is_learning_mode
+                            or self.evolved_params.symbol_trade_counts.get(bs.symbol, 0) < _MIN_TRADES_FOR_FITNESS_GATE
+                            or self.evolved_params.symbol_fitness.get(bs.symbol, 0.5) >= _MAIN_FITNESS_GATE
+                        )
                     ):
                         if not sector_gate_allows(bs.symbol, open_symbols, _planned_entries):
                             if _PROMETHEUS_AVAILABLE:
@@ -2476,9 +2507,11 @@ class OrganismLiveEngine:
 
         # Alpha details — from _last_full_scan
         full_alpha = getattr(self.alpha_scanner, "_last_full_scan", [])
-        fitness_gate = 0.30 if self._is_learning_mode else 0.45  # must match _eff_fitness_gate
         for c in full_alpha:
             sym_fitness = self.evolved_params.symbol_fitness.get(c.symbol, 0.5)
+            _sym_tc = self.evolved_params.symbol_trade_counts.get(c.symbol, 0)
+            # B1: fitness gate only applies in production with 10+ trades
+            fitness_gate = 0.45 if (not self._is_learning_mode and _sym_tc >= 10) else 0.0
             ad = SymbolAlphaDetail(
                 symbol=c.symbol,
                 composite_score=c.composite_score,
@@ -3304,6 +3337,13 @@ class OrganismLiveEngine:
             self._all_trades.append(trade)
             self.learner.record_trade(trade)
 
+            # B1 (improve9): Canonical symbol trade count — increment
+            # at the source so it stays consistent regardless of whether
+            # evolution is frozen (B5) or running.
+            self.evolved_params.symbol_trade_counts[sym] = (
+                self.evolved_params.symbol_trade_counts.get(sym, 0) + 1
+            )
+
             # v5 (improve8): Session-aware symbol loss gating
             if not _is_exploration:
                 self._symbol_daily_pnl[sym] = self._symbol_daily_pnl.get(sym, 0.0) + pnl
@@ -3677,9 +3717,15 @@ class OrganismLiveEngine:
         # Update ML confidence calibration map
         self.signal_gen.update_calibration_map()
 
-        # Evolve
+        # improve9 B5: Freeze all self-evolution except symbol bookkeeping
+        # until at least 300 clean post-reset trades. The adaptation space
+        # (signal weights, exit params, regime scales, breakout weights, etc.)
+        # is too wide for the sample size during bootstrap.
+        _EVOLUTION_FREEZE_TRADES = 300
         recent_trades = self._all_trades[-200:]  # last 200 trades
-        if recent_trades:
+        _total_trades = len(self._all_trades)
+
+        if recent_trades and _total_trades >= _EVOLUTION_FREEZE_TRADES:
             fi = self.signal_gen._get_feature_importance()
             self.evolved_params = self.evolution_engine.evolve(
                 params=self.evolved_params,
@@ -3702,6 +3748,11 @@ class OrganismLiveEngine:
                 )
 
             self.governance.record_change()
+        elif _total_trades < _EVOLUTION_FREEZE_TRADES:
+            logger.info(
+                "Evolution frozen (%d/%d trades) — symbol bookkeeping only",
+                _total_trades, _EVOLUTION_FREEZE_TRADES,
+            )
 
         # Phase 4.1 — Dynamic universe rotation
         try:

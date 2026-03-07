@@ -97,6 +97,8 @@ class EvolvedParams:
 
     # ── Symbol fitness scores (higher = allocate more) ───────────
     symbol_fitness: dict[str, float] = field(default_factory=dict)
+    # ── Per-symbol closed trade counts (canonical source) ──────
+    symbol_trade_counts: dict[str, int] = field(default_factory=dict)
 
     # ── Breakout scanner weights ─────────────────────────────────
     breakout_weight_squeeze: float = 0.25
@@ -155,6 +157,7 @@ class EvolvedParams:
             "symbol_fitness": {
                 k: round(v, 4) for k, v in self.symbol_fitness.items()
             },
+            "symbol_trade_counts": dict(self.symbol_trade_counts),
             "breakout_weight_squeeze": round(self.breakout_weight_squeeze, 4),
             "breakout_weight_volume": round(self.breakout_weight_volume, 4),
             "breakout_weight_contraction": round(self.breakout_weight_contraction, 4),
@@ -216,6 +219,8 @@ class EvolvedParams:
             params.feature_weights = d["feature_weights"]
         if "symbol_fitness" in d and isinstance(d["symbol_fitness"], dict):
             params.symbol_fitness = d["symbol_fitness"]
+        if "symbol_trade_counts" in d and isinstance(d["symbol_trade_counts"], dict):
+            params.symbol_trade_counts = {k: int(v) for k, v in d["symbol_trade_counts"].items()}
         return params
 
     def get_selected_features(self, all_features: list[str]) -> list[str]:
@@ -651,13 +656,26 @@ class EvolutionEngine:
         trades: list[Any],
         changes: dict[str, str],
     ) -> None:
-        """Track per-symbol profitability.  Scale future allocation.
+        """Track per-symbol profitability — canonical unified system.
+
+        improve9 B1: One canonical fitness path replaces the old fragmented
+        dual-system (epoch decay + session bans). Rules:
+
+        1. Accumulate per-symbol trade counts in ``symbol_trade_counts``.
+        2. Symbols with <10 closed trades keep fitness at neutral (0.5) —
+           not enough data to penalize or reward.
+        3. Symbols with 10+ trades get EMA-smoothed fitness updates.
+        4. Decay is trade-count-based, not epoch-cadence: untouched symbols
+           with no new trades decay toward 0.5 proportional to staleness.
+        5. Session loss-bans (in live_engine) remain the only hard reject.
 
         Fitness is a rolling [0, 1] score where:
             0.5 = neutral (new/unknown)
-            > 0.5 = historically profitable → allocate more
-            < 0.5 = historically unprofitable → allocate less
+            > 0.5 = historically profitable → ranking boost
+            < 0.5 = historically unprofitable → ranking penalty
         """
+        _MIN_TRADES_FOR_FITNESS = 10
+
         # Group trades by symbol
         by_symbol: dict[str, list[float]] = {}
         for t in trades:
@@ -666,7 +684,16 @@ class EvolutionEngine:
 
         updated = 0
         for sym, pnls in by_symbol.items():
+            # Trade counts are updated at source (live_engine trade recording),
+            # not here — avoids double-counting on repeated evolve() calls.
+            sym_count = params.symbol_trade_counts.get(sym, 0)
             current = params.symbol_fitness.get(sym, 0.5)
+
+            if sym_count < _MIN_TRADES_FOR_FITNESS:
+                # Not enough data — keep at neutral, don't penalize
+                params.symbol_fitness[sym] = 0.5
+                continue
+
             win_rate = sum(1 for p in pnls if p > 0) / len(pnls)
             avg_pnl = float(np.mean(pnls))
 
@@ -682,8 +709,33 @@ class EvolutionEngine:
                 updated += 1
             params.symbol_fitness[sym] = new_fitness
 
-        if updated > 0:
-            changes["symbol_fitness"] = f"{updated} symbols updated"
+        # Trade-count-based decay: symbols not traded in this epoch
+        # decay toward neutral proportional to how few trades they have.
+        # Symbols with many trades decay slowly; symbols with few trades
+        # snap back to neutral quickly.
+        _decayed = 0
+        traded_syms = set(by_symbol.keys())
+        for sym, fitness in list(params.symbol_fitness.items()):
+            if sym not in traded_syms and abs(fitness - 0.5) > 0.02:
+                sym_count = params.symbol_trade_counts.get(sym, 0)
+                # Faster decay for low-data symbols, slower for established ones
+                # <10 trades → 100% snap to neutral, 10-30 → 15%, 30+ → 5%
+                if sym_count < _MIN_TRADES_FOR_FITNESS:
+                    decay_rate = 1.0  # snap to neutral
+                elif sym_count < 30:
+                    decay_rate = 0.15
+                else:
+                    decay_rate = 0.05
+
+                old = fitness
+                params.symbol_fitness[sym] = fitness + decay_rate * (0.5 - fitness)
+                if abs(params.symbol_fitness[sym] - old) > 0.01:
+                    _decayed += 1
+
+        if updated > 0 or _decayed > 0:
+            changes["symbol_fitness"] = (
+                f"{updated} symbols updated, {_decayed} decayed toward neutral"
+            )
 
     # ═════════════════════════════════════════════════════════════
     #   6. DIRECTION THRESHOLD CALIBRATION

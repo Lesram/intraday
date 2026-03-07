@@ -498,13 +498,13 @@ class TestMinHoldTime:
 # ═══════════════════════════════════════════════════════════════════
 
 class TestHighVolStops:
-    def test_high_vol_stop_uses_2x_atr(self):
+    def test_high_vol_stop_uses_4x_atr(self):
         from backend.organism.adaptive_exits import AdaptiveExitEngine
-        assert AdaptiveExitEngine.REGIME_STOP_ATR["high_vol"] == 2.0
+        assert AdaptiveExitEngine.REGIME_STOP_ATR["high_vol"] == 4.0
 
-    def test_high_vol_trail_uses_2_5x_atr(self):
+    def test_high_vol_trail_uses_4_5x_atr(self):
         from backend.organism.adaptive_exits import AdaptiveExitEngine
-        assert AdaptiveExitEngine.REGIME_TRAIL_ATR["high_vol"] == 2.5
+        assert AdaptiveExitEngine.REGIME_TRAIL_ATR["high_vol"] == 4.5
 
 
 # ═══════════════════════════════════════════════════════════════════

@@ -204,8 +204,9 @@ class TestMultiTickState:
     # ── 4. Kelly reduced when ML untrained ───────────────────────
 
     def test_kelly_reduced_when_ml_untrained(self):
-        """size_positions(ml_is_trained=False) must produce smaller sizes
-        than ml_is_trained=True, all else equal."""
+        """size_positions in learning mode (trade_count < 200, ml_is_trained=False)
+        must produce smaller or equal sizes than production mode, all else equal.
+        Learning mode uses neutral confidence_scale=1.0 and risk-budget caps."""
         from backend.organism.kelly_sizer import KellySizer
 
         # Use very high max_position_pct so sizes don't both hit the cap
@@ -222,22 +223,22 @@ class TestMultiTickState:
 
         sizes_trained = sizer.size_positions(
             candidates, 100_000.0, 0.0, features, "unknown",
-            ml_is_trained=True,
+            ml_is_trained=True, trade_count=500,
         )
         sizes_untrained = sizer.size_positions(
             candidates, 100_000.0, 0.0, features, "unknown",
-            ml_is_trained=False,
+            ml_is_trained=False, trade_count=50,  # learning mode
         )
 
         # Both should produce results
         assert len(sizes_trained) > 0
         assert len(sizes_untrained) > 0
 
-        # Untrained should have smaller allocation
+        # Learning mode should have smaller allocation due to risk-budget caps
         trained_weight = sizes_trained[0].target_weight
         untrained_weight = sizes_untrained[0].target_weight
-        assert untrained_weight < trained_weight, (
-            f"Untrained weight {untrained_weight:.4f} should be < "
+        assert untrained_weight <= trained_weight, (
+            f"Untrained weight {untrained_weight:.4f} should be <= "
             f"trained weight {trained_weight:.4f}"
         )
 

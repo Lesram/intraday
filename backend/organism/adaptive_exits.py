@@ -121,14 +121,18 @@ class AdaptiveExitEngine:
 
     # ── regime lookup tables ──
     # Stop width  (ATR multiplier for initial SL)
+    # Scaled for 1-min bars: original values (1.2-2.0) were designed for
+    # daily ATR. With 14-period ATR on 1-min bars, those create stops
+    # only a few cents away, causing ~55% stop-loss exits.
+    # Multiplied ~2x to accommodate intraday noise over 15-bar horizon.
     REGIME_STOP_ATR = {
-        "trending_up":   2.0,
-        "trending_down": 1.3,
-        "chop":          1.2,
-        "high_vol":      2.0,   # widened from 1.5 — intraday noise triggers premature exits
-        "low_vol":       1.8,   # calm → give room
-        "stress":        1.2,   # widened from 0.9 — too tight, caused premature stops
-        "unknown":       1.5,   # moderate default
+        "trending_up":   3.5,   # was 2.0 — trends need room to breathe
+        "trending_down": 2.5,   # was 1.3 — still tighter than trending_up
+        "chop":          2.5,   # was 1.2 — chop whipsaws need more room
+        "high_vol":      4.0,   # was 2.0 — high vol = wide intraday swings
+        "low_vol":       3.0,   # was 1.8 — calm but still needs room
+        "stress":        2.5,   # was 1.2 — stress exits were far too tight
+        "unknown":       3.0,   # was 1.5 — moderate default
     }
     # Take-profit R-multiple
     REGIME_TP_R = {
@@ -141,14 +145,15 @@ class AdaptiveExitEngine:
         "unknown":       4.0,
     }
     # Trail distance (ATR multiple from highest close)
+    # Scaled ~2x for 1-min ATR (same rationale as REGIME_STOP_ATR)
     REGIME_TRAIL_ATR = {
-        "trending_up":   3.5,
-        "trending_down": 2.0,
-        "chop":          1.5,
-        "high_vol":      2.5,   # widened from 2.0 — match wider stop
-        "low_vol":       3.0,   # calm → wide trail
-        "stress":        1.5,
-        "unknown":       2.5,
+        "trending_up":   5.0,   # was 3.5 — let trends run
+        "trending_down": 3.5,   # was 2.0 — tighter but not whipsaw-tight
+        "chop":          3.0,   # was 1.5 — chop needs room
+        "high_vol":      4.5,   # was 2.5 — wide for volatility
+        "low_vol":       4.5,   # was 3.0 — calm → wide trail
+        "stress":        3.0,   # was 1.5 — match wider stops
+        "unknown":       4.0,   # was 2.5 — moderate
     }
     # Max bars held (0 = disabled) — calibrated in 1-min bars (not 10s ticks)
     REGIME_MAX_BARS = {
@@ -207,6 +212,10 @@ class AdaptiveExitEngine:
         self._base_trailing_distance_atr = trailing_distance_atr
         self._base_partial_tp_r = partial_tp_r
         self._base_profit_lock_r = profit_lock_r
+
+        # improve9: Learning-mode flag — controls horizon timeout and
+        # partial TP disable. Set by live_engine before each tick.
+        self.learning_mode: bool = False
 
     @classmethod
     def for_timeframe(cls, timeframe: str) -> "AdaptiveExitEngine":
@@ -402,10 +411,21 @@ class AdaptiveExitEngine:
         # 1.5. PROFIT LOCK — at 2R, move stop to 1R (one-shot)
         self._check_profit_lock(levels, current_price)
 
+        # improve9 A3: Hard vertical barrier at thesis horizon.
+        # In learning mode, exit after 18 bars (H=15 + 3 bar grace)
+        # regardless of P&L. This aligns exits to the thesis horizon
+        # and prevents slow-bag losers from running to 120-bar cap.
+        _HORIZON_TIMEOUT_BARS = 18
+        if self.learning_mode and levels.bars_held >= _HORIZON_TIMEOUT_BARS:
+            return ExitSignal(True, "horizon_timeout", current_price)
+
         # 2. Partial take-profit at 3R (sell 30 %, let rest ride)
-        partial_signal = self._check_partial_tp(levels, current_price)
-        if partial_signal.should_exit:
-            return partial_signal
+        # improve9 A4: Disabled in learning mode — stops clipping
+        # already-too-small winners before thesis fully expresses.
+        if not self.learning_mode:
+            partial_signal = self._check_partial_tp(levels, current_price)
+            if partial_signal.should_exit:
+                return partial_signal
 
         # 3. Full take-profit check
         if direction > 0 and current_price >= levels.take_profit:
