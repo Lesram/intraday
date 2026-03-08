@@ -206,7 +206,7 @@ class TestMultiTickState:
     def test_kelly_reduced_when_ml_untrained(self):
         """size_positions in learning mode (trade_count < 200, ml_is_trained=False)
         must produce smaller or equal sizes than production mode, all else equal.
-        Learning mode uses neutral confidence_scale=1.0 and risk-budget caps."""
+        Learning mode uses fixed ATR-dollar risk sizing (improve9 A1)."""
         from backend.organism.kelly_sizer import KellySizer
 
         # Use very high max_position_pct so sizes don't both hit the cap

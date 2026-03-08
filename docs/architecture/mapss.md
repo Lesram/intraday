@@ -789,15 +789,17 @@ ENTRY SCANNING PIPELINE
   │
   ├── [7e] PURE BREAKOUT ADDITIONS (not in alpha candidates):
   │   ├── Max per tick: _MAX_PURE_BREAKOUT = 2
-  │   ├── Gates (subset — NOT same as alpha gates):
+  │   ├── Gates (shares safety gates with alpha path — improve9 hardening):
   │   │   ├── Not in alpha candidates, not in open positions
   │   │   ├── Not in exit cooldown, pending entry, or entry_metadata
   │   │   ├── Not in _symbol_banned (circuit breaker, improve7)
   │   │   ├── composite_score >= 0.55
   │   │   ├── fitness gate: learning=pass always, production=0.45 for 10+ trades (B1)
+  │   │   ├── Liquidity gate (shared with alpha path)
+  │   │   ├── Confidence threshold gate (shared with alpha path)
   │   │   ├── Sector gate allows
   │   │   └── ML direction not negative (don't fight ML)
-  │   │   (NOTE: skips LONG_ONLY direction check and liquidity gate)
+  │   │   (NOTE: skips LONG_ONLY direction check only)
   │   ├── Forced direction = +1.0 (always long)
   │   └── predicted_return:
   │       ├── ML present: max(ml_return, 0.003)  (0.3% min floor)

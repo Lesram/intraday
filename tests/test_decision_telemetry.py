@@ -272,7 +272,7 @@ class TestScannerInstrumentation:
         import pandas as pd
         import numpy as np
 
-        scanner = AlphaScanner(top_n=2)
+        scanner = AlphaScanner(top_n=5)
         # Create minimal features
         n = 60
         features = {
@@ -317,7 +317,7 @@ class TestScannerInstrumentation:
         import pandas as pd
         import numpy as np
 
-        scanner = BreakoutScanner(top_n=2)
+        scanner = BreakoutScanner(top_n=5)
         n = 80
         data = {}
         for sym in ["AAPL", "MSFT", "NVDA"]:
