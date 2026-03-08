@@ -1,0 +1,11 @@
+{
+  "overall": "pass",
+  "core_keys_checked": 9,
+  "sources": {
+    "runtime_defaults": 36,
+    "mapss_constants": 8,
+    "manifest_constants": 11
+  },
+  "drifts": {},
+  "drift_count": 0
+}
