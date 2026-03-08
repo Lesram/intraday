@@ -130,6 +130,28 @@ jobs:
             artifacts/
             docs/engineering/LIVE_AUDIT_INDEX.md
 
+  spec-drift:
+    needs: detect
+    if: |
+      needs.detect.outputs.changed_backend == 'true'
+      || needs.detect.outputs.changed_docs_arch == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      - name: Generate runtime snapshot
+        run: python scripts/runtime/write_runtime_snapshot.py
+      - name: Check spec-vs-runtime drift
+        run: python scripts/ci/check_spec_drift.py
+
   secret-scan:
     runs-on: ubuntu-latest
     steps:
