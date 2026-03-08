@@ -1,0 +1,26 @@
+{
+  "generated": "2026-03-07",
+  "sha": "3d7f7c1",
+  "scope": "docs/architecture/",
+  "total_files": 17,
+  "total_lines": 11840,
+  "files": [
+    {"path": "docs/architecture/mapss.md", "lines": 4883, "role": "Complete unified platform map: every flow, threshold, decision path from market data to trade execution"},
+    {"path": "docs/architecture/IMPLEMENTATION_PLAN.md", "lines": 1461, "role": "Hedge-fund-grade frontend implementation roadmap (Phase 5+)"},
+    {"path": "docs/architecture/TRADING_ALGORITHMS.md", "lines": 635, "role": "Trading algorithms and business logic: entry/exit rules, sizing, ML scoring, fitness"},
+    {"path": "docs/architecture/BACKEND.md", "lines": 502, "role": "Backend architecture analysis: API, services, infra, risk, ML, database, integrations"},
+    {"path": "docs/architecture/improve8.md", "lines": 513, "role": "Deep research: two-tier entry quality, session-aware gating, learning risk caps, burst control"},
+    {"path": "docs/architecture/WEBSOCKET_GUIDE.md", "lines": 462, "role": "WebSocket real-time updates implementation guide"},
+    {"path": "docs/architecture/improve.md", "lines": 431, "role": "Actionable engine improvement guide from external review"},
+    {"path": "docs/architecture/improve4.md", "lines": 383, "role": "Forensic audit of entry-starvation and FTF exit structural issues"},
+    {"path": "docs/architecture/improve7.md", "lines": 381, "role": "Deep audit of timebase and incentive structure inconsistencies"},
+    {"path": "docs/architecture/improve5.md", "lines": 366, "role": "Mid-session audit: data-timing defect and single exit rule limitations"},
+    {"path": "docs/architecture/improve9.md", "lines": 359, "role": "AIA deep research Phase A+B: Kelly OFF, ML weighting, horizon timeout, unified fitness, inverse ETFs"},
+    {"path": "docs/architecture/SIGNAL_AGGREGATION.md", "lines": 342, "role": "Signal aggregation and order idempotency architecture"},
+    {"path": "docs/architecture/WEBSOCKET_FIX_SUMMARY.md", "lines": 342, "role": "WebSocket fix post-mortem and cleanup (Oct 2025)"},
+    {"path": "docs/architecture/improve1.md", "lines": 276, "role": "Initial audit: Organism as autonomous 1-min US equities trader"},
+    {"path": "docs/architecture/improve3.md", "lines": 185, "role": "Audit of trading decision tree and profitability levers"},
+    {"path": "docs/architecture/improve6.md", "lines": 175, "role": "Executive diagnosis of internal timebase and decision tree inconsistencies"},
+    {"path": "docs/architecture/SYSTEM_OVERVIEW.md", "lines": 144, "role": "High-level system architecture: tech stack, layers, components"}
+  ]
+}

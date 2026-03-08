@@ -1,0 +1,43 @@
+{
+  "generated": "2026-03-07",
+  "sha": "3d7f7c1",
+  "scope": "Config, deployment, and CI files",
+  "total_files": 31,
+  "total_lines": 5719,
+  "docker_compose": [
+    {"path": "docker-compose.yml", "lines": 243, "role": "Main dev/staging Docker Compose with all services (API, DB, Redis, frontend)"},
+    {"path": "docker-compose.production.yml", "lines": 276, "role": "Production Docker Compose with hardened settings and resource limits"},
+    {"path": "docker-compose.paper.yml", "lines": 145, "role": "Paper trading deployment with Alpaca Paper Trading API"},
+    {"path": "monitoring/docker-compose.yml", "lines": 111, "role": "Monitoring stack: Prometheus + Grafana for algo trading observability"}
+  ],
+  "dockerfiles": [
+    {"path": "Dockerfile", "lines": 115, "role": "Multi-stage dev Dockerfile with security enhancements"},
+    {"path": "Dockerfile.production", "lines": 141, "role": "Production Dockerfile with hardened runtime"}
+  ],
+  "environment": [
+    {"path": ".env.example", "lines": 308, "role": "Full env vars template: backend, DB, broker, third-party secrets"},
+    {"path": ".env.production.template", "lines": 47, "role": "Production env config template"}
+  ],
+  "python_build": [
+    {"path": "requirements.txt", "lines": 80, "role": "Core dependencies: FastAPI, SQLAlchemy, pandas, numpy, ML libs, broker APIs"},
+    {"path": "requirements-dev.txt", "lines": 71, "role": "Dev dependencies: pytest, black, flake8, mypy, debuggers"},
+    {"path": "pyproject.toml", "lines": 257, "role": "Python project metadata and build system config"}
+  ],
+  "backend_config_modules": [
+    {"path": "backend/config/base_settings.py", "lines": 1745, "role": "Core Pydantic V2 settings with nested configuration sections"},
+    {"path": "backend/config/settings.py", "lines": 828, "role": "Dataclass settings API with validation"},
+    {"path": "backend/config/coordinator.py", "lines": 263, "role": "Configuration coordination (deprecated, redirects to settings)"},
+    {"path": "backend/config/unified.py", "lines": 230, "role": "Unified config system (deprecated, migrated to get_settings())"},
+    {"path": "backend/config/config.py", "lines": 187, "role": "Config stub for test compatibility"}
+  ],
+  "github_workflows": [
+    {"path": ".github/workflows/ci.yml", "lines": 410, "role": "CI quality gates: tests, linting, static analysis on all PRs"},
+    {"path": ".github/workflows/canary-deployment.yml", "lines": 411, "role": "Canary deployment with SLO-based promotion"},
+    {"path": ".github/workflows/staging.yml", "lines": 277, "role": "Staging deployment with validation and smoke tests"},
+    {"path": ".github/workflows/nightly.yml", "lines": 227, "role": "Nightly deep tests and performance benchmarks"},
+    {"path": ".github/workflows/security-scan.yml", "lines": 204, "role": "Container security scanning via Trivy"},
+    {"path": ".github/workflows/pr-verify.yml", "lines": 162, "role": "PR verification: organism tests, artifact pack, spec-drift check, secret scan"},
+    {"path": ".github/workflows/paper-postclose-audit.yml", "lines": 48, "role": "Post-close paper trading session audit"},
+    {"path": ".github/workflows/codex-review-trigger.yml", "lines": 13, "role": "External code review trigger"}
+  ]
+}

@@ -1,0 +1,136 @@
+{
+  "generated": "2026-03-07",
+  "sha": "3d7f7c1",
+  "scope": "tests/",
+  "total_files": 390,
+  "total_lines": 119877,
+  "categories": {
+    "organism_core": {
+      "description": "Core organism engine, tick loop, scenarios, evolution, multi-tick state",
+      "files": [
+        {"path": "tests/test_organism_live_engine.py", "lines": 808, "tests": 26, "covers": "OrganismLiveEngine tick loop, scheduler, walk-forward, brain persistence"},
+        {"path": "tests/test_organism_engine_scenarios.py", "lines": 860, "tests": 30, "covers": "30+ adversarial scenarios: data pipeline, regime, risk failures"},
+        {"path": "tests/test_organism_integration_smoke.py", "lines": 968, "tests": 22, "covers": "Integration smoke with multi-tick simulation"},
+        {"path": "tests/test_organism_blueprint_persistence.py", "lines": 155, "tests": 3, "covers": "Brain persistence and blueprint roundtrip"},
+        {"path": "tests/test_self_evolution.py", "lines": 261, "tests": 14, "covers": "EvolvedParams, EvolutionEngine, parameter application"},
+        {"path": "tests/test_multi_tick_state.py", "lines": 383, "tests": 8, "covers": "Multi-tick state transitions and order reconciliation"},
+        {"path": "tests/test_algorithm_improvements.py", "lines": 656, "tests": 58, "covers": "Phase 1 algorithm improvements: time-decay ML, regime Kelly, confidence calibration"},
+        {"path": "tests/test_decision_telemetry.py", "lines": 376, "tests": 23, "covers": "Decision tracking and telemetry capture"},
+        {"path": "tests/test_safety_invariants.py", "lines": 739, "tests": 29, "covers": "System invariants and safety checks"},
+        {"path": "tests/test_replay_simulator.py", "lines": 497, "tests": 26, "covers": "Replay engine, SimulatedBroker, historical bar provider"}
+      ]
+    },
+    "orders_positions": {
+      "description": "Order lifecycle, position management, fill reconciliation",
+      "files": [
+        {"path": "tests/test_order_service_comprehensive.py", "lines": 1544, "tests": 79, "covers": "Order lifecycle, validation, integrity, transactions"},
+        {"path": "tests/test_order_integrity_comprehensive.py", "lines": 1065, "tests": 64, "covers": "Fill reconciliation, position tracking, consistency"},
+        {"path": "tests/test_order_lifecycle.py", "lines": 550, "tests": 8, "covers": "Order creation, execution, cancellation, fills"},
+        {"path": "tests/test_order_guardrails_comprehensive.py", "lines": 465, "tests": 29, "covers": "Pre-trade validation and order guardrails"},
+        {"path": "tests/test_position_management.py", "lines": 498, "tests": 10, "covers": "Position lifecycle, tracking, broker reconciliation"},
+        {"path": "tests/test_position_import_service_comprehensive.py", "lines": 632, "tests": 27, "covers": "Position import and reconciliation"},
+        {"path": "tests/test_position_reconciliation_comprehensive.py", "lines": 357, "tests": 12, "covers": "Position state sync with broker"}
+      ]
+    },
+    "risk_management": {
+      "description": "Risk calculations, VaR, margin, position limits",
+      "files": [
+        {"path": "tests/test_risk_manager_comprehensive.py", "lines": 752, "tests": 74, "covers": "Risk calculations, position limits, margin"},
+        {"path": "tests/test_risk_manager_service_comprehensive.py", "lines": 890, "tests": 37, "covers": "Risk service integration and decisions"},
+        {"path": "tests/test_advanced_risk.py", "lines": 521, "tests": 36, "covers": "Volatility, margin, leverage scenarios"},
+        {"path": "tests/test_risk_math_coverage.py", "lines": 347, "tests": 34, "covers": "Risk calculation algorithms"},
+        {"path": "tests/test_risk_types_comprehensive.py", "lines": 327, "tests": 40, "covers": "Risk data types and enumerations"}
+      ]
+    },
+    "market_data_indicators": {
+      "description": "Market data providers and technical indicator calculations",
+      "files": [
+        {"path": "tests/test_market_data_service.py", "lines": 546, "tests": 22, "covers": "Market data provider, historical bars"},
+        {"path": "tests/test_market_scanner.py", "lines": 566, "tests": 33, "covers": "Market scanning for trade opportunities"},
+        {"path": "tests/test_indicators_comprehensive.py", "lines": 488, "tests": 39, "covers": "RSI, MACD, Bollinger, ATR, ADX"}
+      ]
+    },
+    "ml_models": {
+      "description": "ML training, inference, model lifecycle, ensemble",
+      "files": [
+        {"path": "tests/test_ml_pipeline_comprehensive.py", "lines": 1067, "tests": 61, "covers": "ML pipeline, feature processing, training"},
+        {"path": "tests/test_ml_data_processing_comprehensive.py", "lines": 647, "tests": 64, "covers": "ML data preparation and engineering"},
+        {"path": "tests/test_prediction_service_comprehensive.py", "lines": 866, "tests": 65, "covers": "ML prediction service"},
+        {"path": "tests/test_ensemble_framework.py", "lines": 254, "tests": 17, "covers": "Ensemble model aggregation"}
+      ]
+    },
+    "strategies": {
+      "description": "Strategy engine, execution, versioning, parity",
+      "files": [
+        {"path": "tests/test_strategy_engine_comprehensive.py", "lines": 833, "tests": 46, "covers": "Strategy engine core logic"},
+        {"path": "tests/test_strategy_service_comprehensive.py", "lines": 593, "tests": 37, "covers": "Strategy service lifecycle"},
+        {"path": "tests/test_trading_strategies_comprehensive.py", "lines": 797, "tests": 40, "covers": "Comprehensive strategy testing"},
+        {"path": "tests/test_basic_strategy_comprehensive.py", "lines": 605, "tests": 28, "covers": "Basic strategy implementations"}
+      ]
+    },
+    "backtest_simulation": {
+      "description": "Backtesting, replay, parameter optimization",
+      "files": [
+        {"path": "tests/test_backtest_service_comprehensive.py", "lines": 467, "tests": 16, "covers": "Backtest execution and metrics"},
+        {"path": "tests/test_backtest_service_extended.py", "lines": 824, "tests": 33, "covers": "Extended backtest scenarios"}
+      ]
+    },
+    "api_routes": {
+      "description": "REST endpoint testing, auth, health checks",
+      "files": [
+        {"path": "tests/test_api_routes_coverage.py", "lines": 395, "tests": 44, "covers": "REST API routes validation"},
+        {"path": "tests/test_health_endpoints.py", "lines": 173, "tests": 9, "covers": "Health check endpoints"},
+        {"path": "tests/test_rate_limit_middleware.py", "lines": 431, "tests": 25, "covers": "Rate limiting middleware"}
+      ]
+    },
+    "security_auth": {
+      "description": "Authentication, security hardening, guardrails",
+      "files": [
+        {"path": "tests/test_security_boundaries.py", "lines": 375, "tests": 20, "covers": "Security boundary enforcement"},
+        {"path": "tests/test_security_hardening.py", "lines": 277, "tests": 34, "covers": "Security hardening measures"},
+        {"path": "tests/test_guardrails_comprehensive.py", "lines": 620, "tests": 41, "covers": "Production guardrails enforcement"}
+      ]
+    },
+    "infrastructure": {
+      "description": "Database, caching, WebSocket, resilience, observability",
+      "files": [
+        {"path": "tests/test_database_comprehensive.py", "lines": 406, "tests": 51, "covers": "Database CRUD, transactions, sessions"},
+        {"path": "tests/test_cache_service_comprehensive.py", "lines": 418, "tests": 33, "covers": "Redis caching layer"},
+        {"path": "tests/test_websocket_and_signal_service.py", "lines": 533, "tests": 41, "covers": "WebSocket connections and signals"},
+        {"path": "tests/test_resilience_comprehensive.py", "lines": 507, "tests": 37, "covers": "Circuit breakers, retry, fault tolerance"}
+      ]
+    },
+    "alpaca_integration": {
+      "description": "Alpaca broker, data, and stream integration",
+      "files": [
+        {"path": "tests/test_alpaca_broker_comprehensive.py", "lines": 404, "tests": 25, "covers": "Alpaca broker API integration"},
+        {"path": "tests/test_alpaca_production_comprehensive.py", "lines": 914, "tests": 40, "covers": "Production Alpaca integration"}
+      ]
+    },
+    "production_diagnostics": {
+      "description": "Production mode, deployment validation, diagnostics",
+      "files": [
+        {"path": "tests/test_production.py", "lines": 666, "tests": 53, "covers": "Production mode validation"},
+        {"path": "tests/test_diagnostics.py", "lines": 424, "tests": 14, "covers": "System diagnostics and health"},
+        {"path": "tests/test_pretrade_validation.py", "lines": 432, "tests": 7, "covers": "Pre-trade validation"}
+      ]
+    },
+    "unit_comprehensive": {
+      "description": "Deep unit tests organized by module",
+      "file_count": 24,
+      "approx_tests": 1400,
+      "key_files": [
+        {"path": "tests/unit/test_ml_model_manager_comprehensive.py", "lines": 1911, "tests": 136},
+        {"path": "tests/unit/test_ml_training_comprehensive.py", "lines": 1256, "tests": 92},
+        {"path": "tests/unit/test_alpaca_stream_comprehensive.py", "lines": 1590, "tests": 67},
+        {"path": "tests/unit/test_risk_advanced_manager_comprehensive.py", "lines": 1237, "tests": 81}
+      ]
+    },
+    "unit_generated_smoke": {
+      "description": "Auto-generated import validation tests for all backend modules",
+      "file_count": 199,
+      "approx_tests": 200,
+      "note": "Typically 1 test per file verifying module imports and attribute accessibility"
+    }
+  }
+}
