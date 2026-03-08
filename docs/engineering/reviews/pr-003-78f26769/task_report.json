@@ -1,7 +1,7 @@
 {
   "task_id": "evidence-repair",
   "summary": "Fix evidence coherence: resolve timeframe from env, live snapshot annotations, task_report PR diff",
-  "sha": "bd4e25ebd30497cdcbdefc2e36a3eb307ce7d14d",
+  "sha": "984e8656118d813b525e357ce9dfb631096b2772",
   "branch": "control-plane-operationalize",
   "files_changed": [
     ".claude/settings.json",
