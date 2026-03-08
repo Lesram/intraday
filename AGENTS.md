@@ -13,6 +13,16 @@ This repository runs a paper-traded intraday equity system. Every agent must tre
 - GitHub Actions: neutral referee.
 - Optional OpenHands: orchestration only, never the source of truth.
 
+## Mandatory PR workflow
+Changes to these paths MUST go through a pull request — never push directly to main:
+- `backend/**`
+- `tests/**`
+- `docs/architecture/**`
+- `docker-compose*.yml`
+- `.env*`
+
+Small documentation fixes outside these paths may be committed directly.
+
 ## Repo-critical surfaces
 Highest-risk files are under:
 - `backend/organism/`
@@ -44,8 +54,23 @@ Agents must preserve these invariants unless the task explicitly changes them:
 3. Make the smallest coherent change set that fixes the target issue.
 4. Run targeted tests for affected files.
 5. Run safety/regression tests for organism state, exits, sizing, and replay.
-6. Emit a task report under `artifacts/` or CI artifacts.
-7. If any invariant changes, update `docs/architecture/mapss.md` and the runtime snapshot generator.
+6. Generate the artifact pack: `python scripts/ci/generate_artifacts.py full`
+7. Generate audit index: `python scripts/ci/generate_audit_index.py`
+8. If any invariant changes, update `docs/architecture/mapss.md` and the runtime snapshot generator.
+
+## Required artifact pack
+Every PR and post-close run must produce these under `artifacts/`:
+
+| Artifact | Generator | Purpose |
+|----------|-----------|---------|
+| `task_report.json` | `generate_artifacts.py` | SHA, branch, files changed, test results, risks, follow-ups |
+| `runtime_config_snapshot.json` | `write_runtime_snapshot.py` | All live organism constants — diff against docs |
+| `changed_files.json` | `generate_artifacts.py` | Categorized list of changed paths |
+| `test_summary.json` | `generate_artifacts.py` | Per-suite pass/fail counts |
+| `replay_summary.json` | `generate_artifacts.py` | Replay test pass/fail + output tail |
+| `grep_assertions.json` | `generate_artifacts.py` | Trading invariant grep checks |
+
+Additionally: `docs/engineering/LIVE_AUDIT_INDEX.md` is regenerated with current SHA, changed files, live constants, and open risks.
 
 ## Required checks by path
 ### If files under `backend/organism/` change
@@ -71,17 +96,20 @@ Run at minimum:
 
 ## Done means
 A task is not done until all are true:
-- Changed files are committed.
+- Changed files are committed on a feature branch and PR is open.
 - Required tests are green.
 - No dead-code branch can still submit a live order.
 - Runtime config snapshot matches actual live constants.
 - Relevant docs are updated.
-- The task report lists risks, commands, files changed, and follow-ups.
+- The full artifact pack is generated and attached to the PR.
+- Audit index is current.
 
 ## Reporting format
-Every task must output a JSON report at `artifacts/task-report.json` with:
+Every task must output a JSON report at `artifacts/task_report.json` with:
 - `task_id`
 - `summary`
+- `sha`
+- `branch`
 - `files_changed`
 - `commands`
 - `tests_passed`
@@ -96,6 +124,15 @@ A PR that changes organism logic must not merge unless:
 - required tests pass,
 - replay / simulation artifact exists,
 - runtime-config snapshot exists,
+- grep assertions pass (no invariant violations),
 - at least one reviewer approves,
 - no secret scan failures,
 - no diff between runtime snapshot and documented live constants unless explicitly acknowledged.
+
+## Post-close KPI auto-issue
+The `paper-postclose-audit` workflow runs daily at 22:15 UTC and automatically opens a GitHub issue when:
+- Any test suite fails
+- Replay tests fail
+- Trading invariant grep checks fail
+- Runtime snapshot cannot be generated
+- Exploration is enabled (should always be disabled)

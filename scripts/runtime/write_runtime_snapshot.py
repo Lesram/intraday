@@ -103,7 +103,7 @@ except Exception as e:
         "drawdown_kill_pct": float(os.getenv("ORGANISM_DRAWDOWN_KILL_PCT", "0.05")),
         "learning_mode_threshold_trades": 200,
         "evolution_freeze_until_trades": 300,
-        "alpha_top_n": ALPHA_TOP_N,
+        "alpha_top_n": 5,
         "horizon_timeout_bars": 18,
         "bar_boundary_entry_only": True,
     }

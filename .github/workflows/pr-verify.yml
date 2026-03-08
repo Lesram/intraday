@@ -11,6 +11,8 @@ jobs:
       changed_organism: ${{ steps.filter.outputs.organism }}
       changed_config: ${{ steps.filter.outputs.config }}
       changed_tests: ${{ steps.filter.outputs.tests }}
+      changed_backend: ${{ steps.filter.outputs.backend }}
+      changed_docs_arch: ${{ steps.filter.outputs.docs_arch }}
     steps:
       - uses: actions/checkout@v4
       - uses: dorny/paths-filter@v3
@@ -19,12 +21,16 @@ jobs:
           filters: |
             organism:
               - 'backend/organism/**'
+            backend:
+              - 'backend/**'
             config:
               - '.env*'
               - 'docker-compose*.yml'
               - 'backend/config/**'
             tests:
               - 'tests/**'
+            docs_arch:
+              - 'docs/architecture/**'
 
   organism-tests:
     needs: detect
@@ -32,6 +38,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -49,12 +57,16 @@ jobs:
           python -m pytest -q tests/test_safety_invariants.py --timeout=30
           python -m pytest -q tests/test_replay_simulator.py --timeout=60
           python -m pytest -q tests/test_self_evolution.py --timeout=30
-      - name: Write runtime snapshot
-        run: python scripts/runtime/write_runtime_snapshot.py || true
+      - name: Generate artifact pack
+        run: python scripts/ci/generate_artifacts.py full
+      - name: Generate audit index
+        run: python scripts/ci/generate_audit_index.py
       - uses: actions/upload-artifact@v4
         with:
           name: organism-artifacts
-          path: artifacts/
+          path: |
+            artifacts/
+            docs/engineering/LIVE_AUDIT_INDEX.md
 
   config-tests:
     needs: detect
@@ -62,6 +74,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -76,6 +90,45 @@ jobs:
           python -m pytest -q tests/test_settings_comprehensive.py --timeout=30
           python -m pytest -q tests/test_config_coordinator_comprehensive.py --timeout=30
           python -m pytest -q tests/test_system_integration.py --timeout=30
+      - name: Generate artifact pack (quick)
+        run: python scripts/ci/generate_artifacts.py quick
+      - uses: actions/upload-artifact@v4
+        with:
+          name: config-artifacts
+          path: artifacts/
+
+  # Lightweight artifact-only job for non-organism backend / docs PRs
+  artifact-pack:
+    needs: detect
+    if: |
+      needs.detect.outputs.changed_organism != 'true'
+      && (needs.detect.outputs.changed_backend == 'true'
+          || needs.detect.outputs.changed_docs_arch == 'true'
+          || needs.detect.outputs.changed_tests == 'true')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
+          pip install pytest pytest-asyncio pytest-timeout
+      - name: Generate artifact pack (quick)
+        run: python scripts/ci/generate_artifacts.py quick
+      - name: Generate audit index
+        run: python scripts/ci/generate_audit_index.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pr-artifacts
+          path: |
+            artifacts/
+            docs/engineering/LIVE_AUDIT_INDEX.md
 
   secret-scan:
     runs-on: ubuntu-latest
