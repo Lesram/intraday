@@ -1,7 +1,7 @@
 # Codebase Index
 
 Generated: 2026-03-08
-SHA: `d2b22a36`
+SHA: `78f26769`
 Branch: `control-plane-operationalize`
 
 ## Scale

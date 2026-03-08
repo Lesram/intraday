@@ -110,9 +110,9 @@
   },
   "brain_state": {
     "brain_format_version": 2,
-    "saved_at": "2026-03-08T22:29:47.238159+00:00",
+    "saved_at": "2026-03-08T22:33:55.247660+00:00",
     "generation": 0,
-    "total_runs": 38,
+    "total_runs": 40,
     "total_trades": 0,
     "cumulative_pnl": 0.0,
     "best_sharpe": 0,

@@ -1,7 +1,7 @@
 # Baseline Audit Context
 
 Generated: 2026-03-08
-SHA: `d2b22a36`
+SHA: `78f26769`
 
 This document describes each major module and its role in the trading pipeline, written for auditors who need to understand the system without reading every file.
 

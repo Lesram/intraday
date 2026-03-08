@@ -1,0 +1,60 @@
+{
+  "task_id": "evidence-repair",
+  "summary": "Repair live evidence pack: fix API endpoint/auth, brain manifest, task report auto-population",
+  "sha": "78f26769cd6ad97141df823045bcf14248889760",
+  "branch": "control-plane-operationalize",
+  "files_changed": [
+    "docs/engineering/baseline_reviews/baseline-d2b22a36/BASELINE_AUDIT_CONTEXT.md",
+    "docs/engineering/baseline_reviews/baseline-d2b22a36/CODEBASE_INDEX.md",
+    "docs/engineering/baseline_reviews/baseline-d2b22a36/core_backend_snapshot.tar.gz",
+    "docs/engineering/baseline_reviews/baseline-d2b22a36/strategy_surface_manifest.json",
+    "docs/engineering/reviews/pr-003-d2b22a36/LIVE_AUDIT_INDEX.md",
+    "docs/engineering/reviews/pr-003-d2b22a36/live_process_runtime_snapshot.json",
+    "docs/engineering/reviews/pr-003-d2b22a36/replay_summary.json",
+    "docs/engineering/reviews/pr-003-d2b22a36/resolved_config_snapshot.json",
+    "docs/engineering/reviews/pr-003-d2b22a36/runtime_defaults_snapshot.json",
+    "docs/engineering/reviews/pr-003-d2b22a36/semantic_invariants_summary.json",
+    "docs/engineering/reviews/pr-003-d2b22a36/spec_drift_summary.json",
+    "docs/engineering/reviews/pr-003-d2b22a36/strategy_surface_manifest.json",
+    "docs/engineering/reviews/pr-003-d2b22a36/task_report.json",
+    "docs/engineering/reviews/pr-003-d2b22a36/test_summary.json"
+  ],
+  "commands": [
+    "python scripts/runtime/write_runtime_snapshot.py",
+    "python scripts/ci/generate_artifacts.py full",
+    "python -m pytest tests/test_semantic_invariants.py -v --timeout=30",
+    "python scripts/ci/check_spec_drift.py --json"
+  ],
+  "tests_passed": [
+    "organism_live_engine",
+    "organism_engine_scenarios",
+    "multi_tick_state",
+    "safety_invariants",
+    "self_evolution",
+    "algorithm_improvements",
+    "semantic_invariants",
+    "replay_simulator"
+  ],
+  "tests_failed": [],
+  "runtime_behavior_changed": [],
+  "docs_updated": [
+    "docs/engineering/baseline_reviews/baseline-d2b22a36/BASELINE_AUDIT_CONTEXT.md",
+    "docs/engineering/baseline_reviews/baseline-d2b22a36/CODEBASE_INDEX.md",
+    "docs/engineering/baseline_reviews/baseline-d2b22a36/core_backend_snapshot.tar.gz",
+    "docs/engineering/baseline_reviews/baseline-d2b22a36/strategy_surface_manifest.json",
+    "docs/engineering/reviews/pr-003-d2b22a36/LIVE_AUDIT_INDEX.md",
+    "docs/engineering/reviews/pr-003-d2b22a36/live_process_runtime_snapshot.json",
+    "docs/engineering/reviews/pr-003-d2b22a36/replay_summary.json",
+    "docs/engineering/reviews/pr-003-d2b22a36/resolved_config_snapshot.json",
+    "docs/engineering/reviews/pr-003-d2b22a36/runtime_defaults_snapshot.json",
+    "docs/engineering/reviews/pr-003-d2b22a36/semantic_invariants_summary.json",
+    "docs/engineering/reviews/pr-003-d2b22a36/spec_drift_summary.json",
+    "docs/engineering/reviews/pr-003-d2b22a36/strategy_surface_manifest.json",
+    "docs/engineering/reviews/pr-003-d2b22a36/task_report.json",
+    "docs/engineering/reviews/pr-003-d2b22a36/test_summary.json"
+  ],
+  "risks": [
+    "Evidence/tooling changes only \u2014 low risk, verify artifact completeness"
+  ],
+  "follow_ups": []
+}

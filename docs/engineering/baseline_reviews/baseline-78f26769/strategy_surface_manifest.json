@@ -1,6 +1,6 @@
 {
   "generated": "2026-03-08",
-  "sha": "d2b22a36",
+  "sha": "78f26769",
   "description": "Trading strategy surface: every module that participates in trade decisions",
   "trading_pipeline": {
     "1_data_ingestion": {
