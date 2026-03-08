@@ -1,8 +1,8 @@
 # Live Audit Index
 
-Generated: 2026-03-08T03:14:06Z
+Generated: 2026-03-08T05:26:08Z
 PR: PR #3
-SHA: `66f7881cdb`
+SHA: `c3a80fef27`
 Branch: `control-plane-operationalize`
 
 ## Changed files
@@ -11,7 +11,7 @@ Branch: `control-plane-operationalize`
 |----------|-------|-------|
 | Backend | 0 | none |
 | Organism | 0 | none |
-| Tests | 0 | none |
+| Tests | 1 | `tests/test_organism_integration_smoke.py` |
 | Docs | 2 | `docs/engineering/CONTROL_PLANE.md`, `docs/engineering/LIVE_AUDIT_INDEX.md` |
 
 ## Live constants
@@ -30,12 +30,28 @@ Branch: `control-plane-operationalize`
 }
 ```
 
+## Artifact pack (committed)
+
+| Artifact | Path |
+|----------|------|
+| Runtime config snapshot | `docs/engineering/pr3_artifacts/runtime_config_snapshot.json` |
+| Task report | `docs/engineering/pr3_artifacts/task_report.json` |
+| Test summary | `docs/engineering/pr3_artifacts/test_summary.json` |
+| Replay summary | `docs/engineering/pr3_artifacts/replay_summary.json` |
+| Grep assertions | `docs/engineering/pr3_artifacts/grep_assertions.json` |
+
+## Test results
+
+- **Test suites (6)**: 165 passed, 0 failed
+- **Replay tests**: 26 passed, 0 failed
+- **Grep assertions**: 15/15 pass
+
 ## Reference paths
 
 - Latest improve doc: `docs/architecture/improve9.md`
 - Latest trading report: `none`
-- Runtime snapshot: `artifacts/runtime_config_snapshot.json`
-- Grep assertions: `artifacts/grep_assertions.json` (status: **pass**)
+- Runtime snapshot: `docs/engineering/pr3_artifacts/runtime_config_snapshot.json`
+- Grep assertions: `docs/engineering/pr3_artifacts/grep_assertions.json` (status: **pass**)
 
 ## Open risks
 
