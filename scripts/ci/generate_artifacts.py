@@ -397,6 +397,49 @@ def gen_spec_drift_summary() -> None:
     })
 
 
+def _backfill_task_report_tests() -> None:
+    """Backfill tests_passed / tests_failed from test_summary.json into task_report."""
+    tr_path = ART / "task_report.json"
+    ts_path = ART / "test_summary.json"
+    if not tr_path.exists() or not ts_path.exists():
+        return
+    tr = json.loads(tr_path.read_text())
+    ts = json.loads(ts_path.read_text())
+
+    passed = []
+    failed = []
+    for name, info in ts.get("suites", {}).items():
+        status = info.get("status", "")
+        if status == "pass":
+            passed.append(name)
+        elif status in ("fail", "error"):
+            failed.append(name)
+
+    # Also include semantic invariants
+    si_path = ART / "semantic_invariants_summary.json"
+    if si_path.exists():
+        si = json.loads(si_path.read_text())
+        if si.get("overall") == "pass":
+            passed.append("semantic_invariants")
+        elif si.get("overall") == "fail":
+            failed.append("semantic_invariants")
+
+    # Also include replay
+    rp_path = ART / "replay_summary.json"
+    if rp_path.exists():
+        rp = json.loads(rp_path.read_text())
+        if rp.get("status") == "pass":
+            passed.append("replay_simulator")
+        elif rp.get("status") == "fail":
+            failed.append("replay_simulator")
+
+    if passed or failed:
+        tr["tests_passed"] = passed
+        tr["tests_failed"] = failed
+        tr_path.write_text(json.dumps(tr, indent=2))
+        print(f"  -> backfilled task_report: {len(passed)} passed, {len(failed)} failed")
+
+
 # ── main ──────────────────────────────────────────────────────────────
 if __name__ == "__main__":
     mode = sys.argv[1] if len(sys.argv) > 1 else "full"
@@ -414,6 +457,9 @@ if __name__ == "__main__":
         gen_spec_drift_summary()
     elif mode == "quick":
         print("  (skipping test/replay/semantic/drift in quick mode)")
+
+    # Backfill test results into task_report
+    _backfill_task_report_tests()
 
     # Validate task_report completeness — FATAL on errors
     errors = validate_task_report()

@@ -1,23 +1,23 @@
 # Live Audit Index
 
-Generated: 2026-03-08T17:50:34Z
+Generated: 2026-03-08T22:33:35Z
 PR: PR #3
-SHA: `bf88a942e2`
+SHA: `612d66db0a`
 Branch: `control-plane-operationalize`
-Scope: **tests/docs/evidence_only**
+Scope: **backend_logic**
 
 ## Changed files
 
 | Category | Count | Files |
 |----------|-------|-------|
-| Backend | 0 | none |
-| Organism | 0 | none |
+| Backend | 2 | `backend/organism/kelly_sizer.py`, `backend/organism/live_engine.py` |
+| Organism | 2 | `backend/organism/kelly_sizer.py`, `backend/organism/live_engine.py` |
 | Tests | 5 | `tests/test_decision_telemetry.py`, `tests/test_multi_tick_state.py`, `tests/test_organism_integration_smoke.py`, `tests/test_self_evolution.py`, `tests/test_semantic_invariants.py` |
 | Docs | 24 | `docs/architecture/mapss.md`, `docs/engineering/CONTROL_PLANE.md`, `docs/engineering/LIVE_AUDIT_INDEX.md`, `docs/engineering/baseline_reviews/baseline-3d7f7c1/BASELINE_AUDIT_CONTEXT.md`, `docs/engineering/baseline_reviews/baseline-3d7f7c1/CODEBASE_INDEX.md`, `docs/engineering/baseline_reviews/baseline-3d7f7c1/backend_file_inventory.json`, `docs/engineering/baseline_reviews/baseline-3d7f7c1/config_file_inventory.json`, `docs/engineering/baseline_reviews/baseline-3d7f7c1/core_backend_snapshot.tar.gz`, `docs/engineering/baseline_reviews/baseline-3d7f7c1/docs_file_inventory.json`, `docs/engineering/baseline_reviews/baseline-3d7f7c1/full_backend_tree.txt` |
 
 ## Live constants
 
-Source: `resolved_live_runtime_snapshot.json`
+Source: `resolved_config_snapshot.json`
 
 ```json
 {
@@ -36,7 +36,8 @@ Source: `resolved_live_runtime_snapshot.json`
 ## Snapshot files
 
 - Defaults: `artifacts/runtime_defaults_snapshot.json`
-- Resolved live: `artifacts/resolved_live_runtime_snapshot.json`
+- Resolved config: `artifacts/resolved_config_snapshot.json`
+- Live process: `artifacts/live_process_runtime_snapshot.json`
 
 ## Reference paths
 
@@ -47,4 +48,4 @@ Source: `resolved_live_runtime_snapshot.json`
 
 ## Open risks
 
-- No code changes in this PR — verify evidence artifacts are current
+- 2 organism file(s) changed — require replay verification
