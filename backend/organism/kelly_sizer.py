@@ -191,11 +191,22 @@ class KellySizer:
 
         # Sort candidates by conviction (highest first) so best entries
         # get allocation priority before portfolio cap is consumed.
-        candidates = sorted(
-            candidates,
-            key=lambda c: abs(c.get("predicted_return", 0.0)) * c.get("confidence", 0.5),
-            reverse=True,
-        )
+        # Learning mode: predicted_return is heuristic noise — sort by
+        # breakout quality + confidence instead of predicted_return * confidence.
+        # Production mode: full predicted_return * confidence ranking.
+        _is_learning_mode = (trade_count is not None and trade_count < self._RISK_BUDGET_TRADE_THRESHOLD)
+        if _is_learning_mode:
+            candidates = sorted(
+                candidates,
+                key=lambda c: c.get("breakout_score", 0.0) * 0.6 + c.get("confidence", 0.0) * 0.4,
+                reverse=True,
+            )
+        else:
+            candidates = sorted(
+                candidates,
+                key=lambda c: abs(c.get("predicted_return", 0.0)) * c.get("confidence", 0.5),
+                reverse=True,
+            )
 
         sizes: list[PositionSize] = []
         total_weight = 0.0

@@ -79,10 +79,11 @@ def main() -> None:
 
     # Load runtime snapshots
     defaults_path = ROOT / "artifacts" / "runtime_defaults_snapshot.json"
-    resolved_path = ROOT / "artifacts" / "resolved_live_runtime_snapshot.json"
+    resolved_path = ROOT / "artifacts" / "resolved_config_snapshot.json"
+    live_path = ROOT / "artifacts" / "live_process_runtime_snapshot.json"
     legacy_path = ROOT / "artifacts" / "runtime_config_snapshot.json"
 
-    # Prefer resolved live snapshot for display
+    # Prefer resolved config snapshot for display
     snapshot_path = resolved_path if resolved_path.exists() else (defaults_path if defaults_path.exists() else legacy_path)
     if snapshot_path and snapshot_path.exists():
         snapshot = json.loads(snapshot_path.read_text())
@@ -178,7 +179,8 @@ def main() -> None:
         "## Snapshot files",
         "",
         f"- Defaults: `artifacts/runtime_defaults_snapshot.json`",
-        f"- Resolved live: `artifacts/resolved_live_runtime_snapshot.json`",
+        f"- Resolved config: `artifacts/resolved_config_snapshot.json`",
+        f"- Live process: `artifacts/live_process_runtime_snapshot.json`",
         "",
         "## Reference paths",
         "",

@@ -531,6 +531,60 @@ class OrganismLiveEngine:
         avg_vol = float(df["volume"].iloc[-20:].mean())
         return avg_vol >= self._MIN_AVG_VOLUME
 
+    def _passes_entry_gates(
+        self,
+        symbol: str,
+        direction: float,
+        features_by_symbol: dict[str, pd.DataFrame],
+        open_symbols: set[str],
+        planned_entries: set[str],
+        *,
+        fitness_gate: float,
+        min_trades_for_fitness: int,
+    ) -> tuple[bool, str]:
+        """Shared entry gate check used by both alpha and pure-breakout paths.
+
+        Returns (passed, rejection_reason). If passed is True, rejection_reason
+        is empty.
+        """
+        if symbol in open_symbols:
+            return False, "open_position"
+        if symbol in self._exit_cooldown:
+            return False, "exit_cooldown"
+        # Per-exit-type re-entry cooldown
+        _last_exit_type = self._symbol_exit_type.get(symbol)
+        _last_exit_tick = self._symbol_exit_tick.get(symbol, 0)
+        if _last_exit_type and _last_exit_tick > 0:
+            _ticks_since = self._tick_count - _last_exit_tick
+            if _last_exit_type in ("stop_loss", "safety_net") and _ticks_since < self._STOP_LOSS_REENTRY_TICKS:
+                return False, "exit_cooldown"
+            elif _last_exit_type == "ftf_loss" and _ticks_since < self._FTF_LOSS_REENTRY_TICKS:
+                return False, "exit_cooldown"
+        if symbol in self._pending_entry:
+            return False, "pending_entry"
+        if symbol in self._entry_metadata:
+            return False, "entry_metadata"
+        if LONG_ONLY and direction < 0:
+            return False, "long_only"
+        if not sector_gate_allows(symbol, open_symbols, planned_entries):
+            return False, "sector_gate"
+        # Fitness gate: learning = no gate, production = hard gate for 10+ trades
+        sym_fitness = self.evolved_params.symbol_fitness.get(symbol, 0.5)
+        _sym_trade_count = self.evolved_params.symbol_trade_counts.get(symbol, 0)
+        if (
+            not self._is_learning_mode
+            and _sym_trade_count >= min_trades_for_fitness
+            and sym_fitness < fitness_gate
+        ):
+            return False, "fitness_gate"
+        # Liquidity gate
+        if not self._passes_liquidity_gate(symbol, features_by_symbol):
+            return False, "liquidity"
+        # Circuit breaker
+        if symbol in self._symbol_banned:
+            return False, "circuit_breaker"
+        return True, ""
+
     # ═════════════════════════════════════════════════════════════
     #  INITIALIZATION / SHUTDOWN
     # ═════════════════════════════════════════════════════════════
@@ -1736,88 +1790,47 @@ class OrganismLiveEngine:
                 # intra-tick sector-limit violations.
                 _planned_entries: set[str] = set()
 
-                _rej_open = 0
-                _rej_cooldown = 0
-                _rej_pending = 0
-                _rej_metadata = 0
-                _rej_long_only = 0
-                _rej_sector = 0
-                _rej_fitness = 0
-                _rej_liquidity = 0
-                _rej_circuit_breaker = 0
-                _rej_confidence = 0
-
                 # Store gate thresholds for telemetry
                 self._last_eff_fitness_gate = 0.0 if self._is_learning_mode else _MAIN_FITNESS_GATE
                 self._last_eff_conf_gate = _MAIN_CONF_BASELINE
                 self._last_burst_remaining = _burst_remaining
 
+                # Rejection counters dict — cleaner than individual vars
+                _rej_counts = {
+                    "open_position": 0, "exit_cooldown": 0,
+                    "pending_entry": 0, "entry_metadata": 0,
+                    "long_only": 0, "sector_gate": 0,
+                    "fitness_gate": 0, "liquidity": 0,
+                    "circuit_breaker": 0, "confidence_gate": 0,
+                }
+
                 cand_dicts = []
                 for c in candidates:
-                    if c.symbol in open_symbols:
-                        _rej_open += 1
-                        continue
-                    if c.symbol in self._exit_cooldown:
-                        _rej_cooldown += 1
-                        continue  # Wash trade cooldown
-                    # C2 (improve8): Per-exit-type re-entry cooldown
-                    _last_exit_type = self._symbol_exit_type.get(c.symbol)
-                    _last_exit_tick = self._symbol_exit_tick.get(c.symbol, 0)
-                    if _last_exit_type and _last_exit_tick > 0:
-                        _ticks_since = self._tick_count - _last_exit_tick
-                        if _last_exit_type in ("stop_loss", "safety_net") and _ticks_since < self._STOP_LOSS_REENTRY_TICKS:
-                            _rej_cooldown += 1
-                            continue
-                        elif _last_exit_type == "ftf_loss" and _ticks_since < self._FTF_LOSS_REENTRY_TICKS:
-                            _rej_cooldown += 1
-                            continue
-                    if c.symbol in self._pending_entry:
-                        _rej_pending += 1
-                        continue  # Already submitted an order recently
-                    if c.symbol in self._entry_metadata:
-                        _rej_metadata += 1
-                        continue  # Already tracking this position
-                    if LONG_ONLY and c.direction < 0:
-                        _rej_long_only += 1
-                        continue
-                    # Sector diversification gate — includes planned entries from
-                    # earlier in this loop to prevent intra-tick sector breaches.
-                    if not sector_gate_allows(c.symbol, open_symbols, _planned_entries):
-                        _rej_sector += 1
-                        logger.info(
-                            "Sector gate blocked %s (sector=%s, planned=%s)",
-                            c.symbol, get_sector(c.symbol), _planned_entries,
-                        )
-                        if _PROMETHEUS_AVAILABLE:
-                            ORGANISM_SECTOR_CAP_BLOCKED.inc()
-                        continue
-                    # improve9 B1: Unified canonical fitness system.
-                    # Learning mode: fitness is soft ranking only (no gate).
-                    # Production mode: hard gate only for symbols with 10+
-                    # closed trades AND fitness < 0.45. Session bans provide
-                    # hard protection for all modes.
-                    sym_fitness = self.evolved_params.symbol_fitness.get(c.symbol, 0.5)
-                    _sym_trade_count = self.evolved_params.symbol_trade_counts.get(c.symbol, 0)
-                    if (
-                        not self._is_learning_mode
-                        and _sym_trade_count >= _MIN_TRADES_FOR_FITNESS_GATE
-                        and sym_fitness < _MAIN_FITNESS_GATE
-                    ):
-                        _rej_fitness += 1
-                        logger.info(
-                            "Fitness gate blocked %s (fitness=%.2f < %.2f, trades=%d)",
-                            c.symbol, sym_fitness, _MAIN_FITNESS_GATE, _sym_trade_count,
-                        )
-                        continue
-                    # Liquidity gate — block illiquid symbols that gap violently
-                    if not self._passes_liquidity_gate(c.symbol, features_by_symbol):
-                        _rej_liquidity += 1
-                        logger.info("Liquidity gate blocked %s", c.symbol)
-                        continue
-                    # v4 (improve7): Symbol circuit breaker — ban symbols that
-                    # are structurally bad today (2 consecutive losers or -$15)
-                    if c.symbol in self._symbol_banned:
-                        _rej_circuit_breaker += 1
+                    # Shared entry gates (alpha + breakout use same helper)
+                    _gate_ok, _gate_reason = self._passes_entry_gates(
+                        c.symbol, c.direction, features_by_symbol,
+                        open_symbols, _planned_entries,
+                        fitness_gate=_MAIN_FITNESS_GATE,
+                        min_trades_for_fitness=_MIN_TRADES_FOR_FITNESS_GATE,
+                    )
+                    if not _gate_ok:
+                        _rej_counts[_gate_reason] = _rej_counts.get(_gate_reason, 0) + 1
+                        if _gate_reason == "sector_gate":
+                            logger.info(
+                                "Sector gate blocked %s (sector=%s, planned=%s)",
+                                c.symbol, get_sector(c.symbol), _planned_entries,
+                            )
+                            if _PROMETHEUS_AVAILABLE:
+                                ORGANISM_SECTOR_CAP_BLOCKED.inc()
+                        elif _gate_reason == "fitness_gate":
+                            logger.info(
+                                "Fitness gate blocked %s (fitness=%.2f < %.2f)",
+                                c.symbol,
+                                self.evolved_params.symbol_fitness.get(c.symbol, 0.5),
+                                _MAIN_FITNESS_GATE,
+                            )
+                        elif _gate_reason == "liquidity":
+                            logger.info("Liquidity gate blocked %s", c.symbol)
                         continue
 
                     # B3 (improve8): Data-source provenance — determine freshness
@@ -1899,7 +1912,7 @@ class OrganismLiveEngine:
                         _route_exploration = True
                     elif _eff_conf < _EXPL_CONF_GATE:
                         # Below exploration gate → reject outright
-                        _rej_confidence += 1
+                        _rej_counts["confidence_gate"] += 1
                         logger.info(
                             "Confidence reject: %s (eff_conf=%.2f < %.2f)",
                             c.symbol, _eff_conf, _EXPL_CONF_GATE,
@@ -1909,7 +1922,7 @@ class OrganismLiveEngine:
                         _route_exploration = True
 
                     if _route_exploration:
-                        _rej_confidence += 1
+                        _rej_counts["confidence_gate"] += 1
                         # improve9 A7: Log exploration-eligible candidates
                         # instead of routing to dead queue. The exploration
                         # queue was dead code — no executor ever processed it.
@@ -1933,64 +1946,66 @@ class OrganismLiveEngine:
                     _planned_entries.add(c.symbol)
 
                 # Pure breakout signals not in alpha candidates (capped at 2)
-                # Hardening: pure-breakout path now shares all safety gates
-                # with the alpha path (liquidity, confidence, data provenance).
+                # Uses shared _passes_entry_gates helper — identical gate
+                # logic to alpha path.
                 alpha_syms = {d["symbol"] for d in cand_dicts}
                 _breakout_added = 0
                 _MAX_PURE_BREAKOUT = 2
                 for bs in breakout_signals:
                     if _breakout_added >= _MAX_PURE_BREAKOUT:
                         break
+                    if bs.symbol in alpha_syms:
+                        continue
+                    if bs.composite_score < 0.55:
+                        continue
+                    # Shared entry gates (same helper as alpha path)
+                    _gate_ok, _gate_reason = self._passes_entry_gates(
+                        bs.symbol, 1.0, features_by_symbol,
+                        open_symbols, _planned_entries,
+                        fitness_gate=_MAIN_FITNESS_GATE,
+                        min_trades_for_fitness=_MIN_TRADES_FOR_FITNESS_GATE,
+                    )
+                    if not _gate_ok:
+                        if _gate_reason == "sector_gate" and _PROMETHEUS_AVAILABLE:
+                            ORGANISM_SECTOR_CAP_BLOCKED.inc()
+                        continue
+                    # Confidence threshold
+                    _bo_conf = min(bs.composite_score, 1.0)
+                    if _bo_conf < _MAIN_CONF_BASELINE:
+                        continue
+                    # ML negative-direction veto — production only.
+                    # In learning mode ML is untrained and anti-predictive;
+                    # vetoing breakout signals on ML direction blocks valid
+                    # entries from accumulating training data.
+                    ml_sig = ml_signals.get(bs.symbol)
+                    if not self._is_learning_mode and ml_sig and ml_sig.direction < 0:
+                        continue
+                    # Predicted return: use ML when available (minimal 0.3%
+                    # floor to avoid zero), otherwise scale from breakout
+                    # score (0.5%-2.0% range avoids flat over-estimation).
+                    if ml_sig and not self._is_learning_mode:
+                        pred_ret = max(ml_sig.predicted_return, 0.003)
+                    else:
+                        pred_ret = 0.005 + 0.015 * bs.composite_score
+                    # Determine expected_return_source for breakout
+                    _bo_ret_source = "heuristic"
                     if (
-                        bs.symbol not in alpha_syms
-                        and bs.symbol not in open_symbols
-                        and bs.symbol not in self._exit_cooldown
-                        and bs.symbol not in self._pending_entry
-                        and bs.symbol not in self._entry_metadata
-                        and bs.symbol not in self._symbol_banned
-                        and bs.composite_score >= 0.55
-                        and (
-                            self._is_learning_mode
-                            or self.evolved_params.symbol_trade_counts.get(bs.symbol, 0) < _MIN_TRADES_FOR_FITNESS_GATE
-                            or self.evolved_params.symbol_fitness.get(bs.symbol, 0.5) >= _MAIN_FITNESS_GATE
-                        )
+                        ml_sig and not self._is_learning_mode
+                        and ml_sig.direction > 0
+                        and abs(ml_sig.predicted_return) > 1e-6
                     ):
-                        # Shared gate: liquidity
-                        if not self._passes_liquidity_gate(bs.symbol, features_by_symbol):
-                            continue
-                        # Shared gate: confidence threshold
-                        _bo_conf = min(bs.composite_score, 1.0)
-                        if _bo_conf < _MAIN_CONF_BASELINE:
-                            continue
-                        if not sector_gate_allows(bs.symbol, open_symbols, _planned_entries):
-                            if _PROMETHEUS_AVAILABLE:
-                                ORGANISM_SECTOR_CAP_BLOCKED.inc()
-                            continue
-                        ml_sig = ml_signals.get(bs.symbol)
-                        if ml_sig and ml_sig.direction < 0:
-                            continue
-                        # Predicted return: use ML when available (minimal 0.3%
-                        # floor to avoid zero), otherwise scale from breakout
-                        # score (0.5%-2.0% range avoids flat over-estimation).
-                        if ml_sig:
-                            pred_ret = max(ml_sig.predicted_return, 0.003)
-                        else:
-                            pred_ret = 0.005 + 0.015 * bs.composite_score
-                        # Determine expected_return_source for breakout
-                        _bo_ret_source = "heuristic"
-                        if ml_sig and ml_sig.direction > 0 and abs(ml_sig.predicted_return) > 1e-6:
-                            _bo_ret_source = "calibrated_breakout"
-                        cand_dicts.append({
-                            "symbol": bs.symbol,
-                            "direction": 1.0,
-                            "predicted_return": pred_ret,
-                            "confidence": min(bs.composite_score, 1.0),
-                            "effective_confidence": min(bs.composite_score, 1.0),
-                            "breakout_score": bs.composite_score,
-                            "expected_return_source": _bo_ret_source,
-                        })
-                        _planned_entries.add(bs.symbol)
-                        _breakout_added += 1
+                        _bo_ret_source = "calibrated_breakout"
+                    cand_dicts.append({
+                        "symbol": bs.symbol,
+                        "direction": 1.0,
+                        "predicted_return": pred_ret,
+                        "confidence": _bo_conf,
+                        "effective_confidence": _bo_conf,
+                        "breakout_score": bs.composite_score,
+                        "expected_return_source": _bo_ret_source,
+                    })
+                    _planned_entries.add(bs.symbol)
+                    _breakout_added += 1
 
                 cand_dicts.sort(
                     key=lambda x: x["breakout_score"] * x["confidence"],
@@ -2028,19 +2043,8 @@ class OrganismLiveEngine:
                 result.signals_generated = len(cand_dicts)
 
                 # Store gate-level rejection counts for telemetry
-                self._last_gate_rejections = {
-                    "open_position": _rej_open,
-                    "exit_cooldown": _rej_cooldown,
-                    "pending_entry": _rej_pending,
-                    "entry_metadata": _rej_metadata,
-                    "long_only": _rej_long_only,
-                    "sector_gate": _rej_sector,
-                    "fitness_gate": _rej_fitness,
-                    "liquidity": _rej_liquidity,
-                    "circuit_breaker": _rej_circuit_breaker,
-                    "confidence_gate": _rej_confidence,
-                    "missingness": _rej_missingness,
-                }
+                _rej_counts["missingness"] = _rej_missingness
+                self._last_gate_rejections = dict(_rej_counts)
 
                 # Log signal activity
                 for cd in cand_dicts[:10]:

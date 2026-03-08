@@ -206,30 +206,34 @@ class TestEvolutionFreezeGate:
 # ── S6: Breakout path goes through shared gate helper ─────────────────
 
 class TestBreakoutSharedGates:
-    """Verify pure breakout path shares safety gates with alpha path."""
+    """Verify pure breakout path uses the shared _passes_entry_gates helper."""
 
-    def test_breakout_path_checks_fitness(self):
-        """Breakout section must check fitness gate."""
+    def test_breakout_path_uses_shared_helper(self):
+        """Breakout section must call _passes_entry_gates (same as alpha)."""
         source = (ROOT / "backend" / "organism" / "live_engine.py").read_text()
-        # Find the pure breakout section (case-insensitive search)
         breakout_start = source.lower().find("pure breakout")
         if breakout_start == -1:
             breakout_start = source.find("_MAX_PURE_BREAKOUT")
         assert breakout_start != -1, "Could not find pure breakout section"
         breakout_section = source[breakout_start:breakout_start + 3000]
-        assert "_MAIN_FITNESS_GATE" in breakout_section or "symbol_fitness" in breakout_section, \
-            "Breakout path must check fitness gate"
+        assert "_passes_entry_gates" in breakout_section, \
+            "Breakout path must call shared _passes_entry_gates helper"
 
-    def test_breakout_path_checks_liquidity(self):
-        """Breakout section must check liquidity gate."""
+    def test_shared_helper_exists(self):
+        """_passes_entry_gates must exist as a method on the engine."""
         source = (ROOT / "backend" / "organism" / "live_engine.py").read_text()
+        assert "def _passes_entry_gates(" in source, \
+            "Shared entry gate helper _passes_entry_gates must exist"
+
+    def test_alpha_path_uses_shared_helper(self):
+        """Alpha candidate loop must also use _passes_entry_gates."""
+        source = (ROOT / "backend" / "organism" / "live_engine.py").read_text()
+        # Find the alpha candidate section (before pure breakout)
         breakout_start = source.lower().find("pure breakout")
-        if breakout_start == -1:
-            breakout_start = source.find("_MAX_PURE_BREAKOUT")
-        assert breakout_start != -1
-        breakout_section = source[breakout_start:breakout_start + 3000]
-        assert "_passes_liquidity_gate" in breakout_section, \
-            "Breakout path must call _passes_liquidity_gate"
+        alpha_section = source[:breakout_start] if breakout_start != -1 else source
+        # Should find _passes_entry_gates in the alpha loop
+        assert "_passes_entry_gates" in alpha_section, \
+            "Alpha path must call shared _passes_entry_gates helper"
 
     def test_breakout_path_checks_confidence(self):
         """Breakout section must check confidence threshold."""
@@ -242,13 +246,29 @@ class TestBreakoutSharedGates:
         assert "_MAIN_CONF_BASELINE" in breakout_section, \
             "Breakout path must check _MAIN_CONF_BASELINE confidence threshold"
 
-    def test_breakout_path_checks_sector(self):
-        """Breakout section must check sector gate."""
+    def test_ml_veto_gated_by_learning_mode(self):
+        """ML negative-direction veto must only apply in production mode."""
         source = (ROOT / "backend" / "organism" / "live_engine.py").read_text()
         breakout_start = source.lower().find("pure breakout")
-        if breakout_start == -1:
-            breakout_start = source.find("_MAX_PURE_BREAKOUT")
         assert breakout_start != -1
         breakout_section = source[breakout_start:breakout_start + 3000]
-        assert "sector_gate" in breakout_section, \
-            "Breakout path must check sector gate"
+        # The ML veto must be conditioned on NOT learning mode
+        assert "not self._is_learning_mode" in breakout_section, \
+            "ML direction veto in breakout path must be gated by not _is_learning_mode"
+
+
+# ── S7: Kelly sizer learning-mode ordering ────────────────────────────
+
+class TestKellySizerLearningOrdering:
+    """Verify KellySizer does not use predicted_return for learning-mode sorting."""
+
+    def test_learning_mode_sort_uses_breakout_quality(self):
+        """In learning mode, candidates should be sorted by breakout/confidence,
+        NOT by predicted_return * confidence."""
+        from backend.organism.kelly_sizer import KellySizer
+        source = inspect.getsource(KellySizer.size_positions)
+        assert "_is_learning_mode" in source or "is_learning" in source, \
+            "size_positions must branch sorting on learning mode"
+        # Verify breakout_score appears in a sorting context
+        assert "breakout_score" in source, \
+            "Learning-mode sort should reference breakout_score"

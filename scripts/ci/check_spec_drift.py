@@ -161,23 +161,27 @@ def compare(a: dict, b: dict, a_label: str, b_label: str) -> list[str]:
 
 
 def main() -> None:
-    print("Checking 3-way spec-vs-runtime drift...")
+    json_mode = "--json" in sys.argv
 
     snapshot = load_snapshot()
     spec = parse_mapss_thresholds()
     manifest = load_manifest()
 
-    print(f"  Parsed {len(spec)} constants from mapss.md")
-    print(f"  Runtime snapshot has {len(snapshot)} keys")
-    print(f"  Manifest has {len(manifest)} constants")
+    if not json_mode:
+        print("Checking 3-way spec-vs-runtime drift...")
+        print(f"  Parsed {len(spec)} constants from mapss.md")
+        print(f"  Runtime snapshot has {len(snapshot)} keys")
+        print(f"  Manifest has {len(manifest)} constants")
 
     all_drifts: list[str] = []
+    comparisons = {}
 
     # 1. snapshot vs mapss.md
     d1 = compare(snapshot, spec, "runtime", "mapss.md")
     if d1:
         all_drifts.append("Runtime vs mapss.md:")
         all_drifts.extend(d1)
+        comparisons["runtime_vs_mapss"] = d1
 
     # 2. snapshot vs manifest
     if manifest:
@@ -185,6 +189,7 @@ def main() -> None:
         if d2:
             all_drifts.append("Runtime vs strategy_surface_manifest.json:")
             all_drifts.extend(d2)
+            comparisons["runtime_vs_manifest"] = d2
 
     # 3. mapss.md vs manifest
     if manifest:
@@ -192,8 +197,26 @@ def main() -> None:
         if d3:
             all_drifts.append("mapss.md vs strategy_surface_manifest.json:")
             all_drifts.extend(d3)
+            comparisons["mapss_vs_manifest"] = d3
 
-    if all_drifts:
+    drifted = len(all_drifts) > 0
+
+    if json_mode:
+        result = {
+            "overall": "fail" if drifted else "pass",
+            "core_keys_checked": len(CORE_KEYS),
+            "sources": {
+                "runtime_defaults": len(snapshot),
+                "mapss_constants": len(spec),
+                "manifest_constants": len(manifest),
+            },
+            "drifts": comparisons,
+            "drift_count": len(all_drifts),
+        }
+        print(json.dumps(result, indent=2))
+        sys.exit(1 if drifted else 0)
+
+    if drifted:
         print(f"\nDRIFT DETECTED ({len(all_drifts)} lines):")
         for d in all_drifts:
             print(d)

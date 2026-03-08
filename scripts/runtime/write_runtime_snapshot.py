@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Runtime config snapshot writer.
 
-Produces TWO snapshot files:
-  artifacts/runtime_defaults_snapshot.json  — code defaults (offline, from source)
-  artifacts/resolved_live_runtime_snapshot.json — resolved values from running container
+Produces THREE snapshot files:
+  artifacts/runtime_defaults_snapshot.json     — code defaults (offline, from source)
+  artifacts/resolved_config_snapshot.json      — env > .env > code defaults resolution
+  artifacts/live_process_runtime_snapshot.json  — live values from the running process
 
 Used by CI, post-close audit, and daily reports to verify live behavior
 matches documented spec.
@@ -114,24 +115,24 @@ def _build_defaults_snapshot() -> dict:
         }
 
 
-def _build_resolved_live_snapshot() -> dict:
-    """Query the running paper-trader container for resolved runtime values.
+def _build_resolved_config_snapshot() -> dict:
+    """Build resolved config snapshot: container env > .env > code defaults.
 
-    Tries in order:
-    1. Docker exec into the api container and read env + config
-    2. curl the /api/organism/status endpoint
-    3. Fall back to .env file parsing + code defaults overlay
+    This captures the CONFIG RESOLUTION chain (what the process SHOULD run with),
+    not what it IS running with. For the live process state, see
+    _build_live_process_snapshot().
     """
-    resolved = {"source": "resolved_live"}
+    resolved = {"source": "resolved_config"}
 
-    # --- Attempt 1: docker exec env dump ---
+    # --- Container env vars ---
     api_container = _find_api_container()
+    container_env = {}
     if api_container:
         env_text = _docker_exec(api_container, "env")
         if env_text:
             env_map = _parse_env_text(env_text)
             resolved["container"] = api_container
-            resolved["container_env"] = {
+            container_env = {
                 "ORGANISM_DRAWDOWN_KILL_PCT": env_map.get("ORGANISM_DRAWDOWN_KILL_PCT"),
                 "ORGANISM_MAX_POSITIONS": env_map.get("ORGANISM_MAX_POSITIONS"),
                 "ORGANISM_TICK_INTERVAL_SECONDS": env_map.get("ORGANISM_TICK_INTERVAL_SECONDS"),
@@ -141,28 +142,24 @@ def _build_resolved_live_snapshot() -> dict:
                 "APP_ENVIRONMENT": env_map.get("APP_ENVIRONMENT"),
                 "ALPACA_PAPER": env_map.get("ALPACA_PAPER"),
             }
+            resolved["container_env"] = container_env
 
-    # --- Attempt 2: curl organism status ---
-    status_json = _curl_organism_status()
-    if status_json:
-        resolved["organism_status"] = status_json
-
-    # --- Attempt 3: parse .env file ---
+    # --- .env file vars ---
+    dotenv = {}
     env_file = ROOT / ".env"
     if env_file.exists():
         env_map = _parse_env_file(env_file)
-        resolved["dotenv"] = {
+        dotenv = {
             "ORGANISM_DRAWDOWN_KILL_PCT": env_map.get("ORGANISM_DRAWDOWN_KILL_PCT"),
             "ORGANISM_MAX_POSITIONS": env_map.get("ORGANISM_MAX_POSITIONS"),
             "ORGANISM_TICK_INTERVAL_SECONDS": env_map.get("ORGANISM_TICK_INTERVAL_SECONDS"),
             "ORGANISM_EXPLORATION_ENABLED": env_map.get("ORGANISM_EXPLORATION_ENABLED"),
             "ORGANISM_ALPHA_TOP_N": env_map.get("ORGANISM_ALPHA_TOP_N"),
         }
+        resolved["dotenv"] = dotenv
 
-    # --- Resolve final values: container env > .env > code default ---
+    # --- Resolve: container env > .env > code defaults ---
     defaults = _build_defaults_snapshot()
-    container_env = resolved.get("container_env", {})
-    dotenv = resolved.get("dotenv", {})
 
     def _resolve_float(env_key: str, default_key: str) -> float:
         for src in [container_env, dotenv]:
@@ -217,6 +214,100 @@ def _build_resolved_live_snapshot() -> dict:
     return resolved
 
 
+def _build_live_process_snapshot() -> dict:
+    """Query the RUNNING paper-trader process for its actual live state.
+
+    This is the only snapshot that reflects what the organism is actually
+    doing right now — not what config says it should do, but what it IS doing.
+
+    Sources (in priority order):
+    1. /api/organism/status endpoint (running process memory)
+    2. Docker exec: read process-level state files (brain gen, trade count)
+    3. Container env as fallback context
+    """
+    result = {
+        "source": "live_process",
+        "reachable": False,
+        "organism_status": None,
+        "brain_state": None,
+        "process_env": None,
+    }
+
+    # --- 1. Query organism status endpoint (live process memory) ---
+    status_json = _curl_organism_status()
+    if status_json:
+        result["reachable"] = True
+        result["organism_status"] = status_json
+
+    # --- 2. Read brain state from container filesystem ---
+    api_container = _find_api_container()
+    if api_container:
+        # Read brain manifest if accessible
+        brain_meta = _docker_exec(
+            api_container,
+            "cat /app/organism_brain/manifest.json",
+        )
+        if brain_meta:
+            try:
+                result["brain_state"] = json.loads(brain_meta)
+            except (json.JSONDecodeError, ValueError):
+                result["brain_state"] = {"raw": brain_meta[:500]}
+
+        # Read process env for context
+        env_text = _docker_exec(api_container, "env")
+        if env_text:
+            env_map = _parse_env_text(env_text)
+            result["process_env"] = {
+                "APP_ENVIRONMENT": env_map.get("APP_ENVIRONMENT"),
+                "ALPACA_PAPER": env_map.get("ALPACA_PAPER"),
+                "ORGANISM_DRAWDOWN_KILL_PCT": env_map.get("ORGANISM_DRAWDOWN_KILL_PCT"),
+                "ORGANISM_MAX_POSITIONS": env_map.get("ORGANISM_MAX_POSITIONS"),
+                "ORGANISM_TICK_INTERVAL_SECONDS": env_map.get("ORGANISM_TICK_INTERVAL_SECONDS"),
+            }
+
+    # --- 3. Derive live runtime values from process state ---
+    live = {}
+    if status_json:
+        # The response may have nested data under live_engine.engine
+        engine = {}
+        le = status_json.get("live_engine", {})
+        if isinstance(le, dict):
+            engine = le.get("engine", {})
+
+        def _pick(*keys):
+            """Pick first non-None value from status_json top-level, then engine."""
+            for k in keys:
+                for src in [status_json, engine]:
+                    v = src.get(k)
+                    if v is not None:
+                        return v
+            return None
+
+        live["tick_count"] = _pick("tick_count")
+        live["trade_count"] = _pick("trade_count", "total_trades")
+        live["open_positions"] = _pick("open_positions", "positions_tracked", "num_positions")
+        live["is_learning_mode"] = _pick("is_learning_mode", "learning_mode")
+        live["brain_generation"] = _pick("brain_generation")
+        live["uptime_seconds"] = _pick("uptime_seconds")
+        live["last_tick_at"] = _pick("last_tick_at", "last_tick")
+        raw_regime = _pick("regime", "current_regime")
+        # Flatten nested regime dict if needed
+        if isinstance(raw_regime, dict):
+            live["regime"] = raw_regime.get("last_regime", "unknown")
+        else:
+            live["regime"] = raw_regime
+        live["drawdown_pct"] = _pick("drawdown_pct", "current_drawdown")
+        live["equity"] = _pick("equity", "current_equity", "portfolio_value")
+        live["ml_trained"] = _pick("ml_trained")
+        live["win_rate"] = _pick("win_rate")
+        live["cumulative_pnl"] = _pick("cumulative_pnl")
+        live["universe_size"] = _pick("universe_size")
+        live["running"] = le.get("running") if le else _pick("running")
+    result["live"] = live
+
+    return result
+
+
 # ── helpers ──────────────────────────────────────────────────────────
 
 def _find_api_container() -> str:
@@ -237,7 +328,7 @@ def _find_api_container() -> str:
 def _docker_exec(container: str, cmd: str) -> str:
     try:
         return subprocess.check_output(
-            ["docker", "exec", container, cmd],
+            ["docker", "exec", container, "sh", "-c", cmd],
             text=True, stderr=subprocess.DEVNULL, timeout=10,
         ).strip()
     except Exception:
@@ -245,16 +336,47 @@ def _docker_exec(container: str, cmd: str) -> str:
 
 
 def _curl_organism_status() -> dict | None:
-    try:
-        out = subprocess.check_output(
-            ["curl", "-s", "--max-time", "5", "http://localhost:8000/api/organism/status"],
-            text=True, stderr=subprocess.DEVNULL, timeout=10,
-        ).strip()
-        if out:
-            return json.loads(out)
-    except Exception:
-        pass
+    """Query the organism status endpoint, with auth."""
+    base = os.getenv("ORGANISM_API_BASE", "http://localhost:8000")
+    # Try authenticated first, then unauthenticated
+    token = _get_auth_token(base)
+    headers = []
+    if token:
+        headers = ["-H", f"Authorization: Bearer {token}"]
+
+    for path in ["/api/v1/organism/status", "/api/organism/status"]:
+        try:
+            cmd = ["curl", "-s", "--max-time", "5", f"{base}{path}"] + headers
+            out = subprocess.check_output(
+                cmd, text=True, stderr=subprocess.DEVNULL, timeout=10,
+            ).strip()
+            if out:
+                data = json.loads(out)
+                if "detail" not in data:  # not an error response
+                    return data
+        except Exception:
+            continue
     return None
+
+
+def _get_auth_token(base: str) -> str:
+    """Get auth token for API access."""
+    username = os.getenv("INTRA_API_USER", "admin@example.com")
+    password = os.getenv("INTRA_API_PASSWORD", "admin123")
+    try:
+        import urllib.request
+        import urllib.error
+        req = urllib.request.Request(
+            f"{base}/api/v1/auth/login",
+            data=json.dumps({"username": username, "password": password}).encode(),
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            data = json.loads(resp.read())
+            return data.get("access_token", "")
+    except Exception:
+        return ""
 
 
 def _parse_env_text(text: str) -> dict:
@@ -286,16 +408,22 @@ def main() -> None:
     p1.write_text(json.dumps(defaults, indent=2))
     print(f"Defaults snapshot written to {p1}")
 
-    # 2. Resolved live snapshot
-    resolved = _build_resolved_live_snapshot()
-    p2 = ART / "resolved_live_runtime_snapshot.json"
+    # 2. Resolved config snapshot (env > .env > code defaults)
+    resolved = _build_resolved_config_snapshot()
+    p2 = ART / "resolved_config_snapshot.json"
     p2.write_text(json.dumps(resolved, indent=2))
-    print(f"Resolved live snapshot written to {p2}")
+    print(f"Resolved config snapshot written to {p2}")
 
-    # 3. Backward compat: also write the combined file CI expects
-    p3 = ART / "runtime_config_snapshot.json"
-    p3.write_text(json.dumps(defaults, indent=2))
-    print(f"Legacy snapshot written to {p3}")
+    # 3. Live process snapshot (from running container)
+    live = _build_live_process_snapshot()
+    p3 = ART / "live_process_runtime_snapshot.json"
+    p3.write_text(json.dumps(live, indent=2))
+    print(f"Live process snapshot written to {p3}")
+
+    # 4. Backward compat: also write the combined file CI expects
+    p4 = ART / "runtime_config_snapshot.json"
+    p4.write_text(json.dumps(defaults, indent=2))
+    print(f"Legacy snapshot written to {p4}")
 
 
 if __name__ == "__main__":
