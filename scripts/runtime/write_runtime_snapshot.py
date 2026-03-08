@@ -188,13 +188,24 @@ def _build_resolved_config_snapshot() -> dict:
                 return v.lower() in ("true", "1", "yes")
         return defaults.get(default_key, False)
 
+    def _resolve_str(env_key: str, default_key: str) -> tuple[str, str]:
+        """Resolve a string config. Returns (value, source)."""
+        for label, src in [("container_env", container_env), ("dotenv", dotenv)]:
+            v = src.get(env_key)
+            if v is not None:
+                return v, label
+        return defaults.get(default_key, ""), "code_default"
+
+    timeframe_val, timeframe_source = _resolve_str("ORGANISM_LIVE_TIMEFRAME", "timeframe")
+
     resolved["resolved"] = {
         "drawdown_kill_pct": _resolve_float("ORGANISM_DRAWDOWN_KILL_PCT", "drawdown_kill_pct"),
         "max_positions": _resolve_int("ORGANISM_MAX_POSITIONS", "max_positions"),
         "alpha_top_n": _resolve_int("ORGANISM_ALPHA_TOP_N", "alpha_top_n"),
         "tick_interval_seconds": _resolve_int("ORGANISM_TICK_INTERVAL_SECONDS", "tick_interval_seconds"),
         "exploration_enabled": _resolve_bool("ORGANISM_EXPLORATION_ENABLED", "exploration_enabled"),
-        "timeframe": defaults.get("timeframe"),
+        "timeframe": timeframe_val,
+        "timeframe_source": timeframe_source,
         "learning_mode_threshold_trades": defaults.get("learning_mode_threshold_trades"),
         "evolution_freeze_until_trades": defaults.get("evolution_freeze_until_trades"),
         "horizon_timeout_bars": defaults.get("horizon_timeout_bars"),
@@ -225,12 +236,20 @@ def _build_live_process_snapshot() -> dict:
     2. Docker exec: read process-level state files (brain gen, trade count)
     3. Container env as fallback context
     """
+    from datetime import datetime, timezone
+
+    api_container = _find_api_container()
+    snapshot_ts = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
     result = {
         "source": "live_process",
+        "snapshot_taken_at": snapshot_ts,
+        "container": api_container or None,
         "reachable": False,
         "organism_status": None,
         "brain_state": None,
         "process_env": None,
+        "source_annotations": {},
     }
 
     # --- 1. Query organism status endpoint (live process memory) ---
@@ -240,7 +259,6 @@ def _build_live_process_snapshot() -> dict:
         result["organism_status"] = status_json
 
     # --- 2. Read brain state from container filesystem ---
-    api_container = _find_api_container()
     if api_container:
         # Read brain manifest if accessible
         brain_meta = _docker_exec(
@@ -265,8 +283,19 @@ def _build_live_process_snapshot() -> dict:
                 "ORGANISM_TICK_INTERVAL_SECONDS": env_map.get("ORGANISM_TICK_INTERVAL_SECONDS"),
             }
 
+        # Get container start time
+        try:
+            started = subprocess.check_output(
+                ["docker", "inspect", "--format", "{{.State.StartedAt}}", api_container],
+                text=True, stderr=subprocess.DEVNULL, timeout=5,
+            ).strip()
+            result["container_started_at"] = started
+        except Exception:
+            pass
+
     # --- 3. Derive live runtime values from process state ---
     live = {}
+    annotations = {}
     if status_json:
         # The response may have nested data under live_engine.engine
         engine = {}
@@ -274,36 +303,67 @@ def _build_live_process_snapshot() -> dict:
         if isinstance(le, dict):
             engine = le.get("engine", {})
 
-        def _pick(*keys):
-            """Pick first non-None value from status_json top-level, then engine."""
+        def _pick_annotated(field_name: str, *keys):
+            """Pick first non-None value, track where it came from."""
             for k in keys:
-                for src in [status_json, engine]:
+                for src_label, src in [("api_top_level", status_json), ("engine_memory", engine)]:
                     v = src.get(k)
                     if v is not None:
+                        annotations[field_name] = f"{src_label}.{k}"
                         return v
             return None
 
-        live["tick_count"] = _pick("tick_count")
-        live["trade_count"] = _pick("trade_count", "total_trades")
-        live["open_positions"] = _pick("open_positions", "positions_tracked", "num_positions")
-        live["is_learning_mode"] = _pick("is_learning_mode", "learning_mode")
-        live["brain_generation"] = _pick("brain_generation")
-        live["uptime_seconds"] = _pick("uptime_seconds")
-        live["last_tick_at"] = _pick("last_tick_at", "last_tick")
-        raw_regime = _pick("regime", "current_regime")
-        # Flatten nested regime dict if needed
+        live["tick_count"] = _pick_annotated("tick_count", "tick_count")
+        live["trade_count"] = _pick_annotated("trade_count", "total_trades", "trade_count")
+        live["open_positions"] = _pick_annotated("open_positions", "positions_tracked", "open_positions", "num_positions")
+        live["is_learning_mode"] = _pick_annotated("is_learning_mode", "learning_mode", "is_learning_mode")
+        live["brain_generation"] = _pick_annotated("brain_generation", "brain_generation")
+        live["uptime_seconds"] = _pick_annotated("uptime_seconds", "uptime_seconds")
+        live["last_tick_at"] = _pick_annotated("last_tick_at", "last_tick", "last_tick_at")
+
+        # Regime: flatten nested dict, explain empty/idle state
+        raw_regime = _pick_annotated("regime", "regime", "current_regime")
         if isinstance(raw_regime, dict):
-            live["regime"] = raw_regime.get("last_regime", "unknown")
+            regime_val = raw_regime.get("last_regime", "")
+            annotations["regime"] = "api_top_level.regime.last_regime"
         else:
-            live["regime"] = raw_regime
-        live["drawdown_pct"] = _pick("drawdown_pct", "current_drawdown")
-        live["equity"] = _pick("equity", "current_equity", "portfolio_value")
-        live["ml_trained"] = _pick("ml_trained")
-        live["win_rate"] = _pick("win_rate")
-        live["cumulative_pnl"] = _pick("cumulative_pnl")
-        live["universe_size"] = _pick("universe_size")
-        live["running"] = le.get("running") if le else _pick("running")
+            regime_val = raw_regime
+        if not regime_val or regime_val == "":
+            regime_val = "idle"
+            live["idle_reason"] = "market_closed_or_no_ticks_yet"
+        live["regime"] = regime_val
+
+        live["drawdown_pct"] = _pick_annotated("drawdown_pct", "drawdown_pct", "current_drawdown")
+        live["equity"] = _pick_annotated("equity", "current_equity", "equity", "portfolio_value")
+        live["ml_trained"] = _pick_annotated("ml_trained", "ml_trained")
+        live["win_rate"] = _pick_annotated("win_rate", "win_rate")
+        live["cumulative_pnl"] = _pick_annotated("cumulative_pnl", "cumulative_pnl")
+        live["universe_size"] = _pick_annotated("universe_size", "universe_size")
+        live["running"] = le.get("running") if le else _pick_annotated("running", "running")
+
     result["live"] = live
+    result["source_annotations"] = annotations
+
+    # --- 4. Coherence notes ---
+    coherence_notes = []
+    brain = result.get("brain_state") or {}
+    brain_trades = brain.get("total_trades")
+    engine_trades = live.get("trade_count")
+    if brain_trades is not None and engine_trades is not None and brain_trades != engine_trades:
+        coherence_notes.append(
+            f"brain_state.total_trades={brain_trades} vs live.trade_count={engine_trades}: "
+            "brain manifest persists at save-time; engine accumulates in-memory across restarts. "
+            "Engine count includes trades since last brain save."
+        )
+    if brain.get("ml_is_trained") is not None and live.get("ml_trained") is not None:
+        if brain.get("ml_is_trained") != live.get("ml_trained"):
+            coherence_notes.append(
+                f"brain_state.ml_is_trained={brain.get('ml_is_trained')} vs live.ml_trained={live.get('ml_trained')}: "
+                "brain manifest is stale if retrain happened after last save."
+            )
+    if not coherence_notes:
+        coherence_notes.append("All cross-source values are consistent.")
+    result["coherence_notes"] = coherence_notes
 
     return result
 

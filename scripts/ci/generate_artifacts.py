@@ -52,9 +52,13 @@ def write(name: str, data: dict | list) -> Path:
 
 # ── 1. task_report.json ──────────────────────────────────────────────
 def gen_task_report() -> None:
-    diff_names = sh(["git", "diff", "--name-only", "HEAD"]).splitlines()
+    # Use the full PR diff (branch vs main), not just working tree or last commit
+    base = os.environ.get("GITHUB_BASE_REF", "main")
+    diff_names = sh(["git", "diff", "--name-only", f"origin/{base}...HEAD"]).splitlines()
     if not diff_names:
         diff_names = sh(["git", "diff", "--name-only", "HEAD~1"]).splitlines()
+    # Filter to current bundle paths only — remove stale/renamed bundle refs
+    diff_names = [f for f in diff_names if f.strip()]
 
     sha = sh(["git", "rev-parse", "HEAD"])
     branch = sh(["git", "rev-parse", "--abbrev-ref", "HEAD"])
