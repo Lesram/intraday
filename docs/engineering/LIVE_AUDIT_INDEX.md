@@ -1,7 +1,8 @@
 # Live Audit Index
 
-Generated: 2026-03-08T02:23:42Z
-SHA: `8bb2216dde`
+Generated: 2026-03-08T03:14:06Z
+PR: PR #3
+SHA: `66f7881cdb`
 Branch: `control-plane-operationalize`
 
 ## Changed files
@@ -11,7 +12,7 @@ Branch: `control-plane-operationalize`
 | Backend | 0 | none |
 | Organism | 0 | none |
 | Tests | 0 | none |
-| Docs | 0 | none |
+| Docs | 2 | `docs/engineering/CONTROL_PLANE.md`, `docs/engineering/LIVE_AUDIT_INDEX.md` |
 
 ## Live constants
 

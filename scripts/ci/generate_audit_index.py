@@ -5,6 +5,7 @@ This file is regenerated on every PR and post-close run so the latest
 audit surface is always documented and machine-readable.
 """
 import json
+import os
 import subprocess
 import sys
 from datetime import datetime, timezone
@@ -26,6 +27,13 @@ def main() -> None:
     short_sha = sha[:10]
     branch = sh(["git", "rev-parse", "--abbrev-ref", "HEAD"])
     timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    # Detect PR number from env (GitHub Actions) or branch name
+    pr_number = os.environ.get("GITHUB_PR_NUMBER", "")
+    if not pr_number:
+        # Try gh CLI
+        pr_number = sh(["gh", "pr", "view", "--json", "number", "-q", ".number"])
+    pr_label = f"PR #{pr_number}" if pr_number else "n/a"
 
     # Changed backend files vs main
     base = "origin/main" if branch != "main" else "HEAD~1"
@@ -86,6 +94,7 @@ def main() -> None:
         "# Live Audit Index",
         "",
         f"Generated: {timestamp}",
+        f"PR: {pr_label}",
         f"SHA: `{short_sha}`",
         f"Branch: `{branch}`",
         "",

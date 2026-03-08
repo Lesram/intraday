@@ -524,7 +524,7 @@ class TestFitnessGate:
 
     @pytest.mark.asyncio
     async def test_low_fitness_blocks_entry(self, brain_dir):
-        """Symbol with fitness < 0.35 must not generate entry orders."""
+        """Symbol with fitness < 0.45 must not generate entry orders (improve9 B1)."""
         from backend.organism.live_engine import OrganismLiveEngine
 
         order_service = MockOrderService()
@@ -537,7 +537,7 @@ class TestFitnessGate:
         )
         await engine.initialize()
 
-        # Set BADSTOCK fitness well below the 0.35 gate
+        # Set BADSTOCK fitness well below the 0.45 gate (improve9 B1)
         engine.evolved_params.symbol_fitness["BADSTOCK"] = 0.10
 
         # Run several ticks
@@ -556,7 +556,7 @@ class TestFitnessGate:
 
     @pytest.mark.asyncio
     async def test_high_fitness_allowed(self, brain_dir):
-        """Symbol with fitness >= 0.35 should not be blocked by fitness gate."""
+        """Symbol with fitness >= 0.45 should not be blocked by fitness gate (improve9 B1)."""
         from backend.organism.live_engine import OrganismLiveEngine
 
         engine = OrganismLiveEngine(
@@ -574,7 +574,7 @@ class TestFitnessGate:
         # The engine won't necessarily produce entries (depends on ML + alpha),
         # but verify the fitness gate itself doesn't block it
         # by checking it would pass the gate condition
-        assert engine.evolved_params.symbol_fitness["GOODSTOCK"] >= 0.35
+        assert engine.evolved_params.symbol_fitness["GOODSTOCK"] >= 0.45
 
 
 # ═════════════════════════════════════════════════════════════════

@@ -59,8 +59,11 @@ def gen_task_report() -> None:
 
 # ── 2. runtime_config_snapshot.json ───────────────────────────────────
 def gen_runtime_snapshot() -> None:
+    # Prefer venv python for organism module imports (requires Python 3.12+)
+    venv_python = ROOT / "venv" / "bin" / "python3"
+    python = str(venv_python) if venv_python.exists() else sys.executable
     result = subprocess.run(
-        [sys.executable, str(ROOT / "scripts" / "runtime" / "write_runtime_snapshot.py")],
+        [python, str(ROOT / "scripts" / "runtime" / "write_runtime_snapshot.py")],
         cwd=str(ROOT), capture_output=True, text=True,
     )
     if result.returncode != 0:
@@ -166,6 +169,8 @@ def gen_grep_assertions() -> None:
             "passed": passed,
         })
 
+    # ── Original 8 invariants ──────────────────────────────────────
+
     # Invariant: exploration execution block must NOT exist
     check("no_exploration_submit_order",
           "_submit_entry_order.*exploration",
@@ -205,6 +210,44 @@ def gen_grep_assertions() -> None:
     # Invariant: EOD flatten exists
     check("eod_flatten_exists",
           "15:58\\|force.close\\|eod_flatten\\|_flatten_all",
+          "backend/organism/live_engine.py", must_exist=True)
+
+    # ── AIA PR#3 review assertions (7 explicit checks) ──────────
+
+    # 1. Exploration execution fully removed (no route to order submission)
+    check("exploration_execution_removed",
+          "exploration.*_submit\\|_submit.*exploration",
+          "backend/organism/live_engine.py", must_exist=False)
+
+    # 2. Learning confidence ignores ML (uses 0.65×breakout + 0.35×tension)
+    check("learning_confidence_ignores_ml",
+          "0\\.65 \\* breakout_score",
+          "backend/organism/live_engine.py", must_exist=True)
+
+    # 3. Alpha scanner zeros ML weight in learning mode
+    #    The guard: `if learning_mode or not ml_is_trained: effective_ml_weight = 0.0`
+    check("alpha_scanner_ml_zero_in_learning",
+          "learning_mode.*ml_is_trained",
+          "backend/organism/alpha_scanner.py", must_exist=True)
+
+    # 4. Kelly disabled in learning mode (fixed ATR-dollar risk only)
+    check("kelly_disabled_in_learning",
+          "_RISK_BUDGET_PER_TRADE_LEARNING",
+          "backend/organism/kelly_sizer.py", must_exist=True)
+
+    # 5. No warm-start apply before 300 trades (evolution freeze gate)
+    check("no_warm_start_apply_before_300_trades",
+          "_trade_count >= _EVOLUTION_FREEZE_TRADES",
+          "backend/organism/live_engine.py", must_exist=True)
+
+    # 6. Breakout path uses shared main gates (_is_entry_bar gate)
+    check("breakout_path_uses_shared_main_gates",
+          "_is_entry_bar",
+          "backend/organism/live_engine.py", must_exist=True)
+
+    # 7. ALPHA_TOP_N defined independently from MAX_OPEN_POSITIONS
+    check("alpha_top_n_independent_from_max_positions",
+          "ALPHA_TOP_N = _env_int",
           "backend/organism/live_engine.py", must_exist=True)
 
     all_passed = all(c["passed"] for c in checks)
