@@ -799,7 +799,7 @@ ENTRY SCANNING PIPELINE
   │   │   ├── Confidence threshold gate (shared with alpha path)
   │   │   ├── Sector gate allows
   │   │   └── ML direction not negative (don't fight ML)
-  │   │   (NOTE: skips LONG_ONLY direction check only)
+  │   │   (NOTE: skips missingness gate; uses baseline confidence only, not defensive tier)
   │   ├── Forced direction = +1.0 (always long)
   │   └── predicted_return:
   │       ├── ML present: max(ml_return, 0.003)  (0.3% min floor)
