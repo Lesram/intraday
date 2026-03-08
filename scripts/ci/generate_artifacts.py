@@ -57,8 +57,8 @@ def gen_task_report() -> None:
     diff_names = sh(["git", "diff", "--name-only", f"origin/{base}...HEAD"]).splitlines()
     if not diff_names:
         diff_names = sh(["git", "diff", "--name-only", "HEAD~1"]).splitlines()
-    # Filter to current bundle paths only — remove stale/renamed bundle refs
-    diff_names = [f for f in diff_names if f.strip()]
+    # Filter: keep only files that still exist at HEAD (removes renamed/deleted bundle paths)
+    diff_names = [f for f in diff_names if f.strip() and (ROOT / f).exists()]
 
     sha = sh(["git", "rev-parse", "HEAD"])
     branch = sh(["git", "rev-parse", "--abbrev-ref", "HEAD"])
