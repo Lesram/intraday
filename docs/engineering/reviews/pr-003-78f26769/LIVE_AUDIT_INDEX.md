@@ -1,8 +1,8 @@
 # Live Audit Index
 
-Generated: 2026-03-08T22:45:20Z
+Generated: 2026-03-08T23:42:24Z
 PR: PR #3
-SHA: `78f26769cd`
+SHA: `e1360cce34`
 Branch: `control-plane-operationalize`
 Scope: **backend_logic**
 
@@ -21,7 +21,7 @@ Source: `resolved_config_snapshot.json`
 
 ```json
 {
-  "timeframe": "1Day",
+  "timeframe": "1Min",
   "max_positions": 15,
   "alpha_top_n": 5,
   "learning_mode_threshold": 200,

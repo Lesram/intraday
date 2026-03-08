@@ -1,5 +1,7 @@
 {
   "source": "live_process",
+  "snapshot_taken_at": "2026-03-08T23:38:41Z",
+  "container": "intra-api-1",
   "reachable": true,
   "organism_status": {
     "enabled": true,
@@ -110,9 +112,9 @@
   },
   "brain_state": {
     "brain_format_version": 2,
-    "saved_at": "2026-03-08T22:33:55.247660+00:00",
+    "saved_at": "2026-03-08T22:41:37.521086+00:00",
     "generation": 0,
-    "total_runs": 40,
+    "total_runs": 42,
     "total_trades": 0,
     "cumulative_pnl": 0.0,
     "best_sharpe": 0,
@@ -126,6 +128,20 @@
     "ORGANISM_MAX_POSITIONS": "15",
     "ORGANISM_TICK_INTERVAL_SECONDS": "10"
   },
+  "source_annotations": {
+    "tick_count": "api_top_level.tick_count",
+    "trade_count": "engine_memory.total_trades",
+    "open_positions": "engine_memory.positions_tracked",
+    "is_learning_mode": "engine_memory.learning_mode",
+    "brain_generation": "engine_memory.brain_generation",
+    "regime": "api_top_level.regime.last_regime",
+    "equity": "engine_memory.current_equity",
+    "ml_trained": "engine_memory.ml_trained",
+    "win_rate": "engine_memory.win_rate",
+    "cumulative_pnl": "engine_memory.cumulative_pnl",
+    "universe_size": "engine_memory.universe_size"
+  },
+  "container_started_at": "2026-03-08T22:21:29.167785209Z",
   "live": {
     "tick_count": 0,
     "trade_count": 142,
@@ -134,7 +150,8 @@
     "brain_generation": 0,
     "uptime_seconds": null,
     "last_tick_at": null,
-    "regime": "",
+    "idle_reason": "market_closed_or_no_ticks_yet",
+    "regime": "idle",
     "drawdown_pct": null,
     "equity": -944.7439859999957,
     "ml_trained": false,
@@ -142,5 +159,8 @@
     "cumulative_pnl": -944.74,
     "universe_size": 30,
     "running": true
-  }
+  },
+  "coherence_notes": [
+    "brain_state.total_trades=0 vs live.trade_count=142: brain manifest persists at save-time; engine accumulates in-memory across restarts. Engine count includes trades since last brain save."
+  ]
 }
