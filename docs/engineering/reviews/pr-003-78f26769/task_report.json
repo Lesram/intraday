@@ -1,7 +1,7 @@
 {
   "task_id": "evidence-repair",
   "summary": "Repair live evidence pack: fix API endpoint/auth, brain manifest, task report auto-population",
-  "sha": "78f26769cd6ad97141df823045bcf14248889760",
+  "sha": "67ad210bbecf0d7b4d85ad4fcfc0fe985cb1da4c",
   "branch": "control-plane-operationalize",
   "files_changed": [
     "docs/engineering/baseline_reviews/baseline-d2b22a36/BASELINE_AUDIT_CONTEXT.md",
