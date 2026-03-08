@@ -1,6 +1,6 @@
 {
   "source": "live_process",
-  "snapshot_taken_at": "2026-03-08T23:38:41Z",
+  "snapshot_taken_at": "2026-03-08T23:47:28Z",
   "container": "intra-api-1",
   "reachable": true,
   "organism_status": {
@@ -112,9 +112,9 @@
   },
   "brain_state": {
     "brain_format_version": 2,
-    "saved_at": "2026-03-08T22:41:37.521086+00:00",
+    "saved_at": "2026-03-08T23:43:22.745660+00:00",
     "generation": 0,
-    "total_runs": 42,
+    "total_runs": 46,
     "total_trades": 0,
     "cumulative_pnl": 0.0,
     "best_sharpe": 0,

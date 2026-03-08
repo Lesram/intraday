@@ -1,8 +1,8 @@
 # Live Audit Index
 
-Generated: 2026-03-08T23:42:24Z
+Generated: 2026-03-08T23:51:14Z
 PR: PR #3
-SHA: `e1360cce34`
+SHA: `bd4e25ebd3`
 Branch: `control-plane-operationalize`
 Scope: **backend_logic**
 
@@ -13,7 +13,7 @@ Scope: **backend_logic**
 | Backend | 2 | `backend/organism/kelly_sizer.py`, `backend/organism/live_engine.py` |
 | Organism | 2 | `backend/organism/kelly_sizer.py`, `backend/organism/live_engine.py` |
 | Tests | 5 | `tests/test_decision_telemetry.py`, `tests/test_multi_tick_state.py`, `tests/test_organism_integration_smoke.py`, `tests/test_self_evolution.py`, `tests/test_semantic_invariants.py` |
-| Docs | 38 | `docs/architecture/mapss.md`, `docs/engineering/CONTROL_PLANE.md`, `docs/engineering/LIVE_AUDIT_INDEX.md`, `docs/engineering/baseline_reviews/baseline-3d7f7c1/BASELINE_AUDIT_CONTEXT.md`, `docs/engineering/baseline_reviews/baseline-3d7f7c1/CODEBASE_INDEX.md`, `docs/engineering/baseline_reviews/baseline-3d7f7c1/backend_file_inventory.json`, `docs/engineering/baseline_reviews/baseline-3d7f7c1/config_file_inventory.json`, `docs/engineering/baseline_reviews/baseline-3d7f7c1/core_backend_snapshot.tar.gz`, `docs/engineering/baseline_reviews/baseline-3d7f7c1/docs_file_inventory.json`, `docs/engineering/baseline_reviews/baseline-3d7f7c1/full_backend_tree.txt` |
+| Docs | 32 | `docs/architecture/mapss.md`, `docs/engineering/CONTROL_PLANE.md`, `docs/engineering/LIVE_AUDIT_INDEX.md`, `docs/engineering/baseline_reviews/baseline-3d7f7c1/BASELINE_AUDIT_CONTEXT.md`, `docs/engineering/baseline_reviews/baseline-3d7f7c1/CODEBASE_INDEX.md`, `docs/engineering/baseline_reviews/baseline-3d7f7c1/backend_file_inventory.json`, `docs/engineering/baseline_reviews/baseline-3d7f7c1/config_file_inventory.json`, `docs/engineering/baseline_reviews/baseline-3d7f7c1/core_backend_snapshot.tar.gz`, `docs/engineering/baseline_reviews/baseline-3d7f7c1/docs_file_inventory.json`, `docs/engineering/baseline_reviews/baseline-3d7f7c1/full_backend_tree.txt` |
 
 ## Live constants
 
