@@ -3,7 +3,9 @@
 
 Produces:
   artifacts/task_report.json
-  artifacts/runtime_config_snapshot.json
+  artifacts/runtime_defaults_snapshot.json
+  artifacts/resolved_live_runtime_snapshot.json
+  artifacts/runtime_config_snapshot.json  (legacy compat)
   artifacts/changed_files.json
   artifacts/test_summary.json
   artifacts/replay_summary.json
@@ -20,6 +22,15 @@ ART = ROOT / "artifacts"
 ART.mkdir(exist_ok=True)
 
 sys.path.insert(0, str(ROOT))
+
+TASK_REPORT_REQUIRED_FIELDS = [
+    "summary",
+    "commands",
+    "risks",
+]
+TASK_REPORT_NEED_ONE_OF = [
+    ("tests_passed", "tests_failed"),
+]
 
 
 def sh(cmd: list[str], cwd: str | None = None) -> str:
@@ -55,6 +66,25 @@ def gen_task_report() -> None:
         "risks": [],
         "follow_ups": [],
     })
+
+
+def validate_task_report() -> list[str]:
+    """Validate task_report.json has required non-empty fields. Returns errors."""
+    p = ART / "task_report.json"
+    if not p.exists():
+        return ["task_report.json does not exist"]
+    data = json.loads(p.read_text())
+    errors = []
+    for field in TASK_REPORT_REQUIRED_FIELDS:
+        val = data.get(field)
+        if not val:
+            errors.append(f"task_report.json: '{field}' is empty or missing")
+    for group in TASK_REPORT_NEED_ONE_OF:
+        if not any(data.get(f) for f in group):
+            errors.append(
+                f"task_report.json: at least one of {group} must be non-empty"
+            )
+    return errors
 
 
 # ── 2. runtime_config_snapshot.json ───────────────────────────────────
@@ -171,81 +201,64 @@ def gen_grep_assertions() -> None:
 
     # ── Original 8 invariants ──────────────────────────────────────
 
-    # Invariant: exploration execution block must NOT exist
     check("no_exploration_submit_order",
           "_submit_entry_order.*exploration",
           "backend/organism/live_engine.py", must_exist=False)
 
-    # Invariant: learning mode must zero ML
     check("learning_mode_zeros_ml",
           "0\\.65.*breakout_score",
           "backend/organism/live_engine.py", must_exist=True)
 
-    # Invariant: horizon timeout exists
     check("horizon_timeout_exists",
           "_HORIZON_TIMEOUT_BARS",
           "backend/organism/adaptive_exits.py", must_exist=True)
 
-    # Invariant: evolution freeze at 300
     check("evolution_freeze_300",
           "_EVOLUTION_FREEZE_TRADES.*=.*300",
           "backend/organism/live_engine.py", must_exist=True)
 
-    # Invariant: bar-boundary entry gating exists
     check("bar_boundary_entry",
           "_is_entry_bar",
           "backend/organism/live_engine.py", must_exist=True)
 
-    # Invariant: alpha_top_n is separate from max_positions
     check("alpha_top_n_separate",
           "ALPHA_TOP_N",
           "backend/organism/live_engine.py", must_exist=True)
 
-    # Invariant: no hardcoded secret values in tracked files
-    # Match actual key patterns (PK..., SK...) not the header name
     check("no_hardcoded_alpaca_secret",
           "ALPACA_API_SECRET_KEY.*=.*[A-Za-z0-9]{20}",
           "backend/", must_exist=False)
 
-    # Invariant: EOD flatten exists
     check("eod_flatten_exists",
           "15:58\\|force.close\\|eod_flatten\\|_flatten_all",
           "backend/organism/live_engine.py", must_exist=True)
 
     # ── AIA PR#3 review assertions (7 explicit checks) ──────────
 
-    # 1. Exploration execution fully removed (no route to order submission)
     check("exploration_execution_removed",
           "exploration.*_submit\\|_submit.*exploration",
           "backend/organism/live_engine.py", must_exist=False)
 
-    # 2. Learning confidence ignores ML (uses 0.65×breakout + 0.35×tension)
     check("learning_confidence_ignores_ml",
           "0\\.65 \\* breakout_score",
           "backend/organism/live_engine.py", must_exist=True)
 
-    # 3. Alpha scanner zeros ML weight in learning mode
-    #    The guard: `if learning_mode or not ml_is_trained: effective_ml_weight = 0.0`
     check("alpha_scanner_ml_zero_in_learning",
           "learning_mode.*ml_is_trained",
           "backend/organism/alpha_scanner.py", must_exist=True)
 
-    # 4. Kelly disabled in learning mode (fixed ATR-dollar risk only)
     check("kelly_disabled_in_learning",
           "_RISK_BUDGET_PER_TRADE_LEARNING",
           "backend/organism/kelly_sizer.py", must_exist=True)
 
-    # 5. No warm-start apply before 300 trades (evolution freeze gate)
     check("no_warm_start_apply_before_300_trades",
           "_trade_count >= _EVOLUTION_FREEZE_TRADES",
           "backend/organism/live_engine.py", must_exist=True)
 
-    # 6. Breakout path uses shared main gates (_is_entry_bar gate)
     check("breakout_path_uses_shared_main_gates",
           "_is_entry_bar",
           "backend/organism/live_engine.py", must_exist=True)
 
-    # 7. ALPHA_TOP_N defined independently from MAX_OPEN_POSITIONS
     check("alpha_top_n_independent_from_max_positions",
           "ALPHA_TOP_N = _env_int",
           "backend/organism/live_engine.py", must_exist=True)
@@ -272,5 +285,12 @@ if __name__ == "__main__":
         gen_replay_summary()
     elif mode == "quick":
         print("  (skipping test/replay in quick mode)")
+
+    # Validate task_report completeness
+    errors = validate_task_report()
+    if errors:
+        print(f"\nWARNING: task_report.json validation ({len(errors)} issues):")
+        for e in errors:
+            print(f"  - {e}")
 
     print("Done.")

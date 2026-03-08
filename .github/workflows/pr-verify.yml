@@ -149,8 +149,13 @@ jobs:
           pip install -r requirements.txt
       - name: Generate runtime snapshot
         run: python scripts/runtime/write_runtime_snapshot.py
-      - name: Check spec-vs-runtime drift
+      - name: Check spec-vs-runtime drift (3-way)
         run: python scripts/ci/check_spec_drift.py
+      - name: Run semantic invariant tests
+        run: |
+          pip install -r requirements-dev.txt
+          pip install pytest pytest-asyncio pytest-timeout
+          python -m pytest tests/test_semantic_invariants.py -v --timeout=30
 
   secret-scan:
     runs-on: ubuntu-latest

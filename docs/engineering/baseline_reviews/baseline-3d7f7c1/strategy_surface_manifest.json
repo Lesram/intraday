@@ -25,8 +25,16 @@
     },
     "4_signal_generation": {
       "modules": [
-        {"path": "backend/organism/ml_signal.py", "role": "XGBoost direction + magnitude prediction", "lines": 619},
-        {"path": "backend/organism/alpha_scanner.py", "role": "Composite alpha scoring (ML + breakout + volume + regime)", "lines": 396},
+        {
+          "path": "backend/organism/ml_signal.py", "role": "XGBoost direction + magnitude prediction", "lines": 619,
+          "learning_mode": "Signal computed but ML weight = 0% — not used for decisions",
+          "production_mode": "ML weight = 50% of confidence formula"
+        },
+        {
+          "path": "backend/organism/alpha_scanner.py", "role": "Composite alpha scoring (ML + breakout + volume + regime)", "lines": 396,
+          "learning_mode": "effective_ml_weight = 0.0; redistributed to breakout (0.40) + momentum (0.20)",
+          "production_mode": "ML weight = 0.25, dynamic adjustment based on avg confidence"
+        },
         {"path": "backend/organism/breakout_scanner.py", "role": "6-pattern breakout detection", "lines": 477},
         {"path": "backend/organism/market_scanner.py", "role": "Market-wide most-actives/movers screener", "lines": 475}
       ]
@@ -40,14 +48,16 @@
         "entry_metadata_check",
         "direction_gate (LONG_ONLY)",
         "sector_gate (max 2 per GICS sector)",
-        "fitness_gate (0.45 for 10+ trades in production)",
+        "fitness_gate (learning: OFF / production: 0.45 for 10+ trades)",
         "liquidity_gate",
         "circuit_breaker (symbol banned)",
         "missingness_gate",
-        "confidence_gate (0.40 baseline / 0.45 defensive)",
+        "confidence_gate (learning: 0.65*breakout+0.35*tension / production: 0.50*ml+0.30*breakout+0.20*tension; threshold 0.40/0.45)",
         "bar_boundary_gate (1-min boundaries only)",
-        "burst_cap (max entries per tick)"
+        "burst_cap (learning: 12/hr / production: max(3, 6-open_pos)/hr)"
       ],
+      "learning_mode": "Fitness gate OFF, ML weight 0%, entry throttle 12/hr",
+      "production_mode": "Fitness gate 0.45, full confidence formula, throttle 3-6/hr",
       "supporting_modules": [
         {"path": "backend/organism/sector_map.py", "role": "GICS sector mapping + diversification gate", "lines": 96},
         {"path": "backend/organism/governance.py", "role": "Kill switches, drawdown kill, trading halt", "lines": 250}
@@ -55,12 +65,12 @@
     },
     "6_position_sizing": {
       "modules": [
-        {"path": "backend/organism/kelly_sizer.py", "role": "Kelly sizing + confidence scaling + risk-budget floor", "lines": 590}
-      ],
-      "modes": {
-        "learning": "Fixed ATR-dollar risk: equity * 0.001 / stop_distance (Kelly OFF)",
-        "production": "Kelly fraction with risk-budget floor (equity * 0.0025)"
-      }
+        {
+          "path": "backend/organism/kelly_sizer.py", "role": "Kelly sizing + confidence scaling + risk-budget floor", "lines": 590,
+          "learning_mode": "Fixed ATR-dollar risk: equity * 0.001 / stop_distance. Kelly OFF. Dollar-risk cap 0.10% equity + notional cap 5% per position",
+          "production_mode": "Full Kelly fraction + confidence scaling [0.3-1.5] + breakout bonus [1.0-2.0] + risk-budget floor 0.25% equity"
+        }
+      ]
     },
     "7_order_execution": {
       "modules": [
@@ -71,10 +81,14 @@
     },
     "8_exit_management": {
       "modules": [
-        {"path": "backend/organism/adaptive_exits.py", "role": "ATR trailing stops, partial TP, horizon timeout", "lines": 706},
+        {
+          "path": "backend/organism/adaptive_exits.py", "role": "ATR trailing stops, partial TP, horizon timeout", "lines": 706,
+          "learning_mode": "Horizon timeout at 18 bars (hard exit). Partial TP DISABLED — prevents clipping small winners",
+          "production_mode": "Regime-dependent max bars. Partial TP ENABLED at 3R (sell 30%, ride 70%)"
+        },
         {"path": "backend/organism/pyramider.py", "role": "Add to winners at 1.5R/3.0R", "lines": 267}
       ],
-      "exit_types": ["ATR trailing stop", "Partial take-profit", "Horizon timeout (18 bars)", "EOD flatten (15:58)", "Drawdown kill"]
+      "exit_types": ["ATR trailing stop", "Partial take-profit (production only)", "Horizon timeout (18 bars, learning only)", "EOD flatten (15:58)", "Drawdown kill"]
     },
     "9_learning_evolution": {
       "modules": [
@@ -111,7 +125,8 @@
     "risk_budget_learning": 0.001,
     "risk_budget_production": 0.0025,
     "universe_size": 22,
-    "inverse_etfs": ["SH", "PSQ"]
+    "inverse_etfs": ["DOG", "PSQ", "RWM", "SH"],
+    "inverse_etfs_canonical_source": "backend/organism/alpha_scanner.py:82 — AlphaScanner.INVERSE_ETFS"
   },
   "total_strategy_surface_lines": 14800,
   "total_strategy_surface_modules": 22
