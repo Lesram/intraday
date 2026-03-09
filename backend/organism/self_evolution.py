@@ -813,7 +813,7 @@ class EvolutionEngine:
             if non_brk else 0.0
         )
 
-        if brk_avg_pnl > non_brk_avg * 1.5 and brk_win_rate > 0.5:
+        if brk_avg_pnl > 0 and brk_avg_pnl > non_brk_avg * 1.5 and brk_win_rate > 0.5:
             # Breakout trades outperform — increase volume & squeeze weights
             params.breakout_weight_volume = self._ema_update(
                 params.breakout_weight_volume,
@@ -1124,20 +1124,29 @@ class EvolutionEngine:
 
     @staticmethod
     def _normalize_alpha_weights(params: EvolvedParams) -> None:
-        """Ensure alpha weights sum to 1.0."""
-        total = (
-            params.alpha_weight_ml
-            + params.alpha_weight_volume
+        """Normalise alpha weights to sum to 1.0.
+
+        alpha_weight_ml is held fixed because there is no explicit ML
+        attribution signal on trade records -- only momentum and regime
+        weights are adapted, so only those (plus volume and breakout)
+        are renormalized to fill the remainder (1.0 - alpha_weight_ml).
+        """
+        ml_fixed = params.alpha_weight_ml
+        non_ml_total = (
+            params.alpha_weight_volume
             + params.alpha_weight_momentum
             + params.alpha_weight_breakout
             + params.alpha_weight_regime
         )
-        if total > 0:
-            params.alpha_weight_ml /= total
-            params.alpha_weight_volume /= total
-            params.alpha_weight_momentum /= total
-            params.alpha_weight_breakout /= total
-            params.alpha_weight_regime /= total
+        target = 1.0 - ml_fixed
+        if non_ml_total > 1e-8:
+            scale = target / non_ml_total
+            params.alpha_weight_volume *= scale
+            params.alpha_weight_momentum *= scale
+            params.alpha_weight_breakout *= scale
+            params.alpha_weight_regime *= scale
+        # ML weight stays exactly where it was
+        params.alpha_weight_ml = ml_fixed
 
     @staticmethod
     def _normalize_breakout_weights(params: EvolvedParams) -> None:
