@@ -300,8 +300,12 @@ class ContinuousLearner:
         Uses a composite score combining statistical accuracy and economic signal:
             score = hit_rate * 0.4 + accuracy * 0.3 + (direction_acc - 0.5) * 0.6
 
-        Additionally requires mean_pred_return > 0 (predicted edge must be
-        positive) as an economic side-constraint, unless no old model exists.
+        Quality constraints (both must hold):
+            1. mean_pred_return > 0  -- predicted edge must be positive
+            2. precision >= 0.45     -- minimum classification precision
+
+        These prevent weak models from being promoted just because they
+        happen to predict a small positive mean return.
         """
         def _score(m: ModelMetrics) -> float:
             return (
@@ -312,17 +316,19 @@ class ContinuousLearner:
 
         new_score = _score(new_metrics)
 
-        # Economic side-constraint: predicted returns must be positive on average
+        # Economic and statistical quality constraints
         has_positive_edge = new_metrics.mean_pred_return > 0
+        has_min_precision = new_metrics.precision >= 0.45
+        quality_ok = has_positive_edge and has_min_precision
 
-        # If no old model exists, accept any reasonable model with positive edge
+        # If no old model exists, accept any reasonable model passing quality
         if not old_clf:
-            return new_score > 0.25 and has_positive_edge
+            return new_score > 0.25 and quality_ok
 
         # Get old model's last composite score
         old_metrics = self.state.model_metrics
         if not old_metrics:
-            return new_score > 0.25 and has_positive_edge
+            return new_score > 0.25 and quality_ok
 
         old_score = _score(old_metrics[-1])
 
@@ -330,7 +336,7 @@ class ContinuousLearner:
         improved = (new_score - old_score) >= self.improvement_threshold
         good_enough = new_score >= 0.40 and new_metrics.hit_rate >= 0.48
 
-        return (improved or good_enough) and has_positive_edge
+        return (improved or good_enough) and quality_ok
 
     def _check_drift(
         self,

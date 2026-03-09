@@ -382,46 +382,16 @@ class EvolutionEngine:
     ) -> None:
         """Adjust alpha scanner weights based on signal attribution.
 
-        For each trade, we check whether high-confidence signals
-        (ML, breakout, volume, momentum) predicted the right direction.
-        Signals that correlated with wins get more weight.
+        NOTE: alpha_weight_ml is NOT adapted here.  There is no explicit
+        ML-attribution field on trade records, so confidence is not a
+        reliable proxy for ML participation -- especially in learning
+        mode where ML weight is zero.  Only momentum and regime weights
+        are adapted based on directional accuracy.
         """
-        # Bucketise trades by signal present at entry
-        # We use confidence ≈ breakout_score proxy plus predicted_return
-        win_pnl = [t.pnl for t in trades if t.pnl > 0]
-        loss_pnl = [t.pnl for t in trades if t.pnl <= 0]
-
-        if not win_pnl and not loss_pnl:
+        if not trades:
             return
 
-        avg_win = float(np.mean(win_pnl)) if win_pnl else 0.0
-        avg_loss = float(np.mean(loss_pnl)) if loss_pnl else 0.0
-        total_pnl = sum(t.pnl for t in trades)
-
-        # Heuristic: if ML-predicted trades (high confidence) won more
-        high_conf_trades = [t for t in trades if t.confidence > 0.6]
-        low_conf_trades = [t for t in trades if t.confidence <= 0.6]
-
-        high_conf_wr = (
-            sum(1 for t in high_conf_trades if t.pnl > 0)
-            / max(len(high_conf_trades), 1)
-        )
-        low_conf_wr = (
-            sum(1 for t in low_conf_trades if t.pnl > 0)
-            / max(len(low_conf_trades), 1)
-        )
-
-        # If high-confidence (ML-driven) trades have better win rate,
-        # increase ML weight at the expense of the weakest signal
-        if high_conf_wr > low_conf_wr + 0.05 and len(high_conf_trades) >= 3:
-            ml_boost = min(0.05, (high_conf_wr - low_conf_wr) * 0.15)
-            params.alpha_weight_ml = self._ema_update(
-                params.alpha_weight_ml,
-                params.alpha_weight_ml + ml_boost,
-            )
-            changes["alpha_weight_ml"] = f"+{ml_boost:.3f} (high-conf WR {high_conf_wr:.1%})"
-
-        # Direction accuracy of trades → boost momentum if direction is right
+        # Direction accuracy of trades -> boost momentum if direction is right
         correct_dir = [t for t in trades if t.correct_direction]
         dir_accuracy = len(correct_dir) / max(len(trades), 1)
 
@@ -804,6 +774,20 @@ class EvolutionEngine:
     #   7. BREAKOUT WEIGHT ADAPTATION
     # ═════════════════════════════════════════════════════════════
 
+    @staticmethod
+    def _is_breakout_trade(t: Any) -> bool:
+        """Check if a trade was breakout-sourced.
+
+        Uses entry_source as the primary criterion.  Falls back to a
+        confidence heuristic (> 0.6) for old trades that pre-date the
+        entry_source field.
+        """
+        src = getattr(t, "entry_source", "") or ""
+        if src:
+            return "breakout" in src
+        # Backward compat: old trades without entry_source
+        return t.confidence > 0.6
+
     def _evolve_breakout_weights(
         self,
         params: EvolvedParams,
@@ -812,23 +796,21 @@ class EvolutionEngine:
     ) -> None:
         """Adjust breakout scanner weights based on breakout trade outcomes.
 
-        Trades with high breakout_score that were profitable → boost
-        the breakout signals.  Trades with low breakout_score that won →
-        reduce over-reliance on breakout.
+        Trades are identified as breakout trades by entry_source (primary)
+        or a confidence > 0.6 fallback for legacy trades without
+        entry_source.  The winning/losing split uses PnL, not confidence.
         """
-        # We can infer breakout involvement from confidence (which is
-        # boosted by breakout_score in the master script)
-        high_brk = [t for t in trades if t.confidence > 0.7]
-        low_brk = [t for t in trades if t.confidence <= 0.5]
+        brk_trades = [t for t in trades if self._is_breakout_trade(t)]
+        non_brk = [t for t in trades if not self._is_breakout_trade(t)]
 
-        if len(high_brk) < 3:
+        if len(brk_trades) < 3:
             return
 
-        brk_win_rate = sum(1 for t in high_brk if t.pnl > 0) / len(high_brk)
-        brk_avg_pnl = float(np.mean([t.pnl for t in high_brk]))
+        brk_win_rate = sum(1 for t in brk_trades if t.pnl > 0) / len(brk_trades)
+        brk_avg_pnl = float(np.mean([t.pnl for t in brk_trades]))
         non_brk_avg = (
-            float(np.mean([t.pnl for t in low_brk]))
-            if low_brk else 0.0
+            float(np.mean([t.pnl for t in non_brk]))
+            if non_brk else 0.0
         )
 
         if brk_avg_pnl > non_brk_avg * 1.5 and brk_win_rate > 0.5:
@@ -846,7 +828,7 @@ class EvolutionEngine:
                 f"boost (brk_pnl=${brk_avg_pnl:.0f} > "
                 f"non_brk=${non_brk_avg:.0f})"
             )
-        elif brk_avg_pnl < 0 and len(high_brk) >= 3:
+        elif brk_avg_pnl < 0 and len(brk_trades) >= 3:
             # Breakout trades losing — reduce weights
             params.breakout_weight_volume = self._ema_update(
                 params.breakout_weight_volume,
@@ -891,15 +873,7 @@ class EvolutionEngine:
         - High average holding-period → indicators may be too slow → shorten.
         - Very short holding-period → may be too fast → lengthen.
         """
-        def _is_breakout_trade(t: Any) -> bool:
-            src = getattr(t, "entry_source", "") or ""
-            if src:
-                return "breakout" in src
-            # Backward compat: old trades without entry_source fall back to
-            # the legacy confidence heuristic.
-            return t.confidence > 0.6
-
-        brk_trades = [t for t in trades if _is_breakout_trade(t)]
+        brk_trades = [t for t in trades if self._is_breakout_trade(t)]
         if len(brk_trades) < 5:
             return
 
