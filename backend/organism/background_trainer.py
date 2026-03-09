@@ -108,9 +108,15 @@ def _train_in_process(
         if metrics is None:
             return {"error": "Training returned None metrics", "duration_s": time.time() - t0}
 
-        # Evolve params
+        # Evolve params — gated by evolution freeze (300 trades)
         evolved_params_dict = None
-        if trades_pickle:
+        _total_trades = evolution_state.get("total_trades", 0)
+        if _total_trades < 300:
+            logging.getLogger(__name__).info(
+                "Evolution freeze active (%d < 300 trades) — skipping evolution in background trainer",
+                _total_trades,
+            )
+        elif trades_pickle:
             from backend.organism.continuous_learner import TradeRecord
             trades = [TradeRecord(**t) if isinstance(t, dict) else t for t in trades_pickle]
             recent_trades = trades[-200:]
@@ -198,6 +204,7 @@ class BackgroundTrainer:
         signal_gen: Any,
         evolution_engine: Any,
         evolved_params: Any,
+        total_trades: int = 0,
     ) -> None:
         """Submit a retrain job to the background process pool.
 
@@ -253,6 +260,7 @@ class BackgroundTrainer:
             "max_shift": getattr(evolution_engine, "max_shift", 0.20),
             "min_trades": getattr(evolution_engine, "min_trades", 8),
             "evolved_params": evolved_params.to_dict() if hasattr(evolved_params, "to_dict") else {},
+            "total_trades": total_trades,
         }
 
         # Learner state (minimal)
@@ -334,6 +342,7 @@ class BackgroundTrainer:
         breakout_scanner: Any,
         kelly_sizer: Any,
         exit_engine: Any,
+        total_trades: int = 0,
     ) -> Any:
         """Atomically swap trained model weights into the live engine.
 
@@ -372,8 +381,8 @@ class BackgroundTrainer:
 
         signal_gen._is_trained = True
 
-        # Apply evolved params
-        if result.evolved_params_dict:
+        # Apply evolved params — gated by evolution freeze (300 trades)
+        if result.evolved_params_dict and total_trades >= 300:
             try:
                 from backend.organism.self_evolution import (
                     EvolvedParams, apply_evolved_params,
@@ -396,6 +405,11 @@ class BackgroundTrainer:
                 return new_params
             except Exception as e:
                 logger.warning("Failed to apply evolved params: %s", e)
+        elif result.evolved_params_dict and total_trades < 300:
+            logger.warning(
+                "Evolution freeze active (%d < 300 trades) — skipping evolved params application",
+                total_trades,
+            )
 
         return evolved_params
 

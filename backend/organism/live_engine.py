@@ -524,10 +524,14 @@ class OrganismLiveEngine:
         symbol: str,
         features_by_symbol: dict[str, pd.DataFrame],
     ) -> bool:
-        """Return False if symbol's avg volume over last 20 bars < minimum."""
+        """Return False if symbol's avg volume over last 20 bars < minimum.
+
+        Fails closed: missing data, missing volume column, or fewer than
+        20 bars all return False.
+        """
         df = features_by_symbol.get(symbol)
         if df is None or "volume" not in df.columns or len(df) < 20:
-            return True  # No data → conservative pass
+            return False  # Fail closed — insufficient data
         avg_vol = float(df["volume"].iloc[-20:].mean())
         return avg_vol >= self._MIN_AVG_VOLUME
 
@@ -1942,6 +1946,7 @@ class OrganismLiveEngine:
                         "effective_confidence": _eff_conf,
                         "breakout_score": breakout_score,
                         "expected_return_source": c.expected_return_source,
+                        "ranking_score": c.composite_score,
                     })
                     _planned_entries.add(c.symbol)
 
@@ -1971,7 +1976,13 @@ class OrganismLiveEngine:
                         continue
                     # Confidence threshold
                     _bo_conf = min(bs.composite_score, 1.0)
-                    if _bo_conf < _MAIN_CONF_BASELINE:
+                    # H6 parity: use same regime-conditioned threshold as alpha path
+                    _bo_min_conf = (
+                        _MAIN_CONF_DEFENSIVE
+                        if regime in ("chop", "high_vol", "trending_down")
+                        else _MAIN_CONF_BASELINE
+                    )
+                    if _bo_conf < _bo_min_conf:
                         continue
                     # ML negative-direction veto — production only.
                     # In learning mode ML is untrained and anti-predictive;
@@ -2003,12 +2014,13 @@ class OrganismLiveEngine:
                         "effective_confidence": _bo_conf,
                         "breakout_score": bs.composite_score,
                         "expected_return_source": _bo_ret_source,
+                        "ranking_score": bs.composite_score * _bo_conf,
                     })
                     _planned_entries.add(bs.symbol)
                     _breakout_added += 1
 
                 cand_dicts.sort(
-                    key=lambda x: x["breakout_score"] * x["confidence"],
+                    key=lambda x: x["ranking_score"],
                     reverse=True,
                 )
 
@@ -2277,6 +2289,7 @@ class OrganismLiveEngine:
                             breakout_scanner=self.breakout_scanner,
                             kelly_sizer=self.kelly_sizer,
                             exit_engine=self.exit_engine,
+                            total_trades=len(self._all_trades),
                         )
                         self._bg_training_metadata = {
                             "status": "completed",
@@ -2325,6 +2338,7 @@ class OrganismLiveEngine:
                             signal_gen=self.signal_gen,
                             evolution_engine=self.evolution_engine,
                             evolved_params=self.evolved_params,
+                            total_trades=len(self._all_trades),
                         )
                         self._bg_training_metadata["status"] = "training"
                         self._bg_training_started_tick = self._tick_count
