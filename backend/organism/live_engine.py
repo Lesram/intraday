@@ -4070,7 +4070,12 @@ class OrganismLiveEngine:
         for c in candidates:
             if LONG_ONLY and not self.evolved_params.shorts_enabled and c.direction < 0:
                 continue
-            confidence = c.ml_signal.confidence if c.ml_signal else 0.3
+            # Learning mode: use composite_score (breakout+tension based,
+            # no ML). Production: use ML confidence if available.
+            if self._is_learning_mode:
+                confidence = c.composite_score
+            else:
+                confidence = c.ml_signal.confidence if c.ml_signal else 0.3
             target_exposure = 0.25 * c.direction * confidence
             target_exposure = max(-1.0, min(1.0, target_exposure))
 

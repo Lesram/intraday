@@ -196,11 +196,22 @@ class KellySizer:
         # Production mode: full predicted_return * confidence ranking.
         _is_learning_mode = (trade_count is not None and trade_count < self._RISK_BUDGET_TRADE_THRESHOLD)
         if _is_learning_mode:
-            candidates = sorted(
-                candidates,
-                key=lambda c: c.get("breakout_score", 0.0) * 0.6 + c.get("confidence", 0.0) * 0.4,
-                reverse=True,
-            )
+            # Preserve upstream ranking_score when available (set by
+            # live_engine from alpha/breakout composite scores). Only
+            # fall back to local heuristic if ranking_score is absent.
+            _has_ranking = any(c.get("ranking_score") is not None for c in candidates)
+            if _has_ranking:
+                candidates = sorted(
+                    candidates,
+                    key=lambda c: c.get("ranking_score", 0.0),
+                    reverse=True,
+                )
+            else:
+                candidates = sorted(
+                    candidates,
+                    key=lambda c: c.get("breakout_score", 0.0) * 0.6 + c.get("confidence", 0.0) * 0.4,
+                    reverse=True,
+                )
         else:
             candidates = sorted(
                 candidates,
@@ -258,8 +269,39 @@ class KellySizer:
             # Directional returns based on signal
             dir_returns = returns * direction
 
-            # Compute atr_pct unconditionally (needed by risk-budget sizing)
-            atr_pct = float(np.std(returns, ddof=1)) if len(returns) > 1 else 0.01
+            # Compute ATR-derived risk measure for sizing.
+            # Prefer true ATR from OHLC (true_range_pct feature) when available;
+            # fall back to return volatility if OHLC columns are missing.
+            _atr_from_ohlc = False
+            if (
+                df is not None
+                and "high" in df.columns
+                and "low" in df.columns
+                and "close" in df.columns
+                and len(df) >= 20
+            ):
+                _high = df["high"].values[-20:]
+                _low = df["low"].values[-20:]
+                _close = df["close"].values[-20:]
+                _prev_close = np.concatenate(([_close[0]], _close[:-1]))
+                _true_ranges = np.maximum(
+                    _high - _low,
+                    np.maximum(
+                        np.abs(_high - _prev_close),
+                        np.abs(_low - _prev_close),
+                    ),
+                )
+                _avg_tr = float(np.mean(_true_ranges))
+                _last_close = float(_close[-1])
+                if _last_close > 0 and np.isfinite(_avg_tr) and _avg_tr > 0:
+                    atr_pct = _avg_tr / _last_close
+                    _atr_from_ohlc = True
+
+            if not _atr_from_ohlc:
+                # Fallback: return volatility (stddev of returns).
+                # This is NOT true ATR but provides a reasonable risk
+                # estimate when OHLC data is unavailable.
+                atr_pct = float(np.std(returns, ddof=1)) if len(returns) > 1 else 0.01
 
             # ── Learning mode vs Production sizing ──
             # improve9: In learning mode, Kelly is OFF. Predicted returns are
