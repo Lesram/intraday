@@ -295,14 +295,13 @@ class ContinuousLearner:
         new_metrics: ModelMetrics,
         old_clf: Any,
     ) -> bool:
-        """Walk-forward validation: new model must be profitable.
+        """Walk-forward validation: composite quality gate.
 
-        Uses a **PnL-weighted score** instead of raw accuracy:
-            score = hit_rate × 0.4 + accuracy × 0.3 + (direction_acc - 0.5) × 0.6
+        Uses a composite score combining statistical accuracy and economic signal:
+            score = hit_rate * 0.4 + accuracy * 0.3 + (direction_acc - 0.5) * 0.6
 
-        A model that's 51% accurate but gets big moves right is better
-        than 60% accuracy on noise.  The hit_rate (sign-match on
-        predicted return) captures this.
+        Additionally requires mean_pred_return > 0 (predicted edge must be
+        positive) as an economic side-constraint, unless no old model exists.
         """
         def _score(m: ModelMetrics) -> float:
             return (
@@ -313,14 +312,17 @@ class ContinuousLearner:
 
         new_score = _score(new_metrics)
 
-        # If no old model exists, accept any reasonable model
+        # Economic side-constraint: predicted returns must be positive on average
+        has_positive_edge = new_metrics.mean_pred_return > 0
+
+        # If no old model exists, accept any reasonable model with positive edge
         if not old_clf:
-            return new_score > 0.25
+            return new_score > 0.25 and has_positive_edge
 
         # Get old model's last composite score
         old_metrics = self.state.model_metrics
         if not old_metrics:
-            return new_score > 0.25
+            return new_score > 0.25 and has_positive_edge
 
         old_score = _score(old_metrics[-1])
 
@@ -328,7 +330,7 @@ class ContinuousLearner:
         improved = (new_score - old_score) >= self.improvement_threshold
         good_enough = new_score >= 0.40 and new_metrics.hit_rate >= 0.48
 
-        return improved or good_enough
+        return (improved or good_enough) and has_positive_edge
 
     def _check_drift(
         self,

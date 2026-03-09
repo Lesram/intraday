@@ -424,9 +424,13 @@ class OrganismBrain:
                 fi_tuples = [tuple(x) for x in raw_fi] if raw_fi else []
                 learner.state.model_metrics.append(ModelMetrics(
                     generation=mm.get("generation", 0),
-                    accuracy=mm.get("accuracy", 0),
-                    direction_accuracy=mm.get("direction_accuracy", 0),
-                    hit_rate=mm.get("hit_rate", 0),
+                    accuracy=mm.get("accuracy", 0.0),
+                    precision=mm.get("precision", 0.0),
+                    recall=mm.get("recall", 0.0),
+                    f1=mm.get("f1", 0.0),
+                    direction_accuracy=mm.get("direction_accuracy", 0.0),
+                    mean_pred_return=mm.get("mean_pred_return", 0.0),
+                    hit_rate=mm.get("hit_rate", 0.0),
                     feature_importance_top10=fi_tuples,
                 ))
 

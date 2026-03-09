@@ -891,7 +891,15 @@ class EvolutionEngine:
         - High average holding-period → indicators may be too slow → shorten.
         - Very short holding-period → may be too fast → lengthen.
         """
-        brk_trades = [t for t in trades if t.confidence > 0.6]
+        def _is_breakout_trade(t: Any) -> bool:
+            src = getattr(t, "entry_source", "") or ""
+            if src:
+                return "breakout" in src
+            # Backward compat: old trades without entry_source fall back to
+            # the legacy confidence heuristic.
+            return t.confidence > 0.6
+
+        brk_trades = [t for t in trades if _is_breakout_trade(t)]
         if len(brk_trades) < 5:
             return
 
