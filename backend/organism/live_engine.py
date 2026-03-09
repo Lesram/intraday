@@ -729,6 +729,7 @@ class OrganismLiveEngine:
                             price_at_prior_bar=float(lvl_data.get("price_at_prior_bar", 0.0)),
                             ftf_stop_tightened=bool(lvl_data.get("ftf_stop_tightened", False)),
                             price_two_bars_ago=float(lvl_data.get("price_two_bars_ago", 0.0)),
+                            initial_risk_at_entry=float(lvl_data.get("initial_risk_at_entry", 0.0)),
                         )
                     except (KeyError, ValueError, TypeError) as e:
                         logger.debug("Cannot restore exit levels for %s: %s", sym, e)

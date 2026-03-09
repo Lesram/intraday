@@ -58,6 +58,9 @@ class ExitLevels:
     ftf_stop_tightened: bool = False  # True after FTF tightened stop in chop (one-shot)
     price_two_bars_ago: float = 0.0   # Price 2 bars ago (for multi-bar momentum)
 
+    # ── v5 additions (patch-queue-e2) ──
+    initial_risk_at_entry: float = 0.0   # Stable risk denominator for FTF R-calc
+
     def to_dict(self) -> dict[str, Any]:
         return {
             "symbol": self.symbol,
@@ -80,6 +83,7 @@ class ExitLevels:
             "price_at_prior_bar": round(self.price_at_prior_bar, 4),
             "ftf_stop_tightened": self.ftf_stop_tightened,
             "price_two_bars_ago": round(self.price_two_bars_ago, 4),
+            "initial_risk_at_entry": round(self.initial_risk_at_entry, 6),
         }
 
 
@@ -304,6 +308,7 @@ class AdaptiveExitEngine:
             partial_tp_taken=False,
             trailing_active=False,
             prediction_horizon=prediction_horizon,
+            initial_risk_at_entry=risk_distance,
         )
 
     def update_levels_for_pyramid(
@@ -433,10 +438,14 @@ class AdaptiveExitEngine:
                 return partial_signal
 
         # 3. Full take-profit check
-        if direction > 0 and current_price >= levels.take_profit:
-            return ExitSignal(True, "take_profit", levels.take_profit)
-        if direction < 0 and current_price <= levels.take_profit:
-            return ExitSignal(True, "take_profit", levels.take_profit)
+        # Disabled in learning mode: same rationale as profit lock and
+        # partial TP -- learning-mode trades must run to horizon_timeout
+        # so the thesis expresses fully, giving clean fitness signal.
+        if not self.learning_mode:
+            if direction > 0 and current_price >= levels.take_profit:
+                return ExitSignal(True, "take_profit", levels.take_profit)
+            if direction < 0 and current_price <= levels.take_profit:
+                return ExitSignal(True, "take_profit", levels.take_profit)
 
         # 4. ATR-based trailing stop update and check
         trail_signal = self._update_trailing_stop(levels, current_price, current_regime)
@@ -459,7 +468,7 @@ class AdaptiveExitEngine:
                 early_check = max(levels.prediction_horizon // 2, 3)
             if levels.bars_held >= early_check:
                 pnl_dir = (current_price - levels.entry_price) * direction
-                initial_risk = max(abs(levels.entry_price - levels.stop_loss), 0.01)
+                initial_risk = levels.initial_risk_at_entry if levels.initial_risk_at_entry > 0 else max(abs(levels.entry_price - levels.stop_loss), 0.01)
                 r_achieved = pnl_dir / initial_risk
                 # Regime-dependent R threshold
                 _FTF_R_THRESHOLDS = {

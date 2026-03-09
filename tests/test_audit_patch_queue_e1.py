@@ -187,8 +187,8 @@ class TestPartialTPDisabledInLearningMode:
 
 class TestFullTPUnchanged:
 
-    def test_full_tp_fires_in_learning_mode(self):
-        """Full take-profit still fires in learning mode."""
+    def test_full_tp_disabled_in_learning_mode(self):
+        """Full take-profit is disabled in learning mode (changed by E2)."""
         engine = _make_engine(learning_mode=True)
         levels = _make_levels(engine)
 
@@ -196,9 +196,10 @@ class TestFullTPUnchanged:
         for i in range(6):
             engine.check_exit(levels, levels.entry_price + 0.01, is_new_bar=True)
 
-        # Price at full TP level
+        # Price at full TP level -- should NOT fire take_profit in learning mode
         signal = engine.check_exit(levels, levels.take_profit + 0.01, is_new_bar=True)
-        assert signal.should_exit and signal.reason == "take_profit"
+        assert signal.reason != "take_profit", \
+            "Learning mode must not trigger full take-profit (E2 patch)"
 
 
 # ==============================================================================
