@@ -243,8 +243,8 @@ class TestBreakoutSharedGates:
             breakout_start = source.find("_MAX_PURE_BREAKOUT")
         assert breakout_start != -1
         breakout_section = source[breakout_start:breakout_start + 3000]
-        assert "_MAIN_CONF_BASELINE" in breakout_section, \
-            "Breakout path must check _MAIN_CONF_BASELINE confidence threshold"
+        assert "_MIN_MAIN_CONF" in breakout_section, \
+            "Breakout path must check unified _MIN_MAIN_CONF confidence threshold"
 
     def test_ml_veto_gated_by_learning_mode(self):
         """ML negative-direction veto must only apply in production mode."""

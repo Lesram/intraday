@@ -388,6 +388,7 @@ class OrganismLiveEngine:
         self._bars_since_retrain: int = 0
         self._all_trades: list[TradeRecord] = []
         self._equity_curve: list[float] = []
+        self._cumulative_pnl: float = 0.0
         self._epoch_metrics: list[dict[str, Any]] = []
         self._peak_equity: float = 0.0
         self._initialized: bool = False
@@ -938,8 +939,9 @@ class OrganismLiveEngine:
         cumulative = 0.0
         for t in reconstructed:
             cumulative += t.pnl
-            self._equity_curve.append(cumulative)
-        self._peak_equity = max(self._equity_curve) if self._equity_curve else 0.0
+        self._cumulative_pnl = cumulative
+        # Do NOT populate _equity_curve from PnL — it should only contain
+        # actual broker equity snapshots from _get_equity().
 
         # Feed reconstructed trades to learner so ML can train
         if hasattr(self, 'learner') and self.learner:
@@ -1799,6 +1801,24 @@ class OrganismLiveEngine:
                 self._last_eff_conf_gate = _MAIN_CONF_BASELINE
                 self._last_burst_remaining = _burst_remaining
 
+                # Unified confidence threshold — used by BOTH alpha and
+                # pure-breakout paths for gate parity.
+                # Learning-mode refinement: only apply defensive gate when
+                # regime label confidence >= 0.50; otherwise use baseline
+                # to avoid over-constraining on noisy regime detection.
+                if (
+                    not self._is_learning_mode
+                    or (regime in ("chop", "high_vol", "trending_down")
+                        and _regime_conf >= 0.50)
+                ):
+                    _MIN_MAIN_CONF = (
+                        _MAIN_CONF_DEFENSIVE
+                        if regime in ("chop", "high_vol", "trending_down")
+                        else _MAIN_CONF_BASELINE
+                    )
+                else:
+                    _MIN_MAIN_CONF = _MAIN_CONF_BASELINE
+
                 # Rejection counters dict — cleaner than individual vars
                 _rej_counts = {
                     "open_position": 0, "exit_cooldown": 0,
@@ -1867,21 +1887,8 @@ class OrganismLiveEngine:
                         )
                     # A2 (improve8): Two-tier confidence gate
                     # Main-book: baseline 0.40, higher in defensive regimes
-                    # Learning-mode refinement: only apply defensive gate
-                    # when regime label confidence >= 0.50; otherwise use
-                    # baseline to avoid over-constraining on noisy regime.
-                    if (
-                        not self._is_learning_mode
-                        or (regime in ("chop", "high_vol", "trending_down")
-                            and _regime_conf >= 0.50)
-                    ):
-                        _MIN_MAIN_CONF = (
-                            _MAIN_CONF_DEFENSIVE
-                            if regime in ("chop", "high_vol", "trending_down")
-                            else _MAIN_CONF_BASELINE
-                        )
-                    else:
-                        _MIN_MAIN_CONF = _MAIN_CONF_BASELINE
+                    # B1 parity: _MIN_MAIN_CONF is now computed once above
+                    # both paths (unified threshold).
 
                     # B1 (improve8): Heuristic expected_return → exploration only
                     # Exception: in learning mode, allow heuristic through main-book
@@ -1976,13 +1983,8 @@ class OrganismLiveEngine:
                         continue
                     # Confidence threshold
                     _bo_conf = min(bs.composite_score, 1.0)
-                    # H6 parity: use same regime-conditioned threshold as alpha path
-                    _bo_min_conf = (
-                        _MAIN_CONF_DEFENSIVE
-                        if regime in ("chop", "high_vol", "trending_down")
-                        else _MAIN_CONF_BASELINE
-                    )
-                    if _bo_conf < _bo_min_conf:
+                    # B1 parity: use unified threshold (same as alpha path)
+                    if _bo_conf < _MIN_MAIN_CONF:
                         continue
                     # ML negative-direction veto — production only.
                     # In learning mode ML is untrained and anti-predictive;
@@ -3952,7 +3954,7 @@ class OrganismLiveEngine:
             "evolved_generation": self.evolved_params.evolution_generation,
             "evolved_adaptations": self.evolved_params.total_adaptations,
             "peak_equity": self._peak_equity,
-            "current_equity": self._equity_curve[-1] if self._equity_curve else 0.0,
+            "current_equity": self._equity_curve[-1] if self._equity_curve else None,
             "governance": self.governance.to_dict(),
             "universe_size": len(self._universe),
             "universe_symbols": list(self._universe),

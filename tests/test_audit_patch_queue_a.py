@@ -124,13 +124,13 @@ class TestBreakoutConfidenceGateParity:
 
     def test_breakout_above_defensive_threshold_passes(self):
         """Breakout with composite_score >= 0.45 should pass in defensive regime."""
-        # Structural check: _MAIN_CONF_DEFENSIVE is used in breakout path
+        # Structural check: breakout path uses unified _MIN_MAIN_CONF (B1 parity)
         from backend.organism import live_engine
         import inspect
         source = inspect.getsource(live_engine)
         breakout_section = source[source.index("Pure breakout"):]
-        assert "_MAIN_CONF_DEFENSIVE" in breakout_section or "_bo_min_conf" in breakout_section, \
-            "Breakout path must reference defensive threshold"
+        assert "_MIN_MAIN_CONF" in breakout_section, \
+            "Breakout path must reference unified _MIN_MAIN_CONF threshold"
 
 
 # -- Fix 3: Alpha ranking preservation --
