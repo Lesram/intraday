@@ -343,9 +343,15 @@ class RegimeDetector:
         """Restore regime detector state from brain persistence."""
         self._history = data.get("history", [])
         self._smoothed_probs = data.get("smoothed_probs", {})
-        # Optionally restore tuning params if they were persisted
+        # Restore all tuning params that were persisted
         if "sma_period" in data:
             self._sma_period = data["sma_period"]
+        if "vol_lookback" in data:
+            self._vol_lookback = data["vol_lookback"]
+        if "trend_threshold" in data:
+            self._trend_threshold = data["trend_threshold"]
+        if "churn_window" in data:
+            self._churn_window = data["churn_window"]
         if "smoothing_alpha" in data:
             self._alpha = data["smoothing_alpha"]
         logger.info(

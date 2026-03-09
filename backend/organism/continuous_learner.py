@@ -243,7 +243,10 @@ class ContinuousLearner:
         correct = sum(1 for t in trades if t.correct_direction)
         total_pnl = sum(t.pnl for t in trades)
         pnl_list = [t.pnl for t in trades]
-        returns_list = [t.actual_return for t in trades]
+        # Direction-adjusted returns: profitable trades (long or short)
+        # contribute positive return. A profitable short has direction=-1
+        # and actual_return<0 (price fell), so actual_return * direction > 0.
+        returns_list = [t.actual_return * t.direction for t in trades]
 
         # Sharpe-like metric on trade returns
         if len(returns_list) > 1:

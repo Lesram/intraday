@@ -1030,13 +1030,16 @@ class EvolutionEngine:
         if len(trades) < self.min_trades:
             return
 
-        # Estimate directional accuracy from trade outcomes
-        # Use actual trade direction (sign of pnl with shares direction)
+        # Estimate directional accuracy from trade outcomes.
+        # A trade is "correct" when the position was profitable:
+        # - Long (direction>0) with pnl>0, OR
+        # - Short (direction<0) with pnl>0.
+        # Use correct_direction property when available (handles edge cases).
         correct = sum(
             1 for t in trades
             if (
-                (getattr(t, "direction", 1) > 0 and t.pnl > 0)
-                or (getattr(t, "direction", 1) < 0 and t.pnl < 0)
+                getattr(t, "correct_direction", False)
+                or (not hasattr(t, "correct_direction") and t.pnl > 0)
             )
         )
         accuracy = correct / len(trades)

@@ -373,6 +373,14 @@ class OrganismBrain:
                     feature_importance_top10=fi_tuples,
                 )
 
+            # Restore calibration state if available (backward compatible)
+            calibration_data = self.ml_state.get("calibration")
+            if calibration_data and hasattr(signal_gen, "load_calibration"):
+                try:
+                    signal_gen.load_calibration(calibration_data)
+                except Exception as e:
+                    logger.warning("Failed to restore ML calibration: %s", e)
+
             logger.info("ML models restored into signal generator")
             return True
 
@@ -520,6 +528,12 @@ class OrganismBrain:
                 "hit_rate": m.hit_rate,
                 "feature_importance_top10": m.feature_importance_top10,
             }
+        # Persist ML calibration state
+        if hasattr(signal_gen, "calibration_to_dict"):
+            try:
+                ml_state["calibration"] = signal_gen.calibration_to_dict()
+            except Exception:
+                pass  # calibration is optional
         _write_json(target / "ml_state.json", ml_state)
 
     def _save_model_metrics_history(
@@ -1016,11 +1030,14 @@ class OrganismBrain:
         # apples-to-apples even though it is not a true daily Sharpe.
         returns = []
         for t in recent_trades:
+            _dir = float(getattr(t, "direction", 1.0))
             if hasattr(t, "actual_return"):
-                returns.append(float(t.actual_return))
+                # Direction-adjusted: profitable shorts contribute positive return
+                returns.append(float(t.actual_return) * _dir)
             elif hasattr(t, "pnl") and hasattr(t, "entry_price"):
                 ep = float(t.entry_price) if t.entry_price else 1
                 shares = float(getattr(t, "shares", 1)) or 1
+                # PnL is already direction-neutral (positive = profitable)
                 returns.append(
                     float(t.pnl) / (ep * shares) if ep > 0 else 0
                 )
