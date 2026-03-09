@@ -408,8 +408,13 @@ class AdaptiveExitEngine:
         if levels.bars_held < min_hold:
             return ExitSignal(False)
 
-        # 1.5. PROFIT LOCK — at 2R, move stop to 1R (one-shot)
-        self._check_profit_lock(levels, current_price)
+        # 1.5. PROFIT LOCK — at 2R, move stop to 1R (one-shot).
+        # Disabled in learning mode: profit lock tightens stops early,
+        # clipping winners before the 18-bar thesis horizon plays out.
+        # Learning-mode exit stack: hard stop → max-loss → trailing →
+        # FTF → horizon_timeout → EOD flatten. No profit lock.
+        if not self.learning_mode:
+            self._check_profit_lock(levels, current_price)
 
         # improve9 A3: Hard vertical barrier at thesis horizon.
         # In learning mode, exit after 18 bars (H=15 + 3 bar grace)
