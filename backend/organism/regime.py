@@ -381,20 +381,24 @@ class RegimeDetector:
 
         agg_probs: dict[str, float] = {}
         n = 0
-        # Save instance state — detect() mutates _smoothed_probs & _history
+        # Save instance state — detect() mutates _smoothed_probs, _history, _last_state
         saved_probs = dict(self._smoothed_probs)
         saved_history = list(self._history)
+        saved_last = self._last_state
         try:
             for sym, feat_df in per_symbol_features.items():
+                # Restore pristine state before each detect to prevent cross-contamination
+                self._smoothed_probs = dict(saved_probs)
+                self._history = list(saved_history)
                 state = self.detect(feat_df)
                 if state.probabilities:
                     for label, prob in state.probabilities.items():
                         agg_probs[label] = agg_probs.get(label, 0.0) + prob
                     n += 1
         finally:
-            # Restore instance state so market-level detection doesn't pollute
             self._smoothed_probs = saved_probs
             self._history = saved_history
+            self._last_state = saved_last
 
         if n == 0:
             return RegimeState(
@@ -453,17 +457,21 @@ class RegimeDetector:
         if not sector_features:
             return base
 
-        # Compute per-sector regime (save/restore state to avoid contamination)
+        # Compute per-sector regime (save/restore state before each detect)
         sector_regimes: list[RegimeState] = []
-        saved_probs = self._smoothed_probs.copy() if self._smoothed_probs is not None else None
+        saved_probs = dict(self._smoothed_probs) if self._smoothed_probs is not None else {}
         saved_history = list(self._history)
+        saved_last = self._last_state
         for etf, feat_df in sector_features.items():
             if feat_df is not None and len(feat_df) >= 10:
+                # Restore pristine state before each detect to prevent cross-contamination
+                self._smoothed_probs = dict(saved_probs)
+                self._history = list(saved_history)
                 sr = self.detect(feat_df)
                 sector_regimes.append(sr)
-        # Restore state so sector data doesn't leak into market-level detection
         self._smoothed_probs = saved_probs
         self._history = saved_history
+        self._last_state = saved_last
 
         if not sector_regimes:
             return base

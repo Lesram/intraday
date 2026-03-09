@@ -335,7 +335,16 @@ class OrganismBrain:
         """Restore saved ML models into a MLSignalGenerator instance.
 
         Returns True if models were restored.
+        Calibration is restored even when model artifacts are absent.
         """
+        # Restore calibration first — works even without saved models
+        calibration_data = self.ml_state.get("calibration")
+        if calibration_data and hasattr(signal_gen, "load_calibration"):
+            try:
+                signal_gen.load_calibration(calibration_data)
+            except Exception as e:
+                logger.warning("Failed to restore ML calibration: %s", e)
+
         if self.clf is None or self.reg is None:
             return False
 
@@ -372,14 +381,6 @@ class OrganismBrain:
                     hit_rate=metrics_data.get("hit_rate", 0),
                     feature_importance_top10=fi_tuples,
                 )
-
-            # Restore calibration state if available (backward compatible)
-            calibration_data = self.ml_state.get("calibration")
-            if calibration_data and hasattr(signal_gen, "load_calibration"):
-                try:
-                    signal_gen.load_calibration(calibration_data)
-                except Exception as e:
-                    logger.warning("Failed to restore ML calibration: %s", e)
 
             logger.info("ML models restored into signal generator")
             return True
@@ -445,6 +446,14 @@ class OrganismBrain:
                     predicted_return=td.get("predicted_return", 0),
                     actual_return=td.get("actual_return", 0),
                     confidence=td.get("confidence", 0),
+                    is_exploration=td.get("is_exploration", False),
+                    entry_source=td.get("entry_source", ""),
+                    regime_at_entry=td.get("regime_at_entry", ""),
+                    regime_at_exit=td.get("regime_at_exit", ""),
+                    mfe=td.get("mfe", 0.0),
+                    mae=td.get("mae", 0.0),
+                    bars_held_at_exit=td.get("bars_held_at_exit", 0),
+                    time_in_trade_seconds=td.get("time_in_trade_seconds", 0.0),
                 ))
 
             # Restore reference features for drift detection
@@ -609,6 +618,14 @@ class OrganismBrain:
                 "actual_return": round(t.actual_return, 6),
                 "confidence": round(t.confidence, 4),
                 "correct_direction": t.correct_direction,
+                "is_exploration": getattr(t, "is_exploration", False),
+                "entry_source": getattr(t, "entry_source", ""),
+                "regime_at_entry": getattr(t, "regime_at_entry", ""),
+                "regime_at_exit": getattr(t, "regime_at_exit", ""),
+                "mfe": round(getattr(t, "mfe", 0.0), 4),
+                "mae": round(getattr(t, "mae", 0.0), 4),
+                "bars_held_at_exit": getattr(t, "bars_held_at_exit", 0),
+                "time_in_trade_seconds": round(getattr(t, "time_in_trade_seconds", 0.0), 2),
             })
         df = pd.DataFrame(records)
 
@@ -1144,6 +1161,14 @@ class OrganismBrain:
                     predicted_return=td.get("predicted_return", 0),
                     actual_return=td.get("actual_return", 0),
                     confidence=td.get("confidence", 0),
+                    is_exploration=td.get("is_exploration", False),
+                    entry_source=td.get("entry_source", ""),
+                    regime_at_entry=td.get("regime_at_entry", ""),
+                    regime_at_exit=td.get("regime_at_exit", ""),
+                    mfe=td.get("mfe", 0.0),
+                    mae=td.get("mae", 0.0),
+                    bars_held_at_exit=td.get("bars_held_at_exit", 0),
+                    time_in_trade_seconds=td.get("time_in_trade_seconds", 0.0),
                 ))
             return records
         except Exception as e:
