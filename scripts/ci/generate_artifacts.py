@@ -14,6 +14,8 @@ Produces:
   artifacts/semantic_invariants_summary.json
   artifacts/spec_drift_summary.json
 """
+from __future__ import annotations
+
 import json
 import os
 import subprocess
