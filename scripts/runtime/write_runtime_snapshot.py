@@ -1,114 +1,490 @@
 #!/usr/bin/env python3
 """Runtime config snapshot writer.
 
-Reads the actual organism config constants and writes a machine-readable
-snapshot to artifacts/runtime_config_snapshot.json.  Used by CI, post-close
-audit, and daily reports to verify live behavior matches documented spec.
+Produces THREE snapshot files:
+  artifacts/runtime_defaults_snapshot.json     — code defaults (offline, from source)
+  artifacts/resolved_config_snapshot.json      — env > .env > code defaults resolution
+  artifacts/live_process_runtime_snapshot.json  — live values from the running process
+
+Used by CI, post-close audit, and daily reports to verify live behavior
+matches documented spec.
 """
 import json
 import os
+import subprocess
 import sys
 from pathlib import Path
 
 # Allow imports from the repo root
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-try:
-    from backend.organism.live_engine import (
-        LIVE_TIMEFRAME,
-        LIVE_LOOKBACK,
-        MAX_OPEN_POSITIONS,
-        ALPHA_TOP_N,
-        PREDICTION_HORIZON,
-        EXPLORATION_ENABLED,
-        LONG_ONLY,
-        BRAIN_DIR,
-        RETRAIN_INTERVAL,
-        MIN_BARS,
-        USE_STREAMING,
-        LIVE_UNIVERSE_CSV,
-    )
-    from backend.organism.adaptive_exits import AdaptiveExitEngine
-    from backend.organism.kelly_sizer import KellySizer
-    from backend.organism.alpha_scanner import AlphaScanner
-    from backend.organism.governance import GovernanceController
+ROOT = Path(__file__).resolve().parents[2]
+ART = ROOT / "artifacts"
+ART.mkdir(exist_ok=True)
 
-    gov = GovernanceController()
-    exit_engine = AdaptiveExitEngine()
 
-    snapshot = {
-        "timeframe": LIVE_TIMEFRAME,
-        "lookback": LIVE_LOOKBACK,
-        "min_bars": MIN_BARS,
-        "prediction_horizon": PREDICTION_HORIZON,
-        "tick_interval_seconds": int(os.getenv("ORGANISM_TICK_INTERVAL_SECONDS", "10")),
-        "universe": [s.strip() for s in LIVE_UNIVERSE_CSV.split(",") if s.strip()],
-        "universe_size": len([s for s in LIVE_UNIVERSE_CSV.split(",") if s.strip()]),
+def _build_defaults_snapshot() -> dict:
+    """Build snapshot from code defaults (no container required)."""
+    try:
+        from backend.organism.live_engine import (
+            LIVE_TIMEFRAME,
+            LIVE_LOOKBACK,
+            MAX_OPEN_POSITIONS,
+            ALPHA_TOP_N,
+            PREDICTION_HORIZON,
+            EXPLORATION_ENABLED,
+            LONG_ONLY,
+            RETRAIN_INTERVAL,
+            MIN_BARS,
+            USE_STREAMING,
+            LIVE_UNIVERSE_CSV,
+        )
+        from backend.organism.adaptive_exits import AdaptiveExitEngine
+        from backend.organism.kelly_sizer import KellySizer
+        from backend.organism.alpha_scanner import AlphaScanner
+        from backend.organism.governance import GovernanceController
 
-        "learning_mode_threshold_trades": 200,
-        "evolution_freeze_until_trades": 300,
+        gov = GovernanceController()
 
-        "max_positions": MAX_OPEN_POSITIONS,
-        "alpha_top_n": ALPHA_TOP_N,
-        "long_only": LONG_ONLY,
+        return {
+            "source": "code_defaults",
+            "timeframe": LIVE_TIMEFRAME,
+            "lookback": LIVE_LOOKBACK,
+            "min_bars": MIN_BARS,
+            "prediction_horizon": PREDICTION_HORIZON,
+            "tick_interval_seconds": 10,
+            "universe": [s.strip() for s in LIVE_UNIVERSE_CSV.split(",") if s.strip()],
+            "universe_size": len([s for s in LIVE_UNIVERSE_CSV.split(",") if s.strip()]),
 
-        "exploration_enabled": EXPLORATION_ENABLED,
-        "streaming_enabled": USE_STREAMING,
-        "retrain_interval": RETRAIN_INTERVAL,
+            "learning_mode_threshold_trades": 200,
+            "evolution_freeze_until_trades": 300,
 
-        "drawdown_kill_pct": gov._drawdown_limit,
-        "drawdown_cooldown_s": gov._drawdown_cooldown_s,
-        "max_changes_per_day": gov._max_changes_per_day,
-        "governance_frozen": gov.is_frozen,
+            "max_positions": MAX_OPEN_POSITIONS,
+            "alpha_top_n": ALPHA_TOP_N,
+            "long_only": LONG_ONLY,
 
-        "confidence_gate_baseline": 0.40,
-        "confidence_gate_defensive": 0.45,
-        "fitness_gate_production": 0.45,
-        "fitness_gate_learning": 0.0,
+            "exploration_enabled": EXPLORATION_ENABLED,
+            "streaming_enabled": USE_STREAMING,
+            "retrain_interval": RETRAIN_INTERVAL,
 
-        "risk_budget_production": KellySizer._RISK_BUDGET_PER_TRADE,
-        "risk_budget_learning": KellySizer._RISK_BUDGET_PER_TRADE_LEARNING,
-        "risk_budget_stop_atr": KellySizer._RISK_BUDGET_STOP_ATR,
+            "drawdown_kill_pct": gov._drawdown_limit,
+            "drawdown_cooldown_s": gov._drawdown_cooldown_s,
+            "max_changes_per_day": gov._max_changes_per_day,
 
-        "stop_atr_table": AdaptiveExitEngine.REGIME_STOP_ATR,
-        "tp_r_table": AdaptiveExitEngine.REGIME_TP_R,
-        "trail_atr_table": AdaptiveExitEngine.REGIME_TRAIL_ATR,
-        "max_bars_table": AdaptiveExitEngine.REGIME_MAX_BARS,
+            "confidence_gate_baseline": 0.40,
+            "confidence_gate_defensive": 0.45,
+            "fitness_gate_production": 0.45,
+            "fitness_gate_learning": 0.0,
 
-        "horizon_timeout_bars": 18,
-        "bar_boundary_entry_only": True,
+            "risk_budget_production": KellySizer._RISK_BUDGET_PER_TRADE,
+            "risk_budget_learning": KellySizer._RISK_BUDGET_PER_TRADE_LEARNING,
+            "risk_budget_stop_atr": KellySizer._RISK_BUDGET_STOP_ATR,
 
-        "inverse_etfs": sorted(AlphaScanner.INVERSE_ETFS),
-        "inverse_etf_enabled": True,
+            "stop_atr_table": AdaptiveExitEngine.REGIME_STOP_ATR,
+            "tp_r_table": AdaptiveExitEngine.REGIME_TP_R,
+            "trail_atr_table": AdaptiveExitEngine.REGIME_TRAIL_ATR,
+            "max_bars_table": AdaptiveExitEngine.REGIME_MAX_BARS,
 
-        "confidence_weights_learning": {
-            "breakout": 0.65,
-            "tension": 0.35,
-            "ml": 0.0,
-        },
-        "confidence_weights_production": {
-            "ml": 0.50,
-            "breakout": 0.30,
-            "tension": 0.20,
-        },
+            "horizon_timeout_bars": 18,
+            "bar_boundary_entry_only": True,
+
+            "inverse_etfs": sorted(AlphaScanner.INVERSE_ETFS),
+            "inverse_etf_enabled": True,
+
+            "confidence_weights_learning": {
+                "breakout": 0.65, "tension": 0.35, "ml": 0.0,
+            },
+            "confidence_weights_production": {
+                "ml": 0.50, "breakout": 0.30, "tension": 0.20,
+            },
+        }
+
+    except Exception as e:
+        return {
+            "source": "env_fallback",
+            "error": str(e),
+            "timeframe": os.getenv("ORGANISM_LIVE_TIMEFRAME", "1Min"),
+            "tick_interval_seconds": int(os.getenv("ORGANISM_TICK_INTERVAL_SECONDS", "10")),
+            "max_positions": int(os.getenv("ORGANISM_MAX_POSITIONS", "8")),
+            "drawdown_kill_pct": float(os.getenv("ORGANISM_DRAWDOWN_KILL_PCT", "0.05")),
+            "learning_mode_threshold_trades": 200,
+            "evolution_freeze_until_trades": 300,
+            "alpha_top_n": 5,
+            "horizon_timeout_bars": 18,
+            "bar_boundary_entry_only": True,
+        }
+
+
+def _build_resolved_config_snapshot() -> dict:
+    """Build resolved config snapshot: container env > .env > code defaults.
+
+    This captures the CONFIG RESOLUTION chain (what the process SHOULD run with),
+    not what it IS running with. For the live process state, see
+    _build_live_process_snapshot().
+    """
+    resolved = {"source": "resolved_config"}
+
+    # --- Container env vars ---
+    api_container = _find_api_container()
+    container_env = {}
+    if api_container:
+        env_text = _docker_exec(api_container, "env")
+        if env_text:
+            env_map = _parse_env_text(env_text)
+            resolved["container"] = api_container
+            container_env = {
+                "ORGANISM_DRAWDOWN_KILL_PCT": env_map.get("ORGANISM_DRAWDOWN_KILL_PCT"),
+                "ORGANISM_MAX_POSITIONS": env_map.get("ORGANISM_MAX_POSITIONS"),
+                "ORGANISM_TICK_INTERVAL_SECONDS": env_map.get("ORGANISM_TICK_INTERVAL_SECONDS"),
+                "ORGANISM_EXPLORATION_ENABLED": env_map.get("ORGANISM_EXPLORATION_ENABLED"),
+                "ORGANISM_ALPHA_TOP_N": env_map.get("ORGANISM_ALPHA_TOP_N"),
+                "ORGANISM_LIVE_TIMEFRAME": env_map.get("ORGANISM_LIVE_TIMEFRAME"),
+                "APP_ENVIRONMENT": env_map.get("APP_ENVIRONMENT"),
+                "ALPACA_PAPER": env_map.get("ALPACA_PAPER"),
+            }
+            resolved["container_env"] = container_env
+
+    # --- .env file vars ---
+    dotenv = {}
+    env_file = ROOT / ".env"
+    if env_file.exists():
+        env_map = _parse_env_file(env_file)
+        dotenv = {
+            "ORGANISM_DRAWDOWN_KILL_PCT": env_map.get("ORGANISM_DRAWDOWN_KILL_PCT"),
+            "ORGANISM_MAX_POSITIONS": env_map.get("ORGANISM_MAX_POSITIONS"),
+            "ORGANISM_TICK_INTERVAL_SECONDS": env_map.get("ORGANISM_TICK_INTERVAL_SECONDS"),
+            "ORGANISM_EXPLORATION_ENABLED": env_map.get("ORGANISM_EXPLORATION_ENABLED"),
+            "ORGANISM_ALPHA_TOP_N": env_map.get("ORGANISM_ALPHA_TOP_N"),
+        }
+        resolved["dotenv"] = dotenv
+
+    # --- Resolve: container env > .env > code defaults ---
+    defaults = _build_defaults_snapshot()
+
+    def _resolve_float(env_key: str, default_key: str) -> float:
+        for src in [container_env, dotenv]:
+            v = src.get(env_key)
+            if v is not None:
+                try:
+                    return float(v)
+                except (ValueError, TypeError):
+                    pass
+        return defaults.get(default_key, 0.0)
+
+    def _resolve_int(env_key: str, default_key: str) -> int:
+        for src in [container_env, dotenv]:
+            v = src.get(env_key)
+            if v is not None:
+                try:
+                    return int(v)
+                except (ValueError, TypeError):
+                    pass
+        return defaults.get(default_key, 0)
+
+    def _resolve_bool(env_key: str, default_key: str) -> bool:
+        for src in [container_env, dotenv]:
+            v = src.get(env_key)
+            if v is not None:
+                return v.lower() in ("true", "1", "yes")
+        return defaults.get(default_key, False)
+
+    def _resolve_str(env_key: str, default_key: str) -> tuple[str, str]:
+        """Resolve a string config. Returns (value, source)."""
+        for label, src in [("container_env", container_env), ("dotenv", dotenv)]:
+            v = src.get(env_key)
+            if v is not None:
+                return v, label
+        return defaults.get(default_key, ""), "code_default"
+
+    timeframe_val, timeframe_source = _resolve_str("ORGANISM_LIVE_TIMEFRAME", "timeframe")
+
+    resolved["resolved"] = {
+        "drawdown_kill_pct": _resolve_float("ORGANISM_DRAWDOWN_KILL_PCT", "drawdown_kill_pct"),
+        "max_positions": _resolve_int("ORGANISM_MAX_POSITIONS", "max_positions"),
+        "alpha_top_n": _resolve_int("ORGANISM_ALPHA_TOP_N", "alpha_top_n"),
+        "tick_interval_seconds": _resolve_int("ORGANISM_TICK_INTERVAL_SECONDS", "tick_interval_seconds"),
+        "exploration_enabled": _resolve_bool("ORGANISM_EXPLORATION_ENABLED", "exploration_enabled"),
+        "timeframe": timeframe_val,
+        "timeframe_source": timeframe_source,
+        "learning_mode_threshold_trades": defaults.get("learning_mode_threshold_trades"),
+        "evolution_freeze_until_trades": defaults.get("evolution_freeze_until_trades"),
+        "horizon_timeout_bars": defaults.get("horizon_timeout_bars"),
+        "bar_boundary_entry_only": defaults.get("bar_boundary_entry_only"),
+        "confidence_gate_baseline": defaults.get("confidence_gate_baseline"),
+        "confidence_gate_defensive": defaults.get("confidence_gate_defensive"),
+        "fitness_gate_production": defaults.get("fitness_gate_production"),
+        "risk_budget_learning": defaults.get("risk_budget_learning"),
+        "risk_budget_production": defaults.get("risk_budget_production"),
+        "inverse_etfs": defaults.get("inverse_etfs"),
+        "universe_size": defaults.get("universe_size"),
+        "confidence_weights_learning": defaults.get("confidence_weights_learning"),
+        "confidence_weights_production": defaults.get("confidence_weights_production"),
+        "stop_atr_table": defaults.get("stop_atr_table"),
     }
 
-except Exception as e:
-    snapshot = {
-        "error": str(e),
-        "note": "Could not import organism modules. Showing env-only fallback.",
-        "timeframe": os.getenv("ORGANISM_LIVE_TIMEFRAME", "1Min"),
-        "tick_interval_seconds": int(os.getenv("ORGANISM_TICK_INTERVAL_SECONDS", "10")),
-        "max_positions": int(os.getenv("ORGANISM_MAX_POSITIONS", "8")),
-        "drawdown_kill_pct": float(os.getenv("ORGANISM_DRAWDOWN_KILL_PCT", "0.05")),
-        "learning_mode_threshold_trades": 200,
-        "evolution_freeze_until_trades": 300,
-        "alpha_top_n": ALPHA_TOP_N,
-        "horizon_timeout_bars": 18,
-        "bar_boundary_entry_only": True,
+    return resolved
+
+
+def _build_live_process_snapshot() -> dict:
+    """Query the RUNNING paper-trader process for its actual live state.
+
+    This is the only snapshot that reflects what the organism is actually
+    doing right now — not what config says it should do, but what it IS doing.
+
+    Sources (in priority order):
+    1. /api/organism/status endpoint (running process memory)
+    2. Docker exec: read process-level state files (brain gen, trade count)
+    3. Container env as fallback context
+    """
+    from datetime import datetime, timezone
+
+    api_container = _find_api_container()
+    snapshot_ts = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    result = {
+        "source": "live_process",
+        "snapshot_taken_at": snapshot_ts,
+        "container": api_container or None,
+        "reachable": False,
+        "organism_status": None,
+        "brain_state": None,
+        "process_env": None,
+        "source_annotations": {},
     }
 
-out = Path("artifacts/runtime_config_snapshot.json")
-out.parent.mkdir(exist_ok=True)
-out.write_text(json.dumps(snapshot, indent=2))
-print(f"Runtime snapshot written to {out}")
+    # --- 1. Query organism status endpoint (live process memory) ---
+    status_json = _curl_organism_status()
+    if status_json:
+        result["reachable"] = True
+        result["organism_status"] = status_json
+
+    # --- 2. Read brain state from container filesystem ---
+    if api_container:
+        # Read brain manifest if accessible
+        brain_meta = _docker_exec(
+            api_container,
+            "cat /app/organism_brain/manifest.json",
+        )
+        if brain_meta:
+            try:
+                result["brain_state"] = json.loads(brain_meta)
+            except (json.JSONDecodeError, ValueError):
+                result["brain_state"] = {"raw": brain_meta[:500]}
+
+        # Read process env for context
+        env_text = _docker_exec(api_container, "env")
+        if env_text:
+            env_map = _parse_env_text(env_text)
+            result["process_env"] = {
+                "APP_ENVIRONMENT": env_map.get("APP_ENVIRONMENT"),
+                "ALPACA_PAPER": env_map.get("ALPACA_PAPER"),
+                "ORGANISM_DRAWDOWN_KILL_PCT": env_map.get("ORGANISM_DRAWDOWN_KILL_PCT"),
+                "ORGANISM_MAX_POSITIONS": env_map.get("ORGANISM_MAX_POSITIONS"),
+                "ORGANISM_TICK_INTERVAL_SECONDS": env_map.get("ORGANISM_TICK_INTERVAL_SECONDS"),
+            }
+
+        # Get container start time
+        try:
+            started = subprocess.check_output(
+                ["docker", "inspect", "--format", "{{.State.StartedAt}}", api_container],
+                text=True, stderr=subprocess.DEVNULL, timeout=5,
+            ).strip()
+            result["container_started_at"] = started
+        except Exception:
+            pass
+
+    # --- 3. Derive live runtime values from process state ---
+    live = {}
+    annotations = {}
+    if status_json:
+        # The response may have nested data under live_engine.engine
+        engine = {}
+        le = status_json.get("live_engine", {})
+        if isinstance(le, dict):
+            engine = le.get("engine", {})
+
+        def _pick_annotated(field_name: str, *keys):
+            """Pick first non-None value, track where it came from."""
+            for k in keys:
+                for src_label, src in [("api_top_level", status_json), ("engine_memory", engine)]:
+                    v = src.get(k)
+                    if v is not None:
+                        annotations[field_name] = f"{src_label}.{k}"
+                        return v
+            return None
+
+        live["tick_count"] = _pick_annotated("tick_count", "tick_count")
+        live["trade_count"] = _pick_annotated("trade_count", "total_trades", "trade_count")
+        live["open_positions"] = _pick_annotated("open_positions", "positions_tracked", "open_positions", "num_positions")
+        live["is_learning_mode"] = _pick_annotated("is_learning_mode", "learning_mode", "is_learning_mode")
+        live["brain_generation"] = _pick_annotated("brain_generation", "brain_generation")
+        live["uptime_seconds"] = _pick_annotated("uptime_seconds", "uptime_seconds")
+        live["last_tick_at"] = _pick_annotated("last_tick_at", "last_tick", "last_tick_at")
+
+        # Regime: flatten nested dict, explain empty/idle state
+        raw_regime = _pick_annotated("regime", "regime", "current_regime")
+        if isinstance(raw_regime, dict):
+            regime_val = raw_regime.get("last_regime", "")
+            annotations["regime"] = "api_top_level.regime.last_regime"
+        else:
+            regime_val = raw_regime
+        if not regime_val or regime_val == "":
+            regime_val = "idle"
+            live["idle_reason"] = "market_closed_or_no_ticks_yet"
+        live["regime"] = regime_val
+
+        live["drawdown_pct"] = _pick_annotated("drawdown_pct", "drawdown_pct", "current_drawdown")
+        live["equity"] = _pick_annotated("equity", "current_equity", "equity", "portfolio_value")
+        live["ml_trained"] = _pick_annotated("ml_trained", "ml_trained")
+        live["win_rate"] = _pick_annotated("win_rate", "win_rate")
+        live["cumulative_pnl"] = _pick_annotated("cumulative_pnl", "cumulative_pnl")
+        live["universe_size"] = _pick_annotated("universe_size", "universe_size")
+        live["running"] = le.get("running") if le else _pick_annotated("running", "running")
+
+    result["live"] = live
+    result["source_annotations"] = annotations
+
+    # --- 4. Coherence notes ---
+    coherence_notes = []
+    brain = result.get("brain_state") or {}
+    brain_trades = brain.get("total_trades")
+    engine_trades = live.get("trade_count")
+    if brain_trades is not None and engine_trades is not None and brain_trades != engine_trades:
+        coherence_notes.append(
+            f"brain_state.total_trades={brain_trades} vs live.trade_count={engine_trades}: "
+            "brain manifest persists at save-time; engine accumulates in-memory across restarts. "
+            "Engine count includes trades since last brain save."
+        )
+    if brain.get("ml_is_trained") is not None and live.get("ml_trained") is not None:
+        if brain.get("ml_is_trained") != live.get("ml_trained"):
+            coherence_notes.append(
+                f"brain_state.ml_is_trained={brain.get('ml_is_trained')} vs live.ml_trained={live.get('ml_trained')}: "
+                "brain manifest is stale if retrain happened after last save."
+            )
+    if not coherence_notes:
+        coherence_notes.append("All cross-source values are consistent.")
+    result["coherence_notes"] = coherence_notes
+
+    return result
+
+
+# ── helpers ──────────────────────────────────────────────────────────
+
+def _find_api_container() -> str:
+    """Find the running api container name."""
+    try:
+        out = subprocess.check_output(
+            ["docker", "ps", "--filter", "name=api", "--format", "{{.Names}}"],
+            text=True, stderr=subprocess.DEVNULL, timeout=5,
+        ).strip()
+        for line in out.splitlines():
+            if "api" in line:
+                return line
+    except Exception:
+        pass
+    return ""
+
+
+def _docker_exec(container: str, cmd: str) -> str:
+    try:
+        return subprocess.check_output(
+            ["docker", "exec", container, "sh", "-c", cmd],
+            text=True, stderr=subprocess.DEVNULL, timeout=10,
+        ).strip()
+    except Exception:
+        return ""
+
+
+def _curl_organism_status() -> dict | None:
+    """Query the organism status endpoint, with auth."""
+    base = os.getenv("ORGANISM_API_BASE", "http://localhost:8000")
+    # Try authenticated first, then unauthenticated
+    token = _get_auth_token(base)
+    headers = []
+    if token:
+        headers = ["-H", f"Authorization: Bearer {token}"]
+
+    for path in ["/api/v1/organism/status", "/api/organism/status"]:
+        try:
+            cmd = ["curl", "-s", "--max-time", "5", f"{base}{path}"] + headers
+            out = subprocess.check_output(
+                cmd, text=True, stderr=subprocess.DEVNULL, timeout=10,
+            ).strip()
+            if out:
+                data = json.loads(out)
+                if "detail" not in data:  # not an error response
+                    return data
+        except Exception:
+            continue
+    return None
+
+
+def _get_auth_token(base: str) -> str:
+    """Get auth token for API access."""
+    username = os.getenv("INTRA_API_USER", "admin@example.com")
+    password = os.getenv("INTRA_API_PASSWORD", "admin123")
+    try:
+        import urllib.request
+        import urllib.error
+        req = urllib.request.Request(
+            f"{base}/api/v1/auth/login",
+            data=json.dumps({"username": username, "password": password}).encode(),
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            data = json.loads(resp.read())
+            return data.get("access_token", "")
+    except Exception:
+        return ""
+
+
+def _parse_env_text(text: str) -> dict:
+    result = {}
+    for line in text.splitlines():
+        if "=" in line and not line.startswith("#"):
+            k, _, v = line.partition("=")
+            result[k.strip()] = v.strip()
+    return result
+
+
+def _parse_env_file(path: Path) -> dict:
+    result = {}
+    for line in path.read_text().splitlines():
+        line = line.strip()
+        if line and not line.startswith("#") and "=" in line:
+            k, _, v = line.partition("=")
+            v = v.strip().strip('"').strip("'")
+            result[k.strip()] = v
+    return result
+
+
+# ── main ─────────────────────────────────────────────────────────────
+
+def main() -> None:
+    # 1. Code defaults snapshot
+    defaults = _build_defaults_snapshot()
+    p1 = ART / "runtime_defaults_snapshot.json"
+    p1.write_text(json.dumps(defaults, indent=2))
+    print(f"Defaults snapshot written to {p1}")
+
+    # 2. Resolved config snapshot (env > .env > code defaults)
+    resolved = _build_resolved_config_snapshot()
+    p2 = ART / "resolved_config_snapshot.json"
+    p2.write_text(json.dumps(resolved, indent=2))
+    print(f"Resolved config snapshot written to {p2}")
+
+    # 3. Live process snapshot (from running container)
+    live = _build_live_process_snapshot()
+    p3 = ART / "live_process_runtime_snapshot.json"
+    p3.write_text(json.dumps(live, indent=2))
+    print(f"Live process snapshot written to {p3}")
+
+    # 4. Backward compat: also write the combined file CI expects
+    p4 = ART / "runtime_config_snapshot.json"
+    p4.write_text(json.dumps(defaults, indent=2))
+    print(f"Legacy snapshot written to {p4}")
+
+
+if __name__ == "__main__":
+    main()

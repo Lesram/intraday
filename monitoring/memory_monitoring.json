@@ -1,56 +1,8 @@
 {
-  "last_updated": "2026-03-07T01:44:33.840672+00:00",
+  "last_updated": "2026-03-07T23:49:35.569988+00:00",
   "monitoring_duration_hours": 24,
   "monitoring_interval_seconds": 300,
   "snapshots": [
-    {
-      "timestamp": "2026-03-06T05:35:35.577165+00:00",
-      "process_memory_mb": 1069.31,
-      "system_memory_mb": 131072.0,
-      "system_memory_percent": 24.2,
-      "available_memory_mb": 99365.8,
-      "swap_usage_mb": 0.0,
-      "swap_percent": 0.0,
-      "python_tracemalloc_mb": 0.0,
-      "python_tracemalloc_peak_mb": 0.0,
-      "top_allocations": []
-    },
-    {
-      "timestamp": "2026-03-06T05:41:56.626315+00:00",
-      "process_memory_mb": 1064.98,
-      "system_memory_mb": 131072.0,
-      "system_memory_percent": 24.6,
-      "available_memory_mb": 98807.34,
-      "swap_usage_mb": 0.0,
-      "swap_percent": 0.0,
-      "python_tracemalloc_mb": 0.0,
-      "python_tracemalloc_peak_mb": 0.0,
-      "top_allocations": []
-    },
-    {
-      "timestamp": "2026-03-06T22:47:04.305235+00:00",
-      "process_memory_mb": 1077.42,
-      "system_memory_mb": 131072.0,
-      "system_memory_percent": 27.5,
-      "available_memory_mb": 95036.86,
-      "swap_usage_mb": 0.0,
-      "swap_percent": 0.0,
-      "python_tracemalloc_mb": 0.0,
-      "python_tracemalloc_peak_mb": 0.0,
-      "top_allocations": []
-    },
-    {
-      "timestamp": "2026-03-06T22:51:59.025553+00:00",
-      "process_memory_mb": 1073.83,
-      "system_memory_mb": 131072.0,
-      "system_memory_percent": 27.3,
-      "available_memory_mb": 95327.36,
-      "swap_usage_mb": 0.0,
-      "swap_percent": 0.0,
-      "python_tracemalloc_mb": 0.0,
-      "python_tracemalloc_peak_mb": 0.0,
-      "top_allocations": []
-    },
     {
       "timestamp": "2026-03-07T00:10:55.370653+00:00",
       "process_memory_mb": 1066.05,
@@ -105,6 +57,18 @@
       "system_memory_mb": 131072.0,
       "system_memory_percent": 27.2,
       "available_memory_mb": 95422.98,
+      "swap_usage_mb": 0.0,
+      "swap_percent": 0.0,
+      "python_tracemalloc_mb": 0.0,
+      "python_tracemalloc_peak_mb": 0.0,
+      "top_allocations": []
+    },
+    {
+      "timestamp": "2026-03-07T23:49:35.569977+00:00",
+      "process_memory_mb": 1073.05,
+      "system_memory_mb": 131072.0,
+      "system_memory_percent": 11.9,
+      "available_memory_mb": 115445.55,
       "swap_usage_mb": 0.0,
       "swap_percent": 0.0,
       "python_tracemalloc_mb": 0.0,

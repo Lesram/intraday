@@ -1,0 +1,89 @@
+{
+  "overall": "pass",
+  "passed": 20,
+  "failed": 0,
+  "total": 20,
+  "tests": [
+    {
+      "name": "test_confidence_weights_learning_sum_to_one",
+      "status": "passed"
+    },
+    {
+      "name": "test_learning_confidence_formula_in_source",
+      "status": "passed"
+    },
+    {
+      "name": "test_runtime_snapshot_confirms_zero_ml",
+      "status": "passed"
+    },
+    {
+      "name": "test_scan_with_learning_mode_zeros_ml",
+      "status": "passed"
+    },
+    {
+      "name": "test_scan_method_accepts_learning_mode_param",
+      "status": "passed"
+    },
+    {
+      "name": "test_learning_risk_budget_constant_exists",
+      "status": "passed"
+    },
+    {
+      "name": "test_learning_risk_budget_values",
+      "status": "passed"
+    },
+    {
+      "name": "test_kelly_source_has_learning_branch",
+      "status": "passed"
+    },
+    {
+      "name": "test_no_exploration_submit_in_source",
+      "status": "passed"
+    },
+    {
+      "name": "test_exploration_enabled_defaults_false",
+      "status": "passed"
+    },
+    {
+      "name": "test_exploration_candidates_only_logged",
+      "status": "passed"
+    },
+    {
+      "name": "test_evolution_freeze_constant",
+      "status": "passed"
+    },
+    {
+      "name": "test_apply_evolved_params_gated",
+      "status": "passed"
+    },
+    {
+      "name": "test_warm_start_gated",
+      "status": "passed"
+    },
+    {
+      "name": "test_breakout_path_uses_shared_helper",
+      "status": "passed"
+    },
+    {
+      "name": "test_shared_helper_exists",
+      "status": "passed"
+    },
+    {
+      "name": "test_alpha_path_uses_shared_helper",
+      "status": "passed"
+    },
+    {
+      "name": "test_breakout_path_checks_confidence",
+      "status": "passed"
+    },
+    {
+      "name": "test_ml_veto_gated_by_learning_mode",
+      "status": "passed"
+    },
+    {
+      "name": "test_learning_mode_sort_uses_breakout_quality",
+      "status": "passed"
+    }
+  ],
+  "output_tail": ""
+}

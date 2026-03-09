@@ -245,13 +245,13 @@ class TestApplyEvolvedParams:
         assert hasattr(sizer, "_evolved_regime_scales")
         assert sizer._evolved_regime_scales["trending_up"] == 1.15
 
-        # Evolved scales require 200+ total trades and 30+ in the regime
-        # (improve7 freeze). Seed enough stats to unlock evolved scales.
+        # Evolved scales require 300+ total trades to unfreeze (improve9 B5)
+        # and 30+ in the regime. Seed enough stats to unlock evolved scales.
         sizer._regime_stats["trending_up"] = {
             "wins": 25, "losses": 10, "total_pnl": 100.0,
             "total_win_pnl": 150.0, "total_loss_pnl": 50.0,
         }
-        # Add enough trades in other regimes to reach 200+ total
+        # Add enough trades in other regimes to reach 300+ total
         sizer._regime_stats["chop"] = {
             "wins": 80, "losses": 85, "total_pnl": -20.0,
             "total_win_pnl": 200.0, "total_loss_pnl": 220.0,

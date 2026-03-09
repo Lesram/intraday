@@ -37,7 +37,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 scripts/ci/write_task_report.py"
+            "command": "python3 scripts/ci/generate_artifacts.py quick"
           }
         ]
       }

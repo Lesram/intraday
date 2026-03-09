@@ -770,7 +770,7 @@ ENTRY SCANNING PIPELINE
   │   │       (b) daily P&L ≤ -max($25, 0.10% equity), OR (c) 2+ stop-loss exits in 30 min
   │   ├── Gate 10: Missingness gate (last-row NaN/Inf > 25%)? → REJECT
   │   └── Gate 11: Confidence gate (improve7):
-  │       └── MIN_MAIN_CONF = 0.35 in chop, 0.30 otherwise
+  │       └── MIN_MAIN_CONF = 0.45 in chop/high_vol/trending_down, 0.40 otherwise
   │           Below threshold → LOGGED only (improve9 A7: exploration queue removed)
   │
   │   IF passes all 11 gates:
@@ -789,15 +789,17 @@ ENTRY SCANNING PIPELINE
   │
   ├── [7e] PURE BREAKOUT ADDITIONS (not in alpha candidates):
   │   ├── Max per tick: _MAX_PURE_BREAKOUT = 2
-  │   ├── Gates (subset — NOT same as alpha gates):
+  │   ├── Gates (shares safety gates with alpha path — improve9 hardening):
   │   │   ├── Not in alpha candidates, not in open positions
   │   │   ├── Not in exit cooldown, pending entry, or entry_metadata
   │   │   ├── Not in _symbol_banned (circuit breaker, improve7)
   │   │   ├── composite_score >= 0.55
   │   │   ├── fitness gate: learning=pass always, production=0.45 for 10+ trades (B1)
+  │   │   ├── Liquidity gate (shared with alpha path)
+  │   │   ├── Confidence threshold gate (shared with alpha path)
   │   │   ├── Sector gate allows
   │   │   └── ML direction not negative (don't fight ML)
-  │   │   (NOTE: skips LONG_ONLY direction check and liquidity gate)
+  │   │   (NOTE: skips missingness gate; uses baseline confidence only, not defensive tier)
   │   ├── Forced direction = +1.0 (always long)
   │   └── predicted_return:
   │       ├── ML present: max(ml_return, 0.003)  (0.3% min floor)
@@ -4337,7 +4339,7 @@ StalenessReasons (enum):
 | Kelly max per position | 8% intraday / 10% daily | kelly_sizer | Position concentration limit (set by live_engine per timeframe) |
 | Kelly max portfolio | 95% | kelly_sizer | Total exposure limit |
 | Drawdown risk-off | 25% | kelly_sizer | No new positions at all |
-| Drawdown kill switch | code: 5%, docker: 3%, .env: 8% | governance | Halt all entries |
+| Drawdown kill switch | code default: 5%, docker default: 3%, .env override: 20% | governance | Halt all entries |
 | Intraday size reduction | 40% | live_engine | Last 15 min of session (3:45-4:00 ET) |
 | EOD entry block | 15:45 ET | live_engine | Block all new entries (improve7) |
 | EOD flatten | 15:58 ET | live_engine | Force close all open positions (improve7) |
@@ -4355,7 +4357,7 @@ StalenessReasons (enum):
 | Feature QA missing bars | 10% | feature_store | Flag data quality issue |
 | Failure-to-follow delay | chop: max(H×4/5, 5) = **12 bars**; other: max(H//2, 3) = **7** for H=15 | adaptive_exits | Chop gets longer delay (improve7) |
 | Failure-to-follow R thresholds | regime-dependent (0.10R–0.25R) | adaptive_exits | trending_up/low_vol/high_vol=disabled; chop=0.15R (**losers-only exit, winners get stop tightened**); stress=0.10R; others=0.25R |
-| Confidence entry gate | 0.30 (0.35 in chop) | live_engine | Below-threshold candidates logged only (improve9 A7: exploration removed) |
+| Confidence entry gate | 0.40 (0.45 in chop/high_vol/trending_down) | live_engine | Below-threshold candidates logged only (improve9 A7: exploration removed) |
 | Symbol circuit breaker | (a) 2+ consec losses + 0 wins, (b) PnL ≤ -max($25, 0.10% eq), (c) 2+ SL in 30min | live_engine | Ban symbol for session (improve8 enhanced) |
 | Regime evolution freeze | 200+ total trades AND 30+ per regime | kelly_sizer | Evolved regime scales locked until statistically stable (improve7) |
 | Full evolution freeze | **300+ total trades** | live_engine | improve9 B5: ALL self-evolution frozen until 300 clean trades. Only ML retraining runs. |
