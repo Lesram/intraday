@@ -9,9 +9,11 @@ services:
       target: runtime
     ports:
       - "8000:8000"
+    env_file:
+      - .env
     environment:
       # Application Settings - PAPER TRADING
-      - APP_ENVIRONMENT=paper
+      - APP_ENVIRONMENT=development
       - APP_LOG_LEVEL=INFO
       - DEBUG=false
 
