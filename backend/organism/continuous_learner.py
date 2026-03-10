@@ -49,9 +49,9 @@ def acceptance_gate(
         score = hit_rate * 0.4 + accuracy * 0.3 + (direction_acc - 0.5) * 0.6
 
     Quality constraints (all must hold):
-        1. mean_pred_return > 0     -- predicted edge must be positive
-        2. precision >= 0.45        -- minimum classification precision
-        3. calibration honesty      -- if calibration has >= 30 samples,
+        1. effective_mean_pred_return > 0 -- damped predicted edge must be positive
+        2. precision >= 0.45             -- minimum classification precision
+        3. calibration honesty           -- if calibration has >= 30 samples,
            confidence monotonicity must not be inverted
 
     When calibration_sample_count < 30, the minimum composite score threshold
@@ -67,8 +67,11 @@ def acceptance_gate(
 
     new_score = _score(new_metrics)
 
-    # Economic and statistical quality constraints
-    has_positive_edge = new_metrics.mean_pred_return > 0
+    # Economic and statistical quality constraints.
+    # Use effective_mean_pred_return (damped by calibration quality) rather
+    # than raw mean_pred_return so that weakly-calibrated positive edges
+    # don't pass the gate.
+    has_positive_edge = new_metrics.effective_mean_pred_return > 0
     has_min_precision = new_metrics.precision >= 0.45
     quality_ok = has_positive_edge and has_min_precision
 

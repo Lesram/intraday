@@ -184,6 +184,7 @@ class TestAcceptanceGateCalibration:
             f1=0.52,
             direction_accuracy=0.60,
             mean_pred_return=0.005,
+            effective_mean_pred_return=0.005,
             hit_rate=0.55,
             calibration_sample_count=50,
             calibration_monotonic=True,

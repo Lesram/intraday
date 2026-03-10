@@ -148,6 +148,7 @@ def _train_in_process(
                 calibration_sample_count=old_metrics_dict.get("calibration_sample_count", 0),
                 calibration_monotonic=old_metrics_dict.get("calibration_monotonic", True),
                 calibration_error=old_metrics_dict.get("calibration_error", 0.0),
+                effective_mean_pred_return=old_metrics_dict.get("effective_mean_pred_return", 0.0),
             )
 
         accepted, rejection_reason = acceptance_gate(
@@ -155,7 +156,7 @@ def _train_in_process(
             old_metrics=old_metrics_obj,
         )
 
-        # Helper to build train_metrics dict (includes calibration fields)
+        # Helper to build train_metrics dict (includes calibration + effective fields)
         def _build_train_metrics(m):
             return {
                 "accuracy": getattr(m, "accuracy", 0),
@@ -164,6 +165,7 @@ def _train_in_process(
                 "f1": getattr(m, "f1", 0),
                 "direction_accuracy": getattr(m, "direction_accuracy", 0),
                 "mean_pred_return": getattr(m, "mean_pred_return", 0),
+                "effective_mean_pred_return": getattr(m, "effective_mean_pred_return", 0.0),
                 "hit_rate": getattr(m, "hit_rate", 0),
                 "generation": getattr(m, "generation", 0),
                 "calibration_sample_count": getattr(m, "calibration_sample_count", 0),
@@ -493,6 +495,10 @@ class BackgroundTrainer:
                 direction_accuracy=tm.get("direction_accuracy", 0),
                 mean_pred_return=tm.get("mean_pred_return", 0),
                 hit_rate=tm.get("hit_rate", 0),
+                calibration_sample_count=tm.get("calibration_sample_count", 0),
+                calibration_monotonic=tm.get("calibration_monotonic", True),
+                calibration_error=tm.get("calibration_error", 0.0),
+                effective_mean_pred_return=tm.get("effective_mean_pred_return", 0.0),
             )
             if "generation" in tm:
                 signal_gen.generation = tm["generation"]

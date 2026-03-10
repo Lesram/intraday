@@ -67,13 +67,17 @@ class ModelMetrics:
     recall: float = 0.0
     f1: float = 0.0
     direction_accuracy: float = 0.0
-    mean_pred_return: float = 0.0
+    mean_pred_return: float = 0.0       # raw regressor mean — may be over-optimistic
     hit_rate: float = 0.0  # % of predictions with correct sign
     feature_importance_top10: list[tuple[str, float]] = field(default_factory=list)
     # Calibration quality fields (H1)
     calibration_sample_count: int = 0    # total observations across all bins
     calibration_monotonic: bool = True   # are bucket win-rates non-decreasing?
     calibration_error: float = 0.0       # mean abs(expected - actual) across bins
+    # Effective (damped) mean predicted return (H3).
+    # Damped by calibration quality: raw * min(1, cal_samples/30).
+    # This is the value the acceptance gate uses for edge verification.
+    effective_mean_pred_return: float = 0.0
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -84,6 +88,7 @@ class ModelMetrics:
             "f1": round(self.f1, 4),
             "direction_accuracy": round(self.direction_accuracy, 4),
             "mean_pred_return": round(self.mean_pred_return, 6),
+            "effective_mean_pred_return": round(self.effective_mean_pred_return, 6),
             "hit_rate": round(self.hit_rate, 4),
             "feature_importance_top10": self.feature_importance_top10[:10],
             "calibration_sample_count": self.calibration_sample_count,
@@ -687,6 +692,12 @@ class MLSignalGenerator:
         metrics.calibration_sample_count = cal_samples
         metrics.calibration_monotonic = cal_mono
         metrics.calibration_error = cal_err
+
+        # Effective mean predicted return (H3) — damp raw by calibration quality.
+        # Uses the same cal_factor as _compute_effective_predicted_return but
+        # applied to the aggregate mean_pred_return rather than per-signal.
+        cal_factor = min(1.0, cal_samples / self.MIN_CALIBRATION_SAMPLES)
+        metrics.effective_mean_pred_return = metrics.mean_pred_return * cal_factor
 
         return metrics
 
