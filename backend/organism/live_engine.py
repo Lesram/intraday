@@ -2314,15 +2314,14 @@ class OrganismLiveEngine:
                             },
                             timestamp=now_iso,
                         ))
-                    elif done and train_result:
-                        # Background training failed — log error and fall back
-                        # to synchronous training so the model still gets updated
+                    elif done and train_result and train_result.error:
+                        # True training error — fall back to synchronous retrain
                         logger.warning(
-                            "Background training rejected/failed: %s — falling back to sync",
+                            "Background training failed: %s — falling back to sync",
                             train_result.error,
                         )
                         self._bg_training_metadata = {
-                            "status": "rejected",
+                            "status": "error",
                             "error": train_result.error,
                             "last_trained_tick": self._tick_count,
                         }
@@ -2331,6 +2330,33 @@ class OrganismLiveEngine:
                             logger.info("Synchronous fallback retrain completed")
                         except Exception as e:
                             logger.warning("Sync retrain fallback also failed: %s", e)
+                    elif done and train_result:
+                        # Quality-gate rejection — model trained but didn't pass
+                        # the acceptance bar. Do NOT fall back to sync retrain;
+                        # let the next scheduled retrain attempt naturally.
+                        logger.info(
+                            "Background training model rejected: %s",
+                            train_result.rejection_reason,
+                        )
+                        self._bg_training_metadata = {
+                            "status": "rejected",
+                            "rejection_reason": train_result.rejection_reason,
+                            "train_metrics": train_result.train_metrics,
+                            "duration_s": train_result.duration_s,
+                            "last_trained_tick": self._tick_count,
+                        }
+                        result.activity.append(ActivityEvent(
+                            event_type="retrain",
+                            message=f"Background model rejected by quality gate "
+                                    f"(duration={train_result.duration_s:.1f}s)",
+                            details={
+                                "background": True,
+                                "rejection_reason": train_result.rejection_reason,
+                                "train_metrics": train_result.train_metrics,
+                                "duration_s": train_result.duration_s,
+                            },
+                            timestamp=now_iso,
+                        ))
                 elif self._bars_since_retrain >= _retrain_threshold:
                     self._bars_since_retrain = 0
                     try:
