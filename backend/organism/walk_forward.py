@@ -16,6 +16,13 @@ Evaluation includes:
 - Stability of weights/params across windows
 - Sensitivity to cost assumptions
 - Acceptance gates (minimum improvement, no drawdown regression, no instability)
+
+Contract: walk_forward is an OFFLINE-ONLY evaluation tool. It is not used
+in the live model promotion path. Live acceptance uses a simpler composite
+quality gate (ContinuousLearner._validate_new_model) that can run
+synchronously in the tick loop or inside the background training process.
+Walk-forward is intended for manual strategy evaluation, parameter sweeps,
+and pre-deployment validation — not for gating individual model retrains.
 """
 
 from __future__ import annotations

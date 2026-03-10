@@ -306,6 +306,10 @@ class ContinuousLearner:
 
         These prevent weak models from being promoted just because they
         happen to predict a small positive mean return.
+
+        Note: this is the LIVE acceptance gate, used by both the synchronous
+        retrain path and the background trainer. walk_forward.py provides a
+        richer offline evaluation but is not used for live model promotion.
         """
         def _score(m: ModelMetrics) -> float:
             return (

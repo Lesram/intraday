@@ -102,11 +102,72 @@ def _train_in_process(
         if signal_gen_state.get("feature_cols"):
             signal_gen._feature_cols = signal_gen_state["feature_cols"]
 
+        # Restore full signal generator state
+        signal_gen.prediction_horizon = signal_gen_state.get("prediction_horizon", 1)
+        signal_gen._direction_threshold_buy = signal_gen_state.get("direction_threshold_buy", 0.52)
+        signal_gen._direction_threshold_sell = signal_gen_state.get("direction_threshold_sell", 0.48)
+        if signal_gen_state.get("calibration_counts"):
+            signal_gen._calibration_counts = signal_gen_state["calibration_counts"]
+        if signal_gen_state.get("calibration_map"):
+            signal_gen._calibration_map = signal_gen_state["calibration_map"]
+        if signal_gen_state.get("evolved_feature_weights"):
+            signal_gen._evolved_feature_weights = signal_gen_state["evolved_feature_weights"]
+
         # Train
         metrics = signal_gen.train(features_by_symbol)
 
         if metrics is None:
             return {"error": "Training returned None metrics", "duration_s": time.time() - t0}
+
+        # Acceptance gate — same composite quality check as ContinuousLearner.
+        # Ensures background-trained models meet the same bar as sync path.
+        has_positive_edge = metrics.mean_pred_return > 0
+        has_min_precision = metrics.precision >= 0.45
+        quality_ok = has_positive_edge and has_min_precision
+
+        def _score(m):
+            return m.hit_rate * 0.4 + m.accuracy * 0.3 + max(m.direction_accuracy - 0.5, 0.0) * 0.6
+
+        new_score = _score(metrics)
+
+        # Check against old model metrics if available
+        old_metrics_dict = learner_state.get("old_model_metrics")
+        if old_metrics_dict:
+            from backend.organism.ml_signal import ModelMetrics as _MM
+            old_m = _MM(
+                generation=old_metrics_dict.get("generation", 0),
+                accuracy=old_metrics_dict.get("accuracy", 0),
+                precision=old_metrics_dict.get("precision", 0),
+                recall=old_metrics_dict.get("recall", 0),
+                f1=old_metrics_dict.get("f1", 0),
+                direction_accuracy=old_metrics_dict.get("direction_accuracy", 0),
+                mean_pred_return=old_metrics_dict.get("mean_pred_return", 0),
+                hit_rate=old_metrics_dict.get("hit_rate", 0),
+            )
+            old_score = _score(old_m)
+            improved = (new_score - old_score) >= 0.05
+            good_enough = new_score >= 0.40 and metrics.hit_rate >= 0.48
+            accepted = (improved or good_enough) and quality_ok
+        else:
+            # No old model — first model acceptance
+            accepted = new_score > 0.25 and quality_ok
+
+        if not accepted:
+            return {
+                "accepted": False,
+                "error": f"Model rejected by quality gate (score={new_score:.3f}, "
+                         f"precision={metrics.precision:.3f}, "
+                         f"mean_pred_return={metrics.mean_pred_return:.4f})",
+                "train_metrics": {
+                    "accuracy": getattr(metrics, "accuracy", 0),
+                    "precision": getattr(metrics, "precision", 0),
+                    "direction_accuracy": getattr(metrics, "direction_accuracy", 0),
+                    "mean_pred_return": getattr(metrics, "mean_pred_return", 0),
+                    "hit_rate": getattr(metrics, "hit_rate", 0),
+                    "generation": getattr(metrics, "generation", 0),
+                },
+                "duration_s": time.time() - t0,
+            }
 
         # Evolve params — gated by evolution freeze (300 trades)
         evolved_params_dict = None
@@ -142,7 +203,12 @@ def _train_in_process(
             "accepted": True,
             "train_metrics": {
                 "accuracy": getattr(metrics, "accuracy", 0),
+                "precision": getattr(metrics, "precision", 0),
+                "recall": getattr(metrics, "recall", 0),
+                "f1": getattr(metrics, "f1", 0),
                 "direction_accuracy": getattr(metrics, "direction_accuracy", 0),
+                "mean_pred_return": getattr(metrics, "mean_pred_return", 0),
+                "hit_rate": getattr(metrics, "hit_rate", 0),
                 "generation": getattr(metrics, "generation", 0),
             },
             "clf_pickle": pickle.dumps(signal_gen._clf),
@@ -237,7 +303,14 @@ class BackgroundTrainer:
             "learning_rate": signal_gen._xgb_params.get("learning_rate", 0.05),
             "is_trained": signal_gen._is_trained,
             "feature_cols": signal_gen._feature_cols,
+            "prediction_horizon": signal_gen.prediction_horizon,
+            "direction_threshold_buy": signal_gen._direction_threshold_buy,
+            "direction_threshold_sell": signal_gen._direction_threshold_sell,
+            "calibration_counts": signal_gen._calibration_counts,
+            "calibration_map": signal_gen._calibration_map,
         }
+        if hasattr(signal_gen, "_evolved_feature_weights") and signal_gen._evolved_feature_weights:
+            signal_gen_state["evolved_feature_weights"] = signal_gen._evolved_feature_weights
         try:
             signal_gen_state["clf_pickle"] = pickle.dumps(signal_gen._clf)
             signal_gen_state["reg_pickle"] = pickle.dumps(signal_gen._reg)
@@ -263,8 +336,10 @@ class BackgroundTrainer:
             "total_trades": total_trades,
         }
 
-        # Learner state (minimal)
+        # Pass old model metrics for acceptance comparison
         learner_state = {}
+        if signal_gen._latest_metrics:
+            learner_state["old_model_metrics"] = signal_gen._latest_metrics.to_dict()
 
         self._is_training = True
         loop = asyncio.get_running_loop()
@@ -379,7 +454,10 @@ class BackgroundTrainer:
         if result.feature_cols:
             signal_gen._feature_cols = result.feature_cols
 
-        signal_gen._is_trained = True
+        # Preserve trained state — don't force True if worker didn't train
+        # (result.accepted already gates this, but be explicit)
+        if result.new_clf_state and result.new_reg_state:
+            signal_gen._is_trained = True
 
         # Apply evolved params — gated by evolution freeze (300 trades)
         if result.evolved_params_dict and total_trades >= 300:

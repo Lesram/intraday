@@ -67,7 +67,11 @@ class ModelMetrics:
         return {
             "generation": self.generation,
             "accuracy": round(self.accuracy, 4),
+            "precision": round(self.precision, 4),
+            "recall": round(self.recall, 4),
+            "f1": round(self.f1, 4),
             "direction_accuracy": round(self.direction_accuracy, 4),
+            "mean_pred_return": round(self.mean_pred_return, 6),
             "hit_rate": round(self.hit_rate, 4),
             "feature_importance_top10": self.feature_importance_top10[:10],
         }
