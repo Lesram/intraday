@@ -289,6 +289,11 @@ class ContinuousLearner:
             "exit_reasons": exit_reasons,
         }
 
+    # Minimum calibration samples for full acceptance confidence.
+    # Below this, the composite score threshold is raised from 0.25 to 0.35,
+    # requiring stronger statistical evidence from uncalibrated models.
+    MIN_CALIBRATION_SAMPLES_FOR_ACCEPTANCE = 30
+
     def _validate_new_model(
         self,
         features_by_symbol: dict[str, pd.DataFrame],
@@ -300,12 +305,16 @@ class ContinuousLearner:
         Uses a composite score combining statistical accuracy and economic signal:
             score = hit_rate * 0.4 + accuracy * 0.3 + (direction_acc - 0.5) * 0.6
 
-        Quality constraints (both must hold):
-            1. mean_pred_return > 0  -- predicted edge must be positive
-            2. precision >= 0.45     -- minimum classification precision
+        Quality constraints (all must hold):
+            1. mean_pred_return > 0     -- predicted edge must be positive
+            2. precision >= 0.45        -- minimum classification precision
+            3. calibration honesty      -- if calibration has >= 30 samples,
+               confidence monotonicity must not be inverted (higher-confidence
+               bins must not have lower win rates than lower-confidence bins)
 
-        These prevent weak models from being promoted just because they
-        happen to predict a small positive mean return.
+        When calibration sample count < 30 (insufficient data to verify
+        calibration quality), the minimum composite score threshold is raised
+        from 0.25 to 0.35, requiring stronger statistical evidence.
 
         Note: this is the LIVE acceptance gate, used by both the synchronous
         retrain path and the background trainer. walk_forward.py provides a
@@ -325,14 +334,26 @@ class ContinuousLearner:
         has_min_precision = new_metrics.precision >= 0.45
         quality_ok = has_positive_edge and has_min_precision
 
+        # Calibration honesty constraint (H1):
+        # If we have enough calibration data to judge, require monotonicity.
+        # If calibration is inverted (high-confidence bins perform worse),
+        # the model is dishonest about its uncertainty — reject.
+        cal_samples = new_metrics.calibration_sample_count
+        has_sufficient_calibration = cal_samples >= self.MIN_CALIBRATION_SAMPLES_FOR_ACCEPTANCE
+        if has_sufficient_calibration and not new_metrics.calibration_monotonic:
+            quality_ok = False
+
+        # When calibration data is insufficient, require higher score threshold
+        min_score = 0.25 if has_sufficient_calibration else 0.35
+
         # If no old model exists, accept any reasonable model passing quality
         if not old_clf:
-            return new_score > 0.25 and quality_ok
+            return new_score > min_score and quality_ok
 
         # Get old model's last composite score
         old_metrics = self.state.model_metrics
         if not old_metrics:
-            return new_score > 0.25 and quality_ok
+            return new_score > min_score and quality_ok
 
         old_score = _score(old_metrics[-1])
 

@@ -41,13 +41,21 @@ from backend.organism.ml_features import FEATURE_COLUMNS
 
 @dataclass
 class MLSignal:
-    """One ML-generated trading signal."""
+    """One ML-generated trading signal.
+
+    Downstream consumers should use:
+    - effective_confidence (not raw confidence) for sizing/gating
+    - effective_predicted_return (not raw predicted_return) for economic decisions
+
+    Raw fields are preserved for diagnostics and logging.
+    """
     symbol: str
     direction: float       # +1 buy, -1 sell, 0 hold
     confidence: float      # [0, 1] — raw model confidence
-    predicted_return: float  # expected next-bar return
+    predicted_return: float  # raw regressor output — may be over-optimistic
     feature_importance: dict[str, float] = field(default_factory=dict)
     effective_confidence: float = 0.0  # min(raw, empirical_precision) or raw * 0.75
+    effective_predicted_return: float = 0.0  # damped by calibration quality + confidence
 
 
 @dataclass
@@ -62,6 +70,10 @@ class ModelMetrics:
     mean_pred_return: float = 0.0
     hit_rate: float = 0.0  # % of predictions with correct sign
     feature_importance_top10: list[tuple[str, float]] = field(default_factory=list)
+    # Calibration quality fields (H1)
+    calibration_sample_count: int = 0    # total observations across all bins
+    calibration_monotonic: bool = True   # are bucket win-rates non-decreasing?
+    calibration_error: float = 0.0       # mean abs(expected - actual) across bins
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -74,6 +86,9 @@ class ModelMetrics:
             "mean_pred_return": round(self.mean_pred_return, 6),
             "hit_rate": round(self.hit_rate, 4),
             "feature_importance_top10": self.feature_importance_top10[:10],
+            "calibration_sample_count": self.calibration_sample_count,
+            "calibration_monotonic": self.calibration_monotonic,
+            "calibration_error": round(self.calibration_error, 4),
         }
 
 
@@ -338,6 +353,12 @@ class MLSignalGenerator:
         # empirical precision from calibration data when available.
         eff_conf = self._compute_effective_confidence(confidence)
 
+        # H1: effective_predicted_return — damp raw prediction when
+        # calibration quality is weak or confidence is low.
+        eff_pred_return = self._compute_effective_predicted_return(
+            pred_return, eff_conf,
+        )
+
         return MLSignal(
             symbol=symbol,
             direction=direction,
@@ -345,6 +366,7 @@ class MLSignalGenerator:
             predicted_return=pred_return,
             feature_importance=fi,
             effective_confidence=eff_conf,
+            effective_predicted_return=eff_pred_return,
         )
 
     def predict_batch(
@@ -394,10 +416,65 @@ class MLSignalGenerator:
             return min(raw_confidence, empirical)
         return raw_confidence * 0.75
 
+    # Minimum calibration samples for full trust in predicted_return.
+    # Below this, predicted_return is damped by (samples / threshold).
+    MIN_CALIBRATION_SAMPLES = 30
+
+    def _compute_effective_predicted_return(
+        self, raw_return: float, effective_confidence: float,
+    ) -> float:
+        """Damp predicted_return when calibration quality is weak or confidence is low.
+
+        Damping = calibration_factor * confidence_factor
+        - calibration_factor: min(1.0, total_samples / MIN_CALIBRATION_SAMPLES)
+        - confidence_factor: effective_confidence (already capped by empirical precision)
+
+        This prevents over-trust in predictions from weakly-calibrated or
+        low-confidence models while preserving the full signal when both are strong.
+        """
+        total_samples = sum(c[1] for c in self._calibration_counts)
+        cal_factor = min(1.0, total_samples / self.MIN_CALIBRATION_SAMPLES)
+        conf_factor = max(effective_confidence, 0.1)  # floor to avoid zeroing out
+        damping = cal_factor * conf_factor
+        return raw_return * damping
+
     def calibrate_confidence(self, raw_confidence: float) -> float:
         """Apply calibration correction to raw confidence."""
         bin_idx = min(int(raw_confidence * 5), 4)
         return float(min(raw_confidence * self._calibration_map[bin_idx], 1.0))
+
+    def calibration_quality(self) -> tuple[int, bool, float]:
+        """Compute calibration quality summary.
+
+        Returns (total_samples, is_monotonic, calibration_error):
+        - total_samples: total observations across all 5 bins
+        - is_monotonic: True if bucket win-rates are non-decreasing
+          (higher confidence bins should have higher accuracy)
+        - calibration_error: mean |expected_rate - actual_rate| across
+          bins with >= 10 samples (0.0 if no bins qualify)
+        """
+        total_samples = sum(c[1] for c in self._calibration_counts)
+
+        # Compute per-bin actual win rates for bins with data
+        win_rates: list[float] = []
+        errors: list[float] = []
+        for i in range(5):
+            total = self._calibration_counts[i][1]
+            bin_midpoint = (i * 0.2 + (i + 1) * 0.2) / 2
+            if total >= 10:
+                actual = self._calibration_counts[i][0] / total
+                win_rates.append(actual)
+                errors.append(abs(bin_midpoint - actual))
+            else:
+                win_rates.append(float("nan"))
+
+        # Monotonicity: check that non-nan win rates are non-decreasing
+        valid = [r for r in win_rates if not math.isnan(r)]
+        is_monotonic = all(a <= b + 1e-9 for a, b in zip(valid, valid[1:])) if len(valid) >= 2 else True
+
+        cal_error = float(sum(errors) / len(errors)) if errors else 0.0
+
+        return total_samples, is_monotonic, cal_error
 
     def calibration_to_dict(self) -> dict[str, Any]:
         """Serialize calibration state for brain persistence."""
@@ -604,6 +681,12 @@ class MLSignalGenerator:
 
         # Feature importance
         metrics.feature_importance_top10 = list(self._get_feature_importance().items())[:10]
+
+        # Calibration quality (H1) — snapshot from generator's calibration state
+        cal_samples, cal_mono, cal_err = self.calibration_quality()
+        metrics.calibration_sample_count = cal_samples
+        metrics.calibration_monotonic = cal_mono
+        metrics.calibration_error = cal_err
 
         return metrics
 
