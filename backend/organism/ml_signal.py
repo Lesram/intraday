@@ -70,22 +70,26 @@ class MLSignal:
 class ModelMetrics:
     """Training/validation metrics for a model generation.
 
-    Calibration fields (calibration_sample_count, calibration_monotonic,
-    calibration_error) reflect the generator's **system-level rolling
-    calibration state** — accumulated across all past predictions, not
-    derived from this candidate model's validation set alone.  This means
-    they measure the *system's* calibration maturity, which determines
-    how much trust the acceptance gate places in the model's confidence
-    claims.  A fresh system with zero calibration history will have
-    calibration_sample_count=0 regardless of the candidate model's
-    validation quality.
+    Two calibration scopes:
+
+    1. System-level (calibration_sample_count, calibration_monotonic,
+       calibration_error): from the generator's **rolling live calibration
+       state** — accumulated across all past predictions.  Measures the
+       *system's* calibration maturity, used for score threshold adjustment.
+
+    2. Candidate-level (candidate_calibration_sample_count,
+       candidate_calibration_monotonic, candidate_calibration_error):
+       derived from this candidate model's own validation-set predictions
+       in _evaluate().  Measures how well *this specific model* is
+       calibrated on its holdout data.  Used by the acceptance gate
+       for model quality honesty checks (monotonicity, error threshold).
 
     Effective mean predicted return (effective_mean_pred_return) uses only
-    the calibration sample factor: raw * min(1, cal_samples/30).  This is
-    intentionally different from the per-signal effective_predicted_return
-    (which also multiplies by confidence_factor) because at the aggregate
-    model-evaluation level there is no single per-signal confidence to
-    apply — the damping reflects only system calibration maturity.
+    the system calibration sample factor: raw * min(1, cal_samples/30).
+    This is intentionally different from the per-signal
+    effective_predicted_return (which also multiplies by confidence_factor)
+    because at the aggregate model-evaluation level there is no single
+    per-signal confidence to apply.
     """
     generation: int
     accuracy: float = 0.0
@@ -107,6 +111,13 @@ class ModelMetrics:
     # confidence_factor.  This is the value the acceptance gate uses for
     # edge verification.
     effective_mean_pred_return: float = 0.0
+    # Candidate-model calibration fields (I1).
+    # Derived from the candidate model's own validation-set predictions in
+    # _evaluate().  These measure how well *this specific model* is calibrated
+    # on its holdout data, independent of system-level live calibration maturity.
+    candidate_calibration_sample_count: int = 0
+    candidate_calibration_monotonic: bool = True
+    candidate_calibration_error: float = 0.0
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -123,6 +134,9 @@ class ModelMetrics:
             "calibration_sample_count": self.calibration_sample_count,
             "calibration_monotonic": self.calibration_monotonic,
             "calibration_error": round(self.calibration_error, 4),
+            "candidate_calibration_sample_count": self.candidate_calibration_sample_count,
+            "candidate_calibration_monotonic": self.candidate_calibration_monotonic,
+            "candidate_calibration_error": round(self.candidate_calibration_error, 4),
         }
 
 
@@ -741,7 +755,64 @@ class MLSignalGenerator:
         cal_factor = min(1.0, cal_samples / self.MIN_CALIBRATION_SAMPLES)
         metrics.effective_mean_pred_return = metrics.mean_pred_return * cal_factor
 
+        # Candidate-model calibration (I1) — evaluate how well this specific
+        # model's confidence predictions match actual outcomes on the validation
+        # set.  Unlike system-level calibration (above), this is derived entirely
+        # from the candidate's own validation predictions.
+        try:
+            val_proba = self._clf.predict_proba(X_val)
+            if val_proba.shape[1] > 1:
+                val_confidence = np.abs(val_proba[:, 1] - 0.5) * 2
+            else:
+                val_confidence = np.abs(val_proba[:, 0] - 0.5) * 2
+            val_correct = (dir_pred == y_dir_val).astype(int)
+            cand_samples, cand_mono, cand_err = self._candidate_calibration_summary(
+                val_confidence, val_correct,
+            )
+            metrics.candidate_calibration_sample_count = cand_samples
+            metrics.candidate_calibration_monotonic = cand_mono
+            metrics.candidate_calibration_error = cand_err
+        except Exception:
+            pass  # dir_pred may not exist if classifier failed above
+
         return metrics
+
+    @staticmethod
+    def _candidate_calibration_summary(
+        confidences: np.ndarray, correct: np.ndarray,
+    ) -> tuple[int, bool, float]:
+        """Compute calibration summary from validation predictions.
+
+        Same 5-bin structure as calibration_quality() but operates on
+        arrays of (confidence, was_correct) from the validation set,
+        not the generator's rolling live state.
+
+        Returns (total_samples, is_monotonic, calibration_error).
+        """
+        total = len(confidences)
+        bins: list[list[int]] = [[0, 0] for _ in range(5)]
+        for conf, corr in zip(confidences, correct):
+            idx = min(int(float(conf) * 5), 4)
+            bins[idx][1] += 1
+            if corr:
+                bins[idx][0] += 1
+
+        win_rates: list[float] = []
+        errors: list[float] = []
+        for i in range(5):
+            mid = (i * 0.2 + (i + 1) * 0.2) / 2
+            if bins[i][1] >= 5:
+                actual = bins[i][0] / bins[i][1]
+                win_rates.append(actual)
+                errors.append(abs(mid - actual))
+            else:
+                win_rates.append(float("nan"))
+
+        valid = [r for r in win_rates if not math.isnan(r)]
+        is_mono = all(a <= b + 1e-9 for a, b in zip(valid, valid[1:])) if len(valid) >= 2 else True
+        cal_err = float(sum(errors) / len(errors)) if errors else 0.0
+
+        return total, is_mono, cal_err
 
     def _get_feature_importance(self) -> dict[str, float]:
         """Get feature importance from the classifier."""

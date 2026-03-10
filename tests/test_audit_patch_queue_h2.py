@@ -73,10 +73,12 @@ class TestAcceptanceGateCalibrationHonesty:
         m = _good_metrics(
             calibration_sample_count=50,
             calibration_monotonic=False,
+            candidate_calibration_sample_count=50,
+            candidate_calibration_monotonic=False,
         )
         accepted, reason = acceptance_gate(m)
         assert not accepted, "Inverted calibration with sufficient data must be rejected"
-        assert "cal_monotonic" in reason
+        assert "cand_cal_mono" in reason
 
     def test_good_calibration_accepted(self):
         m = _good_metrics(
@@ -141,7 +143,10 @@ class TestLearnerDelegatesToSharedGate:
 
     def test_learner_rejects_inverted_calibration(self):
         learner = self._make_learner()
-        m = _good_metrics(calibration_sample_count=50, calibration_monotonic=False)
+        m = _good_metrics(
+            calibration_sample_count=50, calibration_monotonic=False,
+            candidate_calibration_sample_count=50, candidate_calibration_monotonic=False,
+        )
         assert not learner._validate_new_model({}, m, None)
 
     def test_learner_raises_threshold_for_insufficient_cal(self):

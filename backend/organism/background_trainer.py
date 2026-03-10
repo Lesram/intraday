@@ -149,6 +149,9 @@ def _train_in_process(
                 calibration_monotonic=old_metrics_dict.get("calibration_monotonic", True),
                 calibration_error=old_metrics_dict.get("calibration_error", 0.0),
                 effective_mean_pred_return=old_metrics_dict.get("effective_mean_pred_return", 0.0),
+                candidate_calibration_sample_count=old_metrics_dict.get("candidate_calibration_sample_count", 0),
+                candidate_calibration_monotonic=old_metrics_dict.get("candidate_calibration_monotonic", True),
+                candidate_calibration_error=old_metrics_dict.get("candidate_calibration_error", 0.0),
             )
 
         accepted, rejection_reason = acceptance_gate(
@@ -171,6 +174,9 @@ def _train_in_process(
                 "calibration_sample_count": getattr(m, "calibration_sample_count", 0),
                 "calibration_monotonic": getattr(m, "calibration_monotonic", True),
                 "calibration_error": getattr(m, "calibration_error", 0.0),
+                "candidate_calibration_sample_count": getattr(m, "candidate_calibration_sample_count", 0),
+                "candidate_calibration_monotonic": getattr(m, "candidate_calibration_monotonic", True),
+                "candidate_calibration_error": getattr(m, "candidate_calibration_error", 0.0),
             }
 
         if not accepted:
@@ -499,6 +505,9 @@ class BackgroundTrainer:
                 calibration_monotonic=tm.get("calibration_monotonic", True),
                 calibration_error=tm.get("calibration_error", 0.0),
                 effective_mean_pred_return=tm.get("effective_mean_pred_return", 0.0),
+                candidate_calibration_sample_count=tm.get("candidate_calibration_sample_count", 0),
+                candidate_calibration_monotonic=tm.get("candidate_calibration_monotonic", True),
+                candidate_calibration_error=tm.get("candidate_calibration_error", 0.0),
             )
             if "generation" in tm:
                 signal_gen.generation = tm["generation"]

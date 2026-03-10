@@ -206,6 +206,8 @@ class TestAcceptanceGateCalibration:
         metrics = self._good_metrics(
             calibration_sample_count=50,
             calibration_monotonic=False,
+            candidate_calibration_sample_count=50,
+            candidate_calibration_monotonic=False,
         )
         accepted = learner._validate_new_model({}, metrics, None)
         assert not accepted, \

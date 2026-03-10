@@ -52,18 +52,25 @@ def acceptance_gate(
         1. effective_mean_pred_return > 0 -- damped predicted edge must be positive
            (damped by system calibration maturity, NOT per-signal confidence)
         2. precision >= 0.45             -- minimum classification precision
-        3. calibration honesty           -- if calibration has >= 30 samples,
+        3. candidate calibration honesty -- if the candidate model's own
+           validation calibration has sufficient samples (>= 30), its
            confidence monotonicity must not be inverted
+        4. candidate calibration error   -- if candidate calibration has
+           sufficient samples, calibration_error must be < 0.25
 
-    Calibration source: all calibration fields (calibration_sample_count,
-    calibration_monotonic, calibration_error) come from the generator's
-    **system-level rolling calibration state** — accumulated across all
-    past live predictions, not from this candidate model's validation set.
-    This measures system maturity, not candidate-specific quality.
+    Two calibration scopes:
+        - System-level (calibration_sample_count, calibration_monotonic,
+          calibration_error): from the generator's rolling live state.
+          Used for system maturity gate (score threshold adjustment).
+        - Candidate-level (candidate_calibration_sample_count,
+          candidate_calibration_monotonic, candidate_calibration_error):
+          from this model's validation predictions in _evaluate().
+          Used for model quality gate (honesty and error checks).
 
-    When calibration_sample_count < 30 (system immature), the minimum
-    composite score threshold is raised from 0.25 to 0.35, requiring
-    stronger statistical evidence from uncalibrated systems.
+    When system calibration_sample_count < 30 (system immature), the
+    minimum composite score threshold is raised from 0.25 to 0.35.
+    When candidate calibration sample count < 30, score threshold is
+    also raised to 0.35 (candidate unverified).
     """
 
     def _score(m: "ModelMetrics") -> float:
@@ -76,23 +83,32 @@ def acceptance_gate(
     new_score = _score(new_metrics)
 
     # Economic and statistical quality constraints.
-    # Use effective_mean_pred_return (damped by system calibration maturity)
-    # rather than raw mean_pred_return so that systems with immature
-    # calibration can't pass the edge check on unverified predictions.
     has_positive_edge = new_metrics.effective_mean_pred_return > 0
     has_min_precision = new_metrics.precision >= 0.45
     quality_ok = has_positive_edge and has_min_precision
 
-    # Calibration honesty constraint (H1):
-    # Uses system-level calibration maturity (rolling _calibration_counts),
-    # not candidate-model validation calibration.
-    cal_samples = new_metrics.calibration_sample_count
-    has_sufficient_calibration = cal_samples >= MIN_CALIBRATION_SAMPLES_FOR_ACCEPTANCE
-    if has_sufficient_calibration and not new_metrics.calibration_monotonic:
+    # System-level calibration maturity gate — determines score threshold.
+    sys_cal_samples = new_metrics.calibration_sample_count
+    sys_mature = sys_cal_samples >= MIN_CALIBRATION_SAMPLES_FOR_ACCEPTANCE
+
+    # Candidate-level calibration honesty gate (I1) — uses the candidate
+    # model's own validation-set calibration, not the system-level state.
+    cand_cal_samples = getattr(new_metrics, "candidate_calibration_sample_count", 0)
+    cand_cal_mono = getattr(new_metrics, "candidate_calibration_monotonic", True)
+    cand_cal_err = getattr(new_metrics, "candidate_calibration_error", 0.0)
+    cand_sufficient = cand_cal_samples >= MIN_CALIBRATION_SAMPLES_FOR_ACCEPTANCE
+
+    # If candidate calibration is sufficiently sampled but inverted, reject.
+    if cand_sufficient and not cand_cal_mono:
         quality_ok = False
 
-    # When system calibration is immature, require higher score threshold
-    min_score = 0.25 if has_sufficient_calibration else 0.35
+    # If candidate calibration error is too high, reject.
+    if cand_sufficient and cand_cal_err >= 0.25:
+        quality_ok = False
+
+    # Score threshold: raised if either system or candidate calibration
+    # is immature (insufficient samples).
+    min_score = 0.25 if (sys_mature and cand_sufficient) else 0.35
 
     # No old model — first model acceptance
     if old_metrics is None:
@@ -100,9 +116,9 @@ def acceptance_gate(
         reason = (
             "accepted" if accepted
             else f"score={new_score:.3f}<{min_score}, precision={new_metrics.precision:.3f}, "
-                 f"mean_pred_return={new_metrics.mean_pred_return:.4f}, "
-                 f"cal_monotonic={new_metrics.calibration_monotonic}, "
-                 f"cal_samples={cal_samples}"
+                 f"eff_mean_pred_return={new_metrics.effective_mean_pred_return:.4f}, "
+                 f"cand_cal_mono={cand_cal_mono}, cand_cal_err={cand_cal_err:.3f}, "
+                 f"cand_cal_samples={cand_cal_samples}, sys_cal_samples={sys_cal_samples}"
         )
         return accepted, reason
 
@@ -116,9 +132,9 @@ def acceptance_gate(
     reason = (
         "accepted" if accepted
         else f"score={new_score:.3f}, old={old_score:.3f}, precision={new_metrics.precision:.3f}, "
-             f"mean_pred_return={new_metrics.mean_pred_return:.4f}, "
-             f"cal_monotonic={new_metrics.calibration_monotonic}, "
-             f"cal_samples={cal_samples}"
+             f"eff_mean_pred_return={new_metrics.effective_mean_pred_return:.4f}, "
+             f"cand_cal_mono={cand_cal_mono}, cand_cal_err={cand_cal_err:.3f}, "
+             f"cand_cal_samples={cand_cal_samples}, sys_cal_samples={sys_cal_samples}"
     )
     return accepted, reason
 
