@@ -50,12 +50,20 @@ def acceptance_gate(
 
     Quality constraints (all must hold):
         1. effective_mean_pred_return > 0 -- damped predicted edge must be positive
+           (damped by system calibration maturity, NOT per-signal confidence)
         2. precision >= 0.45             -- minimum classification precision
         3. calibration honesty           -- if calibration has >= 30 samples,
            confidence monotonicity must not be inverted
 
-    When calibration_sample_count < 30, the minimum composite score threshold
-    is raised from 0.25 to 0.35, requiring stronger statistical evidence.
+    Calibration source: all calibration fields (calibration_sample_count,
+    calibration_monotonic, calibration_error) come from the generator's
+    **system-level rolling calibration state** — accumulated across all
+    past live predictions, not from this candidate model's validation set.
+    This measures system maturity, not candidate-specific quality.
+
+    When calibration_sample_count < 30 (system immature), the minimum
+    composite score threshold is raised from 0.25 to 0.35, requiring
+    stronger statistical evidence from uncalibrated systems.
     """
 
     def _score(m: "ModelMetrics") -> float:
@@ -68,20 +76,22 @@ def acceptance_gate(
     new_score = _score(new_metrics)
 
     # Economic and statistical quality constraints.
-    # Use effective_mean_pred_return (damped by calibration quality) rather
-    # than raw mean_pred_return so that weakly-calibrated positive edges
-    # don't pass the gate.
+    # Use effective_mean_pred_return (damped by system calibration maturity)
+    # rather than raw mean_pred_return so that systems with immature
+    # calibration can't pass the edge check on unverified predictions.
     has_positive_edge = new_metrics.effective_mean_pred_return > 0
     has_min_precision = new_metrics.precision >= 0.45
     quality_ok = has_positive_edge and has_min_precision
 
     # Calibration honesty constraint (H1):
+    # Uses system-level calibration maturity (rolling _calibration_counts),
+    # not candidate-model validation calibration.
     cal_samples = new_metrics.calibration_sample_count
     has_sufficient_calibration = cal_samples >= MIN_CALIBRATION_SAMPLES_FOR_ACCEPTANCE
     if has_sufficient_calibration and not new_metrics.calibration_monotonic:
         quality_ok = False
 
-    # When calibration data is insufficient, require higher score threshold
+    # When system calibration is immature, require higher score threshold
     min_score = 0.25 if has_sufficient_calibration else 0.35
 
     # No old model — first model acceptance

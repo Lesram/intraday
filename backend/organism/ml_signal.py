@@ -43,24 +43,50 @@ from backend.organism.ml_features import FEATURE_COLUMNS
 class MLSignal:
     """One ML-generated trading signal.
 
-    Downstream consumers should use:
-    - effective_confidence (not raw confidence) for sizing/gating
-    - effective_predicted_return (not raw predicted_return) for economic decisions
+    Confidence pipeline (three distinct stages):
+        1. raw_confidence    — abs(p_up - 0.5) * 2, direct model output
+        2. confidence        — after calibration correction (calibrate_confidence()),
+                               this is what most downstream consumers use
+        3. effective_confidence — min(calibrated, empirical_precision) or
+                               calibrated * 0.75 if insufficient calibration data;
+                               used for sizing/gating
 
-    Raw fields are preserved for diagnostics and logging.
+    Predicted return pipeline (two stages):
+        1. predicted_return          — raw regressor output, may be over-optimistic
+        2. effective_predicted_return — damped by calibration_factor * confidence_factor;
+                                       used for economic decisions
     """
     symbol: str
     direction: float       # +1 buy, -1 sell, 0 hold
-    confidence: float      # [0, 1] — raw model confidence
+    confidence: float      # [0, 1] — calibrated model confidence (post calibrate_confidence())
     predicted_return: float  # raw regressor output — may be over-optimistic
     feature_importance: dict[str, float] = field(default_factory=dict)
-    effective_confidence: float = 0.0  # min(raw, empirical_precision) or raw * 0.75
+    raw_confidence: float = 0.0       # [0, 1] — pre-calibration model confidence
+    effective_confidence: float = 0.0  # min(calibrated, empirical_precision) or calibrated * 0.75
     effective_predicted_return: float = 0.0  # damped by calibration quality + confidence
 
 
 @dataclass
 class ModelMetrics:
-    """Training/validation metrics for a model generation."""
+    """Training/validation metrics for a model generation.
+
+    Calibration fields (calibration_sample_count, calibration_monotonic,
+    calibration_error) reflect the generator's **system-level rolling
+    calibration state** — accumulated across all past predictions, not
+    derived from this candidate model's validation set alone.  This means
+    they measure the *system's* calibration maturity, which determines
+    how much trust the acceptance gate places in the model's confidence
+    claims.  A fresh system with zero calibration history will have
+    calibration_sample_count=0 regardless of the candidate model's
+    validation quality.
+
+    Effective mean predicted return (effective_mean_pred_return) uses only
+    the calibration sample factor: raw * min(1, cal_samples/30).  This is
+    intentionally different from the per-signal effective_predicted_return
+    (which also multiplies by confidence_factor) because at the aggregate
+    model-evaluation level there is no single per-signal confidence to
+    apply — the damping reflects only system calibration maturity.
+    """
     generation: int
     accuracy: float = 0.0
     precision: float = 0.0
@@ -70,13 +96,16 @@ class ModelMetrics:
     mean_pred_return: float = 0.0       # raw regressor mean — may be over-optimistic
     hit_rate: float = 0.0  # % of predictions with correct sign
     feature_importance_top10: list[tuple[str, float]] = field(default_factory=list)
-    # Calibration quality fields (H1)
+    # System-level calibration maturity fields (H1).
+    # Source: generator's rolling _calibration_counts, NOT candidate validation.
     calibration_sample_count: int = 0    # total observations across all bins
     calibration_monotonic: bool = True   # are bucket win-rates non-decreasing?
     calibration_error: float = 0.0       # mean abs(expected - actual) across bins
     # Effective (damped) mean predicted return (H3).
-    # Damped by calibration quality: raw * min(1, cal_samples/30).
-    # This is the value the acceptance gate uses for edge verification.
+    # Damped by system calibration maturity only: raw * min(1, cal_samples/30).
+    # Distinct from per-signal effective_predicted_return which also uses
+    # confidence_factor.  This is the value the acceptance gate uses for
+    # edge verification.
     effective_mean_pred_return: float = 0.0
 
     def to_dict(self) -> dict[str, Any]:
@@ -286,7 +315,7 @@ class MLSignalGenerator:
         MLSignal with direction, confidence, predicted_return.
         """
         if not self._is_trained:
-            return MLSignal(symbol=symbol, direction=0, confidence=0, predicted_return=0, effective_confidence=0)
+            return MLSignal(symbol=symbol, direction=0, confidence=0, predicted_return=0, raw_confidence=0, effective_confidence=0)
 
         # Use only feature columns that were available during training
         available_cols = [c for c in self._feature_cols if c in features_df.columns]
@@ -344,22 +373,22 @@ class MLSignalGenerator:
         else:
             direction = 0.0
 
-        # Confidence: how far from 0.5
-        confidence = abs(p_up - 0.5) * 2  # [0, 1]
-        confidence = min(confidence, 1.0)
+        # Stage 1: raw confidence — how far from 0.5
+        raw_confidence = abs(p_up - 0.5) * 2  # [0, 1]
+        raw_confidence = min(raw_confidence, 1.0)
 
-        # Apply calibration correction
-        confidence = self.calibrate_confidence(confidence)
+        # Stage 2: calibrated confidence — apply calibration correction
+        calibrated_confidence = self.calibrate_confidence(raw_confidence)
 
         # Feature importance
         fi = self._get_feature_importance()
 
-        # B2 (improve8): effective_confidence — cap raw confidence by
+        # Stage 3: effective confidence — cap calibrated confidence by
         # empirical precision from calibration data when available.
-        eff_conf = self._compute_effective_confidence(confidence)
+        eff_conf = self._compute_effective_confidence(calibrated_confidence)
 
         # H1: effective_predicted_return — damp raw prediction when
-        # calibration quality is weak or confidence is low.
+        # system calibration maturity is weak or confidence is low.
         eff_pred_return = self._compute_effective_predicted_return(
             pred_return, eff_conf,
         )
@@ -367,9 +396,10 @@ class MLSignalGenerator:
         return MLSignal(
             symbol=symbol,
             direction=direction,
-            confidence=confidence,
+            confidence=calibrated_confidence,
             predicted_return=pred_return,
             feature_importance=fi,
+            raw_confidence=raw_confidence,
             effective_confidence=eff_conf,
             effective_predicted_return=eff_pred_return,
         )
@@ -407,19 +437,22 @@ class MLSignalGenerator:
             else:
                 self._calibration_map[i] = min(actual_rate / bin_midpoint, 2.0)
 
-    def _compute_effective_confidence(self, raw_confidence: float) -> float:
-        """Compute effective_confidence = min(raw, empirical_precision).
+    def _compute_effective_confidence(self, calibrated_confidence: float) -> float:
+        """Compute effective_confidence from calibrated (not raw) confidence.
 
-        If calibration data exists (>= 10 observations in bin), cap raw
-        confidence by the actual precision rate. Otherwise, apply a 0.75
-        discount to account for overconfident untested predictions.
+        If calibration data exists (>= 10 observations in bin), cap
+        calibrated confidence by the actual empirical precision rate.
+        Otherwise, apply a 0.75 discount to account for untested predictions.
+
+        Input is calibrated_confidence (post calibrate_confidence()), not
+        the raw model output.
         """
-        bin_idx = min(int(raw_confidence * 5), 4)
+        bin_idx = min(int(calibrated_confidence * 5), 4)
         total = self._calibration_counts[bin_idx][1]
         if total >= 10:
             empirical = self._calibration_counts[bin_idx][0] / total
-            return min(raw_confidence, empirical)
-        return raw_confidence * 0.75
+            return min(calibrated_confidence, empirical)
+        return calibrated_confidence * 0.75
 
     # Minimum calibration samples for full trust in predicted_return.
     # Below this, predicted_return is damped by (samples / threshold).
@@ -428,14 +461,18 @@ class MLSignalGenerator:
     def _compute_effective_predicted_return(
         self, raw_return: float, effective_confidence: float,
     ) -> float:
-        """Damp predicted_return when calibration quality is weak or confidence is low.
+        """Per-signal effective predicted return — damps raw by two factors.
 
         Damping = calibration_factor * confidence_factor
         - calibration_factor: min(1.0, total_samples / MIN_CALIBRATION_SAMPLES)
-        - confidence_factor: effective_confidence (already capped by empirical precision)
+          where total_samples is from the system-level rolling calibration state
+        - confidence_factor: max(effective_confidence, 0.1) — floor prevents
+          zeroing out
 
-        This prevents over-trust in predictions from weakly-calibrated or
-        low-confidence models while preserving the full signal when both are strong.
+        Note: this is the per-signal version.  The aggregate model-level
+        version (effective_mean_pred_return in ModelMetrics) uses only
+        calibration_factor because there is no single per-signal confidence
+        at the aggregate level.
         """
         total_samples = sum(c[1] for c in self._calibration_counts)
         cal_factor = min(1.0, total_samples / self.MIN_CALIBRATION_SAMPLES)
@@ -687,15 +724,20 @@ class MLSignalGenerator:
         # Feature importance
         metrics.feature_importance_top10 = list(self._get_feature_importance().items())[:10]
 
-        # Calibration quality (H1) — snapshot from generator's calibration state
+        # System-level calibration maturity (H1) — snapshot from generator's
+        # rolling _calibration_counts, NOT from this candidate model's
+        # validation predictions.  These measure how much the *system* has
+        # been calibrated by live outcome feedback, which determines how
+        # much trust the acceptance gate places in the model.
         cal_samples, cal_mono, cal_err = self.calibration_quality()
         metrics.calibration_sample_count = cal_samples
         metrics.calibration_monotonic = cal_mono
         metrics.calibration_error = cal_err
 
-        # Effective mean predicted return (H3) — damp raw by calibration quality.
-        # Uses the same cal_factor as _compute_effective_predicted_return but
-        # applied to the aggregate mean_pred_return rather than per-signal.
+        # Effective mean predicted return (H3) — damp raw by system calibration
+        # maturity only (cal_factor).  Unlike per-signal effective_predicted_return
+        # which also multiplies by confidence_factor, this aggregate metric has
+        # no single per-signal confidence to apply.
         cal_factor = min(1.0, cal_samples / self.MIN_CALIBRATION_SAMPLES)
         metrics.effective_mean_pred_return = metrics.mean_pred_return * cal_factor
 
