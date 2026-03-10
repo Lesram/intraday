@@ -1,0 +1,19 @@
+{
+  "ml_trained": false,
+  "ml_generation": 0,
+  "brain_generation": 0,
+  "learner_generation": 0,
+  "learner_retrain_count": 0,
+  "learner_best_sharpe": null,
+  "system_calibration": {
+    "note": "System-level calibration from rolling live state (not candidate-specific).",
+    "source": "brain ml_state or live engine memory"
+  },
+  "candidate_calibration": {
+    "note": "Candidate-level calibration from model validation set.",
+    "source": "ModelMetrics.candidate_calibration_* fields if available"
+  },
+  "acceptance_events": {
+    "note": "Check engine logs for acceptance_gate accept/reject events during this session."
+  }
+}
