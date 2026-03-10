@@ -47,6 +47,7 @@ class TrainResult:
     evolved_params_dict: dict[str, Any] | None = None
     feature_cols: list[str] | None = None
     duration_s: float = 0.0
+    is_trained: bool | None = None       # worker's actual _is_trained outcome
     error: str | None = None             # actual training failure
     rejection_reason: str | None = None  # quality-gate rejection (not a training error)
 
@@ -425,6 +426,7 @@ class BackgroundTrainer:
             new_ensemble_state=raw.get("ensemble_pickle"),
             evolved_params_dict=raw.get("evolved_params_dict"),
             feature_cols=raw.get("feature_cols"),
+            is_trained=raw.get("is_trained"),
             duration_s=raw.get("duration_s", 0),
         )
 
@@ -482,10 +484,10 @@ class BackgroundTrainer:
         if result.feature_cols:
             signal_gen._feature_cols = result.feature_cols
 
-        # Preserve trained state — don't force True if worker didn't train
-        # (result.accepted already gates this, but be explicit)
-        if result.new_clf_state and result.new_reg_state:
-            signal_gen._is_trained = True
+        # Use the worker's actual _is_trained outcome when available.
+        # Do not infer trained state from pickle presence.
+        if result.is_trained is not None:
+            signal_gen._is_trained = result.is_trained
 
         # Update metrics and generation from accepted training result
         if result.train_metrics:
