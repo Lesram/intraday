@@ -47,7 +47,8 @@ class TrainResult:
     evolved_params_dict: dict[str, Any] | None = None
     feature_cols: list[str] | None = None
     duration_s: float = 0.0
-    error: str | None = None
+    error: str | None = None             # actual training failure
+    rejection_reason: str | None = None  # quality-gate rejection (not a training error)
 
 
 def _train_in_process(
@@ -84,12 +85,18 @@ def _train_in_process(
         for sym, data in features_by_symbol_pickle.items():
             features_by_symbol[sym] = pd.DataFrame(data)
 
-        # Reconstruct signal generator with saved params
+        # Reconstruct signal generator with saved params (full xgb_params surface)
+        xgb_p = signal_gen_state.get("xgb_params", {})
         signal_gen = MLSignalGenerator(
             train_window=signal_gen_state.get("train_window", 200),
-            n_estimators=signal_gen_state.get("n_estimators", 200),
-            max_depth=signal_gen_state.get("max_depth", 5),
-            learning_rate=signal_gen_state.get("learning_rate", 0.05),
+            n_estimators=xgb_p.get("n_estimators", signal_gen_state.get("n_estimators", 200)),
+            max_depth=xgb_p.get("max_depth", signal_gen_state.get("max_depth", 5)),
+            learning_rate=xgb_p.get("learning_rate", signal_gen_state.get("learning_rate", 0.05)),
+            min_child_weight=xgb_p.get("min_child_weight", 5),
+            subsample=xgb_p.get("subsample", 0.8),
+            colsample_bytree=xgb_p.get("colsample_bytree", 0.8),
+            reg_alpha=xgb_p.get("reg_alpha", 0.1),
+            reg_lambda=xgb_p.get("reg_lambda", 1.0),
         )
 
         # Restore model state if available
@@ -155,12 +162,14 @@ def _train_in_process(
         if not accepted:
             return {
                 "accepted": False,
-                "error": f"Model rejected by quality gate (score={new_score:.3f}, "
-                         f"precision={metrics.precision:.3f}, "
-                         f"mean_pred_return={metrics.mean_pred_return:.4f})",
+                "rejection_reason": f"Model rejected by quality gate (score={new_score:.3f}, "
+                                    f"precision={metrics.precision:.3f}, "
+                                    f"mean_pred_return={metrics.mean_pred_return:.4f})",
                 "train_metrics": {
                     "accuracy": getattr(metrics, "accuracy", 0),
                     "precision": getattr(metrics, "precision", 0),
+                    "recall": getattr(metrics, "recall", 0),
+                    "f1": getattr(metrics, "f1", 0),
                     "direction_accuracy": getattr(metrics, "direction_accuracy", 0),
                     "mean_pred_return": getattr(metrics, "mean_pred_return", 0),
                     "hit_rate": getattr(metrics, "hit_rate", 0),
@@ -295,9 +304,11 @@ class BackgroundTrainer:
             except Exception:
                 continue
 
-        # Serialize model state
+        # Serialize model state — include full _xgb_params surface for config parity
         signal_gen_state = {
             "train_window": signal_gen.train_window,
+            "xgb_params": {k: v for k, v in signal_gen._xgb_params.items()},
+            # Legacy keys for backward compatibility with older workers
             "n_estimators": signal_gen._xgb_params.get("n_estimators", 200),
             "max_depth": signal_gen._xgb_params.get("max_depth", 5),
             "learning_rate": signal_gen._xgb_params.get("learning_rate", 0.05),
@@ -381,12 +392,29 @@ class BackgroundTrainer:
             self._last_result = TrainResult(error=str(e))
             return True, self._last_result
 
-        if isinstance(raw, dict) and raw.get("error"):
+        # Distinguish true training errors from quality-gate rejections.
+        # Training errors: raw has "error" but no "rejection_reason" and no "accepted" key.
+        # Quality-gate rejections: raw has "rejection_reason" (and accepted=False).
+        if isinstance(raw, dict) and raw.get("error") and "accepted" not in raw:
             self._last_result = TrainResult(
                 error=raw["error"],
                 duration_s=raw.get("duration_s", 0),
             )
             logger.warning("BackgroundTrainer training failed: %s", raw["error"])
+            return True, self._last_result
+
+        # Quality-gate rejection: training succeeded but model was rejected
+        if isinstance(raw, dict) and raw.get("rejection_reason"):
+            self._last_result = TrainResult(
+                accepted=False,
+                train_metrics=raw.get("train_metrics"),
+                rejection_reason=raw["rejection_reason"],
+                duration_s=raw.get("duration_s", 0),
+            )
+            logger.info(
+                "BackgroundTrainer: model rejected by quality gate: %s",
+                raw["rejection_reason"],
+            )
             return True, self._last_result
 
         self._last_result = TrainResult(
@@ -458,6 +486,23 @@ class BackgroundTrainer:
         # (result.accepted already gates this, but be explicit)
         if result.new_clf_state and result.new_reg_state:
             signal_gen._is_trained = True
+
+        # Update metrics and generation from accepted training result
+        if result.train_metrics:
+            from backend.organism.ml_signal import ModelMetrics
+            tm = result.train_metrics
+            signal_gen._latest_metrics = ModelMetrics(
+                generation=tm.get("generation", signal_gen.generation),
+                accuracy=tm.get("accuracy", 0),
+                precision=tm.get("precision", 0),
+                recall=tm.get("recall", 0),
+                f1=tm.get("f1", 0),
+                direction_accuracy=tm.get("direction_accuracy", 0),
+                mean_pred_return=tm.get("mean_pred_return", 0),
+                hit_rate=tm.get("hit_rate", 0),
+            )
+            if "generation" in tm:
+                signal_gen.generation = tm["generation"]
 
         # Apply evolved params — gated by evolution freeze (300 trades)
         if result.evolved_params_dict and total_trades >= 300:
