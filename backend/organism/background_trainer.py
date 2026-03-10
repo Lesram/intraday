@@ -127,22 +127,16 @@ def _train_in_process(
         if metrics is None:
             return {"error": "Training returned None metrics", "duration_s": time.time() - t0}
 
-        # Acceptance gate — same composite quality check as ContinuousLearner.
-        # Ensures background-trained models meet the same bar as sync path.
-        has_positive_edge = metrics.mean_pred_return > 0
-        has_min_precision = metrics.precision >= 0.45
-        quality_ok = has_positive_edge and has_min_precision
+        # Acceptance gate — delegates to the shared acceptance_gate() function
+        # so background and sync paths enforce identical rules.
+        from backend.organism.continuous_learner import acceptance_gate
+        from backend.organism.ml_signal import ModelMetrics as _MM
 
-        def _score(m):
-            return m.hit_rate * 0.4 + m.accuracy * 0.3 + max(m.direction_accuracy - 0.5, 0.0) * 0.6
-
-        new_score = _score(metrics)
-
-        # Check against old model metrics if available
+        # Reconstruct old metrics for comparison (if available)
+        old_metrics_obj = None
         old_metrics_dict = learner_state.get("old_model_metrics")
         if old_metrics_dict:
-            from backend.organism.ml_signal import ModelMetrics as _MM
-            old_m = _MM(
+            old_metrics_obj = _MM(
                 generation=old_metrics_dict.get("generation", 0),
                 accuracy=old_metrics_dict.get("accuracy", 0),
                 precision=old_metrics_dict.get("precision", 0),
@@ -151,31 +145,37 @@ def _train_in_process(
                 direction_accuracy=old_metrics_dict.get("direction_accuracy", 0),
                 mean_pred_return=old_metrics_dict.get("mean_pred_return", 0),
                 hit_rate=old_metrics_dict.get("hit_rate", 0),
+                calibration_sample_count=old_metrics_dict.get("calibration_sample_count", 0),
+                calibration_monotonic=old_metrics_dict.get("calibration_monotonic", True),
+                calibration_error=old_metrics_dict.get("calibration_error", 0.0),
             )
-            old_score = _score(old_m)
-            improved = (new_score - old_score) >= 0.05
-            good_enough = new_score >= 0.40 and metrics.hit_rate >= 0.48
-            accepted = (improved or good_enough) and quality_ok
-        else:
-            # No old model — first model acceptance
-            accepted = new_score > 0.25 and quality_ok
+
+        accepted, rejection_reason = acceptance_gate(
+            metrics,
+            old_metrics=old_metrics_obj,
+        )
+
+        # Helper to build train_metrics dict (includes calibration fields)
+        def _build_train_metrics(m):
+            return {
+                "accuracy": getattr(m, "accuracy", 0),
+                "precision": getattr(m, "precision", 0),
+                "recall": getattr(m, "recall", 0),
+                "f1": getattr(m, "f1", 0),
+                "direction_accuracy": getattr(m, "direction_accuracy", 0),
+                "mean_pred_return": getattr(m, "mean_pred_return", 0),
+                "hit_rate": getattr(m, "hit_rate", 0),
+                "generation": getattr(m, "generation", 0),
+                "calibration_sample_count": getattr(m, "calibration_sample_count", 0),
+                "calibration_monotonic": getattr(m, "calibration_monotonic", True),
+                "calibration_error": getattr(m, "calibration_error", 0.0),
+            }
 
         if not accepted:
             return {
                 "accepted": False,
-                "rejection_reason": f"Model rejected by quality gate (score={new_score:.3f}, "
-                                    f"precision={metrics.precision:.3f}, "
-                                    f"mean_pred_return={metrics.mean_pred_return:.4f})",
-                "train_metrics": {
-                    "accuracy": getattr(metrics, "accuracy", 0),
-                    "precision": getattr(metrics, "precision", 0),
-                    "recall": getattr(metrics, "recall", 0),
-                    "f1": getattr(metrics, "f1", 0),
-                    "direction_accuracy": getattr(metrics, "direction_accuracy", 0),
-                    "mean_pred_return": getattr(metrics, "mean_pred_return", 0),
-                    "hit_rate": getattr(metrics, "hit_rate", 0),
-                    "generation": getattr(metrics, "generation", 0),
-                },
+                "rejection_reason": f"Model rejected by quality gate ({rejection_reason})",
+                "train_metrics": _build_train_metrics(metrics),
                 "duration_s": time.time() - t0,
             }
 
@@ -211,16 +211,7 @@ def _train_in_process(
 
         result = {
             "accepted": True,
-            "train_metrics": {
-                "accuracy": getattr(metrics, "accuracy", 0),
-                "precision": getattr(metrics, "precision", 0),
-                "recall": getattr(metrics, "recall", 0),
-                "f1": getattr(metrics, "f1", 0),
-                "direction_accuracy": getattr(metrics, "direction_accuracy", 0),
-                "mean_pred_return": getattr(metrics, "mean_pred_return", 0),
-                "hit_rate": getattr(metrics, "hit_rate", 0),
-                "generation": getattr(metrics, "generation", 0),
-            },
+            "train_metrics": _build_train_metrics(metrics),
             "clf_pickle": pickle.dumps(signal_gen._clf),
             "reg_pickle": pickle.dumps(signal_gen._reg),
             "feature_cols": signal_gen._feature_cols,

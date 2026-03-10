@@ -70,32 +70,20 @@ class TestBackgroundTrainerAcceptanceGate:
     """Verify that _train_in_process uses a quality gate, not auto-accept."""
 
     def test_acceptance_gate_present_in_source(self):
-        """_train_in_process must contain quality_ok logic."""
+        """_train_in_process must use the shared acceptance_gate."""
         import inspect
         from backend.organism import background_trainer
         source = inspect.getsource(background_trainer._train_in_process)
-        assert "quality_ok" in source, \
-            "_train_in_process must apply quality gate"
-        assert "has_positive_edge" in source
-        assert "has_min_precision" in source
+        assert "acceptance_gate" in source, \
+            "_train_in_process must call acceptance_gate"
 
     def test_no_unconditional_accepted_true(self):
         """_train_in_process must not have unconditional accepted=True."""
         import inspect
         from backend.organism import background_trainer
         source = inspect.getsource(background_trainer._train_in_process)
-        # The old pattern was: result = { "accepted": True, ... }
-        # Now accepted should be set from the gate, not hardcoded True
-        # Look for the result dict assignment
-        lines = source.split("\n")
-        for line in lines:
-            stripped = line.strip()
-            if '"accepted": True' in stripped and "result" in stripped.lower():
-                # This is ok -- it's after the gate sets accepted
-                pass
-        # The key check: there should be an "accepted = " or gate check
-        # before the result dict
-        assert "accepted" in source and "quality_ok" in source
+        # The key check: acceptance must come from acceptance_gate, not hardcoded
+        assert "acceptance_gate" in source and "accepted" in source
 
 
 # ==============================================================================
@@ -222,15 +210,12 @@ class TestWalkForwardContract:
         assert "walk_forward" in combined.lower() or "offline" in combined.lower()
 
     def test_background_trainer_uses_same_gate_logic(self):
-        """Background trainer quality gate must match learner's gate structure."""
+        """Background trainer must delegate to the shared acceptance_gate."""
         import inspect
         from backend.organism import background_trainer
         bg_source = inspect.getsource(background_trainer._train_in_process)
 
-        # Must use same scoring formula components
-        assert "hit_rate" in bg_source
-        assert "accuracy" in bg_source
-        assert "direction_accuracy" in bg_source
-        assert "0.4" in bg_source  # hit_rate weight
-        assert "0.3" in bg_source  # accuracy weight
-        assert "0.6" in bg_source  # direction_accuracy weight
+        # Must import and call the shared acceptance_gate
+        assert "acceptance_gate" in bg_source
+        # Must NOT define its own inline scoring function
+        assert "def _score" not in bg_source

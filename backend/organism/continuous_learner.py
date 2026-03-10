@@ -24,6 +24,91 @@ from backend.organism.ml_signal import MLSignalGenerator, MLSignal, ModelMetrics
 
 logger = logging.getLogger(__name__)
 
+# ---------------------------------------------------------------------------
+# Shared acceptance gate — used by both ContinuousLearner (sync) and
+# BackgroundTrainer (async process).  Extracted as a module-level function
+# so that both paths enforce identical rules.
+# ---------------------------------------------------------------------------
+
+# Minimum calibration samples for full acceptance confidence.
+# Below this, the composite score threshold is raised from 0.25 to 0.35,
+# requiring stronger statistical evidence from uncalibrated models.
+MIN_CALIBRATION_SAMPLES_FOR_ACCEPTANCE = 30
+
+
+def acceptance_gate(
+    new_metrics: "ModelMetrics",
+    old_metrics: "ModelMetrics | None" = None,
+    improvement_threshold: float = 0.05,
+) -> tuple[bool, str]:
+    """Unified model acceptance gate.
+
+    Returns (accepted, reason).
+
+    Composite score:
+        score = hit_rate * 0.4 + accuracy * 0.3 + (direction_acc - 0.5) * 0.6
+
+    Quality constraints (all must hold):
+        1. mean_pred_return > 0     -- predicted edge must be positive
+        2. precision >= 0.45        -- minimum classification precision
+        3. calibration honesty      -- if calibration has >= 30 samples,
+           confidence monotonicity must not be inverted
+
+    When calibration_sample_count < 30, the minimum composite score threshold
+    is raised from 0.25 to 0.35, requiring stronger statistical evidence.
+    """
+
+    def _score(m: "ModelMetrics") -> float:
+        return (
+            m.hit_rate * 0.4
+            + m.accuracy * 0.3
+            + max(m.direction_accuracy - 0.5, 0.0) * 0.6
+        )
+
+    new_score = _score(new_metrics)
+
+    # Economic and statistical quality constraints
+    has_positive_edge = new_metrics.mean_pred_return > 0
+    has_min_precision = new_metrics.precision >= 0.45
+    quality_ok = has_positive_edge and has_min_precision
+
+    # Calibration honesty constraint (H1):
+    cal_samples = new_metrics.calibration_sample_count
+    has_sufficient_calibration = cal_samples >= MIN_CALIBRATION_SAMPLES_FOR_ACCEPTANCE
+    if has_sufficient_calibration and not new_metrics.calibration_monotonic:
+        quality_ok = False
+
+    # When calibration data is insufficient, require higher score threshold
+    min_score = 0.25 if has_sufficient_calibration else 0.35
+
+    # No old model — first model acceptance
+    if old_metrics is None:
+        accepted = new_score > min_score and quality_ok
+        reason = (
+            "accepted" if accepted
+            else f"score={new_score:.3f}<{min_score}, precision={new_metrics.precision:.3f}, "
+                 f"mean_pred_return={new_metrics.mean_pred_return:.4f}, "
+                 f"cal_monotonic={new_metrics.calibration_monotonic}, "
+                 f"cal_samples={cal_samples}"
+        )
+        return accepted, reason
+
+    old_score = _score(old_metrics)
+
+    # New model must beat old by threshold, OR be above absolute bar
+    improved = (new_score - old_score) >= improvement_threshold
+    good_enough = new_score >= 0.40 and new_metrics.hit_rate >= 0.48
+
+    accepted = (improved or good_enough) and quality_ok
+    reason = (
+        "accepted" if accepted
+        else f"score={new_score:.3f}, old={old_score:.3f}, precision={new_metrics.precision:.3f}, "
+             f"mean_pred_return={new_metrics.mean_pred_return:.4f}, "
+             f"cal_monotonic={new_metrics.calibration_monotonic}, "
+             f"cal_samples={cal_samples}"
+    )
+    return accepted, reason
+
 
 @dataclass
 class LearningState:
@@ -289,10 +374,8 @@ class ContinuousLearner:
             "exit_reasons": exit_reasons,
         }
 
-    # Minimum calibration samples for full acceptance confidence.
-    # Below this, the composite score threshold is raised from 0.25 to 0.35,
-    # requiring stronger statistical evidence from uncalibrated models.
-    MIN_CALIBRATION_SAMPLES_FOR_ACCEPTANCE = 30
+    # Keep class-level constant for backward compatibility with existing tests.
+    MIN_CALIBRATION_SAMPLES_FOR_ACCEPTANCE = MIN_CALIBRATION_SAMPLES_FOR_ACCEPTANCE
 
     def _validate_new_model(
         self,
@@ -300,68 +383,23 @@ class ContinuousLearner:
         new_metrics: ModelMetrics,
         old_clf: Any,
     ) -> bool:
-        """Walk-forward validation: composite quality gate.
-
-        Uses a composite score combining statistical accuracy and economic signal:
-            score = hit_rate * 0.4 + accuracy * 0.3 + (direction_acc - 0.5) * 0.6
-
-        Quality constraints (all must hold):
-            1. mean_pred_return > 0     -- predicted edge must be positive
-            2. precision >= 0.45        -- minimum classification precision
-            3. calibration honesty      -- if calibration has >= 30 samples,
-               confidence monotonicity must not be inverted (higher-confidence
-               bins must not have lower win rates than lower-confidence bins)
-
-        When calibration sample count < 30 (insufficient data to verify
-        calibration quality), the minimum composite score threshold is raised
-        from 0.25 to 0.35, requiring stronger statistical evidence.
+        """Walk-forward validation: delegates to the shared acceptance_gate().
 
         Note: this is the LIVE acceptance gate, used by both the synchronous
         retrain path and the background trainer. walk_forward.py provides a
         richer offline evaluation but is not used for live model promotion.
         """
-        def _score(m: ModelMetrics) -> float:
-            return (
-                m.hit_rate * 0.4
-                + m.accuracy * 0.3
-                + max(m.direction_accuracy - 0.5, 0.0) * 0.6
-            )
+        # Determine old metrics for comparison
+        old_m: ModelMetrics | None = None
+        if old_clf and self.state.model_metrics:
+            old_m = self.state.model_metrics[-1]
 
-        new_score = _score(new_metrics)
-
-        # Economic and statistical quality constraints
-        has_positive_edge = new_metrics.mean_pred_return > 0
-        has_min_precision = new_metrics.precision >= 0.45
-        quality_ok = has_positive_edge and has_min_precision
-
-        # Calibration honesty constraint (H1):
-        # If we have enough calibration data to judge, require monotonicity.
-        # If calibration is inverted (high-confidence bins perform worse),
-        # the model is dishonest about its uncertainty — reject.
-        cal_samples = new_metrics.calibration_sample_count
-        has_sufficient_calibration = cal_samples >= self.MIN_CALIBRATION_SAMPLES_FOR_ACCEPTANCE
-        if has_sufficient_calibration and not new_metrics.calibration_monotonic:
-            quality_ok = False
-
-        # When calibration data is insufficient, require higher score threshold
-        min_score = 0.25 if has_sufficient_calibration else 0.35
-
-        # If no old model exists, accept any reasonable model passing quality
-        if not old_clf:
-            return new_score > min_score and quality_ok
-
-        # Get old model's last composite score
-        old_metrics = self.state.model_metrics
-        if not old_metrics:
-            return new_score > min_score and quality_ok
-
-        old_score = _score(old_metrics[-1])
-
-        # New model must beat old by threshold, OR be above absolute bar
-        improved = (new_score - old_score) >= self.improvement_threshold
-        good_enough = new_score >= 0.40 and new_metrics.hit_rate >= 0.48
-
-        return (improved or good_enough) and quality_ok
+        accepted, _reason = acceptance_gate(
+            new_metrics,
+            old_metrics=old_m,
+            improvement_threshold=self.improvement_threshold,
+        )
+        return accepted
 
     def _check_drift(
         self,
