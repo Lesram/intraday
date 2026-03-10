@@ -101,13 +101,17 @@ class TestFullTPDisabledInLearningMode:
             assert signal.should_exit and signal.reason == "trailing_stop"
 
     def test_horizon_timeout_still_works_after_tp_disable(self):
-        """In learning mode, horizon timeout at 18 bars still fires."""
+        """In learning mode, horizon timeout at 18 bars still fires
+        when no earlier exit (trailing/FTF) fires first."""
         engine = _make_engine(learning_mode=True)
         levels = _make_levels(engine)
 
-        # Advance to bar 18
+        # Use trending_up regime (FTF disabled) with flat price (no trailing)
         for i in range(18):
-            signal = engine.check_exit(levels, levels.entry_price + 0.01, is_new_bar=True)
+            signal = engine.check_exit(
+                levels, levels.entry_price + 0.01,
+                current_regime="trending_up", is_new_bar=True,
+            )
 
         assert signal.should_exit and signal.reason == "horizon_timeout"
 

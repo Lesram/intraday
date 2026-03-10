@@ -133,15 +133,20 @@ class TestLearningModeCoreExitsWork:
             assert signal.should_exit and signal.reason == "trailing_stop"
 
     def test_horizon_timeout_in_learning_mode(self):
-        """Horizon timeout fires in learning mode at 18 bars."""
+        """Horizon timeout fires in learning mode at 18 bars when no
+        earlier exit (trailing/FTF) fires first."""
         engine = _make_engine(learning_mode=True)
         levels = _make_levels(engine)
 
-        # Advance to bar 18
+        # Advance to bar 18 with trending_up regime (FTF disabled in
+        # trending_up) and flat price (no trailing activation).
         for i in range(18):
-            signal = engine.check_exit(levels, levels.entry_price + 0.01, is_new_bar=True)
+            signal = engine.check_exit(
+                levels, levels.entry_price + 0.01,
+                current_regime="trending_up", is_new_bar=True,
+            )
 
-        # At bar 18 (past min_hold of 5), horizon_timeout should fire
+        # At bar 18, no trailing/FTF → horizon_timeout fires
         assert signal.should_exit and signal.reason == "horizon_timeout"
 
 
@@ -210,8 +215,8 @@ class TestExitOrderingLearningMode:
 
     def test_learning_mode_exit_ordering(self):
         """Verify the effective learning-mode priority order:
-        max_loss/stop_loss -> min_hold gate -> horizon_timeout / full TP / trailing / FTF
-        with profit lock AND partial TP skipped."""
+        max_loss/stop_loss -> min_hold gate -> trailing / FTF -> horizon_timeout
+        with profit lock, partial TP, and full TP skipped."""
         import inspect
         from backend.organism import adaptive_exits
         source = inspect.getsource(adaptive_exits.AdaptiveExitEngine.check_exit)
@@ -222,25 +227,21 @@ class TestExitOrderingLearningMode:
         stop_loss_pos = source.index('"stop_loss"', max_loss_pos + 1)
         min_hold_pos = source.index("bars_held < min_hold")
         profit_lock_pos = source.index("self._check_profit_lock(")
-        horizon_pos = source.index('"horizon_timeout"')
         partial_tp_pos = source.index("_check_partial_tp")
         full_tp_pos = source.index('"take_profit"')
         trailing_pos = source.index("_update_trailing_stop")
+        horizon_pos = source.index('"horizon_timeout"')
 
-        # Verify ordering
+        # Verify ordering: max_loss < stop_loss < min_hold
         assert max_loss_pos < stop_loss_pos < min_hold_pos, \
             "max_loss and stop_loss must come before min_hold"
-        assert min_hold_pos < profit_lock_pos < horizon_pos, \
-            "profit_lock (guarded) must come after min_hold and before horizon"
-        assert horizon_pos < full_tp_pos < trailing_pos, \
-            "horizon_timeout < full TP < trailing"
-
-        # Verify profit lock is guarded by learning_mode check
+        # trailing and FTF come before horizon_timeout (E3 fix)
+        assert trailing_pos < horizon_pos, \
+            "trailing must come before horizon_timeout"
+        # profit lock, partial TP, full TP all guarded
         profit_lock_section = source[profit_lock_pos - 200:profit_lock_pos + 50]
         assert "not self.learning_mode" in profit_lock_section, \
             "profit_lock must be guarded by learning_mode check"
-
-        # Verify partial TP is guarded
         partial_section = source[partial_tp_pos - 200:partial_tp_pos + 50]
         assert "not self.learning_mode" in partial_section, \
             "partial TP must be guarded by learning_mode check"

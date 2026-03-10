@@ -417,17 +417,10 @@ class AdaptiveExitEngine:
         # Disabled in learning mode: profit lock tightens stops early,
         # clipping winners before the 18-bar thesis horizon plays out.
         # Learning-mode exit stack: hard stop → max-loss → trailing →
-        # FTF → horizon_timeout → EOD flatten. No profit lock.
+        # FTF → horizon_timeout → EOD flatten. No profit lock, partial TP,
+        # or full TP.
         if not self.learning_mode:
             self._check_profit_lock(levels, current_price)
-
-        # improve9 A3: Hard vertical barrier at thesis horizon.
-        # In learning mode, exit after 18 bars (H=15 + 3 bar grace)
-        # regardless of P&L. This aligns exits to the thesis horizon
-        # and prevents slow-bag losers from running to 120-bar cap.
-        _HORIZON_TIMEOUT_BARS = 18
-        if self.learning_mode and levels.bars_held >= _HORIZON_TIMEOUT_BARS:
-            return ExitSignal(True, "horizon_timeout", current_price)
 
         # 2. Partial take-profit at 3R (sell 30 %, let rest ride)
         # improve9 A4: Disabled in learning mode — stops clipping
@@ -506,6 +499,13 @@ class AdaptiveExitEngine:
                         # Non-chop regimes: original FTF logic with momentum
                         if not _has_momentum:
                             return ExitSignal(True, "failure_to_follow", current_price)
+
+        # 4c. HORIZON TIMEOUT — learning-mode hard barrier at thesis horizon.
+        # Placed after trailing/FTF so those exits take priority when active.
+        # If neither trailing nor FTF fires by bar 18, horizon forces exit.
+        _HORIZON_TIMEOUT_BARS = 18
+        if self.learning_mode and levels.bars_held >= _HORIZON_TIMEOUT_BARS:
+            return ExitSignal(True, "horizon_timeout", current_price)
 
         # 5. Time-based exit (regime-adaptive — disabled in trending)
         if max_bars > 0 and levels.bars_held >= max_bars:
