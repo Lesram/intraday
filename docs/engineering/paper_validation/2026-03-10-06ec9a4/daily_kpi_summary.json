@@ -1,6 +1,6 @@
 {
   "date": "2026-03-10",
-  "deployed_sha": "0041447",
+  "deployed_sha": "06ec9a4",
   "total_trades": 142,
   "realized_pnl": -944.75,
   "win_rate": 0.4014,
@@ -15,5 +15,9 @@
   "critical_runtime_errors": false,
   "stale_state_anomalies": false,
   "artifact_bundle_complete": true,
-  "paper_validation_pass": true
+  "paper_validation_pass": true,
+  "strategy_quality_pass": false,
+  "strategy_quality_fail_reasons": [
+    "payoff_ratio=0.7426"
+  ]
 }

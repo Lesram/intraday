@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from typing import Any
 
 import numpy as np
@@ -153,6 +154,8 @@ class LearningState:
     model_metrics: list[ModelMetrics] = field(default_factory=list)
     # Rolling accuracy for each generation
     generation_accuracies: list[float] = field(default_factory=list)
+    # Evaluation events: accepted + rejected model evaluations (J4)
+    evaluation_events: list[dict] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -195,6 +198,7 @@ class TradeRecord:
     mae: float = 0.0              # max adverse excursion ($)
     bars_held_at_exit: int = 0    # actual bars held when exited
     time_in_trade_seconds: float = 0.0  # wall-clock seconds in trade
+    closed_at: str = ""  # ISO-8601 UTC timestamp when trade was closed (J2)
 
     @property
     def correct_direction(self) -> bool:
@@ -310,6 +314,10 @@ class ContinuousLearner:
         # Train new model
         metrics = self.signal_gen.train(features_by_symbol)
 
+        # Stamp evaluation time before acceptance gate (J3)
+        if metrics is not None:
+            metrics.evaluated_at = datetime.now(timezone.utc).isoformat()
+
         if metrics is None:
             # Training failed — rollback
             self.signal_gen._clf = old_clf
@@ -318,9 +326,24 @@ class ContinuousLearner:
             return False, None
 
         # Walk-forward validation gate
-        accepted = self._validate_new_model(
+        accepted, reason = self._validate_new_model(
             features_by_symbol, metrics, old_clf
         )
+
+        # Record evaluation event (J4)
+        eval_event = {
+            "evaluated_at": getattr(metrics, "evaluated_at", "") or datetime.now(timezone.utc).isoformat(),
+            "accepted": accepted,
+            "rejection_reason": "" if accepted else reason,
+            "generation": self.state.generation,
+            "accuracy": metrics.accuracy,
+            "precision": metrics.precision,
+            "direction_accuracy": metrics.direction_accuracy,
+            "hit_rate": metrics.hit_rate,
+            "mean_pred_return": metrics.mean_pred_return,
+            "effective_mean_pred_return": getattr(metrics, "effective_mean_pred_return", 0.0),
+        }
+        self.state.evaluation_events.append(eval_event)
 
         if not accepted:
             # Rollback to old model
@@ -411,24 +434,26 @@ class ContinuousLearner:
         features_by_symbol: dict[str, pd.DataFrame],
         new_metrics: ModelMetrics,
         old_clf: Any,
-    ) -> bool:
+    ) -> tuple[bool, str]:
         """Walk-forward validation: delegates to the shared acceptance_gate().
 
         Note: this is the LIVE acceptance gate, used by both the synchronous
         retrain path and the background trainer. walk_forward.py provides a
         richer offline evaluation but is not used for live model promotion.
+
+        Returns (accepted, reason).
         """
         # Determine old metrics for comparison
         old_m: ModelMetrics | None = None
         if old_clf and self.state.model_metrics:
             old_m = self.state.model_metrics[-1]
 
-        accepted, _reason = acceptance_gate(
+        accepted, reason = acceptance_gate(
             new_metrics,
             old_metrics=old_m,
             improvement_threshold=self.improvement_threshold,
         )
-        return accepted
+        return accepted, reason
 
     def _check_drift(
         self,

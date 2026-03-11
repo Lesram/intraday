@@ -1,7 +1,8 @@
-# Daily Trading Report — 2026-03-10
+# Daily Trading Report -- 2026-03-10
 
-**Deployed SHA**: `0041447`
+**Deployed SHA**: `06ec9a4`
 **Paper Validation**: PASS
+**Strategy Quality**: FAIL
 
 ## Summary
 | Metric | Value |
@@ -12,6 +13,7 @@
 | Avg win | $16.84 |
 | Avg loss | $-22.67 |
 | Payoff ratio | 0.7426 |
+| Unrealized PnL | N/A (API offline) |
 | Exploration count | 0 |
 
 ## Exit Breakdown

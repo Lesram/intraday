@@ -124,6 +124,11 @@ def _train_in_process(
         # Train
         metrics = signal_gen.train(features_by_symbol)
 
+        # Stamp evaluation time (J3)
+        if metrics is not None:
+            from datetime import datetime, timezone as _tz
+            metrics.evaluated_at = datetime.now(_tz.utc).isoformat()
+
         if metrics is None:
             return {"error": "Training returned None metrics", "duration_s": time.time() - t0}
 
@@ -177,6 +182,7 @@ def _train_in_process(
                 "candidate_calibration_sample_count": getattr(m, "candidate_calibration_sample_count", 0),
                 "candidate_calibration_monotonic": getattr(m, "candidate_calibration_monotonic", True),
                 "candidate_calibration_error": getattr(m, "candidate_calibration_error", 0.0),
+                "evaluated_at": getattr(m, "evaluated_at", ""),
             }
 
         if not accepted:
@@ -508,6 +514,7 @@ class BackgroundTrainer:
                 candidate_calibration_sample_count=tm.get("candidate_calibration_sample_count", 0),
                 candidate_calibration_monotonic=tm.get("candidate_calibration_monotonic", True),
                 candidate_calibration_error=tm.get("candidate_calibration_error", 0.0),
+                evaluated_at=tm.get("evaluated_at", ""),
             )
             if "generation" in tm:
                 signal_gen.generation = tm["generation"]
@@ -543,6 +550,33 @@ class BackgroundTrainer:
             )
 
         return evolved_params
+
+    def get_last_evaluation_event(self) -> dict | None:
+        """Build an evaluation event dict from the last training result.
+
+        Returns None if no result, or if the result was a training error
+        (not a quality-gate evaluation).
+        """
+        result = self._last_result
+        if result is None:
+            return None
+        # Training errors are not evaluation events
+        if result.error and not result.train_metrics:
+            return None
+
+        tm = result.train_metrics or {}
+        return {
+            "evaluated_at": tm.get("evaluated_at", ""),
+            "accepted": result.accepted,
+            "rejection_reason": result.rejection_reason or "",
+            "generation": tm.get("generation", 0),
+            "accuracy": tm.get("accuracy", 0),
+            "precision": tm.get("precision", 0),
+            "direction_accuracy": tm.get("direction_accuracy", 0),
+            "hit_rate": tm.get("hit_rate", 0),
+            "mean_pred_return": tm.get("mean_pred_return", 0),
+            "effective_mean_pred_return": tm.get("effective_mean_pred_return", 0.0),
+        }
 
     def get_stats(self) -> dict[str, Any]:
         """Return trainer statistics."""

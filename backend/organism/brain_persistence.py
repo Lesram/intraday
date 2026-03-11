@@ -155,6 +155,8 @@ class OrganismBrain:
         self.governance_state: dict[str, Any] = {}
         # Regime detector state (Phase 1.3)
         self.regime_state: dict[str, Any] = {}
+        # Evaluation event history (J4)
+        self.evaluation_event_history: list[dict] = []
 
     # ═════════════════════════════════════════════════════════════
     #  PUBLIC API
@@ -204,6 +206,7 @@ class OrganismBrain:
             self._load_evolved_params()
             self._load_governance_state()
             self._load_regime_state()
+            self._load_evaluation_event_history()
             self._loaded = True
 
             gen = self._manifest.get("generation", 0)
@@ -268,6 +271,7 @@ class OrganismBrain:
             self._save_ml_models(tmp_dir, signal_gen)
             self._save_ml_state(tmp_dir, signal_gen)
             self._save_model_metrics_history(tmp_dir, learner)
+            self._save_evaluation_event_history(tmp_dir, learner)
             self._save_learning_state(tmp_dir, learner)
             self._save_reference_features(tmp_dir, learner)
             self._save_trade_history(tmp_dir, all_trades)
@@ -432,6 +436,14 @@ class OrganismBrain:
                     mean_pred_return=mm.get("mean_pred_return", 0.0),
                     hit_rate=mm.get("hit_rate", 0.0),
                     feature_importance_top10=fi_tuples,
+                    calibration_sample_count=mm.get("calibration_sample_count", 0),
+                    calibration_monotonic=mm.get("calibration_monotonic", True),
+                    calibration_error=mm.get("calibration_error", 0.0),
+                    effective_mean_pred_return=mm.get("effective_mean_pred_return", 0.0),
+                    candidate_calibration_sample_count=mm.get("candidate_calibration_sample_count", 0),
+                    candidate_calibration_monotonic=mm.get("candidate_calibration_monotonic", True),
+                    candidate_calibration_error=mm.get("candidate_calibration_error", 0.0),
+                    evaluated_at=mm.get("evaluated_at", ""),
                 ))
 
             # Restore trade history
@@ -458,7 +470,11 @@ class OrganismBrain:
                     mae=td.get("mae", 0.0),
                     bars_held_at_exit=td.get("bars_held_at_exit", 0),
                     time_in_trade_seconds=td.get("time_in_trade_seconds", 0.0),
+                    closed_at=td.get("closed_at", ""),
                 ))
+
+            # Restore evaluation event history (J4)
+            learner.state.evaluation_events = list(self.evaluation_event_history)
 
             # Restore reference features for drift detection
             if self.reference_features is not None:
@@ -565,6 +581,15 @@ class OrganismBrain:
                 "mean_pred_return": mm.mean_pred_return,
                 "hit_rate": mm.hit_rate,
                 "feature_importance_top10": mm.feature_importance_top10,
+                "calibration_sample_count": getattr(mm, "calibration_sample_count", 0),
+                "calibration_monotonic": getattr(mm, "calibration_monotonic", True),
+                "calibration_error": getattr(mm, "calibration_error", 0.0),
+                "effective_mean_pred_return": getattr(mm, "effective_mean_pred_return", 0.0),
+                "candidate_calibration_sample_count": getattr(mm, "candidate_calibration_sample_count", 0),
+                "candidate_calibration_monotonic": getattr(mm, "candidate_calibration_monotonic", True),
+                "candidate_calibration_error": getattr(mm, "candidate_calibration_error", 0.0),
+                "evaluated_at": getattr(mm, "evaluated_at", ""),
+                "accepted": True,  # only accepted models are in model_metrics (J3)
             })
         # Store inside ml_state.json (reload it, add, rewrite)
         ml_state_path = target / "ml_state.json"
@@ -574,6 +599,14 @@ class OrganismBrain:
             ml_state = {}
         ml_state["model_metrics_history"] = history
         _write_json(ml_state_path, ml_state)
+
+    def _save_evaluation_event_history(
+        self, target: Path, learner: Any
+    ) -> None:
+        """J4: Save evaluation event history (accepted + rejected)."""
+        events = getattr(learner.state, "evaluation_events", [])
+        if events:
+            _write_json(target / "evaluation_event_history.json", events)
 
     def _save_learning_state(self, target: Path, learner: Any) -> None:
         state = learner.state
@@ -630,6 +663,7 @@ class OrganismBrain:
                 "mae": round(getattr(t, "mae", 0.0), 4),
                 "bars_held_at_exit": getattr(t, "bars_held_at_exit", 0),
                 "time_in_trade_seconds": round(getattr(t, "time_in_trade_seconds", 0.0), 2),
+                "closed_at": getattr(t, "closed_at", ""),
             })
         df = pd.DataFrame(records)
 
@@ -874,6 +908,15 @@ class OrganismBrain:
         """Phase 1.3: Load regime detector running state."""
         path = self.brain_dir / "regime_state.json"
         self.regime_state = _read_json(path) if path.is_file() else {}
+
+    def _load_evaluation_event_history(self) -> None:
+        """J4: Load evaluation event history."""
+        path = self.brain_dir / "evaluation_event_history.json"
+        if path.is_file():
+            data = _read_json(path)
+            self.evaluation_event_history = data if isinstance(data, list) else []
+        else:
+            self.evaluation_event_history = []
 
     # ═════════════════════════════════════════════════════════════
     #  BRAIN QUALITY GATES (Phase 1.6)
@@ -1173,6 +1216,7 @@ class OrganismBrain:
                     mae=td.get("mae", 0.0),
                     bars_held_at_exit=td.get("bars_held_at_exit", 0),
                     time_in_trade_seconds=td.get("time_in_trade_seconds", 0.0),
+                    closed_at=td.get("closed_at", ""),
                 ))
             return records
         except Exception as e:

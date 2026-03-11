@@ -14,7 +14,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "CRM",
@@ -31,7 +32,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "CRM",
@@ -48,7 +50,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "PLTR",
@@ -65,7 +68,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "PLTR",
@@ -82,7 +86,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "PLTR",
@@ -99,7 +104,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "PLTR",
@@ -116,7 +122,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "PLTR",
@@ -133,7 +140,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "PLTR",
@@ -150,7 +158,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "PLTR",
@@ -167,7 +176,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "PLTR",
@@ -184,7 +194,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "PLTR",
@@ -201,7 +212,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "PLTR",
@@ -218,7 +230,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "WMT",
@@ -235,7 +248,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "WMT",
@@ -252,7 +266,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "WMT",
@@ -269,7 +284,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "WMT",
@@ -286,7 +302,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "WMT",
@@ -303,7 +320,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "WMT",
@@ -320,7 +338,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "NFLX",
@@ -337,7 +356,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "NFLX",
@@ -354,7 +374,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "NFLX",
@@ -371,7 +392,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "NFLX",
@@ -388,7 +410,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "NFLX",
@@ -405,7 +428,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "NFLX",
@@ -422,7 +446,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "NFLX",
@@ -439,7 +464,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "NFLX",
@@ -456,7 +482,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "AVGO",
@@ -473,7 +500,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "AVGO",
@@ -490,7 +518,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "AVGO",
@@ -507,7 +536,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "AVGO",
@@ -524,7 +554,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "AVGO",
@@ -541,7 +572,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "AVGO",
@@ -558,7 +590,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "AVGO",
@@ -575,7 +608,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "QQQ",
@@ -592,7 +626,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "QQQ",
@@ -609,7 +644,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "QQQ",
@@ -626,7 +662,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "QQQ",
@@ -643,7 +680,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "QQQ",
@@ -660,7 +698,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "AMD",
@@ -677,7 +716,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "COIN",
@@ -694,7 +734,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "COIN",
@@ -711,7 +752,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "COIN",
@@ -728,7 +770,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "COIN",
@@ -745,7 +788,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "COIN",
@@ -762,7 +806,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "COIN",
@@ -779,7 +824,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "COIN",
@@ -796,7 +842,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "COIN",
@@ -813,7 +860,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "COIN",
@@ -830,7 +878,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "COIN",
@@ -847,7 +896,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "COIN",
@@ -864,7 +914,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "COIN",
@@ -881,7 +932,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "TSLA",
@@ -898,7 +950,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "TSLA",
@@ -915,7 +968,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "TSLA",
@@ -932,7 +986,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "TSLA",
@@ -949,7 +1004,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "TSLA",
@@ -966,7 +1022,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "TSLA",
@@ -983,7 +1040,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "MU",
@@ -1000,7 +1058,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "MU",
@@ -1017,7 +1076,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "MU",
@@ -1034,7 +1094,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "MU",
@@ -1051,7 +1112,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "MU",
@@ -1068,7 +1130,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "MU",
@@ -1085,7 +1148,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "INTC",
@@ -1102,7 +1166,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "INTC",
@@ -1119,7 +1184,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "IWM",
@@ -1136,7 +1202,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "IWM",
@@ -1153,7 +1220,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "AAPL",
@@ -1170,7 +1238,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "AAPL",
@@ -1187,7 +1256,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "XOM",
@@ -1204,7 +1274,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "XOM",
@@ -1221,7 +1292,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "XOM",
@@ -1238,7 +1310,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "XOM",
@@ -1255,7 +1328,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "XOM",
@@ -1272,7 +1346,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "XOM",
@@ -1289,7 +1364,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "ABNB",
@@ -1306,7 +1382,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "ABNB",
@@ -1323,7 +1400,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "ABNB",
@@ -1340,7 +1418,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "AMZN",
@@ -1357,7 +1436,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "AMZN",
@@ -1374,7 +1454,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "AMZN",
@@ -1391,7 +1472,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "AMZN",
@@ -1408,7 +1490,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "AMZN",
@@ -1425,7 +1508,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "AMZN",
@@ -1442,7 +1526,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "AMZN",
@@ -1459,7 +1544,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "AMZN",
@@ -1476,7 +1562,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "AMZN",
@@ -1493,7 +1580,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "AMZN",
@@ -1510,7 +1598,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "AMZN",
@@ -1527,7 +1616,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "UBER",
@@ -1544,7 +1634,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "UBER",
@@ -1561,7 +1652,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "UBER",
@@ -1578,7 +1670,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "ADBE",
@@ -1595,7 +1688,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "ADBE",
@@ -1612,7 +1706,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "ADBE",
@@ -1629,7 +1724,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "NVDA",
@@ -1646,7 +1742,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "NVDA",
@@ -1663,7 +1760,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "NVDA",
@@ -1680,7 +1778,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "NVDA",
@@ -1697,7 +1796,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "NVDA",
@@ -1714,7 +1814,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "NVDA",
@@ -1731,7 +1832,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "NVDA",
@@ -1748,7 +1850,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "NVDA",
@@ -1765,7 +1868,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "NVDA",
@@ -1782,7 +1886,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "SNOW",
@@ -1799,7 +1904,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "SNOW",
@@ -1816,7 +1922,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "SNOW",
@@ -1833,7 +1940,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "XLE",
@@ -1850,7 +1958,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "XLE",
@@ -1867,7 +1976,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "XLE",
@@ -1884,7 +1994,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "XLE",
@@ -1901,7 +2012,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "XLE",
@@ -1918,7 +2030,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "XLE",
@@ -1935,7 +2048,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "XLE",
@@ -1952,7 +2066,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "XLE",
@@ -1969,7 +2084,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "XLE",
@@ -1986,7 +2102,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "MSFT",
@@ -2003,7 +2120,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "MSFT",
@@ -2020,7 +2138,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "MSFT",
@@ -2037,7 +2156,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "MSFT",
@@ -2054,7 +2174,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "META",
@@ -2071,7 +2192,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "COST",
@@ -2088,7 +2210,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "COST",
@@ -2105,7 +2228,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "COST",
@@ -2122,7 +2246,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "COST",
@@ -2139,7 +2264,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "COST",
@@ -2156,7 +2282,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "COST",
@@ -2173,7 +2300,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "CAT",
@@ -2190,7 +2318,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "CAT",
@@ -2207,7 +2336,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "GOOGL",
@@ -2224,7 +2354,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "GOOGL",
@@ -2241,7 +2372,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "LLY",
@@ -2258,7 +2390,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "LLY",
@@ -2275,7 +2408,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "LLY",
@@ -2292,7 +2426,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "LLY",
@@ -2309,7 +2444,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "XLK",
@@ -2326,7 +2462,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "XLK",
@@ -2343,7 +2480,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "XLK",
@@ -2360,7 +2498,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "SPY",
@@ -2377,7 +2516,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "SPY",
@@ -2394,7 +2534,8 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   },
   {
     "symbol": "SPY",
@@ -2411,6 +2552,7 @@
     "mae": 0.0,
     "bars_held_at_exit": 0,
     "time_in_trade_seconds": 0.0,
-    "is_exploration": false
+    "is_exploration": false,
+    "closed_at": ""
   }
 ]

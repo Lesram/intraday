@@ -1,0 +1,143 @@
+{
+  "sessions_analyzed": 1,
+  "history_caveat": "Only 1 daily bundle available (2026-03-10 lifetime). Insufficient for multi-session trend analysis. Conclusions are single-session observations only.",
+  "session_summary": {
+    "date": "2026-03-10",
+    "sha": "06ec9a4",
+    "total_trades": 142,
+    "realized_pnl": -944.75,
+    "win_rate": 0.4014,
+    "avg_win": 16.84,
+    "avg_loss": -22.67,
+    "payoff_ratio": 0.7426,
+    "strategy_quality_pass": false,
+    "equity_start": 112557.0,
+    "equity_current": 111612.23,
+    "equity_peak": 111728.49,
+    "drawdown_from_start_pct": -0.84,
+    "learning_mode": true,
+    "ml_trained_at_bundle_time": false
+  },
+  "exit_reason_contribution": {
+    "stop_loss": {
+      "count": 47,
+      "total_pnl": -489.02,
+      "avg_pnl": -10.40,
+      "win_rate": 0.234,
+      "share_of_total_loss": 0.3633,
+      "assessment": "Largest loss contributor. 47 stop-outs with only 23.4% winning — most stops are actual losses. ATR stops may be too tight or entries are poorly timed."
+    },
+    "failure_to_follow": {
+      "count": 50,
+      "total_pnl": -279.72,
+      "avg_pnl": -5.59,
+      "win_rate": 0.36,
+      "share_of_total_loss": 0.2274,
+      "assessment": "Second-largest loss contributor. 50 FTF exits at 36% win rate. FTF fires when price fails to follow the predicted direction within the initial window."
+    },
+    "trailing_stop": {
+      "count": 5,
+      "total_pnl": -202.51,
+      "avg_pnl": -40.50,
+      "win_rate": 0.40,
+      "assessment": "Only 5 trailing stops but deeply negative avg. 60% of trailing stops resulted in losses, suggesting trailing activates then reverses. Possible ATR trailing distance issue."
+    },
+    "max_loss_limit": {
+      "count": 3,
+      "total_pnl": -206.17,
+      "avg_pnl": -68.72,
+      "win_rate": 0.0,
+      "assessment": "3 catastrophic single-trade losses averaging -$68.72. These are circuit-breaker exits. All losses — investigate which symbols triggered these."
+    },
+    "ml_reversal": {
+      "count": 23,
+      "total_pnl": 185.92,
+      "avg_pnl": 8.08,
+      "win_rate": 0.6522,
+      "assessment": "POSITIVE CONTRIBUTOR. ML reversal exits are the most profitable exit type — 65% win rate, +$186 total. ML signal appears informative for exit timing even in learning mode."
+    },
+    "max_holding_period": {
+      "count": 5,
+      "total_pnl": 33.87,
+      "avg_pnl": 6.77,
+      "win_rate": 0.80,
+      "assessment": "Small but positive. Horizon timeout trades are 80% winners — holding to max period works."
+    },
+    "partial_take_profit": {
+      "count": 7,
+      "total_pnl": -4.06,
+      "avg_pnl": -0.58,
+      "win_rate": 0.7143,
+      "assessment": "Roughly breakeven despite 71% win rate — winning take-profits are small."
+    },
+    "take_profit": {
+      "count": 1,
+      "total_pnl": 15.36,
+      "win_rate": 1.0,
+      "assessment": "Only 1 full take-profit in 142 trades. Very few trades reach full TP target."
+    },
+    "eod_flatten": {
+      "count": 1,
+      "total_pnl": 1.58,
+      "win_rate": 1.0,
+      "assessment": "1 EOD flatten — functioning correctly."
+    }
+  },
+  "entry_source_contribution": {
+    "all_unknown": true,
+    "caveat": "All 142 trades have empty entry_source field. Cannot attribute PnL to alpha vs breakout entry paths. This is a forensics gap (finding F4).",
+    "unknown": {
+      "count": 142,
+      "total_pnl": -944.75,
+      "avg_pnl": -6.65,
+      "win_rate": 0.4014,
+      "avg_confidence": 0.4968,
+      "avg_predicted_return": 0.0
+    }
+  },
+  "signal_quality": {
+    "ml_predictions_available": false,
+    "predicted_return_direction_match_rate": null,
+    "confidence_correlation_with_outcome": false,
+    "confidence_quintile_summary": {
+      "Q1_lowest": {"avg_conf": 0.235, "win_rate": 0.429, "total_pnl": -429.19, "assessment": "Worst PnL by far — low-confidence trades are the biggest drag"},
+      "Q2": {"avg_conf": 0.386, "win_rate": 0.429, "total_pnl": 11.56, "assessment": "Roughly breakeven"},
+      "Q3": {"avg_conf": 0.543, "win_rate": 0.345, "total_pnl": -171.14, "assessment": "Negative despite mid-confidence"},
+      "Q4": {"avg_conf": 0.608, "win_rate": 0.321, "total_pnl": -315.14, "assessment": "Second worst — high-confidence trades are LOSING more"},
+      "Q5_highest": {"avg_conf": 0.703, "win_rate": 0.483, "total_pnl": -40.84, "assessment": "Best win rate but still negative PnL"}
+    },
+    "confidence_assessment": "Confidence is NOT correlated with outcome. Q4 (high confidence) has the WORST win rate (32.1%). This suggests the breakout+tension confidence formula is not discriminating well in learning mode.",
+    "predicted_return_assessment": "All predicted returns are 0.0 — ML is not generating return predictions (learning mode, ml_trained=false in brain). Kelly sizer uses untrained floor."
+  },
+  "regime_economics": {
+    "available": false,
+    "caveat": "regime_at_entry field appears to be populated in live trades but the daily bundle's entry breakdown groups only by entry_source (all 'unknown'). Regime economics require a custom query."
+  },
+  "per_symbol_economics": {
+    "top_3_losers": [
+      {"symbol": "SNOW", "pnl": -310.06, "trades": 3, "win_rate": 0.0, "assessment": "Worst performer. 3 trades, all losses. -$103/trade avg. SNOW is a high-vol cloud stock added via .env override (not in code default universe)."},
+      {"symbol": "WMT", "pnl": -228.05, "trades": 6, "win_rate": 0.33, "assessment": "Second worst. 6 trades at 33% WR. WMT is defensive/low-vol — momentum strategies may not suit it."},
+      {"symbol": "AVGO", "pnl": -173.42, "trades": 7, "win_rate": 0.14, "assessment": "Third worst. 7 trades at 14% WR — nearly all losses."}
+    ],
+    "top_3_winners": [
+      {"symbol": "AMZN", "pnl": 77.81, "trades": 11, "win_rate": 0.55, "assessment": "Best performer. 11 trades at 55% WR. Consistent contributor."},
+      {"symbol": "QQQ", "pnl": 74.06, "trades": 5, "win_rate": 0.80, "assessment": "Second best. 5 trades at 80% WR. ETF with good momentum capture."},
+      {"symbol": "TSLA", "pnl": 69.48, "trades": 6, "win_rate": 0.50, "assessment": "Third best. 6 trades at 50% WR. High volatility works both ways but net positive."}
+    ],
+    "churn_symbols": [
+      {"symbol": "COIN", "trades": 12, "pnl": -108.20, "win_rate": 0.42, "assessment": "Most-traded symbol, net negative. High churn with crypto-correlated volatility."},
+      {"symbol": "AMZN", "trades": 11, "pnl": 77.81, "win_rate": 0.55, "assessment": "Second most-traded, net positive. Good candidate."},
+      {"symbol": "PLTR", "trades": 10, "pnl": -14.34, "win_rate": 0.60, "assessment": "10 trades at 60% WR but still net negative — winners too small."}
+    ]
+  },
+  "top_3_economic_drags": [
+    "1. STOP LOSS exits: -$489 (47 trades). Largest single loss source. ATR stops may be too tight or entries are poorly timed against prevailing moves.",
+    "2. SNOW/WMT/AVGO symbols: -$711 combined (16 trades). Three symbols account for 75% of total loss. All are .env additions or defensive names not well-suited to momentum.",
+    "3. LOW-CONFIDENCE entries (Q1): -$429 from 28 trades. Trades with confidence < 0.31 are consistently money-losing. A higher confidence gate would filter these."
+  ],
+  "top_3_positive_contributors": [
+    "1. ML_REVERSAL exits: +$186 (23 trades, 65% WR). Best exit mechanism — ML signal detects direction changes effectively.",
+    "2. AMZN/QQQ/TSLA: +$221 combined (22 trades). Liquid, high-momentum names where the strategy works.",
+    "3. MAX_HOLDING_PERIOD exits: +$34 (5 trades, 80% WR). Horizon timeout is working — trades that survive to max hold tend to be winners."
+  ]
+}

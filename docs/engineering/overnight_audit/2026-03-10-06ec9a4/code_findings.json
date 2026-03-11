@@ -1,0 +1,79 @@
+[
+  {
+    "id": "F1",
+    "severity": "HIGH",
+    "file": "backend/organism/live_engine.py",
+    "lines": "165",
+    "category": "runtime_config_drift",
+    "description": "MAX_OPEN_POSITIONS=15 from .env overrides code default of 8. System accepts 87.5% more concurrent positions than documented spec.",
+    "evidence": ".env has ORGANISM_MAX_POSITIONS=15, code default is 8, resolved_config confirms 15",
+    "impact_tomorrow": "Kelly sizer and risk-budget calculations are tuned for 8 positions. With 15, per-trade risk is spread thinner but total portfolio exposure is higher. Drawdown behavior may differ from spec expectations.",
+    "recommended_action": "Architect decision: intentional override or drift? If intentional, update spec. If drift, set .env to 8."
+  },
+  {
+    "id": "F2",
+    "severity": "HIGH",
+    "file": "backend/organism/live_engine.py",
+    "lines": "1375-1380, 2030-2160",
+    "category": "spec_vs_code_drift",
+    "description": "bar_boundary_entry_only is declared true in resolved_config but NOT enforced in the entry code path. _is_new_bar is computed only in exit path (step 4). Entry path (steps 6-9) has no bar-boundary gate.",
+    "evidence": "Grep for BAR_BOUNDARY in entry code returns zero hits. _is_new_bar only used at line 1430 (exit check). Config snapshot shows bar_boundary_entry_only=true.",
+    "impact_tomorrow": "Entries can fire on any of the ~6 sub-ticks within a 1-minute bar. This allows intra-bar whipsaws and may explain trades with 0 bars_held. Timing integrity is degraded.",
+    "recommended_action": "Architect decision: implement the gate or update spec to false. This is a design question, not a simple bug fix."
+  },
+  {
+    "id": "F3",
+    "severity": "HIGH",
+    "file": ".env",
+    "lines": "ORGANISM_LIVE_SYMBOLS",
+    "category": "runtime_config_drift",
+    "description": ".env universe has 30 symbols (no SH/PSQ inverse ETFs) vs code default of 22 (with SH/PSQ). Inverse ETF capability is spec'd but not deployed.",
+    "evidence": ".env: 30 symbols including COIN,SNOW,PLTR,UBER,ABNB,SQ but missing SH,PSQ. Code default: 22 symbols with SH,PSQ.",
+    "impact_tomorrow": "No inverse ETF participation in bearish tapes. 10 extra volatile symbols (COIN, SNOW, etc.) increase universe noise. SNOW is the single worst performer at -$310.",
+    "recommended_action": "Architect decision: reconcile .env with code default. Add SH/PSQ if bearish hedging is desired. Consider removing worst-performing additions."
+  },
+  {
+    "id": "F4",
+    "severity": "MEDIUM",
+    "file": "backend/organism/live_engine.py",
+    "lines": "2221-2240, 3348",
+    "category": "forensics_gap",
+    "description": "entry_source is set correctly in _entry_metadata (alpha/breakout/alpha+breakout) but all 142 trades in brain CSV show empty entry_source. Either the deployed container predates this code or the brain CSV was written before entry_source was populated.",
+    "evidence": "daily_entry_breakdown.json shows all 142 trades as 'unknown'. Code at line 2223 sets _entry_source='alpha'. Line 3348 reads meta.get('entry_source','').",
+    "impact_tomorrow": "Cannot attribute PnL to alpha vs breakout entry paths. Strategy debugging is blind. New trades should have entry_source if container has current code.",
+    "recommended_action": "Verify container image includes entry_source logic. If not, rebuild container. Future trades should populate correctly."
+  },
+  {
+    "id": "F5",
+    "severity": "MEDIUM",
+    "file": "backend/organism/live_engine.py",
+    "lines": "N/A",
+    "category": "state_inconsistency",
+    "description": "Runtime API reports ml_trained=true and total_trades=160, but daily bundle (from brain CSV snapshot) shows ml_trained=false and total_trades=142. Bundle is stale relative to live state.",
+    "evidence": "API engine.ml_trained=true, engine.total_trades=160. Bundle daily_runtime_snapshot.json: ml_trained=false, total_trades_lifetime=142.",
+    "impact_tomorrow": "No impact on trading — live engine uses its own state. Bundle forensics are stale. Regenerating the bundle after market close will capture current state.",
+    "recommended_action": "Regenerate bundle after next market close. Consider automating bundle generation."
+  },
+  {
+    "id": "F6",
+    "severity": "MEDIUM",
+    "file": "scripts/runtime/generate_paper_validation_bundle.py",
+    "lines": "440-560",
+    "category": "forensics_gap",
+    "description": "daily_model_quality acceptance_events shows 0 evaluations. J4 evaluation-event history is not yet deployed (uncommitted). Until deployed, background trainer events are not persisted to evaluation_event_history.json.",
+    "evidence": "acceptance_events.total_evaluations=0 in bundle. J4+J5 patches in working tree but not committed/deployed.",
+    "impact_tomorrow": "Model evaluation forensics remain incomplete until J4+J5 are deployed. Trading is unaffected.",
+    "recommended_action": "Commit J4+J5 patches and rebuild container to enable evaluation-event tracking."
+  },
+  {
+    "id": "F7",
+    "severity": "LOW",
+    "file": "backend/organism/live_engine.py",
+    "lines": "304",
+    "category": "design_observation",
+    "description": "BreakoutScanner(top_n=MAX_OPEN_POSITIONS=15) while AlphaScanner(top_n=ALPHA_TOP_N=5). Breakout scanner considers 3x more candidates than alpha scanner.",
+    "evidence": "Line 303: AlphaScanner(top_n=5). Line 304: BreakoutScanner(top_n=15). Both feed into unified candidate list capped at open_slots.",
+    "impact_tomorrow": "Breakout-sourced candidates may outnumber alpha-sourced 3:1 in the unified ranking. This is likely intentional but worth noting.",
+    "recommended_action": "No action needed unless alpha signals are being crowded out."
+  }
+]

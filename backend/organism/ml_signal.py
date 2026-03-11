@@ -118,6 +118,7 @@ class ModelMetrics:
     candidate_calibration_sample_count: int = 0
     candidate_calibration_monotonic: bool = True
     candidate_calibration_error: float = 0.0
+    evaluated_at: str = ""  # ISO-8601 UTC when evaluated (J3)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -137,6 +138,7 @@ class ModelMetrics:
             "candidate_calibration_sample_count": self.candidate_calibration_sample_count,
             "candidate_calibration_monotonic": self.candidate_calibration_monotonic,
             "candidate_calibration_error": round(self.candidate_calibration_error, 4),
+            "evaluated_at": self.evaluated_at,
         }
 
 

@@ -1,0 +1,43 @@
+[
+  {
+    "priority": 1,
+    "file": ".env",
+    "reason": "ORGANISM_MAX_POSITIONS=15 and ORGANISM_LIVE_SYMBOLS (30 symbols, missing SH/PSQ). These two overrides are the largest spec-vs-runtime drift. Architect must decide: intentional tuning or configuration drift to fix."
+  },
+  {
+    "priority": 2,
+    "file": "backend/organism/live_engine.py",
+    "lines": "2030-2160",
+    "reason": "Entry path (steps 6-9) has no bar_boundary_entry_only enforcement despite config declaring it true. Architect must decide: implement the gate or change the spec. Also review entry_source metadata flow — all trades have empty entry_source in the brain CSV."
+  },
+  {
+    "priority": 3,
+    "file": "backend/organism/kelly_sizer.py",
+    "reason": "Kelly sizer is tuned for MAX_OPEN_POSITIONS=8 (max_portfolio_pct=0.95 / 8 = 11.9% per position). With 15 positions, risk per position is 6.3%. Verify this is acceptable or if Kelly params need adjustment."
+  },
+  {
+    "priority": 4,
+    "file": "backend/organism/adaptive_exits.py",
+    "reason": "Stop loss exits account for -$489 (36.3% of total loss). ATR stop multipliers should be reviewed against actual price volatility of the 30-symbol universe. Trailing stop is deeply negative (-$202 on 5 trades)."
+  },
+  {
+    "priority": 5,
+    "file": "backend/organism/alpha_scanner.py",
+    "reason": "Alpha scanner top_n=5 while breakout scanner top_n=15. Review whether alpha candidates are being crowded out. All trades show unknown entry_source so we cannot verify alpha vs breakout attribution."
+  },
+  {
+    "priority": 6,
+    "file": "backend/organism/ml_signal.py",
+    "reason": "Runtime API reports ml_trained=true but bundle shows false. Verify ML model state persistence. Confidence quintile analysis shows NO correlation between confidence and outcome — the confidence formula may need tuning."
+  },
+  {
+    "priority": 7,
+    "file": "backend/organism/continuous_learner.py",
+    "reason": "J4+J5 patches (evaluation-event history) are in working tree but not deployed. Commit and deploy to enable model evaluation forensics."
+  },
+  {
+    "priority": 8,
+    "file": "backend/organism/brain_persistence.py",
+    "reason": "Brain total_runs=36 in API vs 57 in bundle snapshot — verify brain save/load cycle integrity. J4 adds evaluation_event_history persistence — needs deploy."
+  }
+]

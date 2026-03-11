@@ -928,6 +928,7 @@ class OrganismLiveEngine:
                     predicted_return=0.0,
                     actual_return=actual_return,
                     confidence=float(en_attrs.get("confidence", 0.0)),
+                    closed_at="",
                 ))
 
             entry_idx[sym] = idx
@@ -2300,6 +2301,10 @@ class OrganismLiveEngine:
                             "duration_s": train_result.duration_s,
                             "last_trained_tick": self._tick_count,
                         }
+                        # Persist evaluation event into learner history (J5)
+                        _bg_eval_event = self._bg_trainer.get_last_evaluation_event()
+                        if _bg_eval_event:
+                            self.learner.state.evaluation_events.append(_bg_eval_event)
                         self.governance.record_change()
                         result.activity.append(ActivityEvent(
                             event_type="retrain",
@@ -2315,7 +2320,8 @@ class OrganismLiveEngine:
                             timestamp=now_iso,
                         ))
                     elif done and train_result and train_result.error:
-                        # True training error — fall back to synchronous retrain
+                        # True training error — fall back to synchronous retrain.
+                        # No evaluation event: training failed before quality gate.
                         logger.warning(
                             "Background training failed: %s — falling back to sync",
                             train_result.error,
@@ -2345,6 +2351,10 @@ class OrganismLiveEngine:
                             "duration_s": train_result.duration_s,
                             "last_trained_tick": self._tick_count,
                         }
+                        # Persist evaluation event into learner history (J5)
+                        _bg_eval_event = self._bg_trainer.get_last_evaluation_event()
+                        if _bg_eval_event:
+                            self.learner.state.evaluation_events.append(_bg_eval_event)
                         result.activity.append(ActivityEvent(
                             event_type="retrain",
                             message=f"Background model rejected by quality gate "
@@ -3342,6 +3352,7 @@ class OrganismLiveEngine:
                 mae=round(_mae, 2),
                 bars_held_at_exit=_bars_held,
                 time_in_trade_seconds=round(_time_in_trade, 1),
+                closed_at=datetime.fromtimestamp(self._time_fn(), tz=UTC).isoformat() if self._time_fn() > 0 else "",
             )
             self._all_trades.append(trade)
             self.learner.record_trade(trade)
