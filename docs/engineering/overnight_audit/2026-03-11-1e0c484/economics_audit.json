@@ -1,0 +1,49 @@
+{
+  "sessions_analyzed": 1,
+  "history_caveat": "Only 1 daily session available (2026-03-10). Insufficient for multi-session trend analysis. All conclusions are single-session observations. No new trading session has occurred since the prior audit — economics data is unchanged.",
+  "data_staleness": "Economics data is identical to the 2026-03-10-06ec9a4 audit. No new trades have been executed since the config convergence rebuild.",
+  "session_summary": {
+    "date": "2026-03-10",
+    "sha": "06ec9a4 (trading session), 1e0c484 (current deployed)",
+    "total_trades": 142,
+    "realized_pnl": -944.75,
+    "win_rate": 0.4014,
+    "avg_win": 16.84,
+    "avg_loss": -22.67,
+    "payoff_ratio": 0.7426,
+    "strategy_quality_pass": false,
+    "equity_start": 112557.0,
+    "equity_current": 111612.23,
+    "equity_peak": 111728.49,
+    "drawdown_from_start_pct": -0.84,
+    "learning_mode": true,
+    "ml_trained_at_bundle_time": false
+  },
+  "config_changes_for_next_session": {
+    "max_positions": "15 → 8 (reduces concurrent exposure by 47%)",
+    "universe": "30 → 22 symbols (removed 10 volatile extras, added SH/PSQ inverse ETFs)",
+    "expected_impact": "Fewer concurrent positions, tighter risk budget per position, inverse ETF participation in bearish tapes, removal of worst-performing symbols (SNOW -$310, COIN -$108)"
+  },
+  "exit_reason_contribution": {
+    "note": "Unchanged from prior audit — no new trades since rebuild",
+    "stop_loss": {"count": 47, "total_pnl": -489.02, "share_of_total_loss": 0.363},
+    "failure_to_follow": {"count": 50, "total_pnl": -279.72, "share_of_total_loss": 0.227},
+    "trailing_stop": {"count": 5, "total_pnl": -202.51},
+    "max_loss_limit": {"count": 3, "total_pnl": -206.17},
+    "ml_reversal": {"count": 23, "total_pnl": 185.92, "win_rate": 0.652},
+    "max_holding_period": {"count": 5, "total_pnl": 33.87, "win_rate": 0.80},
+    "partial_take_profit": {"count": 7, "total_pnl": -4.06},
+    "take_profit": {"count": 1, "total_pnl": 15.36},
+    "eod_flatten": {"count": 1, "total_pnl": 1.58}
+  },
+  "top_3_economic_drags": [
+    "1. STOP LOSS exits: -$489 (47 trades). Largest single loss source.",
+    "2. SNOW/WMT/AVGO symbols: -$711 combined (16 trades). SNOW and COIN removed from universe for next session.",
+    "3. LOW-CONFIDENCE entries (Q1): -$429 from 28 trades."
+  ],
+  "top_3_positive_contributors": [
+    "1. ML_REVERSAL exits: +$186 (23 trades, 65% WR). Best exit mechanism.",
+    "2. AMZN/QQQ/TSLA: +$221 combined (22 trades). All retained in new universe.",
+    "3. MAX_HOLDING_PERIOD exits: +$34 (5 trades, 80% WR)."
+  ]
+}
