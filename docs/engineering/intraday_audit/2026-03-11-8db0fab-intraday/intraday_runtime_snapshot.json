@@ -1,0 +1,84 @@
+{
+  "audit_timestamp_utc": "2026-03-11T18:59:00Z",
+  "audit_timestamp_local": "2026-03-11T11:59:00 PDT",
+  "head_sha": "8db0fab",
+
+  "session_status": {
+    "local_time": "2026-03-11 11:58:41 PDT",
+    "utc_time": "2026-03-11T18:58:41Z",
+    "exchange_status": "US_MARKET_OPEN (regular hours 09:30-16:00 ET)",
+    "organism_market_interpretation": "OPEN — tick loop advancing, processing 22 symbols",
+    "last_tick_utc": "2026-03-11T18:58:39Z",
+    "current_regime": "low_vol",
+    "tick_count_at_brain_save": 360,
+    "tick_count_estimated_now": 362,
+    "tick_interval_seconds": 13,
+    "tick_loop_advancing": true,
+    "market_open_interpreted_by_runtime": true,
+    "contradiction_present": false
+  },
+
+  "runtime_health": {
+    "containers": {
+      "api": "Up 2 hours (healthy)",
+      "db": "Up 2 hours (healthy)",
+      "redis": "Up 2 hours (healthy)"
+    },
+    "api_reachable": true,
+    "healthz_endpoint": "200 OK",
+    "data_stale": false,
+    "data_stale_at_startup": true,
+    "data_stale_startup_note": "987s stale at 13:43 UTC — resolved after warmup (5 ticks)",
+    "learning_mode": true,
+    "evolution_freeze": true,
+    "evolution_freeze_reason": "142 trades < 300 threshold",
+    "ml_trained": false,
+    "generation": 0,
+    "total_runs": 67,
+    "total_lifetime_trades": 142,
+    "current_sharpe": -0.967,
+    "win_rate": "43.0%"
+  },
+
+  "account": {
+    "account_id": "PA3RLEN7T0N4",
+    "is_paper": true,
+    "equity": 111612.23,
+    "cash": 111612.23,
+    "buying_power": 446671.00,
+    "open_positions": 0,
+    "pending_entries": 0,
+    "pending_exits": 0,
+    "last_account_fetch_utc": "2026-03-11T07:20:42Z"
+  },
+
+  "regime_timeline_today": {
+    "transitions": [
+      {"time_utc": "13:43", "regime": "trending_up", "ticks": 57},
+      {"time_utc": "14:12", "regime": "trending_down", "ticks": 7, "note": "regime transition cooldown blocked 12 ticks + trending_down after 10:00 ET block"},
+      {"time_utc": "14:39", "regime": "high_vol", "ticks": 31},
+      {"time_utc": "~18:56", "regime": "low_vol", "ticks": "ongoing"}
+    ],
+    "regime_instability": "HIGH — 4 regime changes in 5 hours"
+  },
+
+  "process_memory_mb": 1070.64,
+  "system_memory_percent": 23.2,
+  "swap_usage_mb": 0.0,
+
+  "errors_today": {
+    "auth_errors_0714_0722": 7,
+    "auth_error_note": "401: Invalid username or password — early pre-market frontend login attempts",
+    "order_validate_async_for_error": 4,
+    "order_validate_error_note": "'async for' requires object with __aiter__ method — POST /api/v1/orders/validate",
+    "risk_manager_none_comparison": 1,
+    "alpha_weights_sum_warning": "0.9497 vs expected ~1.0",
+    "scanner_no_stocks_warnings": "recurring every ~80s"
+  },
+
+  "tick_gap_721s": {
+    "time_utc": "2026-03-11T13:55:56Z",
+    "duration_seconds": 721.4,
+    "note": "12-minute tick gap between 13:43:44 and 13:55:56 UTC — likely container resource contention or scheduler pause"
+  }
+}

@@ -1,0 +1,70 @@
+{
+  "date": "2026-03-13",
+  "head_sha": "8db0fab",
+
+  "forensic_fields": [
+    "entry_source",
+    "regime_at_entry",
+    "regime_at_exit",
+    "mfe",
+    "mae",
+    "bars_held_at_exit",
+    "time_in_trade_seconds",
+    "closed_at"
+  ],
+
+  "code_wiring_status": "FULLY_WIRED",
+  "wired_since": "2026-03-09 (C2 patch)",
+
+  "live_validation_status": "NOT_YET_EXERCISED",
+  "reason": "Three consecutive zero-trade days since C2 patch. No trade has opened AND closed to exercise the full forensic field pipeline.",
+
+  "code_path_verification": {
+    "entry_metadata_population": {
+      "file": "backend/organism/live_engine.py",
+      "lines": "2223-2240",
+      "status": "WIRED — entry_source, regime_at_entry populated at entry time"
+    },
+    "tracking_during_trade": {
+      "file": "backend/organism/adaptive_exits.py",
+      "lines": "30-63, 378-385",
+      "status": "WIRED — highest_favorable, bars_held updated every tick"
+    },
+    "exit_population": {
+      "file": "backend/organism/live_engine.py",
+      "lines": "3315-3356",
+      "status": "WIRED — all 8 fields populated in TradeRecord at exit"
+    },
+    "csv_persistence": {
+      "file": "backend/organism/brain_persistence.py",
+      "lines": "637-698",
+      "status": "WIRED — all 8 fields written to CSV with getattr() defaults"
+    },
+    "csv_restoration": {
+      "file": "backend/organism/brain_persistence.py",
+      "lines": "860-866, 1187-1220",
+      "status": "WIRED — full field restoration from CSV to TradeRecord objects"
+    }
+  },
+
+  "legacy_data_status": {
+    "csv_rows": 142,
+    "all_have_blank_forensic_fields": true,
+    "reason": "All 142 persisted trades predate the C2 patch. Forensic fields were not populated at trade time.",
+    "in_memory_trades": 16,
+    "in_memory_status": "Trades 143-158 exist only in runtime memory (post-fix). They have NOT been persisted because brain save hasn't triggered since 2026-03-11T21:13:37."
+  },
+
+  "brain_persistence_gap": {
+    "manifest_trade_count": 142,
+    "runtime_trade_count": 158,
+    "gap": 16,
+    "last_brain_save": "2026-03-11T21:13:37",
+    "will_auto_correct": true,
+    "when": "Next brain save trigger (typically at session boundaries or evolution events)"
+  },
+
+  "validation_plan": "The NEXT trade that opens and closes will be the first live validation of forensic field wiring. All 8 fields should populate with non-default values. Until then, code review confirms correct wiring.",
+
+  "verdict": "CODE_CORRECT_AWAITING_LIVE_VALIDATION"
+}

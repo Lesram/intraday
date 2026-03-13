@@ -1,0 +1,54 @@
+{
+  "audit_date": "2026-03-11",
+  "head_sha": "8db0fab",
+
+  "today_orders": {
+    "submitted": 0,
+    "filled": 0,
+    "cancelled": 0,
+    "rejected": 0,
+    "stale_accepted": 0,
+    "note": "Zero orders submitted today — no candidates passed confidence gate"
+  },
+
+  "stale_orders": {
+    "count": 1,
+    "orders": [
+      {
+        "id": "b6cc18d7-d6d5-4341-a9d4-f082b648ce9e",
+        "symbol": "WMT",
+        "side": "sell",
+        "qty": 42.0,
+        "status": "accepted",
+        "submitted_at": "2026-03-04T21:00:54.026084+00:00",
+        "updated_at": "2026-03-04T21:00:54.025789+00:00",
+        "broker_order_id": null,
+        "age_minutes": 9957,
+        "age_days": 6.9,
+        "attributes": {
+          "tick": 721,
+          "reason": "stop_loss",
+          "source": "organism"
+        },
+        "diagnosis": "Stop-loss sell order from Mar 4 stuck in 'accepted' — no broker_order_id, never routed to Alpaca. The position was likely already closed by a subsequent order. This is a DB-level ghost.",
+        "recommended_action": "cancel_stale_order"
+      }
+    ]
+  },
+
+  "accepted_orders_older_than_5min": {
+    "count": 1,
+    "note": "Only the stale WMT order above"
+  },
+
+  "rejected_orders_today": {
+    "count": 0
+  },
+
+  "lifetime_order_summary": {
+    "total": 348,
+    "filled": 344,
+    "cancelled": 3,
+    "accepted_stale": 1
+  }
+}

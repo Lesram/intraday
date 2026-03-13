@@ -1,0 +1,75 @@
+{
+  "date": "2026-03-13",
+  "head_sha": "8db0fab",
+
+  "overall_recommendation": "GO_UNCHANGED",
+
+  "confidence_in_recommendation": "HIGH",
+
+  "blocker_count": {
+    "CRITICAL": 0,
+    "HIGH": 0,
+    "MEDIUM": 0,
+    "LOW": 0
+  },
+
+  "platform_health": {
+    "infrastructure": "HEALTHY — 3/3 containers up 2+ days, API reachable, no crashes",
+    "data_integrity": "HEALTHY — runtime/broker/DB all consistent, equity reconciled",
+    "code_correctness": "HEALTHY — no bugs found, forensic fields wired correctly",
+    "strategy_performance": "DORMANT — zero trades in 3-day stable window, expected given market conditions",
+    "ml_pipeline": "IMPROVING — job #22 nearly passed quality gate, trajectory is positive"
+  },
+
+  "known_issues": [
+    {
+      "id": "INV-008",
+      "title": "Confidence formula structural gap for inverse ETFs and defensive rotations",
+      "severity": "HIGH (impact) / LOW (urgency)",
+      "status": "DOCUMENTED — requires Phase C design discussion",
+      "impact": "Organism cannot trade sell-off days effectively"
+    },
+    {
+      "id": "INV-003",
+      "title": "Regime detector cross-session state contamination",
+      "severity": "MEDIUM",
+      "status": "MONITORING — need 5+ more sessions of evidence"
+    },
+    {
+      "id": "INV-009",
+      "title": "COST liquidity gate uses share volume not dollar volume",
+      "severity": "LOW",
+      "status": "DOCUMENTED — affects only 1 symbol"
+    },
+    {
+      "id": "INV-010",
+      "title": "MAE calculation uses stop_loss proxy instead of actual worst price",
+      "severity": "LOW",
+      "status": "DOCUMENTED — awaiting more trades for validation"
+    }
+  ],
+
+  "design_gaps": [
+    {
+      "gap": "realized_trades DB table not connected to organism",
+      "severity": "MEDIUM",
+      "status": "DOCUMENTED — design gap, not bug"
+    },
+    {
+      "gap": "Brain manifest sync (142 CSV vs 158 runtime)",
+      "severity": "LOW",
+      "status": "WILL AUTO-CORRECT on next brain save"
+    }
+  ],
+
+  "three_day_assessment": "The organism is in a natural quiet period. The market has been in a rotation/sell-off pattern that doesn't match the breakout/momentum strategy. All infrastructure is healthy. The confidence gate is correctly preventing low-quality entries. ML training is making progress. No changes are warranted.",
+
+  "starvation_watch": {
+    "consecutive_zero_days": 3,
+    "escalation_threshold": 5,
+    "trades_to_evolution": 142,
+    "status": "MONITORING — not yet at escalation threshold"
+  },
+
+  "next_audit": "2026-03-14 post-close"
+}

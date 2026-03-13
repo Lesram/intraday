@@ -1,0 +1,110 @@
+{
+  "date": "2026-03-11",
+  "head_sha": "8db0fab",
+  "audit_timestamp_utc": "2026-03-11T21:12:00Z",
+
+  "closeout_verification": {
+    "open_positions_ok": true,
+    "open_positions_count": 0,
+    "stale_orders_ok": true,
+    "stale_orders_count": 0,
+    "stale_orders_note": "WMT ghost order (b6cc18d7...) was cancelled earlier today at 20:45 UTC during intraday monitoring",
+    "pending_state_ok": true,
+    "pending_entries": 0,
+    "pending_exits": 0,
+    "accepted_orders": 0
+  },
+
+  "trade_field_integrity": {
+    "today_trades": 0,
+    "note": "No trades today — field integrity check is N/A for today. Lifetime brain trade_history.csv integrity checked below.",
+    "brain_trade_history": {
+      "total_rows": 142,
+      "fields_present": ["symbol", "direction", "entry_price", "exit_price", "shares", "pnl", "exit_reason", "predicted_return", "actual_return", "confidence", "correct_direction", "is_exploration", "entry_source", "regime_at_entry", "regime_at_exit", "mfe", "mae", "bars_held_at_exit", "time_in_trade_seconds", "closed_at"],
+      "entry_source_populated": "0/142 — ALL blank",
+      "regime_at_entry_populated": "0/142 — ALL blank",
+      "regime_at_exit_populated": "0/142 — ALL blank",
+      "closed_at_populated": "0/142 — ALL blank",
+      "mfe_populated": "0/142 — all 0.0",
+      "mae_populated": "0/142 — all 0.0",
+      "bars_held_at_exit_populated": "0/142 — all 0",
+      "time_in_trade_seconds_populated": "0/142 — all 0.0",
+      "exit_reason_populated": "142/142 — all populated",
+      "confidence_populated": "142/142 — all populated",
+      "pnl_populated": "142/142 — all populated"
+    }
+  },
+
+  "runtime_bundle_consistency": {
+    "brain_manifest_pnl_matches_learning_state": true,
+    "brain_trade_count_matches_manifest": true,
+    "order_table_clean": true,
+    "positions_table_clean": true,
+    "realized_trades_table_empty": true,
+    "realized_trades_note": "realized_trades table has 0 rows lifetime — trade PnL is tracked only in brain's trade_history.csv, not in the DB"
+  },
+
+  "anomalies": [
+    {
+      "id": "ANOM-001",
+      "severity": "LOW",
+      "category": "data_completeness",
+      "title": "Brain trade_history.csv missing entry_source, regime_at_entry, regime_at_exit, closed_at, mfe, mae, bars_held, time_in_trade for ALL 142 trades",
+      "detail": "These columns exist in the CSV header but are blank/zero for every row. This means the live_engine is not persisting these fields when recording trades to brain history. The data exists in-memory during tick processing but is not captured.",
+      "impact": "Cannot do post-hoc analysis of entry sources, regime context, or trade duration from historical data. Does not affect runtime correctness.",
+      "recommended_action": "Future improvement: wire entry_source, regime_at_entry, regime_at_exit, closed_at, mfe, mae into brain trade recording. Not a tonight fix."
+    },
+    {
+      "id": "ANOM-002",
+      "severity": "LOW",
+      "category": "data_completeness",
+      "title": "realized_trades DB table is empty (0 rows) despite 142 brain-tracked trades",
+      "detail": "The organism records trades in brain's trade_history.csv but does not write to the realized_trades DB table. This means the DB has no queryable trade history.",
+      "impact": "Cannot query trade history via SQL/API. Brain CSV is the only source of truth.",
+      "recommended_action": "Future improvement: wire organism trade close events into realized_trades table. Not a tonight fix."
+    },
+    {
+      "id": "ANOM-003",
+      "severity": "LOW",
+      "category": "api_error",
+      "title": "'async for' error in POST /api/v1/orders/validate (5 occurrences at 07:20 UTC)",
+      "detail": "Unhandled exception: 'async for' requires an object with __aiter__ method, got list_iterator. Triggered by pre-market frontend order validation requests.",
+      "impact": "Only affects the manual order validation API endpoint, not the organism's trading loop. Pre-market only.",
+      "recommended_action": "Fix the async iteration bug in orders.py validate endpoint. Low priority."
+    },
+    {
+      "id": "ANOM-004",
+      "severity": "INFO",
+      "category": "config",
+      "title": "Alpha weights sum = 0.9497 (warning at startup)",
+      "detail": "Brain validation warns that alpha weights sum to 0.9497 instead of ~1.0. This is a cosmetic gap in evolved_params.json.",
+      "impact": "Negligible — the weights are used only in production mode (after ML training). In learning mode, alpha scoring uses fixed weights.",
+      "recommended_action": "Normalize alpha weights in evolved_params.json. Very low priority."
+    },
+    {
+      "id": "ANOM-005",
+      "severity": "INFO",
+      "category": "scheduler",
+      "title": "721-second tick gap at 13:55 UTC",
+      "detail": "12-minute gap between ticks at 13:43:44 and 13:55:56 UTC. Likely caused by container resource contention or a long-running feature computation.",
+      "impact": "Missed ~55 ticks worth of scanning. Non-blocking, self-recovered.",
+      "recommended_action": "Monitor for recurrence. If frequent, investigate container resource limits."
+    },
+    {
+      "id": "ANOM-006",
+      "severity": "INFO",
+      "category": "scheduler",
+      "title": "Post-close scheduler backoff loop (consecutive_errors=1)",
+      "detail": "After market close (~21:00 UTC), the scheduler enters a continuous backoff loop with 2s intervals. The error is likely a timeout on stale/unavailable market data.",
+      "impact": "Expected behavior. The scheduler will resume normal ticking when the market reopens.",
+      "recommended_action": "None — this is by design. The scheduler backs off on errors rather than crashing."
+    }
+  ],
+
+  "anomaly_counts": {
+    "CRITICAL": 0,
+    "HIGH": 0,
+    "LOW": 3,
+    "INFO": 3
+  }
+}

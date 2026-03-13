@@ -1,0 +1,103 @@
+{
+  "audit_date": "2026-03-11",
+  "head_sha": "8db0fab",
+
+  "top_rejected_candidates": [
+    {
+      "rank": 1,
+      "symbol": "TSLA",
+      "source": "alpha/breakout",
+      "eff_conf": 0.22,
+      "regime_at_rejection": "trending_down",
+      "rejection_reason": "confidence_gate (0.22 < 0.25 exploration gate)",
+      "rejection_looks": "EXPECTED — trending_down + regime transition cooldown + eff_conf far below gate"
+    },
+    {
+      "rank": 2,
+      "symbol": "XLE",
+      "source": "alpha/breakout",
+      "eff_conf": 0.21,
+      "regime_at_rejection": "trending_down",
+      "rejection_reason": "confidence_gate (0.21 < 0.25 exploration gate)",
+      "rejection_looks": "EXPECTED — trending_down + low confidence"
+    },
+    {
+      "rank": 3,
+      "symbol": "NVDA",
+      "source": "alpha/breakout",
+      "eff_conf": 0.17,
+      "regime_at_rejection": "trending_down",
+      "rejection_reason": "confidence_gate (0.17 < 0.25 exploration gate)",
+      "rejection_looks": "EXPECTED — trending_down regime, low breakout/tension"
+    },
+    {
+      "rank": 4,
+      "symbol": "TSLA",
+      "source": "alpha/breakout",
+      "eff_conf": 0.15,
+      "regime_at_rejection": "high_vol",
+      "rejection_reason": "confidence_gate (0.15 < 0.25 exploration gate)",
+      "rejection_looks": "EXPECTED — high_vol regime, low confidence"
+    },
+    {
+      "rank": 5,
+      "symbol": "XLE",
+      "source": "alpha/breakout",
+      "eff_conf": 0.14,
+      "regime_at_rejection": "high_vol",
+      "rejection_reason": "confidence_gate (0.14 < 0.25 exploration gate)",
+      "rejection_looks": "EXPECTED — high_vol regime, low breakout/tension scores"
+    },
+    {
+      "rank": 6,
+      "symbol": "GOOGL",
+      "source": "alpha/breakout",
+      "eff_conf": 0.13,
+      "regime_at_rejection": "high_vol",
+      "rejection_reason": "confidence_gate (0.13 < 0.25 exploration gate)",
+      "rejection_looks": "EXPECTED — high_vol regime"
+    },
+    {
+      "rank": 7,
+      "symbol": "SNOW",
+      "source": "alpha/breakout",
+      "eff_conf": 0.00,
+      "regime_at_rejection": "trending_up",
+      "rejection_reason": "confidence_gate (0.00 < 0.25 exploration gate)",
+      "rejection_looks": "EXPECTED — zero breakout_score and zero tension; no technical setup detected"
+    },
+    {
+      "rank": 8,
+      "symbol": "IWM",
+      "source": "alpha/breakout",
+      "eff_conf": 0.00,
+      "regime_at_rejection": "high_vol",
+      "rejection_reason": "confidence_gate (0.00 < 0.25 exploration gate)",
+      "rejection_looks": "EXPECTED — zero breakout/tension signals in high_vol regime"
+    },
+    {
+      "rank": 9,
+      "symbol": "AMD",
+      "source": "alpha/breakout",
+      "eff_conf": 0.00,
+      "regime_at_rejection": "high_vol",
+      "rejection_reason": "confidence_gate (0.00 < 0.25 exploration gate)",
+      "rejection_looks": "EXPECTED — zero breakout/tension"
+    },
+    {
+      "rank": 10,
+      "symbol": "META",
+      "source": "alpha/breakout",
+      "eff_conf": 0.00,
+      "regime_at_rejection": "low_vol",
+      "rejection_reason": "confidence_gate (0.00 < 0.25 exploration gate)",
+      "rejection_looks": "EXPECTED — zero breakout/tension signals"
+    }
+  ],
+
+  "assessment": {
+    "suspicious_rejections": 0,
+    "expected_rejections": 10,
+    "verdict": "ALL rejections look economically expected. The confidence formula (0.65*breakout + 0.35*tension) is producing values 0.00–0.22, well below the 0.25 floor. This indicates genuinely low breakout/tension readings across the universe, consistent with a regime-unstable day (4 regime changes in 5 hours). No gate bug detected."
+  }
+}
