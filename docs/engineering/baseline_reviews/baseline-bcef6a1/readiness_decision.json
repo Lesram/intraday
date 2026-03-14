@@ -1,0 +1,50 @@
+{
+  "local_head_sha": "bcef6a1",
+  "runtime_reported_sha": "8db0fab (container built from parent commit)",
+  "sha_match": "parent — container running 8db0fab, local HEAD is bcef6a1 (audit-only commit on top)",
+  "runtime_reachable": true,
+  "container_rebuilt": false,
+  "container_rebuilt_from_sha": "8db0fab",
+  "readiness_verdict": "GO",
+  "critical_blockers_count": 0,
+  "high_risks_count": 0,
+  "medium_risks_count": 1,
+  "low_risks_count": 3,
+  "prior_high_findings_resolved": [
+    "F1 RESOLVED: MAX_OPEN_POSITIONS aligned to 8 (was 15) — resolved in 8db0fab",
+    "F2 RESOLVED: bar_boundary_entry_only IS enforced — prior audit was false positive",
+    "F3 RESOLVED: universe aligned to 22 symbols with SH/PSQ (was 30 without)",
+    "F4 RESOLVED: entry_source populates correctly in post-C2-patch runtime (code verified, awaiting live trade)"
+  ],
+  "remaining_risks": [
+    "MEDIUM: 3 consecutive zero-trade days — starvation risk elevated but below escalation threshold (5 days). Structural confidence gap (INV-008) is root cause.",
+    "LOW: Forensic fields wired in code but not yet validated with a live trade (zero trades since C2 patch 2026-03-09)",
+    "LOW: Brain manifest sync gap (142 CSV rows vs 158 runtime trades, 16 in-memory only). Auto-corrects on next brain save.",
+    "LOW: realized_trades DB table has 0 rows despite 158 organism trades (design gap, not bug — parallel disconnected systems)"
+  ],
+  "config_convergence": {
+    "max_positions": "8 (aligned)",
+    "universe": "22 (aligned)",
+    "alpha_top_n": "5 (explicit)",
+    "exploration_enabled": "false (explicit)",
+    "drawdown_kill_pct": "0.20 (explicit)",
+    "tick_interval_seconds": "10 (explicit)",
+    "all_organism_config_aligned": true
+  },
+  "investigation_items": [
+    {"id": "INV-003", "title": "Regime detector cross-session state contamination", "severity": "MEDIUM", "status": "MONITORING"},
+    {"id": "INV-008", "title": "Confidence formula structural gap for inverse ETFs / defensive rotations", "severity": "HIGH impact, LOW urgency", "status": "DOCUMENTED — Phase C design work"},
+    {"id": "INV-009", "title": "COST liquidity gate uses share volume not dollar volume", "severity": "LOW", "status": "DOCUMENTED"},
+    {"id": "INV-010", "title": "MAE calculation uses stop_loss proxy instead of actual worst price", "severity": "LOW", "status": "DOCUMENTED"}
+  ],
+  "notes": [
+    "Weekend audit baseline. No code changes — audit artifacts only.",
+    "Container running 8db0fab (parent). bcef6a1 adds only committed audit files.",
+    "API healthy and reachable. Brain loaded (158 trades, gen 0, 66 runs).",
+    "Learning mode active. Evolution freeze active (158 < 300 trades).",
+    "ML training improving: job #22 scored 0.355 (threshold 0.35), precision 47.1%. Failed calibration monotonicity only.",
+    "Paper equity $111,612.21. Cumulative PnL -$1,008.77.",
+    "3 consecutive zero-trade days (3/11-3/13) during rotation/sell-off market. Expected behavior for breakout/momentum strategy.",
+    "No strategy logic changes warranted. Market conditions are the primary driver of zero-trade streak."
+  ]
+}
