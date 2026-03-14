@@ -647,7 +647,7 @@ async def predict(
 
         from backend.utils.secure_pickle import secure_load_from_path
 
-        model = secure_load_from_path(model_path, allow_unsigned=True)
+        model = secure_load_from_path(model_path)
 
         # Prediction
         pred_value: float

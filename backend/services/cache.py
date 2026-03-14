@@ -362,7 +362,7 @@ class CacheService:
                 data = await self.redis_client.get(full_key)
                 if data:
                     self.metrics['hits'] += 1
-                    return secure_loads(data, allow_unsigned=True)
+                    return secure_loads(data)
                 else:
                     self.metrics['misses'] += 1
                     return None
@@ -414,7 +414,7 @@ class CacheService:
 
                 for key, data in zip(keys, values, strict=False):
                     if data:
-                        results[key] = secure_loads(data, allow_unsigned=True)
+                        results[key] = secure_loads(data)
                         self.metrics['hits'] += 1
                     else:
                         self.metrics['misses'] += 1

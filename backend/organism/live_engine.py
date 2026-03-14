@@ -411,6 +411,11 @@ class OrganismLiveEngine:
         self._pending_entry: dict[str, int] = {}
         self._PENDING_ENTRY_TICKS = 30  # Wait 30 ticks (~5 min) per-symbol cooldown (was 15)
 
+        # CORE-011: Track order IDs for pending entry orders so we can
+        # cancel them at the broker level on drawdown kill.
+        # Maps symbol → order_id (from order service response)
+        self._pending_entry_order_ids: dict[str, str] = {}
+
         # Liquidity gate — block entries on illiquid symbols (seed universe bypass)
         # NOTE: This is per-bar volume, not daily. For 1-min bars, mega-caps
         # do 50K-200K/bar. 10K/bar ≈ 3.9M daily — filters out true penny stocks.
@@ -1019,6 +1024,11 @@ class OrganismLiveEngine:
             sym: tick for sym, tick in self._pending_entry.items()
             if self._tick_count - tick < self._PENDING_ENTRY_TICKS
         }
+        # CORE-011: expire order ID tracking in sync with pending entries
+        self._pending_entry_order_ids = {
+            sym: oid for sym, oid in self._pending_entry_order_ids.items()
+            if sym in self._pending_entry
+        }
         # Expire old pending exits
         self._pending_exit = {
             sym: tick for sym, tick in self._pending_exit.items()
@@ -1274,6 +1284,9 @@ class OrganismLiveEngine:
                         drawdown * 100,
                         len(current_positions),
                     )
+                    # CORE-011 fix: cancel pending entry orders at the broker
+                    # so they don't fill after the drawdown kill triggers.
+                    await self._cancel_pending_entry_orders()
 
             # Propagate any pre-existing governance halt (from manual halt
             # or prior drawdown cooldown) — separate from drawdown check
@@ -1721,13 +1734,16 @@ class OrganismLiveEngine:
                         if sym in self._pending_entry:
                             continue  # Already submitted an order recently
                         try:
-                            await self._submit_entry_order(
+                            pyr_order_result = await self._submit_entry_order(
                                 sym,
                                 action.shares_to_add,
                                 confidence=0.7,
                                 reason="pyramid_add",
                             )
                             self._pending_entry[sym] = self._tick_count
+                            # CORE-011: track order_id for broker-level cancellation
+                            if isinstance(pyr_order_result, dict) and pyr_order_result.get("order_id"):
+                                self._pending_entry_order_ids[sym] = pyr_order_result["order_id"]
                             result.orders_submitted += 1
 
                             # Record the pyramid layer so layer_count increments
@@ -1748,6 +1764,50 @@ class OrganismLiveEngine:
                             result.errors.append(
                                 f"Pyramid order failed for {sym}: {e}"
                             )
+
+                    # EXIT-001 fix: process close_partial and tighten_stop
+                    # actions that were previously silently dropped.
+                    elif action.action == "close_partial" and action.shares_to_add < 0:
+                        shares_to_close = abs(action.shares_to_add)
+                        direction = float(pos_data.get("direction", 1.0)) if isinstance(pos_data, dict) else 1.0
+                        try:
+                            await self._submit_exit_order(
+                                sym,
+                                shares_to_close,
+                                reason=f"pyramid_{action.reason}",
+                                direction=direction,
+                            )
+                            self._pending_exit[sym] = self._tick_count
+                            result.orders_submitted += 1
+                            logger.info(
+                                "Pyramider close_partial: %s %d shares (%s)",
+                                sym, shares_to_close, action.reason,
+                            )
+                        except Exception as e:
+                            result.errors.append(
+                                f"Pyramid close_partial failed for {sym}: {e}"
+                            )
+
+                    elif action.action == "tighten_stop" and action.new_stop > 0:
+                        exit_lvl = self._exit_levels.get(sym)
+                        if exit_lvl is not None:
+                            old_stop = exit_lvl.stop_loss
+                            # Only tighten — never widen the stop
+                            direction = exit_lvl.direction
+                            if (direction > 0 and action.new_stop > old_stop) or \
+                               (direction < 0 and action.new_stop < old_stop):
+                                exit_lvl.stop_loss = action.new_stop
+                                exit_lvl.trailing_stop = action.new_stop
+                                logger.info(
+                                    "Pyramider tighten_stop: %s %.4f -> %.4f (%s)",
+                                    sym, old_stop, action.new_stop, action.reason,
+                                )
+                            else:
+                                logger.debug(
+                                    "Pyramider tighten_stop skipped (not tighter): "
+                                    "%s new=%.4f old=%.4f",
+                                    sym, action.new_stop, old_stop,
+                                )
 
                 # 7. SCAN FOR NEW ENTRIES
                 # Breakout scan
@@ -2161,6 +2221,9 @@ class OrganismLiveEngine:
                         fresh_open.add(sz.symbol)  # Track to enforce MAX_OPEN_POSITIONS within tick
                         # Mark as pending so we don't re-submit next tick
                         self._pending_entry[sz.symbol] = self._tick_count
+                        # CORE-011: track order_id for broker-level cancellation
+                        if isinstance(order_result, dict) and order_result.get("order_id"):
+                            self._pending_entry_order_ids[sz.symbol] = order_result["order_id"]
                         # Fix E: Record entry timestamp for hourly throttle
                         _entry_ts = self._time_fn()
                         self._entry_timestamps.append(_entry_ts)
@@ -3875,7 +3938,20 @@ class OrganismLiveEngine:
     def _save_brain(self) -> None:
         """Save full brain state to disk (with walk-forward gate)."""
         try:
-            # Walk-forward gate: skip save if regression detected
+            # CORE-013 fix: always persist exit_levels and entry_metadata
+            # even when the walk-forward gate blocks the full brain save.
+            # These are safety-critical (trailing stops, partial TP flags)
+            # and must survive restarts regardless of Sharpe regression.
+            exit_levels_snapshot = {
+                sym: lvl.to_dict()
+                for sym, lvl in self._exit_levels.items()
+            }
+            entry_metadata_snapshot = dict(self._entry_metadata)
+            self._persist_exit_levels_standalone(
+                exit_levels_snapshot, entry_metadata_snapshot
+            )
+
+            # Walk-forward gate: skip full save if regression detected
             should_save, reason = self.brain.walk_forward_gate(
                 self._all_trades[-100:],  # evaluate on last 100 trades
                 min_trades=10,
@@ -3883,7 +3959,9 @@ class OrganismLiveEngine:
             )
             if not should_save:
                 logger.warning(
-                    "Brain save SKIPPED by walk-forward gate: %s", reason
+                    "Brain save SKIPPED by walk-forward gate: %s "
+                    "(exit_levels + entry_metadata persisted separately)",
+                    reason,
                 )
                 return
 
@@ -3933,6 +4011,77 @@ class OrganismLiveEngine:
                 logger.debug("Transfer knowledge save skipped: %s", te)
         except Exception as e:
             logger.error("Brain save failed: %s", e)
+
+    def _persist_exit_levels_standalone(
+        self,
+        exit_levels: dict[str, Any],
+        entry_metadata: dict[str, Any],
+    ) -> None:
+        """CORE-013: Persist exit_levels and entry_metadata independently.
+
+        Called before the walk-forward gate so these safety-critical fields
+        survive even when the gate blocks the full brain save.
+        """
+        import json
+        try:
+            ec_path = self.brain.brain_dir / "extra_counters.json"
+            if ec_path.is_file():
+                with open(ec_path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+            else:
+                data = {}
+            data["exit_levels"] = exit_levels
+            data["entry_metadata"] = entry_metadata
+            with open(ec_path, "w", encoding="utf-8") as f:
+                json.dump(data, f, indent=2, default=str)
+        except Exception as e:
+            logger.error("Failed to persist exit_levels standalone: %s", e)
+
+    async def _cancel_pending_entry_orders(self) -> None:
+        """CORE-011: Cancel open entry orders at the broker on drawdown kill.
+
+        Iterates ``_pending_entry_order_ids`` and calls
+        ``_order_service.cancel_order()`` for each.  Failures are logged
+        but never crash the tick loop.  Exit/reduce-only orders are not
+        tracked here and are therefore never cancelled.
+        """
+        if not self._pending_entry and not self._pending_entry_order_ids:
+            return
+
+        cancelled = []
+        failed = []
+        for sym, order_id in list(self._pending_entry_order_ids.items()):
+            try:
+                await self._order_service.cancel_order(order_id)
+                cancelled.append(sym)
+            except Exception as e:
+                failed.append(sym)
+                logger.error(
+                    "Drawdown kill: failed to cancel order %s for %s: %s",
+                    order_id, sym, e,
+                )
+
+        # Always clear local bookkeeping regardless of cancel outcome
+        cleared_symbols = list(self._pending_entry.keys())
+        self._pending_entry.clear()
+        self._pending_entry_order_ids.clear()
+
+        if cancelled:
+            logger.warning(
+                "Drawdown kill: cancelled %d broker entry orders: %s",
+                len(cancelled), cancelled,
+            )
+        if failed:
+            logger.warning(
+                "Drawdown kill: %d cancel attempts failed: %s "
+                "(local bookkeeping still cleared)",
+                len(failed), failed,
+            )
+        if cleared_symbols and not cancelled and not failed:
+            logger.warning(
+                "Drawdown kill: cleared %d pending entries (no order IDs to cancel): %s",
+                len(cleared_symbols), cleared_symbols,
+            )
 
     # ═════════════════════════════════════════════════════════════
     #  HELPERS

@@ -157,21 +157,23 @@ class RegimeDetector:
 
         # Extract signals
         close = features_df["close"].iloc[-1] if "close" in features_df.columns else 0
-        sma_col = None
-        for c in ["sma_50", "sma_20", "SMA_50", "SMA_20"]:
-            if c in features_df.columns:
-                sma_col = c
-                break
 
-        sma = float(features_df[sma_col].iloc[-1]) if sma_col and not pd.isna(features_df[sma_col].iloc[-1]) else close
+        # SIG-006 fix: compute raw SMA from close prices directly.
+        # The features_df sma_50 column is normalized (sma/close ≈ 1.0)
+        # which is correct for ML but wrong for regime price-vs-SMA checks.
+        close_series = features_df["close"] if "close" in features_df.columns else pd.Series(dtype=float)
+        if len(close_series) >= self._sma_period:
+            sma = float(close_series.rolling(self._sma_period, min_periods=1).mean().iloc[-1])
+        else:
+            sma = float(close_series.mean()) if len(close_series) > 0 else float(close)
 
-        # Trend strength: slope of SMA
+        # Trend strength: slope of raw SMA
         trend_slope = 0.0
-        if sma_col and len(features_df) >= 5:
-            sma_series = features_df[sma_col].dropna().tail(10)
-            if len(sma_series) >= 2:
-                first = float(sma_series.iloc[0])
-                last = float(sma_series.iloc[-1])
+        if len(close_series) >= 5:
+            raw_sma_series = close_series.rolling(self._sma_period, min_periods=1).mean().dropna().tail(10)
+            if len(raw_sma_series) >= 2:
+                first = float(raw_sma_series.iloc[0])
+                last = float(raw_sma_series.iloc[-1])
                 if first > 0:
                     trend_slope = (last - first) / first
 

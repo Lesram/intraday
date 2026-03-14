@@ -235,7 +235,7 @@ class ModelStorage:
             elif format_type == ModelFormat.PICKLE:
                 with open(file_path, 'rb') as f:
                     # Use secure pickle with migration support
-                    return secure_load(f, allow_unsigned=True)
+                    return secure_load(f)
             elif format_type == ModelFormat.JSON:
                 with open(file_path) as f:
                     return json.load(f)

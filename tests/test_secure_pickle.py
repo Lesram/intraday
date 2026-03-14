@@ -145,46 +145,35 @@ class TestSignatureVerification:
 class TestUnsignedPickleMigration:
     """Test migration from unsigned to signed pickle."""
 
-    def test_unsigned_pickle_rejected_by_default(self):
-        """Unsigned pickle is rejected when allow_unsigned=False."""
+    def test_unsigned_pickle_always_rejected(self):
+        """Unsigned pickle is always rejected (COMP-400)."""
         data = {"old": "format"}
         unsigned = pickle.dumps(data)
-        
+
         with pytest.raises(UnsignedPickleError):
             secure_loads(unsigned)
 
-    def test_unsigned_pickle_allowed_with_flag(self):
-        """Unsigned pickle works with allow_unsigned=True."""
-        data = {"legacy": "model"}
-        unsigned = pickle.dumps(data)
-        
-        # Should work with warning
-        with pytest.warns(RuntimeWarning, match="unsigned pickle"):
-            restored = secure_loads(unsigned, allow_unsigned=True)
-        
-        assert restored == data
-
-    def test_migrate_pickle_file(self, tmp_path):
-        """Unsigned pickle file can be migrated."""
+    def test_migrate_pickle_file_unsigned_raises(self, tmp_path):
+        """Unsigned pickle file raises UnsignedPickleError (COMP-400)."""
         data = {"model": "weights"}
         file_path = tmp_path / "unsigned.pkl"
-        
+
         # Create unsigned pickle
         with open(file_path, 'wb') as f:
             pickle.dump(data, f)
-        
-        # Migrate
+
+        # Migration must refuse to load unsigned files
+        with pytest.raises(UnsignedPickleError, match="COMP-400"):
+            migrate_pickle_file(file_path)
+
+    def test_migrate_pickle_file_signed_returns_true(self, tmp_path):
+        """Already-signed pickle file returns True from migrate."""
+        data = {"model": "weights"}
+        file_path = tmp_path / "signed.pkl"
+        secure_dump_to_path(data, file_path)
+
         result = migrate_pickle_file(file_path)
         assert result is True
-        
-        # Should now be signed
-        with open(file_path, 'rb') as f:
-            signed_data = f.read()
-        assert is_signed_pickle(signed_data)
-        
-        # Should load without allow_unsigned
-        restored = secure_load_from_path(file_path)
-        assert restored == data
 
     def test_already_signed_not_double_signed(self, tmp_path):
         """Already signed files are not re-signed."""

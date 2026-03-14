@@ -341,15 +341,7 @@ class ModelManager:
             try:
                 with open(model_path, 'rb') as f:
                     # SECURITY FIX: Only allow unsigned models in development/test mode
-                    # Production should require signed models to prevent code injection
-                    import os
-                    is_production = os.getenv("APP_ENVIRONMENT", "").lower() in ("production", "prod")
-                    allow_unsigned = not is_production
-                    
-                    if is_production:
-                        logging.warning(f"Loading model {model_name} in production - requiring signature")
-                    
-                    model = secure_load(f, allow_unsigned=allow_unsigned)
+                    model = secure_load(f)
                     self.models[model_name] = model
                     return model
             except PickleSecurityError as e:
@@ -1089,14 +1081,14 @@ class ModelRegistry:
             # Load model object with secure pickle
             model_path = version_path / "model.bin"
             with open(model_path, "rb") as f:
-                model_obj = secure_load(f, allow_unsigned=True)
+                model_obj = secure_load(f)
 
             # Load artifacts (optional) with secure pickle
             artifacts = {}
             artifacts_path = version_path / "artifacts.pkl"
             if artifacts_path.exists():
                 with open(artifacts_path, "rb") as f:
-                    artifacts = secure_load(f, allow_unsigned=True)
+                    artifacts = secure_load(f)
 
             # Load metadata
             metadata_path = version_path / "metadata.json"
@@ -1358,7 +1350,7 @@ class ModelRegistry:
                 if model_path.exists():
                     try:
                         with open(model_path, "rb") as f:
-                            model = secure_load(f, allow_unsigned=True)
+                            model = secure_load(f)
                     except PickleSecurityError as e:
                         logger.error(f"Security error loading model: {e}")
                         raise

@@ -730,7 +730,7 @@ class EnsembleModel:
         if cached and cached[0] == info.path:
             model_obj = cached[1]
         else:
-            model_obj = secure_load_from_path(info.path, allow_unsigned=True)
+            model_obj = secure_load_from_path(info.path)
             self._active_artifact_cache[cache_key] = (info.path, model_obj)
 
         if not hasattr(model_obj, "predict"):
