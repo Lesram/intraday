@@ -494,7 +494,7 @@ class TestModelStorage:
         file_path = temp_storage._get_model_path("test_model", "1.0.0", ModelFormat.JOBLIB)
         checksum = temp_storage._calculate_checksum(file_path)
         assert isinstance(checksum, str)
-        assert len(checksum) == 32  # MD5 hex digest length
+        assert len(checksum) == 64  # SHA-256 hex digest length
 
 
 # =============================================================================

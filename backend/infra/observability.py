@@ -147,15 +147,19 @@ def _setup_tracing(config: ObservabilityConfig, resource: Resource) -> None:
 
     # Add OTLP span exporter if endpoint provided
     if config.otel_exporter_otlp_endpoint:
+        # Default insecure=true only in development/paper; production defaults to secure
+        _insecure_default = "true" if os.getenv("APP_ENVIRONMENT", "development") in ("development", "paper") else "false"
+        otlp_insecure = os.getenv("OTEL_EXPORTER_OTLP_INSECURE", _insecure_default).lower() in ("true", "1", "yes")
         otlp_exporter = OTLPSpanExporter(
             endpoint=config.otel_exporter_otlp_endpoint,
-            insecure=os.getenv("OTEL_EXPORTER_OTLP_INSECURE", "true").lower() in ("true", "1", "yes"),
+            insecure=otlp_insecure,
         )
         span_processor = BatchSpanProcessor(otlp_exporter)
         tracer_provider.add_span_processor(span_processor)
 
         logger.info(
-            f"OTLP trace exporter configured: {config.otel_exporter_otlp_endpoint}"
+            f"OTLP trace exporter configured: {config.otel_exporter_otlp_endpoint} "
+            f"(insecure={otlp_insecure})"
         )
 
     # Get tracer instance
@@ -188,10 +192,11 @@ def _setup_otel_metrics(config: ObservabilityConfig, resource: Resource) -> None
     if not config.otel_exporter_otlp_endpoint:
         return
 
-    # Create OTLP metric exporter
+    # Create OTLP metric exporter — same insecure logic as tracing
+    _insecure_default = "true" if os.getenv("APP_ENVIRONMENT", "development") in ("development", "paper") else "false"
     otlp_metric_exporter = OTLPMetricExporter(
         endpoint=config.otel_exporter_otlp_endpoint,
-        insecure=os.getenv("OTEL_EXPORTER_OTLP_INSECURE", "true").lower() in ("true", "1", "yes"),
+        insecure=os.getenv("OTEL_EXPORTER_OTLP_INSECURE", _insecure_default).lower() in ("true", "1", "yes"),
     )
 
     # Create periodic exporting metric reader

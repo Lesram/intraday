@@ -157,25 +157,35 @@ def _load_governance_state() -> dict:
 
 
 def _query_organism_status() -> dict | None:
-    """Try to query the running organism API."""
+    """Try to query the running organism API.
+
+    Credentials must be provided via INTRA_API_USER / INTRA_API_PASSWORD
+    environment variables.  If either is missing the auth step is skipped
+    (unauthenticated requests may still succeed for public endpoints).
+    """
     base = os.getenv("ORGANISM_API_BASE", "http://localhost:8000")
-    # Auth
+    # Auth — require env-provided credentials, never fall back to defaults
     token = ""
-    try:
-        import urllib.request
-        req = urllib.request.Request(
-            f"{base}/api/v1/auth/login",
-            data=json.dumps({
-                "username": os.getenv("INTRA_API_USER", ""),
-                "password": os.getenv("INTRA_API_PASSWORD", ""),
-            }).encode(),
-            headers={"Content-Type": "application/json"},
-            method="POST",
-        )
-        with urllib.request.urlopen(req, timeout=5) as resp:
-            token = json.loads(resp.read()).get("access_token", "")
-    except Exception:
-        pass
+    api_user = os.getenv("INTRA_API_USER")
+    api_password = os.getenv("INTRA_API_PASSWORD")
+    if api_user and api_password:
+        try:
+            import urllib.request
+            req = urllib.request.Request(
+                f"{base}/api/v1/auth/login",
+                data=json.dumps({
+                    "username": api_user,
+                    "password": api_password,
+                }).encode(),
+                headers={"Content-Type": "application/json"},
+                method="POST",
+            )
+            with urllib.request.urlopen(req, timeout=5) as resp:
+                token = json.loads(resp.read()).get("access_token", "")
+        except Exception:
+            pass
+    else:
+        print("INTRA_API_USER / INTRA_API_PASSWORD not set — skipping API auth")
 
     for path in ["/api/v1/organism/status", "/api/organism/status"]:
         try:
