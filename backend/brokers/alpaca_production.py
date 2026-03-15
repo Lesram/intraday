@@ -560,8 +560,12 @@ class ProductionAlpacaClient:
             self.logger.error(f"Failed to list positions: {e}")
             return []
 
-    def submit_order(self, *args, **kwargs):
-        """Submit order - handles both OrderRequest objects and keyword arguments"""
+    async def submit_order(self, *args, **kwargs):
+        """Submit order - handles both OrderRequest objects and keyword arguments.
+
+        This is async so it can safely await submit_order_async directly,
+        avoiding the crash that occurs when mixing sync and async event loops.
+        """
         try:
             # Handle OrderRequest object
             if args and isinstance(args[0], OrderRequest):
@@ -589,14 +593,8 @@ class ProductionAlpacaClient:
                     client_order_id=kwargs.get('client_order_id')
                 )
 
-            # Use existing async method
-            import asyncio
-            try:
-                loop = asyncio.get_event_loop()
-                return loop.run_until_complete(self.submit_order_async(order_request))
-            except RuntimeError:
-                # If no event loop, create one
-                return asyncio.run(self.submit_order_async(order_request))
+            # Await the async implementation directly
+            return await self.submit_order_async(order_request)
 
         except Exception as e:
             self.logger.error(f"Failed to submit order: {e}")
