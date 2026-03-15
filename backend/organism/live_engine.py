@@ -1029,6 +1029,22 @@ class OrganismLiveEngine:
             sym: oid for sym, oid in self._pending_entry_order_ids.items()
             if sym in self._pending_entry
         }
+        # REMEDIATION: Clear pending entries whose orders reached terminal state
+        # (rejected/cancelled/expired) without waiting for 30-tick expiry.
+        try:
+            from backend.integrations.alpaca_stream import get_stream_client
+            _stream = get_stream_client() if get_stream_client is not None else None
+        except Exception:
+            _stream = None
+        if _stream is not None and hasattr(_stream, 'is_order_terminal'):
+            for sym, oid in list(self._pending_entry_order_ids.items()):
+                if _stream.is_order_terminal(oid):
+                    self._pending_entry.pop(sym, None)
+                    self._pending_entry_order_ids.pop(sym, None)
+                    logger.info(
+                        "Cleared pending entry for %s: order %s reached terminal state",
+                        sym, oid,
+                    )
         # Expire old pending exits
         self._pending_exit = {
             sym: tick for sym, tick in self._pending_exit.items()

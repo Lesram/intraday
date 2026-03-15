@@ -76,6 +76,10 @@ class AlpacaStreamClient:
         self._queue_high_water_mark = 0
         self._queue_overflow_count = 0
 
+        # REMEDIATION: Track order IDs that reached terminal state
+        # (rejected/cancelled/expired) so the engine can clear pending entries early.
+        self._terminal_order_ids: set[str] = set()
+
         # Heartbeat configuration
         self.heartbeat_interval = 30.0
         self.last_heartbeat = time.time()
@@ -456,6 +460,15 @@ class AlpacaStreamClient:
                            new_status=internal_status,
                            filled_qty=filled_qty)
 
+                # REMEDIATION: Track terminal order statuses for early pending-entry cleanup
+                if internal_status in ("rejected", "cancelled", "expired"):
+                    broker_oid = order_data.get("id", "")
+                    if broker_oid:
+                        self._terminal_order_ids.add(broker_oid)
+                        # Cap set size to prevent unbounded growth
+                        if len(self._terminal_order_ids) > 1000:
+                            self._terminal_order_ids = set(list(self._terminal_order_ids)[-500:])
+
                 # ✅ FIX: Broadcast order update to frontend via WebSocket
                 try:
                     import os
@@ -500,6 +513,10 @@ class AlpacaStreamClient:
                         update=update,
                         error=str(e),
                         error_type=type(e).__name__)
+
+    def is_order_terminal(self, broker_order_id: str) -> bool:
+        """Check if an order reached terminal state (rejected/cancelled/expired)."""
+        return broker_order_id in self._terminal_order_ids
 
     def _map_alpaca_status(self, alpaca_status: str) -> str:
         """

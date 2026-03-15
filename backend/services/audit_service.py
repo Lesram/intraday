@@ -574,13 +574,10 @@ class ComplianceAuditService:
         }
 
 
-# Global singleton (lazy init)
-_audit_service: ComplianceAuditService | None = None
-
-
 async def get_audit_service(db_session: AsyncSession) -> ComplianceAuditService:
-    """Get or create audit service instance."""
-    global _audit_service
-    if _audit_service is None:
-        _audit_service = ComplianceAuditService(db_session)
-    return _audit_service
+    """Create audit service instance with the provided session.
+
+    Always creates a fresh instance to avoid stale session references
+    (COMP-001 fix).
+    """
+    return ComplianceAuditService(db_session)
