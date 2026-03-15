@@ -753,6 +753,29 @@ class OrganismLiveEngine:
                     len(self._entry_metadata),
                 )
 
+            # REMEDIATION: Restore pending entry order IDs and cancel stale orders
+            saved_pending_ids = self.brain.extra_counters.get("pending_entry_order_ids", {})
+            if saved_pending_ids and isinstance(saved_pending_ids, dict):
+                stale_count = 0
+                for sym, order_id in saved_pending_ids.items():
+                    try:
+                        await self._order_service.cancel_order(order_id)
+                        stale_count += 1
+                        logger.warning(
+                            "Cancelled stale pending entry order for %s: %s",
+                            sym, order_id,
+                        )
+                    except Exception as e:
+                        logger.debug(
+                            "Could not cancel stale order %s for %s (may already be expired): %s",
+                            order_id, sym, e,
+                        )
+                if stale_count:
+                    logger.info(
+                        "Cancelled %d stale pending entry orders from prior session",
+                        stale_count,
+                    )
+
             # Restore regime-stratified Kelly stats
             rk_data = self.brain.extra_counters.get("regime_kelly_stats")
             if rk_data:
@@ -4048,6 +4071,7 @@ class OrganismLiveEngine:
                 data = {}
             data["exit_levels"] = exit_levels
             data["entry_metadata"] = entry_metadata
+            data["pending_entry_order_ids"] = dict(getattr(self, "_pending_entry_order_ids", {}))
             with open(ec_path, "w", encoding="utf-8") as f:
                 json.dump(data, f, indent=2, default=str)
         except Exception as e:

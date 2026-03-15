@@ -346,12 +346,14 @@ class AlpacaStreamClient:
 
     async def _process_update_queue(self):
         """
-        Process queued trade updates.
+        Process queued trade updates with retry on failure.
 
         This runs in a separate task to handle backpressure and ensure
         database updates don't block the WebSocket message loop.
+        EXEC-001 FIX: Retries failed updates up to 3 times with backoff.
         """
         logger.info("Starting update queue processor")
+        MAX_RETRIES = 3
 
         while True:
             try:
@@ -361,15 +363,40 @@ class AlpacaStreamClient:
                     timeout=0.5
                 )
 
-                # Process the update
-                await self._process_trade_update(update)
+                # EXEC-001: Retry loop for transient failures
+                last_error = None
+                for attempt in range(1, MAX_RETRIES + 1):
+                    try:
+                        await self._process_trade_update(update)
+                        last_error = None
+                        break
+                    except Exception as e:
+                        last_error = e
+                        if attempt < MAX_RETRIES:
+                            backoff = 0.5 * (2 ** (attempt - 1))  # 0.5s, 1s
+                            logger.warning(
+                                "Trade update processing failed (attempt %d/%d), retrying in %.1fs",
+                                attempt, MAX_RETRIES, backoff,
+                                error=str(e),
+                                error_type=type(e).__name__,
+                            )
+                            await asyncio.sleep(backoff)
+
+                if last_error is not None:
+                    logger.error(
+                        "Trade update PERMANENTLY FAILED after %d attempts — update lost",
+                        MAX_RETRIES,
+                        error=str(last_error),
+                        error_type=type(last_error).__name__,
+                        update_summary=str(update)[:200],
+                    )
 
             except TimeoutError:
                 # No update in queue, continue
                 continue
 
             except Exception as e:
-                logger.error("Error processing trade update",
+                logger.error("Unexpected error in update queue processor",
                            error=str(e),
                            error_type=type(e).__name__)
                 continue
@@ -518,6 +545,72 @@ class AlpacaStreamClient:
         """Check if an order reached terminal state (rejected/cancelled/expired)."""
         return broker_order_id in self._terminal_order_ids
 
+    async def _gap_fill_after_reconnect(self) -> None:
+        """EXEC-002: Poll recent orders for missed fills after WebSocket reconnect.
+
+        Queries orders updated in the last 5 minutes and reconciles their
+        status with the local database.  This closes the gap window where
+        fills may have arrived while the WebSocket was disconnected.
+        """
+        try:
+            from datetime import timedelta
+            cutoff = datetime.now(UTC) - timedelta(minutes=5)
+            async with get_session_context() as session:
+                orders_repo = OrdersRepo(session)
+                # Fetch orders that may have changed during the gap
+                recent_orders = await orders_repo.get_orders_since(cutoff)
+                if not recent_orders:
+                    logger.info("EXEC-002 gap-fill: no recent orders to reconcile")
+                    return
+
+                reconciled = 0
+                for order in recent_orders:
+                    if not order.broker_order_id:
+                        continue
+                    try:
+                        # Query broker for current status
+                        import httpx
+                        base_url = "https://paper-api.alpaca.markets" if self.is_paper else "https://api.alpaca.markets"
+                        async with httpx.AsyncClient() as client:
+                            resp = await client.get(
+                                f"{base_url}/v2/orders/{order.broker_order_id}",
+                                headers={
+                                    "APCA-API-KEY-ID": self.api_key,
+                                    "APCA-API-SECRET-KEY": self.api_secret,
+                                },
+                                timeout=10.0,
+                            )
+                            if resp.status_code == 200:
+                                broker_data = resp.json()
+                                broker_status = self._map_alpaca_status(broker_data.get("status", ""))
+                                current_db_status = order.status
+                                if broker_status != current_db_status:
+                                    filled_qty = float(broker_data.get("filled_qty", 0))
+                                    avg_price = float(broker_data.get("filled_avg_price", 0) or 0) or None
+                                    from decimal import Decimal
+                                    await orders_repo.attach_broker_result(
+                                        order.id,
+                                        status=broker_status,
+                                        filled_qty=Decimal(str(filled_qty)) if filled_qty else None,
+                                        avg_fill_price=Decimal(str(avg_price)) if avg_price else None,
+                                    )
+                                    await session.commit()
+                                    reconciled += 1
+                                    logger.warning(
+                                        "EXEC-002 gap-fill: reconciled order %s: %s -> %s",
+                                        order.broker_order_id, current_db_status, broker_status,
+                                    )
+                    except Exception as e:
+                        logger.warning("EXEC-002 gap-fill: failed to reconcile order %s: %s",
+                                      order.broker_order_id, e)
+                        continue
+
+                logger.info("EXEC-002 gap-fill complete: %d orders reconciled out of %d checked",
+                           reconciled, len(recent_orders))
+
+        except Exception as e:
+            logger.error("EXEC-002 gap-fill failed (non-fatal): %s", e)
+
     def _map_alpaca_status(self, alpaca_status: str) -> str:
         """
         Map Alpaca order status to internal status.
@@ -605,6 +698,9 @@ class AlpacaStreamClient:
                     self.reconnect_attempts = 0
                     # P&L-033: Reset slow-retry counter on successful connection
                     self._slow_retry_cycles = 0
+
+                    # EXEC-002: Gap-fill after reconnect — check for missed fills
+                    await self._gap_fill_after_reconnect()
 
                     # Listen for messages
                     await self.listen()
