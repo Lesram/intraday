@@ -18,7 +18,7 @@ Author: Production Trading System
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from enum import Enum
 import logging
 import math
@@ -155,7 +155,7 @@ class AdvancedRiskManager:
 
     async def update_positions(self, positions_data: dict[str, dict]) -> None:
         """Update portfolio positions and trigger risk calculations"""
-        start_time = datetime.utcnow()
+        start_time = datetime.now(UTC)
 
         try:
             # Clear existing positions
@@ -195,7 +195,7 @@ class AdvancedRiskManager:
 
             # Record SLO metrics
             if self.slo_monitor:
-                execution_time = (datetime.utcnow() - start_time).total_seconds() * 1000
+                execution_time = (datetime.now(UTC) - start_time).total_seconds() * 1000
                 await self._record_slo_metrics("position_update", execution_time, success=True)
 
             logger.info(f"Updated {len(self.positions)} positions, portfolio value: ${self.portfolio_value:,.2f}")
@@ -203,7 +203,7 @@ class AdvancedRiskManager:
         except Exception as e:
             logger.error(f"Error updating positions: {e}")
             if self.slo_monitor:
-                execution_time = (datetime.utcnow() - start_time).total_seconds() * 1000
+                execution_time = (datetime.now(UTC) - start_time).total_seconds() * 1000
                 await self._record_slo_metrics("position_update", execution_time, success=False)
             raise
 
@@ -282,7 +282,7 @@ class AdvancedRiskManager:
             # Determine overall risk level
             self._determine_risk_level()
 
-            self.risk_metrics.timestamp = datetime.utcnow()
+            self.risk_metrics.timestamp = datetime.now(UTC)
 
         except Exception as e:
             logger.error(f"Error calculating risk metrics: {e}")
@@ -529,12 +529,12 @@ class AdvancedRiskManager:
 
         # Add alerts with timestamp
         for alert in alerts:
-            alert['timestamp'] = datetime.utcnow()
+            alert['timestamp'] = datetime.now(UTC)
 
         self.alerts.extend(alerts)
 
         # Keep only recent alerts (last 24 hours)
-        cutoff_time = datetime.utcnow() - timedelta(hours=24)
+        cutoff_time = datetime.now(UTC) - timedelta(hours=24)
         self.alerts = [alert for alert in self.alerts if alert['timestamp'] > cutoff_time]
 
         if alerts:
@@ -662,7 +662,7 @@ class AdvancedRiskManager:
                 'market_regime': self.risk_metrics.market_regime.value
             },
             'sector_exposure': self.risk_metrics.sector_concentration,
-            'active_alerts': len([a for a in self.alerts if a['timestamp'] > datetime.utcnow() - timedelta(hours=1)]),
+            'active_alerts': len([a for a in self.alerts if a['timestamp'] > datetime.now(UTC) - timedelta(hours=1)]),
             'last_updated': self.risk_metrics.timestamp.isoformat()
         }
 

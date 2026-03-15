@@ -13,7 +13,7 @@ Phase 7 - Market Data & Charting
 Created: October 16, 2025
 """
 
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from enum import Enum
 import logging
 from typing import Any
@@ -151,7 +151,7 @@ async def get_real_market_data(symbol: str) -> dict[str, Any] | None:
         request = StockBarsRequest(
             symbol_or_symbols=symbol,
             timeframe=TimeFrame(1, TimeFrameUnit.Day),
-            start=datetime.utcnow() - timedelta(days=7),
+            start=datetime.now(UTC) - timedelta(days=7),
             limit=10
         )
 
@@ -219,7 +219,7 @@ async def calculate_indicators_for_symbol(symbol: str, bars_data: list = None) -
             request = StockBarsRequest(
                 symbol_or_symbols=symbol,
                 timeframe=TimeFrame(1, TimeFrameUnit.Day),
-                start=datetime.utcnow() - timedelta(days=365),
+                start=datetime.now(UTC) - timedelta(days=365),
                 limit=250
             )
 

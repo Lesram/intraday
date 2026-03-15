@@ -592,7 +592,7 @@ class AsyncRiskManager:
             request = StockBarsRequest(
                 symbol_or_symbols=symbol,
                 timeframe=TimeFrame(1, TimeFrameUnit.Day),
-                start=datetime.utcnow() - timedelta(days=7),
+                start=datetime.now(UTC) - timedelta(days=7),
                 limit=1
             )
 

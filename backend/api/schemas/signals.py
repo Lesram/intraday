@@ -3,7 +3,7 @@ Pydantic models for signal API endpoints.
 Provides backward/forward compatibility between confidence and signal_strength fields.
 """
 
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any, Literal
 
 from pydantic import BaseModel, field_validator, model_validator
@@ -102,11 +102,11 @@ class SignalResponse(BaseModel):
             try:
                 generated_at = datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
             except (ValueError, AttributeError):
-                generated_at = datetime.utcnow()
+                generated_at = datetime.now(UTC)
         elif isinstance(timestamp, datetime):
             generated_at = timestamp
         else:
-            generated_at = datetime.utcnow()
+            generated_at = datetime.now(UTC)
 
         return cls(
             symbol=symbol,

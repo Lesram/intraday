@@ -19,7 +19,7 @@ Author: Production Trading System
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from enum import Enum
 import logging
 import math
@@ -171,7 +171,7 @@ class PortfolioOptimizer:
 
     async def update_asset_data(self, assets_data: dict[str, dict[str, Any]]) -> None:
         """Update asset data for optimization"""
-        start_time = datetime.utcnow()
+        start_time = datetime.now(UTC)
 
         try:
             self.assets.clear()
@@ -195,7 +195,7 @@ class PortfolioOptimizer:
 
             # Record SLO metrics
             if self.slo_monitor:
-                execution_time = (datetime.utcnow() - start_time).total_seconds() * 1000
+                execution_time = (datetime.now(UTC) - start_time).total_seconds() * 1000
                 await self._record_slo_metrics("asset_data_update", execution_time, success=True)
 
             logger.info(f"Updated data for {len(self.assets)} assets")
@@ -203,7 +203,7 @@ class PortfolioOptimizer:
         except Exception as e:
             logger.error(f"Error updating asset data: {e}")
             if self.slo_monitor:
-                execution_time = (datetime.utcnow() - start_time).total_seconds() * 1000
+                execution_time = (datetime.now(UTC) - start_time).total_seconds() * 1000
                 await self._record_slo_metrics("asset_data_update", execution_time, success=False)
             raise
 
@@ -314,7 +314,7 @@ class PortfolioOptimizer:
         Returns:
             Optimized portfolio allocation
         """
-        start_time = datetime.utcnow()
+        start_time = datetime.now(UTC)
 
         try:
             if not self.assets or self.covariance_matrix is None:
@@ -352,7 +352,7 @@ class PortfolioOptimizer:
 
             # Record SLO metrics
             if self.slo_monitor:
-                execution_time = (datetime.utcnow() - start_time).total_seconds() * 1000
+                execution_time = (datetime.now(UTC) - start_time).total_seconds() * 1000
                 await self._record_slo_metrics("portfolio_optimization", execution_time, success=True)
 
             logger.info(f"Portfolio optimization completed: {result.objective_value:.4f}")
@@ -361,7 +361,7 @@ class PortfolioOptimizer:
         except Exception as e:
             logger.error(f"Error in portfolio optimization: {e}")
             if self.slo_monitor:
-                execution_time = (datetime.utcnow() - start_time).total_seconds() * 1000
+                execution_time = (datetime.now(UTC) - start_time).total_seconds() * 1000
                 await self._record_slo_metrics("portfolio_optimization", execution_time, success=False)
             raise
 
@@ -883,7 +883,7 @@ class PortfolioOptimizer:
                                         start_date: datetime | None = None) -> list[datetime]:
         """Generate rebalancing schedule"""
         if start_date is None:
-            start_date = datetime.utcnow()
+            start_date = datetime.now(UTC)
 
         schedule = []
         current_date = start_date

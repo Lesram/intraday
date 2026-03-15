@@ -105,7 +105,7 @@ async def calculate_indicator(
 
         # ✅ REAL DATA: Fetch bars from Alpaca if symbol provided
         if request.symbol and not request.bars:
-            from datetime import datetime, timedelta
+            from datetime import UTC, datetime, timedelta
             import os
 
             from alpaca.data.historical import StockHistoricalDataClient
@@ -142,7 +142,7 @@ async def calculate_indicator(
                 start_date = parser.parse(request.start) if isinstance(request.start, str) else request.start
                 end_date = parser.parse(request.end) if isinstance(request.end, str) else request.end
 
-                # Ensure both dates are timezone-naive for comparison with utcnow()
+                # Ensure both dates are timezone-naive for comparison with now(UTC)
                 if start_date.tzinfo is not None:
                     start_date = start_date.replace(tzinfo=None)
                 if end_date.tzinfo is not None:
@@ -151,7 +151,7 @@ async def calculate_indicator(
                 # Alpaca paper trading limitation: Can't access very recent intraday data
                 # For intraday timeframes (< 1 day), limit to 15+ days ago minimum
                 if alpaca_timeframe.unit in [TimeFrameUnit.Minute, TimeFrameUnit.Hour]:
-                    max_end_date = datetime.utcnow() - timedelta(days=15)
+                    max_end_date = datetime.now(UTC) - timedelta(days=15)
                     if end_date > max_end_date:
                         logger.warning(f"Adjusting end date from {end_date} to {max_end_date} due to Alpaca paper trading limitations")
                         end_date = max_end_date
@@ -165,7 +165,7 @@ async def calculate_indicator(
                 logger.info(f"Using provided date range: {start_date} to {end_date}")
             else:
                 # Default to last 6 months for indicators
-                end_date = datetime.utcnow()
+                end_date = datetime.now(UTC)
 
                 # For intraday data, go back 15+ days to avoid subscription restrictions
                 if alpaca_timeframe.unit in [TimeFrameUnit.Minute, TimeFrameUnit.Hour]:
@@ -203,7 +203,7 @@ async def calculate_indicator(
 
                     # Use daily timeframe with data ending 15 days ago
                     alpaca_timeframe = TimeFrame(1, TimeFrameUnit.Day)
-                    fallback_end = datetime.utcnow() - timedelta(days=15)  # End 15 days ago
+                    fallback_end = datetime.now(UTC) - timedelta(days=15)  # End 15 days ago
                     fallback_start = fallback_end - timedelta(days=365)     # Get 1 year of data
 
                     logger.info(f"Fallback: Fetching daily bars from {fallback_start} to {fallback_end}")

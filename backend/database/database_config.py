@@ -2,7 +2,7 @@
 Production Database Configuration with Connection Pooling and Backup Support
 """
 
-from datetime import datetime
+from datetime import UTC, datetime
 import logging
 import os
 from pathlib import Path
@@ -172,7 +172,7 @@ class DatabaseConfig:
                 "healthy": connectivity,
                 "connectivity": connectivity,
                 "pool_status": pool_status,
-                "timestamp": datetime.utcnow().isoformat()
+                "timestamp": datetime.now(UTC).isoformat()
             }
 
         except Exception as e:
@@ -181,7 +181,7 @@ class DatabaseConfig:
                 "healthy": False,
                 "connectivity": False,
                 "error": str(e),
-                "timestamp": datetime.utcnow().isoformat()
+                "timestamp": datetime.now(UTC).isoformat()
             }
 
     async def get_health(self) -> dict[str, Any]:
@@ -198,7 +198,7 @@ class DatabaseConfig:
             self.backup_directory.mkdir(parents=True, exist_ok=True)
 
             # Generate backup filename
-            timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+            timestamp = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
             if backup_name is None:
                 backup_name = f"trading_db_backup_{timestamp}.sql"
 
@@ -256,7 +256,7 @@ class DatabaseConfig:
     async def _cleanup_old_backups(self):
         """Remove backups older than retention period."""
         try:
-            cutoff_time = datetime.utcnow().timestamp() - (self.backup_retention_days * 24 * 3600)
+            cutoff_time = datetime.now(UTC).timestamp() - (self.backup_retention_days * 24 * 3600)
 
             for backup_file in self.backup_directory.glob("*.sql"):
                 if backup_file.stat().st_mtime < cutoff_time:

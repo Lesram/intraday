@@ -461,7 +461,7 @@ async def activate_model(
             raise HTTPException(status_code=404, detail="Model not found")
 
         db_model.active = request.active
-        db_model.updated_at = datetime.utcnow()
+        db_model.updated_at = datetime.now(UTC)
 
         await db.commit()
         await db.refresh(db_model)
@@ -685,7 +685,7 @@ async def predict(
             model_id=db_model.id,
             model_name=db_model.name,
             features_used=metrics.get("features", []),
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(UTC),
         )
 
     except HTTPException:
@@ -1167,7 +1167,7 @@ async def get_feature_importance(
             model_id=db_model.id,
             model_name=db_model.name,
             features=feature_importance,
-            generated_at=datetime.utcnow(),
+            generated_at=datetime.now(UTC),
         )
 
     except HTTPException:
@@ -1277,7 +1277,7 @@ async def get_model_health(
                 drift_detected=False,
                 affected_features=[],
                 drift_severity="low",
-                last_checked=datetime.utcnow(),
+                last_checked=datetime.now(UTC),
             )
             recent_performance = {
                 "total_return": float(((metrics_data.get("custom_metrics") or {}).get("selection") or {}).get("new", {}).get("total_return", 0.0)),
@@ -1292,7 +1292,7 @@ async def get_model_health(
                 recent_performance=recent_performance,
                 issues=[],
                 recommendations=[],
-                last_checked=datetime.utcnow(),
+                last_checked=datetime.now(UTC),
             )
 
         from backend.ml.drift import compute_drift
@@ -1329,7 +1329,7 @@ async def get_model_health(
             drift_detected=psi_score >= float(os.getenv("MODEL_DRIFT_PSI_THRESHOLD", "0.15")),
             affected_features=list(drift.affected_features),
             drift_severity="low" if psi_score < 0.1 else "medium" if psi_score < 0.2 else "high",
-            last_checked=datetime.utcnow(),
+            last_checked=datetime.now(UTC),
         )
 
         recent_performance = {
@@ -1365,7 +1365,7 @@ async def get_model_health(
             recent_performance=recent_performance,
             issues=issues,
             recommendations=recommendations,
-            last_checked=datetime.utcnow(),
+            last_checked=datetime.now(UTC),
         )
 
     except HTTPException:
@@ -1440,8 +1440,8 @@ async def run_monitoring(
     )
     baseline = evaluate_baseline_buy_and_hold(close_eval=close, next_close_eval=next_close)
 
-    window_start = close.index.min().to_pydatetime() if hasattr(close.index, "min") else datetime.utcnow()
-    window_end = close.index.max().to_pydatetime() if hasattr(close.index, "max") else datetime.utcnow()
+    window_start = close.index.min().to_pydatetime() if hasattr(close.index, "min") else datetime.now(UTC)
+    window_end = close.index.max().to_pydatetime() if hasattr(close.index, "max") else datetime.now(UTC)
 
     row = ModelMonitoringSnapshot(
         model_id=db_model.id,
