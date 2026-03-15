@@ -84,7 +84,7 @@ async def get_portfolio(
     except Exception as e:
         logger.error(f"[PORTFOLIO] ERROR: {type(e).__name__}: {str(e)}")
         logger.error(f"[PORTFOLIO] Traceback:\n{traceback.format_exc()}")
-        raise HTTPException(status_code=500, detail=f"Failed to fetch portfolio: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to fetch portfolio")
 
 
 @router.get("/history", response_model=list[dict[str, Any]])
@@ -116,7 +116,7 @@ async def get_portfolio_history(
 
         return history
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to fetch portfolio history: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to fetch portfolio history")
 
 
 class PositionResponse(BaseModel):
@@ -173,7 +173,7 @@ async def get_position_by_symbol(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to fetch position: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to fetch position")
 
 
 @router.get("/positions", response_model=Any)
@@ -312,7 +312,7 @@ async def sync_portfolio_from_alpaca(
         if not sync_result.get("success"):
             raise HTTPException(
                 status_code=502,
-                detail=f"Failed to sync from Alpaca: {sync_result.get('error')}"
+                detail="Failed to sync from Alpaca"
             )
 
         logger.info(f"[SYNC] Successfully synced portfolio for user {user_id}")
@@ -339,7 +339,7 @@ async def sync_portfolio_from_alpaca(
         logger.error(f"[SYNC] Traceback:\n{traceback.format_exc()}")
         raise HTTPException(
             status_code=500,
-            detail=f"Failed to sync portfolio: {str(e)}"
+            detail="Failed to sync portfolio"
         )
 
 

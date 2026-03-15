@@ -6,7 +6,7 @@ Provides standardized error response envelopes and business logic errors.
 import logging
 from typing import Any
 
-from fastapi import FastAPI, HTTPException, Request, status
+from fastapi import APIRouter, FastAPI, HTTPException, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
@@ -304,26 +304,38 @@ def format_validation_errors(errors: list[dict[str, Any]]) -> list[dict[str, Any
 
     return formatted_errors
 
-# Test error endpoints router
-from fastapi import APIRouter
+# Test error endpoints router — only registered in development mode (COMP-305 fix)
+import os
 
-router = APIRouter(prefix="/test", tags=["test-errors"])
+_test_router = APIRouter(prefix="/test", tags=["test-errors"])
 
-@router.get("/http-401")
+
+@_test_router.get("/http-401")
 def http_401():
     raise HTTPException(401, detail="Authentication required")
 
-@router.get("/http-403")
+
+@_test_router.get("/http-403")
 def http_403():
     raise HTTPException(403, detail="Forbidden")
 
-@router.get("/http-422")
+
+@_test_router.get("/http-422")
 def http_422():
     raise HTTPException(422, detail="Invalid request")
 
-@router.get("/http-500")
+
+@_test_router.get("/http-500")
 def http_500():
     raise HTTPException(500, detail="Server error")
+
+
+# Only expose test endpoints in development
+_app_env = os.getenv("APP_ENVIRONMENT", "development")
+if _app_env == "development":
+    router = _test_router
+else:
+    router = APIRouter(prefix="/test", tags=["test-errors"])
 
 
 # Helper functions for common error creation

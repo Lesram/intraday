@@ -46,35 +46,41 @@ from .schemas import OutboxEvent
 
 logger = logging.getLogger(__name__)
 
-# Prometheus metrics
-outbox_polled_total = Counter("outbox_polled_total", "Total outbox polling operations")
-
-outbox_dispatched_total = Counter(
-    "outbox_dispatched_total",
-    "Total outbox dispatching operations",
-    ["topic", "status"],
-)
-
-outbox_dispatch_latency_seconds = Histogram(
-    "outbox_dispatch_latency_seconds",
-    "Outbox dispatch latency",
-    ["topic"],
-    buckets=[0.1, 0.5, 1.0, 2.0, 5.0, 10.0, 30.0],
-)
-
-outbox_queue_gauge = Gauge(
-    "outbox_queue_gauge", "Current outbox queue size", ["status"]
-)
-
-broker_submit_total = Counter(
-    "broker_submit_total", "Total broker submissions", ["result"]
-)
-
-broker_submit_latency_seconds = Histogram(
-    "broker_submit_latency_seconds",
-    "Broker submission latency",
-    buckets=[0.1, 0.5, 1.0, 2.0, 5.0, 10.0, 30.0],
-)
+# Prometheus metrics (XSYS-010: handle duplicate registration on re-import)
+try:
+    outbox_polled_total = Counter("outbox_polled_total", "Total outbox polling operations")
+    outbox_dispatched_total = Counter(
+        "outbox_dispatched_total",
+        "Total outbox dispatching operations",
+        ["topic", "status"],
+    )
+    outbox_dispatch_latency_seconds = Histogram(
+        "outbox_dispatch_latency_seconds",
+        "Outbox dispatch latency",
+        ["topic"],
+        buckets=[0.1, 0.5, 1.0, 2.0, 5.0, 10.0, 30.0],
+    )
+    outbox_queue_gauge = Gauge(
+        "outbox_queue_gauge", "Current outbox queue size", ["status"]
+    )
+    broker_submit_total = Counter(
+        "broker_submit_total", "Total broker submissions", ["result"]
+    )
+    broker_submit_latency_seconds = Histogram(
+        "broker_submit_latency_seconds",
+        "Broker submission latency",
+        buckets=[0.1, 0.5, 1.0, 2.0, 5.0, 10.0, 30.0],
+    )
+except ValueError:
+    # Metrics already registered (e.g., module re-imported) — retrieve existing
+    import prometheus_client
+    _reg = prometheus_client.REGISTRY._names_to_collectors
+    outbox_polled_total = _reg.get("outbox_polled_total_total", _reg.get("outbox_polled_total"))
+    outbox_dispatched_total = _reg.get("outbox_dispatched_total_total", _reg.get("outbox_dispatched_total"))
+    outbox_dispatch_latency_seconds = _reg.get("outbox_dispatch_latency_seconds", None)
+    outbox_queue_gauge = _reg.get("outbox_queue_gauge", None)
+    broker_submit_total = _reg.get("broker_submit_total_total", _reg.get("broker_submit_total"))
+    broker_submit_latency_seconds = _reg.get("broker_submit_latency_seconds", None)
 
 
 class OutboxRepo:

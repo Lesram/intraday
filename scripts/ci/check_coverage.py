@@ -154,38 +154,3 @@ def main():
 
 if __name__ == "__main__":
     sys.exit(main())
-    print()
-    
-    try:
-        package_stats = parse_coverage_xml(args.coverage_file)
-        
-        if args.verbose:
-            print("📊 Package coverage statistics:")
-            for package, (covered, total) in package_stats.items():
-                coverage_pct = calculate_coverage_percentage(covered, total)
-                print(f"   {package}: {covered}/{total} lines ({coverage_pct:.1f}%)")
-            print()
-        
-        errors = check_package_coverage(package_stats, requirements)
-        
-        if errors:
-            print("\n❌ Coverage quality gate FAILED:")
-            for error in errors:
-                print(f"   {error}")
-            print(f"\nTotal packages failing requirements: {len(errors)}")
-            sys.exit(1)
-        else:
-            print("\n✅ All package coverage requirements met!")
-            print("Coverage quality gate PASSED")
-            sys.exit(0)
-            
-    except ET.ParseError as e:
-        print(f"❌ Failed to parse coverage XML: {e}")
-        sys.exit(1)
-    except Exception as e:
-        print(f"❌ Unexpected error: {e}")
-        sys.exit(1)
-
-
-if __name__ == "__main__":
-    main()
