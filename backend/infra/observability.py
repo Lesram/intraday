@@ -4,6 +4,7 @@ and standardized latency instrumentation decorators.
 """
 
 import asyncio
+import os
 from collections.abc import Callable
 from contextlib import contextmanager
 import functools
@@ -148,7 +149,7 @@ def _setup_tracing(config: ObservabilityConfig, resource: Resource) -> None:
     if config.otel_exporter_otlp_endpoint:
         otlp_exporter = OTLPSpanExporter(
             endpoint=config.otel_exporter_otlp_endpoint,
-            insecure=True,  # Use TLS in production
+            insecure=os.getenv("OTEL_EXPORTER_OTLP_INSECURE", "true").lower() in ("true", "1", "yes"),
         )
         span_processor = BatchSpanProcessor(otlp_exporter)
         tracer_provider.add_span_processor(span_processor)
@@ -190,7 +191,7 @@ def _setup_otel_metrics(config: ObservabilityConfig, resource: Resource) -> None
     # Create OTLP metric exporter
     otlp_metric_exporter = OTLPMetricExporter(
         endpoint=config.otel_exporter_otlp_endpoint,
-        insecure=True,  # Use TLS in production
+        insecure=os.getenv("OTEL_EXPORTER_OTLP_INSECURE", "true").lower() in ("true", "1", "yes"),
     )
 
     # Create periodic exporting metric reader

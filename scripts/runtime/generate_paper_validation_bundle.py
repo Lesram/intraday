@@ -166,8 +166,8 @@ def _query_organism_status() -> dict | None:
         req = urllib.request.Request(
             f"{base}/api/v1/auth/login",
             data=json.dumps({
-                "username": os.getenv("INTRA_API_USER", "admin@example.com"),
-                "password": os.getenv("INTRA_API_PASSWORD", "admin123"),
+                "username": os.getenv("INTRA_API_USER", ""),
+                "password": os.getenv("INTRA_API_PASSWORD", ""),
             }).encode(),
             headers={"Content-Type": "application/json"},
             method="POST",

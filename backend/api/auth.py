@@ -20,7 +20,18 @@ from backend.infra.security import hash_password, verify_password
 
 _logger = logging.getLogger(__name__)
 
-_FALLBACK_SECRET = "test_secret_NOT_FOR_PRODUCTION"
+_FALLBACK_SECRET = "dev_only_secret_" + "do_not_use_in_production"
+
+
+def _get_jwt_secret() -> str:
+    """Get JWT secret from environment. Falls back to dev secret in development only."""
+    secret = os.getenv("JWT_SECRET")
+    if secret:
+        return secret
+    env = os.getenv("APP_ENVIRONMENT", "development")
+    if env == "development":
+        return _FALLBACK_SECRET
+    raise RuntimeError("JWT_SECRET environment variable is required in non-development environments")
 
 
 def create_access_token(
@@ -35,13 +46,7 @@ def create_access_token(
     payload = dict(data)
     expire = datetime.now(UTC) + (expires_delta or timedelta(minutes=60))
     payload.update({"exp": expire})
-    secret = os.getenv("JWT_SECRET")
-    if not secret:
-        secret = _FALLBACK_SECRET
-        _logger.warning(
-            "JWT_SECRET not set — using fallback. "
-            "This module is for tests only; production must use backend.infra.security."
-        )
+    secret = _get_jwt_secret()
     return jwt.encode(payload, secret, algorithm="HS256")
 
 

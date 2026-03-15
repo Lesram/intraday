@@ -421,8 +421,8 @@ def _curl_organism_status() -> dict | None:
 
 def _get_auth_token(base: str) -> str:
     """Get auth token for API access."""
-    username = os.getenv("INTRA_API_USER", "admin@example.com")
-    password = os.getenv("INTRA_API_PASSWORD", "admin123")
+    username = os.getenv("INTRA_API_USER", "")
+    password = os.getenv("INTRA_API_PASSWORD", "")
     try:
         import urllib.request
         import urllib.error

@@ -191,11 +191,11 @@ class ModelStorage:
 
     def _calculate_checksum(self, file_path: Path) -> str:
         """Calculate file checksum."""
-        hash_md5 = hashlib.md5()
+        hash_sha256 = hashlib.sha256()
         with open(file_path, "rb") as f:
             for chunk in iter(lambda: f.read(4096), b""):
-                hash_md5.update(chunk)
-        return hash_md5.hexdigest()
+                hash_sha256.update(chunk)
+        return hash_sha256.hexdigest()
 
     def save_model(self, model: Any, name: str, version: str,
                    format_type: ModelFormat = ModelFormat.JOBLIB) -> tuple[bool, str | None, int | None]:

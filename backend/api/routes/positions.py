@@ -23,7 +23,7 @@ router = APIRouter(prefix="/positions", tags=["Positions"])
 def _compute_etag(data: Any) -> str:
     """Compute ETag from response data for cache validation (L-08)."""
     content = json.dumps(data, sort_keys=True, default=str)
-    return f'"{hashlib.md5(content.encode()).hexdigest()}"'
+    return f'"{hashlib.sha256(content.encode()).hexdigest()}"'
 
 
 class PositionDTO(BaseModel):
