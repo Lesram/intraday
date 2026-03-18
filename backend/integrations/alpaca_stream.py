@@ -17,6 +17,7 @@ from datetime import UTC, datetime
 import json
 import os
 import time
+from pathlib import Path
 from typing import Any
 
 import websockets
@@ -80,6 +81,14 @@ class AlpacaStreamClient:
         # (rejected/cancelled/expired) so the engine can clear pending entries early.
         self._terminal_order_ids: set[str] = set()
 
+        # B1: Dead-letter queue for permanently failed trade updates
+        self._dlq_path = Path(os.getenv("INTRA_DLQ_PATH", "/tmp/intra_trade_update_dlq.jsonl"))
+        self._dlq_count: int = 0
+
+        # B2: Track connection timestamps and reconnect count for gap-fill
+        self._last_connected_at: float = 0.0
+        self._reconnect_count: int = 0
+
         # Heartbeat configuration
         self.heartbeat_interval = 30.0
         self.last_heartbeat = time.time()
@@ -113,6 +122,7 @@ class AlpacaStreamClient:
 
             self.is_connected = True
             self.reconnect_attempts = 0
+            self._last_connected_at = time.time()
 
             logger.info("Connected to Alpaca WebSocket stream")
 
@@ -384,12 +394,14 @@ class AlpacaStreamClient:
 
                 if last_error is not None:
                     logger.error(
-                        "Trade update PERMANENTLY FAILED after %d attempts — update lost",
+                        "Trade update PERMANENTLY FAILED after %d attempts — writing to DLQ",
                         MAX_RETRIES,
                         error=str(last_error),
                         error_type=type(last_error).__name__,
                         update_summary=str(update)[:200],
                     )
+                    # B1: Write to dead-letter queue file
+                    self._write_to_dlq(update, MAX_RETRIES, last_error)
 
             except TimeoutError:
                 # No update in queue, continue
@@ -400,6 +412,27 @@ class AlpacaStreamClient:
                            error=str(e),
                            error_type=type(e).__name__)
                 continue
+
+    def _write_to_dlq(self, update: dict[str, Any], attempts: int, error: Exception) -> None:
+        """B1: Append a permanently failed trade update to the dead-letter queue file."""
+        try:
+            dlq_record = {
+                "timestamp": datetime.now(UTC).isoformat(),
+                "attempt_count": attempts,
+                "error": str(error),
+                "error_type": type(error).__name__,
+                "update": update,
+            }
+            with open(self._dlq_path, "a") as f:
+                f.write(json.dumps(dlq_record, default=str) + "\n")
+            self._dlq_count += 1
+            logger.warning(
+                "Trade update written to DLQ (total=%d): %s",
+                self._dlq_count,
+                self._dlq_path,
+            )
+        except Exception as dlq_err:
+            logger.error("Failed to write to DLQ file: %s", dlq_err)
 
     async def _process_trade_update(self, update: dict[str, Any]):
         """
@@ -548,13 +581,27 @@ class AlpacaStreamClient:
     async def _gap_fill_after_reconnect(self) -> None:
         """EXEC-002: Poll recent orders for missed fills after WebSocket reconnect.
 
-        Queries orders updated in the last 5 minutes and reconciles their
-        status with the local database.  This closes the gap window where
-        fills may have arrived while the WebSocket was disconnected.
+        B2: Uses actual gap duration (time since last connection) instead of
+        a fixed 5-minute window. Minimum 5 minutes, capped at 1 hour.
         """
         try:
             from datetime import timedelta
-            cutoff = datetime.now(UTC) - timedelta(minutes=5)
+
+            # B2: Compute actual gap duration
+            if self._last_connected_at > 0:
+                gap_seconds = time.time() - self._last_connected_at
+            else:
+                gap_seconds = 300  # Default 5 minutes if no prior connection
+
+            # Minimum 5 min, extend to cover gap + 1 min buffer, cap at 1 hour
+            lookback_seconds = min(max(gap_seconds + 60, 300), 3600)
+
+            logger.info(
+                "EXEC-002 gap-fill: gap_duration=%.0fs, lookback_window=%.0fs",
+                gap_seconds, lookback_seconds,
+            )
+
+            cutoff = datetime.now(UTC) - timedelta(seconds=lookback_seconds)
             async with get_session_context() as session:
                 orders_repo = OrdersRepo(session)
                 # Fetch orders that may have changed during the gap
@@ -708,6 +755,15 @@ class AlpacaStreamClient:
                 # Connection lost, attempt reconnection
                 if self.should_reconnect:
                     self.reconnect_attempts += 1
+
+                    # B2: Track total reconnect count across the session
+                    self._reconnect_count += 1
+                    if self._reconnect_count > 10:
+                        logger.critical(
+                            "Stream instability: %d reconnects this session — "
+                            "order update reliability degraded",
+                            self._reconnect_count,
+                        )
 
                     if self.reconnect_attempts >= self.max_reconnect_attempts:
                         logger.error("Max reconnection attempts reached, entering cooldown before retry cycle")

@@ -164,6 +164,9 @@ LIVE_UNIVERSE_CSV = _env_str(
 )
 MAX_OPEN_POSITIONS = _env_int("ORGANISM_MAX_POSITIONS", 8)
 ALPHA_TOP_N = _env_int("ORGANISM_ALPHA_TOP_N", 5)
+PROTECTED_SYMBOLS: set[str] = {
+    s.strip() for s in _env_str("ORGANISM_PROTECTED_SYMBOLS", "SH,PSQ").split(",") if s.strip()
+}
 BRAIN_DIR = _env_str("ORGANISM_BRAIN_DIR", "organism_brain")
 RETRAIN_INTERVAL = _env_int("ORGANISM_RETRAIN_INTERVAL", 60)
 TRAIN_WINDOW = _env_int("ORGANISM_TRAIN_WINDOW", 200)
@@ -232,6 +235,8 @@ class LiveTickResult:
     # Background training metadata
     training_status: str = ""  # "training", "completed", "rejected", ""
     training_metadata: dict[str, Any] = field(default_factory=dict)
+    # C5: Watchdog state (populated by engine at end of tick)
+    watchdog: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -250,6 +255,7 @@ class LiveTickResult:
             "activity": [a.to_dict() for a in self.activity[-50:]],
             "training_status": self.training_status,
             "training_metadata": self.training_metadata,
+            "watchdog": self.watchdog,
         }
 
 
@@ -350,6 +356,7 @@ class OrganismLiveEngine:
         # ── Dynamic Universe Selector (Phase 4.1) ──────────────
         self.universe_selector = DynamicUniverseSelector(
             seed_symbols=list(self._universe),
+            protected_symbols=PROTECTED_SYMBOLS,
         )
 
         # ── Market Scanner (Phase 5) ───────────────────────────
@@ -491,6 +498,12 @@ class OrganismLiveEngine:
         self._consecutive_equity_zero: int = 0
         self._EQUITY_ZERO_THRESHOLD = 3  # 3 consecutive zeros (~30s) before blocking
 
+        # Last-known-good equity fallback — avoids false equity-zero soft-blocks
+        # when broker API transiently returns 0 or errors.
+        self._last_valid_equity: float = 0.0
+        self._last_valid_equity_tick: int = 0
+        self._EQUITY_FALLBACK_MAX_TICKS: int = 30  # ~5 minutes at 10s ticks
+
         # Serialize live_tick() calls to prevent concurrent state mutation
         # (scheduler loop + manual /tick endpoint)
         self._tick_lock = asyncio.Lock()
@@ -507,6 +520,20 @@ class OrganismLiveEngine:
 
         # ── Diagnostics ──────────────────────────────────────────
         self._last_diagnostic_report: Any = None
+
+        # ── C1-C5: Away-mode watchdog state ──────────────────────
+        # C1: No-trade watchdog
+        self._watchdog_last_order_tick: int = 0
+        self._watchdog_no_trade_sessions: int = 0
+        self._watchdog_zero_candidates_ticks: int = 0
+        self._watchdog_state: str = "OK"  # "OK", "WARNING_NO_TRADES", "CRITICAL_MULTI_SESSION"
+        # C2: Equity fallback watchdog
+        self._watchdog_equity_fallback_count: int = 0
+        self._watchdog_equity_fallback_streak: int = 0
+        # C3: Universe drift watchdog
+        self._watchdog_universe_drift: dict[str, Any] = {}
+        # C4: Brain save watchdog
+        self._watchdog_last_brain_save_tick: int = 0
 
     # ── Dynamic throttle ──────────────────────────────────────
 
@@ -652,6 +679,7 @@ class OrganismLiveEngine:
             if us_data and isinstance(us_data, dict):
                 self.universe_selector = DynamicUniverseSelector.from_dict(
                     us_data, seed_symbols=list(self._universe),
+                    protected_symbols=PROTECTED_SYMBOLS,
                 )
                 restored_universe = self.universe_selector.active_universe
                 if restored_universe:
@@ -775,6 +803,19 @@ class OrganismLiveEngine:
                         "Cancelled %d stale pending entry orders from prior session",
                         stale_count,
                     )
+
+            # A4 away-mode fix: Restore pending entry cooldowns from brain.
+            # On restart, tick numbers are stale — reset each to current tick
+            # so the symbol gets a fresh cooldown window of _PENDING_ENTRY_TICKS.
+            saved_pending = self.brain.extra_counters.get("pending_entry")
+            if saved_pending and isinstance(saved_pending, dict):
+                for sym in saved_pending:
+                    self._pending_entry[sym] = self._tick_count
+                logger.info(
+                    "Restored %d pending entry cooldowns from brain "
+                    "(reset to tick %d for fresh cooldown)",
+                    len(saved_pending), self._tick_count,
+                )
 
             # Restore regime-stratified Kelly stats
             rk_data = self.brain.extra_counters.get("regime_kelly_stats")
@@ -1176,11 +1217,11 @@ class OrganismLiveEngine:
                     pass  # timezone parsing failure is non-fatal
 
             # 1.5 MARKET SCAN (Phase 5) — discover new stocks
-            # Skip scanner when entries are blocked (halt/drawdown) — no point
-            # scanning for new candidates we won't enter.
+            # A2 away-mode fix: scanner MUST run even when entries are blocked
+            # so that tension_lookup stays populated (prevents death spiral
+            # where blocked entries → empty scanner → zero tension → permanent block).
             if (
-                not entries_blocked
-                and self.market_scanner is not None
+                self.market_scanner is not None
                 and self._tick_count % SCAN_INTERVAL_TICKS == 0
             ):
                 try:
@@ -1970,6 +2011,22 @@ class OrganismLiveEngine:
                     bs = breakout_by_sym.get(c.symbol)
                     breakout_score = bs.composite_score if bs else 0.0
                     tension = _tension_lookup.get(c.symbol, 0.0)
+                    # Fallback: compute tension proxy from feature data when
+                    # market_scanner has no results (outside hours, API down).
+                    # Uses volume ratio + absolute return as a simple proxy
+                    # to avoid zeroing 35% of the confidence formula.
+                    if tension == 0.0:
+                        feat_df = features_by_symbol.get(c.symbol)
+                        if feat_df is not None and len(feat_df) >= 1:
+                            _row = feat_df.iloc[-1]
+                            _vol_ratio = float(_row.get("vol_sma_ratio", 1.0))
+                            _abs_ret = abs(float(_row.get("ret_1d", 0.0)))
+                            # vol_ratio > 1 means above-average volume (capped contribution)
+                            # abs_ret scaled to [0, 1] range (2% move = 0.4 tension)
+                            tension = min(
+                                max(_vol_ratio - 1.0, 0.0) / 3.0 + _abs_ret * 20.0,
+                                0.80,
+                            )
                     # Additive confidence — preserves ranking granularity
                     if self._is_learning_mode:
                         # improve9: ML weight = 0 in learning mode. ML is
@@ -2586,6 +2643,12 @@ class OrganismLiveEngine:
             broker_positions=getattr(self, "_last_positions", None),
         )
 
+        # ── C1-C5: Away-mode watchdog checks ─────────────────────
+        try:
+            self._update_watchdog_state(result)
+        except Exception:
+            pass  # Watchdog must never break the tick loop
+
         return result
 
     def _build_decision_snapshot(self, result: LiveTickResult) -> DecisionSnapshot:
@@ -2931,6 +2994,92 @@ class OrganismLiveEngine:
                         )
         except Exception as e:
             logger.debug("Continuous diagnostics error (non-fatal): %s", e)
+
+    # ═════════════════════════════════════════════════════════════
+    #  C1-C5: AWAY-MODE WATCHDOG
+    # ═════════════════════════════════════════════════════════════
+
+    def _update_watchdog_state(self, result: LiveTickResult) -> None:
+        """Update all watchdog states at the end of each tick."""
+        # C1: No-trade watchdog
+        if result.orders_submitted > 0:
+            self._watchdog_last_order_tick = self._tick_count
+            self._watchdog_zero_candidates_ticks = 0
+        elif result.signals_generated == 0:
+            self._watchdog_zero_candidates_ticks += 1
+
+        ticks_since_order = self._tick_count - self._watchdog_last_order_tick
+        # ~360 ticks = 1 hour at 10s interval
+        if ticks_since_order > 2160:  # ~6 hours with no orders
+            self._watchdog_state = "WARNING_NO_TRADES"
+            if ticks_since_order > 2160 * 2:  # ~12+ hours
+                self._watchdog_state = "CRITICAL_MULTI_SESSION"
+                logger.critical(
+                    "C1 WATCHDOG: No orders for %d ticks (>12h) — system may be inert",
+                    ticks_since_order,
+                )
+            else:
+                logger.warning(
+                    "C1 WATCHDOG: No orders for %d ticks (>6h)",
+                    ticks_since_order,
+                )
+        else:
+            self._watchdog_state = "OK"
+
+        # C3: Universe drift (every ~360 ticks to avoid overhead)
+        if self._tick_count % 360 == 0:
+            self._watchdog_universe_drift = self._check_universe_drift()
+            if self._watchdog_universe_drift.get("protected_missing"):
+                logger.warning(
+                    "C3 WATCHDOG: Protected symbols missing from active universe: %s",
+                    self._watchdog_universe_drift["protected_missing"],
+                )
+
+        # C4: Brain save staleness
+        ticks_since_save = self._tick_count - self._watchdog_last_brain_save_tick
+        if ticks_since_save > 1080:  # ~3 hours
+            logger.warning(
+                "C4 WATCHDOG: Brain not saved for %d ticks (>3h) — last save at tick %d",
+                ticks_since_save, self._watchdog_last_brain_save_tick,
+            )
+
+        # C5: Attach unified watchdog state to tick result
+        result.watchdog = self.get_watchdog_state()
+
+    def _check_universe_drift(self) -> dict[str, Any]:
+        """C3: Check if runtime universe diverges from configured base."""
+        base = set(s.strip().upper() for s in LIVE_UNIVERSE_CSV.split(",") if s.strip())
+        active = set(self._universe)
+        missing = base - active
+        added = active - base
+        protected_missing = set(PROTECTED_SYMBOLS) - active
+        return {
+            "base_size": len(base),
+            "active_size": len(active),
+            "missing_from_base": sorted(missing),
+            "added_beyond_base": sorted(added),
+            "protected_missing": sorted(protected_missing),
+            "drift_detected": bool(missing or protected_missing),
+        }
+
+    def get_watchdog_state(self) -> dict[str, Any]:
+        """C5: Return unified watchdog state for all away-mode monitors."""
+        return {
+            "no_trade": {
+                "state": self._watchdog_state,
+                "ticks_since_last_order": self._tick_count - self._watchdog_last_order_tick,
+                "zero_candidate_ticks": self._watchdog_zero_candidates_ticks,
+            },
+            "equity_fallback": {
+                "total_fallback_count": self._watchdog_equity_fallback_count,
+                "current_streak": self._watchdog_equity_fallback_streak,
+            },
+            "universe_drift": self._watchdog_universe_drift,
+            "brain_save": {
+                "ticks_since_last_save": self._tick_count - self._watchdog_last_brain_save_tick,
+                "healthy": (self._tick_count - self._watchdog_last_brain_save_tick) < 1080,
+            },
+        }
 
     # ═════════════════════════════════════════════════════════════
     #  DATA PIPELINE
@@ -4023,11 +4172,14 @@ class OrganismLiveEngine:
                     "regime_kelly_stats": self.kelly_sizer.regime_stats_to_dict(),
                     "ml_calibration": self.signal_gen.calibration_to_dict(),
                     "entry_timestamps": list(self._entry_timestamps),
+                    "pending_entry": dict(self._pending_entry),
                 },
                 evolved_params=self.evolved_params.to_dict(),
                 governance_controller=self.governance,
                 regime_detector=self.regime_detector,
             )
+            # C4: Update brain save watchdog tick
+            self._watchdog_last_brain_save_tick = self._tick_count
             logger.info(
                 "Brain saved at tick %d (%s)", self._tick_count, reason
             )
@@ -4128,16 +4280,53 @@ class OrganismLiveEngine:
     # ═════════════════════════════════════════════════════════════
 
     async def _get_equity(self) -> float:
-        """Get current portfolio equity from broker."""
+        """Get current portfolio equity from broker.
+
+        Falls back to last-known-good equity if the broker returns zero
+        or errors, bounded by a staleness window.
+        """
+        value = 0.0
         try:
-            value = await self._positions_service.get_total_portfolio_value()
-            return float(value) if value else 0.0
+            raw = await self._positions_service.get_total_portfolio_value()
+            value = float(raw) if raw else 0.0
         except Exception:
             try:
                 bp = await self._positions_service.get_buying_power()
-                return float(bp) if bp else 0.0
+                value = float(bp) if bp else 0.0
             except Exception:
-                return 0.0
+                pass
+
+        if value > 0:
+            self._last_valid_equity = value
+            self._last_valid_equity_tick = self._tick_count
+            # C2: Reset fallback streak on fresh equity
+            self._watchdog_equity_fallback_streak = 0
+            return value
+
+        # Fallback: use last-known-good equity within staleness window
+        ticks_since = self._tick_count - self._last_valid_equity_tick
+        if self._last_valid_equity > 0 and ticks_since <= self._EQUITY_FALLBACK_MAX_TICKS:
+            # C2: Track equity fallback usage
+            self._watchdog_equity_fallback_count += 1
+            self._watchdog_equity_fallback_streak += 1
+            if self._watchdog_equity_fallback_streak > 25:
+                logger.critical(
+                    "C2 WATCHDOG: Equity fallback streak=%d — broker API may be down",
+                    self._watchdog_equity_fallback_streak,
+                )
+            elif self._watchdog_equity_fallback_streak > 10:
+                logger.warning(
+                    "C2 WATCHDOG: Equity fallback streak=%d — broker API returning zero",
+                    self._watchdog_equity_fallback_streak,
+                )
+            logger.warning(
+                "Broker returned zero equity — using last-known-good $%.2f "
+                "(%d ticks stale, max %d)",
+                self._last_valid_equity, ticks_since, self._EQUITY_FALLBACK_MAX_TICKS,
+            )
+            return self._last_valid_equity
+
+        return 0.0
 
     def status(self) -> dict[str, Any]:
         """Return organism engine status for API/monitoring."""
@@ -4200,6 +4389,7 @@ class OrganismLiveEngine:
             "shorts_enabled": self.evolved_params.shorts_enabled,
             "data_stale": self._data_stale,
             "learning_mode": self._is_learning_mode,
+            "watchdog": self.get_watchdog_state(),
             **scanner_info,
         }
 

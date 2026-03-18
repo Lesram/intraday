@@ -84,9 +84,11 @@ class DynamicUniverseSelector:
         seed_symbols: list[str],
         min_universe: int = MIN_UNIVERSE,
         max_universe: int = MAX_UNIVERSE,
+        protected_symbols: set[str] | None = None,
     ) -> None:
         self._min = min_universe
         self._max = max_universe
+        self._protected: set[str] = set(protected_symbols) if protected_symbols else set()
 
         # Initialise fitness table from seed
         self._fitness: dict[str, SymbolFitness] = {}
@@ -167,6 +169,8 @@ class DynamicUniverseSelector:
                 continue
             if sf.symbol in open_positions:
                 continue  # never drop a symbol with open position
+            if sf.symbol in self._protected:
+                continue  # never drop a protected symbol (e.g. inverse ETFs)
             if sf.total_trades < MIN_OBSERVATIONS:
                 continue  # not enough data to judge
             if sf.fitness < DEFAULT_FITNESS - 0.1:
@@ -278,6 +282,7 @@ class DynamicUniverseSelector:
         return {
             "active": self._active,
             "rotation_count": self._rotation_count,
+            "protected_symbols": sorted(self._protected),
             "fitness": {
                 sym: sf.to_dict() for sym, sf in self._fitness.items()
             },
@@ -285,11 +290,19 @@ class DynamicUniverseSelector:
 
     @classmethod
     def from_dict(
-        cls, d: dict[str, Any], seed_symbols: list[str] | None = None,
+        cls,
+        d: dict[str, Any],
+        seed_symbols: list[str] | None = None,
+        protected_symbols: set[str] | None = None,
     ) -> "DynamicUniverseSelector":
         """Restore from brain persistence."""
         active = d.get("active", seed_symbols or [])
-        selector = cls(seed_symbols=active)
+        # Restore protected symbols: prefer caller arg, fall back to persisted
+        if protected_symbols is None:
+            persisted = d.get("protected_symbols")
+            if persisted:
+                protected_symbols = set(persisted)
+        selector = cls(seed_symbols=active, protected_symbols=protected_symbols)
         selector._rotation_count = d.get("rotation_count", 0)
 
         for sym, sf_dict in d.get("fitness", {}).items():

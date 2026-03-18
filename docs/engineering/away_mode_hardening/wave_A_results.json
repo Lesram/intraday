@@ -1,0 +1,54 @@
+{
+  "wave": "A",
+  "title": "Paper-Path Blocker & Drift Hardening",
+  "fixes": {
+    "A1_universe_drift_protection": {
+      "status": "FIXED",
+      "files_changed": [
+        "backend/organism/universe_selector.py",
+        "backend/organism/live_engine.py"
+      ],
+      "description": "Added protected_symbols parameter to DynamicUniverseSelector. SH and PSQ are now protected from rotation by default (env: ORGANISM_PROTECTED_SYMBOLS). Protected symbols are persisted in brain and restored on restart.",
+      "tests": [
+        "test_protected_symbols_not_rotated_out",
+        "test_unprotected_symbol_can_rotate_out",
+        "test_protected_symbols_persisted",
+        "test_protected_in_to_dict"
+      ]
+    },
+    "A2_scanner_decoupled_from_entry_blocking": {
+      "status": "FIXED",
+      "files_changed": ["backend/organism/live_engine.py"],
+      "description": "Removed 'not entries_blocked' from market scanner gate condition. Scanner now runs regardless of entry block state, keeping tension_lookup populated. Breaks the equity-zero → scanner-off → tension-zero → confidence-zero death spiral.",
+      "tests": [
+        "test_scanner_gate_has_no_entries_blocked_check",
+        "test_tension_lookup_populated_from_scanner",
+        "test_death_spiral_broken_concept"
+      ]
+    },
+    "A3_runtime_snapshot_hardening": {
+      "status": "FIXED",
+      "files_changed": ["scripts/runtime/write_runtime_snapshot.py"],
+      "description": "Runtime snapshot now reports unreachable_reason when API is down and includes scanner_candidates_count in live section.",
+      "tests": [
+        "test_snapshot_reports_unreachable_reason",
+        "test_snapshot_includes_scanner_candidates_count"
+      ]
+    },
+    "A4_pending_entry_restart_hardening": {
+      "status": "FIXED",
+      "files_changed": ["backend/organism/live_engine.py"],
+      "description": "Pending entry dict is now persisted to brain extra_counters and restored on initialize(). Restored entries receive fresh tick timestamps for proper cooldown. Prevents duplicate order submissions after restart.",
+      "tests": [
+        "test_pending_entry_in_brain_save_extra_counters",
+        "test_pending_entry_restore_in_initialize",
+        "test_pending_entry_gets_fresh_cooldown_on_restore",
+        "test_no_duplicate_entry_after_restart",
+        "test_pending_entry_persisted_in_standalone_save"
+      ]
+    }
+  },
+  "tests_added": 14,
+  "tests_passing": 14,
+  "regressions": 0
+}

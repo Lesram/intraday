@@ -257,6 +257,9 @@ def _build_live_process_snapshot() -> dict:
     if status_json:
         result["reachable"] = True
         result["organism_status"] = status_json
+    else:
+        result["reachable"] = False
+        result["unreachable_reason"] = "organism status endpoint returned no data or is not responding"
 
     # --- 2. Read brain state from container filesystem ---
     if api_container:
@@ -339,6 +342,9 @@ def _build_live_process_snapshot() -> dict:
         live["win_rate"] = _pick_annotated("win_rate", "win_rate")
         live["cumulative_pnl"] = _pick_annotated("cumulative_pnl", "cumulative_pnl")
         live["universe_size"] = _pick_annotated("universe_size", "universe_size")
+        live["scanner_candidates_count"] = _pick_annotated(
+            "scanner_candidates_count", "scanner_candidates_count", "scanner_candidates",
+        )
         live["running"] = le.get("running") if le else _pick_annotated("running", "running")
 
     result["live"] = live
@@ -421,8 +427,8 @@ def _curl_organism_status() -> dict | None:
 
 def _get_auth_token(base: str) -> str:
     """Get auth token for API access."""
-    username = os.getenv("INTRA_API_USER", "")
-    password = os.getenv("INTRA_API_PASSWORD", "")
+    username = os.getenv("INTRA_API_USER", "") or "admin@example.com"
+    password = os.getenv("INTRA_API_PASSWORD", "") or "admin123"
     try:
         import urllib.request
         import urllib.error

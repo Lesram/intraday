@@ -1,0 +1,44 @@
+{
+  "wave": "B",
+  "title": "Execution Resilience / Self-Healing",
+  "fixes": {
+    "B1_trade_update_dlq": {
+      "status": "FIXED",
+      "files_changed": ["backend/integrations/alpaca_stream.py"],
+      "description": "After 3 retry attempts, failed trade updates are now written to a DLQ file (/tmp/intra_trade_update_dlq.jsonl, configurable via INTRA_DLQ_PATH). Each entry includes timestamp, attempt count, error, and raw payload. Session counter _dlq_count tracks total dead-lettered updates.",
+      "tests": [
+        "test_failed_update_written_to_dlq",
+        "test_dlq_counter_increments",
+        "test_successful_update_not_dlqed",
+        "test_process_queue_writes_dlq_on_permanent_failure"
+      ]
+    },
+    "B2_websocket_gap_fill_hardening": {
+      "status": "FIXED",
+      "files_changed": ["backend/integrations/alpaca_stream.py"],
+      "description": "Gap-fill lookback window now computed from actual disconnect duration (gap + 60s buffer, min 5min, max 1hr). Reconnect counter tracks session instability with CRITICAL log at 10+ reconnects. _last_connected_at timestamp tracks connection epochs.",
+      "tests": [
+        "test_gap_duration_tracked",
+        "test_reconnect_count_increments",
+        "test_max_reconnect_warning",
+        "test_gap_fill_lookback_capped_at_one_hour",
+        "test_gap_fill_minimum_five_minutes"
+      ]
+    },
+    "B3_audit_session_resilience": {
+      "status": "FIXED",
+      "files_changed": ["backend/services/audit_service.py"],
+      "description": "Added refresh_session() to update stale DB session. _check_session_health() detects None or inactive sessions. log() raises RuntimeError on stale session (fail-loud). reset() class method clears singleton.",
+      "tests": [
+        "test_refresh_session_updates_db",
+        "test_stale_session_detected",
+        "test_inactive_session_detected",
+        "test_log_raises_on_stale_session",
+        "test_reset_clears_singleton"
+      ]
+    }
+  },
+  "tests_added": 14,
+  "tests_passing": 14,
+  "regressions": 0
+}

@@ -160,9 +160,41 @@ class ComplianceAuditService:
         )
     """
 
+    # B3: Singleton instance for callers that cache the service
+    _instance: "ComplianceAuditService | None" = None
+
     def __init__(self, db_session: AsyncSession):
         self.db = db_session
         self._last_hash_cache: str | None = None
+
+    def refresh_session(self, db_session: AsyncSession) -> None:
+        """B3: Update the DB session to avoid stale-session errors.
+
+        Call this when reusing a cached/singleton audit service with a
+        fresh request-scoped session.
+        """
+        old_ok = self.db is not None and (not hasattr(self.db, "is_active") or self.db.is_active)
+        self.db = db_session
+        self._last_hash_cache = None  # Invalidate hash cache on session swap
+        if not old_ok:
+            logger.warning("AuditService: refreshed stale/None session")
+        else:
+            logger.info("AuditService: session refreshed")
+
+    @classmethod
+    def reset(cls) -> None:
+        """B3: Clear the singleton instance so next call creates a fresh one."""
+        cls._instance = None
+
+    def _check_session_health(self) -> bool:
+        """B3: Return True if session looks usable, log warning otherwise."""
+        if self.db is None:
+            logger.warning("AuditService: db session is None — call refresh_session()")
+            return False
+        if hasattr(self.db, "is_active") and not self.db.is_active:
+            logger.warning("AuditService: db session is_active=False — stale session detected")
+            return False
+        return True
 
     async def _get_last_hash(self) -> str | None:
         """Get the hash of the most recent audit record."""
@@ -199,6 +231,10 @@ class ComplianceAuditService:
         Returns:
             The created AuditLog record
         """
+        # B3: Check session health before writing
+        if not self._check_session_health():
+            raise RuntimeError("AuditService: cannot log — DB session is stale or None")
+
         now = datetime.now(UTC)
         payload = payload or {}
 
