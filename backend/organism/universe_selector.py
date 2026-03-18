@@ -318,4 +318,23 @@ class DynamicUniverseSelector:
         if not selector._active and seed_symbols:
             selector._active = list(seed_symbols)
 
+        # Merge missing protected symbols into active universe.
+        # Protection prevents future removal, but if the brain was saved
+        # before protection existed, the symbols may already be absent.
+        if selector._protected:
+            active_set = set(selector._active)
+            merged = []
+            for sym in sorted(selector._protected):
+                if sym not in active_set:
+                    selector._active.append(sym)
+                    merged.append(sym)
+                    # Ensure fitness entry exists so the symbol is tradeable
+                    if sym not in selector._fitness:
+                        selector._fitness[sym] = SymbolFitness(symbol=sym)
+            if merged:
+                logger.info(
+                    "Protected symbols merged into active universe on restore: %s",
+                    merged,
+                )
+
         return selector

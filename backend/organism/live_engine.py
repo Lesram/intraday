@@ -684,9 +684,15 @@ class OrganismLiveEngine:
                 restored_universe = self.universe_selector.active_universe
                 if restored_universe:
                     self._universe = restored_universe
+                    # Log whether protected symbols are present after restore+merge
+                    active_set = set(self._universe)
+                    missing_protected = PROTECTED_SYMBOLS - active_set
                     logger.info(
-                        "Universe selector restored: %d symbols",
+                        "Universe selector restored: %d symbols, "
+                        "protected present: %s, protected missing: %s",
                         len(self._universe),
+                        sorted(PROTECTED_SYMBOLS & active_set) or "none",
+                        sorted(missing_protected) or "none",
                     )
 
             # Restore cumulative data — try brain first, then DB fallback
