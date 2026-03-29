@@ -695,6 +695,33 @@ class OrganismLiveEngine:
                         sorted(missing_protected) or "none",
                     )
 
+            # A2: In learning mode, converge restored universe to the
+            # configured base + protected symbols.  This prevents stale
+            # dynamic additions from inflating API calls and causing
+            # ConnectTimeout cascades.
+            if self._is_learning_mode:
+                base = set(
+                    s.strip().upper()
+                    for s in LIVE_UNIVERSE_CSV.split(",")
+                    if s.strip()
+                )
+                base |= PROTECTED_SYMBOLS  # ensure SH/PSQ
+                active_set = set(self._universe)
+                extras = active_set - base
+                if extras:
+                    self._universe = [s for s in self._universe if s in base]
+                    # Ensure all base symbols are present
+                    for s in sorted(base):
+                        if s not in self._universe:
+                            self._universe.append(s)
+                    logger.info(
+                        "Learning-mode universe converged: removed %d extras %s, "
+                        "active=%d symbols",
+                        len(extras), sorted(extras), len(self._universe),
+                    )
+                    # Update selector to match
+                    self.universe_selector._active = list(self._universe)
+
             # Restore cumulative data — try brain first, then DB fallback
             prev_trades = self.brain.get_trade_records()
             if prev_trades:
@@ -1951,21 +1978,21 @@ class OrganismLiveEngine:
 
                 # Unified confidence threshold — used by BOTH alpha and
                 # pure-breakout paths for gate parity.
-                # Learning-mode refinement: only apply defensive gate when
-                # regime label confidence >= 0.50; otherwise use baseline
-                # to avoid over-constraining on noisy regime detection.
-                if (
-                    not self._is_learning_mode
-                    or (regime in ("chop", "high_vol", "trending_down")
-                        and _regime_conf >= 0.50)
-                ):
-                    _MIN_MAIN_CONF = (
-                        _MAIN_CONF_DEFENSIVE
-                        if regime in ("chop", "high_vol", "trending_down")
-                        else _MAIN_CONF_BASELINE
-                    )
+                #
+                # INCIDENT RECOVERY (2026-03-29): In learning mode, the
+                # confidence formula (0.65*breakout + 0.35*tension) has a
+                # realistic max of ~0.43.  The 0.40/0.45 gates are
+                # mathematically unreachable under normal conditions,
+                # which caused 10+ days of zero trades.  Learning mode
+                # now uses the exploration floor (0.25) as its main-book
+                # gate so trades can accumulate for ML training.
+                # Production mode thresholds remain unchanged.
+                if self._is_learning_mode:
+                    _MIN_MAIN_CONF = _EXPL_CONF_GATE  # 0.25
+                elif regime in ("chop", "high_vol", "trending_down"):
+                    _MIN_MAIN_CONF = _MAIN_CONF_DEFENSIVE  # 0.45
                 else:
-                    _MIN_MAIN_CONF = _MAIN_CONF_BASELINE
+                    _MIN_MAIN_CONF = _MAIN_CONF_BASELINE  # 0.40
 
                 # Rejection counters dict — cleaner than individual vars
                 _rej_counts = {

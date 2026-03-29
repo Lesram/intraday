@@ -126,6 +126,10 @@ class AlpacaClient:
         self.test_mode = test_mode
         self.connected = False
 
+        # Consecutive data-fetch error counter for client recycling (A1)
+        self._consecutive_data_errors: int = 0
+        self._RECYCLE_THRESHOLD: int = 5
+
         # Initialize clients
         self._init_clients()
 
@@ -202,6 +206,19 @@ class AlpacaClient:
                 self.logger.warning(
                     "Test mode: continuing despite initialization error; marked as disconnected"
                 )
+
+    def _recycle_clients(self) -> None:
+        """Recreate Alpaca SDK client instances to recover from dead connections.
+
+        Called automatically after ``_RECYCLE_THRESHOLD`` consecutive data
+        errors (A1 incident recovery).
+        """
+        self.logger.warning(
+            "Recycling Alpaca clients after %d consecutive data errors",
+            self._consecutive_data_errors,
+        )
+        self._init_clients()
+        self._consecutive_data_errors = 0
 
     async def connect_data_stream(
         self,
@@ -363,9 +380,24 @@ class AlpacaClient:
                 end=end,
             )
 
+            # A1: successful fetch resets consecutive error counter
+            self._consecutive_data_errors = 0
             return df
 
         except Exception as e:
+            # A1: track consecutive data errors for client recycling
+            exc_str = str(e).lower()
+            is_connection_error = (
+                "timeout" in exc_str
+                or "connect" in exc_str
+                or "connection" in exc_str
+                or "refused" in exc_str
+            )
+            if is_connection_error:
+                self._consecutive_data_errors += 1
+                if self._consecutive_data_errors >= self._RECYCLE_THRESHOLD:
+                    self._recycle_clients()
+
             self.logger.error(
                 "Failed to get historical data", symbol=symbol, error=str(e)
             )
