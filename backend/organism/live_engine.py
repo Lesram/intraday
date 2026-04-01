@@ -805,14 +805,32 @@ class OrganismLiveEngine:
                         len(self._exit_levels),
                     )
 
-            # Restore entry metadata
+            # Restore entry metadata — cross-check with broker positions
+            # to prevent stale/orphan metadata from creating phantom trades.
             saved_entry_meta = self.brain.extra_counters.get("entry_metadata", {})
             if saved_entry_meta and isinstance(saved_entry_meta, dict):
+                try:
+                    broker_positions = await self._positions_service.get_all_positions()
+                    broker_symbols = set(broker_positions.keys()) if broker_positions else set()
+                except Exception:
+                    broker_symbols = None  # Cannot validate — keep all metadata
+
+                if broker_symbols is not None:
+                    stale_symbols = set(saved_entry_meta.keys()) - broker_symbols
+                    if stale_symbols:
+                        for sym in stale_symbols:
+                            saved_entry_meta.pop(sym, None)
+                        logger.warning(
+                            "Pruned %d stale entry metadata (no broker position): %s",
+                            len(stale_symbols),
+                            sorted(stale_symbols),
+                        )
                 self._entry_metadata = saved_entry_meta
-                logger.info(
-                    "Restored entry metadata for %d positions from brain",
-                    len(self._entry_metadata),
-                )
+                if self._entry_metadata:
+                    logger.info(
+                        "Restored entry metadata for %d positions from brain",
+                        len(self._entry_metadata),
+                    )
 
             # REMEDIATION: Restore pending entry order IDs and cancel stale orders
             saved_pending_ids = self.brain.extra_counters.get("pending_entry_order_ids", {})
@@ -3602,7 +3620,7 @@ class OrganismLiveEngine:
             _mae = 0.0
             _bars_held = 0
             _regime_at_entry = meta.get("regime_at_entry", "unknown")
-            _regime_at_exit = getattr(self.regime_detector, "current_regime", "unknown")
+            _regime_at_exit = self._last_regime if self._last_regime != "unknown" else getattr(self.regime_detector, "current_regime", "unknown")
             if _exit_lvl is not None:
                 _bars_held = _exit_lvl.bars_held
                 # MFE: max favorable excursion in dollars
@@ -3615,6 +3633,19 @@ class OrganismLiveEngine:
             _entry_time = meta.get("entry_time", 0)
             _time_in_trade = self._time_fn() - _entry_time if _entry_time > 0 else 0.0
 
+            _exit_reason = self._last_exit_reason.pop(sym, "live_close")
+            # Tag reconciliation adjustments: position disappeared from
+            # broker without a normal exit order.  These are cross-session
+            # carryover cleanups or orphan metadata, not strategy trades.
+            if _exit_reason == "live_close" and real_fill is None and _bars_held == 0:
+                _exit_reason = "reconciliation_adjustment"
+                logger.warning(
+                    "Reconciliation adjustment: %s had stale entry metadata "
+                    "(entry=$%.2f) with no broker position or exit fill — "
+                    "tagging as non-strategy PnL",
+                    sym, entry_price,
+                )
+
             trade = TradeRecord(
                 symbol=sym,
                 direction=direction,
@@ -3624,7 +3655,7 @@ class OrganismLiveEngine:
                 exit_bar=self._tick_count,
                 shares=shares,
                 pnl=pnl,
-                exit_reason=self._last_exit_reason.pop(sym, "live_close"),
+                exit_reason=_exit_reason,
                 predicted_return=meta.get("predicted_return", 0),
                 actual_return=actual_return,
                 confidence=meta.get("confidence", 0),

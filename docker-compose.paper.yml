@@ -66,6 +66,7 @@ services:
     volumes:
       - ./logs:/app/logs
       - ./data:/app/data
+      - ./organism_brain:/app/organism_brain
     depends_on:
       postgres:
         condition: service_healthy
