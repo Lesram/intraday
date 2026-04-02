@@ -494,6 +494,55 @@ class OrganismBrain:
             return False
 
     # ═════════════════════════════════════════════════════════════
+    #  ESSENTIAL STATE SAVE (bypasses walk-forward gate)
+    # ═════════════════════════════════════════════════════════════
+
+    def save_essential_state(
+        self,
+        learner: Any,
+        all_trades: list[Any],
+        signal_gen: Any | None = None,
+    ) -> None:
+        """Persist trade history, learning state, and evaluation events
+        directly to the brain directory WITHOUT an atomic swap.
+
+        This is called when the walk-forward gate blocks a full brain save.
+        It ensures closed trades, forensic fields, cumulative counters,
+        and evaluation events survive a container crash/restart, even when
+        model promotion is blocked.
+
+        Does NOT write: ML models, evolved_params, governance, regime state,
+        or extra_counters (those remain gated by walk-forward quality).
+        """
+        self.brain_dir.mkdir(parents=True, exist_ok=True)
+
+        try:
+            self._save_trade_history(self.brain_dir, all_trades)
+            self._save_learning_state(self.brain_dir, learner)
+            self._save_evaluation_event_history(self.brain_dir, learner)
+            # Update manifest with current trade count and PnL
+            # (preserves existing ML/generation fields from last full save)
+            manifest_path = self.brain_dir / MANIFEST_FILE
+            if manifest_path.is_file():
+                manifest = _read_json(manifest_path)
+            else:
+                manifest = {"brain_format_version": BRAIN_FORMAT_VERSION}
+            manifest["saved_at"] = datetime.now(timezone.utc).isoformat()
+            if hasattr(learner, "state"):
+                manifest["total_trades"] = learner.state.total_trades
+                manifest["cumulative_pnl"] = round(learner.state.cumulative_pnl, 2)
+            _write_json(manifest_path, manifest)
+
+            logger.info(
+                "Essential state saved (trade history + learner + events): "
+                "%d trades, PnL=$%.2f",
+                learner.state.total_trades if hasattr(learner, "state") else 0,
+                learner.state.cumulative_pnl if hasattr(learner, "state") else 0,
+            )
+        except Exception as e:
+            logger.error("Failed to save essential state: %s", e)
+
+    # ═════════════════════════════════════════════════════════════
     #  PRIVATE — SAVE HELPERS
     # ═════════════════════════════════════════════════════════════
 

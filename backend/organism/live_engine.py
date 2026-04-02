@@ -4211,9 +4211,14 @@ class OrganismLiveEngine:
             )
             if not should_save:
                 logger.warning(
-                    "Brain save SKIPPED by walk-forward gate: %s "
-                    "(exit_levels + entry_metadata persisted separately)",
+                    "Full brain save SKIPPED by walk-forward gate: %s "
+                    "— persisting essential state (trades + learner + events)",
                     reason,
+                )
+                self.brain.save_essential_state(
+                    learner=self.learner,
+                    all_trades=self._all_trades,
+                    signal_gen=self.signal_gen,
                 )
                 return
 
