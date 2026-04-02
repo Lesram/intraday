@@ -4212,14 +4212,34 @@ class OrganismLiveEngine:
             if not should_save:
                 logger.warning(
                     "Full brain save SKIPPED by walk-forward gate: %s "
-                    "— persisting essential state (trades + learner + events)",
+                    "— persisting all runtime truth (ML models + evolved_params gated)",
                     reason,
                 )
                 self.brain.save_essential_state(
+                    signal_gen=self.signal_gen,
                     learner=self.learner,
                     all_trades=self._all_trades,
-                    signal_gen=self.signal_gen,
+                    equity_curve=self._equity_curve,
+                    epoch_metrics=self._epoch_metrics,
+                    peak_equity=self._peak_equity,
+                    extra_counters={
+                        "tick_count": self._tick_count,
+                        "bars_since_retrain": self._bars_since_retrain,
+                        "universe_selector": self.universe_selector.to_dict(),
+                        "exit_levels": {
+                            sym: lvl.to_dict()
+                            for sym, lvl in self._exit_levels.items()
+                        },
+                        "entry_metadata": dict(self._entry_metadata),
+                        "regime_kelly_stats": self.kelly_sizer.regime_stats_to_dict(),
+                        "ml_calibration": self.signal_gen.calibration_to_dict(),
+                        "entry_timestamps": list(self._entry_timestamps),
+                        "pending_entry": dict(self._pending_entry),
+                    },
+                    governance_controller=self.governance,
+                    regime_detector=self.regime_detector,
                 )
+                self._watchdog_last_brain_save_tick = self._tick_count
                 return
 
             self.brain.save(

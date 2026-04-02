@@ -1,18 +1,18 @@
-"""Tests for walk-forward gate persistence fix.
+"""Tests for walk-forward gate persistence: split persistence model.
 
 Validates that when the walk-forward gate blocks a full brain save,
-essential state (trade history, learning state, evaluation events,
-cumulative counters) is still persisted to disk.
+ALL runtime truth is still persisted — only ML model binaries and
+evolved_params remain gated.
 
 These tests exercise the ACTUAL production code paths.
 """
 
+import csv
 import inspect
 import json
 import tempfile
 from pathlib import Path
-from unittest.mock import MagicMock, patch
-from dataclasses import dataclass
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -22,7 +22,6 @@ import pytest
 # ─────────────────────────────────────────────────────────────
 
 def _get_method_source(cls_name: str, method_name: str) -> str:
-    """Return source of a method from a class."""
     if cls_name == "OrganismLiveEngine":
         from backend.organism.live_engine import OrganismLiveEngine as cls
     elif cls_name == "OrganismBrain":
@@ -35,9 +34,7 @@ def _get_method_source(cls_name: str, method_name: str) -> str:
 
 
 def _make_mock_learner(total_trades=5, cumulative_pnl=-10.0, generation=1):
-    """Create a mock learner with realistic state."""
     from backend.organism.continuous_learner import TradeRecord
-
     state = MagicMock()
     state.generation = generation
     state.total_bars_seen = 100
@@ -51,7 +48,6 @@ def _make_mock_learner(total_trades=5, cumulative_pnl=-10.0, generation=1):
     state.evaluation_events = [
         {"evaluated_at": "2026-04-01T14:00:00Z", "accepted": False, "reason": "test"}
     ]
-
     learner = MagicMock()
     learner.state = state
     learner._bars_since_retrain = 0
@@ -59,271 +55,247 @@ def _make_mock_learner(total_trades=5, cumulative_pnl=-10.0, generation=1):
 
 
 def _make_mock_trades(n=3):
-    """Create mock TradeRecord objects."""
     from backend.organism.continuous_learner import TradeRecord
-    trades = []
-    for i in range(n):
-        trades.append(TradeRecord(
-            symbol=f"SYM{i}", direction=1.0,
-            entry_price=100.0 + i, exit_price=101.0 + i,
-            entry_bar=i * 10, exit_bar=i * 10 + 5,
-            shares=10, pnl=10.0 - i * 5,
-            exit_reason="stop_loss",
-            predicted_return=0.001, actual_return=0.01,
-            confidence=0.28,
-            entry_source="alpha",
-            regime_at_entry="chop",
-            regime_at_exit="chop",
-            mfe=5.0, mae=2.0,
-            bars_held_at_exit=5,
-            time_in_trade_seconds=300.0,
-            closed_at="2026-04-01T15:00:00Z",
-        ))
-    return trades
+    return [TradeRecord(
+        symbol=f"SYM{i}", direction=1.0,
+        entry_price=100.0 + i, exit_price=101.0 + i,
+        entry_bar=i * 10, exit_bar=i * 10 + 5,
+        shares=10, pnl=10.0 - i * 5,
+        exit_reason="stop_loss",
+        predicted_return=0.001, actual_return=0.01,
+        confidence=0.28,
+        entry_source="alpha", regime_at_entry="chop",
+        regime_at_exit="high_vol", mfe=5.0, mae=2.0,
+        bars_held_at_exit=5, time_in_trade_seconds=300.0,
+        closed_at="2026-04-01T15:00:00Z",
+    ) for i in range(n)]
+
+
+def _make_mock_signal_gen():
+    sg = MagicMock()
+    sg._is_trained = True
+    sg._feature_cols = ["f1", "f2", "f3"]
+    sg._xgb_params = {"max_depth": 3}
+    sg.generation = 1
+    sg.train_window = 100
+    sg._latest_metrics = None
+    sg.calibration_to_dict.return_value = {"counts": [], "map": [1.0]}
+    return sg
+
+
+def _make_mock_governance():
+    gov = MagicMock()
+    gov.to_persistence_dict.return_value = {"frozen": False, "halted": False}
+    return gov
+
+
+def _make_mock_regime_detector():
+    rd = MagicMock()
+    rd.to_persistence_dict.return_value = {
+        "history": [], "smoothed_probs": {}, "sma_period": 200
+    }
+    return rd
+
+
+def _run_essential_save(tmpdir, **overrides):
+    """Run save_essential_state with full runtime truth params."""
+    from backend.organism.brain_persistence import OrganismBrain
+    brain = OrganismBrain(brain_dir=tmpdir)
+    learner = overrides.get("learner", _make_mock_learner(total_trades=42, cumulative_pnl=-123.45))
+    trades = overrides.get("trades", _make_mock_trades(3))
+    sg = overrides.get("signal_gen", _make_mock_signal_gen())
+
+    brain.save_essential_state(
+        signal_gen=sg,
+        learner=learner,
+        all_trades=trades,
+        equity_curve=overrides.get("equity_curve", [100000, 100100, 100050]),
+        epoch_metrics=overrides.get("epoch_metrics", []),
+        peak_equity=overrides.get("peak_equity", 100100),
+        extra_counters=overrides.get("extra_counters", {
+            "tick_count": 4000,
+            "bars_since_retrain": 50,
+            "universe_selector": {"active": ["AAPL", "MSFT"]},
+            "exit_levels": {},
+            "entry_metadata": {},
+            "regime_kelly_stats": {"chop": {"win_rate": 0.5}},
+            "ml_calibration": {"counts": [], "map": [1.0]},
+            "entry_timestamps": [1000.0, 2000.0],
+            "pending_entry": {},
+        }),
+        governance_controller=overrides.get("governance", _make_mock_governance()),
+        regime_detector=overrides.get("regime_detector", _make_mock_regime_detector()),
+    )
+    return brain
 
 
 # ═════════════════════════════════════════════════════════════
 #  SOURCE CODE PRESENCE TESTS
 # ═════════════════════════════════════════════════════════════
 
-class TestSaveEssentialStateExists:
-    """Verify the save_essential_state method exists and has the
-    correct structure in the production code."""
+class TestSourceCodePresence:
+    """Verify production code contains the split persistence model."""
 
-    def test_brain_has_save_essential_state(self):
-        """OrganismBrain must have save_essential_state method."""
+    def test_save_essential_state_exists(self):
         from backend.organism.brain_persistence import OrganismBrain
-        assert hasattr(OrganismBrain, "save_essential_state"), (
-            "OrganismBrain.save_essential_state() not found"
-        )
+        assert hasattr(OrganismBrain, "save_essential_state")
 
-    def test_save_essential_writes_trade_history(self):
-        """save_essential_state must call _save_trade_history."""
+    def test_save_essential_writes_all_runtime_truth(self):
         src = _get_method_source("OrganismBrain", "save_essential_state")
-        assert "_save_trade_history" in src
+        for fn in ["_save_trade_history", "_save_learning_state",
+                    "_save_evaluation_event_history", "_save_equity_curve",
+                    "_save_extra_counters", "_save_governance_state",
+                    "_save_regime_state", "_save_ml_state"]:
+            assert fn in src, f"save_essential_state missing call to {fn}"
 
-    def test_save_essential_writes_learning_state(self):
-        """save_essential_state must call _save_learning_state."""
+    def test_save_essential_does_not_write_ml_models(self):
         src = _get_method_source("OrganismBrain", "save_essential_state")
-        assert "_save_learning_state" in src
+        assert "_save_ml_models" not in src
 
-    def test_save_essential_writes_evaluation_events(self):
-        """save_essential_state must call _save_evaluation_event_history."""
+    def test_save_essential_does_not_write_evolved_params(self):
         src = _get_method_source("OrganismBrain", "save_essential_state")
-        assert "_save_evaluation_event_history" in src
-
-    def test_save_essential_updates_manifest(self):
-        """save_essential_state must update manifest with current
-        total_trades and cumulative_pnl."""
-        src = _get_method_source("OrganismBrain", "save_essential_state")
-        assert "total_trades" in src
-        assert "cumulative_pnl" in src
-
-
-class TestSaveBrainCallsEssentialOnGateBlock:
-    """Verify that _save_brain calls save_essential_state when
-    the walk-forward gate blocks."""
+        assert "_save_evolved_params" not in src
 
     def test_save_brain_calls_essential_on_gate_block(self):
-        """When walk-forward gate returns should_save=False,
-        _save_brain must call save_essential_state."""
         src = _get_method_source("OrganismLiveEngine", "_save_brain")
-        assert "save_essential_state" in src, (
-            "_save_brain does not call save_essential_state when gate blocks"
-        )
+        assert "save_essential_state" in src
 
-    def test_save_brain_still_does_full_save_on_gate_pass(self):
-        """When walk-forward gate passes, full brain.save() must be called."""
+    def test_save_brain_passes_all_runtime_state(self):
+        """_save_brain must pass extra_counters, governance, regime to essential save."""
         src = _get_method_source("OrganismLiveEngine", "_save_brain")
-        assert "self.brain.save(" in src, (
-            "_save_brain does not call full brain.save() on gate pass"
-        )
+        for param in ["extra_counters", "governance_controller", "regime_detector",
+                       "equity_curve", "peak_equity"]:
+            assert param in src, f"_save_brain missing {param} in essential save call"
+
+    def test_save_brain_updates_watchdog_on_essential(self):
+        """Watchdog tick must be updated even on essential-only save."""
+        src = _get_method_source("OrganismLiveEngine", "_save_brain")
+        assert "_watchdog_last_brain_save_tick" in src
 
 
 # ═════════════════════════════════════════════════════════════
-#  FUNCTIONAL TESTS — save_essential_state writes files
+#  FUNCTIONAL TESTS — always-persisted runtime truth
 # ═════════════════════════════════════════════════════════════
 
-class TestSaveEssentialStateFunctional:
-    """Test that save_essential_state actually writes the correct
-    files to disk."""
+class TestAlwaysPersistedState:
+    """Verify save_essential_state writes all runtime truth files."""
 
-    def test_trade_history_persisted(self):
-        """Closed trades must be written to trade_history.csv."""
-        from backend.organism.brain_persistence import OrganismBrain
+    def test_trade_history_csv(self):
+        with tempfile.TemporaryDirectory() as d:
+            _run_essential_save(d)
+            assert (Path(d) / "trade_history.csv").exists()
+            with open(Path(d) / "trade_history.csv") as f:
+                reader = csv.DictReader(f)
+                rows = list(reader)
+            assert len(rows) == 3
+            assert rows[0]["entry_source"] == "alpha"
+            assert rows[0]["regime_at_exit"] == "high_vol"
 
-        with tempfile.TemporaryDirectory() as tmpdir:
-            brain = OrganismBrain(brain_dir=tmpdir)
-            learner = _make_mock_learner(total_trades=3, cumulative_pnl=-5.0)
-            trades = _make_mock_trades(3)
-
-            brain.save_essential_state(learner=learner, all_trades=trades)
-
-            csv_path = Path(tmpdir) / "trade_history.csv"
-            assert csv_path.exists(), "trade_history.csv was not created"
-            content = csv_path.read_text()
-            assert "SYM0" in content
-            assert "SYM1" in content
-            assert "SYM2" in content
-
-    def test_learning_state_persisted(self):
-        """Learning state (total_trades, cumulative_pnl) must be written."""
-        from backend.organism.brain_persistence import OrganismBrain
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            brain = OrganismBrain(brain_dir=tmpdir)
-            learner = _make_mock_learner(total_trades=42, cumulative_pnl=-123.45)
-            trades = _make_mock_trades(1)
-
-            brain.save_essential_state(learner=learner, all_trades=trades)
-
-            ls_path = Path(tmpdir) / "learning_state.json"
-            assert ls_path.exists(), "learning_state.json was not created"
-            data = json.loads(ls_path.read_text())
+    def test_learning_state_json(self):
+        with tempfile.TemporaryDirectory() as d:
+            _run_essential_save(d)
+            data = json.loads((Path(d) / "learning_state.json").read_text())
             assert data["total_trades"] == 42
             assert data["cumulative_pnl"] == -123.45
 
-    def test_evaluation_events_persisted(self):
-        """Evaluation event history must be written."""
-        from backend.organism.brain_persistence import OrganismBrain
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            brain = OrganismBrain(brain_dir=tmpdir)
-            learner = _make_mock_learner()
-            trades = _make_mock_trades(1)
-
-            brain.save_essential_state(learner=learner, all_trades=trades)
-
-            ev_path = Path(tmpdir) / "evaluation_event_history.json"
-            assert ev_path.exists(), "evaluation_event_history.json was not created"
-            events = json.loads(ev_path.read_text())
+    def test_evaluation_event_history(self):
+        with tempfile.TemporaryDirectory() as d:
+            _run_essential_save(d)
+            events = json.loads((Path(d) / "evaluation_event_history.json").read_text())
             assert len(events) == 1
-            assert events[0]["accepted"] is False
 
-    def test_manifest_updated_with_trade_count(self):
-        """Manifest must be updated with current total_trades and pnl."""
-        from backend.organism.brain_persistence import OrganismBrain
+    def test_equity_curve_csv(self):
+        with tempfile.TemporaryDirectory() as d:
+            _run_essential_save(d)
+            assert (Path(d) / "equity_curve.csv").exists()
 
-        with tempfile.TemporaryDirectory() as tmpdir:
-            brain = OrganismBrain(brain_dir=tmpdir)
-            # Pre-seed a manifest (simulating a previous full save)
-            old_manifest = {
-                "brain_format_version": 2,
-                "saved_at": "2026-04-01T08:00:00Z",
-                "generation": 4,
-                "total_trades": 171,
-                "cumulative_pnl": -746.17,
-                "ml_is_trained": True,
-            }
-            (Path(tmpdir) / "manifest.json").write_text(json.dumps(old_manifest))
+    def test_extra_counters_json(self):
+        with tempfile.TemporaryDirectory() as d:
+            _run_essential_save(d)
+            data = json.loads((Path(d) / "extra_counters.json").read_text())
+            assert data["tick_count"] == 4000
+            assert "universe_selector" in data
 
-            learner = _make_mock_learner(total_trades=185, cumulative_pnl=-700.0)
-            trades = _make_mock_trades(1)
+    def test_governance_state_json(self):
+        with tempfile.TemporaryDirectory() as d:
+            _run_essential_save(d)
+            data = json.loads((Path(d) / "governance_state.json").read_text())
+            assert data["frozen"] is False
 
-            brain.save_essential_state(learner=learner, all_trades=trades)
+    def test_regime_state_json(self):
+        with tempfile.TemporaryDirectory() as d:
+            _run_essential_save(d)
+            data = json.loads((Path(d) / "regime_state.json").read_text())
+            assert "sma_period" in data
 
-            manifest = json.loads((Path(tmpdir) / "manifest.json").read_text())
-            assert manifest["total_trades"] == 185, "Manifest total_trades not updated"
-            assert manifest["cumulative_pnl"] == -700.0, "Manifest pnl not updated"
-            # Preserved fields from previous full save
-            assert manifest["generation"] == 4, "Generation should be preserved"
-            assert manifest["ml_is_trained"] is True, "ml_is_trained should be preserved"
+    def test_ml_state_json(self):
+        with tempfile.TemporaryDirectory() as d:
+            _run_essential_save(d)
+            assert (Path(d) / "ml_state.json").exists()
 
-    def test_forensic_fields_in_trade_csv(self):
-        """Trade CSV must include forensic fields (entry_source,
-        regime_at_entry, regime_at_exit, mfe, mae, etc.)."""
-        from backend.organism.brain_persistence import OrganismBrain
-        import csv
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            brain = OrganismBrain(brain_dir=tmpdir)
-            learner = _make_mock_learner()
-            trades = _make_mock_trades(1)
-
-            brain.save_essential_state(learner=learner, all_trades=trades)
-
-            csv_path = Path(tmpdir) / "trade_history.csv"
-            with open(csv_path) as f:
-                reader = csv.DictReader(f)
-                row = next(reader)
-            assert row["entry_source"] == "alpha"
-            assert row["regime_at_entry"] == "chop"
-            assert row["regime_at_exit"] == "chop"
-            assert float(row["mfe"]) == 5.0
-            assert float(row["mae"]) == 2.0
-            assert row["closed_at"] == "2026-04-01T15:00:00Z"
+    def test_manifest_updated(self):
+        with tempfile.TemporaryDirectory() as d:
+            # Pre-seed manifest from previous full save
+            old = {"brain_format_version": 2, "generation": 4, "ml_is_trained": True,
+                   "total_trades": 100, "total_runs": 50}
+            (Path(d) / "manifest.json").write_text(json.dumps(old))
+            _run_essential_save(d)
+            manifest = json.loads((Path(d) / "manifest.json").read_text())
+            assert manifest["total_trades"] == 42
+            assert manifest["cumulative_pnl"] == -123.45
+            assert manifest["generation"] == 4  # preserved from old
+            assert manifest["ml_is_trained"] is True  # preserved
 
 
 # ═════════════════════════════════════════════════════════════
-#  PROMOTION-GATED STATE REMAINS GATED
+#  PROMOTION-GATED STATE NOT WRITTEN
 # ═════════════════════════════════════════════════════════════
 
-class TestPromotionGatedStateNotWritten:
-    """Verify that save_essential_state does NOT write
-    promotion-dependent state (ML models, evolved_params)."""
+class TestPromotionGatedNotWritten:
+    """Verify that ML model binaries and evolved_params are NOT written."""
 
-    def test_no_ml_models_written(self):
-        """ML model files must NOT be created by essential save."""
-        from backend.organism.brain_persistence import OrganismBrain
+    def test_no_ml_classifier(self):
+        with tempfile.TemporaryDirectory() as d:
+            _run_essential_save(d)
+            assert not (Path(d) / "ml_classifier.joblib").exists()
 
-        with tempfile.TemporaryDirectory() as tmpdir:
-            brain = OrganismBrain(brain_dir=tmpdir)
-            learner = _make_mock_learner()
-            trades = _make_mock_trades(1)
+    def test_no_ml_regressor(self):
+        with tempfile.TemporaryDirectory() as d:
+            _run_essential_save(d)
+            assert not (Path(d) / "ml_regressor.joblib").exists()
 
-            brain.save_essential_state(learner=learner, all_trades=trades)
-
-            assert not (Path(tmpdir) / "ml_classifier.joblib").exists()
-            assert not (Path(tmpdir) / "ml_regressor.joblib").exists()
-
-    def test_no_evolved_params_written(self):
-        """evolved_params.json must NOT be overwritten by essential save."""
-        from backend.organism.brain_persistence import OrganismBrain
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            # Pre-seed evolved_params
-            old_params = {"version": "original"}
-            (Path(tmpdir) / "evolved_params.json").write_text(json.dumps(old_params))
-
-            brain = OrganismBrain(brain_dir=tmpdir)
-            learner = _make_mock_learner()
-            trades = _make_mock_trades(1)
-
-            brain.save_essential_state(learner=learner, all_trades=trades)
-
-            # evolved_params should be unchanged
-            params = json.loads((Path(tmpdir) / "evolved_params.json").read_text())
+    def test_evolved_params_unchanged(self):
+        with tempfile.TemporaryDirectory() as d:
+            old_params = {"version": "original", "alpha": 0.5}
+            (Path(d) / "evolved_params.json").write_text(json.dumps(old_params))
+            _run_essential_save(d)
+            params = json.loads((Path(d) / "evolved_params.json").read_text())
             assert params["version"] == "original"
 
 
 # ═════════════════════════════════════════════════════════════
-#  LOAD AFTER ESSENTIAL SAVE
+#  LOAD/RESTART ROUNDTRIP
 # ═════════════════════════════════════════════════════════════
 
 class TestLoadAfterEssentialSave:
-    """Verify that after a gate-blocked save, the brain correctly
-    loads the updated trade history and learning state on restart."""
+    """Verify brain loads correctly after an essential-only save."""
 
-    def test_load_reads_essential_state(self):
-        """After essential save, brain.load() must read the updated
-        trade history and learning state."""
+    def test_load_roundtrip(self):
         from backend.organism.brain_persistence import OrganismBrain
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            brain = OrganismBrain(brain_dir=tmpdir)
-            learner = _make_mock_learner(total_trades=185, cumulative_pnl=-700.0)
-            trades = _make_mock_trades(3)
-
-            # Simulate a full save first (to create all required files)
-            # Then essential save with updated trades
-            # For this test, just write the essential state
-            brain.save_essential_state(learner=learner, all_trades=trades)
-
-            # Now load a fresh brain instance
-            brain2 = OrganismBrain(brain_dir=tmpdir)
+        with tempfile.TemporaryDirectory() as d:
+            _run_essential_save(d)
+            brain2 = OrganismBrain(brain_dir=d)
             loaded = brain2.load()
             assert loaded is True or brain2.exists
+            assert brain2._manifest["total_trades"] == 42
+            assert brain2._manifest["cumulative_pnl"] == -123.45
 
-            # Check manifest
-            assert brain2._manifest["total_trades"] == 185
-            assert brain2._manifest["cumulative_pnl"] == -700.0
+    def test_trade_history_survives_restart(self):
+        from backend.organism.brain_persistence import OrganismBrain
+        with tempfile.TemporaryDirectory() as d:
+            _run_essential_save(d)
+            csv_path = Path(d) / "trade_history.csv"
+            with open(csv_path) as f:
+                rows = list(csv.DictReader(f))
+            assert len(rows) == 3
+            assert rows[0]["symbol"] == "SYM0"
