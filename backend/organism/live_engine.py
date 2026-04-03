@@ -457,7 +457,8 @@ class OrganismLiveEngine:
         # Static fallback; overridden by _dynamic_max_entries_per_hour property
         self._MAX_ENTRIES_PER_HOUR = 3
         # Learning mode threshold: < 200 completed trades = learning (was 50)
-        self._LEARNING_MODE_TRADES = 200
+        from backend.organism.trading_phase import LEARNING_MODE_TRADES
+        self._LEARNING_MODE_TRADES = LEARNING_MODE_TRADES
 
         # C2 (improve8): Burst cap — rolling 15-min window
         self._entry_timestamps_15m: list[float] = []
@@ -539,8 +540,9 @@ class OrganismLiveEngine:
 
     @property
     def _is_learning_mode(self) -> bool:
-        """True when engine has < 200 completed trades (still learning)."""
-        return len(self._all_trades) < self._LEARNING_MODE_TRADES
+        """True when engine has < LEARNING_MODE_TRADES completed trades."""
+        from backend.organism.trading_phase import LEARNING_MODE_TRADES
+        return len(self._all_trades) < LEARNING_MODE_TRADES
 
     @property
     def _dynamic_max_entries_per_hour(self) -> int:
@@ -893,6 +895,10 @@ class OrganismLiveEngine:
             )
         else:
             logger.info("Organism live engine starting fresh (no brain)")
+
+        # H4: Log resolved trading phase using shared resolver
+        from backend.organism.trading_phase import log_trading_phase
+        log_trading_phase(len(self._all_trades))
 
         # ── Phase 4.7: Transfer learning warm-start ──────────────
         # Hardening: skip warm-start during 300-trade evolution freeze.
@@ -1877,20 +1883,13 @@ class OrganismLiveEngine:
                                 self._pending_entry_order_ids[sym] = pyr_order_result["order_id"]
                             result.orders_submitted += 1
 
-                            # Record the pyramid layer so layer_count increments
-                            # and the pyramider won't re-trigger the same level.
-                            pyr.layers.append(PyramidLevel(
-                                shares=action.shares_to_add,
-                                entry_price=current_price,
-                                bar_added=self._tick_count,
-                                level=pyr.layer_count - 1,  # just appended
-                            ))
-                            # Re-anchor exit levels to new weighted avg entry
-                            exit_lvl = self._exit_levels.get(sym)
-                            if exit_lvl is not None:
-                                self.exit_engine.update_levels_for_pyramid(
-                                    exit_lvl, pyr.avg_entry, regime,
-                                )
+                            # H5 FIX: Do NOT record pyramid layer here.
+                            # Layer state, avg_entry, and exit-level anchors are
+                            # deferred until broker fill is confirmed via the
+                            # avg_entry_price sync in _reconcile_fills(). This
+                            # prevents phantom layers on rejected/canceled orders.
+                            # The pending_entry tracking above prevents the
+                            # pyramider from re-triggering on the next tick.
                         except Exception as e:
                             result.errors.append(
                                 f"Pyramid order failed for {sym}: {e}"
@@ -3529,15 +3528,27 @@ class OrganismLiveEngine:
                 pyr = self._pyramid_positions.get(sym)
                 if pyr and pyr.layers:
                     broker_qty = abs(float(current_positions[sym].get("qty", 0)))
-                    if broker_qty > 0 and abs(pyr.avg_entry - broker_avg) > 0.001:
+                    if broker_qty > 0 and (
+                        abs(pyr.avg_entry - broker_avg) > 0.001
+                        or pyr.total_shares != int(broker_qty)
+                    ):
+                        old_shares = pyr.total_shares
                         # Collapse pyramid layers to a single layer with
-                        # the broker's authoritative cost basis
+                        # the broker's authoritative cost basis and qty
                         pyr.layers = [PyramidLevel(
                             shares=int(broker_qty),
                             entry_price=broker_avg,
                             bar_added=pyr.layers[0].bar_added,
                             level=0,
                         )]
+                        # H5: Reanchor exit levels from confirmed fill,
+                        # not speculative order-time state
+                        exit_lvl = self._exit_levels.get(sym)
+                        if exit_lvl is not None and int(broker_qty) != old_shares:
+                            self.exit_engine.update_levels_for_pyramid(
+                                exit_lvl, broker_avg,
+                                self._last_regime if self._last_regime != "unknown" else "chop",
+                            )
 
         # Detect closed positions — but skip recently-entered positions
         # whose orders may not have settled at the broker yet.

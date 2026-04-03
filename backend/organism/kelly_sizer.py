@@ -157,7 +157,8 @@ class KellySizer:
     _RISK_BUDGET_PER_TRADE = 0.0025   # 0.25% of equity risked per trade (production)
     _RISK_BUDGET_PER_TRADE_LEARNING = 0.0010  # 0.10% of equity risked per trade (learning mode)
     _RISK_BUDGET_STOP_ATR = 1.5       # Assumed stop distance in ATR multiples
-    _RISK_BUDGET_TRADE_THRESHOLD = 200 # Use risk-budget floor below this trade count
+    # H4 FIX: Use shared threshold from trading_phase module
+    from backend.organism.trading_phase import LEARNING_MODE_TRADES as _RISK_BUDGET_TRADE_THRESHOLD
 
     def size_positions(
         self,
@@ -392,6 +393,26 @@ class KellySizer:
                     ml_floor_applied = True
 
                 if not edge_clears_cost and kelly_half < 0.005:
+                    # H3 INSTRUMENTATION: Log candidates rejected solely by
+                    # edge-over-cost gate for post-session analysis.
+                    _other_gates_would_pass = (
+                        confidence >= 0.25
+                        and breakout_score >= 0.0
+                        and _regime_has_edge
+                    )
+                    if _other_gates_would_pass:
+                        _logger.info(
+                            "EDGE_COST_REJECT: %s regime=%s conf=%.3f "
+                            "breakout=%.3f pred_ret=%.6f spread_cost=%.6f "
+                            "ratio=%.2f other_gates_pass=%s",
+                            symbol, current_regime, confidence,
+                            breakout_score, predicted_return,
+                            spread_cost_pct, (
+                                predicted_return / (spread_cost_pct * _COST_MULT)
+                                if spread_cost_pct * _COST_MULT > 0 else 0
+                            ),
+                            _other_gates_would_pass,
+                        )
                     kelly_half = 0.0
 
                 # 4. Volatility targeting
