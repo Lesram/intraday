@@ -3516,6 +3516,29 @@ class OrganismLiveEngine:
         current_symbols = set(current_positions.keys())
         tracked_symbols = set(self._entry_metadata.keys())
 
+        # Sync entry prices from broker for tracked positions:
+        # The broker's avg_entry_price is the true cost-weighted fill
+        # average across all pyramid legs, which is authoritative over
+        # the bar-close estimate stored at order-submission time.
+        for sym in current_symbols & tracked_symbols:
+            broker_avg = float(current_positions[sym].get("avg_entry_price", 0))
+            if broker_avg > 0:
+                meta = self._entry_metadata.get(sym)
+                if meta and abs(meta.get("entry_price", 0) - broker_avg) > 0.001:
+                    meta["entry_price"] = broker_avg
+                pyr = self._pyramid_positions.get(sym)
+                if pyr and pyr.layers:
+                    broker_qty = abs(float(current_positions[sym].get("qty", 0)))
+                    if broker_qty > 0 and abs(pyr.avg_entry - broker_avg) > 0.001:
+                        # Collapse pyramid layers to a single layer with
+                        # the broker's authoritative cost basis
+                        pyr.layers = [PyramidLevel(
+                            shares=int(broker_qty),
+                            entry_price=broker_avg,
+                            bar_added=pyr.layers[0].bar_added,
+                            level=0,
+                        )]
+
         # Detect closed positions — but skip recently-entered positions
         # whose orders may not have settled at the broker yet.
         candidates = tracked_symbols - current_symbols
@@ -3588,11 +3611,15 @@ class OrganismLiveEngine:
                 continue
 
             direction = meta.get("direction", 1.0)
-            entry_price = meta["entry_price"]
             shares = 0
             pyr = self._pyramid_positions.get(sym)
-            if pyr:
-                shares = sum(l.shares for l in pyr.layers)
+            if pyr and pyr.total_shares > 0:
+                shares = pyr.total_shares
+                # Use cost-weighted average entry from all pyramid legs
+                # instead of stale first-fill price from metadata
+                entry_price = pyr.avg_entry
+            else:
+                entry_price = meta["entry_price"]
 
             if shares == 0:
                 # Fallback to tracked filled_shares from entry metadata
