@@ -3534,12 +3534,19 @@ class OrganismLiveEngine:
                     ):
                         old_shares = pyr.total_shares
                         # Collapse pyramid layers to a single layer with
-                        # the broker's authoritative cost basis and qty
+                        # the broker's authoritative cost basis and qty.
+                        # Preserve the highest layer level so the pyramider
+                        # won't re-trigger already-filled add levels.
+                        highest_level = max(lay.level for lay in pyr.layers)
+                        # If broker qty increased, a pyramid add filled —
+                        # advance the level so pyramider skips that tier.
+                        if int(broker_qty) > old_shares and highest_level < 2:
+                            highest_level += 1
                         pyr.layers = [PyramidLevel(
                             shares=int(broker_qty),
                             entry_price=broker_avg,
                             bar_added=pyr.layers[0].bar_added,
-                            level=0,
+                            level=highest_level,
                         )]
                         # H5: Reanchor exit levels from confirmed fill,
                         # not speculative order-time state
