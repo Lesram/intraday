@@ -553,8 +553,12 @@ class OrganismBrain:
             # ML feature config (not model weights)
             self._save_ml_state(self.brain_dir, signal_gen)
 
-            # Update manifest — preserve ML/generation fields from last
-            # full save, update trade count + pnl + timestamp
+            # Update manifest — PATCH B: write authoritative live values
+            # from learner.state and signal_gen, not stale self._manifest.
+            # The recovery incident (2026-04-08) showed learning_state.json
+            # healthy while manifest.json was stale (gen=0, best_sharpe=0,
+            # ml_is_trained=false) because this path previously only
+            # touched total_trades and cumulative_pnl.
             manifest_path = self.brain_dir / MANIFEST_FILE
             if manifest_path.is_file():
                 manifest = _read_json(manifest_path)
@@ -562,12 +566,10 @@ class OrganismBrain:
                 manifest = {"brain_format_version": BRAIN_FORMAT_VERSION}
             manifest["saved_at"] = datetime.now(timezone.utc).isoformat()
             manifest["total_runs"] = manifest.get("total_runs", 0) + 1
-            if hasattr(learner, "state"):
-                manifest["total_trades"] = learner.state.total_trades
-                manifest["cumulative_pnl"] = round(
-                    learner.state.cumulative_pnl, 2
-                )
+            self._apply_live_manifest_fields(manifest, signal_gen, learner)
             _write_json(manifest_path, manifest)
+            # Keep in-memory copy in sync with what we just wrote
+            self._manifest = dict(manifest)
 
             logger.info(
                 "Essential state saved (all runtime truth, "
@@ -582,33 +584,81 @@ class OrganismBrain:
     #  PRIVATE — SAVE HELPERS
     # ═════════════════════════════════════════════════════════════
 
+    def _apply_live_manifest_fields(
+        self,
+        manifest: dict[str, Any],
+        signal_gen: Any,
+        learner: Any,
+    ) -> None:
+        """PATCH B: write manifest fields from live learner.state and
+        signal_gen. Used by both the full save path (_save_manifest) and
+        the essential-save path (save_essential_state) so both paths
+        produce identical authoritative values and self._manifest can
+        never drift from the truth.
+
+        Fallback safety: when learner or signal_gen is None, or when an
+        attribute is missing, fall back to the existing self._manifest
+        value, then to a safe default. Never crash callers.
+        """
+        if learner is not None and hasattr(learner, "state"):
+            state = learner.state
+            manifest["generation"] = int(getattr(state, "generation", 0))
+            manifest["total_trades"] = int(getattr(state, "total_trades", 0))
+            manifest["cumulative_pnl"] = round(
+                float(getattr(state, "cumulative_pnl", 0.0)), 2
+            )
+            raw_bs = getattr(state, "best_sharpe", None)
+            if raw_bs is not None and np.isfinite(raw_bs):
+                manifest["best_sharpe"] = round(float(raw_bs), 4)
+            else:
+                manifest["best_sharpe"] = self._manifest.get(
+                    "best_sharpe", 0
+                )
+        else:
+            manifest.setdefault(
+                "generation", self._manifest.get("generation", 0)
+            )
+            manifest.setdefault(
+                "total_trades", self._manifest.get("total_trades", 0)
+            )
+            manifest.setdefault(
+                "cumulative_pnl", self._manifest.get("cumulative_pnl", 0)
+            )
+            manifest.setdefault(
+                "best_sharpe", self._manifest.get("best_sharpe", 0)
+            )
+
+        if signal_gen is not None:
+            manifest["ml_is_trained"] = bool(
+                getattr(signal_gen, "_is_trained", False)
+            )
+            feature_cols = getattr(signal_gen, "_feature_cols", None)
+            if feature_cols is not None:
+                manifest["feature_count"] = len(feature_cols)
+            else:
+                manifest["feature_count"] = self._manifest.get(
+                    "feature_count", 0
+                )
+        else:
+            manifest.setdefault(
+                "ml_is_trained", self._manifest.get("ml_is_trained", False)
+            )
+            manifest.setdefault(
+                "feature_count", self._manifest.get("feature_count", 0)
+            )
+
     def _save_manifest(
         self, target: Path, signal_gen: Any, learner: Any
     ) -> None:
         manifest = {
             "brain_format_version": BRAIN_FORMAT_VERSION,
             "saved_at": datetime.now(timezone.utc).isoformat(),
-            "generation": (
-                learner.state.generation if hasattr(learner, "state") else 0
-            ),
             "total_runs": self._manifest.get("total_runs", 0) + 1,
-            "total_trades": (
-                learner.state.total_trades if hasattr(learner, "state") else 0
-            ),
-            "cumulative_pnl": (
-                round(learner.state.cumulative_pnl, 2)
-                if hasattr(learner, "state") else 0
-            ),
-            "best_sharpe": (
-                round(learner.state.best_sharpe, 4)
-                if hasattr(learner, "state")
-                and learner.state.best_sharpe != -np.inf
-                else 0
-            ),
-            "ml_is_trained": signal_gen._is_trained,
-            "feature_count": len(signal_gen._feature_cols),
         }
+        self._apply_live_manifest_fields(manifest, signal_gen, learner)
         _write_json(target / MANIFEST_FILE, manifest)
+        # Keep in-memory copy in sync with what we just wrote
+        self._manifest = dict(manifest)
 
     def _save_ml_models(self, target: Path, signal_gen: Any) -> None:
         if signal_gen._is_trained:
