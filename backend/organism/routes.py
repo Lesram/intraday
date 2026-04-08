@@ -16,6 +16,7 @@ Provides visibility and control endpoints for the living organism:
 
 from __future__ import annotations
 
+import asyncio
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from typing import Any
@@ -330,6 +331,42 @@ async def manual_tick(request: Request, _admin=Depends(require_admin)):
         pass  # WebSocket not available — that's fine
 
     return result_dict
+
+
+@router.post("/save")
+async def force_save(
+    request: Request,
+    force: bool = Query(default=False),
+    _admin=Depends(require_admin),
+) -> dict:
+    """Admin-only force-save endpoint: persist full brain bypassing the
+    walk-forward gate.
+
+    Requires explicit ``?force=true`` query parameter. Without it, returns
+    HTTP 400. This is a recovery path for the case where the walk-forward
+    gate has been blocking ML joblib persistence for an entire session.
+    Calls ``LiveEngine.force_save_brain()`` on the live engine instance
+    attached to ``app.state`` — never instantiates a new persistence object.
+    """
+    if not force:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "success": False,
+                "error": "force=true query parameter required for /save",
+                "hint": "Use POST /api/v1/organism/save?force=true",
+            },
+        )
+
+    engine = _get_engine(request)
+    if engine is None:
+        raise HTTPException(
+            status_code=409,
+            detail="Live engine not active. Cannot force-save brain.",
+        )
+
+    result = await asyncio.to_thread(engine.force_save_brain)
+    return result
 
 
 # ── Phase 5: Scanner & Universe Endpoints ────────────────────────────

@@ -240,12 +240,19 @@ class OrganismBrain:
         evolved_params: dict[str, Any] | None = None,
         governance_controller: Any | None = None,
         regime_detector: Any | None = None,
+        force: bool = False,
     ) -> None:
         """Save the organism's full learned state to disk.
 
         Atomic: writes to temp dir first, then renames.
         Backs up the previous brain before overwriting.
         Thread-safe via cross-platform file lock (Phase 3.1).
+
+        The ``force`` flag is audit-only: ``save()`` always performs the
+        same full atomic save regardless of the flag. The walk-forward
+        gate lives in the caller (``LiveEngine._save_brain``). ``force=True``
+        is set by ``LiveEngine.force_save_brain()`` to signal an explicit
+        admin-initiated recovery save for logging/audit trail.
         """
         self.brain_dir.mkdir(parents=True, exist_ok=True)
         self.backup_dir.mkdir(parents=True, exist_ok=True)
@@ -325,7 +332,11 @@ class OrganismBrain:
             eq_str = f", equity ${equity_curve[-1]:,.0f}" if equity_curve else ""
             print(f"  💾 Brain saved: generation {gen}, "
                   f"{len(all_trades)} trades{eq_str}")
-            logger.info("Brain saved successfully to %s", self.brain_dir)
+            logger.info(
+                "Brain saved successfully to %s%s",
+                self.brain_dir,
+                " (forced)" if force else "",
+            )
 
         except Exception as e:
             logger.error("Brain save failed: %s", e)

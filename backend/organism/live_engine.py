@@ -4276,6 +4276,96 @@ class OrganismLiveEngine:
         except Exception as e:
             logger.debug("Telemetry cleanup skipped: %s", e)
 
+    def force_save_brain(self) -> dict:
+        """Admin-only recovery path: persist the full brain bypassing the
+        walk-forward gate.
+
+        This method is the ONLY way to write ML joblibs + reference features
+        + evolved params + fully synced manifest from the live process when
+        the walk-forward gate has been blocking normal tick-driven saves.
+
+        It deliberately does NOT:
+          - submit orders
+          - call walk_forward_gate
+          - re-train any model
+          - touch scheduler state
+
+        It returns a verification dict with live gen/trades/best_sharpe/
+        ml_is_trained/feature_count so callers (admin route) can confirm
+        the save landed against the expected live object graph.
+        """
+        logger.warning(
+            "FORCE SAVE requested at tick %d — bypassing walk-forward gate",
+            self._tick_count,
+        )
+        try:
+            # Mirror _save_brain: always persist exit_levels + entry_metadata
+            exit_levels_snapshot = {
+                sym: lvl.to_dict()
+                for sym, lvl in self._exit_levels.items()
+            }
+            entry_metadata_snapshot = dict(self._entry_metadata)
+            self._persist_exit_levels_standalone(
+                exit_levels_snapshot, entry_metadata_snapshot
+            )
+
+            # Full save — bypass the gate, same kwargs block as _save_brain
+            self.brain.save(
+                signal_gen=self.signal_gen,
+                learner=self.learner,
+                equity_curve=self._equity_curve,
+                all_trades=self._all_trades,
+                epoch_metrics=self._epoch_metrics,
+                peak_equity=self._peak_equity,
+                extra_counters={
+                    "tick_count": self._tick_count,
+                    "bars_since_retrain": self._bars_since_retrain,
+                    "universe_selector": self.universe_selector.to_dict(),
+                    "exit_levels": {
+                        sym: lvl.to_dict()
+                        for sym, lvl in self._exit_levels.items()
+                    },
+                    "entry_metadata": dict(self._entry_metadata),
+                    "regime_kelly_stats": self.kelly_sizer.regime_stats_to_dict(),
+                    "ml_calibration": self.signal_gen.calibration_to_dict(),
+                    "entry_timestamps": list(self._entry_timestamps),
+                    "pending_entry": dict(self._pending_entry),
+                },
+                evolved_params=self.evolved_params.to_dict(),
+                governance_controller=self.governance,
+                regime_detector=self.regime_detector,
+                force=True,
+            )
+            # C4 watchdog: truth-source update
+            self._watchdog_last_brain_save_tick = self._tick_count
+
+            best_sharpe = self.learner.state.best_sharpe
+            if not np.isfinite(best_sharpe):
+                best_sharpe = None
+            return {
+                "success": True,
+                "forced": True,
+                "tick": self._tick_count,
+                "generation": self.learner.state.generation,
+                "total_trades": self.learner.state.total_trades,
+                "cumulative_pnl": self.learner.state.cumulative_pnl,
+                "best_sharpe": best_sharpe,
+                "ml_is_trained": getattr(self.signal_gen, "_is_trained", False),
+                "feature_count": len(
+                    getattr(self.signal_gen, "_feature_cols", []) or []
+                ),
+                "timestamp": datetime.now(UTC).isoformat(),
+            }
+        except Exception as e:
+            logger.error("force_save_brain failed: %s", e, exc_info=True)
+            return {
+                "success": False,
+                "forced": True,
+                "error": str(e),
+                "tick": self._tick_count,
+                "timestamp": datetime.now(UTC).isoformat(),
+            }
+
     def _save_brain(self) -> None:
         """Save full brain state to disk (with walk-forward gate)."""
         try:
