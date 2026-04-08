@@ -535,6 +535,14 @@ class OrganismLiveEngine:
         self._watchdog_universe_drift: dict[str, Any] = {}
         # C4: Brain save watchdog
         self._watchdog_last_brain_save_tick: int = 0
+        # Apr-7 P0 fix: monotonic authoritative submission counters.
+        # These are bumped inside _submit_entry_order / _submit_exit_order
+        # on every successful broker submission, independent of per-tick
+        # LiveTickResult counters. The C1 watchdog reads these so it can
+        # never disagree with reality even if a result field is missed.
+        self._total_orders_submitted: int = 0
+        self._total_exits_submitted: int = 0
+        self._watchdog_last_total_orders: int = 0
 
     # ── Dynamic throttle ──────────────────────────────────────
 
@@ -965,6 +973,14 @@ class OrganismLiveEngine:
                     logger.error("PREFLIGHT CRITICAL FAIL: %s — %s", r.name, r.message)
         except Exception as e:
             logger.debug("Preflight diagnostics error (non-fatal): %s", e)
+
+        # Apr-7 P0: seed watchdog baselines so a fresh boot does NOT
+        # immediately claim "no orders" / "no brain save" since tick 0.
+        # Real liveness is enforced once tick_count advances past the
+        # 6h/3h thresholds without a real order / save.
+        self._watchdog_last_order_tick = self._tick_count
+        self._watchdog_last_brain_save_tick = self._tick_count
+        self._watchdog_last_total_orders = self._total_orders_submitted
 
         return brain_loaded
 
@@ -1482,6 +1498,7 @@ class OrganismLiveEngine:
                                         broker_positions=current_positions,
                                     )
                                     exits_submitted += 1
+                                    result.orders_submitted += 1
                                     if _PROMETHEUS_AVAILABLE:
                                         ORGANISM_SAFETY_NET_TRIGGERED.inc()
                                         ORGANISM_EXITS_SKIPPED_NO_DATA.inc()
@@ -1554,6 +1571,7 @@ class OrganismLiveEngine:
                                     )
                                     self._exit_cooldown[sym] = self._tick_count
                                     exits_submitted += 1
+                                    result.orders_submitted += 1
                                     if _PROMETHEUS_AVAILABLE:
                                         ORGANISM_SAFETY_NET_TRIGGERED.inc()
                                     logger.warning(
@@ -1626,6 +1644,7 @@ class OrganismLiveEngine:
                             self._exit_cooldown[sym] = self._tick_count
                             self._pending_exit[sym] = self._tick_count
                             exits_submitted += 1
+                            result.orders_submitted += 1
                             result.activity.append(ActivityEvent(
                                 event_type="exit",
                                 symbol=sym,
@@ -1667,6 +1686,7 @@ class OrganismLiveEngine:
                             self._exit_cooldown[sym] = self._tick_count
                             self._pending_exit[sym] = self._tick_count
                             result.trades_closed += 1
+                            result.orders_submitted += 1
                             result.activity.append(ActivityEvent(
                                 event_type="exit",
                                 symbol=sym,
@@ -3052,7 +3072,16 @@ class OrganismLiveEngine:
     def _update_watchdog_state(self, result: LiveTickResult) -> None:
         """Update all watchdog states at the end of each tick."""
         # C1: No-trade watchdog
-        if result.orders_submitted > 0:
+        # Apr-7 P0: drive from the authoritative monotonic counter
+        # (`_total_orders_submitted`) so the watchdog can never disagree
+        # with real broker submissions even if result.orders_submitted
+        # is missed at a callsite.
+        if self._total_orders_submitted > self._watchdog_last_total_orders:
+            self._watchdog_last_order_tick = self._tick_count
+            self._watchdog_last_total_orders = self._total_orders_submitted
+            self._watchdog_zero_candidates_ticks = 0
+        elif result.orders_submitted > 0:
+            # Belt-and-suspenders: any local bump also counts
             self._watchdog_last_order_tick = self._tick_count
             self._watchdog_zero_candidates_ticks = 0
         elif result.signals_generated == 0:
@@ -3371,7 +3400,7 @@ class OrganismLiveEngine:
             except Exception:
                 pass  # Fallback to market order
 
-        return await self._order_service.submit_symbol_order(
+        _entry_result = await self._order_service.submit_symbol_order(
             symbol=symbol,
             side=side,
             qty=shares,
@@ -3386,6 +3415,14 @@ class OrganismLiveEngine:
                 "tick": self._tick_count,
             },
         )
+        # Apr-7 P0: authoritative monotonic counter — survives result
+        # field drift. Counts every entry/pyramid order that broker-submit
+        # did not raise on (blocked/rejected dicts are still submissions).
+        try:
+            self._total_orders_submitted += 1
+        except Exception:
+            pass
+        return _entry_result
 
     async def _submit_exit_order(
         self,
@@ -3473,6 +3510,13 @@ class OrganismLiveEngine:
                 "tick": self._tick_count,
             },
         )
+        # Apr-7 P0: authoritative monotonic counters. Only reach here
+        # after LONG_ONLY guard and a real broker submit attempt.
+        try:
+            self._total_orders_submitted += 1
+            self._total_exits_submitted += 1
+        except Exception:
+            pass
         # Capture fill price for trade attribution
         if isinstance(result, dict):
             fp = result.get("avg_fill_price")
@@ -4253,6 +4297,7 @@ class OrganismLiveEngine:
                 self._all_trades[-100:],  # evaluate on last 100 trades
                 min_trades=10,
                 regression_threshold=0.95,
+                learner=self.learner,
             )
             if not should_save:
                 logger.warning(

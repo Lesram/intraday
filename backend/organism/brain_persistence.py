@@ -1157,6 +1157,7 @@ class OrganismBrain:
         *,
         min_trades: int = 10,
         regression_threshold: float = 0.95,
+        learner: Any = None,
     ) -> tuple[bool, str]:
         """Validate that brain performance hasn't regressed before saving.
 
@@ -1206,8 +1207,28 @@ class OrganismBrain:
             std_r = 1e-9
         current_sharpe = mean_r / std_r * _np.sqrt(252)
 
-        # Get best historical Sharpe from brain manifest
-        best_sharpe = self._manifest.get("best_sharpe", 0)
+        # Apr-8 Patch C: read the authoritative high-water mark directly
+        # from learner.state.best_sharpe when available. The previous
+        # implementation read self._manifest["best_sharpe"] and decayed
+        # it *= 0.95 on every gated save attempt, compounding to a ~250x
+        # collapse in one session (2.776 -> 0.011 on 2026-04-07).
+        # learner.state.best_sharpe is maintained by ContinuousLearner as
+        # a monotonic high-water mark and must not be mutated here.
+        best_sharpe: float = 0.0
+        if learner is not None:
+            ls = getattr(learner, "state", None)
+            lbs = getattr(ls, "best_sharpe", None) if ls is not None else None
+            if lbs is not None and _np.isfinite(lbs):
+                best_sharpe = float(lbs)
+        if best_sharpe <= 0:
+            # Fallback for callers that don't pass a learner (e.g. legacy
+            # call sites or tests). Read-only — never mutated.
+            fallback = self._manifest.get("best_sharpe", 0)
+            try:
+                best_sharpe = float(fallback) if fallback is not None else 0.0
+            except (TypeError, ValueError):
+                best_sharpe = 0.0
+
         if best_sharpe <= 0:
             # No meaningful baseline — always save
             return True, f"No baseline Sharpe, current={current_sharpe:.3f}"
@@ -1219,16 +1240,11 @@ class OrganismBrain:
                 f"best={best_sharpe:.3f}, ratio={ratio:.3f}"
             )
 
-        # Regression detected — decay best_sharpe by 5% so the gate doesn't
-        # permanently block saves after an exceptional one-off session.
-        decayed = best_sharpe * 0.95
-        self._manifest["best_sharpe"] = decayed
         logger.warning(
             "Walk-forward regression: current_sharpe=%.3f, "
-            "best_sharpe=%.3f (decayed to %.3f), ratio=%.3f < %.3f",
+            "best_sharpe=%.3f, ratio=%.3f < %.3f",
             current_sharpe,
             best_sharpe,
-            decayed,
             ratio,
             regression_threshold,
         )
