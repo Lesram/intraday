@@ -264,6 +264,41 @@ class OrganismBrain:
             logger.warning("Skipping brain save — lock held: %s", e)
             return
 
+        # DEFENSIVE GUARD: refuse to overwrite a trained manifest with untrained
+        # state unless explicitly allowed. This prevents accidental brain wipes
+        # from (a) scripts running with fresh learner/signal_gen instances,
+        # (b) the live engine's learner/signal_gen being temporarily reinitialized,
+        # (c) test fixtures or retrain paths that reset the learner.
+        # Root cause: Apr 8 02:08 UTC brain wipe (see APR8_WIPE_INVESTIGATION_REPORT.md)
+        if self._manifest:
+            existing_trades = self._manifest.get("total_trades", 0) or 0
+            existing_trained = bool(self._manifest.get("ml_is_trained", False))
+            incoming_trades = (
+                learner.state.total_trades
+                if learner is not None and hasattr(learner, "state")
+                else 0
+            )
+            incoming_trained = bool(getattr(signal_gen, "_is_trained", False))
+            if (
+                not force
+                and (existing_trades > 0 or existing_trained)
+                and incoming_trades == 0
+                and not incoming_trained
+            ):
+                logger.error(
+                    "BRAIN SAVE BLOCKED: refusing to overwrite trained manifest "
+                    "(existing: total_trades=%d, ml_is_trained=%s) with untrained "
+                    "state (incoming: total_trades=0, ml_is_trained=False). "
+                    "This usually means the caller passed a fresh learner/signal_gen "
+                    "by mistake. If this is intentional recovery, call with force=True.",
+                    existing_trades, existing_trained,
+                )
+                try:
+                    lock.release()
+                except Exception:
+                    pass
+                return
+
         # 1. Backup current brain (if it exists)
         if self.exists:
             self._create_backup()
