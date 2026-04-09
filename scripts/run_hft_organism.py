@@ -1049,8 +1049,8 @@ def main():
         help="Start fresh — ignore any saved brain state",
     )
     parser.add_argument(
-        "--brain-dir", type=str, default="organism_brain",
-        help="Directory for brain persistence (default: organism_brain)",
+        "--brain-dir", type=str, default="organism_brain_sandbox",
+        help="Directory for brain persistence (default: organism_brain_sandbox)",
     )
     args = parser.parse_args()
 
