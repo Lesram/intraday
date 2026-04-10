@@ -567,49 +567,11 @@ class OrganismBrain:
         """
         self.brain_dir.mkdir(parents=True, exist_ok=True)
 
-        # PATCH F-LITE: extend the trained-state overwrite guard to the
-        # essential-save path. The proven wipe recurrence on 2026-04-08
-        # 02:08 UTC and 2026-04-09 02:58 UTC traced to this path (see
-        # APR9_PATCH_F_LITE_REPORT.md). Patch E's guard in save() did
-        # not cover this method. Mirrors save()'s guard exactly, with
-        # one addition: falls back to on-disk manifest when self._manifest
-        # is empty, so a fresh OrganismBrain instance pointing at an
-        # already-trained brain dir is still protected.
-        existing_manifest: dict[str, Any] | None = None
-        if self._manifest:
-            existing_manifest = self._manifest
-        else:
-            manifest_path_check = self.brain_dir / MANIFEST_FILE
-            if manifest_path_check.is_file():
-                try:
-                    existing_manifest = _read_json(manifest_path_check)
-                except Exception:
-                    existing_manifest = None
-        if existing_manifest:
-            existing_trades = existing_manifest.get("total_trades", 0) or 0
-            existing_trained = bool(existing_manifest.get("ml_is_trained", False))
-            incoming_trades = (
-                learner.state.total_trades
-                if learner is not None and hasattr(learner, "state")
-                else 0
-            )
-            incoming_trained = bool(getattr(signal_gen, "_is_trained", False))
-            if (
-                (existing_trades > 0 or existing_trained)
-                and incoming_trades == 0
-                and not incoming_trained
-            ):
-                logger.error(
-                    "BRAIN SAVE BLOCKED (save_essential_state): refusing to "
-                    "overwrite trained manifest "
-                    "(existing: total_trades=%d, ml_is_trained=%s) with untrained "
-                    "state (incoming: total_trades=0, ml_is_trained=False). "
-                    "This usually means the caller passed a fresh learner/signal_gen "
-                    "by mistake. save_essential_state has no force flag; this path "
-                    "is protected unconditionally against trained→fresh regressions.",
-                    existing_trades, existing_trained,
-                )
-                return
+        # F2: trained-state guard is now inside _write_manifest_guarded
+        # (replaces the F-lite inline guard that was here). The helper
+        # also unifies total_runs sourcing with the full save path,
+        # closing the in-memory vs on-disk divergence that allowed the
+        # two paths to drift during the Apr 8/9 wipe incidents.
 
         try:
             # Runtime truth — always persist
@@ -630,23 +592,18 @@ class OrganismBrain:
             # ML feature config (not model weights)
             self._save_ml_state(self.brain_dir, signal_gen)
 
-            # Update manifest — PATCH B: write authoritative live values
-            # from learner.state and signal_gen, not stale self._manifest.
-            # The recovery incident (2026-04-08) showed learning_state.json
-            # healthy while manifest.json was stale (gen=0, best_sharpe=0,
-            # ml_is_trained=false) because this path previously only
-            # touched total_trades and cumulative_pnl.
-            manifest_path = self.brain_dir / MANIFEST_FILE
-            if manifest_path.is_file():
-                manifest = _read_json(manifest_path)
-            else:
-                manifest = {"brain_format_version": BRAIN_FORMAT_VERSION}
-            manifest["saved_at"] = datetime.now(timezone.utc).isoformat()
-            manifest["total_runs"] = manifest.get("total_runs", 0) + 1
-            self._apply_live_manifest_fields(manifest, signal_gen, learner)
-            _write_json(manifest_path, manifest)
-            # Keep in-memory copy in sync with what we just wrote
-            self._manifest = dict(manifest)
+            # Manifest write through the unified guarded helper (F1/F2).
+            # force=False: essential-save path is unconditionally guarded.
+            wrote = self._write_manifest_guarded(
+                self.brain_dir, signal_gen, learner,
+                caller="save_essential_state",
+                force=False,
+            )
+            if not wrote:
+                # Guard blocked the write. Runtime-truth files above were
+                # already persisted (they're harmless without a matching
+                # manifest update). Log and return.
+                return
 
             logger.info(
                 "Essential state saved (all runtime truth, "
