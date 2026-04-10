@@ -344,6 +344,12 @@ class OrganismLiveEngine:
             min_trades_for_eval=10,
             improvement_threshold=0.05,
         )
+
+        # F4 — forensic fingerprints for detecting unexpected object
+        # replacement. If id() changes after init, something swapped the
+        # live learner or signal_gen mid-session.
+        self._forensic_signal_gen_id: int = id(self.signal_gen)
+        self._forensic_learner_id: int = id(self.learner)
         self.regime_detector = RegimeDetector(is_intraday=self._is_intraday, bars_per_day=self._bars_per_day)
         self.governance = GovernanceController()
         self.evolution_engine = EvolutionEngine(
@@ -4369,6 +4375,51 @@ class OrganismLiveEngine:
     def _save_brain(self) -> None:
         """Save full brain state to disk (with walk-forward gate)."""
         try:
+            # F4 — forensic guard: detect unexpected object replacement
+            if (
+                id(self.signal_gen) != self._forensic_signal_gen_id
+                or id(self.learner) != self._forensic_learner_id
+            ):
+                import traceback as _tb
+                logger.critical(
+                    "FORENSIC GUARD: live engine's learner/signal_gen object "
+                    "identity changed since __init__. "
+                    "signal_gen id=%d (was %d), learner id=%d (was %d). "
+                    "Stack:\n%s",
+                    id(self.signal_gen), self._forensic_signal_gen_id,
+                    id(self.learner), self._forensic_learner_id,
+                    "".join(_tb.format_stack()),
+                )
+                # Do not abort here — the guarded helper will block any
+                # unsafe write. But the CRITICAL log captures the caller.
+
+            # F4 — regression detection: if learner state regressed to
+            # fresh while disk says trained, abort to preserve disk truth.
+            _learner_state = getattr(self.learner, "state", None)
+            if (
+                _learner_state is not None
+                and getattr(_learner_state, "total_trades", 0) == 0
+            ):
+                try:
+                    from backend.organism.brain_persistence import (
+                        _read_json, MANIFEST_FILE,
+                    )
+                    _disk = _read_json(self.brain.brain_dir / MANIFEST_FILE)
+                    _disk_trades = _disk.get("total_trades", 0) or 0
+                    if _disk_trades > 0:
+                        import traceback as _tb2
+                        logger.critical(
+                            "FORENSIC GUARD: live learner.state.total_trades=0 "
+                            "but disk manifest shows total_trades=%d. Learner "
+                            "state regressed. Skipping save to avoid wiping "
+                            "disk. Stack:\n%s",
+                            _disk_trades,
+                            "".join(_tb2.format_stack()),
+                        )
+                        return  # Abort save entirely
+                except Exception:
+                    pass  # If we can't read disk, let the guarded helper decide
+
             # CORE-013 fix: always persist exit_levels and entry_metadata
             # even when the walk-forward gate blocks the full brain save.
             # These are safety-critical (trailing stops, partial TP flags)

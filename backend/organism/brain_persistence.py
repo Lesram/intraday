@@ -1307,7 +1307,12 @@ class OrganismBrain:
             self._manifest["brain_format_version"] = 2
             version = 2
 
-        # Persist the bumped manifest so next load is seamless
+        # Persist the bumped manifest so next load is seamless.
+        # F4 BYPASS AUDIT: this is the only direct manifest write
+        # outside the guarded helper. It is SAFE because it writes
+        # self._manifest (just read from disk at line 1282) with only
+        # brain_format_version bumped. No learner/signal_gen fields are
+        # synthesized. Only fires during load() on an older-format brain.
         _write_json(self.brain_dir / MANIFEST_FILE, self._manifest)
         logger.info("Brain migration complete — now at v%d", version)
 
