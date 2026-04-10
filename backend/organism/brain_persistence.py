@@ -264,40 +264,27 @@ class OrganismBrain:
             logger.warning("Skipping brain save — lock held: %s", e)
             return
 
-        # DEFENSIVE GUARD: refuse to overwrite a trained manifest with untrained
-        # state unless explicitly allowed. This prevents accidental brain wipes
-        # from (a) scripts running with fresh learner/signal_gen instances,
-        # (b) the live engine's learner/signal_gen being temporarily reinitialized,
-        # (c) test fixtures or retrain paths that reset the learner.
-        # Root cause: Apr 8 02:08 UTC brain wipe (see APR8_WIPE_INVESTIGATION_REPORT.md)
-        if self._manifest:
-            existing_trades = self._manifest.get("total_trades", 0) or 0
-            existing_trained = bool(self._manifest.get("ml_is_trained", False))
-            incoming_trades = (
-                learner.state.total_trades
-                if learner is not None and hasattr(learner, "state")
-                else 0
+        # DEFENSIVE GUARD (Patch E, refactored in F1 to use shared check).
+        # Refuse to overwrite a trained manifest with untrained state.
+        # Uses _check_trained_overwrite_guard for consistent logic across
+        # save() and (in F2) save_essential_state().
+        should_block, reason = self._check_trained_overwrite_guard(
+            self.brain_dir, signal_gen, learner, force=force,
+        )
+        if should_block:
+            logger.error(
+                "BRAIN SAVE BLOCKED (save): refusing to overwrite trained "
+                "manifest (%s) with untrained state "
+                "(incoming: total_trades=0, ml_is_trained=False). "
+                "This usually means the caller passed a fresh learner/signal_gen "
+                "by mistake. If this is intentional recovery, call with force=True.",
+                reason,
             )
-            incoming_trained = bool(getattr(signal_gen, "_is_trained", False))
-            if (
-                not force
-                and (existing_trades > 0 or existing_trained)
-                and incoming_trades == 0
-                and not incoming_trained
-            ):
-                logger.error(
-                    "BRAIN SAVE BLOCKED: refusing to overwrite trained manifest "
-                    "(existing: total_trades=%d, ml_is_trained=%s) with untrained "
-                    "state (incoming: total_trades=0, ml_is_trained=False). "
-                    "This usually means the caller passed a fresh learner/signal_gen "
-                    "by mistake. If this is intentional recovery, call with force=True.",
-                    existing_trades, existing_trained,
-                )
-                try:
-                    lock.release()
-                except Exception:
-                    pass
-                return
+            try:
+                lock.release()
+            except Exception:
+                pass
+            return
 
         # 1. Backup current brain (if it exists)
         if self.exists:
@@ -323,7 +310,7 @@ class OrganismBrain:
             self._save_evolved_params(tmp_dir, evolved_params)
             self._save_governance_state(tmp_dir, governance_controller)
             self._save_regime_state(tmp_dir, regime_detector)
-            self._save_manifest(tmp_dir, signal_gen, learner)
+            self._save_manifest(tmp_dir, signal_gen, learner, force=force)
 
             # 3. Atomic swap: rename temp dir to active dir.
             #    First, swap the current brain dir to a staging path,
@@ -674,6 +661,137 @@ class OrganismBrain:
     #  PRIVATE — SAVE HELPERS
     # ═════════════════════════════════════════════════════════════
 
+    def _check_trained_overwrite_guard(
+        self,
+        target: Path,
+        signal_gen: Any,
+        learner: Any,
+        force: bool = False,
+    ) -> tuple[bool, str]:
+        """Check whether an incoming save would overwrite a trained manifest
+        with an untrained/fresh state.
+
+        Returns ``(should_block, reason)``. The caller decides what to do
+        (e.g. release a lock, abort, log). This is a pure predicate — it
+        does NOT write, log, or mutate anything.
+
+        Resolves existing state from the best available source:
+        ``self._manifest`` (in-memory) > on-disk ``manifest.json`` > empty.
+        """
+        # Resolve best available existing state
+        existing: dict[str, Any] = {}
+        if self._manifest:
+            existing = self._manifest
+        else:
+            manifest_path = target / MANIFEST_FILE
+            if manifest_path.is_file():
+                try:
+                    existing = _read_json(manifest_path)
+                except Exception:
+                    existing = {}
+
+        if not existing:
+            return False, ""  # nothing to protect yet
+
+        existing_trades = existing.get("total_trades", 0) or 0
+        existing_trained = bool(existing.get("ml_is_trained", False))
+        existing_generation = existing.get("generation", 0) or 0
+        is_trained_existing = (
+            existing_trades > 0 or existing_trained or existing_generation > 0
+        )
+
+        incoming_trades = (
+            learner.state.total_trades
+            if learner is not None and hasattr(learner, "state")
+            else 0
+        )
+        incoming_trained = bool(getattr(signal_gen, "_is_trained", False))
+        incoming_generation = (
+            learner.state.generation
+            if learner is not None and hasattr(learner, "state")
+            else 0
+        )
+        is_fresh_incoming = (
+            incoming_trades == 0
+            and not incoming_trained
+            and incoming_generation == 0
+        )
+
+        if is_trained_existing and is_fresh_incoming and not force:
+            reason = (
+                f"existing: total_trades={existing_trades}, "
+                f"ml_is_trained={existing_trained}, generation={existing_generation}"
+            )
+            return True, reason
+
+        return False, ""
+
+    def _write_manifest_guarded(
+        self,
+        target: Path,
+        signal_gen: Any,
+        learner: Any,
+        *,
+        caller: str,
+        force: bool = False,
+        allow_reset: bool = False,
+        reset_reason: str | None = None,
+    ) -> bool:
+        """The unified manifest write path. Both ``save()`` (via
+        ``_save_manifest``) and (in F2) ``save_essential_state()`` route
+        their manifest writes through this method.
+
+        - Resolves ``total_runs`` from a single source (in-memory >
+          on-disk > 0) so the full-save and essential-save paths never
+          diverge.
+        - Applies ``_apply_live_manifest_fields`` for authoritative
+          field values from live ``learner.state`` / ``signal_gen``.
+        - Applies the trained→fresh overwrite guard as a defense-in-depth
+          safety net (the primary guard for ``save()`` fires earlier in
+          the caller to preserve lock semantics).
+        - Syncs ``self._manifest`` after successful write.
+
+        Returns ``True`` on success, ``False`` if the guard blocked.
+        """
+        # Defense-in-depth guard (primary guard for save() fires earlier,
+        # but this catches any caller that reaches the write path without
+        # an early check — including save_essential_state in F2).
+        should_block, reason = self._check_trained_overwrite_guard(
+            target, signal_gen, learner, force=force,
+        )
+        if should_block:
+            logger.error(
+                "BRAIN SAVE BLOCKED (%s): refusing to overwrite trained "
+                "manifest (%s) with untrained state "
+                "(incoming: total_trades=0, ml_is_trained=False). ",
+                caller, reason,
+            )
+            return False
+
+        # Resolve total_runs from uniform source: in-memory > on-disk > 0
+        base_total_runs = self._manifest.get("total_runs") if self._manifest else None
+        if base_total_runs is None:
+            manifest_path = target / MANIFEST_FILE
+            if manifest_path.is_file():
+                try:
+                    disk = _read_json(manifest_path)
+                    base_total_runs = disk.get("total_runs", 0)
+                except Exception:
+                    base_total_runs = 0
+            else:
+                base_total_runs = 0
+
+        manifest: dict[str, Any] = {
+            "brain_format_version": BRAIN_FORMAT_VERSION,
+            "saved_at": datetime.now(timezone.utc).isoformat(),
+            "total_runs": base_total_runs + 1,
+        }
+        self._apply_live_manifest_fields(manifest, signal_gen, learner)
+        _write_json(target / MANIFEST_FILE, manifest)
+        # Keep in-memory copy in sync
+        self._manifest = dict(manifest)
+        return True
+
     def _apply_live_manifest_fields(
         self,
         manifest: dict[str, Any],
@@ -738,17 +856,15 @@ class OrganismBrain:
             )
 
     def _save_manifest(
-        self, target: Path, signal_gen: Any, learner: Any
+        self, target: Path, signal_gen: Any, learner: Any,
+        *, force: bool = False,
     ) -> None:
-        manifest = {
-            "brain_format_version": BRAIN_FORMAT_VERSION,
-            "saved_at": datetime.now(timezone.utc).isoformat(),
-            "total_runs": self._manifest.get("total_runs", 0) + 1,
-        }
-        self._apply_live_manifest_fields(manifest, signal_gen, learner)
-        _write_json(target / MANIFEST_FILE, manifest)
-        # Keep in-memory copy in sync with what we just wrote
-        self._manifest = dict(manifest)
+        # F1: delegate to the unified guarded write helper.
+        self._write_manifest_guarded(
+            target, signal_gen, learner,
+            caller="save._save_manifest",
+            force=force,
+        )
 
     def _save_ml_models(self, target: Path, signal_gen: Any) -> None:
         if signal_gen._is_trained:
