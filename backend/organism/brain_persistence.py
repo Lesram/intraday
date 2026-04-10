@@ -241,6 +241,8 @@ class OrganismBrain:
         governance_controller: Any | None = None,
         regime_detector: Any | None = None,
         force: bool = False,
+        allow_reset: bool = False,
+        reset_reason: str | None = None,
     ) -> None:
         """Save the organism's full learned state to disk.
 
@@ -253,6 +255,10 @@ class OrganismBrain:
         gate lives in the caller (``LiveEngine._save_brain``). ``force=True``
         is set by ``LiveEngine.force_save_brain()`` to signal an explicit
         admin-initiated recovery save for logging/audit trail.
+
+        F3 break-glass: to intentionally overwrite a trained brain with
+        fresh state, ALL THREE must be set: ``force=True``,
+        ``allow_reset=True``, and a non-empty ``reset_reason``.
         """
         self.brain_dir.mkdir(parents=True, exist_ok=True)
         self.backup_dir.mkdir(parents=True, exist_ok=True)
@@ -269,15 +275,23 @@ class OrganismBrain:
         # Uses _check_trained_overwrite_guard for consistent logic across
         # save() and (in F2) save_essential_state().
         should_block, reason = self._check_trained_overwrite_guard(
-            self.brain_dir, signal_gen, learner, force=force,
+            self.brain_dir, signal_gen, learner,
+            force=force, allow_reset=allow_reset, reset_reason=reset_reason,
         )
         if should_block:
+            # F3: suspicious-write instrumentation fires on block
+            self._log_suspicious_manifest_write(
+                caller="save", target=self.brain_dir,
+                signal_gen=signal_gen, learner=learner,
+                force=force, allow_reset=allow_reset,
+                reset_reason=reset_reason,
+            )
             logger.error(
                 "BRAIN SAVE BLOCKED (save): refusing to overwrite trained "
                 "manifest (%s) with untrained state "
                 "(incoming: total_trades=0, ml_is_trained=False). "
-                "This usually means the caller passed a fresh learner/signal_gen "
-                "by mistake. If this is intentional recovery, call with force=True.",
+                "Break-glass reset requires force=True AND allow_reset=True "
+                "AND reset_reason.",
                 reason,
             )
             try:
@@ -310,7 +324,10 @@ class OrganismBrain:
             self._save_evolved_params(tmp_dir, evolved_params)
             self._save_governance_state(tmp_dir, governance_controller)
             self._save_regime_state(tmp_dir, regime_detector)
-            self._save_manifest(tmp_dir, signal_gen, learner, force=force)
+            self._save_manifest(
+                tmp_dir, signal_gen, learner,
+                force=force, allow_reset=allow_reset, reset_reason=reset_reason,
+            )
 
             # 3. Atomic swap: rename temp dir to active dir.
             #    First, swap the current brain dir to a staging path,
@@ -624,6 +641,8 @@ class OrganismBrain:
         signal_gen: Any,
         learner: Any,
         force: bool = False,
+        allow_reset: bool = False,
+        reset_reason: str | None = None,
     ) -> tuple[bool, str]:
         """Check whether an incoming save would overwrite a trained manifest
         with an untrained/fresh state.
@@ -631,6 +650,10 @@ class OrganismBrain:
         Returns ``(should_block, reason)``. The caller decides what to do
         (e.g. release a lock, abort, log). This is a pure predicate — it
         does NOT write, log, or mutate anything.
+
+        F3 break-glass semantics: ``force=True`` alone is NOT enough to
+        permit a trained→fresh overwrite. The full triad is required:
+        ``force=True AND allow_reset=True AND reset_reason`` (non-empty).
 
         Resolves existing state from the best available source:
         ``self._manifest`` (in-memory) > on-disk ``manifest.json`` > empty.
@@ -674,12 +697,18 @@ class OrganismBrain:
             and incoming_generation == 0
         )
 
-        if is_trained_existing and is_fresh_incoming and not force:
+        if is_trained_existing and is_fresh_incoming:
             reason = (
                 f"existing: total_trades={existing_trades}, "
                 f"ml_is_trained={existing_trained}, generation={existing_generation}"
             )
-            return True, reason
+            # F3 break-glass: require the full triad to override.
+            # force=True alone is NOT sufficient.
+            break_glass_ok = bool(
+                force and allow_reset and reset_reason
+            )
+            if not break_glass_ok:
+                return True, reason
 
         return False, ""
 
@@ -712,18 +741,66 @@ class OrganismBrain:
         """
         # Defense-in-depth guard (primary guard for save() fires earlier,
         # but this catches any caller that reaches the write path without
-        # an early check — including save_essential_state in F2).
+        # an early check — including save_essential_state via F2).
         should_block, reason = self._check_trained_overwrite_guard(
-            target, signal_gen, learner, force=force,
+            target, signal_gen, learner,
+            force=force, allow_reset=allow_reset, reset_reason=reset_reason,
         )
         if should_block:
+            # F3: always log suspicious-write instrumentation first,
+            # regardless of block/allow outcome.
+            self._log_suspicious_manifest_write(
+                caller=caller, target=target,
+                signal_gen=signal_gen, learner=learner,
+                force=force, allow_reset=allow_reset,
+                reset_reason=reset_reason,
+            )
             logger.error(
                 "BRAIN SAVE BLOCKED (%s): refusing to overwrite trained "
                 "manifest (%s) with untrained state "
-                "(incoming: total_trades=0, ml_is_trained=False). ",
+                "(incoming: total_trades=0, ml_is_trained=False). "
+                "Break-glass reset requires force=True AND allow_reset=True "
+                "AND reset_reason.",
                 caller, reason,
             )
             return False
+
+        # F3: check if this is a break-glass reset that passed the guard.
+        # If so, the guard check returned (False, reason) because break_glass_ok
+        # was True. We still want the instrumentation + loud warning.
+        # Detect this by re-evaluating the trained→fresh predicate directly.
+        _existing_for_bg = self._manifest if self._manifest else {}
+        if not _existing_for_bg:
+            mp = target / MANIFEST_FILE
+            if mp.is_file():
+                try:
+                    _existing_for_bg = _read_json(mp)
+                except Exception:
+                    _existing_for_bg = {}
+        _ex_tr = _existing_for_bg.get("total_trades", 0) or 0
+        _ex_ml = bool(_existing_for_bg.get("ml_is_trained", False))
+        _ex_gen = _existing_for_bg.get("generation", 0) or 0
+        _in_tr = (learner.state.total_trades
+                  if learner is not None and hasattr(learner, "state") else 0)
+        _in_ml = bool(getattr(signal_gen, "_is_trained", False))
+        _in_gen = (learner.state.generation
+                   if learner is not None and hasattr(learner, "state") else 0)
+        _is_trained_ex = _ex_tr > 0 or _ex_ml or _ex_gen > 0
+        _is_fresh_in = _in_tr == 0 and not _in_ml and _in_gen == 0
+        if _is_trained_ex and _is_fresh_in:
+            # Break-glass passed. Log instrumentation + loud warning.
+            self._log_suspicious_manifest_write(
+                caller=caller, target=target,
+                signal_gen=signal_gen, learner=learner,
+                force=force, allow_reset=allow_reset,
+                reset_reason=reset_reason,
+            )
+            logger.warning(
+                "BRAIN BREAK-GLASS RESET (%s): intentionally overwriting "
+                "trained manifest (total_trades=%d, ml_is_trained=%s). "
+                "Reason: %s",
+                caller, _ex_tr, _ex_ml, reset_reason,
+            )
 
         # Resolve total_runs from uniform source: in-memory > on-disk > 0
         base_total_runs = self._manifest.get("total_runs") if self._manifest else None
@@ -747,7 +824,122 @@ class OrganismBrain:
         _write_json(target / MANIFEST_FILE, manifest)
         # Keep in-memory copy in sync
         self._manifest = dict(manifest)
+
+        # F3: read-back invariant — verify what we wrote matches live state
+        try:
+            written = _read_json(target / MANIFEST_FILE)
+            mismatches: list[str] = []
+            if learner is not None and hasattr(learner, "state"):
+                st = learner.state
+                if written.get("generation") != int(getattr(st, "generation", 0)):
+                    mismatches.append(
+                        f"generation {written.get('generation')} != "
+                        f"{int(getattr(st, 'generation', 0))}"
+                    )
+                if written.get("total_trades") != int(getattr(st, "total_trades", 0)):
+                    mismatches.append(
+                        f"total_trades {written.get('total_trades')} != "
+                        f"{int(getattr(st, 'total_trades', 0))}"
+                    )
+                bs_live = getattr(st, "best_sharpe", None)
+                if bs_live is not None and np.isfinite(bs_live):
+                    bs_expected = round(float(bs_live), 4)
+                    if written.get("best_sharpe") != bs_expected:
+                        mismatches.append(
+                            f"best_sharpe {written.get('best_sharpe')} != "
+                            f"{bs_expected}"
+                        )
+            if signal_gen is not None:
+                expected_trained = bool(getattr(signal_gen, "_is_trained", False))
+                if written.get("ml_is_trained") != expected_trained:
+                    mismatches.append(
+                        f"ml_is_trained {written.get('ml_is_trained')} != "
+                        f"{expected_trained}"
+                    )
+                fc = getattr(signal_gen, "_feature_cols", None)
+                expected_fc = len(fc) if fc is not None else 0
+                if written.get("feature_count") != expected_fc:
+                    mismatches.append(
+                        f"feature_count {written.get('feature_count')} != "
+                        f"{expected_fc}"
+                    )
+            if mismatches:
+                logger.critical(
+                    "BRAIN MANIFEST READ-BACK INVARIANT FAILED (%s): %s",
+                    caller, "; ".join(mismatches),
+                )
+                return False
+        except Exception as e:
+            logger.error(
+                "Brain manifest read-back check failed (%s): %s", caller, e,
+            )
+            # Do not fail the save on read-back exceptions — just log
+
         return True
+
+    def _log_suspicious_manifest_write(
+        self,
+        *,
+        caller: str,
+        target: Path,
+        signal_gen: Any,
+        learner: Any,
+        force: bool,
+        allow_reset: bool,
+        reset_reason: str | None,
+    ) -> None:
+        """F3: log detailed forensic information when a manifest write
+        would regress a trained brain to fresh/untrained state.
+
+        Fires on EVERY regressive attempt regardless of whether the
+        break-glass path then allows it. Captures the caller's stack
+        trace so the exact triggering code path can be identified on
+        the next recurrence.
+        """
+        import os
+        import threading
+        import traceback
+
+        existing = self._manifest if self._manifest else {}
+        if not existing:
+            mp = target / MANIFEST_FILE
+            if mp.is_file():
+                try:
+                    existing = _read_json(mp)
+                except Exception:
+                    existing = {}
+
+        existing_summary = {
+            k: existing.get(k)
+            for k in (
+                "generation", "total_trades", "cumulative_pnl",
+                "best_sharpe", "ml_is_trained", "feature_count", "total_runs",
+            )
+        }
+        live_state = getattr(learner, "state", None)
+        incoming_summary = {
+            "generation": getattr(live_state, "generation", None),
+            "total_trades": getattr(live_state, "total_trades", None),
+            "cumulative_pnl": getattr(live_state, "cumulative_pnl", None),
+            "best_sharpe": getattr(live_state, "best_sharpe", None),
+            "ml_is_trained": bool(getattr(signal_gen, "_is_trained", False)),
+            "feature_count": len(getattr(signal_gen, "_feature_cols", []) or []),
+        }
+        stack = "".join(traceback.format_stack())
+        logger.warning(
+            "SUSPICIOUS MANIFEST WRITE (%s): would regress trained brain. "
+            "pid=%d thread=%s force=%s allow_reset=%s reset_reason=%r "
+            "existing=%s incoming=%s\nStack:\n%s",
+            caller,
+            os.getpid(),
+            threading.current_thread().name,
+            force,
+            allow_reset,
+            reset_reason,
+            existing_summary,
+            incoming_summary,
+            stack,
+        )
 
     def _apply_live_manifest_fields(
         self,
@@ -815,12 +1007,16 @@ class OrganismBrain:
     def _save_manifest(
         self, target: Path, signal_gen: Any, learner: Any,
         *, force: bool = False,
+        allow_reset: bool = False,
+        reset_reason: str | None = None,
     ) -> None:
         # F1: delegate to the unified guarded write helper.
         self._write_manifest_guarded(
             target, signal_gen, learner,
             caller="save._save_manifest",
             force=force,
+            allow_reset=allow_reset,
+            reset_reason=reset_reason,
         )
 
     def _save_ml_models(self, target: Path, signal_gen: Any) -> None:

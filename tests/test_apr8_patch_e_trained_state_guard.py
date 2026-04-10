@@ -131,6 +131,7 @@ def test_guard_allows_save_when_existing_untrained(tmp_path):
 # ─────────────────────────────────────────────────────────────
 
 def test_force_true_bypasses_guard(tmp_path):
+    # F3: force=True alone is no longer enough; full break-glass triad required.
     brain = _seed_brain(tmp_path, total_trades=195, ml_trained=True)
     brain.save(
         signal_gen=_make_signal_gen(is_trained=False, feature_count=0),
@@ -139,6 +140,8 @@ def test_force_true_bypasses_guard(tmp_path):
         all_trades=[],
         epoch_metrics=[],
         force=True,
+        allow_reset=True,
+        reset_reason="test break-glass",
     )
     m = _read_manifest(brain)
     assert m["total_trades"] == 0

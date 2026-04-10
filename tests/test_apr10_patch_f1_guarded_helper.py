@@ -230,16 +230,19 @@ def test_total_runs_unified_across_helper_calls(tmp_path):
 
 def test_write_manifest_guarded_force_passes(tmp_path):
     brain = _seed_brain(tmp_path, total_trades=195)
+    # F3: force=True alone is NOT enough. Full break-glass triad required.
     result = brain._write_manifest_guarded(
         brain.brain_dir,
         _make_signal_gen(is_trained=False),
         _make_learner(total_trades=0),
         caller="force_test",
         force=True,
+        allow_reset=True,
+        reset_reason="test break-glass",
     )
     assert result is True
     m = _read_manifest(brain)
-    assert m["total_trades"] == 0  # overwritten because force=True
+    assert m["total_trades"] == 0  # overwritten via break-glass triad
 
 
 # ─────────────────────────────────────────────────────────────
