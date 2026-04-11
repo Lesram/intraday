@@ -814,7 +814,19 @@ class OrganismLiveEngine:
                             initial_risk_at_entry=float(lvl_data.get("initial_risk_at_entry", 0.0)),
                         )
                     except (KeyError, ValueError, TypeError) as e:
-                        logger.debug("Cannot restore exit levels for %s: %s", sym, e)
+                        # G1: promote from DEBUG to WARNING. A position
+                        # without exit levels runs without stop-loss
+                        # protection. Mark for forced safety handling.
+                        logger.warning(
+                            "G1: Cannot restore exit levels for %s: %s — "
+                            "position will use safety-net exit on next tick",
+                            sym, e,
+                        )
+                        # Mark in entry_metadata so the safety net in step 5
+                        # (lines 1555-1601) can detect and handle it.
+                        if sym not in self._entry_metadata:
+                            self._entry_metadata[sym] = {}
+                        self._entry_metadata[sym]["exit_levels_failed"] = True
                 if self._exit_levels:
                     logger.info(
                         "Restored exit levels for %d positions from brain",
@@ -1665,13 +1677,19 @@ class OrganismLiveEngine:
                                 timestamp=now_iso,
                             ))
                         except Exception as e:
+                            # G2: do NOT set cooldown on failed exit submission.
+                            # Failed exits should be retried on the next tick,
+                            # not blocked for 3 ticks (30s) while the position
+                            # drifts unmanaged. The cooldown on the SUCCESS
+                            # path (line 1662-1663) prevents duplicate orders.
                             result.errors.append(
                                 f"Exit order failed for {sym}: {e}"
                             )
-                        finally:
-                            # Always set cooldown to prevent retry spam on failures
-                            self._exit_cooldown[sym] = self._tick_count
-                            self._pending_exit[sym] = self._tick_count
+                            logger.warning(
+                                "G2: exit submission failed for %s — will retry "
+                                "next tick (no cooldown set). Error: %s",
+                                sym, e,
+                            )
             result.trades_closed = exits_submitted
 
             # v4 (improve7): EOD FLATTEN — force close all positions at 15:58 ET

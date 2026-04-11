@@ -162,6 +162,14 @@ class MomentumPyramider:
         if not position.layers:
             return PyramidAction(action="none")
 
+        # G3: guard against NaN/Inf current_price. If streaming data
+        # is stale or corrupt, current_price can be NaN, which would
+        # silently disable all pyramid actions (NaN comparisons are
+        # always False). Catch early and return safely.
+        import math
+        if not math.isfinite(current_price) or current_price <= 0:
+            return PyramidAction(action="none")
+
         entry = position.layers[0].entry_price
         atr = position.atr_at_entry
         if atr < 1e-6:
