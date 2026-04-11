@@ -2146,6 +2146,35 @@ class OrganismLiveEngine:
                             + 0.30 * breakout_score
                             + 0.20 * min(tension, 1.0)
                         )
+                    # EXPERIMENT 3 INSTRUMENTATION: side-by-side confidence
+                    # comparison to detect ML contamination in chop.
+                    # Logs the live production confidence alongside what the
+                    # pure breakout+tension (learning-mode) formula would
+                    # produce. Does NOT change any gating decision — read-only.
+                    _conf_bt_only = (
+                        0.65 * breakout_score
+                        + 0.35 * min(tension, 1.0)
+                    )
+                    _conf_ml_component = (
+                        (c.ml_signal.confidence if c.ml_signal else 0.0)
+                        if not self._is_learning_mode
+                        else 0.0
+                    )
+                    # Will the candidate pass the main-book gate?
+                    # (computed here for logging; actual gate is below)
+                    _would_pass_live = confidence >= _MIN_MAIN_CONF
+                    _would_pass_bt_only = _conf_bt_only >= _MIN_MAIN_CONF
+                    logger.debug(
+                        "Exp3: confidence side-by-side: %s regime=%s "
+                        "conf_live=%.4f conf_bt_only=%.4f ml_component=%.4f "
+                        "gate_pass_live=%s gate_pass_bt_only=%s "
+                        "breakout=%.4f tension=%.4f learning_mode=%s",
+                        c.symbol, regime,
+                        confidence, _conf_bt_only, _conf_ml_component,
+                        _would_pass_live, _would_pass_bt_only,
+                        breakout_score, tension, self._is_learning_mode,
+                    )
+
                     # A2 (improve8): Two-tier confidence gate
                     # Main-book: baseline 0.40, higher in defensive regimes
                     # B1 parity: _MIN_MAIN_CONF is now computed once above
@@ -2215,6 +2244,10 @@ class OrganismLiveEngine:
                         "breakout_score": breakout_score,
                         "expected_return_source": c.expected_return_source,
                         "ranking_score": c.composite_score,
+                        # Exp3 instrumentation: side-by-side confidence
+                        "confidence_bt_only": _conf_bt_only,
+                        "confidence_ml_component": _conf_ml_component,
+                        "gate_pass_bt_only": _would_pass_bt_only,
                     })
                     _planned_entries.add(c.symbol)
 
