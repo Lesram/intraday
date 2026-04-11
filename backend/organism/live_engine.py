@@ -2386,7 +2386,33 @@ class OrganismLiveEngine:
                 except Exception:
                     fresh_open = open_symbols
 
+                # INVERSE_ETFS that should not enter in chop regime.
+                _INVERSE_ETFS_CHOP_SUPPRESSED = frozenset({"PSQ", "SH"})
+
                 for sz in sizes:
+                    # EXPERIMENT 2: suppress inverse ETF entries in chop.
+                    # Evidence: Apr 7-10 baseline shows PSQ/SH have 0% win
+                    # rate across 6 trades (-$28.54) in chop. 4/6 never went
+                    # green. The improve9 inverse-ETF logic was intended for
+                    # trending_down hedging, not chop entries.
+                    if (
+                        sz.symbol in _INVERSE_ETFS_CHOP_SUPPRESSED
+                        and regime == "chop"
+                    ):
+                        logger.info(
+                            "Exp2: inverse ETF entry suppressed in chop: "
+                            "%s regime=%s confidence=%.3f reason=inverse_etf_suppressed_chop",
+                            sz.symbol, regime, sz.confidence,
+                        )
+                        result.activity.append(ActivityEvent(
+                            event_type="skip",
+                            symbol=sz.symbol,
+                            message=f"Exp2: {sz.symbol} entry suppressed — inverse ETF in chop regime",
+                            details={"reason": "inverse_etf_suppressed_chop", "regime": str(regime)},
+                            timestamp=now_iso,
+                        ))
+                        continue
+
                     # Skip if position already exists (e.g. from partial fill
                     # on a cancelled order that the earlier check missed)
                     # Also enforce MAX_OPEN_POSITIONS within this tick
