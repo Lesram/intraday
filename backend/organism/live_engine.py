@@ -1924,6 +1924,33 @@ class OrganismLiveEngine:
                     # EXIT-001 fix: process close_partial and tighten_stop
                     # actions that were previously silently dropped.
                     elif action.action == "close_partial" and action.shares_to_add < 0:
+                        # EXPERIMENT 1A: chop-regime minimum-hold gate for
+                        # pyramid cuts. In chop, suppress pyramid_cut exits
+                        # until the trade has been held for at least 10 bars.
+                        # Rationale: Apr 7-10 baseline shows 24/32 trades
+                        # exit via pyramid_cut, ALL losers (-$63.80), while
+                        # 78% of entries go green (MFE > 0). Premature cuts
+                        # in chop destroy edge that would have been captured
+                        # by holding. Timeout exits (18-30 bars) are 100%
+                        # winners (+$18.68).
+                        _CHOP_MIN_HOLD_BARS = 10
+                        _is_chop = (regime == "chop")
+                        _meta = self._entry_metadata.get(sym, {})
+                        _entry_tick = _meta.get("entry_tick", 0)
+                        _bars_held = self._tick_count - _entry_tick
+                        if _is_chop and _bars_held < _CHOP_MIN_HOLD_BARS:
+                            _unrealized = pyr.unrealized_pnl(current_price) if pyr else 0.0
+                            logger.info(
+                                "Exp1A: pyramid_cut suppressed (chop min-hold): "
+                                "%s bars_held=%d/%d regime=%s r=%.1fR "
+                                "unrealized=$%.2f reason=%s",
+                                sym, _bars_held, _CHOP_MIN_HOLD_BARS,
+                                regime, pyr.r_multiple if pyr else 0.0,
+                                _unrealized, action.reason,
+                            )
+                            # Skip the pyramid cut — let the trade breathe
+                            continue
+
                         shares_to_close = abs(action.shares_to_add)
                         direction = float(pos_data.get("direction", 1.0)) if isinstance(pos_data, dict) else 1.0
                         try:
