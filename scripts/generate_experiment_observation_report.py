@@ -307,6 +307,86 @@ def generate_report(
         lines.append(f"| {sym} | {s['count']} | ${s['total_pnl']:.2f} | {s['win_rate']:.0f}% |")
     lines.append("")
 
+    # Exit giveback analysis
+    giveback_by_exit: dict[str, dict] = defaultdict(
+        lambda: {"count": 0, "mfe": 0.0, "pnl": 0.0, "giveback": 0.0}
+    )
+    worst_givebacks: list[dict] = []
+    total_mfe = 0.0
+    total_giveback = 0.0
+    for r in trades:
+        pnl = float(r.get("pnl", 0))
+        mfe = float(r.get("mfe", 0))
+        gb = max(0, mfe - pnl) if mfe > 0 else 0
+        reason = r.get("exit_reason", "unknown")
+        if "cut_" in reason:
+            cat = "pyramid_cut"
+        elif reason == "stop_loss":
+            cat = "stop_loss"
+        elif "timeout" in reason or "holding" in reason:
+            cat = "timeout/max_hold"
+        elif "trailing" in reason:
+            cat = "trailing_stop"
+        elif "failure" in reason:
+            cat = "failure_to_follow"
+        else:
+            cat = "other"
+        giveback_by_exit[cat]["count"] += 1
+        giveback_by_exit[cat]["mfe"] += mfe if mfe > 0 else 0
+        giveback_by_exit[cat]["pnl"] += pnl
+        giveback_by_exit[cat]["giveback"] += gb
+        total_mfe += mfe if mfe > 0 else 0
+        total_giveback += gb
+        if gb > 0:
+            worst_givebacks.append({
+                "symbol": r.get("symbol", "?"),
+                "giveback": gb,
+                "pnl": pnl,
+                "mfe": mfe,
+                "exit": cat,
+                "reason": reason,
+                "bars": int(r.get("bars_held_at_exit", 0)),
+            })
+
+    worst_givebacks.sort(key=lambda x: -x["giveback"])
+    total_pnl_all = sum(float(r.get("pnl", 0)) for r in trades)
+    capture = (total_pnl_all / total_mfe * 100) if total_mfe > 0 else 0
+
+    lines.extend([
+        f"## Exit giveback analysis",
+        f"",
+        f"| Metric | Value |",
+        f"|---|---|",
+        f"| Total MFE generated | ${total_mfe:.2f} |",
+        f"| Total realized PnL | ${total_pnl_all:.2f} |",
+        f"| Total giveback | ${total_giveback:.2f} |",
+        f"| **Capture rate** | **{capture:.1f}%** |",
+        f"",
+        f"### Giveback by exit reason",
+        f"",
+        f"| Exit | Trades | Giveback | Avg/trade |",
+        f"|---|---:|---:|---:|",
+    ])
+    for cat, d in sorted(giveback_by_exit.items(), key=lambda x: -x[1]["giveback"]):
+        avg = d["giveback"] / d["count"] if d["count"] else 0
+        lines.append(f"| {cat} | {d['count']} | ${d['giveback']:.2f} | ${avg:.2f} |")
+    lines.append("")
+
+    if worst_givebacks:
+        lines.extend([
+            f"### Top 3 giveback trades",
+            f"",
+            f"| Symbol | Gave back | PnL | MFE | Bars | Exit |",
+            f"|---|---:|---:|---:|---:|---|",
+        ])
+        for t in worst_givebacks[:3]:
+            lines.append(
+                f"| {t['symbol']} | ${t['giveback']:.2f} | "
+                f"${t['pnl']:.2f} | ${t['mfe']:.2f} | "
+                f"{t['bars']} | {t['exit']} |"
+            )
+        lines.append("")
+
     # Exp2 readiness: inverse ETF
     lines.extend([
         f"## Exp2 readiness — inverse ETF (PSQ/SH)",

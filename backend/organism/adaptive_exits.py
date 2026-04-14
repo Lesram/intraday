@@ -640,9 +640,43 @@ class AdaptiveExitEngine:
         levels.trailing_active = True
 
         # Regime-adaptive trail distance
-        trail_atr = self.REGIME_TRAIL_ATR.get(
-            current_regime, self.trailing_distance_atr
-        )
+        # EXPERIMENT 4: In chop, widen trailing stop to reduce giveback.
+        # Giveback analysis (Apr 7-13) shows trailing_stop has the worst
+        # avg giveback ($10.17/trade), with one NVDA trade giving back
+        # $13.81 of MFE. The 3.0× ATR trail distance in chop is too
+        # tight — normal chop oscillation routinely retraces 3× ATR.
+        #
+        # Variant A: widen to 5.0× ATR in chop
+        # Variant B: disable trailing entirely in chop (rely on timeout)
+        # Active variant controlled by _EXP4_CHOP_TRAIL_MODE:
+        #   "widen" = Variant A (default)
+        #   "disable" = Variant B
+        _EXP4_CHOP_TRAIL_MODE = "widen"  # "widen" or "disable"
+        _EXP4_CHOP_TRAIL_ATR = 5.0       # Variant A trail distance
+
+        if current_regime == "chop":
+            if _EXP4_CHOP_TRAIL_MODE == "disable":
+                # Variant B: skip trailing entirely in chop
+                import logging as _lg
+                _lg.getLogger(__name__).debug(
+                    "Exp4: trailing_stop disabled in chop for %s "
+                    "(excursion=%.1f ATR, mode=disable)",
+                    getattr(levels, 'symbol', '?'), excursion_atr,
+                )
+                return ExitSignal(False)
+            else:
+                # Variant A: widened trail
+                trail_atr = _EXP4_CHOP_TRAIL_ATR
+                import logging as _lg
+                _lg.getLogger(__name__).debug(
+                    "Exp4: trailing_stop widened in chop for %s "
+                    "(excursion=%.1f ATR, trail=%.1f ATR, mode=widen)",
+                    getattr(levels, 'symbol', '?'), excursion_atr, trail_atr,
+                )
+        else:
+            trail_atr = self.REGIME_TRAIL_ATR.get(
+                current_regime, self.trailing_distance_atr
+            )
         trail_distance = atr * trail_atr
 
         if direction > 0:
