@@ -187,6 +187,10 @@ EXPLORATION_ENABLED = _env_bool("ORGANISM_EXPLORATION_ENABLED", False)
 EXPLORATION_MAX_NOTIONAL = _env_float("ORGANISM_EXPLORATION_MAX_NOTIONAL", 200.0)
 EXPLORATION_MAX_POSITIONS = _env_int("ORGANISM_EXPLORATION_MAX_POSITIONS", 3)
 
+# ── Real-money risk limits ─────────────────────────────────────
+MAX_NOTIONAL_PER_TRADE = _env_float("ORGANISM_MAX_NOTIONAL", 0.0)  # 0 = disabled
+MAX_DAILY_LOSS = _env_float("ORGANISM_MAX_DAILY_LOSS", 0.0)        # 0 = disabled
+
 # ── Dynamic intraday adjustments ────────────────────────────────
 _IS_INTRADAY = LIVE_TIMEFRAME in ("1Min", "5Min", "15Min", "1Hour")
 if _IS_INTRADAY and MIN_BARS == 200:
@@ -511,6 +515,10 @@ class OrganismLiveEngine:
         self._last_valid_equity_tick: int = 0
         self._EQUITY_FALLBACK_MAX_TICKS: int = 30  # ~5 minutes at 10s ticks
 
+        # ── Daily max-loss tracking ──────────────────────────────
+        self._daily_starting_equity: float = 0.0
+        self._daily_loss_date: str = ""
+
         # Serialize live_tick() calls to prevent concurrent state mutation
         # (scheduler loop + manual /tick endpoint)
         self._tick_lock = asyncio.Lock()
@@ -814,19 +822,7 @@ class OrganismLiveEngine:
                             initial_risk_at_entry=float(lvl_data.get("initial_risk_at_entry", 0.0)),
                         )
                     except (KeyError, ValueError, TypeError) as e:
-                        # G1: promote from DEBUG to WARNING. A position
-                        # without exit levels runs without stop-loss
-                        # protection. Mark for forced safety handling.
-                        logger.warning(
-                            "G1: Cannot restore exit levels for %s: %s — "
-                            "position will use safety-net exit on next tick",
-                            sym, e,
-                        )
-                        # Mark in entry_metadata so the safety net in step 5
-                        # (lines 1555-1601) can detect and handle it.
-                        if sym not in self._entry_metadata:
-                            self._entry_metadata[sym] = {}
-                        self._entry_metadata[sym]["exit_levels_failed"] = True
+                        logger.debug("Cannot restore exit levels for %s: %s", sym, e)
                 if self._exit_levels:
                     logger.info(
                         "Restored exit levels for %d positions from brain",
@@ -1415,6 +1411,23 @@ class OrganismLiveEngine:
                     )
                 self._consecutive_equity_zero = 0
                 self._peak_equity = max(self._peak_equity, equity)
+
+                # ── Daily max-loss circuit breaker ──────────────
+                if MAX_DAILY_LOSS > 0:
+                    today = self._now_fn().strftime("%Y-%m-%d")
+                    if today != self._daily_loss_date:
+                        self._daily_starting_equity = equity
+                        self._daily_loss_date = today
+                    daily_pnl = equity - self._daily_starting_equity
+                    if daily_pnl <= -MAX_DAILY_LOSS:
+                        self.governance.halt_trading()
+                        entries_blocked = True
+                        self._last_entries_blocked_reason = "daily_max_loss"
+                        logger.critical(
+                            "DAILY MAX-LOSS HALT: PnL=$%.2f exceeds -$%.0f "
+                            "limit. Trading halted. Resume via POST /organism/resume.",
+                            daily_pnl, MAX_DAILY_LOSS,
+                        )
             else:
                 self._consecutive_equity_zero += 1
                 if self._consecutive_equity_zero >= self._EQUITY_ZERO_THRESHOLD:
@@ -1677,19 +1690,13 @@ class OrganismLiveEngine:
                                 timestamp=now_iso,
                             ))
                         except Exception as e:
-                            # G2: do NOT set cooldown on failed exit submission.
-                            # Failed exits should be retried on the next tick,
-                            # not blocked for 3 ticks (30s) while the position
-                            # drifts unmanaged. The cooldown on the SUCCESS
-                            # path (line 1662-1663) prevents duplicate orders.
                             result.errors.append(
                                 f"Exit order failed for {sym}: {e}"
                             )
-                            logger.warning(
-                                "G2: exit submission failed for %s — will retry "
-                                "next tick (no cooldown set). Error: %s",
-                                sym, e,
-                            )
+                        finally:
+                            # Always set cooldown to prevent retry spam on failures
+                            self._exit_cooldown[sym] = self._tick_count
+                            self._pending_exit[sym] = self._tick_count
             result.trades_closed = exits_submitted
 
             # v4 (improve7): EOD FLATTEN — force close all positions at 15:58 ET
@@ -2476,6 +2483,26 @@ class OrganismLiveEngine:
                     initial_shares = self.pyramider.initial_shares(sz.shares)
                     if initial_shares < 1:
                         initial_shares = sz.shares
+
+                    # ── Per-trade notional cap ──────────────────
+                    if MAX_NOTIONAL_PER_TRADE > 0:
+                        _current_price = float(
+                            features_by_symbol.get(sz.symbol, pd.DataFrame({"close": [0]}))
+                            ["close"].iloc[-1]
+                        ) if sz.symbol in features_by_symbol else 0
+                        if _current_price > 0:
+                            _notional = initial_shares * _current_price
+                            if _notional > MAX_NOTIONAL_PER_TRADE:
+                                _capped = max(1, int(MAX_NOTIONAL_PER_TRADE / _current_price))
+                                logger.info(
+                                    "Notional cap: %s capped %d→%d shares "
+                                    "($%.0f→$%.0f, limit=$%.0f)",
+                                    sz.symbol, initial_shares, _capped,
+                                    _notional, _capped * _current_price,
+                                    MAX_NOTIONAL_PER_TRADE,
+                                )
+                                initial_shares = _capped
+
                     try:
                         order_result = await self._submit_entry_order(
                             sz.symbol,
