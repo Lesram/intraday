@@ -501,6 +501,24 @@ class KellySizer:
                     shares = _notional_capped_shares
                     _dollar_risk_cap_applied = True
 
+            # H1: Production-mode per-trade risk-budget cap.
+            # The learning-mode cap (0.10% equity, lines 488-502) only
+            # applies when _is_learning=True. In production mode, Kelly
+            # sizing is uncapped beyond per-position % limits. This
+            # leaves a real-money gap: no per-trade dollar-risk limit.
+            #
+            # Fix: apply _RISK_BUDGET_PER_TRADE (0.25% equity) as a
+            # hard cap on shares, using the same ATR-stop-distance
+            # formula as the learning-mode cap.
+            if not _is_learning and not _risk_budget_applied:
+                _prod_max_risk = portfolio_value * self._RISK_BUDGET_PER_TRADE
+                _prod_stop_dist = atr_pct * self._RISK_BUDGET_STOP_ATR * current_price
+                if _prod_stop_dist > 0:
+                    _prod_risk_shares = int(_prod_max_risk / _prod_stop_dist)
+                    if shares > _prod_risk_shares and _prod_risk_shares >= 1:
+                        shares = _prod_risk_shares
+                        _dollar_risk_cap_applied = True
+
             actual_notional = shares * current_price
             actual_weight = actual_notional / portfolio_value
 

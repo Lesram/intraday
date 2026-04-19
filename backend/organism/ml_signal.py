@@ -339,11 +339,28 @@ class MLSignalGenerator:
             return MLSignal(symbol=symbol, direction=0, confidence=0, predicted_return=0)
 
         if len(available_cols) < len(self._feature_cols):
+            missing_pct = 1 - len(available_cols) / len(self._feature_cols)
+            # H2: If >20% of features are missing, the zero-padded
+            # signal is degraded beyond usefulness. Return neutral
+            # instead of producing garbage predictions.
+            if missing_pct > 0.20:
+                logger.error(
+                    "H2: Feature drift detected for %s — %d/%d features "
+                    "available (%.0f%% missing). Returning neutral signal "
+                    "instead of zero-padding degraded inference.",
+                    symbol, len(available_cols), len(self._feature_cols),
+                    missing_pct * 100,
+                )
+                return MLSignal(
+                    symbol=symbol, direction=0, confidence=0,
+                    predicted_return=0, raw_confidence=0,
+                    effective_confidence=0,
+                )
             logger.warning(
-                "Feature column mismatch for %s: %d/%d available — zero-padding missing columns",
-                symbol,
-                len(available_cols),
-                len(self._feature_cols),
+                "Feature column mismatch for %s: %d/%d available "
+                "(%.0f%% missing) — zero-padding missing columns",
+                symbol, len(available_cols), len(self._feature_cols),
+                missing_pct * 100,
             )
 
         # Build full-width feature row: use available columns, zero-pad missing ones
