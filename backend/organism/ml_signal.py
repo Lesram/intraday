@@ -351,6 +351,19 @@ class MLSignalGenerator:
                     symbol, len(available_cols), len(self._feature_cols),
                     missing_pct * 100,
                 )
+                # Alert wiring: feature drift
+                try:
+                    import asyncio as _aio
+                    from backend.infra.alerting import send_alert, AlertCategory, AlertSeverity
+                    _aio.get_event_loop().call_soon(
+                        lambda s=symbol, a=len(available_cols), t=len(self._feature_cols): _aio.ensure_future(send_alert(
+                            AlertCategory.SYSTEM_ERROR, AlertSeverity.WARNING,
+                            "Feature Drift Detected",
+                            f"ML signal neutralized for {s}: {a}/{t} features available.",
+                        ))
+                    )
+                except Exception:
+                    pass
                 return MLSignal(
                     symbol=symbol, direction=0, confidence=0,
                     predicted_return=0, raw_confidence=0,

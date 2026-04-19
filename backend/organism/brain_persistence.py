@@ -294,6 +294,19 @@ class OrganismBrain:
                 "AND reset_reason.",
                 reason,
             )
+            # Alert wiring: emit guard-fire alert
+            try:
+                import asyncio as _aio
+                from backend.infra.alerting import send_alert, AlertCategory, AlertSeverity
+                _aio.get_event_loop().call_soon(
+                    lambda: _aio.ensure_future(send_alert(
+                        AlertCategory.SYSTEM_ERROR, AlertSeverity.ERROR,
+                        "Brain Save Blocked",
+                        f"Trained manifest overwrite blocked (save). {reason}",
+                    ))
+                )
+            except Exception:
+                pass
             try:
                 lock.release()
             except Exception:

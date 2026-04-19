@@ -1428,6 +1428,17 @@ class OrganismLiveEngine:
                             "limit. Trading halted. Resume via POST /organism/resume.",
                             daily_pnl, MAX_DAILY_LOSS,
                         )
+                        # Alert wiring: emit Slack/webhook alert
+                        try:
+                            from backend.infra.alerting import send_alert, AlertCategory, AlertSeverity
+                            import asyncio as _aio
+                            _aio.create_task(send_alert(
+                                AlertCategory.RISK_VIOLATION, AlertSeverity.CRITICAL,
+                                "Daily Max-Loss Halt",
+                                f"PnL=${daily_pnl:.2f} crossed -${MAX_DAILY_LOSS:.0f}. Trading halted.",
+                            ))
+                        except Exception:
+                            pass
             else:
                 self._consecutive_equity_zero += 1
                 if self._consecutive_equity_zero >= self._EQUITY_ZERO_THRESHOLD:
@@ -4523,6 +4534,16 @@ class OrganismLiveEngine:
                 )
                 # Do not abort here — the guarded helper will block any
                 # unsafe write. But the CRITICAL log captures the caller.
+                try:
+                    from backend.infra.alerting import send_alert, AlertCategory, AlertSeverity
+                    import asyncio as _aio2
+                    _aio2.create_task(send_alert(
+                        AlertCategory.SYSTEM_ERROR, AlertSeverity.CRITICAL,
+                        "Forensic Guard: Object Identity Changed",
+                        "Live engine learner/signal_gen replaced unexpectedly.",
+                    ))
+                except Exception:
+                    pass
 
             # F4 — regression detection: if learner state regressed to
             # fresh while disk says trained, abort to preserve disk truth.
