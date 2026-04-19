@@ -144,11 +144,23 @@ async def get_organism_settings(request: Request) -> dict[str, Any]:
     return settings
 
 
+def _check_governance(request: Request) -> None:
+    """H5: Enforce governance controls on settings mutations.
+    Raises HTTPException if organism is frozen or halted."""
+    governance = getattr(request.app.state, "organism_governance", None)
+    if governance:
+        if getattr(governance, "is_frozen", False):
+            raise HTTPException(status_code=403, detail="Organism is frozen — settings changes blocked")
+        if hasattr(governance, "is_trading_halted") and governance.is_trading_halted:
+            raise HTTPException(status_code=403, detail="Trading is halted — settings changes blocked")
+
+
 @router.put("/organism")
 async def update_organism_settings(
     request: Request, body: OrganismSettings,
 ) -> dict[str, Any]:
     """Update organism engine configuration with hot-reload."""
+    _check_governance(request)
     scheduler = _get_scheduler(request)
     config = body.model_dump(exclude_unset=True)
 
@@ -199,6 +211,7 @@ async def update_trading_settings(
     request: Request, body: TradingSettings,
 ) -> dict[str, Any]:
     """Update trading parameters with hot-reload."""
+    _check_governance(request)
     scheduler = _get_scheduler(request)
     config = body.model_dump(exclude_unset=True)
 
@@ -242,6 +255,7 @@ async def update_ml_settings(
     request: Request, body: MLSettings,
 ) -> dict[str, Any]:
     """Update ML model parameters with hot-reload."""
+    _check_governance(request)
     scheduler = _get_scheduler(request)
     config = body.model_dump(exclude_unset=True)
 
