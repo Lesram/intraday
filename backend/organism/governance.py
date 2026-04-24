@@ -23,6 +23,17 @@ from backend.utils.logger import get_logger
 logger = get_logger(__name__)
 
 
+# ── Canonical risk-limit defaults ─────────────────────────────────
+# Single source of truth for code-default risk limits. Runtime values
+# may be overridden by environment variables; when overridden, the
+# startup validator logs both the resolved value and the code default
+# so operators can detect drift between ops config and code intent.
+DEFAULT_DRAWDOWN_KILL_PCT = 0.05
+DEFAULT_DRAWDOWN_COOLDOWN_S = 3600
+DEFAULT_MAX_CHANGES_PER_DAY = 100
+_DRAWDOWN_KILL_DRIFT_WARN_RATIO = 1.5
+
+
 @dataclass
 class GovernanceState:
     """Snapshot of all governance controls at a point in time."""
@@ -48,18 +59,61 @@ class GovernanceController:
         if disabled_csv:
             self._disabled = {s.strip().lower() for s in disabled_csv.split(",") if s.strip()}
 
-        self._max_changes_per_day = int(os.getenv("ORGANISM_MAX_CHANGES_PER_DAY", "100"))
+        self._max_changes_per_day = int(
+            os.getenv("ORGANISM_MAX_CHANGES_PER_DAY", str(DEFAULT_MAX_CHANGES_PER_DAY))
+        )
         self._change_count = 0
         self._last_reset_date: str = ""
         self._policy_version: str = ""
         self._config_hash: str = ""
 
-        # Drawdown kill switch
-        self._drawdown_limit = float(os.getenv("ORGANISM_DRAWDOWN_KILL_PCT", "0.05"))
-        self._drawdown_cooldown_s = int(os.getenv("ORGANISM_DRAWDOWN_COOLDOWN_S", "3600"))
+        # Drawdown kill switch — canonical resolution with explicit source tracking.
+        # Value hierarchy (most specific wins):
+        #   1. ORGANISM_DRAWDOWN_KILL_PCT env var (ops/runtime override)
+        #   2. DEFAULT_DRAWDOWN_KILL_PCT module constant (code default)
+        env_dd = os.getenv("ORGANISM_DRAWDOWN_KILL_PCT")
+        if env_dd is not None:
+            self._drawdown_limit = float(env_dd)
+            self._drawdown_limit_source = "env"
+        else:
+            self._drawdown_limit = DEFAULT_DRAWDOWN_KILL_PCT
+            self._drawdown_limit_source = "code_default"
+        self._drawdown_cooldown_s = int(
+            os.getenv("ORGANISM_DRAWDOWN_COOLDOWN_S", str(DEFAULT_DRAWDOWN_COOLDOWN_S))
+        )
         self._drawdown_triggered_at: datetime | None = None
         # P&L-028: adaptive cooldown — may be scaled up by trigger_drawdown_kill()
         self._effective_cooldown_s: int = self._drawdown_cooldown_s
+
+        # Startup validator — log resolved value + source. Warn if the
+        # resolved value drifts materially from the code default so an
+        # operator can notice when ops-config is more permissive than
+        # what a code reader would expect.
+        logger.info(
+            "Governance drawdown_kill_pct=%.4f source=%s code_default=%.4f cooldown_s=%d",
+            self._drawdown_limit,
+            self._drawdown_limit_source,
+            DEFAULT_DRAWDOWN_KILL_PCT,
+            self._drawdown_cooldown_s,
+            extra={
+                "drawdown_kill_pct": self._drawdown_limit,
+                "drawdown_kill_source": self._drawdown_limit_source,
+                "drawdown_kill_default": DEFAULT_DRAWDOWN_KILL_PCT,
+                "drawdown_cooldown_s": self._drawdown_cooldown_s,
+            },
+        )
+        if (
+            self._drawdown_limit_source == "env"
+            and self._drawdown_limit
+            > DEFAULT_DRAWDOWN_KILL_PCT * _DRAWDOWN_KILL_DRIFT_WARN_RATIO
+        ):
+            logger.warning(
+                "Governance drawdown_kill_pct=%.4f is %.2fx the code default %.4f — "
+                "verify this is intentional (env override from ORGANISM_DRAWDOWN_KILL_PCT)",
+                self._drawdown_limit,
+                self._drawdown_limit / DEFAULT_DRAWDOWN_KILL_PCT,
+                DEFAULT_DRAWDOWN_KILL_PCT,
+            )
 
     # ── queries ──────────────────────────────────────────────────────
 
