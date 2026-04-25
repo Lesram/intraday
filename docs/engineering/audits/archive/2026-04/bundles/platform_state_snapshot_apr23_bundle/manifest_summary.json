@@ -1,0 +1,13 @@
+{
+  "source": "organism_brain/manifest.json",
+  "captured_at_utc": "2026-04-24T04:00:00Z",
+  "brain_format_version": 2,
+  "saved_at": "2026-04-23T19:57:44.128879+00:00",
+  "total_runs": 1184,
+  "generation": 115,
+  "total_trades": 370,
+  "cumulative_pnl": -619.75,
+  "best_sharpe": 3.4363,
+  "ml_is_trained": true,
+  "feature_count": 79
+}

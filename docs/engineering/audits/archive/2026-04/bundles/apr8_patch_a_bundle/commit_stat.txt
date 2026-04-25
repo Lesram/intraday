@@ -1,0 +1,34 @@
+commit be2eee86822e37f93d1fd40354c5031eef6a4a01
+Author: Marsel Kamberaj <marselkei@Marsels-MacBook-Pro.local>
+Date:   Wed Apr 8 08:13:12 2026 -0700
+
+    feat(brain): force-save admin route for ML artifact recovery
+    
+    Adds a narrow, explicit, admin-only path to persist a full brain save
+    (ML joblibs + reference features + evolved params + fully synced
+    manifest) from the live process even when the walk-forward gate
+    would normally block the save. This is the only way to recover ML
+    artifacts without redeploy after the walk-forward gate has failed
+    for an entire session.
+    
+    - BrainPersistence.save() accepts force: bool = False (audit-only;
+      default behavior unchanged).
+    - LiveEngine.force_save_brain() new method: bypasses the gate,
+      persists exit_levels + entry_metadata, calls brain.save(force=True)
+      with the live object graph, updates C4 watchdog, returns verification
+      dict with gen/trades/best_sharpe/ml_is_trained/feature_count.
+    - POST /api/v1/organism/save?force=true new admin route. Requires
+      force=true query param (explicit opt-in) and admin auth. Calls the
+      live engine on app.state via _get_engine helper.
+    
+    Does not change save_essential_state (Patch B scope) or walk_forward_gate
+    (Patch C scope). Does not reintroduce _last_sharpe_decay_date. Normal
+    tick-driven _save_brain path continues to respect the gate.
+    
+    Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>
+
+ backend/organism/brain_persistence.py |  13 +-
+ backend/organism/live_engine.py       |  90 ++++++++++
+ backend/organism/routes.py            |  37 ++++
+ tests/test_apr8_patch_a_force_save.py | 315 ++++++++++++++++++++++++++++++++++
+ 4 files changed, 454 insertions(+), 1 deletion(-)

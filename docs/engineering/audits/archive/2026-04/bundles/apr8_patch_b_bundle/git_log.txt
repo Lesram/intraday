@@ -1,0 +1,25 @@
+commit 50b2513f2044656db3d59db133fa5f8ca64cd597
+Author: Marsel Kamberaj <marselkei@Marsels-MacBook-Pro.local>
+Date:   Wed Apr 8 01:27:41 2026 -0700
+
+    fix(brain): save manifest from live learner.state and signal_gen
+    
+    save_essential_state and the full save path now write generation,
+    total_trades, cumulative_pnl, best_sharpe, ml_is_trained, and
+    feature_count to manifest.json from the live learner.state and
+    signal_gen objects instead of the stale BrainPersistence._manifest
+    dict. Reproduces the recovery-incident scenario in a regression test
+    (stale _manifest overridden by live learner state).
+    
+    Also updates self._manifest in-place with the new authoritative values
+    after each save so subsequent in-process reads see the updated state.
+    
+    Preserves fallback behavior when learner or signal_gen is None.
+    Does not touch Patch C gate behavior or _last_sharpe_decay_date
+    (which remains removed).
+    
+    Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>
+
+ backend/organism/brain_persistence.py    | 100 +++++++++---
+ tests/test_apr8_patch_b_manifest_sync.py | 255 +++++++++++++++++++++++++++++++
+ 2 files changed, 330 insertions(+), 25 deletions(-)

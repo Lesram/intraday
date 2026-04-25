@@ -1,0 +1,181 @@
+{
+  "generation": 116,
+  "feature_cols": [
+    "ret_1d",
+    "ret_2d",
+    "ret_3d",
+    "ret_5d",
+    "ret_10d",
+    "ret_20d",
+    "log_ret_1d",
+    "momentum_accel",
+    "close_to_high",
+    "close_to_low",
+    "range_pct",
+    "gap_pct",
+    "body_ratio",
+    "upper_shadow",
+    "lower_shadow",
+    "sma_5",
+    "sma_10",
+    "sma_20",
+    "sma_50",
+    "macd",
+    "macd_signal",
+    "macd_hist",
+    "adx_14",
+    "rsi_14",
+    "rsi_5",
+    "bb_position",
+    "bb_width",
+    "z_score_20",
+    "z_score_50",
+    "stoch_k",
+    "stoch_d",
+    "atr_14",
+    "atr_ratio",
+    "realized_vol_5",
+    "realized_vol_20",
+    "vol_ratio_5_20",
+    "parkinson_vol",
+    "garman_klass_vol",
+    "vol_regime",
+    "bb_squeeze",
+    "vol_expansion",
+    "vol_sma_ratio",
+    "obv_slope",
+    "vol_momentum_5",
+    "vol_momentum_10",
+    "mfi_14",
+    "vwap_distance",
+    "volume_breakout",
+    "pv_divergence",
+    "rel_strength_spy",
+    "sector_momentum",
+    "corr_to_market",
+    "beta_20d",
+    "idio_vol",
+    "spread_proxy",
+    "price_impact",
+    "tick_direction",
+    "close_location",
+    "true_range_pct",
+    "day_of_week",
+    "month_sin",
+    "month_cos",
+    "pct_from_52w_high",
+    "pct_from_52w_low",
+    "trend_strength",
+    "choppiness",
+    "hurst",
+    "regime_encoded",
+    "ret_autocorr_1",
+    "ret_autocorr_5",
+    "ret_autocorr_10",
+    "hurst_exponent",
+    "comp_squeeze_momentum",
+    "comp_vol_price_div",
+    "comp_trend_alignment",
+    "comp_institutional_acc",
+    "comp_mean_rev_extreme",
+    "comp_breakout_readiness",
+    "comp_momentum_quality"
+  ],
+  "xgb_params": {
+    "n_estimators": 177,
+    "max_depth": 3,
+    "learning_rate": 0.0398,
+    "min_child_weight": 5,
+    "subsample": 0.8632,
+    "colsample_bytree": 0.8632,
+    "reg_alpha": 0.1,
+    "reg_lambda": 1.0,
+    "random_state": 42,
+    "verbosity": 0
+  },
+  "is_trained": true,
+  "train_window": 100,
+  "latest_metrics": {
+    "generation": 116,
+    "accuracy": 0.6168831168831169,
+    "precision": 0.5146198830409356,
+    "recall": 0.7154471544715447,
+    "f1": 0.5986394557823129,
+    "direction_accuracy": 0.6168831168831169,
+    "mean_pred_return": -0.00011922796693397686,
+    "hit_rate": 0.6038961038961039,
+    "feature_importance_top10": [
+      [
+        "garman_klass_vol",
+        0.0483
+      ],
+      [
+        "hurst",
+        0.0367
+      ],
+      [
+        "pct_from_52w_low",
+        0.0352
+      ],
+      [
+        "sma_20",
+        0.0329
+      ],
+      [
+        "trend_strength",
+        0.0308
+      ],
+      [
+        "rel_strength_spy",
+        0.0303
+      ],
+      [
+        "hurst_exponent",
+        0.0283
+      ],
+      [
+        "choppiness",
+        0.0255
+      ],
+      [
+        "ret_autocorr_10",
+        0.0252
+      ],
+      [
+        "adx_14",
+        0.0242
+      ]
+    ]
+  },
+  "calibration": {
+    "counts": [
+      [
+        0,
+        0
+      ],
+      [
+        53,
+        167
+      ],
+      [
+        11,
+        53
+      ],
+      [
+        3,
+        8
+      ],
+      [
+        0,
+        0
+      ]
+    ],
+    "map": [
+      1.0,
+      1.057884231536926,
+      0.38461538461538464,
+      1.0,
+      1.0
+    ]
+  }
+}

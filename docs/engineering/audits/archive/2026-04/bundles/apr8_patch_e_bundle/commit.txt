@@ -1,0 +1,29 @@
+commit 62256d7f4bcb360ee5ca75a83ee963f320545ba0
+Author: Marsel Kamberaj <marselkei@Marsels-MacBook-Pro.local>
+Date:   Wed Apr 8 20:00:02 2026 -0700
+
+    fix(brain): refuse to overwrite trained manifest with untrained state
+    
+    Adds a defensive guard at the top of BrainPersistence.save() that blocks
+    writes when the existing manifest shows total_trades > 0 or ml_is_trained
+    is True, but the incoming learner/signal_gen state is fresh/untrained
+    (total_trades == 0 AND not _is_trained).
+    
+    This is the real backstop against the Apr 8 02:08 UTC brain wipe failure
+    mode. Root cause investigation proved the wipe came through the full
+    save() path with fresh learner/signal_gen arguments, producing a manifest
+    with generation=0, total_trades=0, ml_is_trained=false while preserving
+    the stale self._manifest["total_runs"] counter.
+    
+    The guard is bypassed by force=True (used by LiveEngine.force_save_brain
+    for explicit admin recovery) and by a fresh BrainPersistence instance
+    (self._manifest empty — nothing to protect yet).
+    
+    Logs ERROR on block instead of raising, to avoid crashing the scheduler
+    tick if the guard fires during normal operation.
+    
+    Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>
+
+ backend/organism/brain_persistence.py          |  35 ++++
+ tests/test_apr8_patch_e_trained_state_guard.py | 220 +++++++++++++++++++++++++
+ 2 files changed, 255 insertions(+)

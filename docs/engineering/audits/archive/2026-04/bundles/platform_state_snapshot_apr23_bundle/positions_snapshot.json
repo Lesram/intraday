@@ -1,0 +1,7 @@
+{
+  "source": "GET https://paper-api.alpaca.markets/v2/positions",
+  "captured_at_utc": "2026-04-24T03:58Z",
+  "positions": [],
+  "position_count": 0,
+  "flat": true
+}

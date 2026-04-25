@@ -1,0 +1,30 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.12.12, pytest-9.0.2, pluggy-1.6.0 -- /Users/marselkei/VS/intra/venv/bin/python
+cachedir: .pytest_cache
+rootdir: /Users/marselkei/VS/intra
+configfile: pytest.ini
+plugins: anyio-4.12.1, timeout-2.4.0, asyncio-1.3.0
+timeout: 15.0s
+timeout method: signal
+timeout func_only: False
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... collected 10 items
+
+tests/test_governance_drawdown_canonical.py::test_drawdown_kill_uses_env_when_set PASSED [ 10%]
+tests/test_governance_drawdown_canonical.py::test_drawdown_kill_uses_code_default_when_env_absent PASSED [ 20%]
+tests/test_governance_drawdown_canonical.py::test_drawdown_kill_drift_warning_fires_on_permissive_env PASSED [ 30%]
+tests/test_governance_drawdown_canonical.py::test_drawdown_kill_drift_warning_silent_on_default PASSED [ 40%]
+tests/test_governance_drawdown_canonical.py::test_drawdown_kill_drift_warning_silent_below_ratio PASSED [ 50%]
+tests/test_governance_drawdown_canonical.py::test_drawdown_kill_drift_warning_fires_at_boundary PASSED [ 60%]
+tests/test_h5_settings_governance.py::test_h5_allows_when_not_frozen PASSED [ 70%]
+tests/test_h5_settings_governance.py::test_h5_blocks_when_frozen PASSED  [ 80%]
+tests/test_h5_settings_governance.py::test_h5_blocks_when_halted PASSED  [ 90%]
+tests/test_h5_settings_governance.py::test_h5_no_governance_allows PASSED [100%]
+
+=============================== warnings summary ===============================
+venv/lib/python3.12/site-packages/passlib/utils/__init__.py:854
+  /Users/marselkei/VS/intra/venv/lib/python3.12/site-packages/passlib/utils/__init__.py:854: DeprecationWarning: 'crypt' is deprecated and slated for removal in Python 3.13
+    from crypt import crypt as _crypt
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+======================== 10 passed, 1 warning in 0.65s =========================

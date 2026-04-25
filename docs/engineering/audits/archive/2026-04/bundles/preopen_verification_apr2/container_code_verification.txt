@@ -1,0 +1,33 @@
+=== CONTAINER CODE VERIFICATION ===
+Timestamp: 2026-04-02T06:15:38Z
+
+--- save_essential_state in brain_persistence.py ---
+500:    def save_essential_state(
+
+--- save_essential_state call in live_engine.py ---
+536:        self._watchdog_last_brain_save_tick: int = 0
+3090:        ticks_since_save = self._tick_count - self._watchdog_last_brain_save_tick
+3094:                ticks_since_save, self._watchdog_last_brain_save_tick,
+3130:                "ticks_since_last_save": self._tick_count - self._watchdog_last_brain_save_tick,
+3131:                "healthy": (self._tick_count - self._watchdog_last_brain_save_tick) < 1080,
+4215:                    "— persisting all runtime truth (ML models + evolved_params gated)",
+4218:                self.brain.save_essential_state(
+4242:                self._watchdog_last_brain_save_tick = self._tick_count
+4271:            self._watchdog_last_brain_save_tick = self._tick_count
+
+--- reconciliation_adjustment in live_engine.py ---
+3641:                _exit_reason = "reconciliation_adjustment"
+
+--- regime_at_exit fix in live_engine.py ---
+3623:            _regime_at_exit = self._last_regime if self._last_regime != "unknown" else getattr(self.regime_detector, "current_regime", "unknown")
+
+--- stale metadata pruning in live_engine.py ---
+819:                    stale_symbols = set(saved_entry_meta.keys()) - broker_symbols
+820:                    if stale_symbols:
+821:                        for sym in stale_symbols:
+824:                            "Pruned %d stale entry metadata (no broker position): %s",
+825:                            len(stale_symbols),
+826:                            sorted(stale_symbols),
+
+--- gate-blocked save message format ---
+4215:                    "— persisting all runtime truth (ML models + evolved_params gated)",

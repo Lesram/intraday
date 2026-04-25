@@ -1,0 +1,37 @@
+=== RUNNING CONTAINER CODE VERIFICATION ===
+Timestamp: 2026-04-03T06:16:32Z
+
+1. stale metadata pruning: PRESENT
+   826:                            "Pruned %d stale entry metadata (no broker position): %s",
+2. reconciliation_adjustment: PRESENT
+   3686:                _exit_reason = "reconciliation_adjustment"
+3. regime_at_exit fix: PRESENT
+   3557:                                self._last_regime if self._last_regime != "unknown" else "chop",
+3668:            _regime_at_exit = self._last_regime if self._last_regime != "unknown" else getattr(self.regime_detector, "current_regime", "unknown")
+4. brain volume mount: PRESENT (verified via mount inspection)
+5. save_essential_state: PRESENT
+   500:    def save_essential_state(
+6. essential on gate block: PRESENT
+   4260:                    "— persisting all runtime truth (ML models + evolved_params gated)",
+7. watchdog tick update: PRESENT
+   4287:                self._watchdog_last_brain_save_tick = self._tick_count
+4316:            self._watchdog_last_brain_save_tick = self._tick_count
+8. pyramid cost-basis: PRESENT
+   3638:                entry_price = pyr.avg_entry
+9. broker avg_entry sync: PRESENT
+   3523:            broker_avg = float(current_positions[sym].get("avg_entry_price", 0))
+10. H5 phantom prevention: PRESENT
+   1886:                            # H5 FIX: Do NOT record pyramid layer here.
+11. H4 trading phase: PRESENT
+   7:  ML_ISOLATION_TRADES (200): ML weight = 0 in confidence formula,
+23:ML_ISOLATION_TRADES = 200
+12. H3 EDGE_COST_REJECT: PRESENT
+   405:                            "EDGE_COST_REJECT: %s regime=%s conf=%.3f "
+13. H5 level preservation: PRESENT
+   3540:                        highest_level = max(lay.level for lay in pyr.layers)
+3543:                        if int(broker_qty) > old_shares and highest_level < 2:
+
+=== VERIFIED ABSENCES ===
+PASS: pyr.layers.append ABSENT from pyramid_add block
+PASS: update_levels_for_pyramid ABSENT from pyramid_add block
+PASS: H3 uses _logger.info (not bare logger)

@@ -1,0 +1,15 @@
+ce06d41 experiment(instrumentation): confidence inversion side-by-side logging [Exp 3 prep]
+d79cae0 experiment(entries): suppress inverse ETF entries in chop regime [Exp 2]
+6754223 feat(tooling): automated experiment observation report generator
+ab54b2f experiment(exits): chop-regime minimum-hold gate for pyramid_cut [Exp 1A]
+7d36b61 fix(brain): LiveEngine forensic guard + bypass audit [F4/4]
+9e7c9a9 fix(brain): break-glass reset + suspicious-write instrumentation + read-back invariant [F3/4]
+3a694ee fix(brain): route save_essential_state through _write_manifest_guarded [F2/4]
+eaa4b2f fix(brain): introduce _write_manifest_guarded helper, route save() through it [F1/4]
+3528162 fix(brain): extend trained-state overwrite guard to save_essential_state [F-lite]
+62256d7 fix(brain): refuse to overwrite trained manifest with untrained state
+c5fb0ed fix(scripts): default standalone scripts to organism_brain_sandbox/
+be2eee8 feat(brain): force-save admin route for ML artifact recovery
+50b2513 fix(brain): save manifest from live learner.state and signal_gen
+93593a2 fix(brain): walk_forward_gate reads authoritative learner.state.best_sharpe
+2018999 fix(H5): preserve pyramid level on broker sync collapse

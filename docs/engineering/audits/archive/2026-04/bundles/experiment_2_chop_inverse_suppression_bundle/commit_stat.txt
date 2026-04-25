@@ -1,0 +1,35 @@
+commit d79cae08be7ce54888bdcfcc7bfd53e8fee46683
+Author: Marsel Kamberaj <marselkei@Marsels-MacBook-Pro.local>
+Date:   Fri Apr 10 21:07:02 2026 -0700
+
+    experiment(entries): suppress inverse ETF entries in chop regime [Exp 2]
+    
+    In chop regime, skip PSQ and SH for entry candidacy. These inverse
+    ETFs are intended for trending_down hedging (improve9 design) but in
+    chop they produce 0% win rate: 6 trades, -$28.54, 4/6 never went
+    green (MFE <= 0). This is the second-largest leak after pyramid_cut
+    exits.
+    
+    Scope:
+    - Only affects PSQ and SH
+    - Only in chop regime — they remain eligible in trending_down,
+      trending_up, high_vol, stress, unknown
+    - Non-inverse symbols completely unaffected
+    - No exit, sizing, ML, or structural changes
+    
+    Instrumentation: logs "Exp2: inverse ETF entry suppressed in chop"
+    with symbol, regime, confidence, and reason. Also emits an ActivityEvent
+    so the suppression appears in /organism/status tick activity.
+    
+    NOTE: This commit sits ON TOP of Exp1A (ab54b2f) which is currently
+    live. Exp2 is NOT deployed yet — it will deploy only after the Exp1A
+    observation window (3-5 sessions) concludes, or immediately if Exp1A
+    fails and Exp2 becomes the next live experiment.
+    
+    7 new tests. All 114 tests pass (7 Exp2 + 107 organism regression).
+    
+    Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>
+
+ backend/organism/live_engine.py                    |  26 +++++
+ .../test_experiment_2_inverse_chop_suppression.py  | 119 +++++++++++++++++++++
+ 2 files changed, 145 insertions(+)

@@ -1,0 +1,15 @@
+#20 DONE 54.4s
+
+#21 resolving provenance for metadata file
+#21 DONE 0.0s
+ Image intra-api Built 
+ Container trading_platform_db_paper Running 
+ Container intra-redis-1 Running 
+ Container intra-api-1 Recreate 
+ Container intra-api-1 Recreated 
+ Container intra-redis-1 Waiting 
+ Container trading_platform_db_paper Waiting 
+ Container intra-redis-1 Healthy 
+ Container trading_platform_db_paper Healthy 
+ Container intra-api-1 Starting 
+ Container intra-api-1 Started 

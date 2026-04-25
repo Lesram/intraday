@@ -1,0 +1,33 @@
+=== OPEN+15 SWEEP 134919 UTC ===
+{"status":"ok","version":"1.0.0","timestamp":"2026-04-02T13:49:19.142377+00:00"}
+--- MANIFEST ---
+{
+  "brain_format_version": 2,
+  "saved_at": "2026-04-02T13:49:11.493374+00:00",
+  "generation": 0,
+  "total_runs": 97,
+  "total_trades": 161,
+  "cumulative_pnl": -714.26,
+  "best_sharpe": 0,
+  "ml_is_trained": true,
+  "feature_count": 79
+}
+--- ACCOUNT ---
+equity=111644.55 status=ACTIVE blocked=False
+--- POSITIONS ---
+FLAT
+--- ORDERS TODAY ---
+Orders: 0
+--- SAVE EVENTS (last 20m) ---
+{"timestamp": "2026-04-02T13:48:58", "level": "INFO", "logger": "backend.organism.brain_persistence", "message": "Brain saved successfully to /app/organism_brain", "module": "brain_persistence", "function": "save", "line": 328}
+{"timestamp": "2026-04-02T13:48:58", "level": "INFO", "logger": "backend.organism.live_engine", "message": "{"event": "Brain saved at tick 2940 (No baseline Sharpe, current=-0.813)", "logger": "backend.organism.live_engine", "level": "info", "timestamp": "2026-04-02T13:48:58.892836Z"}", "module": "live_engine", "function": "_save_brain", "line": 4272}
+{"timestamp": "2026-04-02T13:49:11", "level": "INFO", "logger": "backend.organism.brain_persistence", "message": "Brain saved successfully to /app/organism_brain", "module": "brain_persistence", "function": "save", "line": 328}
+{"timestamp": "2026-04-02T13:49:11", "level": "INFO", "logger": "backend.organism.live_engine", "message": "{"event": "Brain saved at tick 2941 (No baseline Sharpe, current=-0.813)", "logger": "backend.organism.live_engine", "level": "info", "timestamp": "2026-04-02T13:49:11.502618Z"}", "module": "live_engine", "function": "_save_brain", "line": 4272}
+{"timestamp": "2026-04-02T13:49:11", "level": "INFO", "logger": "backend.organism.live_engine", "message": "{"event": "Brain saved after 1 fill(s) recorded", "logger": "backend.organism.live_engine", "level": "info", "timestamp": "2026-04-02T13:49:11.505511Z"}", "module": "live_engine", "function": "_reconcile_fills", "line": 3773}
+--- ERRORS (last 20m) ---
+{"timestamp": "2026-04-02T13:48:20", "level": "ERROR", "logger": "backend.organism.live_engine", "message": "{"event": "Zero shares for closed position AMZN \u2014 skipping trade record", "logger": "backend.organism.live_engine", "level": "error", "timestamp": "2026-04-02T13:48:20.814036Z"}", "module": "live_engine", "function": "_reconcile_fills", "line": 3601}
+{"timestamp": "2026-04-02T13:48:33", "level": "ERROR", "logger": "backend.organism.live_engine", "message": "{"event": "Zero shares for closed position AMZN \u2014 skipping trade record", "logger": "backend.organism.live_engine", "level": "error", "timestamp": "2026-04-02T13:48:33.372121Z"}", "module": "live_engine", "function": "_reconcile_fills", "line": 3601}
+{"timestamp": "2026-04-02T13:48:45", "level": "ERROR", "logger": "backend.organism.live_engine", "message": "{"event": "Zero shares for closed position AMZN \u2014 skipping trade record", "logger": "backend.organism.live_engine", "level": "error", "timestamp": "2026-04-02T13:48:45.910647Z"}", "module": "live_engine", "function": "_reconcile_fills", "line": 3601}
+{"timestamp": "2026-04-02T13:48:58", "level": "ERROR", "logger": "backend.organism.live_engine", "message": "{"event": "Zero shares for closed position AMZN \u2014 skipping trade record", "logger": "backend.organism.live_engine", "level": "error", "timestamp": "2026-04-02T13:48:58.761978Z"}", "module": "live_engine", "function": "_reconcile_fills", "line": 3601}
+{"timestamp": "2026-04-02T13:49:11", "level": "ERROR", "logger": "backend.organism.live_engine", "message": "{"event": "Zero shares for closed position AMZN \u2014 skipping trade record", "logger": "backend.organism.live_engine", "level": "error", "timestamp": "2026-04-02T13:49:11.424194Z"}", "module": "live_engine", "function": "_reconcile_fills", "line": 3601}
+--- RECONCILIATION ---

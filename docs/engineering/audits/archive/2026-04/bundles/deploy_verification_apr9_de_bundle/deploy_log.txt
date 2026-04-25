@@ -1,0 +1,20 @@
+#20 exporting attestation manifest sha256:f6c6bb3d2ee5d2afb20c134ebf80f9f98e233e2202325c6c98fb04b811c3523a 0.0s done
+#20 exporting manifest list sha256:28605db5ac34af8791ff484d2da46d017ac64e74aa8c1567e362c9e49e6ad5b0 done
+#20 naming to docker.io/library/intra-api:latest done
+#20 unpacking to docker.io/library/intra-api:latest
+#20 unpacking to docker.io/library/intra-api:latest 9.2s done
+#20 DONE 53.6s
+
+#21 resolving provenance for metadata file
+#21 DONE 0.0s
+ Image intra-api Built 
+ Container intra-redis-1 Running 
+ Container trading_platform_db_paper Running 
+ Container intra-api-1 Recreate 
+ Container intra-api-1 Recreated 
+ Container trading_platform_db_paper Waiting 
+ Container intra-redis-1 Waiting 
+ Container intra-redis-1 Healthy 
+ Container trading_platform_db_paper Healthy 
+ Container intra-api-1 Starting 
+ Container intra-api-1 Started 

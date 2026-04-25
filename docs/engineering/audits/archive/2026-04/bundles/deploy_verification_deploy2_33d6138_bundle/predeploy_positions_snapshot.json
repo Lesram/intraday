@@ -1,0 +1,6 @@
+{
+  "source": "GET /api/v1/positions at captured_at=2026-04-24T02:41Z",
+  "count": 0,
+  "alpaca_position_count_from_boot_log": 0,
+  "positions": []
+}

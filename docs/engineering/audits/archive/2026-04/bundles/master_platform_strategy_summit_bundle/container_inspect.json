@@ -1,0 +1,441 @@
+[
+    {
+        "Id": "dac16c39cdd9a7afbd52e93453bcf44a6b91c3ea2b7b4cb6dedcfa0a6f7c361f",
+        "Created": "2026-04-16T02:42:19.694033507Z",
+        "Path": "/app/docker-entrypoint.sh",
+        "Args": [
+            "uvicorn",
+            "backend.api.main:socketio_app",
+            "--host",
+            "0.0.0.0",
+            "--port",
+            "8000",
+            "--workers",
+            "1",
+            "--access-log",
+            "--log-config",
+            "/app/logging_config.yaml"
+        ],
+        "State": {
+            "Status": "running",
+            "Running": true,
+            "Paused": false,
+            "Restarting": false,
+            "OOMKilled": false,
+            "Dead": false,
+            "Pid": 708,
+            "ExitCode": 0,
+            "Error": "",
+            "StartedAt": "2026-04-23T06:45:08.490460292Z",
+            "FinishedAt": "2026-04-23T06:45:08.008609917Z",
+            "Health": {
+                "Status": "healthy",
+                "FailingStreak": 0,
+                "Log": [
+                    {
+                        "Start": "2026-04-24T04:44:32.160500501Z",
+                        "End": "2026-04-24T04:44:32.21599296Z",
+                        "ExitCode": 0,
+                        "Output": "  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current\n                                 Dload  Upload   Total   Spent    Left  Speed\n\r  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0{\"status\":\"ok\",\"version\":\"1.0.0\",\"timestamp\":\"2026-04-24T04:44:32.214631+00:00\"}\r100    80  100    80    0     0  60240      0 --:--:-- --:--:-- --:--:-- 80000\n"
+                    },
+                    {
+                        "Start": "2026-04-24T04:45:02.221325501Z",
+                        "End": "2026-04-24T04:45:02.275641835Z",
+                        "ExitCode": 0,
+                        "Output": "  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current\n                                 Dload  Upload   Total   Spent    Left  Speed\n\r  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0\r100    80  100    80    0     0  69808      0 --:--:-- --:--:-- --:--:-- 80000\n{\"status\":\"ok\",\"version\":\"1.0.0\",\"timestamp\":\"2026-04-24T04:45:02.274180+00:00\"}"
+                    },
+                    {
+                        "Start": "2026-04-24T04:45:32.27742371Z",
+                        "End": "2026-04-24T04:45:32.329924876Z",
+                        "ExitCode": 0,
+                        "Output": "  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current\n                                 Dload  Upload   Total   Spent    Left  Speed\n\r  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0\r100    80  100    80    0     0  68143      0 --:--:-- --:--:-- --:--:-- 80000\n{\"status\":\"ok\",\"version\":\"1.0.0\",\"timestamp\":\"2026-04-24T04:45:32.328499+00:00\"}"
+                    },
+                    {
+                        "Start": "2026-04-24T04:46:02.337273918Z",
+                        "End": "2026-04-24T04:46:02.393015085Z",
+                        "ExitCode": 0,
+                        "Output": "  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current\n                                 Dload  Upload   Total   Spent    Left  Speed\n\r  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0\r100    80  100    80    0     0  63593      0 --:--:-- --:--:-- --:--:-- 80000\n{\"status\":\"ok\",\"version\":\"1.0.0\",\"timestamp\":\"2026-04-24T04:46:02.391366+00:00\"}"
+                    },
+                    {
+                        "Start": "2026-04-24T04:46:32.393399876Z",
+                        "End": "2026-04-24T04:46:32.441462876Z",
+                        "ExitCode": 0,
+                        "Output": "  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current\n                                 Dload  Upload   Total   Spent    Left  Speed\n\r  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0\r100    80  100    80    0     0  73868      0 --:--:-- --:--:-- --:--:-- 80000\n{\"status\":\"ok\",\"version\":\"1.0.0\",\"timestamp\":\"2026-04-24T04:46:32.440008+00:00\"}"
+                    }
+                ]
+            }
+        },
+        "Image": "sha256:32296cf9a48623c33fcf671b0650b42490c4ffbc20400b9c6003f000e388b477",
+        "ResolvConfPath": "/var/lib/docker/containers/dac16c39cdd9a7afbd52e93453bcf44a6b91c3ea2b7b4cb6dedcfa0a6f7c361f/resolv.conf",
+        "HostnamePath": "/var/lib/docker/containers/dac16c39cdd9a7afbd52e93453bcf44a6b91c3ea2b7b4cb6dedcfa0a6f7c361f/hostname",
+        "HostsPath": "/var/lib/docker/containers/dac16c39cdd9a7afbd52e93453bcf44a6b91c3ea2b7b4cb6dedcfa0a6f7c361f/hosts",
+        "LogPath": "/var/lib/docker/containers/dac16c39cdd9a7afbd52e93453bcf44a6b91c3ea2b7b4cb6dedcfa0a6f7c361f/dac16c39cdd9a7afbd52e93453bcf44a6b91c3ea2b7b4cb6dedcfa0a6f7c361f-json.log",
+        "Name": "/intra-api-1",
+        "RestartCount": 0,
+        "Driver": "overlayfs",
+        "Platform": "linux",
+        "MountLabel": "",
+        "ProcessLabel": "",
+        "AppArmorProfile": "",
+        "ExecIDs": null,
+        "HostConfig": {
+            "Binds": [
+                "/Users/marselkei/VS/intra/logs:/app/logs:rw",
+                "/Users/marselkei/VS/intra/data:/app/data:rw",
+                "/Users/marselkei/VS/intra/organism_brain:/app/organism_brain:rw"
+            ],
+            "ContainerIDFile": "",
+            "LogConfig": {
+                "Type": "json-file",
+                "Config": {}
+            },
+            "NetworkMode": "intra_trading-network",
+            "PortBindings": {
+                "8000/tcp": [
+                    {
+                        "HostIp": "",
+                        "HostPort": "8000"
+                    }
+                ]
+            },
+            "RestartPolicy": {
+                "Name": "unless-stopped",
+                "MaximumRetryCount": 0
+            },
+            "AutoRemove": false,
+            "VolumeDriver": "",
+            "VolumesFrom": null,
+            "ConsoleSize": [
+                0,
+                0
+            ],
+            "CapAdd": null,
+            "CapDrop": null,
+            "CgroupnsMode": "private",
+            "Dns": [],
+            "DnsOptions": [],
+            "DnsSearch": [],
+            "ExtraHosts": [],
+            "GroupAdd": null,
+            "IpcMode": "private",
+            "Cgroup": "",
+            "Links": null,
+            "OomScoreAdj": 0,
+            "PidMode": "",
+            "Privileged": false,
+            "PublishAllPorts": false,
+            "ReadonlyRootfs": false,
+            "SecurityOpt": null,
+            "UTSMode": "",
+            "UsernsMode": "",
+            "ShmSize": 67108864,
+            "Runtime": "runc",
+            "Isolation": "",
+            "CpuShares": 0,
+            "Memory": 0,
+            "NanoCpus": 0,
+            "CgroupParent": "",
+            "BlkioWeight": 0,
+            "BlkioWeightDevice": null,
+            "BlkioDeviceReadBps": null,
+            "BlkioDeviceWriteBps": null,
+            "BlkioDeviceReadIOps": null,
+            "BlkioDeviceWriteIOps": null,
+            "CpuPeriod": 0,
+            "CpuQuota": 0,
+            "CpuRealtimePeriod": 0,
+            "CpuRealtimeRuntime": 0,
+            "CpusetCpus": "",
+            "CpusetMems": "",
+            "Devices": null,
+            "DeviceCgroupRules": null,
+            "DeviceRequests": null,
+            "MemoryReservation": 0,
+            "MemorySwap": 0,
+            "MemorySwappiness": null,
+            "OomKillDisable": null,
+            "PidsLimit": null,
+            "Ulimits": null,
+            "CpuCount": 0,
+            "CpuPercent": 0,
+            "IOMaximumIOps": 0,
+            "IOMaximumBandwidth": 0,
+            "MaskedPaths": [
+                "/proc/acpi",
+                "/proc/asound",
+                "/proc/interrupts",
+                "/proc/kcore",
+                "/proc/keys",
+                "/proc/latency_stats",
+                "/proc/sched_debug",
+                "/proc/scsi",
+                "/proc/timer_list",
+                "/proc/timer_stats",
+                "/sys/devices/virtual/powercap",
+                "/sys/firmware"
+            ],
+            "ReadonlyPaths": [
+                "/proc/bus",
+                "/proc/fs",
+                "/proc/irq",
+                "/proc/sys",
+                "/proc/sysrq-trigger"
+            ]
+        },
+        "Storage": {
+            "RootFS": {
+                "Snapshot": {
+                    "Name": "overlayfs"
+                }
+            }
+        },
+        "Mounts": [
+            {
+                "Type": "bind",
+                "Source": "/Users/marselkei/VS/intra/logs",
+                "Destination": "/app/logs",
+                "Mode": "rw",
+                "RW": true,
+                "Propagation": "rprivate"
+            },
+            {
+                "Type": "bind",
+                "Source": "/Users/marselkei/VS/intra/organism_brain",
+                "Destination": "/app/organism_brain",
+                "Mode": "rw",
+                "RW": true,
+                "Propagation": "rprivate"
+            },
+            {
+                "Type": "bind",
+                "Source": "/Users/marselkei/VS/intra/data",
+                "Destination": "/app/data",
+                "Mode": "rw",
+                "RW": true,
+                "Propagation": "rprivate"
+            }
+        ],
+        "Config": {
+            "Hostname": "dac16c39cdd9",
+            "Domainname": "",
+            "User": "appuser",
+            "AttachStdin": false,
+            "AttachStdout": true,
+            "AttachStderr": true,
+            "ExposedPorts": {
+                "8000/tcp": {}
+            },
+            "Tty": false,
+            "OpenStdin": false,
+            "StdinOnce": false,
+            "Env": [
+                "ML_MONTHLY_REVIEW_TIME_UTC=04:00",
+                "MULTI_STRATEGY_FEATURE_MODE=realtime_light",
+                "ORGANISM_TICK_INTERVAL_SECONDS=10",
+                "ALPACA_BASE_URL=https://paper-api.alpaca.markets",
+                "ALPACA_RATE_LIMIT_PER_MINUTE=300",
+                "JWT_EXPIRE_MINUTES=60",
+                "POSTGRES_DB=algotrading",
+                "DATABASE_MAX_OVERFLOW=30",
+                "ORGANISM_RETRAIN_INTERVAL=180",
+                "SCANNER_INTERVAL_TICKS=6",
+                "UNIVERSE_MAX_SIZE=80",
+                "ALPACA_PAPER=true",
+                "ORGANISM_LIVE_TIMEFRAME=1Min",
+                "MULTI_STRATEGY_STRONG_EXPOSURE_MULTIPLIER=2.0",
+                "ML_WEEKLY_RETRAIN_TIME_UTC=03:00",
+                "ALPACA_API_KEY_ID=PK3C44ZOFCTR7LIJQQAK77L5XF",
+                "UNIVERSE_TOP_DROP=5",
+                "ORGANISM_USE_STREAMING=1",
+                "SCANNER_TENSION_THRESHOLD=0.3",
+                "ORGANISM_EXPLORATION_ENABLED=false",
+                "DEBUG=false",
+                "ORGANISM_MAX_CHANGES_PER_DAY=500",
+                "POSTGRES_USER=trading",
+                "ORGANISM_LIVE_SYMBOLS=AAPL,MSFT,GOOGL,AMZN,NVDA,META,TSLA,AMD,AVGO,CRM,COST,WMT,LLY,XOM,CAT,SPY,QQQ,IWM,XLK,XLE,SH,PSQ",
+                "JWT_SECRET_KEY=dev_secret_key_minimum_32_chars_for_development_only",
+                "ORGANISM_ENABLED=1",
+                "ML_PROMOTION_MODE=immediate",
+                "SCANNER_TOP_MOVERS=50",
+                "POSTGRES_PASSWORD=trading_password",
+                "LOG_LEVEL=INFO",
+                "ENABLE_ML_LIFECYCLE_SCHEDULER=1",
+                "AUTO_BREAKOUT_SCAN_ENABLED=1",
+                "ML_DAILY_MONITOR_TIME_UTC=02:00",
+                "PYTHONPATH=/app",
+                "MULTI_STRATEGY_LIVE_SYMBOLS=AAPL,MSFT,NVDA,TSLA,AMD,META,AMZN,GOOGL,SPY,QQQ,AVGO,CRM,NFLX,COIN,PLTR",
+                "DEFAULT_USER_ID=admin",
+                "ENABLE_ORGANISM_SCHEDULER=1",
+                "SCANNER_ENABLED=true",
+                "DATABASE_POOL_SIZE=20",
+                "CORS_ORIGINS=[\"http://localhost:3000\",\"http://127.0.0.1:3000\",\"http://localhost:5173\",\"http://127.0.0.1:5173\"]",
+                "ORGANISM_DRAWDOWN_COOLDOWN_S=300",
+                "SCANNER_MIN_PRICE=10.0",
+                "JWT_ALGORITHM=HS256",
+                "ORGANISM_LIVE_LOOKBACK=100",
+                "UNIVERSE_TOP_ADD=10",
+                "ORGANISM_MAX_POSITIONS=8",
+                "MULTI_STRATEGY_LIVE_ENABLED=1",
+                "ORGANISM_LONG_ONLY=true",
+                "ORGANISM_MIN_BARS=50",
+                "APP_LOG_LEVEL=INFO",
+                "APP_ENVIRONMENT=development",
+                "ALPACA_MIN_REQUEST_INTERVAL=0.05",
+                "LIVING_STRATEGY_BREAKOUT_CANDIDATES_LIMIT=20",
+                "ORGANISM_ALPHA_TOP_N=5",
+                "PROMETHEUS_ENABLED=true",
+                "ORGANISM_DRAWDOWN_KILL_PCT=0.20",
+                "UNIVERSE_FITNESS_DECAY=0.95",
+                "LIVING_STRATEGY_MAX_TOTAL_POSITIONS=40",
+                "DATABASE_ECHO=false",
+                "ALPACA_DATA_URL=https://data.alpaca.markets/v2",
+                "ML_DAILY_MONITOR_LOOKBACK_DAYS=60",
+                "STRATEGY_MIN_FLIP_INTERVAL_S=10",
+                "MULTI_STRATEGY_MIN_AVG_VOLUME=50000",
+                "ORGANISM_FREEZE_ADAPTATION=0",
+                "AUDIT_LOG_ENABLED=true",
+                "LIVING_STRATEGY_INCLUDE_BREAKOUT_CANDIDATES=1",
+                "SCANNER_MAX_CANDIDATES=80",
+                "LIVING_STRATEGY_ENABLED=true",
+                "ML_WEEKLY_RETRAIN_LOOKBACK_DAYS=60",
+                "ORGANISM_TRAIN_WINDOW=100",
+                "PYTHONUNBUFFERED=1",
+                "ALPACA_API_SECRET_KEY=799oKMaDqPaUsvZ743G33Rivpw2PPgP61mRj7k11jB4K",
+                "ALPACA_STREAM_URL=wss://paper-api.alpaca.markets/stream",
+                "USE_MOCK_BROKER=false",
+                "REDIS_URL=redis://:changeme_redis@redis:6379/0",
+                "ALPACA_DATA_FEED=sip",
+                "OTEL_ENABLED=true",
+                "PYTHONDONTWRITEBYTECODE=1",
+                "MULTI_STRATEGY_BASE_TARGET_EXPOSURE=0.25",
+                "UNIVERSE_MIN_SIZE=15",
+                "UNIVERSE_MIN_OBSERVATIONS=3",
+                "GRAFANA_ADMIN_PASSWORD=admin",
+                "MULTI_STRATEGY_LIVE_LOOKBACK=200",
+                "SCANNER_MIN_VOLUME=500000",
+                "DATABASE_URL=postgresql+asyncpg://trading:trading_password@postgres:5432/algotrading",
+                "MULTI_STRATEGY_LIVE_INTERVAL_SECONDS=300",
+                "LIVING_STRATEGY_BREAKOUT_MIN_SCORE=55.0",
+                "USE_MOCK_DATA=false",
+                "PROMETHEUS_PATH=/metrics",
+                "MULTI_STRATEGY_LIVE_TIMEFRAME=1Day",
+                "OTEL_SERVICE_VERSION=1.0.0",
+                "ML_MONTHLY_REVIEW_DAY=1",
+                "SCANNER_TOP_ACTIVES=100",
+                "OTEL_SERVICE_NAME=algotrading-api-paper",
+                "SECURITY_JWT_SECRET=dev_secret_key_minimum_32_chars_for_development_only",
+                "SCANNER_MAX_PRICE=1500.0",
+                "STRATEGY_MAX_NEW_RISK_PER_BAR=0.25",
+                "ML_WEEKLY_RETRAIN_WEEKDAY=6",
+                "APP_CORS_ORIGINS=[\"http://localhost:3000\",\"http://127.0.0.1:3000\",\"http://localhost:5173\",\"http://127.0.0.1:5173\"]",
+                "PATH=/opt/venv/bin:/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+                "LANG=C.UTF-8",
+                "GPG_KEY=7169605F62C751356D054A26A821E680E5FA6305",
+                "PYTHON_VERSION=3.12.13",
+                "PYTHON_SHA256=c08bc65a81971c1dd5783182826503369466c7e67374d1646519adf05207b684",
+                "PYTHONIOENCODING=utf-8"
+            ],
+            "Cmd": [
+                "uvicorn",
+                "backend.api.main:socketio_app",
+                "--host",
+                "0.0.0.0",
+                "--port",
+                "8000",
+                "--workers",
+                "1",
+                "--access-log",
+                "--log-config",
+                "/app/logging_config.yaml"
+            ],
+            "Healthcheck": {
+                "Test": [
+                    "CMD",
+                    "curl",
+                    "-f",
+                    "http://localhost:8000/healthz"
+                ],
+                "Interval": 30000000000,
+                "Timeout": 10000000000,
+                "StartPeriod": 60000000000,
+                "Retries": 3
+            },
+            "Image": "intra-api",
+            "Volumes": null,
+            "WorkingDir": "/app",
+            "Entrypoint": [
+                "/app/docker-entrypoint.sh"
+            ],
+            "Labels": {
+                "com.docker.compose.config-hash": "dcd08fad6155aa51ee3b510cff337e4ae16f0657bcf758c5ddfda414d20fbe62",
+                "com.docker.compose.container-number": "1",
+                "com.docker.compose.depends_on": "redis:service_healthy:false,postgres:service_healthy:false",
+                "com.docker.compose.image": "sha256:32296cf9a48623c33fcf671b0650b42490c4ffbc20400b9c6003f000e388b477",
+                "com.docker.compose.oneoff": "False",
+                "com.docker.compose.project": "intra",
+                "com.docker.compose.project.config_files": "/Users/marselkei/VS/intra/docker-compose.paper.yml",
+                "com.docker.compose.project.working_dir": "/Users/marselkei/VS/intra",
+                "com.docker.compose.replace": "api-1",
+                "com.docker.compose.service": "api",
+                "com.docker.compose.version": "5.1.0",
+                "maintainer": "Trading Platform Team \u003cdev@trading-platform.com\u003e",
+                "org.opencontainers.image.created": "",
+                "org.opencontainers.image.revision": "",
+                "org.opencontainers.image.title": "Algorithmic Trading Platform",
+                "org.opencontainers.image.version": "1.0.0"
+            },
+            "StopTimeout": 1
+        },
+        "NetworkSettings": {
+            "SandboxID": "3fe7903adaeb56db374d849a7f14a244aa8b6814a16334a80c739ac9ecba406c",
+            "SandboxKey": "/var/run/docker/netns/3fe7903adaeb",
+            "Ports": {
+                "8000/tcp": [
+                    {
+                        "HostIp": "0.0.0.0",
+                        "HostPort": "8000"
+                    },
+                    {
+                        "HostIp": "::",
+                        "HostPort": "8000"
+                    }
+                ]
+            },
+            "Networks": {
+                "intra_trading-network": {
+                    "IPAMConfig": null,
+                    "Links": null,
+                    "Aliases": [
+                        "intra-api-1",
+                        "api"
+                    ],
+                    "DriverOpts": null,
+                    "GwPriority": 0,
+                    "NetworkID": "48ffe6fac2cd0a5d68137f0a09ec2a99f8af2dada0d84a9dbed03148205782ca",
+                    "EndpointID": "6258c59c216d522a2bb9f87d3c4556f4665c3c84d695bf25416b38c649d12911",
+                    "Gateway": "172.18.0.1",
+                    "IPAddress": "172.18.0.3",
+                    "MacAddress": "be:9c:ff:22:ed:ad",
+                    "IPPrefixLen": 16,
+                    "IPv6Gateway": "",
+                    "GlobalIPv6Address": "",
+                    "GlobalIPv6PrefixLen": 0,
+                    "DNSNames": [
+                        "intra-api-1",
+                        "api",
+                        "dac16c39cdd9"
+                    ]
+                }
+            }
+        },
+        "ImageManifestDescriptor": {
+            "mediaType": "application/vnd.oci.image.manifest.v1+json",
+            "digest": "sha256:f5aa1a017b314ab220cbe9cadf50b03b21867db3672f133e473d588a434b64fd",
+            "size": 2763,
+            "platform": {
+                "architecture": "arm64",
+                "os": "linux"
+            }
+        }
+    }
+]

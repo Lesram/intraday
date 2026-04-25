@@ -1,0 +1,5 @@
+NAMES                       STATUS
+intra-api-1                 Up 42 hours (healthy)
+intra-redis-1               Up 42 hours (healthy)
+trading_platform_db_paper   Up 42 hours (healthy)
+started=2026-04-07T07:37:02.289008176Z restarts=0 health=healthy status=running

@@ -1,0 +1,40 @@
+==============================================
+  Trading Platform Container Startup
+==============================================
+[1/4] Waiting for database to be ready...
+   ✓ Database is ready
+[2/4] Running database migrations...
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+   ✓ Migrations completed successfully
+[3/4] Verifying database schema...
+   ✓ All 5 critical tables present
+[4/4] Starting application server...
+==============================================
+
+{"timestamp": "2026-04-02T03:21:23", "level": "INFO", "logger": "backend.infra.metrics", "message": "Initialized metrics registry with namespace 'intraday'", "module": "metrics", "function": "__init__", "line": 233}
+{"timestamp": "2026-04-02T03:21:24", "level": "INFO", "logger": "engineio.server", "message": "Server initialized for asgi.", "module": "base_server", "function": "__init__", "line": 112}
+Server initialized for asgi.
+/app/backend/api/routes/scanner.py:980: RuntimeWarning: Scanner custom_presets uses in-memory storage — data will be lost on restart. Wire to database before production deployment.
+  _scanner_warnings.warn(
+{"timestamp": "2026-04-02T03:21:24", "level": "INFO", "logger": "uvicorn.error", "message": "Started server process [1]", "module": "server", "function": "_serve", "line": 92}
+{"timestamp": "2026-04-02T03:21:24", "level": "INFO", "logger": "uvicorn.error", "message": "Waiting for application startup.", "module": "on", "function": "startup", "line": 48}
+{"timestamp": "2026-04-02T03:21:24", "level": "INFO", "logger": "backend.api.middleware.deduplication", "message": "RequestDeduplicationMiddleware initialized: ttl=300s, max_size=10000", "module": "deduplication", "function": "__init__", "line": 79}
+{"timestamp": "2026-04-02T03:21:24", "level": "INFO", "logger": "backend.api.middleware.rate_limit", "message": "RateLimitMiddleware initialized: enabled=True", "module": "rate_limit", "function": "__init__", "line": 178}
+{"timestamp": "2026-04-02T03:21:24", "level": "INFO", "logger": "backend.infra.observability", "message": "Initializing observability for service: intraday-backend", "module": "observability", "function": "initialize_observability", "line": 97}
+{"timestamp": "2026-04-02T03:21:24", "level": "INFO", "logger": "backend.infra.observability", "message": "OpenTelemetry tracing initialized", "module": "observability", "function": "_setup_tracing", "line": 168}
+{"timestamp": "2026-04-02T03:21:24", "level": "INFO", "logger": "backend.infra.observability", "message": "Prometheus metrics initialized", "module": "observability", "function": "_setup_prometheus_metrics", "line": 187}
+{"timestamp": "2026-04-02T03:21:24", "level": "INFO", "logger": "backend.infra.observability", "message": "Auto-instrumentation configured", "module": "observability", "function": "_setup_instrumentation", "line": 234}
+{"timestamp": "2026-04-02T03:21:24", "level": "INFO", "logger": "backend.infra.observability", "message": "Observability initialization complete", "module": "observability", "function": "initialize_observability", "line": 126}
+{"timestamp": "2026-04-02T03:21:24", "level": "INFO", "logger": "backend.api.lifespan", "message": "{"event": "Observability initialized", "logger": "backend.api.lifespan", "level": "info", "timestamp": "2026-04-02T03:21:24.842938Z"}", "module": "lifespan", "function": "startup", "line": 59}
+{"timestamp": "2026-04-02T03:21:24", "level": "INFO", "logger": "backend.api.lifespan", "message": "{"event": "SLO metrics collector initialized", "logger": "backend.api.lifespan", "level": "info", "timestamp": "2026-04-02T03:21:24.843859Z"}", "module": "lifespan", "function": "startup", "line": 68}
+{"timestamp": "2026-04-02T03:21:24", "level": "INFO", "logger": "backend.infra.db", "message": "Using production PostgreSQL connection pool", "module": "db", "function": "build_engine", "line": 83}
+{"timestamp": "2026-04-02T03:21:24", "level": "INFO", "logger": "backend.api.lifespan", "message": "{"event": "Database initialized successfully", "logger": "backend.api.lifespan", "level": "info", "timestamp": "2026-04-02T03:21:24.844420Z"}", "module": "lifespan", "function": "startup", "line": 80}
+{"timestamp": "2026-04-02T03:21:24", "level": "INFO", "logger": "backend.api.lifespan", "message": "{"event": "Pre-warmed 5 database connections", "logger": "backend.api.lifespan", "level": "info", "timestamp": "2026-04-02T03:21:24.893396Z"}", "module": "lifespan", "function": "startup", "line": 94}
+{"timestamp": "2026-04-02T03:21:24", "level": "INFO", "logger": "backend.infra.outbox_worker", "message": "{"poll_interval": 0.1, "max_retries": 5, "use_mock_broker": false, "trading_execution_mode": "execute", "event": "OutboxWorker initialized", "logger": "backend.infra.outbox_worker", "level": "info", "timestamp": "2026-04-02T03:21:24.893994Z"}", "module": "outbox_worker", "function": "__init__", "line": 98}
+{"timestamp": "2026-04-02T03:21:24", "level": "INFO", "logger": "backend.infra.outbox_worker", "message": "{"event": "OutboxWorker started", "logger": "backend.infra.outbox_worker", "level": "info", "timestamp": "2026-04-02T03:21:24.894145Z"}", "module": "outbox_worker", "function": "start", "line": 112}
+{"timestamp": "2026-04-02T03:21:24", "level": "INFO", "logger": "backend.api.lifespan", "message": "{"event": "Outbox worker started", "logger": "backend.api.lifespan", "level": "info", "timestamp": "2026-04-02T03:21:24.894296Z"}", "module": "lifespan", "function": "startup", "line": 121}
+{"timestamp": "2026-04-02T03:21:24", "level": "INFO", "logger": "backend.infra.outbox_worker", "message": "{"event": "Outbox dispatcher started", "logger": "backend.infra.outbox_worker", "level": "info", "timestamp": "2026-04-02T03:21:24.895507Z"}", "module": "outbox_worker", "function": "_dispatcher", "line": 135}
+{"timestamp": "2026-04-02T03:21:24", "level": "INFO", "logger": "backend.strategies.living_policy", "message": "{"extra": {"policy": "living_policy", "sources": 11}, "event": "Living policy restored from DB", "logger": "backend.strategies.living_policy", "level": "info", "timestamp": "2026-04-02T03:21:24.908975Z"}", "module": "living_policy", "function": "maybe_restore_from_db", "line": 127}
+{"timestamp": "2026-04-02T03:21:24", "level": "INFO", "logger": "backend.api.lifespan", "message": "{"event": "Living strategy policy enabled", "logger": "backend.api.lifespan", "level": "info", "timestamp": "2026-04-02T03:21:24.909414Z"}", "module": "lifespan", "function": "startup", "line": 140}
+{"timestamp": "2026-04-02T03:21:24", "level": "INFO", "logger": "backend.api.lifespan", "message": "{"event": "Living organism initialized", "logger": "backend.api.lifespan", "level": "info", "timestamp": "2026-04-02T03:21:24.914218Z"}", "module": "lifespan", "function": "startup", "line": 170}
