@@ -316,7 +316,42 @@ class MLSignalGenerator:
         self._latest_metrics = metrics
         self._is_trained = True
 
+        # S17 — cache the validation set so callers can re-evaluate
+        # the OLD model on this same holdout. Enables apples-to-apples
+        # comparison in continuous_learner._validate_new_model and
+        # addresses Data Leakage Audit Concern 1 (same-holdout fairness).
+        self._last_val_X = X_val
+        self._last_val_y_dir = y_dir_val
+        self._last_val_y_ret = y_ret_val
+
         return metrics
+
+    def evaluate_external_clf_reg(
+        self,
+        ext_clf: Any,
+        ext_reg: Any,
+    ) -> "ModelMetrics | None":
+        """Evaluate an external clf+reg on the most-recent training run's
+        validation set. Used to compare an OLD model on the SAME holdout
+        the NEW model was just evaluated on.
+
+        Returns None if no validation data is cached (i.e., train() has not
+        been called this session).
+        """
+        if (getattr(self, "_last_val_X", None) is None or
+                ext_clf is None or ext_reg is None):
+            return None
+        # Temporarily swap models, evaluate, swap back.
+        saved_clf, saved_reg = self._clf, self._reg
+        try:
+            self._clf, self._reg = ext_clf, ext_reg
+            return self._evaluate(
+                self._last_val_X,
+                self._last_val_y_dir,
+                self._last_val_y_ret,
+            )
+        finally:
+            self._clf, self._reg = saved_clf, saved_reg
 
     def predict(self, features_df: pd.DataFrame, symbol: str = "") -> MLSignal:
         """Generate ML signal for the latest bar.

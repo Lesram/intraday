@@ -325,9 +325,12 @@ class ContinuousLearner:
             self.signal_gen._is_trained = old_trained
             return False, None
 
-        # Walk-forward validation gate
+        # Walk-forward validation gate (S17: now passes old_reg too,
+        # so the gate can do same-holdout comparison if old model was
+        # previously trained).
         accepted, reason = self._validate_new_model(
-            features_by_symbol, metrics, old_clf
+            features_by_symbol, metrics, old_clf, old_reg=old_reg,
+            old_trained=old_trained,
         )
 
         # Record evaluation event (J4)
@@ -434,8 +437,18 @@ class ContinuousLearner:
         features_by_symbol: dict[str, pd.DataFrame],
         new_metrics: ModelMetrics,
         old_clf: Any,
+        old_reg: Any = None,
+        old_trained: bool = False,
     ) -> tuple[bool, str]:
         """Walk-forward validation: delegates to the shared acceptance_gate().
+
+        S17 (RC-1.5 sprint): when an old (previously-trained) model exists,
+        evaluate it on the SAME validation holdout the new model was just
+        evaluated on. This gives apples-to-apples comparison instead of
+        comparing against old metrics from a different historical window.
+
+        Falls back to historical comparison if same-holdout eval is
+        unavailable (e.g., first training, no cached val data).
 
         Note: this is the LIVE acceptance gate, used by both the synchronous
         retrain path and the background trainer. walk_forward.py provides a
@@ -443,9 +456,29 @@ class ContinuousLearner:
 
         Returns (accepted, reason).
         """
-        # Determine old metrics for comparison
+        # Determine old metrics for comparison.
         old_m: ModelMetrics | None = None
-        if old_clf and self.state.model_metrics:
+
+        # S17 — preferred: same-holdout comparison.
+        if old_trained and old_clf is not None and old_reg is not None:
+            try:
+                old_m = self.signal_gen.evaluate_external_clf_reg(old_clf, old_reg)
+                if old_m is not None:
+                    logger.info(
+                        "S17 same-holdout comparison: old_acc=%.3f new_acc=%.3f "
+                        "old_dir_acc=%.3f new_dir_acc=%.3f",
+                        old_m.accuracy, new_metrics.accuracy,
+                        old_m.direction_accuracy, new_metrics.direction_accuracy,
+                    )
+            except Exception as e:
+                logger.warning(
+                    "S17 same-holdout eval failed, falling back to historical: %s", e,
+                )
+                old_m = None
+
+        # Fallback: historical metrics from when old model was trained
+        # (apples-to-oranges, but better than nothing if same-holdout failed).
+        if old_m is None and old_clf and self.state.model_metrics:
             old_m = self.state.model_metrics[-1]
 
         accepted, reason = acceptance_gate(
