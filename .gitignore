@@ -223,3 +223,4 @@ Thumbs.db
 # Ensure specific log files are tracked even with *.log ignore above
 !logs/current.log
 !logs/.gitkeep
+organism_brain_archive/
