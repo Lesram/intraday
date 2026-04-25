@@ -210,22 +210,34 @@ After 4 clean Stage-2 weeks: consider Stage-3 ($25K, full universe, full caps fr
 
 This last point matters. **Stage-1 capital is real money you might lose.** It's not the same as paper. Make sure you've sat with that before pulling the trigger.
 
-## Pre-Stage-1 — what's NOT yet ready
+## Pre-Stage-1 — env var name reference
 
-To make this plan executable, the platform needs:
+**Update (S18 → corrected during sprint):** all required env-var knobs already exist in `eb90fa3` and rc-1.5-curated. Stage-1 just needs the right values in `.env`:
 
-| Gap | Effort to close | Owner |
+| Knob | Env var | Stage-1 value |
 |---|---|---|
-| `ORGANISM_UNIVERSE_OVERRIDE` env var | ~1 hour code | RC-2 work |
-| `ORGANISM_DRAWDOWN_KILL_PCT` already exists ✓ | done | — |
-| `ORGANISM_MAX_POSITIONS` already exists ✓ | done | — |
-| Per-trade notional cap env-configurable (eb90fa3 has it; verify env name) | verify only | done |
-| Daily max-loss env-configurable | verify | TBD — eb90fa3 includes the feature; check env knob |
-| Stage-1 risk parameter set documented in CLAUDE.md | done (this file) | — |
-| Live-mode confirmation log line at startup | ~30 min | Add to startup |
-| Real-money switch in monitoring | ~30 min | Add visual indicator |
+| Universe (8 symbols) | `ORGANISM_LIVE_SYMBOLS` | `SPY,QQQ,NVDA,AAPL,MSFT,AMZN,TSLA,IWM` |
+| Max simultaneous positions | `ORGANISM_MAX_POSITIONS` | `2` |
+| Per-trade notional cap (USD) | `ORGANISM_MAX_NOTIONAL` | `100` |
+| Daily max-loss (USD, abs) | `ORGANISM_MAX_DAILY_LOSS` | `25` |
+| Drawdown kill (% of peak) | `ORGANISM_DRAWDOWN_KILL_PCT` | `0.05` |
+| Alpha top-N | `ORGANISM_ALPHA_TOP_N` | `2` (matches max positions) |
+| Paper mode off | `ALPACA_PAPER` | `false` |
+| Live API keys | `ALPACA_API_KEY_ID` / `ALPACA_API_SECRET_KEY` | live keys, not paper |
 
-**Total effort to close gaps: ~4 hours.** Goal completion: by week 3 post-RC-1.5.
+**The platform is configurable for Stage-1 already. No new code required.**
+
+Verification script: `scripts/runtime/check_stage1_config.py` (sprint S18 deliverable) — run before cutover to verify all env vars are set to Stage-1-safe values.
+
+Other useful additions (~1 hour each, optional):
+
+| Item | Effort | Priority |
+|---|---|---|
+| Live-mode confirmation log line at startup | 30 min | P2 |
+| Real-money visual indicator in monitoring UI | 30 min | P2 |
+| Slack alert for "first live trade" event | 15 min | P3 |
+
+None of these block Stage-1.
 
 ## Decision: when to actually pull the trigger
 
