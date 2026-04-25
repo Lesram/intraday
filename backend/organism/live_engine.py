@@ -2195,21 +2195,15 @@ class OrganismLiveEngine:
                     breakout_score = bs.composite_score if bs else 0.0
                     tension = _tension_lookup.get(c.symbol, 0.0)
                     # Fallback: compute tension proxy from feature data when
-                    # market_scanner has no results (outside hours, API down).
-                    # Uses volume ratio + absolute return as a simple proxy
-                    # to avoid zeroing 35% of the confidence formula.
+                    # market_scanner has no results (outside hours, API down,
+                    # or replay where MarketScanner is disabled). Source of
+                    # truth in ml_features.compute_tension_proxy() so live
+                    # and replay paths share the same formula.
                     if tension == 0.0:
                         feat_df = features_by_symbol.get(c.symbol)
                         if feat_df is not None and len(feat_df) >= 1:
-                            _row = feat_df.iloc[-1]
-                            _vol_ratio = float(_row.get("vol_sma_ratio", 1.0))
-                            _abs_ret = abs(float(_row.get("ret_1d", 0.0)))
-                            # vol_ratio > 1 means above-average volume (capped contribution)
-                            # abs_ret scaled to [0, 1] range (2% move = 0.4 tension)
-                            tension = min(
-                                max(_vol_ratio - 1.0, 0.0) / 3.0 + _abs_ret * 20.0,
-                                0.80,
-                            )
+                            from backend.organism.ml_features import compute_tension_proxy
+                            tension = compute_tension_proxy(feat_df)
                     # Additive confidence — preserves ranking granularity
                     if self._is_learning_mode:
                         # improve9: ML weight = 0 in learning mode. ML is

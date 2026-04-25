@@ -47,10 +47,15 @@ class SimulatedBroker:
         self,
         initial_cash: float = 100_000,
         slippage_bps: float = 0,
+        delay_fill: bool = False,
     ) -> None:
         self.cash: float = initial_cash
         self.initial_cash: float = initial_cash
         self.slippage_bps: float = slippage_bps
+        # delay_fill: when True, orders observe the current bar's close
+        # but fill at the NEXT bar's open. More realistic than instant
+        # same-bar fill at observed close. Default False for backward-compat.
+        self.delay_fill: bool = delay_fill
 
         # symbol → {qty, avg_entry_price, side, market_value, cost_basis, ...}
         self._positions: dict[str, dict[str, Any]] = {}
@@ -82,6 +87,15 @@ class SimulatedBroker:
         if self._bar_provider is not None:
             return self._bar_provider.current_price(symbol)
         return 0.0
+
+    def _fill_price(self, symbol: str) -> float:
+        """Get fill price. With delay_fill=True, returns NEXT bar's open
+        (more realistic than same-bar close). Otherwise returns current price.
+        """
+        if not self.delay_fill or self._bar_provider is None:
+            return self._current_price(symbol)
+        # Look up next bar's open via bar provider
+        return self._bar_provider.next_bar_open(symbol)
 
     def _apply_slippage(self, price: float, side: str) -> float:
         """Apply slippage in basis points."""
@@ -141,7 +155,9 @@ class SimulatedBroker:
         symbol = kwargs["symbol"]
         side = kwargs["side"]
         qty = int(float(kwargs["qty"]))
-        price = self._current_price(symbol)
+        # With delay_fill, orders observe the current bar's close but fill
+        # at next bar's open (more realistic). Without it, fill at current.
+        price = self._fill_price(symbol)
 
         if price <= 0:
             return {"id": str(uuid.uuid4()), "status": "rejected", "reason": "no_price"}
@@ -295,6 +311,20 @@ class HistoricalBarProvider:
         idx = min(self._current_idx - 1, len(df) - 1)
         return float(df["close"].iloc[idx])
 
+    def next_bar_open(self, symbol: str) -> float:
+        """Get the OPEN of the bar AFTER the current cursor — the price an
+        order submitted at the current bar's close would actually fill at.
+        Falls back to current_price if at last bar.
+        """
+        df = self._bars.get(symbol)
+        if df is None or self._current_idx <= 0:
+            return 0.0
+        # current_idx points to the bar we just observed; next bar's open
+        # is at df.iloc[current_idx]['open'] (if it exists).
+        if self._current_idx < len(df) and "open" in df.columns:
+            return float(df["open"].iloc[self._current_idx])
+        return self.current_price(symbol)
+
     @property
     def current_time(self) -> datetime | None:
         """Timestamp at current cursor position."""
@@ -436,6 +466,7 @@ class ReplayEngine:
         max_entries_per_hour: int = 20,
         timeframe: str = "1Day",
         lookback: int | None = None,
+        delay_fill: bool = False,
     ) -> None:
         self.bars_by_symbol = bars_by_symbol
         self.initial_cash = initial_cash
@@ -444,6 +475,7 @@ class ReplayEngine:
         self.brain_dir = brain_dir
         self.max_entries_per_hour = max_entries_per_hour
         self.timeframe = timeframe
+        self.delay_fill = delay_fill
 
         if lookback is not None:
             self.lookback = lookback
@@ -460,6 +492,7 @@ class ReplayEngine:
         broker = SimulatedBroker(
             initial_cash=self.initial_cash,
             slippage_bps=self.slippage_bps,
+            delay_fill=self.delay_fill,
         )
         broker.set_bar_provider(bar_provider)
 

@@ -22,6 +22,50 @@ def _safe(series: pd.Series, default: float = 0.0) -> pd.Series:
     return series.fillna(default)
 
 
+def compute_tension_proxy(features_df: pd.DataFrame) -> float:
+    """Tension proxy when MarketScanner is unavailable (replay, outside RTH,
+    API down). Uses observable feature data only — no scanner calls.
+
+    Source of truth for the tension fallback formula (previously inlined in
+    live_engine.py). Extracted to ml_features so live and replay use the
+    SAME formula.
+
+    Inputs (read from the last row of features_df):
+      - vol_sma_ratio  : volume / SMA(volume).  > 1 = above-average volume.
+      - ret_1d         : 1-bar return (signed).  Magnitude used.
+      - atr_ratio      : ATR / close.  Volatility regime context.
+
+    Output: tension in [0.0, 0.80].
+
+    Calibration: matches the prior fallback (vol + return) and adds a small
+    contribution from atr_ratio so quiet-market low-volume periods produce
+    lower tension than noisy-but-quiet ones.
+    """
+    if features_df is None or len(features_df) < 1:
+        return 0.0
+    row = features_df.iloc[-1]
+    vol_ratio = float(row.get("vol_sma_ratio", 1.0))
+    abs_ret = abs(float(row.get("ret_1d", 0.0)))
+    atr_ratio = float(row.get("atr_ratio", 0.02))
+    if pd.isna(vol_ratio):
+        vol_ratio = 1.0
+    if pd.isna(abs_ret):
+        abs_ret = 0.0
+    if pd.isna(atr_ratio):
+        atr_ratio = 0.02
+
+    # Volume excess: capped at 1.0 (3x volume = full contribution)
+    vol_component = max(vol_ratio - 1.0, 0.0) / 3.0
+    # Price move: 2% move = 0.4 tension
+    move_component = abs_ret * 20.0
+    # Volatility regime: atr_ratio of 0.04 = mid-range; cap at 0.5
+    # (scaled relative to typical chop atr_ratio ~0.018-0.03)
+    vol_regime_component = min(max(atr_ratio - 0.018, 0.0) / 0.04, 0.5) * 0.2
+
+    tension = vol_component + move_component + vol_regime_component
+    return min(tension, 0.80)
+
+
 def _ema(series: pd.Series, span: int) -> pd.Series:
     return series.ewm(span=span, adjust=False).mean()
 
