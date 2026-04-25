@@ -2225,18 +2225,18 @@ class OrganismLiveEngine:
                         and not self._is_learning_mode
                     )
 
-                    # Use effective_confidence for gating (B2 improve8)
-                    # Hardening: in learning mode, ML is untrained and
-                    # effective_confidence is unreliable — use the pure
-                    # breakout+tension confidence computed above instead.
-                    if self._is_learning_mode:
-                        _eff_conf = confidence
-                    else:
-                        _eff_conf = (
-                            c.ml_signal.effective_confidence
-                            if c.ml_signal and c.ml_signal.effective_confidence > 0
-                            else confidence
-                        )
+                    # Track 1 fix (RC-1.5 curated): gate on composite confidence,
+                    # not ml_signal.effective_confidence. Forensic analysis
+                    # showed 132 of 182 live trades were alpha-only entries
+                    # with composite < 0.45 that passed the gate via ML's
+                    # uncalibrated self-confidence (corr(ml_pred, actual)=0.056).
+                    # Those 132 trades = -$105.88 of -$108.00 cumulative loss.
+                    # Composite is the multi-factor quality formula the
+                    # weights were designed for; gate on it directly.
+                    # NOTE: weights kept at 0.50/0.30/0.20 for RC-1.5 curated;
+                    # the 0.20/0.50/0.30 reweighting is deferred to RC-2 with
+                    # shadow-mode evidence first.
+                    _eff_conf = confidence
 
                     _route_exploration = False
                     if _is_heuristic:
