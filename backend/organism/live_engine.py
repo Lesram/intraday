@@ -52,6 +52,7 @@ from backend.organism.pyramider import (
     PyramidLevel,
 )
 from backend.organism.regime import RegimeDetector, RegimeLabel
+from backend.organism.orb_scanner import ORBScanner
 from backend.organism.sector_map import sector_gate_allows, get_sector
 from backend.organism.decision_telemetry import (
     DecisionSnapshot,
@@ -366,6 +367,19 @@ class OrganismLiveEngine:
         # Counter for periodic shadow-summary log lines (every N ticks).
         self._shadow_disagreement_count: int = 0
         self._shadow_total_ticks: int = 0
+
+        # R3 shadow telemetry: ORB Stocks-in-Play scanner (Zarattini-Barbon-Aziz
+        # 2024). Built but NOT firing entries yet. Each tick after 9:35 ET it
+        # scans the universe for ORB breakouts and logs candidates. Goal: 5
+        # sessions of shadow data, then promote to live entry path if signal
+        # is meaningful.
+        self._orb_scanner = ORBScanner(
+            opening_minutes=5,
+            top_n=10,
+            min_rv_ratio=1.5,
+        )
+        self._orb_shadow_log_count: int = 0
+        self._orb_shadow_breakout_count: int = 0
         self.governance = GovernanceController()
         self.evolution_engine = EvolutionEngine(
             alpha=0.30,
@@ -1438,6 +1452,44 @@ class OrganismLiveEngine:
                     except Exception as _shadow_err:
                         # Shadow telemetry must never affect live decisions
                         logger.debug("RC-1.5 shadow regime err: %s", _shadow_err)
+
+                # R3 ORB Stocks-in-Play shadow scan. Logs only — does not gate
+                # any live decision. After 5 sessions of shadow data we'll
+                # promote ORB to a live entry path if the signal is meaningful.
+                try:
+                    _now_ts = self._now_fn()
+                    orb_candidates = self._orb_scanner.scan(
+                        features_by_symbol, _now_ts,
+                    )
+                    if orb_candidates:
+                        triggered = [c for c in orb_candidates if c.breakout_triggered]
+                        self._orb_shadow_log_count += 1
+                        self._orb_shadow_breakout_count += len(triggered)
+                        if triggered:
+                            for c in triggered:
+                                # Cross-reference: did alpha+breakout also pick this name?
+                                _in_alpha = c.symbol in (open_symbols if "open_symbols" in dir() else set())
+                                logger.info(
+                                    "ORB shadow BREAKOUT: %s dir=%+.0f rv=%.2f "
+                                    "orb_high=%.4f orb_low=%.4f curr=%.4f "
+                                    "stop=%.4f atr=%.4f",
+                                    c.symbol, c.direction, c.rv_ratio,
+                                    c.orb_high, c.orb_low, c.current_price,
+                                    c.suggested_stop, c.atr_at_entry,
+                                )
+                        elif self._orb_shadow_log_count % 60 == 0:
+                            # Periodic non-triggered summary every 60 logged
+                            # scans — confirms scanner is alive but quiet.
+                            logger.info(
+                                "ORB shadow scan: %d candidates ranked, %d "
+                                "breakouts in cache (none triggered now); "
+                                "session breakouts=%d",
+                                len(orb_candidates),
+                                self._orb_scanner.orb_cache_size,
+                                self._orb_shadow_breakout_count,
+                            )
+                except Exception as _orb_err:
+                    logger.debug("ORB shadow scan err: %s", _orb_err)
 
             # 4. GET CURRENT POSITIONS from broker
             current_positions = await self._positions_service.get_all_positions()
