@@ -99,6 +99,7 @@ class RegimeDetector:
         smoothing_alpha: float = 0.3,
         is_intraday: bool = False,
         bars_per_day: int = 1,
+        intraday_trend_sensitivity: float = 1.0,
     ) -> None:
         # Scale lookbacks for intraday bars to reduce noise.
         # 4x makes SMA_200 (~3.3hrs on 1-min) roughly analogous to a
@@ -110,6 +111,7 @@ class RegimeDetector:
         self._alpha = smoothing_alpha
         self._is_intraday = is_intraday
         self._bars_per_day = bars_per_day
+        self._intraday_trend_sensitivity = intraday_trend_sensitivity
 
         # v4 (improve7): Scale trend threshold for intraday.
         # SMA slope over 10 intraday bars is much smaller than daily —
@@ -117,14 +119,27 @@ class RegimeDetector:
         # ever triggering on 1-min bars, keeping the system stuck in chop.
         # Divide by sqrt(bars_per_day) to make thresholds comparable.
         tf_scale = 1.0 / math.sqrt(bars_per_day) if is_intraday else 1.0
-        self._trend_threshold = trend_threshold * tf_scale if is_intraday else trend_threshold
+        # RC-1.5 shadow: optional intraday_trend_sensitivity multiplier.
+        # Default 1.0 preserves baseline behavior. Shadow detector in
+        # live_engine instantiates this with 0.50 to log what regime
+        # would fire under proposed RC-2 calibration. Empirical 50-run
+        # synthetic: factor=0.50 → 28% noise FPR, 78% TPR on mild trend.
+        intraday_factor = (
+            self._intraday_trend_sensitivity if is_intraday else 1.0
+        )
+        self._trend_threshold = (
+            trend_threshold * tf_scale * intraday_factor
+            if is_intraday else trend_threshold
+        )
 
         # Scale vol/atr thresholds for intraday — per-bar returns are
         # sqrt(bars_per_day) times smaller than daily returns.
         self._atr_high_thresh = 0.04 * tf_scale
         self._atr_low_thresh = 0.015 * tf_scale
         self._ret_vol_thresh = 0.03 * tf_scale
-        self._pct_above_thresh = 0.02 * tf_scale
+        self._pct_above_thresh = (
+            0.02 * tf_scale * intraday_factor if is_intraday else 0.02 * tf_scale
+        )
 
         # Running state
         self._history: list[str] = []

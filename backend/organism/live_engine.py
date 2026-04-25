@@ -355,6 +355,17 @@ class OrganismLiveEngine:
         self._forensic_signal_gen_id: int = id(self.signal_gen)
         self._forensic_learner_id: int = id(self.learner)
         self.regime_detector = RegimeDetector(is_intraday=self._is_intraday, bars_per_day=self._bars_per_day)
+        # RC-1.5 shadow telemetry: parallel detector with the proposed
+        # RC-2 sensitivity factor. Logs only — does not gate any decision.
+        # Goal: 5 sessions of disagreement data → evidence-based RC-2.
+        self._shadow_regime_detector = RegimeDetector(
+            is_intraday=self._is_intraday,
+            bars_per_day=self._bars_per_day,
+            intraday_trend_sensitivity=0.50,
+        )
+        # Counter for periodic shadow-summary log lines (every N ticks).
+        self._shadow_disagreement_count: int = 0
+        self._shadow_total_ticks: int = 0
         self.governance = GovernanceController()
         self.evolution_engine = EvolutionEngine(
             alpha=0.30,
@@ -1395,6 +1406,39 @@ class OrganismLiveEngine:
                     timestamp=now_iso,
                 ))
 
+                # RC-1.5 shadow-mode telemetry: log what the proposed RC-2
+                # regime classifier (intraday_trend_sensitivity=0.50) would
+                # have decided. Logging only — does not gate.
+                if spy_features is not None and len(spy_features) >= 10:
+                    try:
+                        shadow_state = self._shadow_regime_detector.detect(spy_features)
+                        shadow_regime = shadow_state.primary
+                        self._shadow_total_ticks += 1
+                        if shadow_regime != regime:
+                            self._shadow_disagreement_count += 1
+                            logger.info(
+                                "RC-1.5 shadow: regime disagreement live=%s shadow=%s "
+                                "tick=%d shadow_conf=%.3f",
+                                regime, shadow_regime, self._tick_count,
+                                shadow_state.confidence,
+                            )
+                        # Periodic summary every 500 ticks
+                        if self._shadow_total_ticks > 0 and self._shadow_total_ticks % 500 == 0:
+                            disagreement_pct = (
+                                100.0 * self._shadow_disagreement_count
+                                / self._shadow_total_ticks
+                            )
+                            logger.info(
+                                "RC-1.5 shadow summary: %d/%d ticks regime-disagree "
+                                "(%.1f%%)",
+                                self._shadow_disagreement_count,
+                                self._shadow_total_ticks,
+                                disagreement_pct,
+                            )
+                    except Exception as _shadow_err:
+                        # Shadow telemetry must never affect live decisions
+                        logger.debug("RC-1.5 shadow regime err: %s", _shadow_err)
+
             # 4. GET CURRENT POSITIONS from broker
             current_positions = await self._positions_service.get_all_positions()
             open_symbols = set(current_positions.keys())
@@ -2182,6 +2226,28 @@ class OrganismLiveEngine:
                             + 0.30 * breakout_score
                             + 0.20 * min(tension, 1.0)
                         )
+                        # RC-1.5 shadow-mode telemetry: compute what the
+                        # proposed RC-2 ML-weight composite (0.20/0.50/0.30)
+                        # would produce. Logging only — does not gate.
+                        _shadow_composite = (
+                            0.20 * ml_conf
+                            + 0.50 * breakout_score
+                            + 0.30 * min(tension, 1.0)
+                        )
+                        # Log only when the two would disagree on the gate
+                        # decision — keeps log noise manageable.
+                        _live_pass = confidence >= _MIN_MAIN_CONF
+                        _shadow_pass = _shadow_composite >= _MIN_MAIN_CONF
+                        if _live_pass != _shadow_pass:
+                            logger.info(
+                                "RC-1.5 shadow: composite gate disagreement %s "
+                                "live_composite=%.3f shadow_composite=%.3f "
+                                "gate=%.2f live_pass=%s shadow_pass=%s "
+                                "ml=%.3f breakout=%.3f tension=%.3f regime=%s",
+                                c.symbol, confidence, _shadow_composite,
+                                _MIN_MAIN_CONF, _live_pass, _shadow_pass,
+                                ml_conf, breakout_score, min(tension, 1.0), regime,
+                            )
                     # EXPERIMENT 3 INSTRUMENTATION: side-by-side confidence
                     # comparison to detect ML contamination in chop.
                     # Logs the live production confidence alongside what the
