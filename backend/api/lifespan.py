@@ -452,6 +452,40 @@ async def _start_organism_scheduler(app):
                 if _ak and _sk:
                     _trading_client = TradingClient(api_key=_ak, secret_key=_sk, paper=_paper)
                     logger.info("PositionsService TradingClient created (paper=%s)", _paper)
+                    # S18 (Stage-1) — prominent startup banner for paper-vs-live mode.
+                    # Helps the operator visually confirm at every container start.
+                    if _paper:
+                        logger.info(
+                            "==================== ALPACA PAPER MODE ===================="
+                        )
+                        logger.info(
+                            "  Mode: PAPER (no real capital at risk)"
+                        )
+                        logger.info(
+                            "  Endpoint: paper-api.alpaca.markets"
+                        )
+                        logger.info(
+                            "==========================================================="
+                        )
+                    else:
+                        logger.warning(
+                            "==================== ALPACA LIVE MODE ====================="
+                        )
+                        logger.warning(
+                            "  Mode: LIVE — REAL CAPITAL AT RISK"
+                        )
+                        logger.warning(
+                            "  Endpoint: api.alpaca.markets"
+                        )
+                        logger.warning(
+                            "  Confirm: pre-Stage-1 gates G1-G12 are green"
+                        )
+                        logger.warning(
+                            "  Run: python scripts/runtime/check_stage1_config.py --live"
+                        )
+                        logger.warning(
+                            "==========================================================="
+                        )
                 else:
                     logger.warning(
                         "PositionsService TradingClient skipped — missing API keys "
