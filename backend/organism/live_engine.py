@@ -53,6 +53,7 @@ from backend.organism.pyramider import (
 )
 from backend.organism.regime import RegimeDetector, RegimeLabel
 from backend.organism.orb_scanner import ORBScanner
+from backend.organism.eod_scanner import EODMomentumScanner
 from backend.organism.sector_map import sector_gate_allows, get_sector
 from backend.organism.decision_telemetry import (
     DecisionSnapshot,
@@ -393,6 +394,16 @@ class OrganismLiveEngine:
         # Picked up by the cand_dicts build phase when ORB_LIVE_ENABLED.
         self._latest_orb_triggered: list = []
         self._orb_live_count_today: int = 0  # how many ORB-live entries fired this session
+
+        # M2-C: EOD Momentum scanner (Heston-Korajczyk-Sadka inspired).
+        # Default: SHADOW only. Promote via ORGANISM_EOD_LIVE_ENABLED=true.
+        self._eod_scanner = EODMomentumScanner(
+            min_day_return_pct=0.30,
+            top_n=5,
+        )
+        self._latest_eod_candidates: list = []
+        self._eod_shadow_log_count: int = 0
+        self._eod_live_count_today: int = 0
         self.governance = GovernanceController()
         self.evolution_engine = EvolutionEngine(
             alpha=0.30,
@@ -1506,6 +1517,29 @@ class OrganismLiveEngine:
                 except Exception as _orb_err:
                     logger.debug("ORB shadow scan err: %s", _orb_err)
 
+                # M2-C: EOD Momentum scan (Heston-Korajczyk-Sadka inspired).
+                # Always runs (logs). When ORGANISM_EOD_LIVE_ENABLED=true,
+                # candidates flow into the entry pipeline below. Activates
+                # only at 15:30-15:50 ET (decision window).
+                self._latest_eod_candidates = []
+                try:
+                    _now_ts = self._now_fn()
+                    eod_cands = self._eod_scanner.scan(
+                        features_by_symbol, _now_ts,
+                    )
+                    if eod_cands:
+                        self._latest_eod_candidates = eod_cands
+                        self._eod_shadow_log_count += len(eod_cands)
+                        for c in eod_cands:
+                            logger.info(
+                                "EOD shadow: %s dir=%+.0f day_return=%.2f%% "
+                                "open=%.4f curr=%.4f stop=%.4f",
+                                c.symbol, c.direction, c.day_return_pct,
+                                c.open_price, c.current_price, c.suggested_stop,
+                            )
+                except Exception as _eod_err:
+                    logger.debug("EOD shadow scan err: %s", _eod_err)
+
             # 4. GET CURRENT POSITIONS from broker
             current_positions = await self._positions_service.get_all_positions()
             open_symbols = set(current_positions.keys())
@@ -2585,6 +2619,98 @@ class OrganismLiveEngine:
                             "composite=%.3f → entered cand_dicts",
                             orbc.symbol, orbc.direction, orbc.rv_ratio,
                             _orb_composite,
+                        )
+
+                # M2-C: EOD Momentum LIVE entry path (feature-flagged).
+                # Mirror of ORB pattern: triggered EOD candidates flow into
+                # cand_dicts when ORGANISM_EOD_LIVE_ENABLED=true. Same
+                # composite gate, same Kelly, same entry-source tagging.
+                _MAX_EOD_PER_TICK = 2
+                _eod_added = 0
+                if (
+                    EOD_LIVE_ENABLED
+                    and self._latest_eod_candidates
+                    and not self._is_learning_mode
+                ):
+                    _existing_syms = {d["symbol"] for d in cand_dicts}
+                    for eodc in self._latest_eod_candidates:
+                        if _eod_added >= _MAX_EOD_PER_TICK:
+                            break
+                        if eodc.symbol in _existing_syms:
+                            continue
+                        # Shared entry gates
+                        _gate_ok, _gate_reason = self._passes_entry_gates(
+                            eodc.symbol, eodc.direction, features_by_symbol,
+                            open_symbols, _planned_entries,
+                            fitness_gate=_MAIN_FITNESS_GATE,
+                            min_trades_for_fitness=_MIN_TRADES_FOR_FITNESS_GATE,
+                        )
+                        if not _gate_ok:
+                            logger.info(
+                                "EOD live: %s blocked by gate=%s",
+                                eodc.symbol, _gate_reason,
+                            )
+                            continue
+                        # ML negative-direction veto vs EOD direction
+                        ml_sig = ml_signals.get(eodc.symbol)
+                        if (
+                            eodc.direction > 0
+                            and ml_sig and ml_sig.direction < 0
+                        ):
+                            continue
+                        if (
+                            eodc.direction < 0
+                            and ml_sig and ml_sig.direction > 0
+                        ):
+                            continue
+                        ml_conf = ml_sig.confidence if ml_sig else 0.0
+                        # EOD composite: same shape as ORB.
+                        # breakout proxy = 0.50 (EOD entry is a momentum-
+                        # continuation, less breakout-like than ORB), tension
+                        # scales from |day_return|.
+                        _eod_breakout_proxy = 0.50
+                        _eod_tension = min(abs(eodc.day_return_pct) / 1.5, 0.80)
+                        _eod_composite = (
+                            0.50 * ml_conf
+                            + 0.30 * _eod_breakout_proxy
+                            + 0.20 * _eod_tension
+                        )
+                        if _eod_composite < _MIN_MAIN_CONF:
+                            logger.info(
+                                "EOD live: %s composite=%.3f below gate=%.2f",
+                                eodc.symbol, _eod_composite, _MIN_MAIN_CONF,
+                            )
+                            continue
+                        if ml_sig and abs(ml_sig.predicted_return) > 1e-6:
+                            _eod_pred_ret = max(
+                                ml_sig.predicted_return * eodc.direction, 0.003,
+                            )
+                            _eod_ret_source = "calibrated_breakout"
+                        else:
+                            _eod_pred_ret = 0.003  # 0.3% modest target for EOD
+                            _eod_ret_source = "heuristic"
+                        cand_dicts.append({
+                            "symbol": eodc.symbol,
+                            "direction": eodc.direction,
+                            "predicted_return": _eod_pred_ret,
+                            "confidence": _eod_composite,
+                            "effective_confidence": _eod_composite,
+                            "breakout_score": _eod_breakout_proxy,
+                            "expected_return_source": _eod_ret_source,
+                            "ranking_score": _eod_composite * abs(eodc.day_return_pct),
+                            "eod_open_price": eodc.open_price,
+                            "eod_day_return_pct": eodc.day_return_pct,
+                            "entry_source_override": "eod_momentum",
+                        })
+                        _planned_entries.add(eodc.symbol)
+                        self._eod_scanner.mark_fired(eodc.symbol)
+                        self._eod_live_count_today += 1
+                        _eod_added += 1
+                        logger.info(
+                            "EOD LIVE entry candidate: %s dir=%+.0f "
+                            "day_return=%.2f%% composite=%.3f → cand_dicts",
+                            eodc.symbol, eodc.direction,
+                            eodc.day_return_pct, _eod_composite,
                         )
 
                 cand_dicts.sort(
