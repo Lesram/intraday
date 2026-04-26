@@ -158,27 +158,80 @@ class ORBScanner:
             return et.time()
         return dtime(0, 0)
 
+    def _get_today_first5_bars(
+        self,
+        df: pd.DataFrame,
+    ) -> Optional[pd.DataFrame]:
+        """Find the rows where ET time is 9:30-9:34 ON TODAY (last bar's ET date).
+
+        Returns a DataFrame slice with exactly the opening-range bars, or None
+        if timestamps are unusable / insufficient bars found.
+
+        This is the *correct* ORB window detection — the previous "last 5 bars"
+        approach broke when the data included pre/post-market bars or when the
+        scanner was called outside the immediate 9:35 decision moment.
+        """
+        # Locate timestamp column or index
+        if "timestamp" in df.columns:
+            ts_raw = pd.to_datetime(df["timestamp"], errors="coerce", utc=True)
+        elif df.index.dtype.kind == "M":
+            ts_raw = pd.to_datetime(pd.Series(df.index), utc=True)
+        else:
+            return None
+        ts_raw = pd.Series(ts_raw)
+        if ts_raw.isna().all() or not hasattr(ts_raw, "dt"):
+            return None
+
+        try:
+            ts_et = ts_raw.dt.tz_convert("America/New_York")
+        except Exception:
+            return None
+
+        # Today's date = last bar's ET date
+        try:
+            today_date = ts_et.iloc[-1].date()
+        except Exception:
+            return None
+
+        et_dates = ts_et.dt.date
+        et_hours = ts_et.dt.hour
+        et_mins = ts_et.dt.minute
+
+        is_today = (et_dates == today_date).values
+        in_first5 = (
+            (et_hours == RTH_OPEN_HOUR_ET)
+            & (et_mins >= RTH_OPEN_MIN_ET)
+            & (et_mins < RTH_OPEN_MIN_ET + self.opening_minutes)
+        ).values
+
+        mask = is_today & in_first5
+        if mask.sum() < self.opening_minutes:
+            # Don't have all 5 bars yet (or none) — caller may try again later
+            return None
+
+        return df[mask]
+
     def _compute_orb_range(
         self,
         symbol: str,
         df: pd.DataFrame,
         atr_at_entry: float,
     ) -> Optional[dict[str, float]]:
-        """Compute the 5-min opening range from a feature DataFrame.
+        """Compute the 5-min opening range from today's 9:30-9:34 ET bars.
 
-        df is expected to have at least the bars from market open today.
-        Look at the FIRST `opening_minutes` bars of today's session.
+        Uses timestamp-aware bar selection (not 'last 5 bars') so this works
+        correctly when the dataframe includes pre/post-market bars or when
+        scan() is called mid-session, not just at the 9:35 boundary.
         """
         if df is None or len(df) < self.opening_minutes:
             return None
         if "close" not in df.columns or "high" not in df.columns:
             return None
 
-        # Take the most-recent 5 bars as the ORB. This assumes the live engine
-        # calls scan() right at the 9:35 decision point, when the last 5 bars
-        # ARE the opening range. For mid-session calls we'd need timestamp-based
-        # filtering.
-        orb_bars = df.iloc[-self.opening_minutes:]
+        orb_bars = self._get_today_first5_bars(df)
+        if orb_bars is None or len(orb_bars) < self.opening_minutes:
+            return None
+
         try:
             orb_high = float(orb_bars["high"].max())
             orb_low = float(orb_bars["low"].min())
@@ -186,7 +239,6 @@ class ORBScanner:
             orb_close = float(orb_bars["close"].iloc[-1])
             orb_volume = float(orb_bars["volume"].sum()) if "volume" in orb_bars.columns else 0.0
 
-            # Sanity checks
             if not all(
                 np.isfinite(v) for v in (orb_high, orb_low, orb_open, orb_close)
             ):

@@ -59,28 +59,38 @@ def _make_orb_df(
     base_volume: float = 100_000,
     orb_volume_multiplier: float = 3.0,
 ) -> pd.DataFrame:
-    """Construct a synthetic feature DataFrame whose LAST 5 bars represent
-    the opening range with the specified high/low/open/close, and one bar
-    after them at current_price.
+    """Construct a synthetic feature DataFrame.
+
+    Adds proper ET timestamps so the timestamp-aware ORB scanner can find
+    the opening range. Layout:
+      - n_history bars from a prior trading day (9:30 → 16:00 ET)
+      - 5 ORB bars on today (9:30-9:34 ET) with the configured high/low/open/close
     """
     rng = np.random.default_rng(0)
-    # Historical bars (before today's open)
     bars = []
-    for i in range(n_history):
+
+    # Prior day: full RTH session (390 bars 9:30-15:59 ET)
+    prior_day_start = pd.Timestamp("2026-04-23 09:30:00", tz="America/New_York")
+    for i in range(min(n_history, 390)):
+        ts = prior_day_start + pd.Timedelta(minutes=i)
         c = 100.0 + rng.normal(0, 0.5)
         bars.append({
+            "timestamp": ts.tz_convert("UTC"),
             "open": c, "high": c + 0.2, "low": c - 0.2,
             "close": c, "volume": base_volume,
         })
 
-    # Today's first 5 bars (the ORB)
+    # Today's 5 ORB bars: 9:30, 9:31, 9:32, 9:33, 9:34 ET
+    today_start = pd.Timestamp("2026-04-24 09:30:00", tz="America/New_York")
     orb_close_per_bar = np.linspace(orb_open, orb_close, 5)
     orb_high_per_bar = np.maximum(orb_close_per_bar, [orb_open, (orb_open+orb_close)/2,
                                                        (orb_open+orb_close)/2, orb_close, orb_high])
     orb_low_per_bar = np.minimum(orb_close_per_bar, [orb_open, orb_open, orb_low,
                                                       orb_open, orb_close])
     for i in range(5):
+        ts = today_start + pd.Timedelta(minutes=i)
         bars.append({
+            "timestamp": ts.tz_convert("UTC"),
             "open": float(orb_close_per_bar[i] if i > 0 else orb_open),
             "high": float(orb_high_per_bar[i]),
             "low": float(orb_low_per_bar[i]),
@@ -88,8 +98,7 @@ def _make_orb_df(
             "volume": base_volume * orb_volume_multiplier,
         })
 
-    df = pd.DataFrame(bars)
-    return df
+    return pd.DataFrame(bars)
 
 
 def test_orb_compute_basic():
@@ -299,18 +308,29 @@ def test_breakout_triggered_when_above_orb_high():
     breakout via cached ORB high vs new current_price."""
     from backend.organism.orb_scanner import ORBScanner
 
+    # Build with ET timestamps so the timestamp-aware ORB scanner can find
+    # the opening range. Prior day = April 23 RTH; ORB = April 24 9:30-9:34 ET.
     bars = []
+    prior_start = pd.Timestamp("2026-04-23 09:30:00", tz="America/New_York")
     for i in range(100):
-        bars.append({"open": 100, "high": 100.5, "low": 99.5, "close": 100,
-                     "volume": 1000.0})
+        ts = prior_start + pd.Timedelta(minutes=i)
+        bars.append({
+            "timestamp": ts.tz_convert("UTC"),
+            "open": 100, "high": 100.5, "low": 99.5, "close": 100, "volume": 1000.0,
+        })
+    today_start = pd.Timestamp("2026-04-24 09:30:00", tz="America/New_York")
     orb_seq = [(100, 100.5, 99.8, 100.5),
                (100.5, 101.5, 100.4, 101.2),
                (101.2, 102.5, 101.1, 102.0),
                (102.0, 103.5, 101.9, 103.0),
                (103.0, 104.5, 102.9, 104.0)]
-    for o, h, l, c in orb_seq:
-        bars.append({"open": o, "high": h, "low": l, "close": c, "volume": 5000.0})
-    df_orb_only = pd.DataFrame(bars)  # ends at 9:35 (last 5 = ORB)
+    for i, (o, h, l, c) in enumerate(orb_seq):
+        ts = today_start + pd.Timedelta(minutes=i)
+        bars.append({
+            "timestamp": ts.tz_convert("UTC"),
+            "open": o, "high": h, "low": l, "close": c, "volume": 5000.0,
+        })
+    df_orb_only = pd.DataFrame(bars)
 
     s = ORBScanner(min_rv_ratio=0.0, top_n=1)
     # First call: at 9:35 ET (=13:35 UTC), populates ORB cache
@@ -321,8 +341,10 @@ def test_breakout_triggered_when_above_orb_high():
     assert cached["orb_high"] == 104.5
 
     # Second call: 5 minutes later, with post-ORB bar where price breaks high
+    post_orb_ts = today_start + pd.Timedelta(minutes=5)
     df_with_breakout = df_orb_only.copy()
     df_with_breakout.loc[len(df_with_breakout)] = {
+        "timestamp": post_orb_ts.tz_convert("UTC"),
         "open": 104.5, "high": 106.0, "low": 104.5, "close": 106.0,
         "volume": 1000.0,
     }
