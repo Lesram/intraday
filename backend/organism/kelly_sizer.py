@@ -45,6 +45,13 @@ class PositionSize:
     regime_trade_count: int = 0                # trades in current regime
     expected_return_source: str = "heuristic"  # "ml", "calibrated_breakout", "heuristic"
     dollar_risk_cap_applied: bool = False
+    # M3-bug-fix: ORB/EOD candidates pass through cand_dict["entry_source_override"]
+    # to tag the trade as orb_sip / eod_momentum / orb_sip_inverse / eod_momentum_inverse.
+    # Without this field on PositionSize, the override silently fell through to
+    # the breakout-score-inference fallback, mis-tagging ORB/EOD trades as
+    # "alpha+breakout" or "breakout" in trade_history. Hidden bug found in M3-5
+    # audit when B3 (alpha disabled) still showed "alpha+breakout" tags.
+    entry_source_override: str = ""
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -542,6 +549,7 @@ class KellySizer:
                 regime_trade_count=_regime_trade_count,
                 expected_return_source=cand.get("expected_return_source", "heuristic"),
                 dollar_risk_cap_applied=_dollar_risk_cap_applied,
+                entry_source_override=cand.get("entry_source_override", ""),
             ))
 
         sizes.sort(key=lambda s: s.target_weight, reverse=True)
