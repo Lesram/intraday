@@ -213,25 +213,32 @@ class ORBScanner:
         df: pd.DataFrame,
         today_first_5min_volume: float,
     ) -> float:
-        """Approximate relative volume ratio.
+        """Paper-faithful relative volume ratio:
+            RV = today's first-5-min volume / avg of prior 14 days' first-5-min volume
 
-        Ideally: today's first-5-min volume / avg of prior 14 days' first-5-min volume.
+        Per Zarattini-Barbon-Aziz (2024). Requires timestamp-aware bar
+        grouping: identify "first 5 min" = bars at 9:30-9:34 ET each day.
 
-        Approximation when full daily history isn't structured for that lookup:
-        use a rolling-window proxy on bar volume around the ORB period.
+        Falls back to the rolling-5-bar median proxy when timestamps aren't
+        available — better than zero, but the real formula is preferred.
         """
         if df is None or "volume" not in df.columns or len(df) < 50:
             return 1.0  # neutral default
+
         try:
-            # Proxy: ratio of today's first-5-min volume to the median of any
-            # prior 5-bar windows in the available history. This isn't the
-            # paper's exact RV ratio but tracks the same intuition.
+            # Try paper-faithful path (timestamp-aware) first
+            paper_rv = self._paper_relative_volume(df, today_first_5min_volume)
+            if paper_rv is not None:
+                return paper_rv
+        except Exception:
+            pass
+
+        # Fallback: rolling-5-bar median proxy
+        try:
             volume = df["volume"].values
             if len(volume) < self.opening_minutes + 10:
                 return 1.0
-            # Rolling 5-bar volume sums across history
             rolling_5 = pd.Series(volume).rolling(self.opening_minutes).sum().dropna()
-            # Exclude the most-recent (today's) value to avoid using today's number as denominator
             historical = rolling_5.iloc[:-1] if len(rolling_5) > 1 else rolling_5
             if len(historical) < 10:
                 return 1.0
@@ -241,6 +248,80 @@ class ORBScanner:
             return today_first_5min_volume / baseline
         except Exception:
             return 1.0
+
+    def _paper_relative_volume(
+        self,
+        df: pd.DataFrame,
+        today_first_5min_volume: float,
+    ) -> Optional[float]:
+        """Paper-faithful RV: avg of prior N days' first-5-min volumes.
+
+        Returns None when timestamps aren't usable so caller can fall back.
+        """
+        # Locate timestamp source (column or index)
+        if "timestamp" in df.columns:
+            ts_raw = pd.to_datetime(df["timestamp"], errors="coerce", utc=True)
+        elif df.index.dtype.kind == "M":
+            ts_raw = pd.to_datetime(pd.Series(df.index), utc=True)
+        else:
+            return None
+
+        if ts_raw.isna().all():
+            return None
+
+        # Coerce to Series form (handles both Series and DatetimeIndex inputs)
+        ts_raw = pd.Series(ts_raw)
+        if not hasattr(ts_raw, "dt"):
+            return None
+
+        # Convert to Eastern (paper uses ET clock for the 9:30-9:34 window)
+        try:
+            ts_et = ts_raw.dt.tz_convert("America/New_York")
+        except Exception:
+            return None
+
+        # Bar is in the 9:30-9:34 ET window (= 5 bars starting at 9:30) iff:
+        #   hour == 9 AND minute in {30, 31, 32, 33, 34}
+        hour_arr = ts_et.dt.hour
+        minute_arr = ts_et.dt.minute
+
+        is_first5 = (
+            (hour_arr == RTH_OPEN_HOUR_ET)
+            & (minute_arr >= RTH_OPEN_MIN_ET)
+            & (minute_arr < RTH_OPEN_MIN_ET + self.opening_minutes)
+        )
+
+        if is_first5.sum() < 2:
+            # Not enough first-5-min bars in the history
+            return None
+
+        # Group first-5-min bars by ET date and sum volume per date
+        dates = ts_et.dt.date
+        first5_df = pd.DataFrame({
+            "date": dates.values,
+            "volume": df["volume"].values,
+            "is_first5": is_first5.values,
+        })
+        first5_df = first5_df[first5_df["is_first5"]]
+        per_day = first5_df.groupby("date")["volume"].sum()
+
+        if len(per_day) < 2:
+            return None
+
+        # Today's date (last bar's ET date)
+        today_et_date = ts_et.iloc[-1].date()
+        prior = per_day[per_day.index < today_et_date]
+
+        if len(prior) == 0:
+            return None
+
+        # Use up to last `rv_lookback_days` prior days
+        recent = prior.tail(self.rv_lookback_days)
+        baseline = float(recent.mean())
+        if baseline <= 0:
+            return None
+
+        return today_first_5min_volume / baseline
 
     def scan(
         self,

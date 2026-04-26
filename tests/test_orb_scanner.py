@@ -153,6 +153,103 @@ def test_relative_volume_neutral():
     assert 0.8 < rv < 1.2  # ~1x
 
 
+# ── Paper-faithful relative volume (timestamp-aware) ─────────
+
+
+def _make_timestamped_first5_df(
+    days: int = 14,
+    bars_per_day: int = 390,
+    daily_first5_volume: float = 100_000,
+    today_first5_volume: float | None = None,
+) -> pd.DataFrame:
+    """Build a 14-day timestamped 1-min OHLCV dataframe.
+
+    Each day has 390 bars at 1-min intervals 9:30-15:59 ET.
+    The first 5 bars of each day (9:30, 9:31, 9:32, 9:33, 9:34) sum to
+    `daily_first5_volume` per-bar (so total = 5 * that).
+
+    If `today_first5_volume` is None, today gets the same volume as history.
+    Otherwise, today's first 5 bars sum to that value.
+    """
+    rows = []
+    base_date = pd.Timestamp("2026-04-12 09:30:00", tz="America/New_York")
+    per_bar_history = daily_first5_volume / 5
+    today_per_bar = (
+        (today_first5_volume / 5) if today_first5_volume is not None
+        else per_bar_history
+    )
+
+    for day_offset in range(days):
+        day_start = base_date + pd.Timedelta(days=day_offset)
+        is_today = (day_offset == days - 1)
+        for bar_idx in range(bars_per_day):
+            ts = day_start + pd.Timedelta(minutes=bar_idx)
+            in_first5 = bar_idx < 5
+            vol = (today_per_bar if is_today and in_first5 else
+                   per_bar_history if in_first5 else
+                   per_bar_history * 0.4)  # later-day baseline
+            rows.append({
+                "timestamp": ts.tz_convert("UTC"),
+                "open": 100.0, "high": 100.5, "low": 99.5, "close": 100.0,
+                "volume": float(vol),
+            })
+    return pd.DataFrame(rows)
+
+
+def test_paper_relative_volume_neutral_with_timestamps():
+    """When today's first-5 vol = historical avg, RV should be ~1.0."""
+    from backend.organism.orb_scanner import ORBScanner
+
+    df = _make_timestamped_first5_df(days=14, daily_first5_volume=100_000)
+    s = ORBScanner(rv_lookback_days=14)
+    today_vol = float(df.loc[df.index[:5], "volume"].sum())  # any 5 first-5 bars
+    rv = s._paper_relative_volume(df, today_first_5min_volume=100_000)
+    assert rv is not None
+    assert 0.95 < rv < 1.05, f"Expected RV ~1.0 on flat data, got {rv}"
+
+
+def test_paper_relative_volume_high_when_today_spikes():
+    """3x volume today vs historical → RV ~3.0 from paper formula."""
+    from backend.organism.orb_scanner import ORBScanner
+
+    df = _make_timestamped_first5_df(
+        days=14,
+        daily_first5_volume=100_000,
+        today_first5_volume=300_000,  # 3x spike today
+    )
+    s = ORBScanner(rv_lookback_days=14)
+    rv = s._paper_relative_volume(df, today_first_5min_volume=300_000)
+    assert rv is not None
+    assert 2.7 < rv < 3.3, f"Expected RV ~3.0 with 3x volume spike, got {rv}"
+
+
+def test_paper_relative_volume_returns_none_without_timestamps():
+    """If df has no timestamp column or datetime index, returns None."""
+    from backend.organism.orb_scanner import ORBScanner
+
+    df = pd.DataFrame({
+        "close": [100.0] * 50,
+        "volume": [1000.0] * 50,
+    })
+    s = ORBScanner()
+    rv = s._paper_relative_volume(df, today_first_5min_volume=5000)
+    assert rv is None
+
+
+def test_paper_rv_used_when_timestamps_present():
+    """Composite _compute_relative_volume should call paper formula path
+    and use it when timestamps are available."""
+    from backend.organism.orb_scanner import ORBScanner
+
+    df = _make_timestamped_first5_df(days=14, daily_first5_volume=100_000,
+                                      today_first5_volume=200_000)
+    s = ORBScanner(rv_lookback_days=14)
+    rv = s._compute_relative_volume(df, today_first_5min_volume=200_000)
+    # Paper formula should give ~2.0; rolling-median fallback would give a
+    # different (smaller) number because it includes non-first-5-min bars.
+    assert 1.7 < rv < 2.3, f"Expected ~2.0 from paper formula, got {rv}"
+
+
 # ── Direction inference ──────────────────────────────────────
 
 
