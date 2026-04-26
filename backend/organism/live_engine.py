@@ -2554,27 +2554,15 @@ class OrganismLiveEngine:
                         # ORB composite: blend ML self-conf, breakout-quality
                         # proxy (0.55 because ORB IS a breakout), and
                         # rv_ratio-derived "tension."
+                        # NO ML direction veto for ORB. Track 1 found
+                        # corr(ML pred, actual) = 0.056 — essentially noise.
+                        # ORB is a PATTERN-based signal independent of ML;
+                        # vetoing on uncalibrated ML direction defeats the
+                        # purpose of having an uncorrelated edge source.
+                        # Diagnostic on Apr 16-20 data showed 1,049 ORB
+                        # candidates blocked here — this gate was a bug.
                         ml_sig = ml_signals.get(orbc.symbol)
                         ml_conf = ml_sig.confidence if ml_sig else 0.0
-                        # ML negative-direction veto for ORB longs
-                        if (
-                            orbc.direction > 0
-                            and ml_sig and ml_sig.direction < 0
-                        ):
-                            logger.info(
-                                "ORB live: %s ML veto (ml.direction<0 vs orb long)",
-                                orbc.symbol,
-                            )
-                            continue
-                        if (
-                            orbc.direction < 0
-                            and ml_sig and ml_sig.direction > 0
-                        ):
-                            logger.info(
-                                "ORB live: %s ML veto (ml.direction>0 vs orb short)",
-                                orbc.symbol,
-                            )
-                            continue
                         _orb_breakout_proxy = 0.55  # ORB breakout = quality breakout
                         _orb_tension = min(orbc.rv_ratio / 4.0, 0.80)
                         _orb_composite = (
@@ -2656,18 +2644,10 @@ class OrganismLiveEngine:
                                 eodc.symbol, _gate_reason,
                             )
                             continue
-                        # ML negative-direction veto vs EOD direction
+                        # No ML direction veto for EOD (same reasoning as ORB:
+                        # ML is uncalibrated noise; pattern-based EOD signal
+                        # should not be subordinated to ML direction).
                         ml_sig = ml_signals.get(eodc.symbol)
-                        if (
-                            eodc.direction > 0
-                            and ml_sig and ml_sig.direction < 0
-                        ):
-                            continue
-                        if (
-                            eodc.direction < 0
-                            and ml_sig and ml_sig.direction > 0
-                        ):
-                            continue
                         ml_conf = ml_sig.confidence if ml_sig else 0.0
                         # EOD composite: same shape as ORB.
                         # breakout proxy = 0.50 (EOD entry is a momentum-
