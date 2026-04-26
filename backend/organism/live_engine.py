@@ -383,10 +383,15 @@ class OrganismLiveEngine:
         # 2024). Default: SHADOW only (logs candidates, doesn't fire entries).
         # When ORGANISM_ORB_LIVE_ENABLED=true, candidates flow into the entry
         # pipeline alongside alpha+breakout, gated through composite + Kelly.
+        # min_rv_ratio=1.0: our 22-symbol universe doesn't have catalyst-
+        # spike RV>=1.5 names like the paper's 1000-stock universe. Lowering
+        # to 1.0 means "above-average for this name" — weaker signal but at
+        # least produces candidates. If real edge requires the paper's
+        # threshold, we need a bigger universe.
         self._orb_scanner = ORBScanner(
             opening_minutes=5,
             top_n=10,
-            min_rv_ratio=1.5,
+            min_rv_ratio=1.0,
         )
         self._orb_shadow_log_count: int = 0
         self._orb_shadow_breakout_count: int = 0
