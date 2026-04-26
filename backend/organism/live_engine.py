@@ -1368,8 +1368,15 @@ class OrganismLiveEngine:
                 ))
 
             # 1.3 EOD ENTRY BLOCK + FLATTEN (improve7)
-            # Block new entries after 15:45 ET, force close all by 15:58 ET.
+            # Block new ALPHA+BREAKOUT entries after 15:45 ET — those signals
+            # don't have time to manage before EOD flatten. ORB/EOD strategies
+            # are designed for the late-day window and EOD-flatten immediately,
+            # so they should NOT be blocked by this rule.
+            # M3-5 fix: split entries_blocked into a dedicated alpha_breakout
+            # block flag (no longer using the shared safety flag for this
+            # time-of-day rule, which was silently shutting down EOD strategy).
             _eod_flatten_triggered = False
+            self._alpha_breakout_late_blocked = False
             if self._is_intraday:
                 try:
                     import zoneinfo
@@ -1377,14 +1384,14 @@ class OrganismLiveEngine:
                     _now_et = _now_utc.astimezone(zoneinfo.ZoneInfo("America/New_York"))
                     _hhmm_eod = _now_et.hour * 100 + _now_et.minute
                     if _hhmm_eod >= 1545:
-                        if not entries_blocked:
-                            entries_blocked = True
-                            self._last_entries_blocked_reason = "eod_entry_block"
-                            result.activity.append(ActivityEvent(
-                                event_type="skip",
-                                message=f"EOD entry block — no new entries after 15:45 ET ({_hhmm_eod})",
-                                timestamp=now_iso,
-                            ))
+                        # Set a strategy-specific flag, NOT the global safety
+                        # flag. ORB/EOD live paths check this and ignore it.
+                        self._alpha_breakout_late_blocked = True
+                        result.activity.append(ActivityEvent(
+                            event_type="skip",
+                            message=f"Alpha+breakout entry block — late-day rule ({_hhmm_eod})",
+                            timestamp=now_iso,
+                        ))
                     if _hhmm_eod >= 1558:
                         _eod_flatten_triggered = True
                 except Exception:
@@ -2297,7 +2304,13 @@ class OrganismLiveEngine:
                 # candidate-build phase entirely. Slots and ranking competition
                 # belong solely to ORB/EOD. Diagnostic mode for evaluating the
                 # new strategies in isolation.
-                _candidates_iter = [] if DISABLE_ALPHA_BREAKOUT else candidates
+                # M3-5 fix: also skip alpha when alpha_breakout_late_blocked
+                # (>=15:45 ET). EOD/ORB are not subject to this time rule.
+                _ab_disabled = (
+                    DISABLE_ALPHA_BREAKOUT
+                    or getattr(self, "_alpha_breakout_late_blocked", False)
+                )
+                _candidates_iter = [] if _ab_disabled else candidates
                 for c in _candidates_iter:
                     # Shared entry gates (alpha + breakout use same helper)
                     _gate_ok, _gate_reason = self._passes_entry_gates(
@@ -2498,7 +2511,7 @@ class OrganismLiveEngine:
                 alpha_syms = {d["symbol"] for d in cand_dicts}
                 _breakout_added = 0
                 _MAX_PURE_BREAKOUT = 2
-                _breakout_iter = [] if DISABLE_ALPHA_BREAKOUT else breakout_signals
+                _breakout_iter = [] if _ab_disabled else breakout_signals
                 for bs in _breakout_iter:
                     if _breakout_added >= _MAX_PURE_BREAKOUT:
                         break

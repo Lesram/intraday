@@ -115,12 +115,31 @@ def test_disable_alpha_breakout_default_off():
 
 def test_alpha_loop_short_circuited_when_disabled():
     src = _engine_source()
-    assert "_candidates_iter = [] if DISABLE_ALPHA_BREAKOUT else candidates" in src
+    # Alpha candidates iter is empty when DISABLE_ALPHA_BREAKOUT or when the
+    # late-day block is active.
+    assert "_ab_disabled" in src
+    assert "DISABLE_ALPHA_BREAKOUT" in src
+    assert "_candidates_iter = [] if _ab_disabled else candidates" in src
 
 
 def test_breakout_loop_short_circuited_when_disabled():
     src = _engine_source()
-    assert "_breakout_iter = [] if DISABLE_ALPHA_BREAKOUT else breakout_signals" in src
+    assert "_breakout_iter = [] if _ab_disabled else breakout_signals" in src
+
+
+def test_eod_late_block_audit_fix():
+    """M3-5 audit fix: 15:45 ET block targets alpha+breakout only, not the
+    global entries_blocked flag which would have shut down EOD/ORB too."""
+    src = _engine_source()
+    # The late-day block sets a strategy-specific flag, not the global one
+    assert "_alpha_breakout_late_blocked" in src
+    # The 15:45 block must NOT set entries_blocked = True (the global flag
+    # would have killed ORB/EOD too)
+    bad_pattern = "if _hhmm_eod >= 1545:\n                        if not entries_blocked:\n                            entries_blocked = True"
+    assert bad_pattern not in src, (
+        "Late-day block should not set the global entries_blocked flag — "
+        "that's the M3-5 audit fix."
+    )
 
 
 # ── Imports / wiring smoke ───────────────────────────────────
