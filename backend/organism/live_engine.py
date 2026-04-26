@@ -203,6 +203,34 @@ ORB_LIVE_ENABLED = _env_bool("ORGANISM_ORB_LIVE_ENABLED", False)
 # M2-C: EOD Momentum live entry feature flag (Heston-Korajczyk-Sadka).
 EOD_LIVE_ENABLED = _env_bool("ORGANISM_EOD_LIVE_ENABLED", False)
 
+# M3-1: Strong-signal-shorting. When False (default), all shorts blocked by
+# LONG_ONLY. When True, ORB/EOD candidates that meet a HIGHER bar can fire
+# shorts even with LONG_ONLY=True. Bypasses long_only ONLY for "exceptional"
+# pattern-based signals; never for alpha+breakout/ML which have weaker edge.
+# Exits for short positions are also unblocked (otherwise shorts would never
+# close). Use with care; designed for tiny-capital experimentation.
+STRONG_SHORT_ENABLED = _env_bool("ORGANISM_STRONG_SHORT_ENABLED", False)
+STRONG_SHORT_COMPOSITE_MIN = _env_float("ORGANISM_STRONG_SHORT_COMPOSITE_MIN", 0.55)
+STRONG_SHORT_RV_MIN = _env_float("ORGANISM_STRONG_SHORT_RV_MIN", 2.5)
+STRONG_SHORT_DAYRET_MIN = _env_float("ORGANISM_STRONG_SHORT_DAYRET_MIN", 1.5)
+
+# M3-2: Inverse-ETF translation. When True, ORB/EOD short signals on SPY
+# translate to LONG SH; QQQ-shorts translate to LONG PSQ. Lets us act on
+# short patterns within long_only constraints. Conservative — covers only
+# the 2 inverse-ETF mappings we have in the universe.
+INVERSE_ETF_TRANSLATION_ENABLED = _env_bool(
+    "ORGANISM_INVERSE_ETF_TRANSLATION_ENABLED", False,
+)
+INVERSE_ETF_MAP = {
+    "SPY": "SH",   # SPY short → SH long
+    "QQQ": "PSQ",  # QQQ short → PSQ long
+}
+
+# M3-4: ORB/EOD-only mode. When True, alpha+breakout candidate phase
+# short-circuits, leaving slots free for ORB/EOD only. Diagnostic mode
+# for evaluating ORB/EOD edge in isolation.
+DISABLE_ALPHA_BREAKOUT = _env_bool("ORGANISM_DISABLE_ALPHA_BREAKOUT", False)
+
 # ── Dynamic intraday adjustments ────────────────────────────────
 _IS_INTRADAY = LIVE_TIMEFRAME in ("1Min", "5Min", "15Min", "1Hour")
 if _IS_INTRADAY and MIN_BARS == 200:
@@ -656,11 +684,16 @@ class OrganismLiveEngine:
         *,
         fitness_gate: float,
         min_trades_for_fitness: int,
+        allow_short: bool = False,
     ) -> tuple[bool, str]:
         """Shared entry gate check used by both alpha and pure-breakout paths.
 
         Returns (passed, rejection_reason). If passed is True, rejection_reason
         is empty.
+
+        allow_short (M3-1): when True, the long_only gate is skipped. Caller
+        must have independently verified the signal qualifies as "strong
+        enough" per the strong-signal-shorting feature thresholds.
         """
         if symbol in open_symbols:
             return False, "open_position"
@@ -679,7 +712,7 @@ class OrganismLiveEngine:
             return False, "pending_entry"
         if symbol in self._entry_metadata:
             return False, "entry_metadata"
-        if LONG_ONLY and direction < 0:
+        if LONG_ONLY and direction < 0 and not allow_short:
             return False, "long_only"
         if not sector_gate_allows(symbol, open_symbols, planned_entries):
             return False, "sector_gate"
@@ -1652,7 +1685,7 @@ class OrganismLiveEngine:
                 # are artifacts of a previous bug.  Log and skip — they will
                 # be closed via manual liquidation or the close-shorts script.
                 pos_side = pos_data.get("side", "long")
-                if LONG_ONLY and pos_side != "long":
+                if LONG_ONLY and pos_side != "long" and not STRONG_SHORT_ENABLED:
                     logger.warning(
                         "LONG_ONLY: skipping exit check for SHORT position %s "
                         "(%s shares) — should not exist",
@@ -2260,7 +2293,12 @@ class OrganismLiveEngine:
                 }
 
                 cand_dicts = []
-                for c in candidates:
+                # M3-4: When DISABLE_ALPHA_BREAKOUT, skip the alpha+breakout
+                # candidate-build phase entirely. Slots and ranking competition
+                # belong solely to ORB/EOD. Diagnostic mode for evaluating the
+                # new strategies in isolation.
+                _candidates_iter = [] if DISABLE_ALPHA_BREAKOUT else candidates
+                for c in _candidates_iter:
                     # Shared entry gates (alpha + breakout use same helper)
                     _gate_ok, _gate_reason = self._passes_entry_gates(
                         c.symbol, c.direction, features_by_symbol,
@@ -2456,10 +2494,12 @@ class OrganismLiveEngine:
                 # Pure breakout signals not in alpha candidates (capped at 2)
                 # Uses shared _passes_entry_gates helper — identical gate
                 # logic to alpha path.
+                # M3-4: skip when DISABLE_ALPHA_BREAKOUT.
                 alpha_syms = {d["symbol"] for d in cand_dicts}
                 _breakout_added = 0
                 _MAX_PURE_BREAKOUT = 2
-                for bs in breakout_signals:
+                _breakout_iter = [] if DISABLE_ALPHA_BREAKOUT else breakout_signals
+                for bs in _breakout_iter:
                     if _breakout_added >= _MAX_PURE_BREAKOUT:
                         break
                     if bs.symbol in alpha_syms:
@@ -2534,21 +2574,56 @@ class OrganismLiveEngine:
                     for orbc in self._latest_orb_triggered:
                         if _orb_added >= _MAX_ORB_PER_TICK:
                             break
-                        if orbc.symbol in _existing_syms:
-                            # Already a candidate via alpha or breakout;
-                            # don't duplicate
+
+                        # M3-2: Inverse-ETF translation. SPY-1 → SH+1, QQQ-1 → PSQ+1.
+                        # Lets us act on bearish patterns within long-only safety.
+                        _orb_sym = orbc.symbol
+                        _orb_dir = orbc.direction
+                        _translated = False
+                        if (
+                            INVERSE_ETF_TRANSLATION_ENABLED
+                            and _orb_dir < 0
+                            and _orb_sym in INVERSE_ETF_MAP
+                        ):
+                            _new_sym = INVERSE_ETF_MAP[_orb_sym]
+                            if _new_sym in features_by_symbol:
+                                logger.info(
+                                    "ORB inverse-ETF translation: %s short → %s long",
+                                    _orb_sym, _new_sym,
+                                )
+                                _orb_sym = _new_sym
+                                _orb_dir = 1.0  # now long the inverse
+                                _translated = True
+
+                        if _orb_sym in _existing_syms:
                             continue
+
+                        # M3-1: Strong-signal-shorting. If still-short and
+                        # STRONG_SHORT_ENABLED, allow if signal exceptional.
+                        _allow_short = False
+                        if (
+                            STRONG_SHORT_ENABLED
+                            and _orb_dir < 0
+                            and orbc.rv_ratio >= STRONG_SHORT_RV_MIN
+                        ):
+                            _allow_short = True
+                            logger.info(
+                                "ORB strong-short qualified: %s rv=%.2f >= %.2f",
+                                _orb_sym, orbc.rv_ratio, STRONG_SHORT_RV_MIN,
+                            )
+
                         # Shared entry gates (sector, fitness, liquidity, etc.)
                         _gate_ok, _gate_reason = self._passes_entry_gates(
-                            orbc.symbol, orbc.direction, features_by_symbol,
+                            _orb_sym, _orb_dir, features_by_symbol,
                             open_symbols, _planned_entries,
                             fitness_gate=_MAIN_FITNESS_GATE,
                             min_trades_for_fitness=_MIN_TRADES_FOR_FITNESS_GATE,
+                            allow_short=_allow_short,
                         )
                         if not _gate_ok:
                             logger.info(
                                 "ORB live: %s blocked by gate=%s",
-                                orbc.symbol, _gate_reason,
+                                _orb_sym, _gate_reason,
                             )
                             continue
                         # ORB composite: blend ML self-conf, breakout-quality
@@ -2561,7 +2636,7 @@ class OrganismLiveEngine:
                         # purpose of having an uncorrelated edge source.
                         # Diagnostic on Apr 16-20 data showed 1,049 ORB
                         # candidates blocked here — this gate was a bug.
-                        ml_sig = ml_signals.get(orbc.symbol)
+                        ml_sig = ml_signals.get(_orb_sym)  # use translated symbol's ML
                         ml_conf = ml_sig.confidence if ml_sig else 0.0
                         _orb_breakout_proxy = 0.55  # ORB breakout = quality breakout
                         _orb_tension = min(orbc.rv_ratio / 4.0, 0.80)
@@ -2570,16 +2645,26 @@ class OrganismLiveEngine:
                             + 0.30 * _orb_breakout_proxy
                             + 0.20 * _orb_tension
                         )
+                        # M3-1: strong-signal-shorting also requires elevated
+                        # composite (not just RV) — both must be exceptional.
+                        if _allow_short and _orb_composite < STRONG_SHORT_COMPOSITE_MIN:
+                            logger.info(
+                                "ORB strong-short rejected: %s composite=%.3f "
+                                "< %.2f (rv=%.2f passed but composite weak)",
+                                _orb_sym, _orb_composite,
+                                STRONG_SHORT_COMPOSITE_MIN, orbc.rv_ratio,
+                            )
+                            continue
                         # Use composite for gating (same as RC-1.5 fix)
                         if _orb_composite < _MIN_MAIN_CONF:
                             logger.info(
                                 "ORB live: %s composite=%.3f below gate=%.2f",
-                                orbc.symbol, _orb_composite, _MIN_MAIN_CONF,
+                                _orb_sym, _orb_composite, _MIN_MAIN_CONF,
                             )
                             continue
                         # Predicted return: use ML when available
                         if ml_sig and abs(ml_sig.predicted_return) > 1e-6:
-                            _orb_pred_ret = ml_sig.predicted_return * orbc.direction
+                            _orb_pred_ret = ml_sig.predicted_return * _orb_dir
                             if _orb_pred_ret < 0:
                                 _orb_pred_ret = 0.005  # min positive floor
                             _orb_ret_source = "calibrated_breakout"
@@ -2588,8 +2673,8 @@ class OrganismLiveEngine:
                             _orb_ret_source = "heuristic"
 
                         cand_dicts.append({
-                            "symbol": orbc.symbol,
-                            "direction": orbc.direction,
+                            "symbol": _orb_sym,
+                            "direction": _orb_dir,
                             "predicted_return": _orb_pred_ret,
                             "confidence": _orb_composite,
                             "effective_confidence": _orb_composite,
@@ -2601,17 +2686,20 @@ class OrganismLiveEngine:
                             "orb_low": orbc.orb_low,
                             "orb_suggested_stop": orbc.suggested_stop,
                             "rv_ratio": orbc.rv_ratio,
-                            "entry_source_override": "orb_sip",
+                            "entry_source_override": (
+                                "orb_sip_inverse" if _translated else "orb_sip"
+                            ),
                         })
-                        _planned_entries.add(orbc.symbol)
-                        self._orb_scanner.mark_fired(orbc.symbol)
+                        _planned_entries.add(_orb_sym)
+                        self._orb_scanner.mark_fired(orbc.symbol)  # original symbol
                         self._orb_live_count_today += 1
                         _orb_added += 1
                         logger.info(
                             "ORB LIVE entry candidate: %s dir=%+.0f rv=%.2f "
-                            "composite=%.3f → entered cand_dicts",
-                            orbc.symbol, orbc.direction, orbc.rv_ratio,
-                            _orb_composite,
+                            "composite=%.3f translated=%s strong_short=%s "
+                            "→ entered cand_dicts",
+                            _orb_sym, _orb_dir, orbc.rv_ratio,
+                            _orb_composite, _translated, _allow_short,
                         )
 
                 # M2-C: EOD Momentum LIVE entry path (feature-flagged).
@@ -2629,30 +2717,62 @@ class OrganismLiveEngine:
                     for eodc in self._latest_eod_candidates:
                         if _eod_added >= _MAX_EOD_PER_TICK:
                             break
-                        if eodc.symbol in _existing_syms:
+
+                        # M3-2: Inverse-ETF translation for EOD shorts
+                        _eod_sym = eodc.symbol
+                        _eod_dir = eodc.direction
+                        _eod_translated = False
+                        if (
+                            INVERSE_ETF_TRANSLATION_ENABLED
+                            and _eod_dir < 0
+                            and _eod_sym in INVERSE_ETF_MAP
+                        ):
+                            _new_sym = INVERSE_ETF_MAP[_eod_sym]
+                            if _new_sym in features_by_symbol:
+                                logger.info(
+                                    "EOD inverse-ETF translation: %s short → %s long",
+                                    _eod_sym, _new_sym,
+                                )
+                                _eod_sym = _new_sym
+                                _eod_dir = 1.0
+                                _eod_translated = True
+
+                        if _eod_sym in _existing_syms:
                             continue
+
+                        # M3-1: Strong-signal-shorting gate for EOD
+                        _eod_allow_short = False
+                        if (
+                            STRONG_SHORT_ENABLED
+                            and _eod_dir < 0
+                            and abs(eodc.day_return_pct) >= STRONG_SHORT_DAYRET_MIN
+                        ):
+                            _eod_allow_short = True
+                            logger.info(
+                                "EOD strong-short qualified: %s |day_return|=%.2f%% >= %.2f%%",
+                                _eod_sym, abs(eodc.day_return_pct),
+                                STRONG_SHORT_DAYRET_MIN,
+                            )
+
                         # Shared entry gates
                         _gate_ok, _gate_reason = self._passes_entry_gates(
-                            eodc.symbol, eodc.direction, features_by_symbol,
+                            _eod_sym, _eod_dir, features_by_symbol,
                             open_symbols, _planned_entries,
                             fitness_gate=_MAIN_FITNESS_GATE,
                             min_trades_for_fitness=_MIN_TRADES_FOR_FITNESS_GATE,
+                            allow_short=_eod_allow_short,
                         )
                         if not _gate_ok:
                             logger.info(
                                 "EOD live: %s blocked by gate=%s",
-                                eodc.symbol, _gate_reason,
+                                _eod_sym, _gate_reason,
                             )
                             continue
                         # No ML direction veto for EOD (same reasoning as ORB:
                         # ML is uncalibrated noise; pattern-based EOD signal
                         # should not be subordinated to ML direction).
-                        ml_sig = ml_signals.get(eodc.symbol)
+                        ml_sig = ml_signals.get(_eod_sym)
                         ml_conf = ml_sig.confidence if ml_sig else 0.0
-                        # EOD composite: same shape as ORB.
-                        # breakout proxy = 0.50 (EOD entry is a momentum-
-                        # continuation, less breakout-like than ORB), tension
-                        # scales from |day_return|.
                         _eod_breakout_proxy = 0.50
                         _eod_tension = min(abs(eodc.day_return_pct) / 1.5, 0.80)
                         _eod_composite = (
@@ -2660,23 +2780,30 @@ class OrganismLiveEngine:
                             + 0.30 * _eod_breakout_proxy
                             + 0.20 * _eod_tension
                         )
+                        if _eod_allow_short and _eod_composite < STRONG_SHORT_COMPOSITE_MIN:
+                            logger.info(
+                                "EOD strong-short rejected: %s composite=%.3f < %.2f",
+                                _eod_sym, _eod_composite,
+                                STRONG_SHORT_COMPOSITE_MIN,
+                            )
+                            continue
                         if _eod_composite < _MIN_MAIN_CONF:
                             logger.info(
                                 "EOD live: %s composite=%.3f below gate=%.2f",
-                                eodc.symbol, _eod_composite, _MIN_MAIN_CONF,
+                                _eod_sym, _eod_composite, _MIN_MAIN_CONF,
                             )
                             continue
                         if ml_sig and abs(ml_sig.predicted_return) > 1e-6:
                             _eod_pred_ret = max(
-                                ml_sig.predicted_return * eodc.direction, 0.003,
+                                ml_sig.predicted_return * _eod_dir, 0.003,
                             )
                             _eod_ret_source = "calibrated_breakout"
                         else:
-                            _eod_pred_ret = 0.003  # 0.3% modest target for EOD
+                            _eod_pred_ret = 0.003
                             _eod_ret_source = "heuristic"
                         cand_dicts.append({
-                            "symbol": eodc.symbol,
-                            "direction": eodc.direction,
+                            "symbol": _eod_sym,
+                            "direction": _eod_dir,
                             "predicted_return": _eod_pred_ret,
                             "confidence": _eod_composite,
                             "effective_confidence": _eod_composite,
@@ -2685,17 +2812,22 @@ class OrganismLiveEngine:
                             "ranking_score": _eod_composite * abs(eodc.day_return_pct),
                             "eod_open_price": eodc.open_price,
                             "eod_day_return_pct": eodc.day_return_pct,
-                            "entry_source_override": "eod_momentum",
+                            "entry_source_override": (
+                                "eod_momentum_inverse" if _eod_translated
+                                else "eod_momentum"
+                            ),
                         })
-                        _planned_entries.add(eodc.symbol)
+                        _planned_entries.add(_eod_sym)
                         self._eod_scanner.mark_fired(eodc.symbol)
                         self._eod_live_count_today += 1
                         _eod_added += 1
                         logger.info(
                             "EOD LIVE entry candidate: %s dir=%+.0f "
-                            "day_return=%.2f%% composite=%.3f → cand_dicts",
-                            eodc.symbol, eodc.direction,
+                            "day_return=%.2f%% composite=%.3f translated=%s "
+                            "strong_short=%s → cand_dicts",
+                            _eod_sym, _eod_dir,
                             eodc.day_return_pct, _eod_composite,
+                            _eod_translated, _eod_allow_short,
                         )
 
                 cand_dicts.sort(
