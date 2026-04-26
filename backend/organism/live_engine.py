@@ -192,6 +192,16 @@ EXPLORATION_MAX_POSITIONS = _env_int("ORGANISM_EXPLORATION_MAX_POSITIONS", 3)
 MAX_NOTIONAL_PER_TRADE = _env_float("ORGANISM_MAX_NOTIONAL", 0.0)  # 0 = disabled
 MAX_DAILY_LOSS = _env_float("ORGANISM_MAX_DAILY_LOSS", 0.0)        # 0 = disabled
 
+# M2-B: ORB Stocks-in-Play live entry feature flag.
+# When False (default): ORB scanner runs in SHADOW mode only (logs candidates,
+# doesn't fire entries). When True: ORB candidates flow into the entry pipeline
+# alongside alpha+breakout, gated through the same composite confidence + Kelly
+# + gates, with entry_source="orb_sip" for telemetry differentiation.
+# Promote to True only after Phase B+C+D evidence per ORB_PROMOTION_CRITERIA.md.
+ORB_LIVE_ENABLED = _env_bool("ORGANISM_ORB_LIVE_ENABLED", False)
+# M2-C: EOD Momentum live entry feature flag (Heston-Korajczyk-Sadka).
+EOD_LIVE_ENABLED = _env_bool("ORGANISM_EOD_LIVE_ENABLED", False)
+
 # ── Dynamic intraday adjustments ────────────────────────────────
 _IS_INTRADAY = LIVE_TIMEFRAME in ("1Min", "5Min", "15Min", "1Hour")
 if _IS_INTRADAY and MIN_BARS == 200:
@@ -369,10 +379,9 @@ class OrganismLiveEngine:
         self._shadow_total_ticks: int = 0
 
         # R3 shadow telemetry: ORB Stocks-in-Play scanner (Zarattini-Barbon-Aziz
-        # 2024). Built but NOT firing entries yet. Each tick after 9:35 ET it
-        # scans the universe for ORB breakouts and logs candidates. Goal: 5
-        # sessions of shadow data, then promote to live entry path if signal
-        # is meaningful.
+        # 2024). Default: SHADOW only (logs candidates, doesn't fire entries).
+        # When ORGANISM_ORB_LIVE_ENABLED=true, candidates flow into the entry
+        # pipeline alongside alpha+breakout, gated through composite + Kelly.
         self._orb_scanner = ORBScanner(
             opening_minutes=5,
             top_n=10,
@@ -380,6 +389,10 @@ class OrganismLiveEngine:
         )
         self._orb_shadow_log_count: int = 0
         self._orb_shadow_breakout_count: int = 0
+        # Latest triggered ORB candidates from this tick's shadow scan.
+        # Picked up by the cand_dicts build phase when ORB_LIVE_ENABLED.
+        self._latest_orb_triggered: list = []
+        self._orb_live_count_today: int = 0  # how many ORB-live entries fired this session
         self.governance = GovernanceController()
         self.evolution_engine = EvolutionEngine(
             alpha=0.30,
@@ -1453,9 +1466,10 @@ class OrganismLiveEngine:
                         # Shadow telemetry must never affect live decisions
                         logger.debug("RC-1.5 shadow regime err: %s", _shadow_err)
 
-                # R3 ORB Stocks-in-Play shadow scan. Logs only — does not gate
-                # any live decision. After 5 sessions of shadow data we'll
-                # promote ORB to a live entry path if the signal is meaningful.
+                # R3 ORB Stocks-in-Play scan (shadow + optional live).
+                # Always runs (logs). When ORGANISM_ORB_LIVE_ENABLED=true,
+                # triggered candidates flow into the entry pipeline below.
+                self._latest_orb_triggered = []  # reset each tick
                 try:
                     _now_ts = self._now_fn()
                     orb_candidates = self._orb_scanner.scan(
@@ -1463,6 +1477,7 @@ class OrganismLiveEngine:
                     )
                     if orb_candidates:
                         triggered = [c for c in orb_candidates if c.breakout_triggered]
+                        self._latest_orb_triggered = triggered  # for live path
                         self._orb_shadow_log_count += 1
                         self._orb_shadow_breakout_count += len(triggered)
                         if triggered:
@@ -2463,6 +2478,115 @@ class OrganismLiveEngine:
                     _planned_entries.add(bs.symbol)
                     _breakout_added += 1
 
+                # M2-B: ORB Stocks-in-Play LIVE entry path (feature-flagged).
+                # When ORGANISM_ORB_LIVE_ENABLED=true and the shadow scan
+                # produced triggered breakouts, route them into cand_dicts
+                # alongside alpha + breakout. Same composite gate, same Kelly,
+                # same risk controls. entry_source distinguishes ORB in
+                # trade_history for downstream A/B analysis.
+                _MAX_ORB_PER_TICK = 2
+                _orb_added = 0
+                if (
+                    ORB_LIVE_ENABLED
+                    and self._latest_orb_triggered
+                    and not self._is_learning_mode
+                ):
+                    _existing_syms = {d["symbol"] for d in cand_dicts}
+                    for orbc in self._latest_orb_triggered:
+                        if _orb_added >= _MAX_ORB_PER_TICK:
+                            break
+                        if orbc.symbol in _existing_syms:
+                            # Already a candidate via alpha or breakout;
+                            # don't duplicate
+                            continue
+                        # Shared entry gates (sector, fitness, liquidity, etc.)
+                        _gate_ok, _gate_reason = self._passes_entry_gates(
+                            orbc.symbol, orbc.direction, features_by_symbol,
+                            open_symbols, _planned_entries,
+                            fitness_gate=_MAIN_FITNESS_GATE,
+                            min_trades_for_fitness=_MIN_TRADES_FOR_FITNESS_GATE,
+                        )
+                        if not _gate_ok:
+                            logger.info(
+                                "ORB live: %s blocked by gate=%s",
+                                orbc.symbol, _gate_reason,
+                            )
+                            continue
+                        # ORB composite: blend ML self-conf, breakout-quality
+                        # proxy (0.55 because ORB IS a breakout), and
+                        # rv_ratio-derived "tension."
+                        ml_sig = ml_signals.get(orbc.symbol)
+                        ml_conf = ml_sig.confidence if ml_sig else 0.0
+                        # ML negative-direction veto for ORB longs
+                        if (
+                            orbc.direction > 0
+                            and ml_sig and ml_sig.direction < 0
+                        ):
+                            logger.info(
+                                "ORB live: %s ML veto (ml.direction<0 vs orb long)",
+                                orbc.symbol,
+                            )
+                            continue
+                        if (
+                            orbc.direction < 0
+                            and ml_sig and ml_sig.direction > 0
+                        ):
+                            logger.info(
+                                "ORB live: %s ML veto (ml.direction>0 vs orb short)",
+                                orbc.symbol,
+                            )
+                            continue
+                        _orb_breakout_proxy = 0.55  # ORB breakout = quality breakout
+                        _orb_tension = min(orbc.rv_ratio / 4.0, 0.80)
+                        _orb_composite = (
+                            0.50 * ml_conf
+                            + 0.30 * _orb_breakout_proxy
+                            + 0.20 * _orb_tension
+                        )
+                        # Use composite for gating (same as RC-1.5 fix)
+                        if _orb_composite < _MIN_MAIN_CONF:
+                            logger.info(
+                                "ORB live: %s composite=%.3f below gate=%.2f",
+                                orbc.symbol, _orb_composite, _MIN_MAIN_CONF,
+                            )
+                            continue
+                        # Predicted return: use ML when available
+                        if ml_sig and abs(ml_sig.predicted_return) > 1e-6:
+                            _orb_pred_ret = ml_sig.predicted_return * orbc.direction
+                            if _orb_pred_ret < 0:
+                                _orb_pred_ret = 0.005  # min positive floor
+                            _orb_ret_source = "calibrated_breakout"
+                        else:
+                            _orb_pred_ret = 0.005  # 0.5% default for ORB
+                            _orb_ret_source = "heuristic"
+
+                        cand_dicts.append({
+                            "symbol": orbc.symbol,
+                            "direction": orbc.direction,
+                            "predicted_return": _orb_pred_ret,
+                            "confidence": _orb_composite,
+                            "effective_confidence": _orb_composite,
+                            "breakout_score": _orb_breakout_proxy,
+                            "expected_return_source": _orb_ret_source,
+                            "ranking_score": _orb_composite * orbc.rv_ratio,
+                            # ORB-specific fields for telemetry / sizing
+                            "orb_high": orbc.orb_high,
+                            "orb_low": orbc.orb_low,
+                            "orb_suggested_stop": orbc.suggested_stop,
+                            "rv_ratio": orbc.rv_ratio,
+                            "entry_source_override": "orb_sip",
+                        })
+                        _planned_entries.add(orbc.symbol)
+                        self._orb_scanner.mark_fired(orbc.symbol)
+                        self._orb_live_count_today += 1
+                        _orb_added += 1
+                        logger.info(
+                            "ORB LIVE entry candidate: %s dir=%+.0f rv=%.2f "
+                            "composite=%.3f → entered cand_dicts",
+                            orbc.symbol, orbc.direction, orbc.rv_ratio,
+                            _orb_composite,
+                        )
+
                 cand_dicts.sort(
                     key=lambda x: x["ranking_score"],
                     reverse=True,
@@ -2707,15 +2831,23 @@ class OrganismLiveEngine:
                                 lowest_price=price,
                             )
 
-                            # Track entry metadata for TradeRecord
-                            # Determine entry source from breakout score
-                            _entry_source = "alpha"
-                            if sz.breakout_score >= 0.55 and (
-                                not hasattr(sz, 'predicted_return') or abs(sz.predicted_return) < 0.003
-                            ):
-                                _entry_source = "breakout"
-                            elif sz.breakout_score >= 0.4:
-                                _entry_source = "alpha+breakout"
+                            # Track entry metadata for TradeRecord.
+                            # Entry source: prefer override (e.g., "orb_sip"
+                            # set by M2-B ORB live path), else infer from
+                            # breakout score.
+                            _entry_source_override = getattr(
+                                sz, "entry_source_override", None,
+                            )
+                            if _entry_source_override:
+                                _entry_source = _entry_source_override
+                            else:
+                                _entry_source = "alpha"
+                                if sz.breakout_score >= 0.55 and (
+                                    not hasattr(sz, 'predicted_return') or abs(sz.predicted_return) < 0.003
+                                ):
+                                    _entry_source = "breakout"
+                                elif sz.breakout_score >= 0.4:
+                                    _entry_source = "alpha+breakout"
                             self._entry_metadata[sz.symbol] = {
                                 "entry_price": price,
                                 "entry_tick": self._tick_count,
