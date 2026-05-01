@@ -54,6 +54,7 @@ from backend.organism.pyramider import (
 from backend.organism.regime import RegimeDetector, RegimeLabel
 from backend.organism.orb_scanner import ORBScanner
 from backend.organism.eod_scanner import EODMomentumScanner
+from backend.organism.mean_reversion_scanner import MeanReversionScanner
 from backend.organism.sector_map import sector_gate_allows, get_sector
 from backend.organism.decision_telemetry import (
     DecisionSnapshot,
@@ -230,6 +231,39 @@ INVERSE_ETF_MAP = {
 # short-circuits, leaving slots free for ORB/EOD only. Diagnostic mode
 # for evaluating ORB/EOD edge in isolation.
 DISABLE_ALPHA_BREAKOUT = _env_bool("ORGANISM_DISABLE_ALPHA_BREAKOUT", False)
+
+# Ferrari v1: Mean-Reversion Scanner — intraday VWAP-displacement fade.
+# Default: SHADOW only (logs candidates, no entries fire). When
+# ORGANISM_MEAN_REVERSION_LIVE_ENABLED=true, candidates flow into the
+# entry pipeline alongside alpha+breakout/ORB/EOD. Tuned via replay
+# (artifacts/ferrari_v1/COMBINED_REPORT.md) to displacement≥2.5×ATR,
+# stop=1.0×ATR, target=0.8 retracement → 3.35:1 W:L on alt-period
+# replay, +$36/share on 388 trades. Promote after 5 sessions of shadow.
+MEAN_REVERSION_LIVE_ENABLED = _env_bool(
+    "ORGANISM_MEAN_REVERSION_LIVE_ENABLED", False,
+)
+MR_MIN_DISPLACEMENT_ATR = _env_float(
+    "ORGANISM_MR_MIN_DISPLACEMENT_ATR", 4.0,  # tightened from 2.5 (Day-1 data: avg=5.46)
+)
+MR_TARGET_RETRACEMENT = _env_float(
+    "ORGANISM_MR_TARGET_RETRACEMENT", 0.8,
+)
+MR_STOP_EXTENSION_ATR = _env_float(
+    "ORGANISM_MR_STOP_EXTENSION_ATR", 1.0,
+)
+# Day-1 production showed R:R up to 1,021 — micro-stop edge case on
+# low-vol low-priced names. Floor stop_distance at 5 bps of price.
+MR_MIN_STOP_BPS = _env_float("ORGANISM_MR_MIN_STOP_BPS", 5.0)
+MR_COOLDOWN_MINUTES = _env_int("ORGANISM_MR_COOLDOWN_MINUTES", 60)
+MR_TOP_N = _env_int("ORGANISM_MR_TOP_N", 3)
+
+# Surgical fix #2 (Ferrari v1 ML leakage audit): drop ML weight from the
+# production composite gate. Audit found corr(confidence, correct_direction)
+# = -0.112 on resolved trades; ML confidence is anti-predictive. Keeps
+# full composite for ranking; the gate uses a recomposite that pushes
+# ML's weight to breakout. Default ON since the audit's evidence is
+# unambiguous; flip OFF (=false) to revert if observable behavior degrades.
+DROP_ML_FROM_GATE = _env_bool("ORGANISM_DROP_ML_FROM_GATE", True)
 
 # ── Dynamic intraday adjustments ────────────────────────────────
 _IS_INTRADAY = LIVE_TIMEFRAME in ("1Min", "5Min", "15Min", "1Hour")
@@ -437,6 +471,23 @@ class OrganismLiveEngine:
         self._latest_eod_candidates: list = []
         self._eod_shadow_log_count: int = 0
         self._eod_live_count_today: int = 0
+
+        # Ferrari v1: Mean-Reversion Scanner — VWAP-displacement fade.
+        # Default SHADOW; promote via ORGANISM_MEAN_REVERSION_LIVE_ENABLED.
+        # Tuning constants come from env (see MR_* constants above), with
+        # replay-validated defaults.
+        self._mean_reversion_scanner = MeanReversionScanner(
+            min_displacement_atr=MR_MIN_DISPLACEMENT_ATR,
+            target_retracement=MR_TARGET_RETRACEMENT,
+            stop_extension_atr=MR_STOP_EXTENSION_ATR,
+            min_stop_bps=MR_MIN_STOP_BPS,
+            cooldown_minutes=MR_COOLDOWN_MINUTES,
+            top_n=MR_TOP_N,
+            long_only=LONG_ONLY,
+        )
+        self._latest_mr_candidates: list = []
+        self._mr_shadow_log_count: int = 0
+        self._mr_live_count_today: int = 0
         self.governance = GovernanceController()
         self.evolution_engine = EvolutionEngine(
             alpha=0.30,
@@ -1585,6 +1636,31 @@ class OrganismLiveEngine:
                 except Exception as _eod_err:
                     logger.debug("EOD shadow scan err: %s", _eod_err)
 
+                # Ferrari v1: Mean-Reversion scan (intraday VWAP-fade).
+                # Always runs (logs). When ORGANISM_MEAN_REVERSION_LIVE_ENABLED=true,
+                # candidates flow into the entry pipeline below. Active
+                # 9:45-15:30 ET (skips opening-vol + EOD-flatten zones).
+                self._latest_mr_candidates = []
+                try:
+                    _now_ts = self._now_fn()
+                    mr_cands = self._mean_reversion_scanner.scan(
+                        features_by_symbol, _now_ts,
+                    )
+                    if mr_cands:
+                        self._latest_mr_candidates = mr_cands
+                        self._mr_shadow_log_count += len(mr_cands)
+                        for c in mr_cands:
+                            logger.info(
+                                "MR shadow: %s dir=%+.0f dist=%.2f ATR "
+                                "vwap=%.4f curr=%.4f target=%.4f stop=%.4f "
+                                "rr=%.2f",
+                                c.symbol, c.direction, c.distance_atr,
+                                c.vwap, c.current_price, c.target_price,
+                                c.stop_price, c.expected_r_r,
+                            )
+                except Exception as _mr_err:
+                    logger.debug("MR shadow scan err: %s", _mr_err)
+
             # 4. GET CURRENT POSITIONS from broker
             current_positions = await self._positions_service.get_all_positions()
             open_symbols = set(current_positions.keys())
@@ -2448,12 +2524,25 @@ class OrganismLiveEngine:
                     # with composite < 0.45 that passed the gate via ML's
                     # uncalibrated self-confidence (corr(ml_pred, actual)=0.056).
                     # Those 132 trades = -$105.88 of -$108.00 cumulative loss.
-                    # Composite is the multi-factor quality formula the
-                    # weights were designed for; gate on it directly.
-                    # NOTE: weights kept at 0.50/0.30/0.20 for RC-1.5 curated;
-                    # the 0.20/0.50/0.30 reweighting is deferred to RC-2 with
-                    # shadow-mode evidence first.
-                    _eff_conf = confidence
+                    #
+                    # Surgical fix #2 (Ferrari v1 ML leakage audit): the
+                    # composite ALSO carries 50% ML weight at the gate.
+                    # Audit found corr(confidence, correct_direction) =
+                    # -0.112 on resolved trades — ML in the composite is
+                    # anti-predictive on the gate. When DROP_ML_FROM_GATE
+                    # (default true), reuse H2's learning-mode formula
+                    # (0.65×breakout + 0.35×tension) for the gate decision.
+                    # Keep `confidence` (with ML) for ranking_score so
+                    # the relative ordering of candidates still benefits
+                    # from any ML signal that does exist; only the
+                    # pass/fail threshold drops the ML weight.
+                    if DROP_ML_FROM_GATE and not self._is_learning_mode:
+                        _eff_conf = (
+                            0.65 * breakout_score
+                            + 0.35 * min(tension, 1.0)
+                        )
+                    else:
+                        _eff_conf = confidence
 
                     _route_exploration = False
                     if _is_heuristic:
@@ -2542,11 +2631,26 @@ class OrganismLiveEngine:
                     ml_sig = ml_signals.get(bs.symbol)
                     if not self._is_learning_mode and ml_sig and ml_sig.direction < 0:
                         continue
-                    # Predicted return: use ML when available (minimal 0.3%
-                    # floor to avoid zero), otherwise scale from breakout
-                    # score (0.5%-2.0% range avoids flat over-estimation).
+                    # Surgical fix (Ferrari v1, ML leakage audit): the
+                    # 0.003 floor was masking weak ML signals — 49% of
+                    # 482 logged trades had pred_ret == 0.003 or 0.0
+                    # exactly. corr(predicted_return, actual_return) over
+                    # resolved trades = 0.034.
+                    # Pass through real ML estimates (sign-stripped since
+                    # direction is handled separately); fall back to
+                    # breakout-derived when ML is silent.
+                    # Day-1 production (May 1) revealed ML sometimes emits
+                    # extremely tiny non-zero values (2e-5, 5e-6) that
+                    # passed the original >1e-6 threshold but are
+                    # functionally noise — Kelly was sizing on signals
+                    # below the natural 1-min bar noise floor (~0.1%).
+                    # Threshold raised to 1e-4 (0.01% expected return) so
+                    # tiny "ghost" outputs fall through to the heuristic.
                     if ml_sig and not self._is_learning_mode:
-                        pred_ret = max(ml_sig.predicted_return, 0.003)
+                        if abs(ml_sig.predicted_return) > 1e-4:
+                            pred_ret = abs(ml_sig.predicted_return)
+                        else:
+                            pred_ret = 0.005 + 0.015 * bs.composite_score
                     else:
                         pred_ret = 0.005 + 0.015 * bs.composite_score
                     # Determine expected_return_source for breakout
@@ -2841,6 +2945,119 @@ class OrganismLiveEngine:
                             _eod_sym, _eod_dir,
                             eodc.day_return_pct, _eod_composite,
                             _eod_translated, _eod_allow_short,
+                        )
+
+                # Ferrari v1: Mean-Reversion LIVE entry path (feature-flagged).
+                # When ORGANISM_MEAN_REVERSION_LIVE_ENABLED=true, MR candidates
+                # produced by this tick's shadow scan flow into cand_dicts
+                # alongside alpha+breakout/ORB/EOD. Same Kelly/sizing/risk
+                # controls. The MR scanner enforces long_only via its
+                # constructor (LONG_ONLY env), so no inverse-ETF translation
+                # is needed (and the strategy does not benefit from shorts
+                # in our universe).
+                _MAX_MR_PER_TICK = 2
+                _mr_added = 0
+                if (
+                    MEAN_REVERSION_LIVE_ENABLED
+                    and self._latest_mr_candidates
+                    and not self._is_learning_mode
+                ):
+                    _existing_syms = {d["symbol"] for d in cand_dicts}
+                    for mrc in self._latest_mr_candidates:
+                        if _mr_added >= _MAX_MR_PER_TICK:
+                            break
+                        if mrc.symbol in _existing_syms:
+                            continue
+
+                        # Shared entry gates (sector, fitness, liquidity, etc.)
+                        # MR is long-only by scanner construction; no
+                        # allow_short bypass needed.
+                        _gate_ok, _gate_reason = self._passes_entry_gates(
+                            mrc.symbol, mrc.direction, features_by_symbol,
+                            open_symbols, _planned_entries,
+                            fitness_gate=_MAIN_FITNESS_GATE,
+                            min_trades_for_fitness=_MIN_TRADES_FOR_FITNESS_GATE,
+                            allow_short=False,
+                        )
+                        if not _gate_ok:
+                            logger.info(
+                                "MR live: %s blocked by gate=%s",
+                                mrc.symbol, _gate_reason,
+                            )
+                            continue
+
+                        # MR composite: distance-derived. Mean-reversion is a
+                        # statistical signal (not a directional prediction),
+                        # so we do NOT include ML confidence (ML.audit:
+                        # corr(conf, correct) = -0.112 — anti-predictive on
+                        # the alpha+breakout path). The composite is purely
+                        # signal-strength-derived. Mapping (replay-tuned):
+                        #   1.5 ATR → 0.525, 2.5 ATR → 0.675, 3.5 ATR → 0.825.
+                        # Scanner's min_displacement_atr=2.5 ensures composites
+                        # always start above the 0.45 main gate.
+                        _mr_composite = min(
+                            1.0,
+                            max(
+                                0.45,
+                                0.30 + 0.15 * mrc.abs_distance_atr,
+                            ),
+                        )
+
+                        if _mr_composite < _MIN_MAIN_CONF:
+                            logger.info(
+                                "MR live: %s composite=%.3f below gate=%.2f",
+                                mrc.symbol, _mr_composite, _MIN_MAIN_CONF,
+                            )
+                            continue
+
+                        # Predicted return: derived from target_price
+                        # (target_price - current_price)/current_price * direction.
+                        # This IS the strategy's expected gross return; no
+                        # ML estimate involved. Honest, signal-derived.
+                        if mrc.current_price > 0:
+                            _mr_pred_ret = abs(
+                                (mrc.target_price - mrc.current_price)
+                                / mrc.current_price
+                            )
+                        else:
+                            _mr_pred_ret = 0.005  # safety fallback
+                        _mr_ret_source = "mean_reversion"
+
+                        cand_dicts.append({
+                            "symbol": mrc.symbol,
+                            "direction": mrc.direction,
+                            "predicted_return": _mr_pred_ret,
+                            "confidence": _mr_composite,
+                            "effective_confidence": _mr_composite,
+                            # MR is not a breakout; report neutral 0.5 for
+                            # any downstream consumer expecting this field.
+                            "breakout_score": 0.5,
+                            "expected_return_source": _mr_ret_source,
+                            # Rank by composite × distance — strongest
+                            # displacement first.
+                            "ranking_score": (
+                                _mr_composite * mrc.abs_distance_atr
+                            ),
+                            # MR-specific fields for telemetry / sizing
+                            "mr_vwap": mrc.vwap,
+                            "mr_target_price": mrc.target_price,
+                            "mr_stop_price": mrc.stop_price,
+                            "mr_distance_atr": mrc.distance_atr,
+                            "mr_expected_r_r": mrc.expected_r_r,
+                            "entry_source_override": "mean_reversion",
+                        })
+                        _planned_entries.add(mrc.symbol)
+                        self._mean_reversion_scanner.mark_fired(
+                            mrc.symbol, self._now_fn(),
+                        )
+                        self._mr_live_count_today += 1
+                        _mr_added += 1
+                        logger.info(
+                            "MR LIVE entry candidate: %s dir=%+.0f "
+                            "dist=%.2fATR composite=%.3f rr=%.2f → cand_dicts",
+                            mrc.symbol, mrc.direction,
+                            mrc.abs_distance_atr, _mr_composite,
+                            mrc.expected_r_r,
                         )
 
                 cand_dicts.sort(
