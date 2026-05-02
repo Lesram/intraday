@@ -360,15 +360,41 @@ class CircuitBreaker:
         self._opened_at_mono = time.monotonic()
         logger.warning(f"Circuit breaker OPEN: {reason}")
 
-        # Trigger alert
+        # Trigger alert.
+        # V4 P-P0-4 (2026-05-02): the previous call site
+        # `alert_manager.critical(title=..., message=..., context=...)`
+        # invoked a method that does not exist on AlertManager —
+        # AttributeError was swallowed by `except Exception`, dropping
+        # every circuit-breaker alert. Use the canonical async
+        # send_alert API with the worker-thread-safe dispatch pattern
+        # (wave-8c J-3) since `_trip` is invoked from sync paths reached
+        # via asyncio.to_thread.
         try:
-            alert_manager = get_alert_manager()
-            if alert_manager:
-                alert_manager.critical(
-                    title="Circuit Breaker Tripped",
-                    message=f"Order flow halted: {reason}",
-                    context={"failures": len(self._failures), "daily_pnl": self._daily_pnl}
+            import asyncio as _aio
+            from backend.infra.alerting import (
+                AlertCategory, AlertSeverity, send_alert,
+            )
+
+            async def _emit():
+                await send_alert(
+                    AlertCategory.SYSTEM_ERROR,
+                    AlertSeverity.CRITICAL,
+                    "Circuit Breaker Tripped",
+                    f"Order flow halted: {reason}",
+                    details={
+                        "failures": len(self._failures),
+                        "daily_pnl": self._daily_pnl,
+                    },
                 )
+
+            try:
+                _loop = _aio.get_running_loop()
+                _loop.call_soon_threadsafe(
+                    lambda: _aio.ensure_future(_emit())
+                )
+            except RuntimeError:
+                # Not on the event-loop thread; fall back to a fresh loop.
+                _aio.run(_emit())
         except Exception as e:
             logger.error(f"Failed to send circuit breaker alert: {e}")
 

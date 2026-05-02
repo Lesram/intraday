@@ -350,18 +350,25 @@ async def run_stale_order_cleanup():
                 logger.warning(
                     f"⚠️  Stale orders cleaned up: {total} orders marked as failed"
                 )
-                # Send alert notification
+                # Send alert notification.
+                # V4 P-P0-4 (2026-05-02): the previous call passed
+                # severity=, title=, message=, source=, metadata= which
+                # do not match the canonical send_alert(category, severity,
+                # title, description, details=) signature — TypeError was
+                # swallowed by the broad except, dropping every stale-order
+                # alert. Use canonical signature.
                 try:
-                    from backend.infra.alerting import AlertSeverity, get_alert_manager
-                    alert_manager = get_alert_manager()
-                    await alert_manager.send_alert(
-                        severity=AlertSeverity.WARNING,
-                        title="Stale Orders Detected",
-                        message=f"Stale order cleanup: {total} orders marked as failed "
-                                f"(stale_pending={counts['stale_pending']}, "
-                                f"no_broker_id={counts['no_broker_id']})",
-                        source="order_guardrails",
-                        metadata={"counts": counts},
+                    from backend.infra.alerting import (
+                        AlertCategory, AlertSeverity, send_alert,
+                    )
+                    await send_alert(
+                        AlertCategory.SYSTEM_ERROR,
+                        AlertSeverity.WARNING,
+                        "Stale Orders Detected",
+                        f"Stale order cleanup: {total} orders marked as failed "
+                        f"(stale_pending={counts['stale_pending']}, "
+                        f"no_broker_id={counts['no_broker_id']})",
+                        details={"counts": counts, "source": "order_guardrails"},
                     )
                 except Exception as alert_err:
                     logger.debug(f"Could not send alert: {alert_err}")

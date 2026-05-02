@@ -817,14 +817,24 @@ class AlpacaStreamClient:
         This indicates potential order update loss and requires immediate attention.
         """
         try:
-            # Try to import and use the alert system
+            # V4 P-P0-4 (2026-05-02): the previous code imported
+            # `emit_alert` from backend.monitoring.slo_monitor and
+            # `increment_counter` from backend.observability.metrics —
+            # neither symbol exists. Both `except ImportError: pass`
+            # branches always fired, dropping the alert and skipping
+            # the metric on every WS max-reconnect event. Use the
+            # canonical send_alert API; metric becomes a Prometheus
+            # Counter declared on the global REGISTRY (visible at
+            # /metrics post wave-12e).
             try:
-                from backend.monitoring.slo_monitor import emit_alert
-                await emit_alert(
-                    alert_type="WebSocketMaxReconnects",
-                    severity="critical",
-                    title="Alpaca WebSocket Max Reconnects Reached",
-                    message=(
+                from backend.infra.alerting import (
+                    AlertCategory, AlertSeverity, send_alert,
+                )
+                await send_alert(
+                    AlertCategory.CONNECTIVITY,
+                    AlertSeverity.CRITICAL,
+                    "Alpaca WebSocket Max Reconnects Reached",
+                    (
                         f"WebSocket connection to Alpaca failed after {self.max_reconnect_attempts} "
                         "reconnection attempts. Order updates may be lost. "
                         "Manual intervention required."
@@ -834,20 +844,31 @@ class AlpacaStreamClient:
                         "max_attempts": self.max_reconnect_attempts,
                         "last_reconnect_delay": self.reconnect_delay,
                         "is_paper": self.is_paper,
-                    }
+                    },
                 )
-            except ImportError:
-                pass  # Alert system not available
-            
-            # Also emit Prometheus metric for alerting
+            except Exception as _alert_err:
+                logger.warning(
+                    "WS max-reconnect alert dispatch failed: %s",
+                    _alert_err,
+                )
+
             try:
-                from backend.observability.metrics import increment_counter
-                increment_counter(
-                    "websocket_max_reconnects_total",
-                    labels={"stream_type": "alpaca_trades", "is_paper": str(self.is_paper)}
-                )
-            except ImportError:
-                pass  # Metrics not available
+                from prometheus_client import Counter
+                global _WS_MAX_RECONNECT_COUNTER
+                try:
+                    _WS_MAX_RECONNECT_COUNTER  # type: ignore[name-defined]
+                except NameError:
+                    _WS_MAX_RECONNECT_COUNTER = Counter(
+                        "websocket_max_reconnects_total",
+                        "Total times the Alpaca WS gave up after max reconnects",
+                        ["stream_type", "is_paper"],
+                    )
+                _WS_MAX_RECONNECT_COUNTER.labels(
+                    stream_type="alpaca_trades",
+                    is_paper=str(self.is_paper),
+                ).inc()
+            except Exception:
+                pass
             
             # Log at critical level for log-based alerting
             logger.critical(

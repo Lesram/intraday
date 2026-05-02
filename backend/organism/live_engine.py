@@ -5627,14 +5627,29 @@ class OrganismLiveEngine:
                 )
                 # Do not abort here — the guarded helper will block any
                 # unsafe write. But the CRITICAL log captures the caller.
+                # V4 P-P0-3 (2026-05-02): _save_brain runs via
+                # asyncio.to_thread, so we are on a worker thread without
+                # a running event loop. Raw `_aio2.create_task(...)` here
+                # raises RuntimeError that the outer except swallows —
+                # silently dropping a CRITICAL forensic-guard alert.
+                # Use the wave-8c (J-3) pattern: get_running_loop +
+                # call_soon_threadsafe with RuntimeError fallback to log.
                 try:
-                    from backend.infra.alerting import send_alert, AlertCategory, AlertSeverity
                     import asyncio as _aio2
-                    _aio2.create_task(send_alert(
-                        AlertCategory.SYSTEM_ERROR, AlertSeverity.CRITICAL,
-                        "Forensic Guard: Object Identity Changed",
-                        "Live engine learner/signal_gen replaced unexpectedly.",
-                    ))
+                    from backend.infra.alerting import send_alert, AlertCategory, AlertSeverity
+                    try:
+                        _loop = _aio2.get_running_loop()
+                        _loop.call_soon_threadsafe(
+                            lambda: _aio2.ensure_future(send_alert(
+                                AlertCategory.SYSTEM_ERROR, AlertSeverity.CRITICAL,
+                                "Forensic Guard: Object Identity Changed",
+                                "Live engine learner/signal_gen replaced unexpectedly.",
+                            ))
+                        )
+                    except RuntimeError:
+                        logger.warning(
+                            "Forensic-guard alert deferred (no running loop in worker thread)"
+                        )
                 except Exception:
                     pass
 
