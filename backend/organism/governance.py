@@ -245,14 +245,36 @@ class GovernanceController:
 
     def to_dict(self) -> dict[str, Any]:
         s = self.snapshot()
+        # V4 O-3 (2026-05-02): the frontend OrganismDashboard reads
+        # `governance.halted`, `governance.drawdown_triggered`, and
+        # `governance.change_budget_remaining`, but the backend was
+        # only emitting `trading_halted`, `change_count_today`, and
+        # `max_changes_per_day`. The kill-switch banner therefore did
+        # not toggle when trading was halted. Emit both shapes
+        # (canonical snake_case + the FE-expected names) so the FE
+        # works without a breaking rename.
+        # drawdown_triggered: True iff a drawdown-kill is currently
+        # holding trading off (within cooldown window). Reuse
+        # is_trading_halted, which already evaluates cooldown expiry.
+        _drawdown_triggered = bool(
+            getattr(self, "_drawdown_triggered_at", None)
+            and s.trading_halted
+        )
+        _budget_remaining = max(
+            0,
+            int(s.max_changes_per_day) - int(s.change_count_today),
+        )
         return {
             "frozen": s.frozen,
             "trading_halted": s.trading_halted,
+            "halted": s.trading_halted,
+            "drawdown_triggered": _drawdown_triggered,
             "disabled_strategies": sorted(s.disabled_strategies),
             "policy_version": s.policy_version,
             "config_hash": s.config_hash,
             "change_count_today": s.change_count_today,
             "max_changes_per_day": s.max_changes_per_day,
+            "change_budget_remaining": _budget_remaining,
         }
 
     # ── persistence (Phase 1.2) ─────────────────────────────────────

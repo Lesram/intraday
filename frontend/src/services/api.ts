@@ -121,13 +121,55 @@ apiClient.interceptors.response.use(
   }
 );
 
-// Helper function to handle API errors
+// Helper function to handle API errors.
+// V4 O-4 (2026-05-02): FastAPI's 422 validation errors arrive with
+// `detail` as an array of `{loc, msg, type, input}` objects, and
+// post-Wave-11b sanitizer keeps the array shape on rejection paths.
+// The previous handler returned literal "An error occurred" for any
+// non-string detail, so users could never see *what* validation
+// failed. Render arrays into a readable summary.
+type ValidationItem = {
+  loc?: (string | number)[];
+  msg?: string;
+  type?: string;
+  field?: string;
+  message?: string;
+};
+
+function _renderDetail(detail: unknown): string {
+  if (typeof detail === 'string') {
+    return detail;
+  }
+  if (Array.isArray(detail)) {
+    const parts = detail
+      .map((item: ValidationItem) => {
+        if (typeof item === 'string') return item;
+        const field = item.field
+          ?? (Array.isArray(item.loc) ? item.loc.filter((p) => p !== 'body').join('.') : '');
+        const msg = item.message ?? item.msg ?? '';
+        return field ? `${field}: ${msg}` : msg;
+      })
+      .filter(Boolean);
+    if (parts.length > 0) {
+      return parts.join('; ');
+    }
+  }
+  if (detail && typeof detail === 'object') {
+    const obj = detail as Record<string, unknown>;
+    if (typeof obj.message === 'string') return obj.message;
+    if (typeof obj.msg === 'string') return obj.msg;
+  }
+  return '';
+}
+
 export const handleApiError = (error: unknown): string => {
   if (axios.isAxiosError(error)) {
     if (error.response) {
-      // Server responded with error
-      const message = error.response.data?.detail || error.response.data?.message || error.message;
-      return typeof message === 'string' ? message : 'An error occurred';
+      const data = error.response.data ?? {};
+      const rendered = _renderDetail(data?.detail);
+      if (rendered) return rendered;
+      const fallback = data?.message || error.message;
+      return typeof fallback === 'string' ? fallback : 'An error occurred';
     } else if (error.request) {
       // Request made but no response
       return 'No response from server. Please check your connection.';
