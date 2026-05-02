@@ -683,6 +683,26 @@ class OrganismBrain:
             # ML feature config (not model weights)
             self._save_ml_state(self.brain_dir, signal_gen)
 
+            # V4 R-F-5 (2026-05-02): persist the RF/LGBM ensemble even
+            # when the walk-forward gate blocks a full save.
+            # The wave-11d ensemble.save() invocation lives inside
+            # _save_ml_models, which save_essential_state intentionally
+            # skips because the main clf/reg are promotion-gated. But
+            # ensemble persistence is idempotent runtime state (not a
+            # promotion), and skipping it means: every tick where the
+            # gate blocks the full save, the ensemble files stay absent
+            # on disk. After restart, predict() runs XGB-only and the
+            # axis-8 parity bug wave-11d closed silently re-opens.
+            ensemble = getattr(signal_gen, "_ensemble", None)
+            if ensemble is not None and hasattr(ensemble, "save"):
+                try:
+                    ensemble.save(self.brain_dir)
+                except Exception as e:
+                    logger.warning(
+                        "save_essential_state: ensemble persist failed: %s",
+                        e,
+                    )
+
             # Manifest write through the unified guarded helper (F1/F2).
             # force=False: essential-save path is unconditionally guarded.
             wrote = self._write_manifest_guarded(

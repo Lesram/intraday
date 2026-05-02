@@ -5419,7 +5419,11 @@ class OrganismLiveEngine:
             return
         try:
             from backend.infra.schemas import TickTelemetry
-            from backend.infra.database import get_session_context
+            # V4 N-C-2 (2026-05-02): canonical module is `backend.infra.db`;
+            # `backend.infra.database` does not exist — the ImportError was
+            # silently swallowed by `except Exception`, dropping every
+            # tick_telemetry write since this code path was added.
+            from backend.infra.db import get_session_context
 
             # Top candidates summary (compact)
             top_cands = [
@@ -5457,7 +5461,11 @@ class OrganismLiveEngine:
             return
         try:
             from backend.infra.schemas import TickTelemetry
-            from backend.infra.database import get_session_context
+            # V4 N-C-2 (2026-05-02): canonical module is `backend.infra.db`;
+            # `backend.infra.database` does not exist — the ImportError was
+            # silently swallowed by `except Exception`, dropping every
+            # tick_telemetry write since this code path was added.
+            from backend.infra.db import get_session_context
 
             import sqlalchemy as sa
             cutoff = self._now_fn() - timedelta(days=7)
