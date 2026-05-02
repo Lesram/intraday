@@ -932,6 +932,13 @@ class EvolutionEngine:
         has accumulated enough evidence that bearish trades are profitable
         in the current regime.  They can be disabled again if performance
         degrades.
+
+        Audit-M finding M-13 (2026-05-02): Under LONG_ONLY=True (current
+        production setting) this method early-returns at line 944
+        (`if not short_trades: return`) because no short trades ever
+        accumulate. The path is correct — a no-op when shorts are
+        impossible — but kept defined so toggling LONG_ONLY=False
+        without a code change reactivates the evolution logic.
         """
         alpha = 0.3
         # Identify short-direction trades (direction == -1)
