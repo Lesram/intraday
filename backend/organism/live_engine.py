@@ -696,11 +696,26 @@ class OrganismLiveEngine:
 
     # ── Dynamic throttle ──────────────────────────────────────
 
+    def _strategy_trades(self) -> list[Any]:
+        """V4 R-F-7 / R-F-8 (2026-05-02): trades excluding reconciliation
+        artifacts. Use this view at any *gate* or *threshold* consumer
+        — learning-mode, walk-forward Sharpe gate, evolution-freeze count,
+        Kelly trade-count. Without this filter, cross-session-cleanup
+        bookkeeping inflates the trade count and pollutes the gate
+        statistics. Logging / telemetry sites can keep using
+        `len(self._all_trades)` for display continuity.
+        """
+        return [
+            t for t in self._all_trades
+            if not getattr(t, "is_reconciliation_artifact", False)
+        ]
+
     @property
     def _is_learning_mode(self) -> bool:
-        """True when engine has < LEARNING_MODE_TRADES completed trades."""
+        """True when engine has < LEARNING_MODE_TRADES completed strategy trades."""
         from backend.organism.trading_phase import LEARNING_MODE_TRADES
-        return len(self._all_trades) < LEARNING_MODE_TRADES
+        # V4 R-F-8 (2026-05-02): filter reconciliation artifacts.
+        return len(self._strategy_trades()) < LEARNING_MODE_TRADES
 
     @property
     def _dynamic_max_entries_per_hour(self) -> int:
@@ -1818,6 +1833,25 @@ class OrganismLiveEngine:
                     self._mr_live_count_today = 0
                     self._symbol_banned.clear()
                     self._ml_reversal_used.clear()
+                    # V4 Q-Q1 / R-F-3 (2026-05-02): per-symbol "today"
+                    # counters were declared with daily semantics in
+                    # live_engine.py:613-629 but never reset on date-roll.
+                    # Their consumers (symbol-ban thresholds at
+                    # _passes_entry_gates) ARE reset above via
+                    # _symbol_banned.clear(), creating ghost bans on Day 2:
+                    # yesterday's loss streaks gate today's entries even
+                    # though the ban itself was lifted. Reset alongside.
+                    for _attr in (
+                        "_symbol_daily_pnl",
+                        "_symbol_wins_today",
+                        "_symbol_closed_today",
+                        "_symbol_consecutive_losses",
+                        "_symbol_exit_type",
+                        "_symbol_exit_tick",
+                    ):
+                        _ctr = getattr(self, _attr, None)
+                        if _ctr is not None:
+                            _ctr.clear()
                     # Audit-F finding 8 (2026-05-01): auto-clear daily-loss halt
                     if getattr(self, "_daily_loss_halt", False):
                         self.governance.resume_trading()
@@ -1893,6 +1927,37 @@ class OrganismLiveEngine:
                         drawdown * 100,
                         len(current_positions),
                     )
+                    # V4 P-P0-5 (2026-05-02): drawdown-kill is the most
+                    # safety-critical event in the system. It was log-only
+                    # before — operators relied on dashboards. Wire a
+                    # CRITICAL alert through the canonical send_alert API.
+                    try:
+                        from backend.infra.alerting import (
+                            AlertCategory, AlertSeverity, send_alert,
+                        )
+                        import asyncio as _aio_dk
+                        _aio_dk.create_task(send_alert(
+                            AlertCategory.RISK_VIOLATION,
+                            AlertSeverity.CRITICAL,
+                            "Drawdown Kill Triggered",
+                            f"Drawdown {drawdown:.2%} >= "
+                            f"{self.governance._drawdown_limit:.0%} — entries "
+                            f"halted; {len(current_positions)} open positions "
+                            f"still managed for exit. Peak=${self._peak_equity:.2f}, "
+                            f"current=${equity:.2f}.",
+                            details={
+                                "drawdown_pct": float(drawdown),
+                                "limit_pct": float(self.governance._drawdown_limit),
+                                "peak_equity": float(self._peak_equity),
+                                "current_equity": float(equity),
+                                "open_positions": len(current_positions),
+                            },
+                        ))
+                    except Exception as _alert_err:
+                        logger.error(
+                            "Drawdown-kill alert dispatch failed: %s",
+                            _alert_err,
+                        )
                     # CORE-011 fix: cancel pending entry orders at the broker
                     # so they don't fill after the drawdown kill triggers.
                     await self._cancel_pending_entry_orders()
@@ -3349,7 +3414,10 @@ class OrganismLiveEngine:
                         if self._streaming_provider is not None
                         else None
                     ),
-                    trade_count=len(self._all_trades),
+                    # V4 R-F-8 (2026-05-02): Kelly's trade_count gates
+                    # learning-mode-vs-production sizing; reconciliation
+                    # bookkeeping should not advance the regime-promote.
+                    trade_count=len(self._strategy_trades()),
                 )
                 self._last_kelly_sizes = sizes
 
@@ -3715,7 +3783,9 @@ class OrganismLiveEngine:
                             signal_gen=self.signal_gen,
                             evolution_engine=self.evolution_engine,
                             evolved_params=self.evolved_params,
-                            total_trades=len(self._all_trades),
+                            # V4 R-F-8 (2026-05-02): evolution-freeze
+                            # threshold is a strategy-trade count.
+                            total_trades=len(self._strategy_trades()),
                         )
                         self._bg_training_metadata["status"] = "training"
                         self._bg_training_started_tick = self._tick_count
@@ -5024,10 +5094,15 @@ class OrganismLiveEngine:
                 pnl,
             )
 
-        # Save brain immediately after recording fills to prevent data loss
+        # Save brain immediately after recording fills to prevent data loss.
+        # V4 Q-Q15 (2026-05-02): the Phase-1 fix at line 3823 wrapped
+        # `_save_brain` in `asyncio.to_thread` to keep the tick loop
+        # responsive during the 30-60ms write. This second call site
+        # in `_reconcile_fills` was missed — every closing fill was
+        # blocking the event loop synchronously.
         if closed:
             try:
-                self._save_brain()
+                await asyncio.to_thread(self._save_brain)
                 logger.info("Brain saved after %d fill(s) recorded", len(closed))
             except Exception as e:
                 logger.warning("Post-fill brain save failed: %s", e)
@@ -5693,9 +5768,15 @@ class OrganismLiveEngine:
                 exit_levels_snapshot, entry_metadata_snapshot
             )
 
-            # Walk-forward gate: skip full save if regression detected
+            # Walk-forward gate: skip full save if regression detected.
+            # V4 R-F-7 (2026-05-02): evaluate on last-100 strategy trades,
+            # not last-100 raw _all_trades. Reconciliation artifacts
+            # have synthetic confidence/predicted_return and zero
+            # bars_held — they corrupt the Sharpe-ratio gate statistics
+            # and cause spurious "regression detected" save blocks
+            # (audit-P P-P0-6 traced 46 such firings since 2026-04-20).
             should_save, reason = self.brain.walk_forward_gate(
-                self._all_trades[-100:],  # evaluate on last 100 trades
+                self._strategy_trades()[-100:],
                 min_trades=10,
                 regression_threshold=0.95,
                 learner=self.learner,
