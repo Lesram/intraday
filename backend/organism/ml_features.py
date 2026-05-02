@@ -63,7 +63,13 @@ def compute_tension_proxy(features_df: pd.DataFrame) -> float:
     vol_regime_component = min(max(atr_ratio - 0.018, 0.0) / 0.04, 0.5) * 0.2
 
     tension = vol_component + move_component + vol_regime_component
-    return min(tension, 0.80)
+    # Audit-A finding 10 (2026-05-01): saturating at 0.80 made big-stress
+    # days look numerically identical to moderately-active days at 5
+    # callsites. Cap raised to 1.0 (natural ceiling for a 0..1 score).
+    # Downstream consumers (alpha+breakout/ORB/EOD/MR composite blends)
+    # already wrap with `min(tension, 1.0)`, so the uncapped 0..0.80
+    # range stays valid; the 0.80..1.0 range is now distinguishable.
+    return min(tension, 1.0)
 
 
 def _ema(series: pd.Series, span: int) -> pd.Series:
