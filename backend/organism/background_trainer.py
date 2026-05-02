@@ -204,6 +204,16 @@ def _train_in_process(
         elif trades_pickle:
             from backend.organism.continuous_learner import TradeRecord
             trades = [TradeRecord(**t) if isinstance(t, dict) else t for t in trades_pickle]
+            # V4 R-F-6 (2026-05-02): filter reconciliation artifacts before
+            # evolution. The synchronous fallback in live_engine._maybe_evolve
+            # already filters; the BG path is the primary evolution route in
+            # production and was previously unfiltered, leaking
+            # cross-session-cleanup bookkeeping into evolved params and
+            # creating an organism-level split between sync and BG fitness.
+            trades = [
+                t for t in trades
+                if not getattr(t, "is_reconciliation_artifact", False)
+            ]
             recent_trades = trades[-200:]
 
             if recent_trades:

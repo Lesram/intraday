@@ -562,8 +562,15 @@ class OrganismBrain:
                 # excluded from learning consumers post-restart.
                 _saved_artifact = td.get("is_reconciliation_artifact")
                 if _saved_artifact is None:
+                    # V4 R-F-1 (2026-05-02): legacy CSVs without the column
+                    # — derive the flag from BOTH triggers used at runtime
+                    # (live_engine._reconcile_fills sets _is_reconciliation
+                    # for either exit_reason or entry_source). Orphan-adopted
+                    # exits keep their normal exit_reason but must still be
+                    # excluded from learning.
                     _saved_artifact = (
                         td.get("exit_reason", "") == "reconciliation_adjustment"
+                        or td.get("entry_source", "") == "reconciliation_orphan"
                     )
                 learner.trade_history.append(TradeRecord(
                     symbol=td.get("symbol", ""),
@@ -1253,6 +1260,15 @@ class OrganismBrain:
                 "confidence": round(t.confidence, 4),
                 "correct_direction": t.correct_direction,
                 "is_exploration": getattr(t, "is_exploration", False),
+                # V4 R-F-1 (2026-05-02): persist the runtime flag so the
+                # audit-G isolation survives a restart. Without this column,
+                # only `exit_reason == "reconciliation_adjustment"` rows are
+                # recovered via the load-side fallback; orphan-adopted exits
+                # (entry_source="reconciliation_orphan") with normal exit
+                # reasons would silently lose the flag and re-enter learning.
+                "is_reconciliation_artifact": bool(
+                    getattr(t, "is_reconciliation_artifact", False)
+                ),
                 "entry_source": getattr(t, "entry_source", ""),
                 "regime_at_entry": getattr(t, "regime_at_entry", ""),
                 "regime_at_exit": getattr(t, "regime_at_exit", ""),
@@ -1848,7 +1864,10 @@ class OrganismBrain:
                     is_reconciliation_artifact=bool(
                         td.get(
                             "is_reconciliation_artifact",
-                            td.get("exit_reason", "") == "reconciliation_adjustment",
+                            (
+                                td.get("exit_reason", "") == "reconciliation_adjustment"
+                                or td.get("entry_source", "") == "reconciliation_orphan"
+                            ),
                         )
                     ),
                     entry_source=td.get("entry_source", ""),
