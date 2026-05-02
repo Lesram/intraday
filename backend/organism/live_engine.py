@@ -1680,18 +1680,42 @@ class OrganismLiveEngine:
 
                 # ── Daily max-loss circuit breaker ──────────────
                 if MAX_DAILY_LOSS > 0:
-                    today = self._now_fn().strftime("%Y-%m-%d")
+                    # Audit-F finding 16 (2026-05-01): use Eastern Time, not
+                    # UTC. UTC reset at 00:00Z = 8 PM ET (= next day in UTC),
+                    # which clears the daily counter mid-evening.
+                    try:
+                        from zoneinfo import ZoneInfo
+                        today = self._now_fn().astimezone(
+                            ZoneInfo("America/New_York")
+                        ).strftime("%Y-%m-%d")
+                    except Exception:
+                        today = self._now_fn().strftime("%Y-%m-%d")
                     if today != self._daily_loss_date:
+                        # Audit-F finding 8 (2026-05-01): daily max-loss halt
+                        # used to persist across date roll, requiring operator
+                        # /organism/resume. Auto-clear the halt on calendar
+                        # rollover IF the prior halt was set by daily_max_loss
+                        # (don't auto-clear operator halts or drawdown-kill).
+                        if getattr(self, "_daily_loss_halt", False):
+                            self.governance.resume_trading()
+                            self._daily_loss_halt = False
+                            logger.info(
+                                "Daily max-loss halt auto-cleared on date "
+                                "roll (%s -> %s)",
+                                self._daily_loss_date, today,
+                            )
                         self._daily_starting_equity = equity
                         self._daily_loss_date = today
                     daily_pnl = equity - self._daily_starting_equity
                     if daily_pnl <= -MAX_DAILY_LOSS:
                         self.governance.halt_trading()
+                        self._daily_loss_halt = True
                         entries_blocked = True
                         self._last_entries_blocked_reason = "daily_max_loss"
                         logger.critical(
                             "DAILY MAX-LOSS HALT: PnL=$%.2f exceeds -$%.0f "
-                            "limit. Trading halted. Resume via POST /organism/resume.",
+                            "limit. Trading halted. Auto-clears on next ET "
+                            "calendar day; /organism/resume to override.",
                             daily_pnl, MAX_DAILY_LOSS,
                         )
                         # Alert wiring: emit Slack/webhook alert
@@ -2772,11 +2796,25 @@ class OrganismLiveEngine:
                                 STRONG_SHORT_COMPOSITE_MIN, orbc.rv_ratio,
                             )
                             continue
-                        # Use composite for gating (same as RC-1.5 fix)
-                        if _orb_composite < _MIN_MAIN_CONF:
+                        # Audit-B finding 1 (2026-05-01): DROP_ML_FROM_GATE
+                        # was only applied to alpha+breakout; ORB still gated
+                        # on the raw 50%-ML composite. Mirror the alpha+breakout
+                        # surgical fix #2 here. ML is anti-predictive at the
+                        # gate per Phase 1 audit (corr -0.112 on resolved trades);
+                        # use a recomposite that pushes ML's weight to breakout.
+                        # Keep _orb_composite (with ML) for ranking_score below.
+                        if DROP_ML_FROM_GATE:
+                            _orb_eff_conf = (
+                                0.65 * _orb_breakout_proxy + 0.35 * _orb_tension
+                            )
+                        else:
+                            _orb_eff_conf = _orb_composite
+                        if _orb_eff_conf < _MIN_MAIN_CONF:
                             logger.info(
-                                "ORB live: %s composite=%.3f below gate=%.2f",
-                                _orb_sym, _orb_composite, _MIN_MAIN_CONF,
+                                "ORB live: %s eff_conf=%.3f below gate=%.2f "
+                                "(composite=%.3f, drop_ml=%s)",
+                                _orb_sym, _orb_eff_conf, _MIN_MAIN_CONF,
+                                _orb_composite, DROP_ML_FROM_GATE,
                             )
                             continue
                         # Predicted return: use ML when available
@@ -2904,19 +2942,41 @@ class OrganismLiveEngine:
                                 STRONG_SHORT_COMPOSITE_MIN,
                             )
                             continue
-                        if _eod_composite < _MIN_MAIN_CONF:
+                        # Audit-B finding 1 (2026-05-01): mirror alpha+breakout
+                        # surgical fix #2 — drop ML from EOD gate. Same diagnosis:
+                        # ML confidence is anti-predictive at the gate. Keep
+                        # _eod_composite (with ML) for ranking below.
+                        if DROP_ML_FROM_GATE:
+                            _eod_eff_conf = (
+                                0.65 * _eod_breakout_proxy + 0.35 * _eod_tension
+                            )
+                        else:
+                            _eod_eff_conf = _eod_composite
+                        if _eod_eff_conf < _MIN_MAIN_CONF:
                             logger.info(
-                                "EOD live: %s composite=%.3f below gate=%.2f",
-                                _eod_sym, _eod_composite, _MIN_MAIN_CONF,
+                                "EOD live: %s eff_conf=%.3f below gate=%.2f "
+                                "(composite=%.3f, drop_ml=%s)",
+                                _eod_sym, _eod_eff_conf, _MIN_MAIN_CONF,
+                                _eod_composite, DROP_ML_FROM_GATE,
                             )
                             continue
-                        if ml_sig and abs(ml_sig.predicted_return) > 1e-6:
-                            _eod_pred_ret = max(
-                                ml_sig.predicted_return * _eod_dir, 0.003,
-                            )
+                        # Surgical fix mirror (Audit-A finding 1, 2026-05-01):
+                        # Same bug class as the breakout path's predicted_return
+                        # floor that was removed in ba76256. The 0.003 floor was
+                        # masking weak ML signals. Threshold raised to 1e-4 to
+                        # skip ghost ML outputs (sub-noise-floor); fall back to
+                        # day-return-derived heuristic when ML is silent.
+                        if ml_sig and abs(ml_sig.predicted_return) > 1e-4:
+                            _eod_pred_ret = abs(ml_sig.predicted_return)
                             _eod_ret_source = "calibrated_breakout"
                         else:
-                            _eod_pred_ret = 0.003
+                            # Day-return magnitude is the natural continuation
+                            # signal for EOD: 0.4% drift → ~0.5% expected; 1.0%
+                            # drift → ~1.0% expected, capped at 2.0%.
+                            _eod_pred_ret = max(
+                                0.005,
+                                min(0.020, abs(eodc.day_return_pct) / 100.0),
+                            )
                             _eod_ret_source = "heuristic"
                         cand_dicts.append({
                             "symbol": _eod_sym,

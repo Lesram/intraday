@@ -44,6 +44,11 @@ DEFAULT_NO_NEW_MIN_ET = 50            # don't enter after 15:50 (8 min before EO
 DEFAULT_MIN_DAY_RETURN_PCT = 0.30     # require >= 0.30% day return to enter (long)
 DEFAULT_MIN_PRICE = 5.0
 DEFAULT_TOP_N = 5                     # max EOD candidates per session (low turnover)
+# Audit-A finding 9 (2026-05-01): same shape as the share-count liquidity
+# gate bug. `max(atr, 0.10)` floors stop at $0.10 absolute regardless of
+# price. For $5 stock = 2% (huge); for $1000 stock = 0.01% (irrelevant).
+# Switch to bps-based floor matching mean_reversion_scanner.py's pattern.
+DEFAULT_MIN_STOP_BPS = 5.0           # 5 bps = 0.05% of price minimum
 
 
 @dataclass
@@ -90,6 +95,7 @@ class EODMomentumScanner:
         no_new_min_et: int = DEFAULT_NO_NEW_MIN_ET,
         min_day_return_pct: float = DEFAULT_MIN_DAY_RETURN_PCT,
         min_price: float = DEFAULT_MIN_PRICE,
+        min_stop_bps: float = DEFAULT_MIN_STOP_BPS,
         top_n: int = DEFAULT_TOP_N,
     ) -> None:
         self.decision_hour_et = decision_hour_et
@@ -98,6 +104,7 @@ class EODMomentumScanner:
         self.no_new_min_et = no_new_min_et
         self.min_day_return_pct = min_day_return_pct
         self.min_price = min_price
+        self.min_stop_bps = min_stop_bps
         self.top_n = top_n
 
         self._fired_today: set[str] = set()
@@ -240,11 +247,17 @@ class EODMomentumScanner:
             direction = 1.0 if day_return > 0 else -1.0
             atr = self._extract_atr(df, current_price)
 
-            # ATR-based stop, anchored such that it's ~1×ATR adverse
+            # ATR-based stop, anchored such that it's ~1×ATR adverse.
+            # Audit-A finding 9 (2026-05-01): replaced the absolute $0.10
+            # floor with a bps-based floor. For low-vol micro-ATR cases
+            # the bps floor dominates; for normal cases ATR dominates.
+            atr_distance = max(atr, 0.0)
+            min_stop_distance = self.min_stop_bps * current_price / 10000.0
+            actual_stop_distance = max(atr_distance, min_stop_distance)
             if direction > 0:
-                stop = current_price - max(atr, 0.10)
+                stop = current_price - actual_stop_distance
             else:
-                stop = current_price + max(atr, 0.10)
+                stop = current_price + actual_stop_distance
 
             cand = EODCandidate(
                 symbol=symbol,

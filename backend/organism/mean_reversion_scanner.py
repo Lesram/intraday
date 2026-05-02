@@ -45,7 +45,11 @@ DEFAULT_NO_NEW_MIN_ET = 30       # don't enter inside the EOD-flatten approach
 # avg displacement was 5.46 ATR (skewed higher than replay's 2.5–4 range).
 # 4.0 ATR cuts shadow volume ~60% while keeping the strongest signals.
 DEFAULT_MIN_DISPLACEMENT_ATR = 4.0
-DEFAULT_TARGET_RETRACEMENT = 0.65   # exit at 65% retracement to VWAP
+# Default raised from 0.65 → 0.8 to match the env-default in live_engine.py
+# (set via ORGANISM_MR_TARGET_RETRACEMENT, replay-validated). Audit-B
+# finding 17 (2026-05-01): the mismatch was a calibration land-mine for
+# tests/replay code that bypassed live_engine's construction path.
+DEFAULT_TARGET_RETRACEMENT = 0.8    # exit at 80% retracement to VWAP
 # Default raised from 0.5 → 1.0 (replay: best config used 1.0×ATR stop;
 # 0.5 was getting noise-stopped on 1-min bars too easily).
 DEFAULT_STOP_EXTENSION_ATR = 1.0

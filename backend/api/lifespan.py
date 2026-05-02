@@ -306,6 +306,23 @@ async def startup(app) -> dict:
 
 async def shutdown(app, ctx: dict, baseline: set) -> None:
     """Graceful shutdown of all services."""
+    # Audit-G BUG-H fix: save brain FIRST, before any other cleanup that
+    # could hang. Track-G audit (2026-05-01) traced both reconciliation
+    # incidents this week (NVDA Wed, AMD Thu) to brain not being saved
+    # on container shutdown — orphan positions left at the broker while
+    # platform metadata is wiped on next startup. The defensive fix is
+    # belt-and-suspenders: scheduler.stop() will also trigger engine
+    # shutdown's brain save, but if streaming-provider stop hangs (or
+    # SIGTERM timeout fires) the engine save never runs. So save here
+    # first, before anything else that can block.
+    scheduler = ctx.get("organism_scheduler")
+    if scheduler and getattr(scheduler, "_engine", None) is not None:
+        try:
+            scheduler._engine.force_save_brain()
+            logger.info("Brain saved at shutdown (lifespan defensive save)")
+        except Exception as e:
+            logger.error(f"Defensive brain save failed at shutdown: {e}")
+
     # ML scheduler
     if ctx.get("ml_scheduler"):
         try:

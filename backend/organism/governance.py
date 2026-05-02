@@ -195,7 +195,12 @@ class GovernanceController:
             # Base cooldown at the limit; 2× at +5% over limit; 3× at +10%.
             excess = max(0.0, drawdown_pct - self._drawdown_limit)
             severity_mult = 1.0 + min(2.0, excess / 0.05)
-            self._effective_cooldown_s = int(self._drawdown_cooldown_s * severity_mult)
+            # Audit-F finding 19 (2026-05-01): IEEE-754 drift made
+            # severity_mult ≈ 1.999...8 at drawdown=2× limit, producing
+            # int(...) = 599 instead of expected 600. round-then-int.
+            self._effective_cooldown_s = int(round(
+                self._drawdown_cooldown_s * severity_mult
+            ))
             logger.critical(
                 "DRAWDOWN KILL SWITCH TRIGGERED",
                 extra={
