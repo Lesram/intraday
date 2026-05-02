@@ -1084,7 +1084,15 @@ class OrganismBrain:
                 "hit_rate": m.hit_rate,
                 "feature_importance_top10": m.feature_importance_top10,
             }
-        # Persist ML calibration state
+        # Persist ML calibration state.
+        # Audit-D finding D-23 (2026-05-02): calibration is also written
+        # to extra_counters.json["ml_calibration"] by live_engine's
+        # _build_extra_counters. ml_state.json["calibration"] (here) is
+        # the CANONICAL source of truth — apply_to_signal_generator at
+        # line 417 reads from ml_state first. The extra_counters mirror
+        # is kept for backwards compat with consumers that read from
+        # there directly. Both are kept in sync via a single
+        # signal_gen.calibration_to_dict() call upstream.
         if hasattr(signal_gen, "calibration_to_dict"):
             try:
                 ml_state["calibration"] = signal_gen.calibration_to_dict()
