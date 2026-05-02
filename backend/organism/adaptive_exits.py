@@ -62,28 +62,30 @@ class ExitLevels:
     initial_risk_at_entry: float = 0.0   # Stable risk denominator for FTF R-calc
 
     def to_dict(self) -> dict[str, Any]:
+        # Audit-I finding I-4 (2026-05-02): cast to native types to keep
+        # JSON serialization safe from np.float64 / np.bool_ inputs.
         return {
-            "symbol": self.symbol,
-            "direction": self.direction,
-            "entry": round(self.entry_price, 4),
-            "stop_loss": round(self.stop_loss, 4),
-            "take_profit": round(self.take_profit, 4),
-            "trailing_stop": round(self.trailing_stop, 4),
-            "atr": round(self.atr_at_entry, 4),
-            "regime_at_entry": self.regime_at_entry,
-            "highest_favorable": round(self.highest_favorable, 4),
-            "bars_held": self.bars_held,
-            "partial_tp_price": round(self.partial_tp_price, 4),
-            "partial_tp_taken": self.partial_tp_taken,
-            "trailing_active": self.trailing_active,
-            "stress_tightened": self.stress_tightened,
-            "profit_locked": self.profit_locked,
+            "symbol": str(self.symbol),
+            "direction": float(self.direction),
+            "entry": round(float(self.entry_price), 4),
+            "stop_loss": round(float(self.stop_loss), 4),
+            "take_profit": round(float(self.take_profit), 4),
+            "trailing_stop": round(float(self.trailing_stop), 4),
+            "atr": round(float(self.atr_at_entry), 4),
+            "regime_at_entry": str(self.regime_at_entry),
+            "highest_favorable": round(float(self.highest_favorable), 4),
+            "bars_held": int(self.bars_held),
+            "partial_tp_price": round(float(self.partial_tp_price), 4),
+            "partial_tp_taken": bool(self.partial_tp_taken),
+            "trailing_active": bool(self.trailing_active),
+            "stress_tightened": bool(self.stress_tightened),
+            "profit_locked": bool(self.profit_locked),
             "last_bar_time": self.last_bar_time,
-            "prediction_horizon": self.prediction_horizon,
-            "price_at_prior_bar": round(self.price_at_prior_bar, 4),
-            "ftf_stop_tightened": self.ftf_stop_tightened,
-            "price_two_bars_ago": round(self.price_two_bars_ago, 4),
-            "initial_risk_at_entry": round(self.initial_risk_at_entry, 6),
+            "prediction_horizon": int(self.prediction_horizon),
+            "price_at_prior_bar": round(float(self.price_at_prior_bar), 4),
+            "ftf_stop_tightened": bool(self.ftf_stop_tightened),
+            "price_two_bars_ago": round(float(self.price_two_bars_ago), 4),
+            "initial_risk_at_entry": round(float(self.initial_risk_at_entry), 6),
         }
 
 
@@ -99,14 +101,15 @@ class ExitSignal:
     partial_pct: float = 0.0     # e.g. 0.30 = sell 30 %
 
     def to_dict(self) -> dict[str, Any]:
+        # Audit-I finding I-4 (2026-05-02): native-type casts.
         d: dict[str, Any] = {
-            "should_exit": self.should_exit,
-            "reason": self.reason,
-            "exit_price": round(self.exit_price, 4),
+            "should_exit": bool(self.should_exit),
+            "reason": str(self.reason),
+            "exit_price": round(float(self.exit_price), 4),
         }
         if self.partial_exit:
             d["partial_exit"] = True
-            d["partial_pct"] = self.partial_pct
+            d["partial_pct"] = float(self.partial_pct)
         return d
 
 

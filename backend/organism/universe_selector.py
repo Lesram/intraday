@@ -50,15 +50,16 @@ class SymbolFitness:
     rotations_observed: int = 0
 
     def to_dict(self) -> dict[str, Any]:
+        # Audit-I finding I-4 (2026-05-02): native-type casts for JSON safety.
         return {
-            "symbol": self.symbol,
-            "fitness": round(self.fitness, 4),
-            "total_trades": self.total_trades,
-            "win_rate": round(self.win_rate, 4),
-            "avg_pnl": round(self.avg_pnl, 2),
-            "avg_volume_quality": round(self.avg_volume_quality, 4),
-            "last_rotated_gen": self.last_rotated_gen,
-            "rotations_observed": self.rotations_observed,
+            "symbol": str(self.symbol),
+            "fitness": round(float(self.fitness), 4),
+            "total_trades": int(self.total_trades),
+            "win_rate": round(float(self.win_rate), 4),
+            "avg_pnl": round(float(self.avg_pnl), 2),
+            "avg_volume_quality": round(float(self.avg_volume_quality), 4),
+            "last_rotated_gen": int(self.last_rotated_gen),
+            "rotations_observed": int(self.rotations_observed),
         }
 
 

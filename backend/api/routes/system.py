@@ -85,8 +85,16 @@ async def get_metrics(request: Request):
         return Response(content=metrics_data, media_type=CONTENT_TYPE_LATEST)
 
     except Exception as e:
-        logger.error(f"Metrics generation failed: {e}")
-        return Response(content=f"# Metrics generation error: {e}\n", media_type="text/plain")
+        # Audit-I finding I-6 (2026-05-02): exception body was returned to
+        # client at HTTP 200 with raw class name in the body, leaking
+        # internals. Now: log server-side, return generic "unavailable"
+        # with HTTP 503 (correct status) so clients can distinguish.
+        logger.error(f"Metrics generation failed: {e}", exc_info=True)
+        return Response(
+            content="# Metrics temporarily unavailable\n",
+            media_type="text/plain",
+            status_code=503,
+        )
 
 
 @router.get("/health", openapi_extra={"security": []})
@@ -107,16 +115,26 @@ async def health_check(request: Request):
         uptime_seconds = max(0.0, now_ts - float(start_time))
     except Exception:
         uptime_seconds = 0.0
+    # Audit-I finding I-7 (2026-05-02): use UTC tz-aware timestamps and
+    # don't lie about subsystem health — the health-check used to claim
+    # database+api are "healthy" without any actual probe. Now: only
+    # report API as healthy (this endpoint runs, ergo API is up); other
+    # subsystems should use /api/v1/observability/health/ready which has
+    # real probes.
+    from datetime import UTC as _UTC
     return {
         "status": "healthy",
-        "timestamp": datetime.now().isoformat(),
+        "timestamp": datetime.now(_UTC).isoformat(),
         "service": "algorithmic-trading-platform",
-    "uptime_seconds": uptime_seconds,
+        "uptime_seconds": uptime_seconds,
         "components": {
             "api": "healthy",
-            "database": "healthy",  # Simplified for basic health check
-            "metrics": True
-        }
+            "metrics": bool(PROMETHEUS_AVAILABLE),
+            # Removed hardcoded "database": "healthy" lie. Use the
+            # readiness probe at /api/v1/observability/health/ready
+            # for actual subsystem-level checks.
+            "_note": "subsystem checks: /api/v1/observability/health/ready",
+        },
     }
 
 

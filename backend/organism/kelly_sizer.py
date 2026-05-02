@@ -54,24 +54,29 @@ class PositionSize:
     entry_source_override: str = ""
 
     def to_dict(self) -> dict[str, Any]:
+        # Audit-I finding I-4 (2026-05-02): cast every numeric through
+        # native float() so np.float64/np.bool_ values from inference
+        # don't poison JSON serialization. The decision_telemetry.py
+        # equivalent was patched in commit a1713d7; this sister method
+        # carried the same un-cast pattern.
         return {
             "symbol": self.symbol,
-            "target_weight": round(self.target_weight, 4),
-            "shares": self.shares,
-            "notional": round(self.notional, 2),
-            "kelly_raw": round(self.kelly_raw, 4),
-            "kelly_half": round(self.kelly_half, 4),
-            "drawdown_scale": round(self.drawdown_scale, 4),
-            "vol_scale": round(self.vol_scale, 4),
-            "regime_scale": round(self.regime_scale, 4),
-            "direction": self.direction,
-            "confidence": round(self.confidence, 4),
-            "predicted_return": round(self.predicted_return, 6),
-            "breakout_score": round(self.breakout_score, 4),
-            "regime_scale_source": self.regime_scale_source,
-            "regime_trade_count": self.regime_trade_count,
-            "expected_return_source": self.expected_return_source,
-            "dollar_risk_cap_applied": self.dollar_risk_cap_applied,
+            "target_weight": round(float(self.target_weight), 4),
+            "shares": int(self.shares),
+            "notional": round(float(self.notional), 2),
+            "kelly_raw": round(float(self.kelly_raw), 4),
+            "kelly_half": round(float(self.kelly_half), 4),
+            "drawdown_scale": round(float(self.drawdown_scale), 4),
+            "vol_scale": round(float(self.vol_scale), 4),
+            "regime_scale": round(float(self.regime_scale), 4),
+            "direction": float(self.direction),
+            "confidence": round(float(self.confidence), 4),
+            "predicted_return": round(float(self.predicted_return), 6),
+            "breakout_score": round(float(self.breakout_score), 4),
+            "regime_scale_source": str(self.regime_scale_source),
+            "regime_trade_count": int(self.regime_trade_count),
+            "expected_return_source": str(self.expected_return_source),
+            "dollar_risk_cap_applied": bool(self.dollar_risk_cap_applied),
         }
 
 
