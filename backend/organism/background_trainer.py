@@ -418,6 +418,35 @@ class BackgroundTrainer:
         except Exception as e:
             logger.error("BackgroundTrainer process error: %s", e)
             self._last_result = TrainResult(error=str(e))
+            # V4 P-P1 (2026-05-02): ML retrain failures were log-only;
+            # operators couldn't tell why direction accuracy stalled.
+            # Wire a HIGH-severity alert via the canonical send_alert
+            # API. Use the worker-thread-safe pattern since this can
+            # be reached from threadpool callers.
+            try:
+                import asyncio as _aio
+                from backend.infra.alerting import (
+                    AlertCategory, AlertSeverity, send_alert,
+                )
+
+                async def _emit():
+                    await send_alert(
+                        AlertCategory.SYSTEM_ERROR,
+                        AlertSeverity.WARNING,
+                        "ML Retrain Failed",
+                        f"Background trainer raised: {e}",
+                        details={"error_type": type(e).__name__},
+                    )
+
+                try:
+                    _loop = _aio.get_running_loop()
+                    _loop.call_soon_threadsafe(
+                        lambda: _aio.ensure_future(_emit())
+                    )
+                except RuntimeError:
+                    _aio.run(_emit())
+            except Exception:
+                pass
             return True, self._last_result
 
         # Distinguish true training errors from quality-gate rejections.

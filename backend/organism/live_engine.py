@@ -3839,10 +3839,20 @@ class OrganismLiveEngine:
             logger.exception("Organism live tick failed")
             result.errors.append(f"Live tick error: {e}")
 
-        # Update equity curve
+        # Update equity curve.
+        # V4 Q-Q2 (2026-05-02): cap retention. The list grows by one
+        # entry per tick (~5s), unbounded — already at 37k+ entries
+        # in production; every brain save rewrites the full CSV. Keep
+        # the most recent ~100,000 ticks (~6 trading days) in memory;
+        # callers needing longer history read from equity_curve.csv.
         try:
             eq = await self._get_equity()
             self._equity_curve.append(eq)
+            _MAX_EQUITY_CURVE_LEN = 100_000
+            if len(self._equity_curve) > _MAX_EQUITY_CURVE_LEN:
+                # Drop oldest 10% in one O(n) trim (cheaper than per-tick).
+                _drop = len(self._equity_curve) - _MAX_EQUITY_CURVE_LEN
+                del self._equity_curve[:_drop]
         except Exception:
             pass
 

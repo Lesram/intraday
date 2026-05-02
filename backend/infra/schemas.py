@@ -781,9 +781,14 @@ class PositionLot(Base):
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
 
-    # User and symbol
-    user_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    # User and symbol.
+    # V4 N-H-1 (2026-05-02): the DB stores user_id as varchar(100)
+    # (username), and the API supplies `current_user.username` to
+    # LotTracker — the previous ORM declaration `Integer + FK to users.id`
+    # was a no-op (the FK never matched the DB column type). Align ORM
+    # with DB truth so future autogenerate diffs are clean.
+    user_id: Mapped[str] = mapped_column(
+        String(100), nullable=False, index=True
     )
     symbol: Mapped[str] = mapped_column(String(20), nullable=False, index=True)
 
@@ -849,9 +854,9 @@ class RealizedTrade(Base):
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
 
-    # User and symbol
-    user_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    # User and symbol — V4 N-H-1 (2026-05-02): see PositionLot above.
+    user_id: Mapped[str] = mapped_column(
+        String(100), nullable=False, index=True
     )
     symbol: Mapped[str] = mapped_column(String(20), nullable=False, index=True)
 

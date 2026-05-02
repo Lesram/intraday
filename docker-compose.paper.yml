@@ -84,6 +84,16 @@ services:
       retries: 3
       start_period: 60s
     restart: unless-stopped
+    # V4 P-P1 (2026-05-02): match production.yml's log rotation. The
+    # paper compose previously had no `logging` block, so docker's
+    # default `json-file` driver buffered logs unboundedly — host has
+    # multiple 50MB rotated files plus a stale 126MB `app.log` from
+    # February. 100MB × 5 file ceiling matches production.
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "5"
     networks:
       - trading-network
 

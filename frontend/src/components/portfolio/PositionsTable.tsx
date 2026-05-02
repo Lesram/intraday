@@ -11,6 +11,7 @@ import { colors } from '@/styles/theme';
 import { formatCurrency, formatPercent } from '@/utils/formatters';
 import type { Position } from '@/store/portfolioStore';
 import { useAuthStore } from '@/store/authStore';
+import { api } from '@/services/api';
 
 interface PositionsTableProps {
   positions: Position[];
@@ -87,34 +88,25 @@ export const PositionsTable: React.FC<PositionsTableProps> = ({
           const qtyText = quantityToClose ? `${quantityToClose}` : 'all';
           message.loading({ content: `Closing ${qtyText} shares of ${symbol}...`, key: symbol });
           
-          // Get token from Zustand store
-          const token = useAuthStore.getState().accessToken;
-          
-          if (!token) {
+          // V4 O-5: auth is attached by the api axios instance.
+          if (!useAuthStore.getState().accessToken) {
             throw new Error('Not authenticated. Please login again.');
           }
-          
+
           // Build request body
           const body: { quantity?: number } = {};
           if (quantityToClose !== undefined) {
             body.quantity = quantityToClose;
           }
           
-          const response = await fetch(`http://localhost:8000/api/v1/positions/${symbol}/close`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify(body)
-          });
-          
-          if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.detail || 'Failed to close position');
-          }
-          
-          const data = await response.json();
+          // V4 O-5 (2026-05-02): use the shared axios instance — it
+          // routes via VITE_API_BASE_URL, attaches the auth header,
+          // refreshes tokens, and works behind a reverse proxy. The
+          // previous raw fetch hardcoded localhost:8000.
+          const { data } = await api.post(
+            `/positions/${symbol}/close`,
+            body,
+          );
           
           message.success({ 
             content: data.message || `Successfully closed ${qtyText} shares of ${symbol}`, 

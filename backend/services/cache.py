@@ -229,17 +229,28 @@ class CacheService:
         data = await cache.get('quotes', 'AAPL')
     """
 
+    # V4 Q-Q5 (2026-05-02): per-layer cap on the in-process fallback
+    # cache. Without a cap, a Redis outage leaves every set() growing
+    # `memory_cache[layer]` unboundedly while expiry only fires on
+    # get() — pure bookkeeping memory leak that becomes the OOM root
+    # cause if outage lasts long enough. On set(), if the layer
+    # exceeds the cap, oldest entries (insertion order) are evicted.
+    _MEMORY_CACHE_LAYER_CAP = 50_000
+
     def __init__(self):
         """Initialize cache service (sync part only)"""
+        from collections import OrderedDict
+
         self.redis_client = None
         self.redis_available = False
         self.redis_mode = "not initialized"
 
-        # Memory cache (fallback)
-        self.memory_cache: dict[str, dict[str, tuple]] = {
-            'quotes': {},
-            'bars': {},
-            'indicators': {}
+        # Memory cache (fallback) — OrderedDict per layer enables
+        # FIFO eviction when the cap is exceeded.
+        self.memory_cache: dict[str, OrderedDict[str, tuple]] = {
+            'quotes': OrderedDict(),
+            'bars': OrderedDict(),
+            'indicators': OrderedDict()
         }
 
         # Metrics
@@ -472,7 +483,14 @@ class CacheService:
         # Always store in memory cache
         # Audit-K finding K-8 (2026-05-02): tz-aware UTC for DST-immune TTL.
         expiry = datetime.now(UTC) + timedelta(seconds=ttl)
-        self.memory_cache[layer][key] = (value, expiry)
+        _layer = self.memory_cache[layer]
+        # Move-to-end semantics keep recently-set keys "young".
+        if key in _layer:
+            _layer.move_to_end(key)
+        _layer[key] = (value, expiry)
+        # V4 Q-Q5: enforce per-layer cap on every set.
+        while len(_layer) > self._MEMORY_CACHE_LAYER_CAP:
+            _layer.popitem(last=False)
         self.metrics['sets'] += 1
 
     async def set_many(self, layer: str, items: dict[str, Any], ttl: int | None = None):
@@ -508,9 +526,15 @@ class CacheService:
 
         # Store in memory cache
         # Audit-K finding K-8 (2026-05-02): tz-aware UTC for DST-immune TTL.
+        # V4 Q-Q5 (2026-05-02): enforce per-layer cap (FIFO eviction).
         expiry = datetime.now(UTC) + timedelta(seconds=ttl)
+        _layer = self.memory_cache[layer]
         for key, value in items.items():
-            self.memory_cache[layer][key] = (value, expiry)
+            if key in _layer:
+                _layer.move_to_end(key)
+            _layer[key] = (value, expiry)
+        while len(_layer) > self._MEMORY_CACHE_LAYER_CAP:
+            _layer.popitem(last=False)
         self.metrics['sets'] += len(items)
 
     async def delete(self, layer: str, key: str):

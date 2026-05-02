@@ -227,9 +227,13 @@ async def preview_import(
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
 
-    # Call the inner function with proper dependency injection
-    from backend.infra.db import get_db_session as get_session
-    async for db in get_session():
+    # V4 N-H-4 (2026-05-02): the previous `async for db in get_session()`
+    # idiom against an async generator does not run the generator's
+    # finally/cleanup if the function returns mid-iteration — the
+    # generator is left orphaned and the session may leak. Use the
+    # canonical `async with get_session_context() as db` instead.
+    from backend.infra.db import get_session_context
+    async with get_session_context() as db:
         try:
             alpaca_client = AlpacaBrokerClient()
             import_service = PositionImportService(db, alpaca_client)
@@ -259,11 +263,12 @@ async def import_positions_endpoint(
 
     Already imported positions are skipped automatically.
     """
-    from backend.infra.db import get_db_session as get_session
+    # V4 N-H-4 (2026-05-02): see /import-preview above.
+    from backend.infra.db import get_session_context
     from backend.integrations.alpaca_broker import AlpacaBrokerClient
     from backend.services.position_import_service import PositionImportService
 
-    async for db in get_session():
+    async with get_session_context() as db:
         try:
             alpaca_client = AlpacaBrokerClient()
             import_service = PositionImportService(db, alpaca_client)
