@@ -1119,9 +1119,17 @@ class OrderService:
         import asyncio
         from datetime import datetime
         
-        # M-12 FIX: Get or create per-order lock to prevent race conditions
+        # M-12 FIX: Get or create per-order lock to prevent race conditions.
+        # Audit-J finding J-7 (2026-05-02): _cancel_locks used to grow
+        # without bound (one Lock per order_id, forever). Cap at 1024
+        # entries; evict oldest when the cap is reached. Cancellations
+        # are typically completed within seconds, so a small cap is fine.
         async with self._cancel_locks_lock:
             if order_id not in self._cancel_locks:
+                if len(self._cancel_locks) >= 1024:
+                    # Drop oldest entry (insertion-ordered dict)
+                    oldest_id = next(iter(self._cancel_locks))
+                    self._cancel_locks.pop(oldest_id, None)
                 self._cancel_locks[order_id] = asyncio.Lock()
             order_lock = self._cancel_locks[order_id]
         
