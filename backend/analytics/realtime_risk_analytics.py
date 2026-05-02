@@ -124,7 +124,8 @@ class StressTestResult:
     worst_position: str
     worst_position_pnl: float
     risk_metrics_change: dict[str, float]
-    timestamp: datetime = field(default_factory=datetime.utcnow)
+    # K-9: tz-aware UTC (was datetime.utcnow, deprecated in Py 3.12+)
+    timestamp: datetime = field(default_factory=lambda: datetime.now(UTC))
 
 
 @dataclass

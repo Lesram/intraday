@@ -102,7 +102,8 @@ class PortfolioAllocation:
     constraints_satisfied: bool
     turnover: float = 0.0
     transaction_costs: float = 0.0
-    timestamp: datetime = field(default_factory=datetime.utcnow)
+    # K-9: tz-aware UTC (was datetime.utcnow, deprecated in Py 3.12+)
+    timestamp: datetime = field(default_factory=lambda: datetime.now(UTC))
     metadata: dict[str, Any] = field(default_factory=dict)
 
 

@@ -3,8 +3,13 @@ SQLAlchemy 2.0 models for the trading platform.
 All models use async patterns and include proper indexes for performance.
 """
 
-from datetime import datetime
+from datetime import UTC, datetime
 from decimal import Decimal
+
+
+def _utcnow_aware() -> datetime:
+    """K-9: tz-aware UTC factory (replaces deprecated datetime.utcnow)."""
+    return datetime.now(UTC)
 from typing import Any
 import uuid
 
@@ -545,15 +550,17 @@ class OutboxEvent(Base):
     attempts: Mapped[int] = mapped_column(sa.Integer, nullable=False, default=0)
 
     # Backoff scheduling
+    # K-9: tz-aware UTC (was datetime.utcnow, deprecated in Py 3.12+)
     next_attempt_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, default=datetime.utcnow, index=True
+        DateTime(timezone=True), nullable=False, default=_utcnow_aware, index=True
     )
 
     # Audit timestamps
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
-        default=datetime.utcnow,
+        # K-9: tz-aware UTC (was datetime.utcnow, deprecated in Py 3.12+)
+        default=_utcnow_aware,
         server_default=sa.text("CURRENT_TIMESTAMP"),
     )
 

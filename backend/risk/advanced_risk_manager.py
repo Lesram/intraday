@@ -80,7 +80,8 @@ class RiskMetrics:
     short_exposure: float = 0.0
     risk_level: RiskLevel = RiskLevel.LOW
     market_regime: MarketRegime = MarketRegime.CALM
-    timestamp: datetime = field(default_factory=datetime.utcnow)
+    # K-9: tz-aware UTC (was datetime.utcnow, deprecated in Py 3.12+)
+    timestamp: datetime = field(default_factory=lambda: datetime.now(UTC))
 
 
 @dataclass
