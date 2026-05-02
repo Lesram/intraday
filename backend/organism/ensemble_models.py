@@ -282,6 +282,121 @@ class EnsemblePredictor:
                 results[name] = 0.5
         return results
 
+    # ── Persistence ──────────────────────────────────────────────
+
+    def save(self, target_dir: Any) -> bool:
+        """Save all ensemble model pairs + weights to a directory.
+
+        Audit-C concern 1 (2026-05-02): closes axis-8 parity bug.
+        Without persistence, post-restart predict() ran XGB-only until
+        the next retrain, producing different outputs for the same input
+        (0.349 raw-confidence swing observed). Each (clf, reg, name, weight)
+        tuple is serialized to ``ensemble_<name>_clf.joblib``,
+        ``ensemble_<name>_reg.joblib``, plus a manifest of names+weights.
+
+        Returns True iff at least one model pair was saved.
+        """
+        from pathlib import Path
+        from backend.utils.secure_pickle import secure_dump_to_path
+        import json
+
+        target = Path(target_dir)
+        target.mkdir(parents=True, exist_ok=True)
+
+        if not self._is_trained:
+            return False
+
+        manifest: list[dict[str, Any]] = []
+        for clf, reg, name, weight in self._models:
+            try:
+                clf_path = target / f"ensemble_{name}_clf.joblib"
+                reg_path = target / f"ensemble_{name}_reg.joblib"
+                secure_dump_to_path(clf, clf_path)
+                secure_dump_to_path(reg, reg_path)
+                manifest.append({"name": name, "weight": float(weight)})
+            except Exception as e:
+                logger.warning(
+                    "EnsemblePredictor.save: failed to persist %s: %s",
+                    name, e,
+                )
+
+        if not manifest:
+            return False
+
+        with open(target / "ensemble_manifest.json", "w") as f:
+            json.dump({
+                "n_estimators": self._n_estimators,
+                "max_depth": self._max_depth,
+                "learning_rate": self._lr,
+                "models": manifest,
+            }, f, indent=2)
+
+        logger.info(
+            "EnsemblePredictor saved: %d model pairs (%s)",
+            len(manifest),
+            ", ".join(m["name"] for m in manifest),
+        )
+        return True
+
+    def load(self, source_dir: Any) -> bool:
+        """Load all ensemble model pairs from a directory.
+
+        Returns True iff at least one model pair was restored. Sets
+        ``_is_trained=True`` if any pairs loaded — same semantics as
+        post-train state.
+        """
+        from pathlib import Path
+        from backend.utils.secure_pickle import (
+            secure_load_from_path, is_signed_pickle,
+        )
+        import joblib
+        import json
+
+        source = Path(source_dir)
+        manifest_path = source / "ensemble_manifest.json"
+        if not manifest_path.is_file():
+            return False
+
+        try:
+            with open(manifest_path) as f:
+                manifest = json.load(f)
+        except Exception as e:
+            logger.warning("EnsemblePredictor.load: manifest read failed: %s", e)
+            return False
+
+        loaded: list[tuple[Any, Any, str, float]] = []
+        for entry in manifest.get("models", []):
+            name = entry.get("name")
+            weight = float(entry.get("weight", 0.0))
+            clf_path = source / f"ensemble_{name}_clf.joblib"
+            reg_path = source / f"ensemble_{name}_reg.joblib"
+            if not (clf_path.is_file() and reg_path.is_file()):
+                continue
+            try:
+                def _safe_load(p: Path) -> Any:
+                    raw = p.read_bytes()
+                    if is_signed_pickle(raw):
+                        return secure_load_from_path(p)
+                    return joblib.load(p)
+                clf = _safe_load(clf_path)
+                reg = _safe_load(reg_path)
+                loaded.append((clf, reg, name, weight))
+            except Exception as e:
+                logger.warning(
+                    "EnsemblePredictor.load: failed for %s: %s", name, e,
+                )
+
+        if not loaded:
+            return False
+
+        self._models = loaded
+        self._is_trained = True
+        logger.info(
+            "EnsemblePredictor restored: %d model pairs",
+            len(loaded),
+        )
+        return True
+
     # ── Weight adaptation ────────────────────────────────────────
 
     def update_weights(self, accuracy_by_model: dict[str, float]) -> None:

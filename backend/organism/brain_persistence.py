@@ -443,6 +443,21 @@ class OrganismBrain:
                         "Failed to restore S17 cache %s: %s", attr_name, e,
                     )
 
+        # Audit-C concern 1 (2026-05-02): restore RF/LGBM ensemble.
+        # Closes axis-8 parity bug: post-restart predict() now uses
+        # the full 60/40 blend immediately, not XGB-only-until-retrain.
+        ensemble = getattr(signal_gen, "_ensemble", None)
+        if ensemble is not None and hasattr(ensemble, "load"):
+            try:
+                if ensemble.load(self.brain_dir):
+                    logger.info(
+                        "Restored RF/LGBM ensemble from brain (axis-8 parity)"
+                    )
+            except Exception as e:
+                logger.warning(
+                    "Failed to restore ensemble: %s", e,
+                )
+
         try:
             signal_gen._clf = self.clf
             signal_gen._reg = self.reg
@@ -1081,11 +1096,7 @@ class OrganismBrain:
                 signal_gen._reg, target / "ml_regressor.joblib"
             )
             # Audit-C concern 2 (2026-05-02): persist S17 same-holdout
-            # validation cache. Without this, the first retrain after
-            # restart degrades to historical-metric fallback because
-            # `_last_val_X` is None. Persisting these arrays lets the
-            # new-model-vs-old-model gate work on identical holdouts
-            # immediately after restart.
+            # validation cache.
             for attr_name in (
                 "_last_val_X", "_last_val_y_dir", "_last_val_y_ret",
             ):
@@ -1099,6 +1110,19 @@ class OrganismBrain:
                         logger.debug(
                             "Failed to persist %s: %s", attr_name, e,
                         )
+
+            # Audit-C concern 1 (2026-05-02): persist RF/LGBM ensemble.
+            # Without this, post-restart predict() runs XGB-only until
+            # next retrain — same input produced 0.349 raw-conf swing
+            # across restart (axis-8 parity bug from v2 audit).
+            ensemble = getattr(signal_gen, "_ensemble", None)
+            if ensemble is not None and hasattr(ensemble, "save"):
+                try:
+                    ensemble.save(target)
+                except Exception as e:
+                    logger.warning(
+                        "Failed to persist ensemble: %s", e,
+                    )
 
     def _save_ml_state(self, target: Path, signal_gen: Any) -> None:
         ml_state = {
