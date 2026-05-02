@@ -186,10 +186,12 @@ PREDICTION_HORIZON = _env_int(
     _HORIZON_DEFAULTS.get(LIVE_TIMEFRAME, 1),
 )
 
-# Exploration bucket — micro-size trades on rejected candidates to prevent data starvation
+# Exploration bucket — LEGACY. The execution path was removed in H1 hardening
+# (improve9). EXPLORATION_ENABLED remains because tests/test_semantic_invariants.py
+# pins it to False as a regression check. The MAX_NOTIONAL / MAX_POSITIONS
+# constants (audit-M finding M-1, 2026-05-02) were truly orphan and have
+# been removed.
 EXPLORATION_ENABLED = _env_bool("ORGANISM_EXPLORATION_ENABLED", False)
-EXPLORATION_MAX_NOTIONAL = _env_float("ORGANISM_EXPLORATION_MAX_NOTIONAL", 200.0)
-EXPLORATION_MAX_POSITIONS = _env_int("ORGANISM_EXPLORATION_MAX_POSITIONS", 3)
 
 # ── Real-money risk limits ─────────────────────────────────────
 MAX_NOTIONAL_PER_TRADE = _env_float("ORGANISM_MAX_NOTIONAL", 0.0)  # 0 = disabled
@@ -5964,6 +5966,15 @@ class OrganismLiveEngine:
         regime: str,
     ) -> list[TradingSignal]:
         """Generate TradingSignal objects for the multi-strategy runner.
+
+        Audit-M finding M-3 (2026-05-02): this method has zero production
+        callers. The multi-strategy runner is mutually exclusive with the
+        organism engine (lifespan logs "Multi-strategy live scheduler
+        skipped — organism engine is active"). The method is exercised
+        only by tests/test_audit_patch_queue_b2.py as a regression check
+        for ML confidence leakage. Kept for that test coverage; do NOT
+        wire into a new production flow without a fresh audit.
+
 
         This lets the organism participate as one strategy source
         alongside the existing 10 strategies.
