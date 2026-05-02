@@ -1042,6 +1042,82 @@ class OrganismLiveEngine:
                 self.signal_gen.load_calibration(cal_data)
                 logger.info("Restored ML calibration from brain")
 
+            # Audit-D restores (2026-05-01): _pending_exit, _exit_cooldown,
+            # _symbol_banned, _ml_reversal_used, daily counters. Bug-class:
+            # save sites used to omit these fields; restart wiped state.
+            saved_pending_exit = self.brain.extra_counters.get("pending_exit")
+            if isinstance(saved_pending_exit, dict):
+                # Reset tick numbers to current tick (cooldown windows
+                # restart fresh; same pattern as pending_entry above).
+                for sym in saved_pending_exit:
+                    self._pending_exit[sym] = self._tick_count
+                if saved_pending_exit:
+                    logger.info(
+                        "Restored %d pending exits (reset to tick %d)",
+                        len(saved_pending_exit), self._tick_count,
+                    )
+
+            saved_exit_cd = self.brain.extra_counters.get("exit_cooldown")
+            if isinstance(saved_exit_cd, dict):
+                for sym in saved_exit_cd:
+                    self._exit_cooldown[sym] = self._tick_count
+                if saved_exit_cd:
+                    logger.info(
+                        "Restored %d exit cooldowns (reset to tick %d)",
+                        len(saved_exit_cd), self._tick_count,
+                    )
+
+            saved_banned = self.brain.extra_counters.get("symbol_banned")
+            if isinstance(saved_banned, list):
+                # Date-roll check: only restore bans if same session.
+                # See _maybe_reset_daily_session in tick loop for details.
+                saved_session = self.brain.extra_counters.get("daily_session_date", "")
+                from zoneinfo import ZoneInfo
+                try:
+                    today_et = self._now_fn().astimezone(
+                        ZoneInfo("America/New_York")
+                    ).strftime("%Y-%m-%d")
+                except Exception:
+                    today_et = self._now_fn().strftime("%Y-%m-%d")
+                if saved_session == today_et:
+                    self._symbol_banned = set(saved_banned)
+                    if saved_banned:
+                        logger.info(
+                            "Restored %d symbol bans (same session %s)",
+                            len(saved_banned), saved_session,
+                        )
+                else:
+                    if saved_banned:
+                        logger.info(
+                            "Symbol bans NOT restored (saved session %s != "
+                            "current %s) — date-roll cleared bans",
+                            saved_session, today_et,
+                        )
+
+            saved_mr_used = self.brain.extra_counters.get("ml_reversal_used")
+            if isinstance(saved_mr_used, list):
+                self._ml_reversal_used = set(saved_mr_used)
+
+            # Restore daily counters only if same session
+            saved_session = self.brain.extra_counters.get("daily_session_date", "")
+            try:
+                from zoneinfo import ZoneInfo
+                today_et = self._now_fn().astimezone(
+                    ZoneInfo("America/New_York")
+                ).strftime("%Y-%m-%d")
+            except Exception:
+                today_et = self._now_fn().strftime("%Y-%m-%d")
+            if saved_session == today_et:
+                self._orb_live_count_today = int(
+                    self.brain.extra_counters.get("orb_live_count_today", 0)
+                )
+                self._eod_live_count_today = int(
+                    self.brain.extra_counters.get("eod_live_count_today", 0)
+                )
+                self._mr_live_count_today = int(
+                    self.brain.extra_counters.get("mr_live_count_today", 0)
+                )
+
             # Validate brain
             warnings = self.brain.validate_brain()
             for w in warnings:
@@ -1678,34 +1754,47 @@ class OrganismLiveEngine:
                 self._consecutive_equity_zero = 0
                 self._peak_equity = max(self._peak_equity, equity)
 
+                # ── Daily session roll (always runs, regardless of MAX_DAILY_LOSS)
+                # Audit-D finding 7 (2026-05-01): _symbol_banned circuit breaker
+                # and _*_today counters used to reset only on container restart,
+                # never on calendar date change. Production: intraday restart
+                # cleared the bans for that day; otherwise counters accumulated
+                # across days. Now: detect ET calendar-date roll and reset.
+                try:
+                    from zoneinfo import ZoneInfo
+                    today = self._now_fn().astimezone(
+                        ZoneInfo("America/New_York")
+                    ).strftime("%Y-%m-%d")
+                except Exception:
+                    today = self._now_fn().strftime("%Y-%m-%d")
+
+                if today != self._daily_loss_date:
+                    # Date rolled — reset session counters and any daily-loss
+                    # halt state. Runs every tick regardless of MAX_DAILY_LOSS.
+                    if self._daily_loss_date != "":  # not first-ever tick
+                        logger.info(
+                            "Daily session roll: %s -> %s. Resetting "
+                            "orb/eod/mr_live_count_today, symbol_banned, "
+                            "ml_reversal_used.",
+                            self._daily_loss_date, today,
+                        )
+                    self._orb_live_count_today = 0
+                    self._eod_live_count_today = 0
+                    self._mr_live_count_today = 0
+                    self._symbol_banned.clear()
+                    self._ml_reversal_used.clear()
+                    # Audit-F finding 8 (2026-05-01): auto-clear daily-loss halt
+                    if getattr(self, "_daily_loss_halt", False):
+                        self.governance.resume_trading()
+                        self._daily_loss_halt = False
+                        logger.info(
+                            "Daily max-loss halt auto-cleared on date roll",
+                        )
+                    self._daily_starting_equity = equity
+                    self._daily_loss_date = today
+
                 # ── Daily max-loss circuit breaker ──────────────
                 if MAX_DAILY_LOSS > 0:
-                    # Audit-F finding 16 (2026-05-01): use Eastern Time, not
-                    # UTC. UTC reset at 00:00Z = 8 PM ET (= next day in UTC),
-                    # which clears the daily counter mid-evening.
-                    try:
-                        from zoneinfo import ZoneInfo
-                        today = self._now_fn().astimezone(
-                            ZoneInfo("America/New_York")
-                        ).strftime("%Y-%m-%d")
-                    except Exception:
-                        today = self._now_fn().strftime("%Y-%m-%d")
-                    if today != self._daily_loss_date:
-                        # Audit-F finding 8 (2026-05-01): daily max-loss halt
-                        # used to persist across date roll, requiring operator
-                        # /organism/resume. Auto-clear the halt on calendar
-                        # rollover IF the prior halt was set by daily_max_loss
-                        # (don't auto-clear operator halts or drawdown-kill).
-                        if getattr(self, "_daily_loss_halt", False):
-                            self.governance.resume_trading()
-                            self._daily_loss_halt = False
-                            logger.info(
-                                "Daily max-loss halt auto-cleared on date "
-                                "roll (%s -> %s)",
-                                self._daily_loss_date, today,
-                            )
-                        self._daily_starting_equity = equity
-                        self._daily_loss_date = today
                     daily_pnl = equity - self._daily_starting_equity
                     if daily_pnl <= -MAX_DAILY_LOSS:
                         self.governance.halt_trading()
@@ -5201,6 +5290,50 @@ class OrganismLiveEngine:
         except Exception as e:
             logger.debug("Telemetry cleanup skipped: %s", e)
 
+    def _build_extra_counters(self) -> dict[str, Any]:
+        """Build the canonical `extra_counters` dict used by all save paths.
+
+        Audit-D findings 7, 11, 18 (2026-05-01): the prior approach inlined
+        the extra_counters dict at 3 different save sites with subtly
+        different field sets. The standalone-persist path wrote
+        `pending_entry_order_ids`; the regular save sites omitted it; on
+        restart the omitting save would overwrite the field with nothing.
+        Result: read-as-empty-dict in production.
+
+        Centralizing here ensures every save path includes every field.
+        New fields beyond the original ones (audit-D additions):
+          - pending_entry_order_ids: was being wiped by sibling save
+          - pending_exit, exit_cooldown: lost on restart, allowed
+            duplicate exits in first ticks after restart
+          - symbol_banned: critical circuit breaker reset on restart
+          - daily counters + session_date: needed for date-roll reset
+        """
+        return {
+            # ── Original fields (preserved) ────────────────
+            "tick_count": self._tick_count,
+            "bars_since_retrain": self._bars_since_retrain,
+            "universe_selector": self.universe_selector.to_dict(),
+            "exit_levels": {
+                sym: lvl.to_dict()
+                for sym, lvl in self._exit_levels.items()
+            },
+            "entry_metadata": dict(self._entry_metadata),
+            "regime_kelly_stats": self.kelly_sizer.regime_stats_to_dict(),
+            "ml_calibration": self.signal_gen.calibration_to_dict(),
+            "entry_timestamps": list(self._entry_timestamps),
+            "pending_entry": dict(self._pending_entry),
+            # ── Audit-D additions (2026-05-01) ──────────────
+            "pending_entry_order_ids": dict(self._pending_entry_order_ids),
+            "pending_exit": dict(self._pending_exit),
+            "exit_cooldown": dict(self._exit_cooldown),
+            "symbol_banned": list(self._symbol_banned),
+            "ml_reversal_used": list(self._ml_reversal_used),
+            "orb_live_count_today": self._orb_live_count_today,
+            "eod_live_count_today": self._eod_live_count_today,
+            "mr_live_count_today": self._mr_live_count_today,
+            "daily_session_date": self._daily_loss_date,
+        }
+
     def force_save_brain(self) -> dict:
         """Admin-only recovery path: persist the full brain bypassing the
         walk-forward gate.
@@ -5242,20 +5375,7 @@ class OrganismLiveEngine:
                 all_trades=self._all_trades,
                 epoch_metrics=self._epoch_metrics,
                 peak_equity=self._peak_equity,
-                extra_counters={
-                    "tick_count": self._tick_count,
-                    "bars_since_retrain": self._bars_since_retrain,
-                    "universe_selector": self.universe_selector.to_dict(),
-                    "exit_levels": {
-                        sym: lvl.to_dict()
-                        for sym, lvl in self._exit_levels.items()
-                    },
-                    "entry_metadata": dict(self._entry_metadata),
-                    "regime_kelly_stats": self.kelly_sizer.regime_stats_to_dict(),
-                    "ml_calibration": self.signal_gen.calibration_to_dict(),
-                    "entry_timestamps": list(self._entry_timestamps),
-                    "pending_entry": dict(self._pending_entry),
-                },
+                extra_counters=self._build_extra_counters(),
                 evolved_params=self.evolved_params.to_dict(),
                 governance_controller=self.governance,
                 regime_detector=self.regime_detector,
@@ -5382,20 +5502,7 @@ class OrganismLiveEngine:
                     equity_curve=self._equity_curve,
                     epoch_metrics=self._epoch_metrics,
                     peak_equity=self._peak_equity,
-                    extra_counters={
-                        "tick_count": self._tick_count,
-                        "bars_since_retrain": self._bars_since_retrain,
-                        "universe_selector": self.universe_selector.to_dict(),
-                        "exit_levels": {
-                            sym: lvl.to_dict()
-                            for sym, lvl in self._exit_levels.items()
-                        },
-                        "entry_metadata": dict(self._entry_metadata),
-                        "regime_kelly_stats": self.kelly_sizer.regime_stats_to_dict(),
-                        "ml_calibration": self.signal_gen.calibration_to_dict(),
-                        "entry_timestamps": list(self._entry_timestamps),
-                        "pending_entry": dict(self._pending_entry),
-                    },
+                    extra_counters=self._build_extra_counters(),
                     governance_controller=self.governance,
                     regime_detector=self.regime_detector,
                 )
@@ -5409,20 +5516,7 @@ class OrganismLiveEngine:
                 all_trades=self._all_trades,
                 epoch_metrics=self._epoch_metrics,
                 peak_equity=self._peak_equity,
-                extra_counters={
-                    "tick_count": self._tick_count,
-                    "bars_since_retrain": self._bars_since_retrain,
-                    "universe_selector": self.universe_selector.to_dict(),
-                    "exit_levels": {
-                        sym: lvl.to_dict()
-                        for sym, lvl in self._exit_levels.items()
-                    },
-                    "entry_metadata": dict(self._entry_metadata),
-                    "regime_kelly_stats": self.kelly_sizer.regime_stats_to_dict(),
-                    "ml_calibration": self.signal_gen.calibration_to_dict(),
-                    "entry_timestamps": list(self._entry_timestamps),
-                    "pending_entry": dict(self._pending_entry),
-                },
+                extra_counters=self._build_extra_counters(),
                 evolved_params=self.evolved_params.to_dict(),
                 governance_controller=self.governance,
                 regime_detector=self.regime_detector,
