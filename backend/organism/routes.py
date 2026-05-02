@@ -114,10 +114,27 @@ async def get_organism_status(request: Request):
     promotion = _get_promotion(request)
     policy = getattr(request.app.state, "living_policy", None)
 
+    # Audit-I finding I-11 (2026-05-02): top-level tick_count used to read
+    # runner._tick_count which was the slow-brain OrganismRunner's counter
+    # (always 0). The live-engine tick counter lives on organism_scheduler.
+    # Prefer scheduler's engine tick_count, fall back to runner's for
+    # backwards compat with consumers still reading the legacy field.
+    _scheduler = getattr(request.app.state, "organism_scheduler", None)
+    _tick_count = 0
+    if _scheduler is not None:
+        try:
+            _engine = getattr(_scheduler, "_engine", None)
+            if _engine is not None:
+                _tick_count = int(getattr(_engine, "_tick_count", 0))
+        except Exception:
+            pass
+    if _tick_count == 0 and runner is not None:
+        _tick_count = int(getattr(runner, "_tick_count", 0))
+
     status = OrganismStatusResponse(
         governance=gov.to_dict(),
         policy_weights=policy.get_weights() if policy else {},
-        tick_count=runner._tick_count if runner else 0,
+        tick_count=_tick_count,
     )
 
     if runner:

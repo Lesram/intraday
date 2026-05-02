@@ -155,20 +155,57 @@ def install_error_handlers(app: FastAPI) -> None:
         Handle HTTP exceptions.
         - Platform app (factory-created): standardized envelope
         - Non-platform app: FastAPI default {"detail": ...}
+
+        Audit-I finding I-5 (2026-05-02): 70+ routes use
+        `HTTPException(detail=str(e))` which short-circuits the M-23
+        catch-all sanitizer. Stack traces, file paths, class names, and
+        DB-schema fragments leak through. We now sanitize HTTPException
+        detail centrally: detect leaky patterns and replace with a
+        generic message + correlation ID. The full detail is logged
+        server-side for debugging.
         """
+        import re as _re
+        import uuid as _uuid
+
         is_platform_app = getattr(getattr(request, "app", None), "state", None)
         is_platform_app = getattr(is_platform_app, "is_platform_app", False)
+
+        # Sanitize detail if it looks like a raw exception or stack trace.
+        # 5xx errors get strict sanitization; 4xx are usually intentional
+        # validation messages and are kept as-is.
+        sanitized_detail = exc.detail
+        if 500 <= exc.status_code < 600 and isinstance(exc.detail, str):
+            leaky_patterns = [
+                r"<class '[^']+'>",          # class repr
+                r"Traceback \(most recent",  # stack trace marker
+                r"/Users/|/app/|/var/|/etc/",# file paths
+                r"line \d+, in ",             # stack frame
+                r"sqlalchemy|psycopg|asyncpg",# DB internals
+                r"\.py['\":]",                 # python file refs
+            ]
+            looks_leaky = any(_re.search(p, exc.detail) for p in leaky_patterns)
+            # Also heuristic: very long details suggest accidental
+            # str(e) of a verbose exception.
+            if looks_leaky or len(exc.detail) > 500:
+                error_id = str(_uuid.uuid4())[:8]
+                logging.warning(
+                    f"Sanitized leaky 5xx HTTPException [{error_id}] "
+                    f"in {request.method} {request.url}: {exc.detail[:300]}"
+                )
+                sanitized_detail = (
+                    f"An internal error occurred. Reference ID: {error_id}"
+                )
 
         if is_platform_app:
             return create_error_response(
                 error_type="http_error",
-                detail=exc.detail,
+                detail=sanitized_detail,
                 status_code=exc.status_code,
             )
         else:
             return JSONResponse(
                 status_code=exc.status_code,
-                content={"detail": exc.detail},
+                content={"detail": sanitized_detail},
             )
 
     @app.exception_handler(Exception)
