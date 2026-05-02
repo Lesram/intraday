@@ -1159,20 +1159,69 @@ class OrderService:
                         "cancelled_at": None
                     }
 
-                # Try to cancel with broker if we have a broker connection
-                broker_order_id = order_id
+                # Audit-H finding H-5 (2026-05-02): if broker_order_id is None
+                # (outbox hasn't written it yet — race with same-tick cancel),
+                # the previous code passed the internal UUID to the broker
+                # which 404'd, the exception was swallowed, and the DB was
+                # marked cancelled — leaving a real broker position orphaned.
+                # Refuse to cancel until broker_order_id is available; caller
+                # can retry next tick.
+                broker_order_id = None
                 if order and hasattr(order, 'broker_order_id') and order.broker_order_id:
                     broker_order_id = order.broker_order_id
+                if broker_order_id is None:
+                    logger.warning(
+                        f"cancel_order deferred for {order_id}: "
+                        f"broker_order_id not yet available (outbox race). "
+                        f"Caller should retry next tick."
+                    )
+                    return {
+                        "status": "deferred",
+                        "order_id": order_id,
+                        "reason": "broker_order_id not available; retry next tick",
+                        "cancelled_at": None,
+                    }
 
+                # Audit-H finding H-4 (2026-05-02): broker may return 422
+                # ("cannot cancel — order already filled") between cancel
+                # request and broker-side fill. The previous code caught
+                # any exception and proceeded to mark DB cancelled — but
+                # the position was real. Now: distinguish 422-already-filled
+                # from other errors; on 422 do NOT mark cancelled, instead
+                # return reconciliation status.
+                _broker_says_filled = False
                 if self.broker and hasattr(self.broker, 'cancel_order'):
                     try:
                         await self.broker.cancel_order(broker_order_id)
                         logger.info(f"Order {order_id} cancelled with broker")
                     except Exception as e:
-                        # Log but don't fail - broker might already have cancelled it
-                        logger.warning(f"Broker cancel call for {order_id} failed: {e}")
+                        _err_str = str(e).lower()
+                        # Detect "already filled" / 422 / "cannot cancel"
+                        if any(s in _err_str for s in (
+                            "422", "already filled", "cannot cancel",
+                            "filled", "completed",
+                        )):
+                            _broker_says_filled = True
+                            logger.warning(
+                                f"Broker says order {order_id} already filled "
+                                f"(cancel race): {e}. NOT marking DB cancelled "
+                                f"— reconciliation will adopt the position."
+                            )
+                        else:
+                            logger.warning(
+                                f"Broker cancel call for {order_id} failed: {e}"
+                            )
 
-                # Update database status
+                if _broker_says_filled:
+                    # Don't mark DB cancelled — leave for reconciliation
+                    return {
+                        "status": "filled_during_cancel",
+                        "order_id": order_id,
+                        "reason": "Broker filled before cancel; not marking DB cancelled",
+                        "cancelled_at": None,
+                    }
+
+                # Update database status (only when cancel actually succeeded)
                 if order and self.orders_repo and hasattr(self.orders_repo, 'update_status'):
                     try:
                         await self.orders_repo.update_status(order.id, "cancelled")

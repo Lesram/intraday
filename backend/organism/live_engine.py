@@ -3384,7 +3384,26 @@ class OrganismLiveEngine:
                         if _current_price > 0:
                             _notional = initial_shares * _current_price
                             if _notional > MAX_NOTIONAL_PER_TRADE:
-                                _capped = max(1, int(MAX_NOTIONAL_PER_TRADE / _current_price))
+                                # Audit-H finding H-3 (2026-05-02): the previous
+                                # `max(1, int(...))` floor produced 1 share even
+                                # when the cap couldn't fit a single share at
+                                # the current price. A $50 cap on a $1000 stock
+                                # → 1 share = $1000 of risk = 20× over cap.
+                                # Now: if cap < 1 share, SKIP the trade (better
+                                # to miss an entry than to violate notional cap
+                                # by 20×).
+                                _capped = int(MAX_NOTIONAL_PER_TRADE / _current_price)
+                                if _capped < 1:
+                                    logger.warning(
+                                        "Notional cap blocks entry: %s "
+                                        "current_price=$%.2f exceeds cap "
+                                        "$%.0f (1 share would be %.1fx over). "
+                                        "Skipping entry.",
+                                        sz.symbol, _current_price,
+                                        MAX_NOTIONAL_PER_TRADE,
+                                        _current_price / MAX_NOTIONAL_PER_TRADE,
+                                    )
+                                    continue
                                 logger.info(
                                     "Notional cap: %s capped %d→%d shares "
                                     "($%.0f→$%.0f, limit=$%.0f)",
@@ -5660,12 +5679,26 @@ class OrganismLiveEngine:
         if not self._pending_entry and not self._pending_entry_order_ids:
             return
 
+        # Audit-H findings H-4 + H-5 (2026-05-02): track cancel-disposition
+        # so we don't blanket-clear local state when broker said the order
+        # was already filled (in which case the position is real and
+        # reconciliation will adopt it). Also: if cancel was deferred
+        # (broker_order_id not yet available), don't clear local state —
+        # caller will retry next tick.
         cancelled = []
         failed = []
+        deferred = []
+        filled_during_cancel = []
         for sym, order_id in list(self._pending_entry_order_ids.items()):
             try:
-                await self._order_service.cancel_order(order_id)
-                cancelled.append(sym)
+                _result = await self._order_service.cancel_order(order_id)
+                _status = (_result or {}).get("status", "cancelled")
+                if _status == "deferred":
+                    deferred.append(sym)
+                elif _status == "filled_during_cancel":
+                    filled_during_cancel.append(sym)
+                else:
+                    cancelled.append(sym)
             except Exception as e:
                 failed.append(sym)
                 logger.error(
@@ -5673,10 +5706,13 @@ class OrganismLiveEngine:
                     order_id, sym, e,
                 )
 
-        # Always clear local bookkeeping regardless of cancel outcome
-        cleared_symbols = list(self._pending_entry.keys())
-        self._pending_entry.clear()
-        self._pending_entry_order_ids.clear()
+        # Clear local bookkeeping ONLY for cancellations that actually
+        # succeeded. Defer / filled-during-cancel symbols stay in the
+        # tracking maps so the next tick handles them correctly.
+        for sym in cancelled + failed:
+            self._pending_entry.pop(sym, None)
+            self._pending_entry_order_ids.pop(sym, None)
+        cleared_symbols = list(cancelled + failed)
 
         if cancelled:
             logger.warning(
@@ -5688,6 +5724,19 @@ class OrganismLiveEngine:
                 "Drawdown kill: %d cancel attempts failed: %s "
                 "(local bookkeeping still cleared)",
                 len(failed), failed,
+            )
+        if deferred:
+            logger.warning(
+                "Drawdown kill: %d cancels deferred (broker_order_id not yet "
+                "available — outbox race): %s. Local state preserved for "
+                "next-tick retry.",
+                len(deferred), deferred,
+            )
+        if filled_during_cancel:
+            logger.warning(
+                "Drawdown kill: %d orders filled during cancel attempt: %s. "
+                "Reconciliation will adopt these positions; local state preserved.",
+                len(filled_during_cancel), filled_during_cancel,
             )
         if cleared_symbols and not cancelled and not failed:
             logger.warning(
