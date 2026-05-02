@@ -4080,8 +4080,21 @@ class OrganismLiveEngine:
                     del self._pending_entry[sym]
 
             # INV-5: Run continuous diagnostics every 100 ticks
+            # Audit-J finding J-2 (2026-05-02): keep a strong reference so
+            # the task can't be GC'd mid-run. Stored on a set so multiple
+            # in-flight diag tasks don't overwrite each other; remove on
+            # done callback. Errors are also captured here.
             if self._tick_count > 0 and self._tick_count % 100 == 0:
-                asyncio.create_task(self._run_continuous_diagnostics())
+                if not hasattr(self, "_diag_tasks"):
+                    self._diag_tasks: set[asyncio.Task] = set()
+                _diag_t = asyncio.create_task(self._run_continuous_diagnostics())
+                self._diag_tasks.add(_diag_t)
+                _diag_t.add_done_callback(self._diag_tasks.discard)
+                _diag_t.add_done_callback(
+                    lambda t: t.exception() and logger.error(
+                        "Continuous diagnostics task error: %s", t.exception()
+                    )
+                )
 
             # INV-6 (A6 improve8): Broker has position but no tracking
             if _broker_syms:

@@ -472,17 +472,31 @@ class BrokerManager:
         logger.info(f"H-22: Broker health monitoring started (interval: {interval_seconds}s)")
     
     async def stop_health_monitoring(self) -> None:
-        """Stop background health monitoring."""
+        """Stop background health monitoring.
+
+        Audit-J finding J-5 (2026-05-02): cancel was issued without
+        awaiting the cancellation, so the task could still be running
+        when self._health_check_task = None overwrote the reference.
+        Now: cancel + await CancelledError so cleanup completes before
+        return.
+        """
         if self._stop_event:
             self._stop_event.set()
-        
+
         if self._health_check_task:
             try:
                 await asyncio.wait_for(self._health_check_task, timeout=5.0)
             except asyncio.TimeoutError:
                 self._health_check_task.cancel()
+                # Wait for cancellation to actually finish so any
+                # in-flight broker.cancel_order() / httpx session release
+                # completes before we drop the reference.
+                try:
+                    await self._health_check_task
+                except asyncio.CancelledError:
+                    pass
             self._health_check_task = None
-        
+
         logger.info("H-22: Broker health monitoring stopped")
 
 

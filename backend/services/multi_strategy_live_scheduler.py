@@ -21,8 +21,9 @@ def _parse_symbols(value: str) -> list[str]:
 
 
 async def _loop(app, interval_seconds: int, symbols: list[str], lookback: int, timeframe: str) -> None:
+    # Audit-J finding J-4 (2026-05-02): _stop_event now initialized
+    # in start_multi_strategy_live_scheduler before create_task.
     global _stop_event
-    _stop_event = asyncio.Event()
 
     runner = MultiStrategyLiveRunner()
     engine = StrategyEngine.create_default()
@@ -192,6 +193,10 @@ async def start_multi_strategy_live_scheduler(app) -> bool:
 
     if _task is not None and not _task.done():
         return False
+
+    # Audit-J finding J-4 (2026-05-02): init _stop_event BEFORE create_task
+    global _stop_event
+    _stop_event = asyncio.Event()
 
     _task = asyncio.create_task(
         _loop(app, interval_seconds=interval_seconds, symbols=symbols, lookback=lookback, timeframe=timeframe),
