@@ -131,12 +131,28 @@ class OutboxRepo:
 
         return event.id
 
+    # V4 N-C-3 (2026-05-02): claim lease horizon. After a worker fetches
+    # rows with FOR UPDATE SKIP LOCKED, we push next_attempt_at forward
+    # by this many seconds so a concurrent worker (or a restart that
+    # rolls back the lock without committing the original send) cannot
+    # re-claim and re-submit the same event. The lease must exceed the
+    # 95th-percentile broker-call latency; on success mark_sent flips
+    # status; on crash the lease eventually expires and retry resumes.
+    _CLAIM_LEASE_SECONDS = 300
+
     async def claim_batch(
         self, *, limit: int = 100, session: AsyncSession | None = None
     ) -> list[OutboxEvent]:
         """
         Claim a batch of pending events for processing.
-        Uses FOR UPDATE SKIP LOCKED for concurrency safety.
+
+        Uses FOR UPDATE SKIP LOCKED for in-transaction concurrency safety,
+        plus a claim-lease (`next_attempt_at = now + _CLAIM_LEASE_SECONDS`)
+        for cross-transaction safety. Without the lease, a `commit()` after
+        this call releases the row lock but leaves status='pending', so any
+        concurrent worker — or a worker restarted after a partial send —
+        can re-pick the same event and re-submit. The lease pushes the row
+        out of the next-claim window for the lease duration.
 
         Args:
             limit: Maximum number of events to claim
@@ -147,7 +163,7 @@ class OutboxRepo:
         """
         session = session or self.session
 
-        # Query with FOR UPDATE SKIP LOCKED for concurrency safety
+        # Step 1: SELECT FOR UPDATE SKIP LOCKED — locks rows for this transaction.
         stmt = (
             select(OutboxEvent)
             .where(
@@ -161,6 +177,22 @@ class OutboxRepo:
 
         result = await session.execute(stmt)
         events = list(result.scalars().all())
+
+        # Step 2: lease bump — write the new next_attempt_at so cross-
+        # transaction competitors and post-commit re-polls skip these rows.
+        if events:
+            now = datetime.now(UTC)
+            lease_until = now + timedelta(seconds=self._CLAIM_LEASE_SECONDS)
+            ids = [e.id for e in events]
+            await session.execute(
+                update(OutboxEvent)
+                .where(OutboxEvent.id.in_(ids))
+                .values(next_attempt_at=lease_until)
+            )
+            # Reflect the new lease on returned ORM objects so callers see
+            # the same value the DB will see at commit.
+            for e in events:
+                e.next_attempt_at = lease_until
 
         logger.debug(
             "Outbox batch claimed", extra={"batch_size": len(events), "limit": limit}
