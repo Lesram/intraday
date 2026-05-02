@@ -69,7 +69,11 @@ services:
       - ORGANISM_MAX_POSITIONS=${ORGANISM_MAX_POSITIONS:-15}
       - ORGANISM_LONG_ONLY=${ORGANISM_LONG_ONLY:-true}
       - ORGANISM_RETRAIN_INTERVAL=${ORGANISM_RETRAIN_INTERVAL:-600}
-      - ORGANISM_FREEZE_ADAPTATION=${ORGANISM_FREEZE_ADAPTATION:-1}
+      # Audit-L finding L-2 (2026-05-02): default flipped 1→0 to match code
+      # default (`ORGANISM_FREEZE_ADAPTATION=0` means active/unfrozen).
+      # The previous default 1 silently froze adaptation in dev when .env
+      # was missing — exactly the wrong direction for a dev environment.
+      - ORGANISM_FREEZE_ADAPTATION=${ORGANISM_FREEZE_ADAPTATION:-0}
       - ORGANISM_USE_STREAMING=${ORGANISM_USE_STREAMING:-0}
       - ORGANISM_TRAIN_WINDOW=${ORGANISM_TRAIN_WINDOW:-100}
       - ORGANISM_DRAWDOWN_COOLDOWN_S=${ORGANISM_DRAWDOWN_COOLDOWN_S:-3600}
