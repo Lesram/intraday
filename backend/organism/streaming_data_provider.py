@@ -16,6 +16,7 @@ Usage::
 
 from __future__ import annotations
 
+import os
 import time
 from collections import deque
 from typing import Any
@@ -29,6 +30,14 @@ logger = get_logger(__name__)
 
 # Default ring buffer size — enough for ~33 hours of 1-min bars
 _DEFAULT_BUFFER_SIZE = 2000
+
+# Audit-E findings 5+6 (2026-05-01): the get_bars() function used to only
+# WARN on staleness but still return the stale data. Production saw AMZN
+# 13:30 UTC bars served at 15:18 UTC (108min stale). The same root cause
+# corrupted the ORB cache for IWM (1,295 wrong shadow events). Now: when
+# staleness exceeds threshold, return empty DataFrame so callers fall
+# through to REST. Default 120s = 2-bar tolerance for 1Min bars.
+_STALENESS_REJECT_S = float(os.getenv("ORGANISM_STREAMING_STALENESS_REJECT_S", "120"))
 
 
 class StreamingDataProvider:
@@ -117,22 +126,37 @@ class StreamingDataProvider:
     def get_bars(self, symbol: str, lookback: int = 200) -> pd.DataFrame:
         """Return latest N bars from the ring buffer as a DataFrame.
 
-        Returns an empty DataFrame if no data is available.
-        Warns if the newest bar is more than 5 minutes stale.
+        Returns an empty DataFrame if no data is available OR if the
+        newest bar is older than the staleness reject threshold (default
+        120s). The empty-DataFrame return forces the caller to fall
+        through to REST, which gets fresh bars from the API.
+
+        Audit-E findings 5+6 (2026-05-01): previously this function only
+        WARN'd on staleness > 300s but still returned stale bars. The
+        scanners were getting 108min-old AMZN closes; the ORB cache for
+        IWM was poisoned with prior-session bars; 1,295 spurious shadow
+        events fired Friday. Now: reject + force REST fallback.
         """
         symbol = symbol.upper()
         buf = self._bars.get(symbol)
         if not buf or len(buf) == 0:
             return pd.DataFrame()
 
-        # Freshness check
+        # Freshness check — reject if stale (force REST fallback)
         last_ts = self._last_bar_ts.get(symbol, 0)
         staleness = time.time() - last_ts
-        if staleness > 300:  # 5 minutes
+        if staleness > _STALENESS_REJECT_S:
             logger.warning(
-                "Stale data for %s: last bar %.0fs ago",
-                symbol,
-                staleness,
+                "Streaming bars REJECTED for %s: %.0fs stale (> %.0fs threshold) "
+                "— caller will fall through to REST",
+                symbol, staleness, _STALENESS_REJECT_S,
+            )
+            return pd.DataFrame()  # force REST fallback
+        if staleness > 60:
+            # Soft-warn at >1 bar but still return data
+            logger.info(
+                "Streaming bars for %s slightly stale: %.0fs old",
+                symbol, staleness,
             )
 
         # Convert deque to DataFrame (most recent last)

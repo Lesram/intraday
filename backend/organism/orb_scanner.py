@@ -248,6 +248,19 @@ class ORBScanner:
             if orb_close < self.min_price:
                 return None
 
+            # Audit-E finding 5 (2026-05-01): tag cached ORB with the
+            # session-date of the bars used. On lookup we validate this
+            # matches current session — guards against any path that
+            # would otherwise serve a cached ORB from a prior session.
+            try:
+                if "timestamp" in orb_bars.columns:
+                    _ts = pd.to_datetime(orb_bars["timestamp"].iloc[0], utc=True)
+                    _orb_session = _ts.tz_convert("America/New_York").strftime("%Y-%m-%d")
+                else:
+                    _orb_session = ""
+            except Exception:
+                _orb_session = ""
+
             return {
                 "orb_high": orb_high,
                 "orb_low": orb_low,
@@ -255,6 +268,7 @@ class ORBScanner:
                 "orb_close": orb_close,
                 "orb_volume": orb_volume,
                 "atr_at_entry": atr_at_entry,
+                "orb_session_date": _orb_session,
             }
         except Exception as e:
             logger.debug("ORB compute failed for %s: %s", symbol, e)
@@ -416,7 +430,25 @@ class ORBScanner:
         # for symbols that don't have them cached yet.
         for symbol, df in features_by_symbol.items():
             if symbol in self._orb_cache:
-                continue  # already computed for this session
+                # Audit-E finding 5 (2026-05-01): validate cached ORB is
+                # from current session. The cache entry's orb_session_date
+                # is set in _compute_orb_range. Stale entries can occur if
+                # the cache was populated when streaming had stale bars
+                # (production showed IWM had Apr-30 bars in May-1 cache).
+                # The streaming-staleness fix (#6) addresses the upstream
+                # cause; this is defensive belt-and-suspenders.
+                cached = self._orb_cache[symbol]
+                if cached.get("orb_session_date", "") != session_date:
+                    logger.warning(
+                        "ORB cache stale for %s (cached session=%s, "
+                        "current=%s) — invalidating",
+                        symbol,
+                        cached.get("orb_session_date", "unknown"),
+                        session_date,
+                    )
+                    del self._orb_cache[symbol]
+                else:
+                    continue  # cache valid for current session
             if df is None or len(df) < self.opening_minutes:
                 continue
 
