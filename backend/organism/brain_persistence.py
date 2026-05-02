@@ -294,17 +294,26 @@ class OrganismBrain:
                 "AND reset_reason.",
                 reason,
             )
-            # Alert wiring: emit guard-fire alert
+            # Alert wiring: emit guard-fire alert.
+            # Audit-J finding J-3 (2026-05-02): same fix as ml_signal.py —
+            # get_running_loop with worker-thread tolerance.
             try:
                 import asyncio as _aio
                 from backend.infra.alerting import send_alert, AlertCategory, AlertSeverity
-                _aio.get_event_loop().call_soon(
-                    lambda: _aio.ensure_future(send_alert(
-                        AlertCategory.SYSTEM_ERROR, AlertSeverity.ERROR,
-                        "Brain Save Blocked",
-                        f"Trained manifest overwrite blocked (save). {reason}",
-                    ))
-                )
+                try:
+                    loop = _aio.get_running_loop()
+                    loop.call_soon_threadsafe(
+                        lambda: _aio.ensure_future(send_alert(
+                            AlertCategory.SYSTEM_ERROR, AlertSeverity.ERROR,
+                            "Brain Save Blocked",
+                            f"Trained manifest overwrite blocked (save). {reason}",
+                        ))
+                    )
+                except RuntimeError:
+                    logger.warning(
+                        "Alert deferred (no running loop in this thread): "
+                        "Brain Save Blocked — %s", reason,
+                    )
             except Exception:
                 pass
             try:

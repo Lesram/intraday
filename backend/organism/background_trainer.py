@@ -264,10 +264,22 @@ class BackgroundTrainer:
         logger.info("BackgroundTrainer started (ProcessPoolExecutor, max_workers=1)")
 
     async def stop(self) -> None:
-        """Shut down the executor."""
+        """Shut down the executor.
+
+        Audit-J finding J-1 (2026-05-02): executor.shutdown(wait=True) is
+        a SYNC blocking call. Calling it inside an async function froze
+        the event loop for 10-60s during lifespan shutdown, undermining
+        the Phase 1 brain-save-first ordering. Now: offload to a thread
+        via asyncio.to_thread so the event loop keeps running.
+        """
         if self._executor:
-            self._executor.shutdown(wait=True)
+            executor = self._executor
             self._executor = None
+            try:
+                await asyncio.to_thread(executor.shutdown, wait=True)
+            except Exception as e:
+                # Don't let shutdown failure cascade — brain_save already ran
+                logger.warning("BackgroundTrainer executor shutdown error: %s", e)
 
     @property
     def is_training(self) -> bool:

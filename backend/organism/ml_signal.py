@@ -386,17 +386,32 @@ class MLSignalGenerator:
                     symbol, len(available_cols), len(self._feature_cols),
                     missing_pct * 100,
                 )
-                # Alert wiring: feature drift
+                # Alert wiring: feature drift.
+                # Audit-J finding J-3 (2026-05-02): get_event_loop() in a
+                # worker thread (this code can be reached via asyncio.to_thread)
+                # raises RuntimeError on Python 3.12, silently dropping
+                # critical alerts. Use get_running_loop with try/except so
+                # the alert path is best-effort but never crashes.
                 try:
                     import asyncio as _aio
                     from backend.infra.alerting import send_alert, AlertCategory, AlertSeverity
-                    _aio.get_event_loop().call_soon(
-                        lambda s=symbol, a=len(available_cols), t=len(self._feature_cols): _aio.ensure_future(send_alert(
-                            AlertCategory.SYSTEM_ERROR, AlertSeverity.WARNING,
-                            "Feature Drift Detected",
-                            f"ML signal neutralized for {s}: {a}/{t} features available.",
-                        ))
-                    )
+                    try:
+                        loop = _aio.get_running_loop()
+                        loop.call_soon_threadsafe(
+                            lambda s=symbol, a=len(available_cols), t=len(self._feature_cols):
+                                _aio.ensure_future(send_alert(
+                                    AlertCategory.SYSTEM_ERROR, AlertSeverity.WARNING,
+                                    "Feature Drift Detected",
+                                    f"ML signal neutralized for {s}: {a}/{t} features available.",
+                                ))
+                        )
+                    except RuntimeError:
+                        # No running loop in this thread — log instead.
+                        # This is the audit-J path that used to crash.
+                        logger.warning(
+                            "Alert deferred (no running loop in this thread): "
+                            "Feature Drift Detected for %s", symbol,
+                        )
                 except Exception:
                     pass
                 return MLSignal(
