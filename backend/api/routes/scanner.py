@@ -22,7 +22,13 @@ from fastapi import APIRouter, Depends, HTTPException, status
 import pandas as pd
 from pydantic import BaseModel, Field
 
-from backend.infra.security import get_current_user
+# Audit-I finding I-2 (2026-05-02): scanner endpoints used get_current_user
+# which silently returns None on missing auth — endpoints then 500-crashed
+# anonymously instead of 401-ing. Switched to get_authenticated_user which
+# raises 401 cleanly when no creds are present.
+from backend.infra.security import (
+    get_authenticated_user as get_current_user,
+)
 
 logger = logging.getLogger(__name__)
 

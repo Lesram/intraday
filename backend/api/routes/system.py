@@ -194,10 +194,10 @@ async def liveness_probe():
 ## canonical /readyz is defined in factory.py; keep this file free of duplicate readiness route
 
 
-@router.get("/test/runtime-error")
-async def test_runtime_error():
-    """Test endpoint that forces a RuntimeError for testing error handling"""
-    raise RuntimeError("Test runtime error from error factory")
+# Audit-I finding I-3 (2026-05-02): the public /test/runtime-error endpoint
+# was removed. It was deliberately raising a 500 on every call, polluting
+# SLI/SLO metrics. Test harnesses can mock errors directly; production has
+# no business serving this.
 
 
 # ============================================================================

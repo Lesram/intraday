@@ -13,6 +13,12 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, Query
 
+from fastapi import HTTPException, status
+
+from backend.infra.security import (
+    AuthenticatedUser,
+    get_authenticated_user,
+)
 from backend.services.observability_service import (
     HealthStatus,
     ObservabilityService,
@@ -195,7 +201,18 @@ async def update_threshold(
     metric: str,
     value: float = Query(..., gt=0, description="New threshold value"),
     service: ObservabilityService = Depends(get_service),
+    # Audit-I finding I-1 (2026-05-02): require authentication for state-
+    # mutating threshold updates. Was previously NO auth.
+    # NOTE: `require_roles(...)` factory has a wiring bug that causes the
+    # check to be silently bypassed; using get_authenticated_user (which
+    # raises 401 cleanly) + inline role check instead.
+    current_user: AuthenticatedUser = Depends(get_authenticated_user),
 ) -> dict[str, Any]:
+    if "admin" not in current_user.roles and "operator" not in current_user.roles:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Updating thresholds requires admin or operator role",
+        )
     """
     Update an alert threshold.
 
