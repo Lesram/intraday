@@ -1222,7 +1222,25 @@ class OrganismBrain:
             except Exception as e:
                 logger.warning("Trade archive failed (non-fatal): %s", e)
 
-        df.to_csv(target / "trade_history.csv", index=False)
+        # Audit-H finding H-8 (2026-05-02): atomic write — write to .tmp
+        # then rename. SIGKILL during pandas streaming write would have
+        # left a truncated CSV; on next startup _load_trade_history would
+        # fail or lose the latest trades. Now: write-then-rename guarantees
+        # the on-disk file is either the previous full state or the new
+        # full state — never partial.
+        _csv_path = target / "trade_history.csv"
+        _tmp_path = target / "trade_history.csv.tmp"
+        try:
+            df.to_csv(_tmp_path, index=False)
+            _tmp_path.replace(_csv_path)  # atomic on POSIX
+        except Exception:
+            # Best-effort cleanup; re-raise for caller to handle
+            if _tmp_path.exists():
+                try:
+                    _tmp_path.unlink()
+                except Exception:
+                    pass
+            raise
 
     def _save_equity_curve(
         self, target: Path, equity_curve: list[float]

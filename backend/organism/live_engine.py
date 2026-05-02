@@ -2323,6 +2323,34 @@ class OrganismLiveEngine:
                             continue  # Don't pyramid a symbol with pending exit
                         if sym in self._pending_entry:
                             continue  # Already submitted an order recently
+                        # Audit-H finding H-6 (2026-05-02): pyramid adds used
+                        # to bypass the entry-side risk gates (liquidity, fitness,
+                        # symbol_banned circuit-breaker, daily-loss halt). A
+                        # symbol that was banned mid-day for repeated losses
+                        # could still receive pyramid adds. Now: enforce the
+                        # same gates here.
+                        if sym in self._symbol_banned:
+                            logger.info(
+                                "Pyramid add blocked: %s banned this session",
+                                sym,
+                            )
+                            continue
+                        if entries_blocked:  # daily-loss halt etc.
+                            logger.info(
+                                "Pyramid add blocked: entries blocked (%s)",
+                                self._last_entries_blocked_reason,
+                            )
+                            continue
+                        # Audit-H H-7 (2026-05-02): orphan-adopted positions
+                        # are reconciliation artifacts — should not be
+                        # actively managed via pyramid adds.
+                        meta = self._entry_metadata.get(sym, {})
+                        if meta.get("entry_source") == "reconciliation_orphan":
+                            logger.info(
+                                "Pyramid add blocked: %s is orphan-adopted "
+                                "(reconciliation artifact)", sym,
+                            )
+                            continue
                         try:
                             pyr_order_result = await self._submit_entry_order(
                                 sym,
@@ -5052,7 +5080,14 @@ class OrganismLiveEngine:
                                 level=0,
                             )
                         ],
-                        target_total_shares=int(qty * 1.5),
+                        # Audit-H finding H-7 (2026-05-02): orphan adoption
+                        # used to set target=qty*1.5, which made pyramider
+                        # try to ADD shares to a reconciliation artifact.
+                        # The pyramid-block guard at the add site (H-7 fix)
+                        # also catches this; here we set target=qty so the
+                        # pyramider sees layer_count == target and never
+                        # signals add. Defense in depth.
+                        target_total_shares=int(qty),
                         atr_at_entry=atr,
                         initial_stop=exit_lvl.stop_loss,
                         current_stop=exit_lvl.stop_loss,
