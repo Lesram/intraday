@@ -512,6 +512,16 @@ class OrganismBrain:
             # Restore trade history
             learner.trade_history = []
             for td in self.trade_history:
+                # Audit-G v2 GAP-2 + GAP-5 (2026-05-02): restore the
+                # is_reconciliation_artifact flag from saved trades; if
+                # missing (legacy rows), DERIVE it from exit_reason so that
+                # historical reconciliation_adjustment trades are correctly
+                # excluded from learning consumers post-restart.
+                _saved_artifact = td.get("is_reconciliation_artifact")
+                if _saved_artifact is None:
+                    _saved_artifact = (
+                        td.get("exit_reason", "") == "reconciliation_adjustment"
+                    )
                 learner.trade_history.append(TradeRecord(
                     symbol=td.get("symbol", ""),
                     direction=td.get("direction", 0),
@@ -526,6 +536,7 @@ class OrganismBrain:
                     actual_return=td.get("actual_return", 0),
                     confidence=td.get("confidence", 0),
                     is_exploration=td.get("is_exploration", False),
+                    is_reconciliation_artifact=bool(_saved_artifact),
                     entry_source=td.get("entry_source", ""),
                     regime_at_entry=td.get("regime_at_entry", ""),
                     regime_at_exit=td.get("regime_at_exit", ""),
@@ -1737,6 +1748,12 @@ class OrganismBrain:
                     actual_return=td.get("actual_return", 0),
                     confidence=td.get("confidence", 0),
                     is_exploration=td.get("is_exploration", False),
+                    is_reconciliation_artifact=bool(
+                        td.get(
+                            "is_reconciliation_artifact",
+                            td.get("exit_reason", "") == "reconciliation_adjustment",
+                        )
+                    ),
                     entry_source=td.get("entry_source", ""),
                     regime_at_entry=td.get("regime_at_entry", ""),
                     regime_at_exit=td.get("regime_at_exit", ""),

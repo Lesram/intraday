@@ -1285,6 +1285,11 @@ class OrganismLiveEngine:
                 en_attrs = en_order.attributes or {}
                 ex_attrs = ex_order.attributes or {}
 
+                # Audit-G v2 GAP-5 (2026-05-02): derive
+                # is_reconciliation_artifact from exit_reason so DB-restored
+                # trades correctly skip learner.record_trade below.
+                _ex_reason = ex_attrs.get("reason", "unknown")
+                _is_recon = _ex_reason == "reconciliation_adjustment"
                 reconstructed.append(TradeRecord(
                     symbol=sym,
                     direction=1.0,  # LONG_ONLY
@@ -1294,10 +1299,11 @@ class OrganismLiveEngine:
                     exit_bar=0,
                     shares=shares,
                     pnl=pnl,
-                    exit_reason=ex_attrs.get("reason", "unknown"),
+                    exit_reason=_ex_reason,
                     predicted_return=0.0,
                     actual_return=actual_return,
                     confidence=float(en_attrs.get("confidence", 0.0)),
+                    is_reconciliation_artifact=_is_recon,
                     closed_at="",
                 ))
 
@@ -1315,9 +1321,12 @@ class OrganismLiveEngine:
         # Do NOT populate _equity_curve from PnL — it should only contain
         # actual broker equity snapshots from _get_equity().
 
-        # Feed reconstructed trades to learner so ML can train
+        # Feed reconstructed trades to learner so ML can train.
+        # Audit-G v2 GAP-5: skip reconciliation artifacts.
         if hasattr(self, 'learner') and self.learner:
             for t in reconstructed:
+                if getattr(t, "is_reconciliation_artifact", False):
+                    continue
                 try:
                     self.learner.record_trade(t)
                 except Exception as e:
@@ -2869,7 +2878,13 @@ class OrganismLiveEngine:
                         ml_sig = ml_signals.get(_orb_sym)  # use translated symbol's ML
                         ml_conf = ml_sig.confidence if ml_sig else 0.0
                         _orb_breakout_proxy = 0.55  # ORB breakout = quality breakout
-                        _orb_tension = min(orbc.rv_ratio / 4.0, 0.80)
+                        # Audit-A v2 T1 (2026-05-02): Phase 5 raised the
+                        # helper tension cap 0.80→1.0; this inline ORB
+                        # version was missed. With DROP_ML_FROM_GATE=True,
+                        # tension carries 35% gate weight — saturating at
+                        # 0.80 made high-RV days indistinguishable from
+                        # moderate ones at the gate threshold.
+                        _orb_tension = min(orbc.rv_ratio / 4.0, 1.0)
                         _orb_composite = (
                             0.50 * ml_conf
                             + 0.30 * _orb_breakout_proxy
@@ -3018,7 +3033,9 @@ class OrganismLiveEngine:
                         ml_sig = ml_signals.get(_eod_sym)
                         ml_conf = ml_sig.confidence if ml_sig else 0.0
                         _eod_breakout_proxy = 0.50
-                        _eod_tension = min(abs(eodc.day_return_pct) / 1.5, 0.80)
+                        # Audit-A v2 T1 (2026-05-02): cap raised 0.80→1.0
+                        # to match helper. Same reason as ORB above.
+                        _eod_tension = min(abs(eodc.day_return_pct) / 1.5, 1.0)
                         _eod_composite = (
                             0.50 * ml_conf
                             + 0.30 * _eod_breakout_proxy
@@ -3060,11 +3077,16 @@ class OrganismLiveEngine:
                             _eod_ret_source = "calibrated_breakout"
                         else:
                             # Day-return magnitude is the natural continuation
-                            # signal for EOD: 0.4% drift → ~0.5% expected; 1.0%
-                            # drift → ~1.0% expected, capped at 2.0%.
+                            # signal for EOD. Audit-A v2 T2 (2026-05-02):
+                            # the original Phase 1 fallback had `min(0.020, ...)`
+                            # which capped 7%-day-return candidates at the same
+                            # value as 2.1%-day-return ones — the same bug class
+                            # we just removed from the breakout path. Now: pass
+                            # through magnitude with a 0.5% floor (so we don't
+                            # zero-size on tiny drifts) and NO upper cap.
                             _eod_pred_ret = max(
                                 0.005,
-                                min(0.020, abs(eodc.day_return_pct) / 100.0),
+                                abs(eodc.day_return_pct) / 100.0,
                             )
                             _eod_ret_source = "heuristic"
                         cand_dicts.append({
@@ -3137,19 +3159,19 @@ class OrganismLiveEngine:
 
                         # MR composite: distance-derived. Mean-reversion is a
                         # statistical signal (not a directional prediction),
-                        # so we do NOT include ML confidence (ML.audit:
-                        # corr(conf, correct) = -0.112 — anti-predictive on
-                        # the alpha+breakout path). The composite is purely
-                        # signal-strength-derived. Mapping (replay-tuned):
-                        #   1.5 ATR → 0.525, 2.5 ATR → 0.675, 3.5 ATR → 0.825.
-                        # Scanner's min_displacement_atr=2.5 ensures composites
-                        # always start above the 0.45 main gate.
+                        # so we do NOT include ML confidence. Composite is
+                        # purely signal-strength-derived:
+                        #   2.5 ATR → 0.675, 4.0 ATR → 0.90, 5.0 ATR → 1.0.
+                        # Audit-A v2 T3 (2026-05-02): removed the dead
+                        # `max(0.45, ...)` floor that was making the next
+                        # gate-check structurally unreachable. With current
+                        # min_displacement_atr=4.0, composites start at 0.90,
+                        # so the gate filter at _MIN_MAIN_CONF=0.45 is in
+                        # principle never triggered — but kept for paranoia
+                        # in case the threshold gets relaxed.
                         _mr_composite = min(
                             1.0,
-                            max(
-                                0.45,
-                                0.30 + 0.15 * mrc.abs_distance_atr,
-                            ),
+                            0.30 + 0.15 * mrc.abs_distance_atr,
                         )
 
                         if _mr_composite < _MIN_MAIN_CONF:
@@ -4871,16 +4893,21 @@ class OrganismLiveEngine:
             self._symbol_exit_tick[sym] = self._tick_count
 
             # Record for regime-stratified Kelly (skip exploration to prevent
-            # micro-size trades from polluting main Kelly statistics)
-            if not _is_exploration:
+            # micro-size trades from polluting main Kelly statistics).
+            # Audit-G v2 GAP-3 (2026-05-02): also skip reconciliation artifacts
+            # so non-strategy PnL doesn't pollute regime Kelly stats persisted
+            # to brain manifest.
+            if not _is_exploration and not _is_reconciliation:
                 exit_lvl = self._exit_levels.get(sym)
                 regime_at_trade = (
                     exit_lvl.regime_at_entry if exit_lvl else "unknown"
                 )
                 self.kelly_sizer.record_trade(regime_at_trade, pnl)
 
-            # Record for ML calibration
-            if meta.get("confidence") is not None:
+            # Record for ML calibration.
+            # Audit-G v2 GAP-3: skip reconciliation artifacts (their
+            # confidence=0.5 default would skew calibration map).
+            if meta.get("confidence") is not None and not _is_reconciliation:
                 was_correct = actual_return > 0
                 self.signal_gen.record_prediction_outcome(
                     meta["confidence"], was_correct
@@ -5149,12 +5176,16 @@ class OrganismLiveEngine:
                     lowest_price=avg_entry,
                 )
 
+                # Audit-G v2 GAP-1 (2026-05-02): tag startup-recovery orphan
+                # adoptions identically to in-tick orphan adoption (Phase 4).
+                # Otherwise post-restart orphan closes pollute learning.
                 self._entry_metadata[sym] = {
                     "entry_price": avg_entry,
                     "entry_tick": 0,
                     "direction": direction,
                     "predicted_return": 0.02,
                     "confidence": 0.5,
+                    "entry_source": "reconciliation_orphan",
                 }
 
                 logger.info(
@@ -5197,8 +5228,17 @@ class OrganismLiveEngine:
         # (signal weights, exit params, regime scales, breakout weights, etc.)
         # is too wide for the sample size during bootstrap.
         _EVOLUTION_FREEZE_TRADES = 300
-        recent_trades = self._all_trades[-200:]  # last 200 trades
-        _total_trades = len(self._all_trades)
+        # Audit-G v2 GAP-4 (2026-05-02): filter reconciliation artifacts
+        # before passing to evolution engine. Otherwise non-strategy PnL
+        # (orphan adoptions, stale-metadata cleanups) drives signal/exit/
+        # regime weight evolution. With 498 trades > 300 freeze threshold,
+        # this is actively polluting evolved_params right now.
+        _filtered_trades = [
+            t for t in self._all_trades
+            if not getattr(t, "is_reconciliation_artifact", False)
+        ]
+        recent_trades = _filtered_trades[-200:]  # last 200 strategy trades
+        _total_trades = len(_filtered_trades)
 
         if recent_trades and _total_trades >= _EVOLUTION_FREEZE_TRADES:
             fi = self.signal_gen._get_feature_importance()
