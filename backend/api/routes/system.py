@@ -54,10 +54,21 @@ async def root():
 async def get_metrics(request: Request):
     """Prometheus metrics endpoint - no authentication required"""
     try:
-        # Get metrics registry from app state, or create a temporary one to emit empty metrics
-        registry = getattr(request.app.state, "metrics_registry", None) or CollectorRegistry()
         if not PROMETHEUS_AVAILABLE:
             return Response(content="# Metrics not available\n", media_type="text/plain")
+
+        # V4 P-P0-1 (2026-05-02): app.state.metrics_registry is a
+        # MetricsRegistry *wrapper* around an inner CollectorRegistry.
+        # Passing the wrapper to generate_latest() raises
+        # `'MetricsRegistry' object has no attribute 'collect'`,
+        # which the outer try/except converts to HTTP 503 on every
+        # scrape. factory.py's `/metrics` already unwraps via
+        # `hasattr(reg, "registry")`; this route mirrors that.
+        registry = getattr(request.app.state, "metrics_registry", None)
+        if registry is not None and hasattr(registry, "registry"):
+            registry = registry.registry
+        if registry is None:
+            registry = CollectorRegistry()
 
         # If no metrics collected yet, ensure basic metrics exist
         metrics = getattr(request.app.state, "metrics", None)
@@ -77,6 +88,25 @@ async def get_metrics(request: Request):
 
         # Generate metrics output
         metrics_data = generate_latest(registry)
+
+        # V4 P-P0-2 (2026-05-02): the 12 ORGANISM_* metrics declared
+        # at module-level in live_engine.py register on the global
+        # `prometheus_client.REGISTRY` because no `registry=` arg is
+        # passed at construction. The app-state registry is a separate
+        # CollectorRegistry instance, so without explicit merge those
+        # metrics are scraped by no one. Emit the global REGISTRY too,
+        # de-duplicating against the app-state output.
+        try:
+            from prometheus_client import REGISTRY as _GLOBAL_REGISTRY
+            if registry is not _GLOBAL_REGISTRY:
+                global_data = generate_latest(_GLOBAL_REGISTRY)
+                # Concatenate; Prometheus exposition format tolerates
+                # multiple chunks with their own HELP/TYPE blocks.
+                if global_data:
+                    metrics_data = (metrics_data or b"") + global_data
+        except Exception as _merge_err:
+            logger.debug("Global registry merge skipped: %s", _merge_err)
+
         # If output doesn't include expected keywords, append a minimal line so tests pass
         if not metrics_data or (
             b"http_requests_total" not in metrics_data and b"process_" not in metrics_data
