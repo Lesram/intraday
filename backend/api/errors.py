@@ -171,10 +171,15 @@ def install_error_handlers(app: FastAPI) -> None:
         is_platform_app = getattr(is_platform_app, "is_platform_app", False)
 
         # Sanitize detail if it looks like a raw exception or stack trace.
-        # 5xx errors get strict sanitization; 4xx are usually intentional
-        # validation messages and are kept as-is.
+        # Audit-I finding I-5 round 2 (2026-05-02): extended sanitization
+        # to ALL status codes (not just 5xx). 4xx responses can also leak
+        # internals via `HTTPException(detail=str(e))` patterns — e.g.,
+        # a 422 from a route that did `except Exception as e: raise
+        # HTTPException(422, detail=str(e))` could leak DB schema names
+        # or stack traces. Generic strings (validation hints, "not found")
+        # don't match the leaky patterns and pass through unchanged.
         sanitized_detail = exc.detail
-        if 500 <= exc.status_code < 600 and isinstance(exc.detail, str):
+        if isinstance(exc.detail, str):
             leaky_patterns = [
                 r"<class '[^']+'>",          # class repr
                 r"Traceback \(most recent",  # stack trace marker
@@ -184,16 +189,21 @@ def install_error_handlers(app: FastAPI) -> None:
                 r"\.py['\":]",                 # python file refs
             ]
             looks_leaky = any(_re.search(p, exc.detail) for p in leaky_patterns)
-            # Also heuristic: very long details suggest accidental
-            # str(e) of a verbose exception.
-            if looks_leaky or len(exc.detail) > 500:
+            # 5xx: also sanitize on length heuristic (long detail suggests
+            # accidental str(e) of a verbose exception).
+            if looks_leaky or (
+                500 <= exc.status_code < 600 and len(exc.detail) > 500
+            ):
                 error_id = str(_uuid.uuid4())[:8]
                 logging.warning(
-                    f"Sanitized leaky 5xx HTTPException [{error_id}] "
+                    f"Sanitized leaky HTTPException [{error_id}] "
+                    f"status={exc.status_code} "
                     f"in {request.method} {request.url}: {exc.detail[:300]}"
                 )
                 sanitized_detail = (
-                    f"An internal error occurred. Reference ID: {error_id}"
+                    f"Request failed. Reference ID: {error_id}"
+                    if exc.status_code < 500
+                    else f"An internal error occurred. Reference ID: {error_id}"
                 )
 
         if is_platform_app:
