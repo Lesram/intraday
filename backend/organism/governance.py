@@ -11,14 +11,27 @@ Provides the "immune system" for the living organism:
 
 from __future__ import annotations
 
+# Audit-K finding K-5 (2026-05-02): daily change budget reset used UTC
+# date which rolled at 8 PM ET — adaptations made in the evening got
+# attributed to the next trading day. Now ET-anchored via _today_et().
+
 import hashlib
 import json
 import os
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any
+from zoneinfo import ZoneInfo
 
 from backend.utils.logger import get_logger
+
+
+_ET = ZoneInfo("America/New_York")
+
+
+def _today_et() -> str:
+    """ET trading-day string (audit-K K-5)."""
+    return datetime.now(UTC).astimezone(_ET).strftime("%Y-%m-%d")
 
 logger = get_logger(__name__)
 
@@ -138,7 +151,7 @@ class GovernanceController:
 
     def can_change(self) -> bool:
         """Check if the daily change budget allows another adaptation."""
-        today = datetime.now(UTC).strftime("%Y-%m-%d")
+        today = _today_et()
         if today != self._last_reset_date:
             self._change_count = 0
             self._last_reset_date = today
@@ -147,7 +160,7 @@ class GovernanceController:
     # ── mutations (called by other organism modules) ─────────────────
 
     def record_change(self) -> None:
-        today = datetime.now(UTC).strftime("%Y-%m-%d")
+        today = _today_et()
         if today != self._last_reset_date:
             self._change_count = 0
             self._last_reset_date = today

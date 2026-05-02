@@ -177,7 +177,14 @@ class RiskManager:
             return None
 
         # Calculate today's P&L
-        today_start = datetime.now(UTC).replace(hour=0, minute=0, second=0, microsecond=0)
+        # Audit-K finding K-3 (2026-05-02): use ET trading-day boundary,
+        # not UTC midnight. UTC midnight = 7-8 PM ET, so an evening trade
+        # was bucketed into the next "trading day" for daily P&L.
+        from zoneinfo import ZoneInfo
+        _et_now = datetime.now(UTC).astimezone(ZoneInfo("America/New_York"))
+        today_start = _et_now.replace(
+            hour=0, minute=0, second=0, microsecond=0
+        ).astimezone(UTC)
 
         # Query today's realized P&L from trades table
         try:
@@ -326,7 +333,14 @@ class RiskManager:
             return None
 
         # Count today's orders
-        today_start = datetime.now(UTC).replace(hour=0, minute=0, second=0, microsecond=0)
+        # Audit-K finding K-3 (2026-05-02): use ET trading-day boundary,
+        # not UTC midnight. UTC midnight = 7-8 PM ET, so an evening trade
+        # was bucketed into the next "trading day" for daily P&L.
+        from zoneinfo import ZoneInfo
+        _et_now = datetime.now(UTC).astimezone(ZoneInfo("America/New_York"))
+        today_start = _et_now.replace(
+            hour=0, minute=0, second=0, microsecond=0
+        ).astimezone(UTC)
         result = await self.db.execute(
             select(Order).where(
                 and_(Order.user_id == str(user_id), Order.created_at >= today_start)

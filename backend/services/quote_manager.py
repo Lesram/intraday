@@ -14,7 +14,7 @@ Usage:
 """
 
 import asyncio
-from datetime import datetime
+from datetime import UTC, datetime
 import logging
 import os
 import time
@@ -56,8 +56,17 @@ class Quote:
         }
 
     def is_stale(self, max_age_seconds: int = 5) -> bool:
-        """Check if quote is older than max_age_seconds"""
-        age = (datetime.now() - self.timestamp).total_seconds()
+        """Check if quote is older than max_age_seconds.
+
+        Audit-K finding K-4 (2026-05-02): naive datetime.now() vs tz-aware
+        Alpaca timestamp = TypeError, silently degrading the cache. Now uses
+        UTC for both. If timestamp is naive, treat as UTC (Alpaca SDK
+        guarantees aware in modern versions; this is the safety net).
+        """
+        ts = self.timestamp
+        if ts.tzinfo is None:
+            ts = ts.replace(tzinfo=UTC)
+        age = (datetime.now(UTC) - ts).total_seconds()
         return age > max_age_seconds
 
 
