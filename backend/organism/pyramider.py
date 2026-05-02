@@ -20,7 +20,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
-import numpy as np
+# M-11 (audit-2026-05-02): removed unused `import numpy as np`
 
 
 @dataclass

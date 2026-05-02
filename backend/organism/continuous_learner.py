@@ -20,7 +20,7 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
-from backend.organism.ml_features import FEATURE_COLUMNS, compute_ml_features
+from backend.organism.ml_features import FEATURE_COLUMNS
 from backend.organism.ml_signal import MLSignalGenerator, MLSignal, ModelMetrics
 
 logger = logging.getLogger(__name__)
