@@ -88,15 +88,66 @@ class PyramidPosition:
         return pnl
 
     def to_dict(self) -> dict[str, Any]:
+        """Telemetry-style summary (small, for status responses)."""
         return {
-            "symbol": self.symbol,
-            "direction": self.direction,
-            "layers": self.layer_count,
-            "total_shares": self.total_shares,
-            "avg_entry": round(self.avg_entry, 2),
-            "current_stop": round(self.current_stop, 2),
-            "r_multiple": round(self.r_multiple, 2),
+            "symbol": str(self.symbol),
+            "direction": float(self.direction),
+            "layers": int(self.layer_count),
+            "total_shares": int(self.total_shares),
+            "avg_entry": round(float(self.avg_entry), 2),
+            "current_stop": round(float(self.current_stop), 2),
+            "r_multiple": round(float(self.r_multiple), 2),
         }
+
+    def to_persistence(self) -> dict[str, Any]:
+        """Full state for brain persistence (audit-D D-20, 2026-05-02)."""
+        return {
+            "symbol": str(self.symbol),
+            "direction": float(self.direction),
+            "layers": [
+                {
+                    "shares": int(l.shares),
+                    "entry_price": float(l.entry_price),
+                    "bar_added": int(l.bar_added),
+                    "level": int(l.level),
+                }
+                for l in self.layers
+            ],
+            "target_total_shares": int(self.target_total_shares),
+            "atr_at_entry": float(self.atr_at_entry),
+            "initial_stop": float(self.initial_stop),
+            "current_stop": float(self.current_stop),
+            "highest_price": float(self.highest_price),
+            "lowest_price": float(self.lowest_price)
+                             if self.lowest_price != float("inf") else None,
+            "breakout_score": float(self.breakout_score),
+        }
+
+    @classmethod
+    def from_persistence(cls, data: dict[str, Any]) -> "PyramidPosition":
+        """Reconstruct PyramidPosition from serialized form (D-20)."""
+        layers = [
+            PyramidLevel(
+                shares=int(l["shares"]),
+                entry_price=float(l["entry_price"]),
+                bar_added=int(l["bar_added"]),
+                level=int(l["level"]),
+            )
+            for l in (data.get("layers") or [])
+        ]
+        lowest = data.get("lowest_price")
+        return cls(
+            symbol=str(data["symbol"]),
+            direction=float(data["direction"]),
+            layers=layers,
+            target_total_shares=int(data.get("target_total_shares", 0)),
+            atr_at_entry=float(data.get("atr_at_entry", 0.0)),
+            initial_stop=float(data.get("initial_stop", 0.0)),
+            current_stop=float(data.get("current_stop", 0.0)),
+            highest_price=float(data.get("highest_price", 0.0)),
+            lowest_price=float(lowest) if lowest is not None else float("inf"),
+            breakout_score=float(data.get("breakout_score", 0.0)),
+        )
 
 
 @dataclass

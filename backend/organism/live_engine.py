@@ -1121,6 +1121,29 @@ class OrganismLiveEngine:
                     self.brain.extra_counters.get("mr_live_count_today", 0)
                 )
 
+            # Audit-D finding D-20 (2026-05-02): restore pyramid_positions.
+            # Same-session-only restore: a pyramid layer from a prior
+            # session is stale (target/stop computed off old ATR). Only
+            # rehydrate on intraday restart.
+            saved_pyramids = self.brain.extra_counters.get("pyramid_positions")
+            if (
+                isinstance(saved_pyramids, dict)
+                and saved_session == today_et
+            ):
+                from backend.organism.pyramider import PyramidPosition as _PP
+                for sym, pyr_data in saved_pyramids.items():
+                    try:
+                        self._pyramid_positions[sym] = _PP.from_persistence(pyr_data)
+                    except Exception as e:
+                        logger.warning(
+                            "Failed to restore pyramid for %s: %s", sym, e,
+                        )
+                if saved_pyramids:
+                    logger.info(
+                        "Restored %d pyramid positions (same session %s)",
+                        len(saved_pyramids), saved_session,
+                    )
+
             # Validate brain
             warnings = self.brain.validate_brain()
             for w in warnings:
@@ -5489,6 +5512,14 @@ class OrganismLiveEngine:
             "eod_live_count_today": self._eod_live_count_today,
             "mr_live_count_today": self._mr_live_count_today,
             "daily_session_date": self._daily_loss_date,
+            # Audit-D finding D-20 (2026-05-02): pyramid_positions persistence.
+            # Was previously local-only; pyramid stop/target/layer state was
+            # lost on restart. Reconstruction code in apply_to_learner
+            # rehydrates these via PyramidPosition.from_persistence.
+            "pyramid_positions": {
+                sym: pyr.to_persistence()
+                for sym, pyr in self._pyramid_positions.items()
+            },
         }
 
     def force_save_brain(self) -> dict:

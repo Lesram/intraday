@@ -424,6 +424,25 @@ class OrganismBrain:
         if self.clf is None or self.reg is None:
             return False
 
+        # Audit-C concern 2 (2026-05-02): restore S17 same-holdout cache.
+        for attr_name in ("_last_val_X", "_last_val_y_dir", "_last_val_y_ret"):
+            cache_path = self.brain_dir / f"ml_{attr_name.lstrip('_')}.joblib"
+            if cache_path.is_file():
+                try:
+                    from backend.utils.secure_pickle import (
+                        secure_load_from_path,
+                        is_signed_pickle,
+                    )
+                    raw = cache_path.read_bytes()
+                    if is_signed_pickle(raw):
+                        setattr(signal_gen, attr_name, secure_load_from_path(cache_path))
+                    else:
+                        setattr(signal_gen, attr_name, joblib.load(cache_path))
+                except Exception as e:
+                    logger.debug(
+                        "Failed to restore S17 cache %s: %s", attr_name, e,
+                    )
+
         try:
             signal_gen._clf = self.clf
             signal_gen._reg = self.reg
@@ -1061,6 +1080,25 @@ class OrganismBrain:
             secure_dump_to_path(
                 signal_gen._reg, target / "ml_regressor.joblib"
             )
+            # Audit-C concern 2 (2026-05-02): persist S17 same-holdout
+            # validation cache. Without this, the first retrain after
+            # restart degrades to historical-metric fallback because
+            # `_last_val_X` is None. Persisting these arrays lets the
+            # new-model-vs-old-model gate work on identical holdouts
+            # immediately after restart.
+            for attr_name in (
+                "_last_val_X", "_last_val_y_dir", "_last_val_y_ret",
+            ):
+                arr = getattr(signal_gen, attr_name, None)
+                if arr is not None:
+                    try:
+                        secure_dump_to_path(
+                            arr, target / f"ml_{attr_name.lstrip('_')}.joblib"
+                        )
+                    except Exception as e:
+                        logger.debug(
+                            "Failed to persist %s: %s", attr_name, e,
+                        )
 
     def _save_ml_state(self, target: Path, signal_gen: Any) -> None:
         ml_state = {
