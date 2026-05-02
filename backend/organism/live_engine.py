@@ -31,6 +31,7 @@ import time
 import uuid
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
+from zoneinfo import ZoneInfo
 from typing import Any, Callable
 
 import numpy as np
@@ -4445,7 +4446,12 @@ class OrganismLiveEngine:
         side = "sell" if direction < 0 else "buy"
         idem_key = (
             f"organism_{symbol}"
-            f"_{datetime.now(UTC).strftime('%Y%m%d')}"
+            # Audit-K finding K-6 (2026-05-02): use ET trading-day not UTC.
+            # UTC date rolls at 8 PM ET, so an evening order's idempotency
+            # key would be "tomorrow's date" — across a session boundary
+            # the key still uniquely-identifies the order, but the date
+            # component is misleading for log-analysis and forensics.
+            f"_{datetime.now(UTC).astimezone(ZoneInfo('America/New_York')).strftime('%Y%m%d')}"
             f"_{self._session_id}_t{self._tick_count}"
         )
 
@@ -4561,7 +4567,12 @@ class OrganismLiveEngine:
         # duplicate exit orders across rapid 10s ticks.
         idem_key = (
             f"organism_exit_{symbol}"
-            f"_{datetime.now(UTC).strftime('%Y%m%d')}"
+            # Audit-K finding K-6 (2026-05-02): use ET trading-day not UTC.
+            # UTC date rolls at 8 PM ET, so an evening order's idempotency
+            # key would be "tomorrow's date" — across a session boundary
+            # the key still uniquely-identifies the order, but the date
+            # component is misleading for log-analysis and forensics.
+            f"_{datetime.now(UTC).astimezone(ZoneInfo('America/New_York')).strftime('%Y%m%d')}"
             f"_{self._session_id}_t{self._tick_count}"
         )
         result = await self._order_service.submit_symbol_order(

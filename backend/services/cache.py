@@ -22,7 +22,7 @@ Security Note:
     For persistent model storage, use backend.utils.secure_pickle instead.
 """
 
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 import logging
 import os
 import pickle
@@ -374,7 +374,7 @@ class CacheService:
         # Fallback to memory cache
         if key in self.memory_cache[layer]:
             value, expiry = self.memory_cache[layer][key]
-            if datetime.now() < expiry:
+            if datetime.now(UTC) < expiry:  # K-8: tz-aware UTC for DST safety
                 self.metrics['hits'] += 1
                 return value
             else:
@@ -430,7 +430,7 @@ class CacheService:
         for key in keys:
             if key in self.memory_cache[layer]:
                 value, expiry = self.memory_cache[layer][key]
-                if datetime.now() < expiry:
+                if datetime.now(UTC) < expiry:  # K-8: tz-aware UTC for DST safety
                     results[key] = value
                     self.metrics['hits'] += 1
                 else:
@@ -470,7 +470,8 @@ class CacheService:
                 self.redis_available = False
 
         # Always store in memory cache
-        expiry = datetime.now() + timedelta(seconds=ttl)
+        # Audit-K finding K-8 (2026-05-02): tz-aware UTC for DST-immune TTL.
+        expiry = datetime.now(UTC) + timedelta(seconds=ttl)
         self.memory_cache[layer][key] = (value, expiry)
         self.metrics['sets'] += 1
 
@@ -506,7 +507,8 @@ class CacheService:
                 self.redis_available = False
 
         # Store in memory cache
-        expiry = datetime.now() + timedelta(seconds=ttl)
+        # Audit-K finding K-8 (2026-05-02): tz-aware UTC for DST-immune TTL.
+        expiry = datetime.now(UTC) + timedelta(seconds=ttl)
         for key, value in items.items():
             self.memory_cache[layer][key] = (value, expiry)
         self.metrics['sets'] += len(items)
