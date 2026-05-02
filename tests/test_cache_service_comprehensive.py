@@ -10,7 +10,8 @@ Targets 70%+ coverage for CacheService:
 - Helper functions
 """
 
-from datetime import datetime, timedelta
+# V4 Z-R-2 (2026-05-02): production cache TTL is tz-aware UTC.
+from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 import pickle
 
@@ -182,7 +183,7 @@ class TestMemoryCache:
         # Manually expire the entry
         cache_service.memory_cache["quotes"]["EXPIRED"] = (
             {"price": 100.0},
-            datetime.now() - timedelta(seconds=1)  # Already expired
+            datetime.now(UTC) - timedelta(seconds=1)  # Already expired
         )
         
         # Now should be None
@@ -346,7 +347,7 @@ class TestTTL:
         
         # Check the expiry is around 5 seconds from now (quotes TTL)
         _, expiry = cache_service.memory_cache["quotes"]["AAPL"]
-        time_diff = (expiry - datetime.now()).total_seconds()
+        time_diff = (expiry - datetime.now(UTC)).total_seconds()
         
         assert time_diff > 0
         assert time_diff <= 5
@@ -357,7 +358,7 @@ class TestTTL:
         await cache_service.set("quotes", "AAPL", {"price": 150.0}, ttl=120)
         
         _, expiry = cache_service.memory_cache["quotes"]["AAPL"]
-        time_diff = (expiry - datetime.now()).total_seconds()
+        time_diff = (expiry - datetime.now(UTC)).total_seconds()
         
         assert time_diff > 60  # Should be more than default 5s
 

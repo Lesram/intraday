@@ -69,6 +69,13 @@ class User(Base):
     hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=True, default=True)
     is_superuser: Mapped[bool] = mapped_column(Boolean, nullable=True, default=False)
+    # V4 N-M-1 (2026-05-02): users.created_at and users.updated_at are
+    # declared `timezone=False` (naive) while the rest of the schema is
+    # `timezone=True`. Comparing against tz-aware Python datetime values
+    # raises TypeError. Not changing the type here because an ALTER
+    # COLUMN of an active-auth table is high-risk and the values are
+    # currently never compared against tz-aware in production. Tracked
+    # for a planned migration during a maintenance window.
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=False), nullable=True, server_default=sa.text("CURRENT_TIMESTAMP")
     )

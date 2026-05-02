@@ -4,7 +4,10 @@ Tests quote fetching, caching, batch operations, and metrics.
 """
 
 import pytest
-from datetime import datetime, timedelta
+# V4 Z-R-1 (2026-05-02): production code under K-4/K-8 expects tz-aware
+# UTC; fixtures using bare datetime.now() raised TypeError comparing to
+# tz-aware values. All datetime.now() in this file are now datetime.now(UTC).
+from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 import asyncio
 
@@ -16,7 +19,7 @@ class TestQuoteDataClass:
 
     def test_quote_creation(self):
         """Test creating a Quote object."""
-        ts = datetime.now()
+        ts = datetime.now(UTC)
         quote = Quote(
             symbol="AAPL",
             bid=150.50,
@@ -36,20 +39,20 @@ class TestQuoteDataClass:
 
     def test_quote_mid_calculation(self):
         """Test mid price calculation."""
-        quote = Quote("AAPL", bid=100, ask=102, last=101, timestamp=datetime.now())
+        quote = Quote("AAPL", bid=100, ask=102, last=101, timestamp=datetime.now(UTC))
         
         assert quote.mid == 101.0  # (100 + 102) / 2
 
     def test_quote_mid_fallback_to_last(self):
         """Test mid price when bid/ask are zero falls back to last."""
-        quote = Quote("AAPL", bid=0, ask=0, last=150, timestamp=datetime.now())
+        quote = Quote("AAPL", bid=0, ask=0, last=150, timestamp=datetime.now(UTC))
         
         # When bid and ask are 0 (falsy), mid falls back to last
         assert quote.mid == 150
 
     def test_quote_to_dict(self):
         """Test converting quote to dictionary."""
-        ts = datetime.now()
+        ts = datetime.now(UTC)
         quote = Quote("AAPL", bid=150.5, ask=150.6, last=150.55, timestamp=ts, volume=500)
         
         result = quote.to_dict()
@@ -64,20 +67,20 @@ class TestQuoteDataClass:
 
     def test_quote_is_stale_fresh(self):
         """Test is_stale returns False for fresh quotes."""
-        quote = Quote("AAPL", bid=150, ask=151, last=150.5, timestamp=datetime.now())
+        quote = Quote("AAPL", bid=150, ask=151, last=150.5, timestamp=datetime.now(UTC))
         
         assert quote.is_stale(max_age_seconds=5) is False
 
     def test_quote_is_stale_old(self):
         """Test is_stale returns True for old quotes."""
-        old_time = datetime.now() - timedelta(seconds=10)
+        old_time = datetime.now(UTC) - timedelta(seconds=10)
         quote = Quote("AAPL", bid=150, ask=151, last=150.5, timestamp=old_time)
         
         assert quote.is_stale(max_age_seconds=5) is True
 
     def test_quote_is_stale_custom_threshold(self):
         """Test is_stale with custom threshold."""
-        old_time = datetime.now() - timedelta(seconds=30)
+        old_time = datetime.now(UTC) - timedelta(seconds=30)
         quote = Quote("AAPL", bid=150, ask=151, last=150.5, timestamp=old_time)
         
         assert quote.is_stale(max_age_seconds=60) is False
@@ -133,7 +136,7 @@ class TestQuoteManagerCaching:
     async def test_memory_cache_hit(self, mock_manager):
         """Test getting quotes from memory cache."""
         # Pre-populate cache
-        ts = datetime.now()
+        ts = datetime.now(UTC)
         mock_manager.memory_cache['AAPL'] = Quote(
             "AAPL", bid=150.5, ask=150.6, last=150.55, timestamp=ts
         )
@@ -157,7 +160,7 @@ class TestQuoteManagerCaching:
     async def test_memory_cache_stale_quotes(self, mock_manager):
         """Test that stale quotes are considered cache misses."""
         # Add stale quote
-        old_time = datetime.now() - timedelta(seconds=10)
+        old_time = datetime.now(UTC) - timedelta(seconds=10)
         mock_manager.memory_cache['AAPL'] = Quote(
             "AAPL", bid=150.5, ask=150.6, last=150.55, timestamp=old_time
         )
@@ -170,7 +173,7 @@ class TestQuoteManagerCaching:
     @pytest.mark.asyncio
     async def test_update_cache_updates_memory(self, mock_manager):
         """Test that _update_cache updates memory cache."""
-        ts = datetime.now()
+        ts = datetime.now(UTC)
         quotes = {
             'AAPL': Quote("AAPL", bid=150.5, ask=150.6, last=150.55, timestamp=ts),
             'MSFT': Quote("MSFT", bid=350.0, ask=350.1, last=350.05, timestamp=ts)
@@ -243,7 +246,7 @@ class TestQuoteManagerGetQuotes:
     async def test_get_quote_single_symbol(self, mock_manager):
         """Test getting a single quote."""
         # Mock the get_quotes method
-        ts = datetime.now()
+        ts = datetime.now(UTC)
         expected_quote = Quote("AAPL", bid=150.5, ask=150.6, last=150.55, timestamp=ts)
         
         with patch.object(mock_manager, 'get_quotes', return_value={'AAPL': expected_quote}):
@@ -278,7 +281,7 @@ class TestQuoteManagerGetQuotes:
     @pytest.mark.asyncio
     async def test_get_quotes_tracks_cache_hits(self, mock_manager):
         """Test that cache hits are tracked in metrics."""
-        ts = datetime.now()
+        ts = datetime.now(UTC)
         mock_manager.memory_cache['AAPL'] = Quote(
             "AAPL", bid=150.5, ask=150.6, last=150.55, timestamp=ts
         )

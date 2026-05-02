@@ -136,12 +136,14 @@ class TestCacheServiceOperations:
     @pytest.mark.asyncio
     async def test_memory_cache_expired(self, cache_service):
         """Test expired memory cache returns None"""
-        from datetime import datetime, timedelta
-        
+        # V4 Z-R-2 (2026-05-02): production wave-8d K-8 made cache TTL
+        # tz-aware UTC; fixtures must match.
+        from datetime import UTC, datetime, timedelta
+
         # Manually insert expired data
         cache_service.memory_cache['quotes']['EXPIRED'] = (
             {"price": 100},
-            datetime.now() - timedelta(seconds=100)  # Expired
+            datetime.now(UTC) - timedelta(seconds=100)  # Expired
         )
         
         result = await cache_service.get('quotes', 'EXPIRED')

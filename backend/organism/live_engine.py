@@ -5356,7 +5356,16 @@ class OrganismLiveEngine:
                             level=0,
                         )
                     ],
-                    target_total_shares=int(qty * 1.5),
+                    # V4 R-F-9 (2026-05-02): symmetry with in-tick orphan
+                    # adoption (line ~5198). The previous startup path used
+                    # `qty * 1.5` while the in-tick path uses `qty` flat,
+                    # an asymmetry that meant a startup-adopted orphan
+                    # would invite a pyramid add to reach 1.5×qty whereas
+                    # the same position adopted in-tick would not. The
+                    # pyramid-block guard (H-7) catches the actual add,
+                    # but eliminating the asymmetry is defense in depth
+                    # and matches the H-7 fix at the in-tick site.
+                    target_total_shares=int(qty),
                     atr_at_entry=atr,
                     initial_stop=exit_lvl.stop_loss,
                     current_stop=exit_lvl.stop_loss,
