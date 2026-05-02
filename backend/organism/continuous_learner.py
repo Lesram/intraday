@@ -200,6 +200,14 @@ class TradeRecord:
     time_in_trade_seconds: float = 0.0  # wall-clock seconds in trade
     closed_at: str = ""  # ISO-8601 UTC timestamp when trade was closed (J2)
 
+    # Audit-G BUG-G fix (2026-05-01): first-class flag for reconciliation
+    # artifacts (orphan adoption, stale-metadata cleanup). When True, this
+    # trade is BOOKKEEPING — broker reality vs platform metadata mismatch
+    # — not a strategy outcome. ALL learning consumers must filter on
+    # this flag (Kelly stats, ML calibration, symbol_daily_pnl, fitness
+    # gate counters) to avoid pollution of strategy-edge signals.
+    is_reconciliation_artifact: bool = False
+
     @property
     def correct_direction(self) -> bool:
         return (self.direction > 0 and self.actual_return > 0) or \

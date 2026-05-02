@@ -4740,13 +4740,25 @@ class OrganismLiveEngine:
             # Tag reconciliation adjustments: position disappeared from
             # broker without a normal exit order.  These are cross-session
             # carryover cleanups or orphan metadata, not strategy trades.
+            _is_reconciliation = False
             if _exit_reason == "live_close" and real_fill is None and _bars_held == 0:
                 _exit_reason = "reconciliation_adjustment"
+                _is_reconciliation = True
                 logger.warning(
                     "Reconciliation adjustment: %s had stale entry metadata "
                     "(entry=$%.2f) with no broker position or exit fill — "
                     "tagging as non-strategy PnL",
                     sym, entry_price,
+                )
+            # Audit-G BUG-G (2026-05-01): also flag orphan-adopted positions
+            # so their exit trades don't pollute learning. The orphan
+            # adoption code sets entry_source="reconciliation_orphan".
+            elif meta.get("entry_source") == "reconciliation_orphan":
+                _is_reconciliation = True
+                logger.info(
+                    "Orphan-adopted position closed: %s pnl=$%.2f "
+                    "(non-strategy artifact)",
+                    sym, pnl,
                 )
 
             trade = TradeRecord(
@@ -4763,6 +4775,9 @@ class OrganismLiveEngine:
                 actual_return=actual_return,
                 confidence=meta.get("confidence", 0),
                 is_exploration=_is_exploration,
+                # Audit-G BUG-G (2026-05-01): first-class flag for reconciliation
+                # artifacts. Filtered by all 5+ learning consumers below.
+                is_reconciliation_artifact=_is_reconciliation,
                 entry_source=meta.get("entry_source", ""),
                 regime_at_entry=_regime_at_entry,
                 regime_at_exit=_regime_at_exit,
@@ -4773,17 +4788,34 @@ class OrganismLiveEngine:
                 closed_at=datetime.fromtimestamp(self._time_fn(), tz=UTC).isoformat() if self._time_fn() > 0 else "",
             )
             self._all_trades.append(trade)
-            self.learner.record_trade(trade)
+            # Audit-G BUG-G: do NOT feed reconciliation artifacts into the
+            # learner. learner.record_trade() updates Kelly stats,
+            # ML calibration, and trade history used by every learning
+            # consumer downstream. Reconciliation_adjustment is bookkeeping,
+            # not strategy outcome.
+            if not _is_reconciliation:
+                self.learner.record_trade(trade)
+            else:
+                logger.info(
+                    "Skipped learner.record_trade for reconciliation_adjustment: "
+                    "%s pnl=$%.2f (non-strategy artifact)",
+                    sym, pnl,
+                )
 
             # B1 (improve9): Canonical symbol trade count — increment
             # at the source so it stays consistent regardless of whether
             # evolution is frozen (B5) or running.
-            self.evolved_params.symbol_trade_counts[sym] = (
-                self.evolved_params.symbol_trade_counts.get(sym, 0) + 1
-            )
+            # Audit-G BUG-G: skip reconciliation artifacts so fitness gate
+            # isn't polluted (symbol_trade_counts feeds the fitness gate).
+            if not _is_reconciliation:
+                self.evolved_params.symbol_trade_counts[sym] = (
+                    self.evolved_params.symbol_trade_counts.get(sym, 0) + 1
+                )
 
             # v5 (improve8): Session-aware symbol loss gating
-            if not _is_exploration:
+            # Audit-G BUG-G: skip reconciliation artifacts to avoid
+            # symbol-ban triggers from non-strategy PnL.
+            if not _is_exploration and not _is_reconciliation:
                 self._symbol_daily_pnl[sym] = self._symbol_daily_pnl.get(sym, 0.0) + pnl
                 self._symbol_closed_today[sym] = self._symbol_closed_today.get(sym, 0) + 1
                 if pnl <= 0:
@@ -4907,13 +4939,18 @@ class OrganismLiveEngine:
                 )
                 continue
 
-            # Re-create entry metadata so reconciliation can track it
+            # Re-create entry metadata so reconciliation can track it.
+            # Audit-G BUG-G (2026-05-01): tag orphan-adopted positions with
+            # entry_source="reconciliation_orphan". When the adopted position
+            # exits, the resulting trade gets the orphan tag — feeds the
+            # is_reconciliation_artifact filter and skips learning consumers.
             self._entry_metadata[sym] = {
                 "entry_price": avg_entry,
                 "entry_tick": self._tick_count,
                 "direction": direction,
                 "predicted_return": 0.01,
                 "confidence": 0.5,
+                "entry_source": "reconciliation_orphan",
             }
 
             # Try to create exit levels for proper management
