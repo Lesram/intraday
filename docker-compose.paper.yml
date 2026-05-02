@@ -14,7 +14,12 @@ services:
     environment:
       # Application Settings - PAPER TRADING
       - APP_ENVIRONMENT=development
-      - APP_LOG_LEVEL=INFO
+      # Audit-L finding L-8 (2026-05-02): APP_LOG_LEVEL was a phantom
+      # — code reads LOG_LEVEL (per backend/config/base_settings.py:937).
+      # Use the canonical name; keep APP_LOG_LEVEL for any consumer
+      # explicitly looking for it.
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - APP_LOG_LEVEL=${LOG_LEVEL:-INFO}
       - DEBUG=false
 
       # CORS (frontend origins)
