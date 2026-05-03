@@ -5838,7 +5838,21 @@ class OrganismLiveEngine:
                 session.add(row)
                 await session.commit()
         except Exception as e:
-            logger.debug("Telemetry DB write skipped: %s", e)
+            # V8 NN-HIGH-1 / Wave-34 (2026-05-03): surface telemetry-write
+            # failures at WARNING (was DEBUG, which silently masked the
+            # zero-rows-in-DB issue audited in V8 BB2 / NN tracks).  The
+            # write is best-effort — we never raise — but the operator
+            # should see persistent failures.
+            try:
+                self._telemetry_write_errors = (
+                    getattr(self, "_telemetry_write_errors", 0) + 1
+                )
+            except Exception:
+                pass
+            logger.warning(
+                "Telemetry DB write FAILED (count=%d): %s",
+                getattr(self, "_telemetry_write_errors", 1), e,
+            )
 
     async def _cleanup_old_telemetry(self) -> None:
         """Delete telemetry rows older than 7 days."""

@@ -371,10 +371,22 @@ class KellySizer:
                 # than a bypass — current-edge floors still apply.
                 _PROD_CONFIDENCE_FLOOR = 0.5
                 regime_kelly = self.get_regime_kelly(current_regime)
+                # V8 DD2-5 / Wave-34 (2026-05-03): the regime_eligible branch
+                # was bypassing wave-18's zero-vol refusal entirely (refer to
+                # the else branch _ATR_VAR_MIN check below).  When regime
+                # stats existed and a candidate cleared the production-mode
+                # gates, kelly_raw was sized from regime_kelly even on a bar
+                # with effectively no measured volatility.  Now: check
+                # zero-vol up-front; if it engages, fall through to the
+                # unconditional path which already refuses to size.
+                _horizon_bars = 15
+                _ATR_VAR_MIN = 1e-6
+                _atr_var_squared_pre = (atr_pct * math.sqrt(_horizon_bars)) ** 2
                 _regime_eligible = (
                     regime_kelly is not None
                     and predicted_return > 0
                     and confidence >= _PROD_CONFIDENCE_FLOOR
+                    and _atr_var_squared_pre >= _ATR_VAR_MIN
                 )
                 if _regime_eligible:
                     kelly_raw = min(regime_kelly, 1.0)
@@ -387,7 +399,6 @@ class KellySizer:
                     else:
                         unconditional_kelly = min(mean_r / var_r, 1.0)
 
-                    _horizon_bars = 15
                     atr_pct_horizon = atr_pct * math.sqrt(_horizon_bars)
                     # V5 B-T-7 / Wave-18 (2026-05-03): the previous
                     # `atr_var = max(atr_pct_horizon**2, 1e-6)` floor

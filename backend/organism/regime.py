@@ -156,6 +156,18 @@ class RegimeDetector:
         self._history: list[str] = []
         self._smoothed_probs: dict[str, float] = {}
         self._last_state: RegimeState | None = None
+        # V8 DD2-3 / Wave-34 (2026-05-03): aggregate-level history for the
+        # market / cross-asset regime outputs.  The per-symbol detect()
+        # calls inside detect_market_regime save/restore `_history` to
+        # avoid cross-contamination, which means the actual emitted
+        # market regime never accumulates.  Track it separately here so
+        # `churn_rate` reflects the live aggregate sequence.
+        self._aggregate_history: list[str] = []
+        # V8 DD2-4 / Wave-34 (2026-05-03): hysteresis band on argmax to
+        # prevent regime flapping at threshold boundaries.  A new label
+        # only wins if it leads the previous primary by `_hysteresis_band`.
+        # 0.05 is conservative; lower would flap, higher would lag.
+        self._hysteresis_band = 0.05
 
     @property
     def current_regime(self) -> str:
@@ -259,7 +271,24 @@ class RegimeDetector:
 
         # Smooth probabilities
         self._smooth_probabilities(probs)
-        primary = max(self._smoothed_probs, key=self._smoothed_probs.get)
+        # V8 DD2-4 / Wave-34 (2026-05-03): hysteresis band on argmax.  A
+        # one-bar slope flip at `_trend_threshold` previously flapped the
+        # primary label even after EMA smoothing.  Stay on the previous
+        # primary unless a new label leads it by `_hysteresis_band`.
+        new_argmax = max(self._smoothed_probs, key=self._smoothed_probs.get)
+        if (
+            self._last_state is not None
+            and self._last_state.primary != new_argmax
+            and self._last_state.primary in self._smoothed_probs
+        ):
+            last_prob = self._smoothed_probs.get(self._last_state.primary, 0.0)
+            new_prob = self._smoothed_probs[new_argmax]
+            if new_prob - last_prob < self._hysteresis_band:
+                primary = self._last_state.primary
+            else:
+                primary = new_argmax
+        else:
+            primary = new_argmax
         confidence = self._smoothed_probs.get(primary, 0.0)
 
         # Track churn
@@ -457,16 +486,36 @@ class RegimeDetector:
         # Average across symbols
         agg_probs = {k: v / n for k, v in agg_probs.items()}
         primary = max(agg_probs, key=agg_probs.get)  # type: ignore[arg-type]
+        # V8 DD2-3 / Wave-34 (2026-05-03): accumulate the aggregate primary
+        # in `_aggregate_history` so churn_rate reflects the actually-emitted
+        # market regime.  Per-symbol detect()s save/restore `_history`, so
+        # without a separate accumulator the market churn was hard-zeroed.
+        self._aggregate_history.append(primary)
+        if len(self._aggregate_history) > self._churn_window * 2:
+            self._aggregate_history = self._aggregate_history[-self._churn_window * 2:]
+        churn = self._compute_aggregate_churn()
         state = RegimeState(
             primary=primary,
             probabilities=agg_probs,
             confidence=agg_probs.get(primary, 0.0),
             features_used={"symbols_aggregated": n},
-            churn_rate=0.0,
+            churn_rate=churn,
             timestamp=self._now_fn().isoformat(),
         )
         self._last_state = state
         return state
+
+    def _compute_aggregate_churn(self) -> float:
+        """V8 DD2-3 / Wave-34: churn over the aggregate-history window."""
+        if len(self._aggregate_history) < 2:
+            return 0.0
+        window = self._aggregate_history[-self._churn_window:]
+        if len(window) < 2:
+            return 0.0
+        transitions = sum(
+            1 for a, b in zip(window, window[1:]) if a != b
+        )
+        return transitions / (len(window) - 1)
 
     # ------------------------------------------------------------------
     # Phase 4.3: Cross-asset regime conditioning
@@ -570,6 +619,14 @@ class RegimeDetector:
 
         primary = max(conditioned, key=conditioned.get)  # type: ignore[arg-type]
 
+        # V8 DD2-3 / Wave-34 (2026-05-03): if the cross-asset conditioning
+        # changed the primary vs the unconditioned market regime, replace
+        # the last aggregate-history entry so churn reflects the truly-
+        # emitted regime (not the unconditioned one appended by
+        # detect_market_regime).
+        if self._aggregate_history and primary != self._aggregate_history[-1]:
+            self._aggregate_history[-1] = primary
+        churn = self._compute_aggregate_churn()
         state = RegimeState(
             primary=primary,
             probabilities=conditioned,
@@ -581,7 +638,7 @@ class RegimeDetector:
                 "breadth_down": round(breadth_down, 3),
                 "stress_pct": round(stress_pct, 3),
             },
-            churn_rate=base.churn_rate,
+            churn_rate=churn,
             timestamp=self._now_fn().isoformat(),
         )
         self._last_state = state
