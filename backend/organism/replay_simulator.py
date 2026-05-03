@@ -508,9 +508,23 @@ class ReplayEngine:
         )
         await engine.initialize()
 
-        # Override clock to use bar time instead of wall time
-        engine._time_fn = lambda: bar_provider.current_simulated_time
-        engine._now_fn = lambda: bar_provider.current_simulated_datetime
+        # Override clock to use bar time instead of wall time.
+        # V5 Wave-17b (2026-05-03): extend the override to the auxiliary
+        # components that also hold their own clocks. V4 R-F-4 / V5
+        # U-RF4 + Track U found that injecting only into the engine
+        # left RegimeDetector, GovernanceController, etc. reading wall
+        # clock — the replay's `regime_state.timestamp` came back with
+        # the year of the deploy, not the replay window. The engine
+        # owns these collaborators, so monkey-patch their `_now_fn`
+        # post-init.
+        _replay_now = lambda: bar_provider.current_simulated_datetime
+        _replay_time = lambda: bar_provider.current_simulated_time
+        engine._time_fn = _replay_time
+        engine._now_fn = _replay_now
+        for _attr in ("regime_detector", "governance"):
+            _comp = getattr(engine, _attr, None)
+            if _comp is not None and hasattr(_comp, "_now_fn"):
+                _comp._now_fn = _replay_now
 
         # Disable MarketScanner — don't hit real APIs during replay
         engine.market_scanner = None

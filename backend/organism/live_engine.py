@@ -2061,7 +2061,16 @@ class OrganismLiveEngine:
                 # Alpaca historical bar timestamps lag 2-3 min, causing
                 # bars_held to advance too slowly. Wall clock gives
                 # consistent 1-bar-per-minute counting.
-                _bar_ts = datetime.now(UTC).strftime("%Y-%m-%d %H:%M")
+                # V5 U-RF4 / Wave-17b (2026-05-03): route through
+                # `self._now_fn()` so replay sees the replay clock.
+                # The previous direct `datetime.now(UTC)` made every
+                # replay tick read wall clock — `bars_held` stayed at 0
+                # because the wall-clock minute hadn't advanced; horizon
+                # timeout, FTF stop tightening, and min-hold gates all
+                # behaved differently than in live. Originally flagged
+                # by V4 R-F-4 at line 1999; the fix never shipped and
+                # the bypass moved to this site.
+                _bar_ts = self._now_fn().astimezone(UTC).strftime("%Y-%m-%d %H:%M")
                 _prev_bar_ts = self._last_bar_times.get(sym, "")
                 _is_new_bar = (_bar_ts != _prev_bar_ts)
                 if _is_new_bar:

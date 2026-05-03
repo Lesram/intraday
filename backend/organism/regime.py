@@ -100,7 +100,18 @@ class RegimeDetector:
         is_intraday: bool = False,
         bars_per_day: int = 1,
         intraday_trend_sensitivity: float = 1.0,
+        now_fn: Any = None,
     ) -> None:
+        # V5 U-3 / Wave-17b (2026-05-03): inject a clock so replay
+        # sees the replay clock instead of wall clock. `now_fn` returns
+        # an aware datetime in UTC. Default is the canonical wall clock
+        # for live use; replay supplies a synthetic clock.
+        if now_fn is None:
+            def _default_now() -> datetime:
+                return datetime.now(UTC)
+            self._now_fn = _default_now
+        else:
+            self._now_fn = now_fn
         # Scale lookbacks for intraday bars to reduce noise.
         # 4x makes SMA_200 (~3.3hrs on 1-min) roughly analogous to a
         # multi-day moving average — still responsive but filters noise.
@@ -161,7 +172,8 @@ class RegimeDetector:
 
         Expects columns: close, sma_50, atr_ratio (or similar).
         """
-        now = datetime.now(UTC)
+        # V5 U-3 / Wave-17b (2026-05-03): clock injection.
+        now = self._now_fn()
 
         if features_df.empty or len(features_df) < 10:
             return RegimeState(
@@ -393,7 +405,7 @@ class RegimeDetector:
             return RegimeState(
                 primary=RegimeLabel.UNKNOWN,
                 confidence=0.0,
-                timestamp=datetime.now(UTC).isoformat(),
+                timestamp=self._now_fn().isoformat(),
             )
 
         agg_probs: dict[str, float] = {}
@@ -421,7 +433,7 @@ class RegimeDetector:
             return RegimeState(
                 primary=RegimeLabel.UNKNOWN,
                 confidence=0.0,
-                timestamp=datetime.now(UTC).isoformat(),
+                timestamp=self._now_fn().isoformat(),
             )
 
         # Average across symbols
@@ -433,7 +445,7 @@ class RegimeDetector:
             confidence=agg_probs.get(primary, 0.0),
             features_used={"symbols_aggregated": n},
             churn_rate=0.0,
-            timestamp=datetime.now(UTC).isoformat(),
+            timestamp=self._now_fn().isoformat(),
         )
         self._last_state = state
         return state
@@ -552,7 +564,7 @@ class RegimeDetector:
                 "stress_pct": round(stress_pct, 3),
             },
             churn_rate=base.churn_rate,
-            timestamp=datetime.now(UTC).isoformat(),
+            timestamp=self._now_fn().isoformat(),
         )
         self._last_state = state
         return state

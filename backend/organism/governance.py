@@ -29,9 +29,16 @@ from backend.utils.logger import get_logger
 _ET = ZoneInfo("America/New_York")
 
 
-def _today_et() -> str:
-    """ET trading-day string (audit-K K-5)."""
-    return datetime.now(UTC).astimezone(_ET).strftime("%Y-%m-%d")
+def _today_et(now_fn=None) -> str:
+    """ET trading-day string (audit-K K-5).
+
+    V5 U-5 / Wave-17b (2026-05-03): accepts an optional `now_fn` for
+    replay-clock injection. Default is the canonical wall clock
+    (datetime.now(UTC)) for live use.
+    """
+    if now_fn is None:
+        return datetime.now(UTC).astimezone(_ET).strftime("%Y-%m-%d")
+    return now_fn().astimezone(_ET).strftime("%Y-%m-%d")
 
 logger = get_logger(__name__)
 
@@ -63,7 +70,19 @@ class GovernanceState:
 class GovernanceController:
     """Central kill-switch and freeze controller for the organism."""
 
-    def __init__(self) -> None:
+    def __init__(self, *, now_fn=None) -> None:
+        # V5 U-4 / Wave-17b (2026-05-03): clock injection for replay
+        # determinism. The drawdown cooldown anchor and the daily
+        # change-budget reset key both consult this clock; without
+        # injection, replay reads wall clock — drawdown cooldown
+        # appears to elapse instantly relative to replay's clock.
+        if now_fn is None:
+            def _default_now() -> datetime:
+                return datetime.now(UTC)
+            self._now_fn = _default_now
+        else:
+            self._now_fn = now_fn
+
         # Read from env (can be toggled live via supervisor)
         self._frozen = os.getenv("ORGANISM_FREEZE_ADAPTATION", "0") in ("1", "true")
         self._trading_halted = os.getenv("ORGANISM_HALT_TRADING", "0") in ("1", "true")
@@ -139,7 +158,9 @@ class GovernanceController:
         if self._trading_halted:
             return True
         if self._drawdown_triggered_at:
-            elapsed = (datetime.now(UTC) - self._drawdown_triggered_at).total_seconds()
+            # V5 U-4 / Wave-17b (2026-05-03): use injected clock so
+            # drawdown cooldown elapses on replay-clock time, not wall.
+            elapsed = (self._now_fn() - self._drawdown_triggered_at).total_seconds()
             if elapsed < self._effective_cooldown_s:
                 return True
             # Cooldown expired — reset
@@ -151,7 +172,7 @@ class GovernanceController:
 
     def can_change(self) -> bool:
         """Check if the daily change budget allows another adaptation."""
-        today = _today_et()
+        today = _today_et(self._now_fn)
         if today != self._last_reset_date:
             self._change_count = 0
             self._last_reset_date = today
@@ -160,7 +181,7 @@ class GovernanceController:
     # ── mutations (called by other organism modules) ─────────────────
 
     def record_change(self) -> None:
-        today = _today_et()
+        today = _today_et(self._now_fn)
         if today != self._last_reset_date:
             self._change_count = 0
             self._last_reset_date = today
@@ -203,7 +224,8 @@ class GovernanceController:
         detect cooldown expiry and auto-recover.
         """
         if drawdown_pct >= self._drawdown_limit:
-            self._drawdown_triggered_at = datetime.now(UTC)
+            # V5 U-4 / Wave-17b (2026-05-03): use injected clock.
+            self._drawdown_triggered_at = self._now_fn()
             # P&L-028: Adaptive cooldown — scale with drawdown severity.
             # Base cooldown at the limit; 2× at +5% over limit; 3× at +10%.
             excess = max(0.0, drawdown_pct - self._drawdown_limit)
@@ -238,7 +260,7 @@ class GovernanceController:
             disabled_strategies=set(self._disabled),
             policy_version=self._policy_version,
             config_hash=self._config_hash,
-            last_changed=datetime.now(UTC).isoformat(),
+            last_changed=self._now_fn().isoformat(),
             change_count_today=self._change_count,
             max_changes_per_day=self._max_changes_per_day,
         )
