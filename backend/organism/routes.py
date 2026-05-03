@@ -27,6 +27,7 @@ from sqlalchemy import select, text
 
 from backend.infra.schemas import Order
 from backend.infra.security import require_admin
+from backend.utils.clock_injection import default_now_fn
 from backend.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -674,7 +675,11 @@ async def cleanup_stuck_orders(request: Request, _admin=Depends(require_admin)):
     if not sessionmaker:
         raise HTTPException(status_code=503, detail="Database not available")
 
-    cutoff = datetime.now(UTC) - timedelta(hours=1)
+    # V8 DD2-10 / Wave-35 (2026-05-03): use the canonical clock helper so
+    # replay tests that exercise this admin route share the same clock as
+    # the live engine.  Production behavior is unchanged (wall-clock UTC).
+    _now = default_now_fn()
+    cutoff = _now - timedelta(hours=1)
 
     async with sessionmaker() as session:
         # Count first
@@ -701,7 +706,7 @@ async def cleanup_stuck_orders(request: Request, _admin=Depends(require_admin)):
                 "AND broker_order_id IS NULL "
                 "AND submitted_at < :cutoff"
             ),
-            {"cutoff": cutoff, "now": datetime.now(UTC)},
+            {"cutoff": cutoff, "now": _now},
         )
         await session.commit()
 

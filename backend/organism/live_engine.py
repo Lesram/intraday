@@ -769,10 +769,24 @@ class OrganismLiveEngine:
 
     @property
     def _is_learning_mode(self) -> bool:
-        """True when engine has < LEARNING_MODE_TRADES completed strategy trades."""
+        """True when engine has < LEARNING_MODE_TRADES completed strategy trades.
+
+        V8 DD2-7 / Wave-35 (2026-05-03): cache per tick so reconciliation
+        closing trade #200 mid-tick can't have exit/entry/sizing/gate
+        sites within the same step() see different learning_mode values.
+        Cache is keyed on `self._tick_count`; the next tick recomputes.
+        """
         from backend.organism.trading_phase import LEARNING_MODE_TRADES
         # V4 R-F-8 (2026-05-02): filter reconciliation artifacts.
-        return len(self._strategy_trades()) < LEARNING_MODE_TRADES
+        cache: tuple[int, bool] | None = getattr(
+            self, "_learning_mode_tick_cache", None
+        )
+        tick = getattr(self, "_tick_count", -1)
+        if cache is not None and cache[0] == tick:
+            return cache[1]
+        value = len(self._strategy_trades()) < LEARNING_MODE_TRADES
+        self._learning_mode_tick_cache = (tick, value)
+        return value
 
     @property
     def _dynamic_max_entries_per_hour(self) -> int:
@@ -1673,10 +1687,32 @@ class OrganismLiveEngine:
                             message=f"Alpha+breakout entry block — late-day rule ({_hhmm_eod})",
                             timestamp=now_iso,
                         ))
-                    if _hhmm_eod >= 1558:
+                    # V8 DD2-9 / Wave-35 (2026-05-03): upper-bound the EOD
+                    # flatten window at 16:00 ET (market close).  The
+                    # _pending_exit 3-tick TTL would otherwise retry exit
+                    # submissions past close, broker would reject, and the
+                    # cycle would repeat indefinitely with no operator alert.
+                    if 1558 <= _hhmm_eod < 1600:
                         _eod_flatten_triggered = True
-                except Exception:
-                    pass  # timezone parsing failure is non-fatal
+                    elif _hhmm_eod >= 1600:
+                        # Past close — flatten window passed.  Don't keep
+                        # retrying broker submits that will reject; just
+                        # surface a warning if positions are still open.
+                        _open = getattr(self, "_last_known_positions", None) or {}
+                        if _open:
+                            logger.warning(
+                                "EOD flatten window passed (now=%d ET); "
+                                "positions still open: %s",
+                                _hhmm_eod, list(_open),
+                            )
+                except Exception as exc:
+                    # V8 DD2-9 / Wave-35: zoneinfo / clock failures previously
+                    # silently disabled EOD flatten globally via bare `pass`.
+                    # Now: log at WARNING so operators see persistent failures.
+                    logger.warning(
+                        "EOD flatten timezone resolution failed: %s "
+                        "(EOD flatten disabled this tick)", exc,
+                    )
 
             # 1.5 MARKET SCAN (Phase 5) — discover new stocks
             # A2 away-mode fix: scanner MUST run even when entries are blocked
@@ -3100,11 +3136,18 @@ class OrganismLiveEngine:
                     # below the natural 1-min bar noise floor (~0.1%).
                     # Threshold raised to 1e-4 (0.01% expected return) so
                     # tiny "ghost" outputs fall through to the heuristic.
-                    if ml_sig and not self._is_learning_mode:
-                        if abs(ml_sig.predicted_return) > 1e-4:
-                            pred_ret = abs(ml_sig.predicted_return)
-                        else:
-                            pred_ret = 0.005 + 0.015 * bs.composite_score
+                    # V8 DD2-8 / Wave-35 (2026-05-03): gate on ml_sig.direction
+                    # matching the long entry direction.  Previously the
+                    # abs(predicted_return) check let neutral-ML (direction==0)
+                    # or short-ML (direction<0) signals with negative
+                    # predicted_return still feed Kelly a positive expected
+                    # return for a LONG entry.
+                    if (
+                        ml_sig and not self._is_learning_mode
+                        and ml_sig.direction > 0
+                        and abs(ml_sig.predicted_return) > 1e-4
+                    ):
+                        pred_ret = abs(ml_sig.predicted_return)
                     else:
                         pred_ret = 0.005 + 0.015 * bs.composite_score
                     # Determine expected_return_source for breakout
