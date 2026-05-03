@@ -131,6 +131,28 @@ class StreamingDataProvider:
     def is_running(self) -> bool:
         return self._running
 
+    def stale_symbols(
+        self, threshold_s: float, now: float | None = None,
+    ) -> list[tuple[str, float]]:
+        """V9 PP-6 / Wave-45 (2026-05-03): per-symbol staleness check.
+
+        Returns list of (symbol, staleness_s) for symbols whose last
+        bar / quote update is older than threshold_s.  The aggregate
+        `last_update_time` gate is too coarse — active symbols can stop
+        streaming while background symbols keep ticking, hiding the
+        staleness from the global gate.
+
+        Returns an empty list if no symbols have been seen yet.
+        """
+        if now is None:
+            now = self._time_fn()
+        out: list[tuple[str, float]] = []
+        for sym, ts in self._last_bar_ts.items():
+            age = now - ts
+            if age > threshold_s:
+                out.append((sym, age))
+        return out
+
     # ── Data Access (zero-latency) ────────────────────────────────
 
     def get_bars(self, symbol: str, lookback: int = 200) -> pd.DataFrame:

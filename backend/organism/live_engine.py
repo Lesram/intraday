@@ -1693,7 +1693,11 @@ class OrganismLiveEngine:
                 except Exception as e:
                     logger.debug("Stream staleness check error (non-fatal): %s", e)
 
-            # 0.5 STALE DATA GATE — check streaming provider freshness
+            # 0.5 STALE DATA GATE — check streaming provider freshness.
+            # V9 PP-6 / Wave-45 (2026-05-03): also check PER-SYMBOL
+            # staleness via stale_symbols(). The aggregate
+            # last_update_time hid stalls on active symbols when
+            # background symbols kept ticking.
             _was_stale = self._data_stale
             if self._streaming_provider is not None:
                 try:
@@ -1711,8 +1715,27 @@ class OrganismLiveEngine:
                             logger.info("Data stream fresh again — entries unblocked")
                     else:
                         self._data_stale = False
-                except Exception:
-                    pass  # Non-fatal — default to not-stale
+                    # V9 PP-6: per-symbol staleness check.
+                    if hasattr(self._streaming_provider, "stale_symbols"):
+                        stale_syms = self._streaming_provider.stale_symbols(
+                            threshold_s=self._DATA_STALE_THRESHOLD_S,
+                            now=self._time_fn(),
+                        )
+                        if stale_syms:
+                            # Trigger _data_stale even if aggregate looked fresh.
+                            self._data_stale = True
+                            if not _was_stale:
+                                logger.warning(
+                                    "PP-6: %d symbol(s) stale beyond threshold "
+                                    "(aggregate looked fresh): %s",
+                                    len(stale_syms),
+                                    [(s, round(a, 1)) for s, a in stale_syms[:5]],
+                                )
+                except Exception as _stale_err:
+                    # V9 UU pattern: surface, don't pass.
+                    logger.debug(
+                        "Stale-data check error (non-fatal): %s", _stale_err,
+                    )
 
             # V8 HH R-1 / Wave-40 (2026-05-03): stages 1 + 1.1 + 1.2 extracted.
             self._stage_check_entry_blockers(result, now_iso)
@@ -1781,6 +1804,10 @@ class OrganismLiveEngine:
                     new_candidates = await self.market_scanner.scan()
                     if new_candidates:
                         self._scanner_candidates = new_candidates
+                        # V9 PP-5 / Wave-45 (2026-05-03): record success time
+                        # so a long missing-API run can be detected.
+                        self._scanner_last_success_tick = self._tick_count
+                        self._scanner_consecutive_failures = 0
                         # Temporarily add top scanner picks to universe for this tick
                         scanner_additions = [
                             s for s in new_candidates[:20]
@@ -1805,6 +1832,34 @@ class OrganismLiveEngine:
                         ))
                 except Exception as e:
                     logger.warning("Market scan failed: %s", e)
+                    # V9 PP-5: track consecutive failures + alert at threshold.
+                    self._scanner_consecutive_failures = (
+                        getattr(self, "_scanner_consecutive_failures", 0) + 1
+                    )
+                    _PP5_FAIL_ALERT = 5  # alert after 5 consecutive scan failures
+                    if (
+                        self._scanner_consecutive_failures == _PP5_FAIL_ALERT
+                    ):
+                        try:
+                            from backend.infra.alerting import (
+                                AlertCategory, AlertSeverity, send_alert,
+                                dispatch_alert_from_thread,
+                            )
+                            dispatch_alert_from_thread(
+                                lambda: send_alert(
+                                    AlertCategory.SYSTEM_ERROR,
+                                    AlertSeverity.WARNING,
+                                    "Market Scanner Persistent Failure",
+                                    f"Scanner failed {_PP5_FAIL_ALERT} consecutive "
+                                    f"runs.  Universe will trade off STALE candidates "
+                                    f"until scanner recovers.  Last error: {e}",
+                                )
+                            )
+                        except Exception as _alert_err:
+                            logger.warning(
+                                "PP-5: scanner-failure alert dispatch failed: %s",
+                                _alert_err,
+                            )
 
             # 2. FETCH LATEST DATA
             features_by_symbol = await self._fetch_and_compute_features()
