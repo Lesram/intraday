@@ -1321,6 +1321,33 @@ class OrganismBrain:
                 "feature_count", self._manifest.get("feature_count", 0)
             )
 
+        # V12 W71 (EXT-1): strategy expectancy gate.  External auditor
+        # caught this as the single most important miss across 11
+        # internal audits — manifest verified execution-correctness
+        # without ever recording realized PnL/Sharpe/win-rate.  Compute
+        # the full expectancy payload and embed under "strategy_expectancy"
+        # so any reader (operator, /health/strategy endpoint, dashboard)
+        # can see whether the brain is actually profitable.
+        try:
+            from backend.organism import strategy_expectancy as _sx
+            # Prefer the learner's trade_history (richer source of truth);
+            # fall back to brain_persistence's loaded list (which is the
+            # CSV view).  Both ultimately resolve to the same closed-trade
+            # set so either is correct.
+            trades_src: Any = []
+            if learner is not None and getattr(learner, "trade_history", None):
+                trades_src = learner.trade_history
+            elif self.trade_history:
+                trades_src = self.trade_history
+            manifest["strategy_expectancy"] = _sx.compute_from_trades(trades_src)
+        except Exception as e:
+            # Manifest writes must never crash on expectancy compute —
+            # the manifest is too important to block on a math error.
+            logger.warning(
+                "V12 W71: strategy_expectancy compute failed (%s); "
+                "manifest written without expectancy fields", e,
+            )
+
     def _save_manifest(
         self, target: Path, signal_gen: Any, learner: Any,
         *, force: bool = False,

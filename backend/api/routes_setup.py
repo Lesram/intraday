@@ -43,6 +43,7 @@ def register_routes(app) -> None:
     from backend.api.routes.settings import router as settings_router
     from backend.api.routes.signals import router as signals_router
     from backend.api.routes.strategy import router as strategy_router
+    from backend.api.routes.strategy_health import router as strategy_health_router
     from backend.api.routes.system import router as system_router
     from backend.api.routes.trades import router as trades_router
     from backend.api.routes.watchlists import router as watchlists_router
@@ -65,6 +66,11 @@ def register_routes(app) -> None:
     protected.include_router(auto_breakout_scanner_router, tags=["Auto Breakout"])
     protected.include_router(models_router, tags=["Models"])
     protected.include_router(strategy_router, tags=["Strategy"])
+    # V12 W71 (EXT-1): /api/v1/health/strategy — expectancy gate.
+    # External auditor's #1 finding: 11 audits validated correctness
+    # without ever exposing realized PnL/Sharpe/win-rate.  Protected
+    # because PnL leak to public is an info-disclosure risk.
+    protected.include_router(strategy_health_router, tags=["Health"])
     protected.include_router(backtest_router, tags=["Backtesting"])
     protected.include_router(optimizations_router, tags=["Optimizations"])
     protected.include_router(indicators_router, tags=["Indicators"])

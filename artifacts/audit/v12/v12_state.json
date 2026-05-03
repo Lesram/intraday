@@ -172,10 +172,11 @@
       "from": "external_review_v11",
       "severity": "critical",
       "title": "Brain unprofitable — manifest lacks PnL/Sharpe/win-rate/drawdown fields",
-      "status": "open",
+      "status": "closed",
       "wave_target": 71,
-      "behavioral_test_path": null,
-      "notes": "498 trades, total PnL -$634.90, mean -$1.27, win rate 33.73%, sharpe per-trade -1.06, max DD -$985.93. 11 audits validated execution-correctness without expectancy gate. Top V12 priority."
+      "wave_closed": 71,
+      "behavioral_test_path": "tests/test_v12_strategy_expectancy.py",
+      "notes": "Closed wave-71. Manifest now writes strategy_expectancy block (n_trades/total_pnl/win_rate/sharpe_ratio_per_trade/max_drawdown/mean_pnl/median_pnl + last_25/last_50 windows). New /api/v1/health/strategy endpoint exposes live snapshot. 14 behavioral tests cover helper math + manifest writer + endpoint + schema. Brain still shows -$634/498-trades baseline; THE EXPECTANCY GATE NOW EXISTS for operators/auditors to see this."
     },
     {
       "id": "EXT-2",
@@ -263,8 +264,8 @@
     }
   ],
   "wave_progress": {
-    "70": "in_progress",
-    "71": "pending",
+    "70": "completed",
+    "71": "completed",
     "72": "pending",
     "73": "pending",
     "74": "pending",
