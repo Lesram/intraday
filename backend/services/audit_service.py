@@ -465,6 +465,99 @@ class ComplianceAuditService:
             "message": "Chain integrity verified",
         }
 
+    async def get_chain_detail(
+        self,
+        start_time: datetime | None = None,
+        end_time: datetime | None = None,
+        limit: int = 1000,
+    ) -> dict[str, Any]:
+        """V12 W74 (EXT-4): per-row chain detail for independent verification.
+
+        External auditor flagged that the live ``audit_logs`` schema
+        only stores ``hash_chain`` (the row's computed hash), not
+        separate ``prev_hash``/``current_hash`` columns — so an
+        independent SQL audit cannot recompute the chain links
+        without re-running the hash function.
+
+        This method returns, per row:
+
+        - ``id``, ``ts``, ``actor``, ``action``
+        - ``prev_hash``: the previous record's ``hash_chain`` (or null
+          for the first row in the window)
+        - ``current_hash``: this record's ``hash_chain`` as stored
+        - ``expected_hash``: hash recomputed from ``prev_hash`` + the
+          row's content (the same recomputation the verify endpoint
+          uses)
+        - ``valid``: bool, ``current_hash == expected_hash``
+
+        With this output an external auditor can scan the rows
+        independently (e.g. via the API) without depending on the
+        application's ``verify`` aggregate result.
+        """
+        query = select(AuditLog).order_by(AuditLog.ts).limit(limit)
+        if start_time:
+            query = query.where(AuditLog.ts >= start_time)
+        if end_time:
+            query = query.where(AuditLog.ts <= end_time)
+
+        result = await self.db.execute(query)
+        records = result.scalars().all()
+
+        rows: list[dict[str, Any]] = []
+        prev_hash: str | None = None
+        all_valid = True
+        for i, r in enumerate(records):
+            if i == 0:
+                # First row in the window: cannot independently verify
+                # without scanning back further; treat as anchor.
+                rows.append({
+                    "id": str(r.id),
+                    "ts": r.ts.isoformat() if r.ts else None,
+                    "actor": r.actor,
+                    "action": r.action,
+                    "prev_hash": None,
+                    "current_hash": r.hash_chain,
+                    "expected_hash": None,
+                    "valid": True,
+                    "anchor": True,
+                })
+                prev_hash = r.hash_chain
+                continue
+            expected = _compute_hash(
+                previous_hash=prev_hash,
+                timestamp=r.ts,
+                action=r.action,
+                entity=r.entity,
+                entity_id=r.entity_id,
+                actor=r.actor,
+                payload=r.payload or {},
+            )
+            valid = (r.hash_chain == expected)
+            if not valid:
+                all_valid = False
+            rows.append({
+                "id": str(r.id),
+                "ts": r.ts.isoformat() if r.ts else None,
+                "actor": r.actor,
+                "action": r.action,
+                "prev_hash": prev_hash,
+                "current_hash": r.hash_chain,
+                "expected_hash": expected,
+                "valid": valid,
+                "anchor": False,
+            })
+            # Use stored hash for chain progression even when invalid —
+            # otherwise a single tampered row makes everything after look
+            # invalid too (cascading false positives).  Auditors want
+            # to localize the break, not amplify it.
+            prev_hash = r.hash_chain
+
+        return {
+            "rows": rows,
+            "row_count": len(rows),
+            "all_valid": all_valid,
+        }
+
     async def get_audit_trail(
         self,
         entity_type: AuditEntity | None = None,

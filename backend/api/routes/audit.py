@@ -280,6 +280,39 @@ async def verify_chain_integrity(
 
 
 @router.get(
+    "/chain-detail",
+    summary="Per-Row Audit Chain Detail",
+    description=(
+        "V12 W74 (EXT-4): per-row chain link detail.  "
+        "Each row exposes prev_hash + current_hash + expected_hash + "
+        "valid flag so an external auditor can independently verify "
+        "the chain without trusting the aggregate /verify result."
+    ),
+)
+async def get_chain_detail(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user=Depends(require_admin),
+    start_time: datetime | None = Query(None, description="Start of time range"),
+    end_time: datetime | None = Query(None, description="End of time range"),
+    limit: int = Query(1000, ge=1, le=10000, description="Max records"),
+):
+    """
+    Per-row audit chain inspection.  V12 W74 (EXT-4): the schema
+    stores only ``hash_chain``, not separate prev/current columns —
+    this endpoint reconstructs both sides of each chain link so an
+    independent auditor (running outside the application) can verify
+    the chain without re-implementing the hash function.
+    """
+    service = ComplianceAuditService(db)
+    result = await service.get_chain_detail(
+        start_time=start_time,
+        end_time=end_time,
+        limit=limit,
+    )
+    return result
+
+
+@router.get(
     "/statistics",
     response_model=AuditStatisticsResponse,
     summary="Get Audit Statistics",

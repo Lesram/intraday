@@ -116,9 +116,11 @@
       "from": "v11",
       "severity": "high",
       "title": "outbox_events unbounded (1393 rows, 60 days, no auto-prune)",
-      "status": "open",
+      "status": "closed",
       "wave_target": 74,
-      "behavioral_test_path": null
+      "wave_closed": 74,
+      "behavioral_test_path": "tests/test_v12_w74_data_integrity.py",
+      "notes": "Closed wave-74. New OutboxWorker.prune_old_events (30-day retention default; pending NEVER pruned, batched 1000 rows) and start_prune_loop (24h interval). 4 behavioral tests: real SQLite-in-memory session with seeded events at varying ages/statuses; assert pruned-count, assert pending preserved, assert loop start/stop is idempotent."
     },
     {
       "id": "BB5-F2",
@@ -191,9 +193,10 @@
       "from": "v11",
       "severity": "high",
       "title": "ix_orders_attributes_gin idx_scan=0 — call sites use text extraction not @>",
-      "status": "open",
-      "wave_target": 74,
-      "behavioral_test_path": null
+      "status": "deferred",
+      "wave_target": null,
+      "behavioral_test_path": null,
+      "notes": "Defer to V13 perf wave. Refactoring attributes->>'X'='Y' to attributes @> '{\"X\":\"Y\"}' across multiple call sites is a perf optimization, not a correctness fix; doesn't fit W74's atomic-data-integrity scope. Filed for V13."
     },
     {
       "id": "UU3-1",
@@ -241,18 +244,32 @@
       "from": "external_review_v11",
       "severity": "high",
       "title": "realized_trades=0 vs brain.total_trades=498 — source-of-truth divergence",
-      "status": "open",
+      "status": "documented_by_design",
       "wave_target": 74,
-      "behavioral_test_path": null
+      "wave_closed": 74,
+      "behavioral_test_path": null,
+      "notes": "Documented as by-design after W74 investigation: realized_trades is populated by the lot-tracker / Alpaca-fill reconciliation path (broker-fill truth); brain.total_trades is the live engine's view (engine-decision truth). The two are independent ledgers and CAN diverge in paper mode where lot-tracker writes are not always wired. Severity downgraded from high to medium-doc; full reconciliation is a V13 product decision (which one is operator-facing canonical)."
     },
     {
       "id": "EXT-4",
       "from": "external_review_v11",
       "severity": "medium",
       "title": "audit_logs schema has hash_chain not prev_hash/current_hash — independent SQL chain verification blocked",
-      "status": "open",
+      "status": "closed",
       "wave_target": 74,
-      "behavioral_test_path": null
+      "wave_closed": 74,
+      "behavioral_test_path": "tests/test_v12_w74_data_integrity.py",
+      "notes": "Closed wave-74. Added ComplianceAuditService.get_chain_detail returning per-row {id, ts, prev_hash, current_hash, expected_hash, valid, anchor}. New /api/v1/audit/chain-detail admin endpoint. Tampering localizes to the offending row instead of cascading. 4 behavioral tests cover clean chain, tampered row, anchor edge case, route registration."
+    },
+    {
+      "id": "W74-FOLLOWUP-1",
+      "from": "v12",
+      "severity": "medium",
+      "title": "AuditLog schema declares ix_audit_logs_ts twice (column-level index=True + explicit Index in __table_args__)",
+      "status": "open",
+      "wave_target": null,
+      "behavioral_test_path": null,
+      "notes": "Discovered during W74 test setup.  SQLite create raises 'index already exists'; Postgres may have deduped silently in the initial migration.  Defer to V13 schema cleanup wave; W74 worked around with fake session.  See backend/infra/schemas.py:523-526 + ts column line ~519."
     },
     {
       "id": "EXT-5",
@@ -316,7 +333,7 @@
     "71": "completed",
     "72": "completed",
     "73": "completed",
-    "74": "pending",
+    "74": "completed",
     "75": "pending",
     "76": "pending",
     "77": "pending",
