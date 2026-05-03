@@ -169,6 +169,39 @@ class AlpacaClient:
                 api_key=self.api_key, secret_key=self.secret_key
             )
 
+            # V5 S-NET-T-1 / Wave-18 (2026-05-03): the alpaca-py SDK
+            # constructors accept no explicit HTTP timeout; it calls
+            # `self._session.request(method, url, **opts)` and relies on
+            # opts not carrying a timeout — which means the underlying
+            # requests Session uses no timeout (infinite). A stalled
+            # broker can hang any tick that touches one of these
+            # clients indefinitely. Wrap `_one_request` to inject a
+            # 30-second total timeout if the caller didn't set one.
+            for _client in (
+                self.trading_client,
+                self.stock_data_client,
+                self.crypto_data_client,
+            ):
+                _orig = getattr(_client, "_one_request", None)
+                if _orig is None:
+                    continue
+
+                def _make_wrapper(original_one_request):
+                    def _bounded_one_request(method, url, opts, retry):
+                        if isinstance(opts, dict) and "timeout" not in opts:
+                            opts = dict(opts)
+                            opts["timeout"] = 30.0
+                        return original_one_request(method, url, opts, retry)
+                    return _bounded_one_request
+
+                # Bind via the instance dict so the original method
+                # still resolves through the SDK's MRO when we call it
+                # via `original_one_request(...)`.
+                try:
+                    _client._one_request = _make_wrapper(_orig)  # type: ignore[attr-defined]
+                except Exception:
+                    pass
+
             # Attempt a lightweight connection test unless in test mode
             if not self.test_mode:
                 try:

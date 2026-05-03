@@ -696,6 +696,31 @@ class OrganismLiveEngine:
 
     # ── Dynamic throttle ──────────────────────────────────────
 
+    @staticmethod
+    def _safe_int_qty(qty: Any, *, context: str = "") -> int:
+        """V5 B-T-3 / Wave-18 (2026-05-03): convert a broker `qty`
+        (which may be a Decimal, str, or float) to an int while
+        warning on fractional truncation.
+
+        The platform currently trades whole shares only, so `int(qty)`
+        is correct in practice — but if a fractional fill ever appears
+        (broker fractional-share support, partial fill rounding,
+        upstream bug), `int(0.5) == 0` silently blocks exits. Warn loudly
+        so the operator notices.
+        """
+        try:
+            f = float(qty)
+        except (TypeError, ValueError):
+            return 0
+        i = int(f)
+        if abs(f - i) > 1e-9 and f >= 0:
+            logger.warning(
+                "Fractional qty truncated to %d (was %f) at %s — "
+                "B-T-3: investigate if fractional shares now active",
+                i, f, context or "unspecified",
+            )
+        return i
+
     def _strategy_trades(self) -> list[Any]:
         """V4 R-F-7 / R-F-8 (2026-05-02): trades excluding reconciliation
         artifacts. Use this view at any *gate* or *threshold* consumer
@@ -1331,9 +1356,33 @@ class OrganismLiveEngine:
                 # trades correctly skip learner.record_trade below.
                 _ex_reason = ex_attrs.get("reason", "unknown")
                 _is_recon = _ex_reason == "reconciliation_adjustment"
+
+                # V5 B-T-1 / Wave-18 (2026-05-03): direction was hard-coded
+                # to 1.0 (LONG_ONLY). If LONG_ONLY is ever flipped to False
+                # (or STRONG_SHORT_ENABLED / inverse-ETF flow exits a short
+                # via DB), every short trade restored from the DB would
+                # carry direction=1.0, inverting `actual_return` and
+                # `correct_direction` and poisoning the learner.
+                # Resolve direction from the entry order's side instead;
+                # buy → +1, sell → -1. Fall back to +1 only when the side
+                # is missing AND LONG_ONLY is in force (preserving prior
+                # behavior under the only configuration where it was safe).
+                _en_side = (getattr(en_order, "side", "") or "").lower()
+                if _en_side == "buy":
+                    _direction = 1.0
+                elif _en_side == "sell":
+                    _direction = -1.0
+                else:
+                    _direction = 1.0  # legacy default; LONG_ONLY-safe.
+                # Recompute pnl/actual_return so they match the resolved
+                # direction (entry → exit price diff is signed by direction).
+                if _direction < 0:
+                    pnl = (entry_price - exit_price) * shares
+                    actual_return = (entry_price - exit_price) / entry_price
+
                 reconstructed.append(TradeRecord(
                     symbol=sym,
-                    direction=1.0,  # LONG_ONLY
+                    direction=_direction,
                     entry_price=entry_price,
                     exit_price=exit_price,
                     entry_bar=0,

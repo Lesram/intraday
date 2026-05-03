@@ -372,8 +372,29 @@ class KellySizer:
 
                     _horizon_bars = 15
                     atr_pct_horizon = atr_pct * math.sqrt(_horizon_bars)
-                    atr_var = max(atr_pct_horizon ** 2, 1e-6)
-                    signal_kelly = min(predicted_return / atr_var, 1.0) if predicted_return > 0 else 0.0
+                    # V5 B-T-7 / Wave-18 (2026-05-03): the previous
+                    # `atr_var = max(atr_pct_horizon**2, 1e-6)` floor
+                    # let near-zero-vol bars saturate signal_kelly to
+                    # the per-position max (1.0) — `predicted_return /
+                    # 1e-6` is huge, then clamped to 1.0. Result: Kelly
+                    # commits the maximum allowed size on a bar with
+                    # essentially no measured volatility, exactly when
+                    # we have the LEAST signal. Refuse-to-size instead
+                    # by zeroing signal_kelly when the floor would
+                    # have engaged. We still keep the unconditional
+                    # Kelly path (mean/var of historical returns) for
+                    # the regime so the sizer isn't crippled — only
+                    # the no-vol shortcut is closed.
+                    _ATR_VAR_MIN = 1e-6
+                    atr_var_squared = atr_pct_horizon ** 2
+                    if atr_var_squared < _ATR_VAR_MIN:
+                        # Zero-volatility bar: refuse to size from this
+                        # signal; rely on unconditional Kelly only.
+                        signal_kelly = 0.0
+                    elif predicted_return > 0:
+                        signal_kelly = min(predicted_return / atr_var_squared, 1.0)
+                    else:
+                        signal_kelly = 0.0
                     kelly_raw = min(max(signal_kelly, unconditional_kelly), 1.0)
 
                 # 2. Half-Kelly

@@ -131,14 +131,21 @@ class OutboxRepo:
 
         return event.id
 
-    # V4 N-C-3 (2026-05-02): claim lease horizon. After a worker fetches
+    # V5 S-OUTBOX-1 / Wave-18 (2026-05-03): bumped from 300s to 1800s
+    # (30 min). Track S found that the worst-case sequential batch
+    # (10 events × ~127s/event broker-retry) takes ~21 min, exceeding
+    # the prior 5-min lease and producing spurious re-claims. Broker
+    # idempotency on client_idempotency_key still prevents real
+    # double-sends, but the observability gap (mistaking a slow worker
+    # for a dead one) is harmful. 30 min comfortably exceeds the
+    # observed worst case.
+    #
+    # Original V4 N-C-3 rationale preserved below: after a worker fetches
     # rows with FOR UPDATE SKIP LOCKED, we push next_attempt_at forward
-    # by this many seconds so a concurrent worker (or a restart that
-    # rolls back the lock without committing the original send) cannot
-    # re-claim and re-submit the same event. The lease must exceed the
-    # 95th-percentile broker-call latency; on success mark_sent flips
-    # status; on crash the lease eventually expires and retry resumes.
-    _CLAIM_LEASE_SECONDS = 300
+    # so a concurrent worker (or a restart that rolls back the lock)
+    # cannot re-claim and re-submit the same event. The lease must
+    # exceed the 95th-percentile worst-case batch processing time.
+    _CLAIM_LEASE_SECONDS = 1800
 
     async def claim_batch(
         self, *, limit: int = 100, session: AsyncSession | None = None
