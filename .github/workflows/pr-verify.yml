@@ -183,6 +183,14 @@ jobs:
           pip install pytest pytest-asyncio pytest-timeout
           python -m pytest tests/test_semantic_invariants.py -v --timeout=30
 
+      # V8 OO MIGRATION-GAP / Wave-37 (2026-05-03): smoke-check the
+      # migration tree on every backend PR.  Asserts single-headed
+      # linear chain so accidental branching merges don't ship.
+      - name: Check migration-tree integrity (V8 Wave-37)
+        run: |
+          pip install alembic
+          python scripts/ci/check_migrations.py
+
   secret-scan:
     runs-on: ubuntu-latest
     steps:
