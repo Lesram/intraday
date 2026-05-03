@@ -65,6 +65,19 @@ class PyramidPosition:
         return len(self.layers)
 
     @property
+    def max_level(self) -> int:
+        """V9 DD3-1 / Wave-44 (2026-05-03): the largest `level` field
+        across all layers.  Used by `check_pyramid` to decide which
+        next-level to add — robust to `_reconcile_fills` collapsing the
+        layers list (which made layer_count==1 forever, blocking Layer 2).
+
+        Returns -1 if there are no layers.
+        """
+        if not self.layers:
+            return -1
+        return max(lay.level for lay in self.layers)
+
+    @property
     def r_multiple(self) -> float:
         """Current R-multiple from initial entry."""
         if not self.layers or self.atr_at_entry < 1e-6:
@@ -269,8 +282,11 @@ class MomentumPyramider:
                     )
             return PyramidAction(action="none")
 
-        # Layer 1: add at +1.5R
-        if position.layer_count == 1 and r_current >= self.ADD_1_THRESHOLD:
+        # Layer 1: add at +1.5R.
+        # V9 DD3-1 / Wave-44 (2026-05-03): key on `max_level == 0` (initial
+        # only) instead of `layer_count == 1` so a layer-list collapse in
+        # _reconcile_fills doesn't make Layer 1 re-fire indefinitely.
+        if position.max_level == 0 and r_current >= self.ADD_1_THRESHOLD:
             add_shares = max(1, int(position.target_total_shares * self.LAYER_1_PCT))
             # Move stop to breakeven
             new_stop = entry  # Breakeven
@@ -285,8 +301,11 @@ class MomentumPyramider:
                 reason=f"pyramid_L1_at_{r_current:.1f}R",
             )
 
-        # Layer 2: add at +3.0R
-        if position.layer_count == 2 and r_current >= self.ADD_2_THRESHOLD:
+        # Layer 2: add at +3.0R.
+        # V9 DD3-1 / Wave-44 (2026-05-03): key on `max_level == 1` (after
+        # one successful add).  Previously `layer_count == 2` was unreachable
+        # if _reconcile_fills collapsed the layer list back to 1 entry.
+        if position.max_level == 1 and r_current >= self.ADD_2_THRESHOLD:
             add_shares = max(1, int(position.target_total_shares * self.LAYER_2_PCT))
             # Trail at 1.5× ATR from current
             if position.direction > 0:

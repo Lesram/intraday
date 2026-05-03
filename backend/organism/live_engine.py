@@ -856,9 +856,36 @@ class OrganismLiveEngine:
             return False, "long_only"
         if not sector_gate_allows(symbol, open_symbols, planned_entries):
             return False, "sector_gate"
-        # Fitness gate: learning = no gate, production = hard gate for 10+ trades
-        sym_fitness = self.evolved_params.symbol_fitness.get(symbol, 0.5)
+        # Fitness gate: learning = no gate, production = hard gate for 10+ trades.
+        # V9 DD3-5 / Wave-44 (2026-05-03): if symbol_fitness has no entry
+        # for this symbol, treat as "fitness data unavailable" — block the
+        # gate from passing on the default 0.5 (which previously bypassed
+        # the 0.45 prod gate silently for every symbol when the saved
+        # brain had symbol_fitness == {}).  Behavior:
+        #  - If fitness recorded: existing gate semantics.
+        #  - If fitness NOT recorded but trade_count >= min_trades_for_fitness:
+        #    warn once and treat as fitness == 0 (block).
+        #  - If fitness NOT recorded and trade_count < min: pass (under
+        #    threshold; same as current).
+        symbol_fitness_map = self.evolved_params.symbol_fitness or {}
         _sym_trade_count = self.evolved_params.symbol_trade_counts.get(symbol, 0)
+        if symbol in symbol_fitness_map:
+            sym_fitness = symbol_fitness_map[symbol]
+        elif (
+            not self._is_learning_mode
+            and _sym_trade_count >= min_trades_for_fitness
+        ):
+            if not getattr(self, "_warned_dd3_5_missing_fitness", False):
+                logger.warning(
+                    "DD3-5: symbol_fitness has no entry for %s despite "
+                    "%d trades (gate=%s). Treating as fitness=0 (block). "
+                    "Brain may need a re-evolve cycle.",
+                    symbol, _sym_trade_count, fitness_gate,
+                )
+                self._warned_dd3_5_missing_fitness = True
+            return False, "fitness_gate"
+        else:
+            sym_fitness = 0.5  # learning-mode default; gate disabled anyway
         if (
             not self._is_learning_mode
             and _sym_trade_count >= min_trades_for_fitness
@@ -2501,7 +2528,34 @@ class OrganismLiveEngine:
                             self._pending_exit[sym] = self._tick_count
             result.trades_closed = exits_submitted
 
-            # v4 (improve7): EOD FLATTEN — force close all positions at 15:58 ET
+            # v4 (improve7): EOD FLATTEN — force close all positions at 15:58 ET.
+            # V9 DD3-4 / Wave-44 (2026-05-03): also cancel any pending entry
+            # orders before flattening.  Previously a 15:57 entry could fill
+            # post-16:00 with no exit infrastructure registered for it (the
+            # _exit_levels entry never gets created because the fill arrives
+            # post-flatten loop).  Result: ghost position carries overnight.
+            if _eod_flatten_triggered and self._pending_entry:
+                for _pe_sym, _pe_oid in list(
+                    self._pending_entry_order_ids.items()
+                ):
+                    try:
+                        from backend.integrations.alpaca_stream import (
+                            get_stream_client,
+                        )
+                        _stream = get_stream_client() if get_stream_client else None
+                        if _stream is not None and hasattr(_stream, "cancel_order"):
+                            await _stream.cancel_order(_pe_oid)
+                            logger.info(
+                                "DD3-4: EOD flatten cancelled pending "
+                                "entry %s (order=%s)", _pe_sym, _pe_oid,
+                            )
+                    except Exception as _cancel_err:
+                        logger.warning(
+                            "DD3-4: EOD flatten failed to cancel pending "
+                            "entry %s order=%s: %s",
+                            _pe_sym, _pe_oid, _cancel_err,
+                        )
+
             if _eod_flatten_triggered and current_positions:
                 for sym, pos_data in list(current_positions.items()):
                     if sym in self._pending_exit:
