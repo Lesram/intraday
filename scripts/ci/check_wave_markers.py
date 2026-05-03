@@ -32,7 +32,12 @@ import subprocess
 import sys
 
 
-WAVE_COMMIT_RE = re.compile(r"^fix\(audit-wave[0-9a-z]+\)", re.MULTILINE)
+# V9 W4-3 / Wave-48 (2026-05-03): widen suffix charset to include `-` so
+# hyphenated wave-id forms (e.g. `audit-wave99-w3g1-test`) are recognized
+# as wave commits and held to the wave-rule contract.  The old regex
+# excluded `-` from the suffix, silently bypassing all wave-rule
+# enforcement on those commits.
+WAVE_COMMIT_RE = re.compile(r"^fix\(audit-wave[0-9a-z\-]+\)", re.MULTILINE)
 # V8 / Wave-28 (2026-05-03): widen to catch audit-cycle free-form IDs.
 # Accepts:
 #   AA-C-1, BB-10, V-T-5, U-RF4, R-F-1, S-J3-1            (canonical)
@@ -160,6 +165,13 @@ def _diff_test_count(base: str, head: str) -> int:
     paths.  Behavioral tests added in `backend/tests/`, integration suites
     under other directories, or `@pytest.fixture` additions to conftest.py
     are now counted.  Markers: `def test_`, `async def test_`, `@pytest.fixture`.
+
+    V9 W4-1 / Wave-48 (2026-05-03): also count aliased fixture decorators
+    (e.g. `from pytest import fixture as fx; @fx`).  We approximate by
+    looking at the diff for any added line starting with `@<word>` whose
+    word matches one of the names imported from `pytest` in the same
+    file.  Implementation: pull the new file content via `git show
+    head:path` and AST-parse fixture aliases.
     """
     full_diff = _run(["git", "diff", f"{base}..{head}"])
     if not full_diff.strip():
@@ -175,6 +187,42 @@ def _diff_test_count(base: str, head: str) -> int:
         if line.startswith("-") and not line.startswith("---")
         and any(m in line for m in markers)
     )
+
+    # V9 W4-1: scan for aliased fixture decorators across files in the
+    # diff.  Best-effort — if the AST parse fails or git show fails we
+    # silently fall back to the marker count.
+    try:
+        names_status = _run(
+            ["git", "diff", "--name-only", f"{base}..{head}"]
+        )
+        for path in names_status.splitlines():
+            if not path.strip().endswith(".py"):
+                continue
+            content = _run(["git", "show", f"{head}:{path}"])
+            if not content:
+                continue
+            import ast as _ast
+            try:
+                tree = _ast.parse(content)
+            except SyntaxError:
+                continue
+            aliases: set[str] = set()
+            for node in _ast.walk(tree):
+                if isinstance(node, _ast.ImportFrom) and node.module == "pytest":
+                    for alias in node.names:
+                        if alias.name == "fixture":
+                            aliases.add(alias.asname or "fixture")
+            if not aliases:
+                continue
+            # Count newly-added decorator lines using these aliases.
+            for line in full_diff.splitlines():
+                if line.startswith("+") and not line.startswith("+++"):
+                    s = line[1:].lstrip()
+                    if any(s.startswith(f"@{a}") for a in aliases):
+                        added += 1
+    except Exception:
+        pass
+
     return added - removed
 
 
