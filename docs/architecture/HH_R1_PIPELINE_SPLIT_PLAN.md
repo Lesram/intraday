@@ -25,10 +25,10 @@ is the highest-ROI structural refactor in the codebase.
 |---|---|---|---|
 | 0a | Expire cooldowns + pending-entry maps + terminal-id early-clear | ~40 | **LOW (shipped wave-29)** |
 | 0b | Stream health check + recovery | ~25 | LOW |
-| 0.5 | Stale-data gate (entries-blocked) | ~25 | LOW (unblocked by wave-39) |
-| 1 | Governance halt check | ~15 | LOW (unblocked by wave-39) |
-| 1.1 | Warmup gate | ~15 | LOW (unblocked by wave-39) |
-| 1.2 | Stale-data entries gate | ~10 | LOW (unblocked by wave-39) |
+| 0.5 | Stale-data gate (entries-blocked) | ~25 | merged into stage 1.2 (wave-40) |
+| 1 | Governance halt check | ~15 | **LOW (shipped wave-40 as part of `_stage_check_entry_blockers`)** |
+| 1.1 | Warmup gate | ~15 | **LOW (shipped wave-40)** |
+| 1.2 | Stale-data entries gate | ~10 | **LOW (shipped wave-40)** |
 | 1.3 | EOD entry block + flatten | ~30 | MEDIUM |
 | 1.5 | Market scanner pass | ~40 | MEDIUM (state writes to `_universe`) |
 | 2 | Fetch latest data + features | ~60 | MEDIUM |

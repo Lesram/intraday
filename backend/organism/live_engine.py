@@ -1565,6 +1565,63 @@ class OrganismLiveEngine:
             if self._tick_count - tick < self._PENDING_EXIT_TICKS
         }
 
+    # V8 HH R-1 / Wave-40 (2026-05-03): stages 1 + 1.1 + 1.2 extracted
+    # together — they're the three earliest entry-blocker checks and
+    # share `self._entries_blocked` (uplifted from local in wave-39).
+    # Each stage is short-circuit ordered: governance halt > warmup >
+    # stale data. Activity events go to `result`.
+    def _stage_check_entry_blockers(
+        self, result: "LiveTickResult", now_iso: str,
+    ) -> None:
+        """Stages 1 / 1.1 / 1.2 — set self._entries_blocked + reason.
+
+        Order matters: governance halt is checked first (operator
+        override); warmup second (system not stable); stale data third
+        (data plane unhealthy). Each gate adds a `result.activity`
+        event so downstream observers see the reason.
+        """
+        # 1. GOVERNANCE CHECK — when halted, exits still process; entries blocked.
+        if self.governance.is_trading_halted:
+            self._entries_blocked = True
+            self._last_entries_blocked_reason = "governance_halt"
+            result.errors.append(
+                "Trading halted by governance — exits still active"
+            )
+            result.activity.append(ActivityEvent(
+                event_type="governance",
+                message=(
+                    "Trading halted — blocking new entries, exits still running"
+                ),
+                timestamp=now_iso,
+            ))
+
+        # 1.1 WARMUP GATE — let features stabilize before entering.
+        if not self._entries_blocked and self._tick_count <= self._WARMUP_TICKS:
+            self._entries_blocked = True
+            self._last_entries_blocked_reason = "warmup"
+            logger.info(
+                "Warmup period: %d/%d ticks — blocking entries",
+                self._tick_count, self._WARMUP_TICKS,
+            )
+            result.activity.append(ActivityEvent(
+                event_type="skip",
+                message=(
+                    f"Warmup: tick {self._tick_count}/{self._WARMUP_TICKS} "
+                    "— entries blocked"
+                ),
+                timestamp=now_iso,
+            ))
+
+        # 1.2 STALE DATA GATE — block entries when data > 2 min stale.
+        if not self._entries_blocked and self._data_stale:
+            self._entries_blocked = True
+            self._last_entries_blocked_reason = "stale_data"
+            result.activity.append(ActivityEvent(
+                event_type="skip",
+                message="Stale data — blocking entries (exits still active)",
+                timestamp=now_iso,
+            ))
+
     async def _live_tick_inner(self) -> LiveTickResult:
         """Inner tick logic — always called under _tick_lock."""
         # V6 X-2 / Wave-20b (2026-05-03): use injected clock so tick
@@ -1630,42 +1687,8 @@ class OrganismLiveEngine:
                 except Exception:
                     pass  # Non-fatal — default to not-stale
 
-            # 1. GOVERNANCE CHECK
-            # When halted, we still MUST process exits and reconciliation
-            # to manage open risk.  Only new entries are blocked.
-            self._entries_blocked = False
-            if self.governance.is_trading_halted:
-                self._entries_blocked = True
-                self._last_entries_blocked_reason = "governance_halt"
-                result.errors.append("Trading halted by governance — exits still active")
-                result.activity.append(ActivityEvent(
-                    event_type="governance", message="Trading halted — blocking new entries, exits still running",
-                    timestamp=now_iso,
-                ))
-
-            # 1.1 WARMUP GATE — let features stabilize before entering
-            if not self._entries_blocked and self._tick_count <= self._WARMUP_TICKS:
-                self._entries_blocked = True
-                self._last_entries_blocked_reason = "warmup"
-                logger.info(
-                    "Warmup period: %d/%d ticks — blocking entries",
-                    self._tick_count, self._WARMUP_TICKS,
-                )
-                result.activity.append(ActivityEvent(
-                    event_type="skip",
-                    message=f"Warmup: tick {self._tick_count}/{self._WARMUP_TICKS} — entries blocked",
-                    timestamp=now_iso,
-                ))
-
-            # 1.2 STALE DATA GATE — block entries when data > 2 min stale
-            if not self._entries_blocked and self._data_stale:
-                self._entries_blocked = True
-                self._last_entries_blocked_reason = "stale_data"
-                result.activity.append(ActivityEvent(
-                    event_type="skip",
-                    message="Stale data — blocking entries (exits still active)",
-                    timestamp=now_iso,
-                ))
+            # V8 HH R-1 / Wave-40 (2026-05-03): stages 1 + 1.1 + 1.2 extracted.
+            self._stage_check_entry_blockers(result, now_iso)
 
             # 1.3 EOD ENTRY BLOCK + FLATTEN (improve7)
             # Block new ALPHA+BREAKOUT entries after 15:45 ET — those signals
