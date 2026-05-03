@@ -62,7 +62,14 @@ def test_wave39_plan_doc_updated():
         "Wave-39 regression: HH R-1 plan doc no longer mentions "
         "the entries_blocked uplift."
     )
-    assert "unblocked by wave-39" in doc, (
-        "Wave-39 regression: HH R-1 plan doc no longer marks stages "
-        "0.5/1/1.1/1.2 as unblocked."
+    # Either the wave-39 "unblocked" marker (pre-wave-40) OR the
+    # wave-40 "shipped" markers (post-wave-40) prove that wave-39's
+    # uplift work is recorded.
+    assert (
+        "unblocked by wave-39" in doc
+        or "shipped wave-40" in doc
+    ), (
+        "Wave-39 regression: HH R-1 plan doc has neither the wave-39 "
+        "'unblocked' marker nor the wave-40 'shipped' marker. The "
+        "entries_blocked uplift's downstream effect is undocumented."
     )
