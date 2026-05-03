@@ -206,7 +206,8 @@ All closed in commit `f65f9c3`.
 | N-M-1 (documented) | 15 | 3fe2a0d |
 | N-M-2 (misread; no fix needed) | 15 | 3fe2a0d |
 | Z-R-3 (already hardened) | (verified) | 3fe2a0d |
-| **R-F-2 (= H-1)** | hold | (after design discussion) |
-| **H-2** (V3) | hold | (after design discussion) |
-| Z-R-4 (pre-existing pre-wave-8) | hold | n/a |
+| **H-1 / R-F-2** | 16d | 7fc68fc |
+| **H-2** (V3) | 16c | fadcd40 |
+| Z-R-3 (fragile string-grep) | 16ab | 4a49058 |
+| Z-R-4 (pre-existing pre-wave-8) | 16ab | 4a49058 |
 | P-P0-6 (walk-forward Sharpe regression) | partially closed by R-F-7 | 75cb998 |
