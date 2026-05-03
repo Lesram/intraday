@@ -116,8 +116,17 @@ def _get_engine(request: Request) -> Any:
 
 
 @router.get("/organism")
-async def get_organism_settings(request: Request) -> dict[str, Any]:
-    """Get current organism engine configuration."""
+async def get_organism_settings(
+    request: Request,
+    current_user: AuthenticatedUser = Depends(require_admin),
+) -> dict[str, Any]:
+    """Get current organism engine configuration.
+
+    V10 AA4-3 / Wave-50 (2026-05-03): added require_admin.  Previously
+    any registered user could read the live universe, tick interval,
+    max_position_pct, ATR multipliers, etc.  PUT was already gated; GET
+    now matches.
+    """
     from backend.organism.live_engine import (
         LIVE_LOOKBACK, LIVE_TIMEFRAME, MAX_OPEN_POSITIONS,
         RETRAIN_INTERVAL, MIN_BARS, USE_STREAMING,
@@ -186,8 +195,14 @@ async def update_organism_settings(
 
 
 @router.get("/trading")
-async def get_trading_settings(request: Request) -> dict[str, Any]:
-    """Get current trading parameters."""
+async def get_trading_settings(
+    request: Request,
+    current_user: AuthenticatedUser = Depends(require_admin),
+) -> dict[str, Any]:
+    """Get current trading parameters.
+
+    V10 AA4-3 / Wave-50 (2026-05-03): added require_admin (matches PUT).
+    """
     from backend.organism.live_engine import LONG_ONLY
 
     engine = _get_engine(request)
@@ -236,8 +251,14 @@ async def update_trading_settings(
 
 
 @router.get("/ml")
-async def get_ml_settings(request: Request) -> dict[str, Any]:
-    """Get current ML model parameters."""
+async def get_ml_settings(
+    request: Request,
+    current_user: AuthenticatedUser = Depends(require_admin),
+) -> dict[str, Any]:
+    """Get current ML model parameters.
+
+    V10 AA4-3 / Wave-50 (2026-05-03): added require_admin (matches PUT).
+    """
     from backend.organism.live_engine import RETRAIN_INTERVAL
 
     engine = _get_engine(request)

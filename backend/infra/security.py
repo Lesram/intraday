@@ -749,8 +749,18 @@ async def get_current_user(
     # If no JWT, check X-API-Key for staging environments
     api_key = request.headers.get("X-API-Key")
     if api_key:
-        # Check staging API key (only in dev/staging environments)
-        app_env = getattr(settings.app, "environment", "").lower()
+        # V10 AA4-4 / Wave-50 (2026-05-03): coerce env to str BEFORE
+        # .lower() — `settings.app.environment` is an Enum in some
+        # configs and `Enum.lower()` raises AttributeError, which
+        # propagated as HTTP 500 with stack trace + reference ID.
+        # str(enum) returns "Environment.DEVELOPMENT"; .value gives
+        # the raw string; getattr fallback covers both shapes.
+        _env_obj = getattr(settings.app, "environment", "")
+        _env_str = (
+            getattr(_env_obj, "value", None)
+            or (str(_env_obj) if _env_obj is not None else "")
+        )
+        app_env = _env_str.lower() if isinstance(_env_str, str) else ""
         staging_key = os.environ.get("STAGING_API_KEY")
 
         if staging_key and app_env in {"dev", "development", "staging"}:

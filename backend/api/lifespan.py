@@ -177,6 +177,40 @@ async def startup(app) -> dict:
     _skip_bg = _reload_active and os.getenv("PYTEST_CURRENT_TEST") is None
     _has_db = hasattr(app.state, "sessionmaker") and app.state.sessionmaker
 
+    # ── V10 AA4-2 / Wave-50 (2026-05-03): Token Blacklist Redis init ─
+    # The blacklist machinery in backend/infra/security.py was orphan —
+    # the helper init_token_blacklist() existed but had ZERO callers.
+    # Wave-42 wired logout to call blacklist_token() but the Redis
+    # backend was permanently None, so the blacklist was in-memory only
+    # and wiped on every container restart.  Now: connect to Redis on
+    # startup so AA3-1 logout actually persists revocations.
+    try:
+        import redis.asyncio as _redis
+        from backend.infra.security import init_token_blacklist
+        _redis_url = (
+            os.environ.get("REDIS_URL")
+            or "redis://localhost:6379/0"
+        )
+        _redis_client = _redis.from_url(_redis_url, decode_responses=False)
+        # Ping to fail fast if Redis is unreachable.
+        await _redis_client.ping()
+        await init_token_blacklist(_redis_client)
+        app.state.redis = _redis_client
+        logger.info(
+            "AA4-2: token blacklist Redis backend initialized at %s",
+            _redis_url,
+        )
+    except Exception as _redis_err:
+        # In-memory fallback is still active; warn but don't fail-fast
+        # so paper / dev still boot when Redis is down.  Production
+        # would benefit from a stricter gate but that's a follow-up.
+        logger.warning(
+            "AA4-2: token blacklist Redis init failed (%s); "
+            "falling back to in-memory only (wipes on restart)",
+            _redis_err,
+        )
+        app.state.redis = None
+
     # ── Outbox Worker ────────────────────────────────────────────────
     if _has_db and not _skip_bg:
         try:
