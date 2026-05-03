@@ -263,4 +263,32 @@ See `MASTER_AUDIT_SYNTHESIS_v5.md` for cross-track patterns and wave 17-19 seque
 ## Status legend update history
 
 - 2026-05-03 00:30 PT: V5 audit complete. 4 tracks, 21 findings (0 production regressions in waves 12-16). Wave 17-19 sequence proposed in `MASTER_AUDIT_SYNTHESIS_v5.md`. Container healthy on rc-1.5-curated @ d43dbec.
+- 2026-05-03 03:00 PT: Waves 17 (a-d), 18, and 19 all shipped on rc-1.5-curated. Final HEAD `0ea2695`. Container healthy across 7 force-recreate cycles. All 21 V5 findings closed.
+
+## V5 closure status (post waves 17-19)
+
+| Finding | Wave | Commit |
+|---|---|---|
+| **S-J3-1** | 17a | 9bcbe8b |
+| **U-RF4** | 17b | 08ee62f |
+| **S-WS-GAP-1** | 17c | 610aeb0 |
+| **B-T-2** | 17d | 610aeb0 |
+| U-3 (regime.py) | 17b | 08ee62f |
+| U-4 (governance.py) | 17b | 08ee62f |
+| U-5 (governance _today_et) | 17b | 08ee62f |
+| **B-T-1** | 18 | a42ca5f |
+| **S-NET-CB-1** | 18 | a42ca5f |
+| **S-NET-T-1** | 18 | a42ca5f |
+| S-OUTBOX-1 | 18 | a42ca5f |
+| B-T-3 | 18 | a42ca5f |
+| B-T-7 | 18 | a42ca5f |
+| U-1 (live_engine telemetry) | 19 | 0ea2695 |
+| U-2 (live_engine idempotency-key) | 19 | 0ea2695 |
+| U-6 (promotion.py) | 19 | 0ea2695 |
+| U-7 (continuous_learner.py) | 19 | 0ea2695 |
+| B-T-4 (streaming_data_provider) | 19 | 0ea2695 |
+| B-T-5 (walk_forward) | 19 | 0ea2695 |
+| S-CLK-1 (drawdown monotonic) | 19 | 0ea2695 |
+| S-DISK-1 (atomic JSON writes) | 19 | 0ea2695 |
+| Z2 hygiene (wave12e POST) | 19 | 0ea2695 |
 | P-P0-6 (walk-forward Sharpe regression) | partially closed by R-F-7 | 75cb998 |
