@@ -455,8 +455,30 @@ class AlpacaStreamClient:
             broker_order_id = order_data.get("id")
             client_order_id = order_data.get("client_order_id")
             status = order_data.get("status")
-            filled_qty = float(order_data.get("filled_qty", 0))
-            avg_fill_price = float(order_data.get("filled_avg_price") or order_data.get("avg_fill_price") or 0) or None
+            # V7 FF-3 / Wave-25 (2026-05-03): the previous
+            # `float(order_data.get("filled_qty", 0))` raised TypeError
+            # when the broker sent JSON `null` for filled_qty (Python
+            # `None`). The outer `except Exception` swallowed the
+            # message → state divergence (DB never learns about the
+            # update). Coerce explicitly: None / "" / missing → 0.
+            _raw_qty = order_data.get("filled_qty")
+            if _raw_qty is None or _raw_qty == "":
+                filled_qty = 0.0
+            else:
+                try:
+                    filled_qty = float(_raw_qty)
+                except (TypeError, ValueError):
+                    logger.warning(
+                        "FF-3: malformed filled_qty in trade update — "
+                        "defaulting to 0; raw=%r broker_oid=%s",
+                        _raw_qty, broker_order_id,
+                    )
+                    filled_qty = 0.0
+            _raw_price = order_data.get("filled_avg_price") or order_data.get("avg_fill_price")
+            try:
+                avg_fill_price = float(_raw_price or 0) or None
+            except (TypeError, ValueError):
+                avg_fill_price = None
 
             if not broker_order_id or not status:
                 logger.warning("Missing required fields in trade update",

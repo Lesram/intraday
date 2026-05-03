@@ -334,11 +334,17 @@ class ObservabilityService:
 
         Returns aggregated health from all components.
         """
-        # Determine overall status
+        # Determine overall status.
+        # V7 EE-2 / Wave-25 (2026-05-03): empty `_health_checks` (no
+        # components opted in to reporting) was returning UNKNOWN, which
+        # made `/health/ready` answer `{"ready": false}` for a healthy
+        # process. Treat empty as HEALTHY — the API process IS up
+        # (this code is executing); UNKNOWN is reserved for actual
+        # ambiguity. The fallback K8s liveness probe is `/healthz`.
         statuses = [hc.status for hc in self._health_checks.values()]
 
         if not statuses:
-            overall = HealthStatus.UNKNOWN
+            overall = HealthStatus.HEALTHY
         elif all(s == HealthStatus.HEALTHY for s in statuses):
             overall = HealthStatus.HEALTHY
         elif any(s == HealthStatus.UNHEALTHY for s in statuses):

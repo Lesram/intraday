@@ -18,6 +18,9 @@ if TYPE_CHECKING:
     from redis.asyncio import Redis
     from sqlalchemy.ext.asyncio import AsyncSession
 
+# V7 FF-1 / Wave-25 (2026-05-03): HTTPException for input validation.
+from fastapi import HTTPException
+
 try:
     import redis.asyncio as aioredis
     REDIS_AVAILABLE = True
@@ -770,6 +773,40 @@ class OrderService:
         Raises:
             RuntimeError: If circuit breaker is tripped (and not reduce_only)
         """
+        # V7 FF-1 / Wave-25 (2026-05-03): validate inputs at the gate.
+        # Track FF found that submit_symbol_order did NOT call validate_order;
+        # qty=0, qty=-1, symbol-injection all reached the outbox unchecked.
+        # Inline the critical validations before any state mutation.
+        if not isinstance(symbol, str) or not symbol or not symbol.replace("-", "").replace(".", "").isalnum():
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid symbol: {symbol!r}",
+            )
+        if side not in ("buy", "sell"):
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid side: {side!r}",
+            )
+        try:
+            _qty_f = float(qty)
+        except (TypeError, ValueError):
+            raise HTTPException(status_code=400, detail=f"Invalid qty type: {qty!r}")
+        if _qty_f <= 0 or not (_qty_f == _qty_f) or _qty_f == float("inf"):
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid qty value: {qty!r} (must be positive finite)",
+            )
+        if order_type not in ("market", "limit", "stop", "stop_limit"):
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid order_type: {order_type!r}",
+            )
+        if tif not in ("day", "gtc", "ioc", "fok", "opg", "cls"):
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid tif: {tif!r}",
+            )
+
         # If repos are missing but sessionmaker is available, use per-call session
         if self.orders_repo is None and self.sessionmaker is not None:
             return await self._submit_symbol_order_with_session(
@@ -810,10 +847,38 @@ class OrderService:
                 symbol_lock = self._symbol_locks[symbol]
 
             async with symbol_lock:
-                # Check if this idempotency key is already being processed
+                # Check if this idempotency key is already being processed.
+                # V7 FF-2 / Wave-25 (2026-05-03): the previous behavior
+                # returned the cached result without verifying that the
+                # current call's body matched. A buggy caller reusing
+                # the same key for a different (symbol, side, qty)
+                # would silently get back the prior response — a real
+                # idempotency violation. Now: verify body fingerprint;
+                # mismatch raises 409 instead of returning cached.
                 if idempotency_key in self._async_submitted_orders:
                     entry = self._async_submitted_orders[idempotency_key]
                     existing_result = entry[1] if isinstance(entry, tuple) else entry
+                    _cached_sym = existing_result.get("symbol") if isinstance(existing_result, dict) else None
+                    _cached_side = existing_result.get("side") if isinstance(existing_result, dict) else None
+                    _cached_qty = existing_result.get("qty") if isinstance(existing_result, dict) else None
+                    if (
+                        _cached_sym is not None
+                        and _cached_side is not None
+                        and _cached_qty is not None
+                        and (
+                            _cached_sym != symbol
+                            or _cached_side != side
+                            or str(_cached_qty) != str(qty)
+                        )
+                    ):
+                        raise HTTPException(
+                            status_code=409,
+                            detail=(
+                                f"idempotency_key collision: key {idempotency_key[:8]}... "
+                                f"was previously used for ({_cached_sym}, {_cached_side}, {_cached_qty}); "
+                                f"current request is ({symbol}, {side}, {qty})"
+                            ),
+                        )
                     logger.info(f"Returning cached order result for key {idempotency_key[:8]}...")
                     return existing_result
 
