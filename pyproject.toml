@@ -95,7 +95,11 @@ target-version = "py311"
 line-length = 100
 indent-width = 4
 
-# Enable specific rule categories
+# Enable specific rule categories.
+# V10 UU2-B / Wave-57 (2026-05-03): added S110/S112/BLE001/G004/TRY401/LOG007
+# to catch the V9 UU error-handling cargo-cult patterns.  Backlog of 158
+# pass-only handlers + 459 f-string-in-handler is grandfathered via the
+# per-file-ignore baseline below; new code must comply.
 select = [
     "E",      # pycodestyle errors
     "W",      # pycodestyle warnings
@@ -106,6 +110,13 @@ select = [
     "SIM",    # flake8-simplify
     "PTH",    # flake8-use-pathlib
     "PL",     # Pylint
+    # V10 UU2-B / Wave-57 — error handling discipline
+    "S110",   # try-except-pass (cargo-cult swallow)
+    "S112",   # try-except-continue (similar)
+    "BLE001", # blind-except `except Exception`
+    "G004",   # logging-f-string (eager evaluation in log handler)
+    "TRY401", # verbose-log-message (logger.error("...", exc) > .exception)
+    "LOG007", # exception-without-exc-info on logger.error
 ]
 
 # Ignore specific rules
@@ -159,11 +170,24 @@ force-sort-within-sections = true
 split-on-trailing-comma = true
 
 [tool.ruff.lint.per-file-ignores]
+# V10 UU2-B / Wave-57: grandfather ratchet for the existing backlog.
+# These files have pre-V10 try/except/pass + f-string-in-handler usage
+# that's tracked for V11 surgical cleanup.  New files won't get the
+# ignore so they must comply from day one.
+"backend/organism/live_engine.py" = ["S110", "S112", "BLE001", "G004", "TRY401", "LOG007"]
+"backend/organism/brain_persistence.py" = ["S110", "S112", "BLE001", "G004", "TRY401", "LOG007"]
+"backend/integrations/alpaca_stream.py" = ["S110", "S112", "BLE001", "G004", "TRY401", "LOG007"]
+"backend/services/audit_service.py" = ["S110", "S112", "BLE001", "G004", "TRY401", "LOG007"]
+"backend/api/socketio_server.py" = ["S110", "S112", "BLE001", "G004", "TRY401", "LOG007"]
+"backend/services/realtime_risk_analytics.py" = ["S110", "S112", "BLE001", "G004", "TRY401", "LOG007"]
+"backend/ml/ensemble_model.py" = ["S110", "S112", "BLE001", "G004", "TRY401", "LOG007"]
 "tests/**/*.py" = [
     "S101",     # Use of assert
     "PLR2004",  # Magic value used in comparison
     "S105",     # Possible hardcoded password
     "S106",     # Possible hardcoded password
+    # V10 UU2-B / Wave-57: tests are exempt from error-handling rules.
+    "S110", "S112", "BLE001", "G004", "TRY401", "LOG007",
 ]
 "alembic/versions/*.py" = [
     "E501",     # Line too long
