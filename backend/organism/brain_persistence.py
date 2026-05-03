@@ -866,6 +866,33 @@ class OrganismBrain:
                 learner.state.total_trades if hasattr(learner, "state") else 0,
                 learner.state.cumulative_pnl if hasattr(learner, "state") else 0,
             )
+
+            # V10 WW-1 / Wave-51 (2026-05-03): essential-save now ALSO mints
+            # a backup snapshot.  Previously _create_backup was only called
+            # from full save(), but live_engine routes most saves through
+            # save_essential_state (walk-forward gate).  Production had
+            # ZERO backups/ directory, so V9 PP-2's corrupt-HEAD fallback
+            # safety net was empty.  Cadence: mint a backup at most once
+            # per WW1_BACKUP_INTERVAL_SECONDS (default 1 hour) to avoid
+            # disk thrash on every tick.
+            try:
+                import time as _time
+                _now_ts = _time.time()
+                _last = getattr(self, "_ww1_last_backup_ts", 0.0)
+                _interval = float(
+                    os.environ.get("WW1_BACKUP_INTERVAL_SECONDS", "3600")
+                )
+                if (_now_ts - _last) >= _interval:
+                    self._create_backup()
+                    self._ww1_last_backup_ts = _now_ts
+                    logger.info(
+                        "WW-1: minted essential-save backup snapshot",
+                    )
+            except Exception as _bk_err:
+                logger.warning(
+                    "WW-1: essential-save backup failed (non-fatal): %s",
+                    _bk_err,
+                )
         except Exception as e:
             logger.error("Failed to save essential state: %s", e)
 

@@ -647,10 +647,19 @@ class AlpacaStreamClient:
                             order.id, _lot_err,
                             exc_info=True,
                         )
+                        # V10 UU2-C / Wave-51 (2026-05-03): same pattern as
+                        # wave-41 UU-2 / wave-51 UU2-A.  Surface rollback
+                        # failure so a poisoned session doesn't silently
+                        # propagate to the next order event.
                         try:
                             await session.rollback()
-                        except Exception:
-                            pass
+                        except Exception as _rb_err:
+                            logger.error(
+                                "UU2-C: db.rollback() after LotTracker "
+                                "failure also failed for order %s: %s — "
+                                "session may be poisoned",
+                                order.id, _rb_err,
+                            )
 
                 # REMEDIATION: Track terminal order statuses for early pending-entry cleanup.
                 # V4 H-1 / Wave-16d (2026-05-02): record BOTH the broker

@@ -99,7 +99,25 @@ async def startup(app) -> dict:
             app.state.db_sessionmaker = sessionmaker
             logger.info("Database initialized successfully")
 
-            # Pre-warm connection pool
+            # V10 PP2-1 / Wave-51 (2026-05-03): connectivity smoke check
+            # MUST be in the outer try/except so unreachable host /
+            # bad credentials / wrong database trigger the same fail-fast
+            # path as engine-construction errors.  Previously the
+            # prewarm was the only connection attempt and its inner
+            # `except Exception as warm_e: logger.warning(...)` masked
+            # the silent-audit-drops failure mode PP-4 was meant to
+            # close.  Now: a single SELECT 1 in the outer try first;
+            # only after that succeeds do we run the optional prewarm.
+            try:
+                async with sessionmaker() as _smoke_session:
+                    from sqlalchemy import text as _text
+                    await _smoke_session.execute(_text("SELECT 1"))
+            except Exception:
+                # Re-raise into the outer except below; the outer block
+                # decides production-fail-fast vs ALLOW_NO_DB development.
+                raise
+
+            # Pre-warm connection pool (best-effort post-smoke).
             try:
                 pool_size = min(int(os.getenv("DB_POOL_PREWARM_SIZE", "5")), 20)
                 if pool_size > 0:

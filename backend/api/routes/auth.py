@@ -339,10 +339,17 @@ async def login(
             await db.commit()
         except Exception as _audit_err:
             logger.warning("AA-H-3: login audit failed: %s", _audit_err)
+            # V10 UU2-A / Wave-51 (2026-05-03): mirror the failed-login
+            # branch (wave-41 UU-2).  The wave-41 replace_all missed this
+            # site because the indentation differs (16 vs 20 spaces).
             try:
                 await db.rollback()
-            except Exception:
-                pass
+            except Exception as _rb_err:
+                logger.error(
+                    "UU2-A: db.rollback() after successful-login audit "
+                    "failure also failed: %s — db session may be poisoned",
+                    _rb_err,
+                )
 
         return LoginResponse(
             access_token=token,
