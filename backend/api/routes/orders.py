@@ -12,7 +12,7 @@ from decimal import Decimal
 from typing import Any
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Request, Response, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.infra.db import get_db_session
@@ -228,14 +228,41 @@ class ValidationCheck(BaseModel):
 
 
 class OrderValidationResponse(BaseModel):
-    """Pre-trade order validation response."""
+    """Pre-trade order validation response.
+
+    V11 prep / Wave-64 (VV-1 closure, 2026-05-03): emit BOTH snake_case
+    AND camelCase aliases so the frontend (which reads camelCase) and
+    operator-facing curl/clients (which expect snake_case) both work
+    without a coordinated rename.  pydantic emits the alias by default
+    when `populate_by_name=True` + `by_alias=True` on serialization.
+    The frontend's previous undefined/N/A bug came from snake_case
+    keys it didn't recognize; now we ship both.
+    """
+    model_config = ConfigDict(
+        populate_by_name=True,
+        # alias_generator preserved for forward-compat; explicit per-field
+        # aliases below are the source of truth.
+    )
+
     valid: bool = Field(..., description="Overall validation result")
     checks: list[ValidationCheck] = Field(default_factory=list, description="Individual validation checks")
     warnings: list[str] = Field(default_factory=list, description="Warning messages")
     errors: list[str] = Field(default_factory=list, description="Error messages")
-    estimated_cost: float | None = Field(None, description="Estimated cost of the order")
-    estimated_price: float | None = Field(None, description="Estimated price per share (fetched for market orders)")
-    estimated_buying_power_after: float | None = Field(None, description="Buying power after order")
+    estimated_cost: float | None = Field(
+        None,
+        description="Estimated cost of the order",
+        serialization_alias="estimatedCost",
+    )
+    estimated_price: float | None = Field(
+        None,
+        description="Estimated price per share (fetched for market orders)",
+        serialization_alias="estimatedPrice",
+    )
+    estimated_buying_power_after: float | None = Field(
+        None,
+        description="Buying power after order",
+        serialization_alias="estimatedBuyingPowerAfter",
+    )
 
 
 # Service Dependencies
