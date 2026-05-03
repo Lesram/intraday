@@ -30,6 +30,26 @@ async def startup(app) -> dict:
         "reconciliation_scheduler": False,
     }
 
+    # V5 S-J3-1 / Wave-17a (2026-05-03): capture the main event loop now,
+    # while we are guaranteed to be on it. Worker threads (asyncio.to_thread,
+    # ThreadPoolExecutor) use this captured ref to dispatch alerts via
+    # asyncio.run_coroutine_threadsafe. The wave-8c J-3 fix tried to
+    # re-fetch the loop from the worker thread itself — that always raises
+    # RuntimeError because worker threads have no running loop.
+    try:
+        import asyncio as _aio_startup
+        from backend.infra.alerting import set_main_event_loop
+        set_main_event_loop(_aio_startup.get_running_loop())
+        logger.info(
+            "Main event loop captured for cross-thread alert dispatch "
+            "(S-J3-1 fix)"
+        )
+    except Exception as _loop_err:
+        logger.warning(
+            "Failed to capture main event loop for alert dispatch: %s",
+            _loop_err,
+        )
+
     # ── Observability ────────────────────────────────────────────────
     try:
         from backend.infra.observability import (

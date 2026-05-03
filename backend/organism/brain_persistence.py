@@ -295,24 +295,29 @@ class OrganismBrain:
                 reason,
             )
             # Alert wiring: emit guard-fire alert.
-            # Audit-J finding J-3 (2026-05-02): same fix as ml_signal.py —
-            # get_running_loop with worker-thread tolerance.
+            # V5 S-J3-1 / Wave-17a (2026-05-03): wave-8c's J-3 fix
+            # caught the RuntimeError but routed every alert to
+            # logger.warning because get_running_loop() always raises
+            # in worker threads. Use the canonical cross-thread
+            # dispatcher which schedules on the captured main loop via
+            # asyncio.run_coroutine_threadsafe.
             try:
-                import asyncio as _aio
-                from backend.infra.alerting import send_alert, AlertCategory, AlertSeverity
-                try:
-                    loop = _aio.get_running_loop()
-                    loop.call_soon_threadsafe(
-                        lambda: _aio.ensure_future(send_alert(
-                            AlertCategory.SYSTEM_ERROR, AlertSeverity.ERROR,
-                            "Brain Save Blocked",
-                            f"Trained manifest overwrite blocked (save). {reason}",
-                        ))
+                from backend.infra.alerting import (
+                    AlertCategory, AlertSeverity, send_alert,
+                    dispatch_alert_from_thread,
+                )
+                _r = reason
+                ok = dispatch_alert_from_thread(
+                    lambda: send_alert(
+                        AlertCategory.SYSTEM_ERROR, AlertSeverity.ERROR,
+                        "Brain Save Blocked",
+                        f"Trained manifest overwrite blocked (save). {_r}",
                     )
-                except RuntimeError:
+                )
+                if not ok:
                     logger.warning(
-                        "Alert deferred (no running loop in this thread): "
-                        "Brain Save Blocked — %s", reason,
+                        "Brain Save Blocked alert dropped (no main loop ref): %s",
+                        _r,
                     )
             except Exception:
                 pass
