@@ -1521,6 +1521,18 @@ class OrganismLiveEngine:
     #  MAIN LIVE TICK
     # ═════════════════════════════════════════════════════════════
 
+    # V9 TT-2 / Wave-46 (2026-05-03): tick watchdog timeout. Production
+    # data showed pathological 1987s and 1256s tick outliers (33-min /
+    # 21-min) co-located with WS keepalive timeouts. Without a watchdog
+    # the tick body could stall the scheduler indefinitely, masking
+    # liveness from operator. 30s gives plenty of headroom over the
+    # measured p99=13s without missing the 10s scheduler interval by
+    # more than a few ticks under stress.
+    _TICK_WATCHDOG_SECONDS = 30.0
+
+    # V9 TT-1 / Wave-46 (2026-05-03): timeouts and slow-tick logs are
+    # a Prometheus-counter target.  Maintain monotonic counters so
+    # operators can dashboard them.
     async def live_tick(self) -> LiveTickResult:
         """Execute one full organism cycle — called every bar interval.
 
@@ -1537,9 +1549,58 @@ class OrganismLiveEngine:
             10. Record trade outcomes from recent fills
             11. Periodic retrain + evolve
             12. Brain save (periodic checkpoint)
+
+        V9 TT-2 / Wave-46: wraps the inner body in asyncio.wait_for so
+        a hung WebSocket-reconnect or DB query doesn't stall the
+        scheduler indefinitely.  On timeout: alert operator, increment
+        watchdog counter, return a degraded LiveTickResult.
         """
         async with self._tick_lock:
-            return await self._live_tick_inner()
+            try:
+                return await asyncio.wait_for(
+                    self._live_tick_inner(),
+                    timeout=self._TICK_WATCHDOG_SECONDS,
+                )
+            except asyncio.TimeoutError:
+                self._tick_watchdog_timeouts = (
+                    getattr(self, "_tick_watchdog_timeouts", 0) + 1
+                )
+                logger.error(
+                    "TT-2: tick watchdog FIRED after %.1fs (count=%d). "
+                    "Returning degraded result. Likely cause: stream "
+                    "reconnect stall or DB query timeout.",
+                    self._TICK_WATCHDOG_SECONDS,
+                    self._tick_watchdog_timeouts,
+                )
+                # Best-effort operator alert.
+                try:
+                    from backend.infra.alerting import (
+                        AlertCategory, AlertSeverity, send_alert,
+                        dispatch_alert_from_thread,
+                    )
+                    dispatch_alert_from_thread(
+                        lambda: send_alert(
+                            AlertCategory.SYSTEM_ERROR,
+                            AlertSeverity.WARNING,
+                            "Tick Watchdog Timeout",
+                            f"Live tick exceeded "
+                            f"{self._TICK_WATCHDOG_SECONDS:.0f}s "
+                            f"(total timeouts={self._tick_watchdog_timeouts}).",
+                        )
+                    )
+                except Exception as _alert_err:
+                    logger.warning(
+                        "TT-2: watchdog alert dispatch failed: %s",
+                        _alert_err,
+                    )
+                # Return degraded but valid LiveTickResult.
+                return LiveTickResult(
+                    timestamp=self._now_fn().isoformat(),
+                    errors=[
+                        f"TT-2: tick watchdog timeout "
+                        f"({self._TICK_WATCHDOG_SECONDS:.0f}s)"
+                    ],
+                )
 
     # V8 HH R-1 partial / Wave-29 (2026-05-03): extracted helper.
     # The full pipeline-split of `_live_tick_inner` is multi-day
