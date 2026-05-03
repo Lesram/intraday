@@ -14,6 +14,49 @@
       "AA5-1", "BB5-F4", "CCC-2", "AAA-F1", "AAA-F2", "Z9-F1"
     ]
   },
+  "v11_closures_audited_in_v12": [
+    {
+      "id": "AA5-1",
+      "severity": "critical",
+      "title": "Wave-47 broke ALL JWT auth (leeway kwarg → python-jose TypeError)",
+      "wave_closed": 67,
+      "behavioral_test_path": "tests/test_wave47_fixes.py::test_aa3_4_jwt_decode_passes_leeway",
+      "behavioral_test_added_in_wave": 67,
+      "v12_w73_audit": "behavioral — mints token, decodes, asserts payload sub matches"
+    },
+    {
+      "id": "BB5-F4",
+      "severity": "high",
+      "title": "Migration not applied to live DB",
+      "wave_closed": 67,
+      "behavioral_test_path": "tests/test_wave55_fixes.py::test_xx_2_migration_tree_still_single_headed",
+      "v12_w73_audit": "behavioral — runs subprocess against check_migrations.py and asserts return code"
+    },
+    {
+      "id": "CCC-2",
+      "severity": "critical",
+      "title": "Drawdown-kill compose env divergence; paper missing wiring",
+      "wave_closed": 68,
+      "behavioral_test_path": "tests/test_v12_wave68_behavioral.py::test_ccc_2_compose_envs_wire_risk_caps",
+      "v12_w73_audit": "MARKER-ONLY in original test_wave68; W73 added behavioral YAML-parse upgrade in test_v12_wave68_behavioral.py"
+    },
+    {
+      "id": "AAA-F1",
+      "severity": "high",
+      "title": "/test/http-* debug endpoints exposed in paper image",
+      "wave_closed": 68,
+      "behavioral_test_path": "tests/test_wave68_fixes.py::test_aaa_f1_default_router_is_empty_stub",
+      "v12_w73_audit": "behavioral — reloads module, inspects router.routes, asserts /http-401 not present"
+    },
+    {
+      "id": "AAA-F2",
+      "severity": "high",
+      "title": "orders.py local require_trader ignores roles",
+      "wave_closed": 68,
+      "behavioral_test_path": "tests/test_wave68_fixes.py::test_aaa_f2_orders_require_trader_enforces_roles",
+      "v12_w73_audit": "behavioral — calls require_trader with synthetic users, asserts 403 / 200 by role"
+    }
+  ],
   "findings": [
     {
       "id": "DD5-1",
@@ -62,10 +105,11 @@
       "from": "v11",
       "severity": "high",
       "title": "Source-grep fake-positive tests pattern (wave-47 JWT was canonical)",
-      "status": "open",
+      "status": "closed",
       "wave_target": 73,
-      "behavioral_test_path": null,
-      "notes": "External auditor: 85/154 (55.2%) wave tests are marker-only. V12 W73 converts Critical/High."
+      "wave_closed": 73,
+      "behavioral_test_path": "tests/test_v12_w73_gate.py",
+      "notes": "Closed wave-73. Built scripts/ci/forbid_marker_only_critical_high.py — runs the wave-test classifier against every Critical/High closure's behavioral_test_path; fails CI if any is marker-only. Wired into .github/workflows/ci.yml as the 'audit_gate' job. 5 behavioral tests cover: gate runs, gate passes on real state, gate fails on missing test, gate fails on marker-only test for High finding, gate passes on real behavioral test. Future Critical/High closures must reference behavioral evidence or CI rejects."
     },
     {
       "id": "BB5-F1",
@@ -186,10 +230,11 @@
       "from": "external_review_v11",
       "severity": "high",
       "title": "Test corpus 55.2% marker-only — wave-47 JWT was symptomatic, not isolated",
-      "status": "open",
+      "status": "closed",
       "wave_target": 73,
-      "behavioral_test_path": null,
-      "notes": "Closes alongside AA5-2 in W73."
+      "wave_closed": 73,
+      "behavioral_test_path": "tests/test_v12_w73_gate.py",
+      "notes": "Closed wave-73 alongside AA5-2. The systemic problem is now CI-gated: any future Critical/High closure that ledgers a marker-only test fails the audit_gate job. Pre-existing marker-only tests for Medium/Low closures are still allowed — they're not on the gate's surface. CCC-2's existing marker-only tests in test_wave68_fixes.py kept as legacy; new behavioral tests added in tests/test_v12_wave68_behavioral.py (YAML-parse based)."
     },
     {
       "id": "EXT-3",
@@ -270,7 +315,7 @@
     "70": "completed",
     "71": "completed",
     "72": "completed",
-    "73": "pending",
+    "73": "completed",
     "74": "pending",
     "75": "pending",
     "76": "pending",

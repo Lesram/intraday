@@ -135,6 +135,27 @@ jobs:
             safety-report.json
           retention-days: 30
 
+  audit_gate:
+    name: "🛡️ V12 W73 Marker-Only Critical/High Gate"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Run V12 W73 marker-only gate
+        # The gate parses artifacts/audit/v12/v12_state.json and asserts
+        # every Critical/High audit closure has a behavioral test (not
+        # an inspect.getsource marker grep).  This is the codified
+        # response to V11's wave-47 JWT regression — that test passed
+        # while production was 401-broken.
+        run: |
+          python scripts/ci/forbid_marker_only_critical_high.py
+
   test:
     name: "🧪 Test & Coverage"
     runs-on: ubuntu-latest
@@ -310,7 +331,7 @@ jobs:
   quality-summary:
     name: "📋 Quality Summary"
     runs-on: ubuntu-latest
-    needs: [lint, types, security, test]
+    needs: [lint, types, security, test, audit_gate]
     if: always()
 
     steps:
@@ -398,11 +419,13 @@ jobs:
           echo "Types: ${{ needs.types.result }}"
           echo "Security: ${{ needs.security.result }}"
           echo "Tests: ${{ needs.test.result }}"
+          echo "Audit Gate (V12 W73): ${{ needs.audit_gate.result }}"
 
           if [[ "${{ needs.lint.result }}" != "success" ]] || \
              [[ "${{ needs.types.result }}" != "success" ]] || \
              [[ "${{ needs.security.result }}" != "success" ]] || \
-             [[ "${{ needs.test.result }}" != "success" ]]; then
+             [[ "${{ needs.test.result }}" != "success" ]] || \
+             [[ "${{ needs.audit_gate.result }}" != "success" ]]; then
             echo "❌ One or more quality gates failed"
             exit 1
           else
