@@ -34,20 +34,29 @@ jobs:
             docs_arch:
               - 'docs/architecture/**'
 
-      # V7 W2 / Wave-26 (2026-05-03): enforce V6 W's audit-wave PR
-      # checklist on every wave commit. Validates finding-ID citation,
-      # same-class grep command presence, and asserted-zero claim.
-      # Currently runs as `continue-on-error: true` (warn-mode) until
-      # wave authors have a chance to adopt; flip to required after a
-      # one-week transition period.
-      - name: Wave-PR marker enforcement (V6 W / V7 W2)
+      # V8 / Wave-28 (2026-05-03): wave-PR marker enforcement is now
+      # REQUIRED (flipped from warn-mode in wave-26).
+      #
+      # The script enforces 5 rules in required mode:
+      # 1. Every fix(audit-wave...) commit cites finding-ID(s).
+      # 2. Body includes a `grep -rn '...'` command (same-class scan).
+      # 3. Body asserts `count: 0` (audit acknowledgment).
+      # 4. Critical/High commits add ≥1 new test function (behavioral).
+      # 5. Re-runs the cited grep and fails if count > 0 — the durable
+      #    counter to V5 Pattern 1 / V6 V-T-1/V-T-2 / V7 X-4/X-8.
+      #
+      # `--warn-only` reverts to warn-mode if a transitional PR must
+      # land without enforcement; require justification in PR body.
+      - name: Wave-PR marker enforcement (REQUIRED — V8 Wave-28)
         if: github.event.pull_request.head.ref != github.event.pull_request.base.ref
-        continue-on-error: true
         run: |
           set -e
           BASE_SHA="${{ github.event.pull_request.base.sha }}"
           HEAD_SHA="${{ github.event.pull_request.head.sha }}"
-          python3 scripts/ci/check_wave_markers.py --base "$BASE_SHA" --head "$HEAD_SHA"
+          python3 scripts/ci/check_wave_markers.py \
+            --base "$BASE_SHA" \
+            --head "$HEAD_SHA" \
+            --repo-root .
 
   organism-tests:
     needs: detect
