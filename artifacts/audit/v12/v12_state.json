@@ -343,9 +343,11 @@
       "from": "external_review_v11",
       "severity": "medium",
       "title": "no machine-readable findings ledger; deferral state lives in prose",
-      "status": "open",
+      "status": "closed",
       "wave_target": 77,
-      "behavioral_test_path": null
+      "wave_closed": 77,
+      "behavioral_test_path": "tests/test_v12_w77_findings_ledger.py",
+      "notes": "Closed wave-77. Built scripts/ci/build_findings_ledger.py (parses V8-V11 synthesis tables + v12_state.json overlays + v11_closures_audited_in_v12 → 130 findings consolidated). Built scripts/ci/verify_findings_ledger.py (asserts every closed has behavioral_test_path; every deferred has deferral_reason). Outputs artifacts/audit/findings_ledger.json + findings_ledger_v12.md. 10 behavioral tests cover parser correctness (V11 ID coverage, V12 closures overlay, audited-V11 closures), verifier rejection of bad fixtures, schema integrity."
     }
   ],
   "wave_progress": {
@@ -356,7 +358,7 @@
     "74": "completed",
     "75": "completed",
     "76": "completed",
-    "77": "pending",
+    "77": "completed",
     "78": "pending",
     "79": "pending"
   }
