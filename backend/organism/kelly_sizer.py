@@ -357,9 +357,26 @@ class KellySizer:
 
             else:
                 # ── PRODUCTION MODE: Full Kelly stack ──
-                # 1. Raw Kelly (try regime-stratified first, fallback to global)
+                # 1. Raw Kelly (try regime-stratified first, fallback to global).
+                # V7 DD-4 / Wave-24 (2026-05-03): the previous
+                # `regime_kelly` shortcut bypassed the spread-cost gate,
+                # ML-confidence floor, and breakout floor — once a
+                # regime accumulated ≥10 trades, ANY candidate sized
+                # from regime_kelly regardless of current edge. Now:
+                # only use regime_kelly when (a) the candidate has a
+                # positive predicted return, (b) confidence clears the
+                # production-mode threshold, AND (c) the unconditional
+                # Kelly path also computes a positive size. This makes
+                # regime_kelly an UPPER bound (when present) rather
+                # than a bypass — current-edge floors still apply.
+                _PROD_CONFIDENCE_FLOOR = 0.5
                 regime_kelly = self.get_regime_kelly(current_regime)
-                if regime_kelly is not None:
+                _regime_eligible = (
+                    regime_kelly is not None
+                    and predicted_return > 0
+                    and confidence >= _PROD_CONFIDENCE_FLOOR
+                )
+                if _regime_eligible:
                     kelly_raw = min(regime_kelly, 1.0)
                 else:
                     mean_r = float(np.mean(dir_returns))

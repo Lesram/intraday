@@ -267,17 +267,31 @@ def compute_ml_features(
     # CROSS-SECTIONAL (5) — relative to SPY/market
     # ═══════════════════════════════════════════════════════
     if spy_df is not None and "close" in spy_df.columns and len(spy_df) >= len(df):
-        spy_c = spy_df["close"].iloc[-len(df):].values
-        spy_ret = pd.Series(spy_c).pct_change().values
+        # V7 DD-3 / Wave-24 (2026-05-03): align SPY to the stock's
+        # DataFrame on the timestamp INDEX rather than positional
+        # tail-slicing. The previous `iloc[-len(df):]` silently
+        # mis-aligned when SPY and stock had different lengths
+        # (e.g. trading halt in the stock; SPY trades through). Now:
+        # reindex SPY to the stock's index using forward-fill so
+        # gaps in stock data don't shift SPY values to wrong rows.
+        spy_close_aligned = spy_df["close"].reindex(df.index, method="ffill")
+        spy_c = spy_close_aligned.values
+        spy_ret = pd.Series(spy_c, index=f.index).pct_change().values
 
         # Relative strength vs SPY
         stock_ret_20 = f["ret_20d"].values
-        spy_ret_20 = pd.Series(spy_c).pct_change(20).values[-len(df):]
+        spy_ret_20 = pd.Series(spy_c, index=f.index).pct_change(20).values
         f["rel_strength_spy"] = pd.Series(
             stock_ret_20 - spy_ret_20, index=f.index
         )
 
-        # Beta (rolling 20-day)
+        # Beta (rolling 20-day).
+        # V7 DD-3 / Wave-24 (2026-05-03): with `spy_ret` now reindexed
+        # to `f.index`, both arrays are length-aligned by *timestamp*
+        # not position; the previous off-by-end positional slice
+        # (`max(0, len(spy_ret)-len(stock_rets)+i-...)`) is unnecessary
+        # and was the misalignment vector when stock had gaps. Direct
+        # `[i-20:i]` slicing on aligned arrays is correct.
         stock_rets = f["ret_1d"].values
         betas = []
         for i in range(len(stock_rets)):
@@ -285,35 +299,35 @@ def compute_ml_features(
                 betas.append(1.0)
             else:
                 sr = stock_rets[i-20:i]
-                mr = spy_ret[max(0, len(spy_ret)-len(stock_rets)+i-20):max(0, len(spy_ret)-len(stock_rets)+i)]
+                mr = spy_ret[i-20:i]
                 if (
                     len(mr) >= 20
                     and np.std(mr) > 0
                     and not np.any(np.isnan(sr))
-                    and not np.any(np.isnan(mr[-20:]))
+                    and not np.any(np.isnan(mr))
                 ):
-                    val = float(np.corrcoef(sr, mr[-20:])[0, 1] * np.std(sr) / np.std(mr[-20:]))
+                    val = float(np.corrcoef(sr, mr)[0, 1] * np.std(sr) / np.std(mr))
                     betas.append(val if np.isfinite(val) else 1.0)
                 else:
                     betas.append(1.0)
         f["beta_20d"] = betas
 
-        # Correlation to market
+        # Correlation to market — same DD-3 alignment as beta above.
         corrs = []
         for i in range(len(stock_rets)):
             if i < 20:
                 corrs.append(0.0)
             else:
                 sr = stock_rets[i-20:i]
-                mr = spy_ret[max(0, len(spy_ret)-len(stock_rets)+i-20):max(0, len(spy_ret)-len(stock_rets)+i)]
+                mr = spy_ret[i-20:i]
                 if (
                     len(mr) >= 20
                     and np.std(sr) > 0
                     and np.std(mr) > 0
                     and not np.any(np.isnan(sr))
-                    and not np.any(np.isnan(mr[-20:]))
+                    and not np.any(np.isnan(mr))
                 ):
-                    val = float(np.corrcoef(sr, mr[-20:])[0, 1])
+                    val = float(np.corrcoef(sr, mr)[0, 1])
                     corrs.append(val if np.isfinite(val) else 0.0)
                 else:
                     corrs.append(0.0)

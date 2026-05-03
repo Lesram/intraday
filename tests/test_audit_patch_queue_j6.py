@@ -41,6 +41,10 @@ class TestRegimeDetectorSMAFix:
             "volume": [1_000_000] * n,
             # Include normalized sma_50 column (like ml_features produces)
             "sma_50": [1.0] * n,
+            # V7 DD-2 / Wave-24: provide ATR so detect() doesn't return
+            # UNKNOWN for atr_missing reason; this test exercises the SMA
+            # fix path, not the DD-2 ATR-missing guard.
+            "atr_14": [5.0] * n,  # 1% of price 500
         })
         state = det.detect(df)
         # With flat prices, regime should NOT be trending_up
@@ -62,6 +66,8 @@ class TestRegimeDetectorSMAFix:
         df = pd.DataFrame({
             "close": prices,
             "volume": [1_000_000] * n,
+            # V7 DD-2 / Wave-24: ATR present so DD-2 guard doesn't fire.
+            "atr_14": [p * 0.01 for p in prices],
         })
         state = det.detect(df)
         assert state.primary == RegimeLabel.TRENDING_UP
@@ -76,6 +82,8 @@ class TestRegimeDetectorSMAFix:
         df = pd.DataFrame({
             "close": prices,
             "volume": [1_000_000] * n,
+            # V7 DD-2 / Wave-24: ATR present so DD-2 guard doesn't fire.
+            "atr_14": [p * 0.01 for p in prices],
         })
         state = det.detect(df)
         assert state.primary == RegimeLabel.TRENDING_DOWN
@@ -92,6 +100,8 @@ class TestRegimeDetectorSMAFix:
             "volume": [1_000_000] * n,
             # Bogus normalized sma that would give wrong regime if used
             "sma_50": [0.5] * n,
+            # V7 DD-2 / Wave-24: ATR present so DD-2 guard doesn't fire.
+            "atr_14": [p * 0.01 for p in prices],
         })
         state = det.detect(df)
         # Should still detect trending_up from raw close, not from sma_50 col

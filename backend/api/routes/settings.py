@@ -18,9 +18,10 @@ import os
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
+from backend.infra.security import AuthenticatedUser, require_admin
 from backend.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -158,6 +159,8 @@ def _check_governance(request: Request) -> None:
 @router.put("/organism")
 async def update_organism_settings(
     request: Request, body: OrganismSettings,
+    # V7 AA-M-3 / Wave-24 (2026-05-03): admin-only.
+    current_user: AuthenticatedUser = Depends(require_admin),
 ) -> dict[str, Any]:
     """Update organism engine configuration with hot-reload."""
     _check_governance(request)
@@ -209,6 +212,8 @@ async def get_trading_settings(request: Request) -> dict[str, Any]:
 @router.put("/trading")
 async def update_trading_settings(
     request: Request, body: TradingSettings,
+    # V7 AA-M-3 / Wave-24 (2026-05-03): admin-only.
+    current_user: AuthenticatedUser = Depends(require_admin),
 ) -> dict[str, Any]:
     """Update trading parameters with hot-reload."""
     _check_governance(request)
@@ -253,6 +258,8 @@ async def get_ml_settings(request: Request) -> dict[str, Any]:
 @router.put("/ml")
 async def update_ml_settings(
     request: Request, body: MLSettings,
+    # V7 AA-M-3 / Wave-24 (2026-05-03): admin-only.
+    current_user: AuthenticatedUser = Depends(require_admin),
 ) -> dict[str, Any]:
     """Update ML model parameters with hot-reload."""
     _check_governance(request)
@@ -275,7 +282,11 @@ async def update_ml_settings(
 
 
 @router.post("/restart-engine")
-async def restart_engine(request: Request) -> dict[str, Any]:
+async def restart_engine(
+    request: Request,
+    # V7 AA-M-4 / Wave-24 (2026-05-03): admin-only.
+    current_user: AuthenticatedUser = Depends(require_admin),
+) -> dict[str, Any]:
     """Safely restart the organism engine with current settings."""
     scheduler = _get_scheduler(request)
     if not scheduler:

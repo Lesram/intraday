@@ -204,14 +204,32 @@ class RegimeDetector:
                 if first > 0:
                     trend_slope = (last - first) / first
 
-        # Volatility
-        atr_ratio = 0.02  # default moderate
+        # Volatility.
+        # V7 DD-2 / Wave-24 (2026-05-03): the previous default
+        # `atr_ratio = 0.02` was 10× the intraday `atr_high_thresh`
+        # (≈ 0.04 / sqrt(390) ≈ 0.002). Any feature DataFrame missing
+        # ATR columns was misclassified as `high_vol`, raising entry
+        # gates and changing Kelly's regime_scale. Now: track whether
+        # we found a valid ATR; if not, return UNKNOWN regime instead
+        # of synthesizing a high-vol value. Callers downstream already
+        # handle UNKNOWN gracefully (entries blocked / neutral signal).
+        atr_ratio: float | None = None
         for c in ["atr_14", "atr_14_ratio", "ATR_ratio"]:
             if c in features_df.columns:
                 val = features_df[c].iloc[-1]
                 if not pd.isna(val):
                     atr_ratio = float(val)
                     break  # found a valid value — stop looking
+        if atr_ratio is None:
+            # No ATR available → refuse to grade volatility regime.
+            return RegimeState(
+                primary=RegimeLabel.UNKNOWN,
+                probabilities={RegimeLabel.UNKNOWN: 1.0},
+                confidence=0.0,
+                features_used={"reason": "atr_missing"},
+                churn_rate=0.0,
+                timestamp=self._now_fn().isoformat(),
+            )
 
         # Returns volatility
         returns_vol = 0.0

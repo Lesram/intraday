@@ -94,6 +94,24 @@ services:
       options:
         max-size: "100m"
         max-file: "5"
+    # V7 AA-H-4 / Wave-24 (2026-05-03): container hardening.
+    # - cap_drop ALL + cap_add only required: minimum kernel surface.
+    # - security_opt no-new-privileges: blocks setuid escalation.
+    # - mem_limit + cpus: bound resource consumption (V7 EE-7 also).
+    # - user 10001:10001: drop the gid=0 root group membership the
+    #   audit found (uid was already 10001 but gid stayed 0).
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - DAC_OVERRIDE
+      - SETUID
+      - SETGID
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 4g
+    cpus: 2.0
+    user: "10001:10001"
     networks:
       - trading-network
 
@@ -117,6 +135,13 @@ services:
       timeout: 5s
       retries: 5
     restart: unless-stopped
+    # V7 EE-7 / Wave-24 (2026-05-03): match api log rotation so a runaway
+    # redis log doesn't fill the host disk.
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
     networks:
       - trading-network
 
@@ -156,6 +181,12 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    # V7 EE-7 / Wave-24 (2026-05-03): postgres log rotation.
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
     networks:
       - trading-network
 
