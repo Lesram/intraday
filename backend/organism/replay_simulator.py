@@ -47,6 +47,13 @@ except Exception:
     # python-dotenv may not be installed in stripped-down test envs.
     pass
 
+# V6 X-7 / Wave-22 (2026-05-03): mark replay mode so OrganismLiveEngine
+# refuses to write to the production brain dir without explicit override.
+# Defense-in-depth — replay's tempdir wrapper is supposed to handle this,
+# but if a future change constructs the engine directly without the
+# wrapper, this assertion is the safety net.
+os.environ.setdefault("ORGANISM_REPLAY_MODE", "1")
+
 
 # ═════════════════════════════════════════════════════════════════════════
 #  SIMULATED BROKER

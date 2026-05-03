@@ -117,6 +117,36 @@ async def startup(app) -> dict:
 
         except Exception as e:
             env = os.getenv("APP_ENVIRONMENT", os.getenv("ENVIRONMENT", "development")).lower()
+            # V6 V-T-5 / Wave-22 (2026-05-03): DB connection failure on
+            # startup was silent in dev mode — only logged at WARNING.
+            # In paper trading the container runs as APP_ENVIRONMENT=development
+            # by design, so this silenced an event operators absolutely need
+            # to see (no DB → no tick telemetry, no orders, no
+            # reconciliation). Wire a CRITICAL alert regardless of env;
+            # alert volume is one-shot at startup.
+            try:
+                from backend.infra.alerting import (
+                    AlertCategory, AlertSeverity, send_alert,
+                    dispatch_alert_from_thread,
+                )
+                _err = e
+                _env = env
+                dispatch_alert_from_thread(
+                    lambda: send_alert(
+                        AlertCategory.SYSTEM_ERROR,
+                        AlertSeverity.CRITICAL,
+                        "Database Init Failed at Startup",
+                        f"App environment={_env}; DB init raised: {_err}. "
+                        f"Tick telemetry, orders, and reconciliation will fail.",
+                        details={
+                            "environment": _env,
+                            "error_type": type(_err).__name__,
+                        },
+                    )
+                )
+            except Exception:
+                pass
+
             if env in ("production", "prod", "staging"):
                 raise RuntimeError(f"Database init failed in {env}: {e}") from e
             logger.warning("Database init failed, continuing (dev only)", error=str(e))

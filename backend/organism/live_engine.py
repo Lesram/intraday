@@ -520,6 +520,30 @@ class OrganismLiveEngine:
         self._scanner_candidates: list[str] = []
 
         # ── Brain persistence ────────────────────────────────────
+        # V6 X-7 / Wave-22 (2026-05-03): defense-in-depth assertion.
+        # Replay must NEVER point this engine at the production brain
+        # dir (the live trading system's persistent state). Replay's
+        # tempdir wrapper saves users today, but if a future change
+        # constructs the engine directly without the wrapper, an
+        # accidental write to organism_brain/ would corrupt production
+        # state. Refuse to construct in replay mode unless brain_dir
+        # is explicitly outside production (env opt-in via
+        # ORGANISM_REPLAY_ALLOW_PROD_BRAIN_DIR=1 for emergencies).
+        _is_replay = os.getenv("ORGANISM_REPLAY_MODE", "0") in ("1", "true")
+        if _is_replay and not os.getenv(
+            "ORGANISM_REPLAY_ALLOW_PROD_BRAIN_DIR", "0"
+        ) in ("1", "true"):
+            from pathlib import Path as _Path
+            _resolved = str(_Path(brain_dir).resolve())
+            _prod = str(_Path("organism_brain").resolve())
+            if _resolved == _prod or _resolved.endswith("/organism_brain"):
+                raise RuntimeError(
+                    "Replay mode (ORGANISM_REPLAY_MODE=1) refuses to "
+                    f"construct OrganismLiveEngine with brain_dir={_resolved} "
+                    "— this is the production brain path. Use a tempdir "
+                    "or set ORGANISM_REPLAY_ALLOW_PROD_BRAIN_DIR=1 if "
+                    "this is intentional (emergency recovery only)."
+                )
         self.brain = OrganismBrain(brain_dir=brain_dir)
 
         # ── Transfer Learning Engine (Phase 4.7) ─────────────────

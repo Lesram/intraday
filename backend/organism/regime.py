@@ -576,9 +576,22 @@ class DriftDetector:
     Uses a simple Population Stability Index (PSI) approximation.
     """
 
-    def __init__(self, *, threshold: float = 0.10, n_bins: int = 10) -> None:
+    def __init__(
+        self,
+        *,
+        threshold: float = 0.10,
+        n_bins: int = 10,
+        now_fn: Any = None,
+    ) -> None:
         self._threshold = threshold
         self._n_bins = n_bins
+        # V6 Z3 obs / Wave-22 (2026-05-03): clock injection so the drift
+        # report's metadata timestamp respects replay's clock. Default
+        # is wall clock for live use.
+        if now_fn is None:
+            self._now_fn = lambda: datetime.now(UTC)
+        else:
+            self._now_fn = now_fn
 
     def check_drift(
         self,
@@ -586,7 +599,7 @@ class DriftDetector:
         current_df: pd.DataFrame,
     ) -> DriftReport:
         """Compare feature distributions between reference and current."""
-        now = datetime.now(UTC)
+        now = self._now_fn()
         feature_scores: dict[str, float] = {}
 
         numeric_cols = set(reference_df.select_dtypes(include=[np.number]).columns) & \
