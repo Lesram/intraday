@@ -200,10 +200,14 @@ class TestConfidenceCalibration:
 
 class TestSectorGates:
     def test_get_sector_known_symbol(self):
+        # V4 Z-R-4 (2026-05-02): SPY is bucketed as "Index" (a distinct
+        # concentration class from a generic ETF) — see comment at
+        # backend/organism/sector_map.py:54. The previous "ETF"
+        # assertion was stale (pre-dating that distinction).
         from backend.organism.sector_map import get_sector
         assert get_sector("AAPL") == "Technology"
         assert get_sector("GOOGL") == "Communication Services"
-        assert get_sector("SPY") == "ETF"
+        assert get_sector("SPY") == "Index"
 
     def test_get_sector_unknown_symbol(self):
         from backend.organism.sector_map import get_sector
@@ -546,9 +550,15 @@ class TestLiquidityGate:
         df = pd.DataFrame({"volume": [1_000_000] * 20, "close": [50.0] * 20})
         assert engine._passes_liquidity_gate("AAPL", {"AAPL": df}) is True
 
-    def test_missing_data_passes(self):
+    def test_missing_data_fails_closed(self):
+        # V4 Z-R-4 (2026-05-02): the gate was changed to fail-closed
+        # on missing data (see live_engine._passes_liquidity_gate
+        # docstring: "Fails closed: missing data, missing volume
+        # column, or fewer than 20 bars all return False"). Test was
+        # asserting the old fail-open behavior — now updated to match
+        # the canonical contract. Renamed for clarity.
         engine = self._make_engine()
-        assert engine._passes_liquidity_gate("UNKNOWN", {}) is True
+        assert engine._passes_liquidity_gate("UNKNOWN", {}) is False
 
 
 # ═══════════════════════════════════════════════════════════════════

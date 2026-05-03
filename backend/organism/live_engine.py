@@ -5929,6 +5929,26 @@ class OrganismLiveEngine:
             self._pending_entry_order_ids.pop(sym, None)
         cleared_symbols = list(cancelled + failed)
 
+        # V4 Wave-16b (2026-05-02): also clear `_pending_entry` symbols
+        # that lack an order_id (submission succeeded but the result
+        # didn't carry one — e.g. an outbox-only path). Without this
+        # cleanup, the symbol stays blocked from re-entry forever after
+        # drawdown-kill: the next tick still sees it in `_pending_entry`
+        # and skips. The early-clear path at line ~1455 only handles
+        # tracked broker IDs; orphaned entries need this catch-all.
+        _orphan_entries = [
+            sym for sym in list(self._pending_entry)
+            if sym not in self._pending_entry_order_ids
+        ]
+        for sym in _orphan_entries:
+            self._pending_entry.pop(sym, None)
+        if _orphan_entries:
+            logger.info(
+                "Drawdown kill: cleared %d orphan pending entries "
+                "(no broker order_id tracked): %s",
+                len(_orphan_entries), _orphan_entries,
+            )
+
         if cancelled:
             logger.warning(
                 "Drawdown kill: cancelled %d broker entry orders: %s",

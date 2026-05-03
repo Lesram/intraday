@@ -228,16 +228,48 @@ class TestExitLevelsPersistence:
 
 
 class TestDrawdownKillCancelOrders:
-    """CORE-011: drawdown kill should clear pending entry orders."""
+    """CORE-011: drawdown kill should clear pending entry orders.
 
-    def test_pending_entries_cleared_on_drawdown_kill(self):
-        """When drawdown kill triggers, _pending_entry should be cleared."""
-        # This is a logic test — verify the code path exists
-        # by checking the source for the pattern
+    V4 Z-R-3 / Wave-16b (2026-05-02): rewritten as a behavioral
+    assertion. The previous test grep'd for the literal string
+    `self._pending_entry.clear()` in source. After H-4/H-5 the cancel
+    loop switched to per-symbol pop() calls; the grep target moved
+    even though the *behavior* is preserved. Behavioral tests don't
+    rot under refactors of this kind.
+    """
+
+    @pytest.mark.asyncio
+    async def test_pending_entries_cleared_on_drawdown_kill(self):
+        """When drawdown kill triggers, _pending_entry must be cleared."""
+        from unittest.mock import AsyncMock, MagicMock
+        from backend.organism.live_engine import OrganismLiveEngine
+
+        engine = object.__new__(OrganismLiveEngine)
+        engine._pending_entry = {"AAPL": 10, "MSFT": 12}
+        engine._pending_entry_order_ids = {
+            "AAPL": "order-aaa",
+            "MSFT": "order-bbb",
+        }
+        engine._order_service = MagicMock()
+        engine._order_service.cancel_order = AsyncMock(
+            return_value={"status": "cancelled"}
+        )
+
+        await engine._cancel_pending_entry_orders()
+
+        # Bookkeeping cleared.
+        assert engine._pending_entry == {}
+        assert engine._pending_entry_order_ids == {}
+        # Broker cancel was called for each tracked order.
+        assert engine._order_service.cancel_order.call_count == 2
+
+    def test_drawdown_kill_marker_present(self):
+        """The CORE-011 audit marker must remain in the engine source so
+        future readers know the drawdown-kill cancel path is intentional.
+        """
         import inspect
         from backend.organism.live_engine import OrganismLiveEngine
         source = inspect.getsource(OrganismLiveEngine)
-        assert "self._pending_entry.clear()" in source
         assert "CORE-011" in source
 
 
