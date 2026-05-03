@@ -74,3 +74,23 @@ class TestOrderRejectionBlock:
         assert len(client._terminal_order_ids) <= 1001, (
             f"Terminal set grew unbounded: {len(client._terminal_order_ids)}"
         )
+
+    # V4 H-1 / Wave-16d (2026-05-02): the recorder must store BOTH the
+    # broker order_id and the internal DB UUID so `is_order_terminal()`
+    # answers correctly regardless of which key the caller has.
+    def test_is_order_terminal_accepts_internal_uuid(self):
+        """Recorder stores internal DB UUID alongside broker_order_id;
+        live_engine.early-clear lookup by internal UUID must match."""
+        from backend.integrations.alpaca_stream import AlpacaStreamClient
+        client = AlpacaStreamClient.__new__(AlpacaStreamClient)
+        client._terminal_order_ids = set()
+        # Simulate _on_trade_update recording both forms post-fix.
+        broker_oid = "alp-broker-id-abc"
+        internal_uuid = "00000000-0000-0000-0000-aaaaaaaaaaaa"
+        client._terminal_order_ids.add(broker_oid)
+        client._terminal_order_ids.add(internal_uuid)
+        # Either form yields True (the H-1 unification).
+        assert client.is_order_terminal(broker_oid) is True
+        assert client.is_order_terminal(internal_uuid) is True
+        # Random unrelated id: still False.
+        assert client.is_order_terminal("nope-not-here") is False

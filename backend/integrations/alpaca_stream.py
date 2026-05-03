@@ -520,14 +520,36 @@ class AlpacaStreamClient:
                            new_status=internal_status,
                            filled_qty=filled_qty)
 
-                # REMEDIATION: Track terminal order statuses for early pending-entry cleanup
+                # REMEDIATION: Track terminal order statuses for early pending-entry cleanup.
+                # V4 H-1 / Wave-16d (2026-05-02): record BOTH the broker
+                # `order_data["id"]` AND the internal DB UUID
+                # `str(order.id)`. The previous code only stored the
+                # broker id, but live_engine._pending_entry_order_ids[sym]
+                # tracks the internal DB UUID — `is_order_terminal(uuid)`
+                # therefore never matched, and the early-clear path was
+                # dead. Symbols stayed locked for the full 30-tick
+                # cooldown after every reject. With both ids in the
+                # set, `is_order_terminal()` answers correctly regardless
+                # of which id the caller has. The cap doubles to 2000-keep-1000
+                # to preserve the previous effective horizon (~500 orders).
                 if internal_status in ("rejected", "cancelled", "expired"):
                     broker_oid = order_data.get("id", "")
                     if broker_oid:
                         self._terminal_order_ids.add(broker_oid)
-                        # Cap set size to prevent unbounded growth
-                        if len(self._terminal_order_ids) > 1000:
-                            self._terminal_order_ids = set(list(self._terminal_order_ids)[-500:])
+                    try:
+                        # `order.id` is the internal DB UUID. Store as
+                        # str so set lookups by either form match.
+                        if order is not None and getattr(order, "id", None):
+                            self._terminal_order_ids.add(str(order.id))
+                    except Exception:
+                        # Defensive: never let a tracking failure break
+                        # the WS handler.
+                        pass
+                    # Cap set size to prevent unbounded growth.
+                    if len(self._terminal_order_ids) > 2000:
+                        self._terminal_order_ids = set(
+                            list(self._terminal_order_ids)[-1000:]
+                        )
 
                 # ✅ FIX: Broadcast order update to frontend via WebSocket
                 try:
@@ -574,9 +596,19 @@ class AlpacaStreamClient:
                         error=str(e),
                         error_type=type(e).__name__)
 
-    def is_order_terminal(self, broker_order_id: str) -> bool:
-        """Check if an order reached terminal state (rejected/cancelled/expired)."""
-        return broker_order_id in self._terminal_order_ids
+    def is_order_terminal(self, order_id: str) -> bool:
+        """Check if an order reached terminal state (rejected/cancelled/expired).
+
+        Accepts EITHER the broker `order_id` (Alpaca's id) or the internal
+        DB UUID (`Order.id`). V4 H-1 / Wave-16d (2026-05-02): the
+        `_on_trade_update` recorder pushes both forms into
+        `_terminal_order_ids` so this lookup answers correctly regardless
+        of which form the caller has — `live_engine` carries the internal
+        UUID; broker / API consumers carry the broker id. Parameter
+        renamed from `broker_order_id` to `order_id` to reflect the
+        unified semantics.
+        """
+        return order_id in self._terminal_order_ids
 
     async def _gap_fill_after_reconnect(self) -> None:
         """EXEC-002: Poll recent orders for missed fills after WebSocket reconnect.
