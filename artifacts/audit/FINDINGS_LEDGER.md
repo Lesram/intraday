@@ -210,4 +210,57 @@ All closed in commit `f65f9c3`.
 | **H-2** (V3) | 16c | fadcd40 |
 | Z-R-3 (fragile string-grep) | 16ab | 4a49058 |
 | Z-R-4 (pre-existing pre-wave-8) | 16ab | 4a49058 |
+
+## v5 findings (Tracks Z2/S/T/U, 2026-05-03)
+
+**Total: 21 new findings; 0 production regressions in waves 12-16.**
+See `MASTER_AUDIT_SYNTHESIS_v5.md` for cross-track patterns and wave 17-19 sequence.
+
+### V5 Critical / High (6)
+
+| ID | Track | Title | Severity | Wave |
+|---|---|---|---|---|
+| **S-J3-1** | S | Wave-8c J-3 alert "fix" silently drops every alert (`get_running_loop()` always raises in worker threads) | Critical | 17a |
+| **U-RF4** | U | V4 R-F-4 fix never shipped; bypass moved to `live_engine.py:2064`; replay `bars_held` reads wall clock | High | 17b |
+| **S-WS-GAP-1** | S | H-1 unification regresses across WS gap; `_gap_fill_after_reconnect` doesn't re-populate `_terminal_order_ids` | High | 17c |
+| **S-NET-CB-1** | S | `CircuitBreaker` class not wired to `broker.submit_order` (only retry-with-backoff exists) | High | 18 |
+| **S-NET-T-1** | S | TradingClient / StockHistoricalDataClient constructed without explicit timeout | High | 18 |
+| **B-T-1** | T | `live_engine.py:1336` hard-codes `direction=1.0` in DB-replay reconstruction; short trades restored with corrupted return / direction | High | 18 |
+
+### V5 Medium (6)
+
+| ID | Track | Title | Wave |
+|---|---|---|---|
+| B-T-2 | T | `cumulative_pnl` round-of-sum vs CSV sum-of-rounded asymmetry; state and CSV never reconcile across restart | 17d |
+| B-T-3 | T | `int(qty)` truncates fractional shares to 0 in 8+ live_engine sites | 18 |
+| B-T-7 | T | Kelly `atr_var = max(..., 1e-6)` floor saturates near-zero-vol bars to per-position max | 18 |
+| S-OUTBOX-1 | S | N-C-3 lease (300s) shorter than worst-case sequential batch (~21 min) | 18 |
+| S-CLK-1 | S | Drawdown cooldown uses wall clock, not monotonic — NTP step shifts cooldown | 19 |
+| S-DISK-1 | S | `save_essential_state` doesn't use `.tmp_save/` swap — partial state on disk-full | 19 |
+
+### V5 Latent / Bypass (9)
+
+| ID | Track | Title | Wave |
+|---|---|---|---|
+| B-T-4 | T | `streaming_data_provider.get_bar_age()` uses raw `time.time()`, escapes `_time_fn` injection | 19 |
+| B-T-5 | T | `walk_forward.py:389` falls back to `std=1.0` for single-pnl windows (synthesizes fake Sharpe) | 19 |
+| U-1 | U | `live_engine.py:1424, 3865` — tick-duration telemetry direct `datetime.now()` | 19 |
+| U-2 | U | `live_engine.py:4593, 4714` — order idempotency-key date prefix | 19 |
+| U-3 | U | `regime.py:164, 396, 424, 436, 555, 577` — regime state timestamps every tick | 17b |
+| U-4 | U | `governance.py:142, 206` — drawdown cooldown wall-clock anchor | 17b |
+| U-5 | U | `governance.py:34` — daily change-budget reset key | 19 |
+| U-6 | U | `promotion.py:245` — stage min-duration check | 19 |
+| U-7 | U | `continuous_learner.py:327, 346` — retrain evaluation event timestamps | 19 |
+
+## V5 cross-track patterns (see synthesis)
+
+1. **Fix that didn't actually fix** (S-J3-1, U-RF4, S-WS-GAP-1) — single-site fixes need a same-class sweep at write-time
+2. **Injection coverage is partial** (Track U: 1 of 5+ components patched; B-T-4 corroborates) — auxiliary components have their own clocks
+3. **Persistence boundary asymmetry** (B-T-2; same shape as V4 R-F-1)
+4. **Floor / fallback masks edge case** (B-T-5, B-T-7) — synthesizes a number rather than refusing
+5. **Dormant trap** (B-T-1, B-T-3) — code looks correct because the path is currently disabled
+
+## Status legend update history
+
+- 2026-05-03 00:30 PT: V5 audit complete. 4 tracks, 21 findings (0 production regressions in waves 12-16). Wave 17-19 sequence proposed in `MASTER_AUDIT_SYNTHESIS_v5.md`. Container healthy on rc-1.5-curated @ d43dbec.
 | P-P0-6 (walk-forward Sharpe regression) | partially closed by R-F-7 | 75cb998 |
