@@ -180,6 +180,36 @@ async def get_readiness_status(metrics_registry=None) -> ReadinessResponse:
         except Exception:
             pass  # Don't fail health checks on metrics errors
 
+    # V10 YY-5 / Wave-52 (2026-05-03): include brain + tick-loop checks.
+    # /readyz previously returned 200 even when brain was unloaded or
+    # the live engine tick loop was dead.  Now: probe both via
+    # app.state references, fail-soft if either subsystem is not yet
+    # initialized (early startup) but fail-hard once we know they
+    # should be running.
+    try:
+        from backend.api import lifespan as _lifespan_mod
+        _engine = getattr(_lifespan_mod, "_LIVE_ENGINE_REF", None)
+        if _engine is not None:
+            brain = getattr(_engine, "brain", None)
+            brain_loaded = bool(getattr(brain, "_loaded", False)) if brain else False
+            checks["brain_loaded"] = brain_loaded
+            if not brain_loaded:
+                all_healthy = False
+                problems["brain"] = "Brain not loaded"
+            # Tick liveness: last successful tick within 5x scheduler interval.
+            import time as _time
+            _last_tick = getattr(_engine, "_last_tick_completed_ts", None)
+            if _last_tick is not None:
+                age = _time.time() - _last_tick
+                if age > 60:  # 5x 10s scheduler
+                    all_healthy = False
+                    problems["tick_loop"] = f"Last tick {age:.0f}s ago (>60s)"
+                checks["tick_recent"] = age <= 60
+        # If _engine is None we're still in startup — do not fail-hard.
+    except Exception as _ready_err:
+        # Don't fail health checks on diagnostic errors.
+        problems["readiness_diag"] = f"check error: {_ready_err}"
+
     # Create response
     result = ReadinessResponse(
         status="ready" if all_healthy else "not ready",

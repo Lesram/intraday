@@ -268,6 +268,33 @@ class GovernanceController:
                     "cooldown_s": self._effective_cooldown_s,
                 },
             )
+            # V10 YY-1 / Wave-52 (2026-05-03): wire operator alert.  The
+            # logger.critical above had no accompanying alert dispatch;
+            # operators relying on Slack/PagerDuty for halt events would
+            # not be paged.  Same V5 S-J3-1 / wave-41 PP-3 pattern in a
+            # NEW site that prior fixes didn't reach.
+            try:
+                from backend.infra.alerting import (
+                    AlertCategory, AlertSeverity, send_alert,
+                    dispatch_alert_from_thread,
+                )
+                _dd = drawdown_pct
+                _lim = self._drawdown_limit
+                _cd = self._effective_cooldown_s
+                dispatch_alert_from_thread(
+                    lambda: send_alert(
+                        AlertCategory.RISK_VIOLATION,
+                        AlertSeverity.CRITICAL,
+                        "Drawdown Kill Switch Triggered",
+                        f"Drawdown {_dd*100:.2f}% exceeds limit "
+                        f"{_lim*100:.2f}%. Cooldown {_cd}s.",
+                    )
+                )
+            except Exception as _alert_err:
+                logger.warning(
+                    "YY-1: drawdown-kill alert dispatch failed: %s",
+                    _alert_err,
+                )
 
     def set_policy_version(self, version: str, config: dict[str, Any]) -> None:
         self._policy_version = version

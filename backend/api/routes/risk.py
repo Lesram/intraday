@@ -289,6 +289,9 @@ async def trigger_emergency_stop(
             user_id=user_id, request=request, triggered_by=user_id
         )
 
+        # V10 YY-1 / Wave-52 (2026-05-03): the service-layer
+        # trigger_emergency_stop() already dispatched the operator alert;
+        # this is the post-success route-level confirmation log.
         logger.critical(
             f"EMERGENCY STOP triggered: user={user_id}, "
             f"strategies_stopped={emergency_stop.strategies_stopped}, "

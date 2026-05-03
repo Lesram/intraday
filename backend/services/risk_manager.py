@@ -677,6 +677,31 @@ class RiskManager:
         logger.critical(
             f"EMERGENCY STOP triggered by {triggered_by} for user {user_id}: {request.reason}"
         )
+        # V10 YY-1 / Wave-52 (2026-05-03): wire operator alert.  This
+        # logger.critical at the entry of emergency_stop() previously
+        # had no Slack/PagerDuty dispatch.
+        try:
+            from backend.infra.alerting import (
+                AlertCategory, AlertSeverity, send_alert,
+                dispatch_alert_from_thread,
+            )
+            _reason = request.reason
+            _by = triggered_by
+            _uid = user_id
+            dispatch_alert_from_thread(
+                lambda: send_alert(
+                    AlertCategory.SYSTEM_ERROR,
+                    AlertSeverity.CRITICAL,
+                    "Emergency Stop Triggered",
+                    f"User {_uid} triggered emergency stop "
+                    f"by {_by}.  Reason: {_reason}",
+                )
+            )
+        except Exception as _alert_err:
+            logger.warning(
+                "YY-1: emergency-stop-triggered alert dispatch failed: %s",
+                _alert_err,
+            )
 
         strategies_stopped = 0
         orders_cancelled = 0

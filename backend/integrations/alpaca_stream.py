@@ -640,6 +640,39 @@ class AlpacaStreamClient:
                                 _filled_now_f, _prev_filled_qty,
                             )
                             await session.commit()
+                            # V10 YY-2 / Wave-52 (2026-05-03): emit
+                            # ORDER_FILLED audit row.  Previously the
+                            # audit_logs table only had user.login rows
+                            # — every order/position lifecycle event was
+                            # silent despite the helper being live.  We
+                            # write directly through the live session
+                            # already in scope (no sessionmaker dance).
+                            try:
+                                from backend.services.audit_service import (
+                                    AuditAction, AuditEntity,
+                                    ComplianceAuditService,
+                                )
+                                _audit = ComplianceAuditService(session)
+                                await _audit.log(
+                                    action=AuditAction.ORDER_FILLED,
+                                    entity=AuditEntity.ORDER,
+                                    entity_id=str(order.id),
+                                    actor="system:alpaca_stream",
+                                    payload={
+                                        "symbol": order.symbol,
+                                        "side": order.side,
+                                        "qty": float(_incremental),
+                                        "price": float(_price_dec),
+                                        "status": internal_status,
+                                        "broker_order_id": broker_order_id,
+                                    },
+                                )
+                                await session.commit()
+                            except Exception as _audit_err:
+                                logger.debug(
+                                    "YY-2: ORDER_FILLED audit dispatch "
+                                    "skipped: %s", _audit_err,
+                                )
                     except Exception as _lot_err:
                         # Don't fail order processing on lot-tracking error.
                         logger.warning(
