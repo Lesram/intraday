@@ -70,8 +70,13 @@ def _quote_csv(values: tuple[str, ...]) -> str:
 
 
 def upgrade():
-    # Use IF EXISTS so a re-apply is idempotent.
+    # V11 AA5 hotfix prep: Alembic auto-prefixes constraint names, so
+    # the deployed name is actually `ck_orders_ck_orders_status` (the
+    # V10 XX-2 finding noted this double-prefix bug).  Drop BOTH the
+    # bare and double-prefix forms before recreating cleanly so the
+    # migration can be applied to the live DB on first run.
     op.execute("ALTER TABLE orders DROP CONSTRAINT IF EXISTS ck_orders_status")
+    op.execute("ALTER TABLE orders DROP CONSTRAINT IF EXISTS ck_orders_ck_orders_status")
     op.create_check_constraint(
         "ck_orders_status",
         "orders",
