@@ -282,6 +282,43 @@ class OrganismBrain:
         if not backups_dir.is_dir():
             logger.warning("PP-2: no backups/ dir at %s", backups_dir)
             return False
+
+        # V10 PP2-2 / Wave-56 (2026-05-03): copy corrupt HEAD to a
+        # sticky forensic snapshot before the next save() overwrites
+        # it.  Operator's only forensic record was previously a single
+        # logger.warning line.  Keep at most 5 corrupt-head snapshots
+        # to avoid disk bloat.
+        try:
+            from datetime import datetime as _dt
+            forensic_ts = _dt.now().strftime("%Y%m%d_%H%M%S_%f")
+            forensic_dir = self.brain_dir / f"corrupt_head_{forensic_ts}"
+            forensic_dir.mkdir(parents=True, exist_ok=True)
+            for f in self.brain_dir.iterdir():
+                if f.is_file() and f.name != LOCK_FILE:
+                    try:
+                        shutil.copy2(str(f), str(forensic_dir / f.name))
+                    except Exception:
+                        pass
+            # Prune old corrupt-head snapshots — keep at most 5.
+            corrupts = sorted(
+                [d for d in self.brain_dir.iterdir()
+                 if d.is_dir() and d.name.startswith("corrupt_head_")],
+                key=lambda d: d.stat().st_mtime,
+            )
+            while len(corrupts) > 5:
+                old = corrupts.pop(0)
+                shutil.rmtree(old, ignore_errors=True)
+            logger.critical(
+                "PP2-2: corrupt-HEAD captured to %s (operator should "
+                "investigate; next save() would have overwritten)",
+                forensic_dir.name,
+            )
+        except Exception as _forensic_err:
+            logger.warning(
+                "PP2-2: forensic snapshot failed (non-fatal): %s",
+                _forensic_err,
+            )
+
         candidates = sorted(
             (p for p in backups_dir.iterdir() if p.is_dir()),
             key=lambda p: p.stat().st_mtime,
@@ -354,6 +391,20 @@ class OrganismBrain:
         """
         self.brain_dir.mkdir(parents=True, exist_ok=True)
         self.backup_dir.mkdir(parents=True, exist_ok=True)
+
+        # V10 PP2-3 / Wave-56 (2026-05-03): sweep orphan .tmp files left
+        # by a previous SIGKILL'd save.  _write_json / _write_csv_atomic
+        # only unlink on caught exception; SIGKILL leaves them.
+        # Cosmetic but accumulates.
+        try:
+            for f in self.brain_dir.iterdir():
+                if f.is_file() and f.name.endswith(".tmp"):
+                    try:
+                        f.unlink()
+                    except Exception:
+                        pass
+        except Exception:
+            pass
 
         lock = _BrainLock(self.brain_dir / LOCK_FILE)
         try:
@@ -2018,8 +2069,21 @@ class OrganismBrain:
     # ═════════════════════════════════════════════════════════════
 
     def _create_backup(self) -> None:
-        """Backup current brain state before overwrite."""
-        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+        """Backup current brain state before overwrite.
+
+        V10 WW-2 / Wave-56 (2026-05-03): timestamp uses microsecond
+        resolution so 5 backup attempts within one second don't
+        collapse onto a single directory via mkdir(exist_ok=True).
+        Hazard scenario: startup retry storm or rapid force_save_brain
+        admin clicks would silently lose all but the last backup.
+
+        V10 PP2-2 / Wave-56: if a corrupt-HEAD restore was just done
+        (see _restore_from_latest_backup), the next periodic save
+        would overwrite the corrupt manifest.json with a fresh one,
+        losing forensic record.  Capture corrupt HEAD first if a
+        marker file says so.
+        """
+        ts = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
         gen = self._manifest.get("generation", 0)
         backup_name = f"brain_gen{gen}_{ts}"
         backup_path = self.backup_dir / backup_name

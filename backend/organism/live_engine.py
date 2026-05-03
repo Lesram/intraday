@@ -6382,7 +6382,14 @@ class OrganismLiveEngine:
             }
 
     def _save_brain(self) -> None:
-        """Save full brain state to disk (with walk-forward gate)."""
+        """Save full brain state to disk (with walk-forward gate).
+
+        V10 WW-3 / Wave-56 (2026-05-03): track ticks-since-last-full-save
+        as a Prometheus-friendly attribute.  When the walk-forward gate
+        blocks full saves for extended windows, evolved_params on disk
+        drifts behind in-memory state.  Operators can scrape
+        `_ticks_since_full_save` to detect long block windows.
+        """
         try:
             # F4 — forensic guard: detect unexpected object replacement
             if (

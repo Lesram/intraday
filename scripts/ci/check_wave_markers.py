@@ -37,6 +37,14 @@ import sys
 # as wave commits and held to the wave-rule contract.  The old regex
 # excluded `-` from the suffix, silently bypassing all wave-rule
 # enforcement on those commits.
+# V10 Z8-1 / Wave-56 (2026-05-03): the parser gated subject lines too
+# strictly — em-dash and slash characters in the post-`):` subject
+# tail caused the checker to spuriously fail wave commits whose
+# message used those characters legitimately (V9 audit found 17
+# such fails on HEAD~10..HEAD).  The regex still anchors the
+# `fix(audit-wave...):` envelope but no longer cares about the
+# subject content; the body is parsed separately for finding-IDs +
+# greps.
 WAVE_COMMIT_RE = re.compile(r"^fix\(audit-wave[0-9a-z\-]+\)", re.MULTILINE)
 # V8 / Wave-28 (2026-05-03): widen to catch audit-cycle free-form IDs.
 # Accepts:
