@@ -1,0 +1,30 @@
+{
+  "version": "v9",
+  "branch": "rc-1.5-curated",
+  "head_at_v9_start": "db1a3fc",
+  "phase": "phase_2_design",
+  "phases": {
+    "phase_1_verify_v8": {
+      "status": "complete",
+      "tests_pass": "147/147",
+      "fixed_test_alignment": "test_pending_exit_prevents_re_exit (commit db1a3fc)"
+    },
+    "phase_2_design_v9": {
+      "status": "in_progress"
+    },
+    "phase_3_audit": {"status": "pending"},
+    "phase_4_synthesis": {"status": "pending"},
+    "phase_5_implementation": {"status": "pending"}
+  },
+  "v9_tracks": [
+    {"id": "Z7",  "name": "closure regression on waves 32-40 + db1a3fc"},
+    {"id": "W4",  "name": "verify wave-32 W3-G1/G2/G3 fixes actually close the bypasses"},
+    {"id": "AA3", "name": "security Phase 2 — JWT lifecycle, session, CSRF, smuggling, IDOR"},
+    {"id": "BB3", "name": "data integrity Phase 2 — schema invariants, FK cascades, txn boundaries"},
+    {"id": "DD3", "name": "strategy logic Phase 3 — position lifecycle, partial-fill state machine, pyramid vs new-entry"},
+    {"id": "PP",  "name": "NEW: chaos / fault injection (per V8 OO recommendation)"},
+    {"id": "UU",  "name": "NEW: error handling consistency — bare except, swallow, fail-open"},
+    {"id": "TT",  "name": "NEW: performance / latency — tick p99, query plans, memory"}
+  ],
+  "yield_estimate": "10-30 findings (V9 cycle should converge as cycle matures)"
+}
