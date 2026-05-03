@@ -526,6 +526,18 @@ class AlpacaStreamClient:
                                  client_order_id=client_order_id)
                     return
 
+                # V9 DD3-2 / Wave-43 (2026-05-03): capture previous cumulative
+                # filled_qty BEFORE updating, so the LotTracker block below
+                # can compute the INCREMENTAL fill (filled_qty is cumulative
+                # in Alpaca's semantics; calling create_lot with the cumulative
+                # value on every partially_filled event creates duplicate
+                # position_lots rows).
+                _prev_filled_qty_raw = getattr(order, "filled_qty", None) or 0
+                try:
+                    _prev_filled_qty = float(_prev_filled_qty_raw)
+                except (TypeError, ValueError):
+                    _prev_filled_qty = 0.0
+
                 # Update order status and fill information
                 from decimal import Decimal
                 await orders_repo.attach_broker_result(
@@ -565,7 +577,16 @@ class AlpacaStreamClient:
                             if hasattr(order, "attributes") and order.attributes
                             else None
                         ) or getattr(order, "user_id", None) or "system"
-                        _qty_dec = Decimal(str(filled_qty))
+                        # V9 DD3-2 / Wave-43 (2026-05-03): use INCREMENTAL
+                        # qty (filled_qty is cumulative in Alpaca's
+                        # semantics).  Previously each partially_filled
+                        # event called create_lot with the cumulative
+                        # value, producing duplicate rows on multi-event
+                        # fills.  If the increment is <= 0 (duplicate
+                        # event or stale data), skip the lot op entirely.
+                        _filled_now_f = float(filled_qty)
+                        _incremental = _filled_now_f - _prev_filled_qty
+                        _qty_dec = Decimal(str(_incremental))
                         _price_dec = Decimal(str(avg_fill_price))
                         _open_dt = (
                             getattr(order, "filled_at", None)
@@ -573,7 +594,17 @@ class AlpacaStreamClient:
                             or datetime.now(UTC)
                         )
 
-                        if order.side == "buy":
+                        if _incremental <= 0:
+                            # V9 DD3-2: duplicate or stale event; skip
+                            # the lot op but continue with the rest of
+                            # _process_trade_update (terminal-id tracking).
+                            logger.debug(
+                                "DD3-2: skipping LotTracker op for order=%s "
+                                "(incremental_qty=%.4f cum=%.4f prev=%.4f)",
+                                order.id, _incremental, _filled_now_f,
+                                _prev_filled_qty,
+                            )
+                        elif order.side == "buy":
                             await _lot_tracker.create_lot(
                                 user_id=_user_id,
                                 symbol=order.symbol,
@@ -583,10 +614,13 @@ class AlpacaStreamClient:
                                 open_date=_open_dt,
                             )
                             logger.info(
-                                "BB-8: created position lot for buy fill: "
-                                "%s %s @ $%s order=%s",
-                                _qty_dec, order.symbol, _price_dec, order.id,
+                                "BB-8 / DD3-2: created position lot for buy "
+                                "fill: %s %s @ $%s order=%s "
+                                "(incremental; cum=%s prev=%s)",
+                                _qty_dec, order.symbol, _price_dec,
+                                order.id, _filled_now_f, _prev_filled_qty,
                             )
+                            await session.commit()
                         elif order.side == "sell":
                             realized = await _lot_tracker.close_lots_fifo(
                                 user_id=_user_id,
@@ -598,12 +632,14 @@ class AlpacaStreamClient:
                             )
                             _total_pnl = sum(t.realized_pnl for t in realized)
                             logger.info(
-                                "BB-8: closed %d lot(s) for sell fill: "
-                                "%s %s @ $%s pnl=$%s",
+                                "BB-8 / DD3-2: closed %d lot(s) for sell "
+                                "fill: %s %s @ $%s pnl=$%s "
+                                "(incremental; cum=%s prev=%s)",
                                 len(realized), _qty_dec, order.symbol,
                                 _price_dec, _total_pnl,
+                                _filled_now_f, _prev_filled_qty,
                             )
-                        await session.commit()
+                            await session.commit()
                     except Exception as _lot_err:
                         # Don't fail order processing on lot-tracking error.
                         logger.warning(

@@ -2234,6 +2234,27 @@ class OrganismLiveEngine:
                         sym, pos_data.get("qty", "?"),
                     )
                     continue
+                # V9 DD3-3 / Wave-43 (2026-05-03): consult _exit_cooldown
+                # on the exit path. The 3-tick `_pending_exit` TTL can
+                # expire BEFORE a slow broker fill arrives; without this
+                # gate, the next tick re-fires the exit for full broker
+                # qty -> oversell race. `_exit_cooldown` has a longer TTL
+                # (typically 6 ticks) so it catches the gap. We still
+                # let the V8 DD2-1 max-loss safety check below run since
+                # that path is a true breach.
+                if (
+                    sym in self._exit_cooldown
+                    and sym not in self._pending_exit
+                    and (self._tick_count - self._exit_cooldown[sym])
+                        < self._EXIT_COOLDOWN_TICKS
+                ):
+                    logger.debug(
+                        "DD3-3: skipping routine exit for %s — exit_cooldown "
+                        "active (tick %d, set %d)",
+                        sym, self._tick_count, self._exit_cooldown[sym],
+                    )
+                    continue
+
                 # V8 / DD2-1 / Wave-32 (2026-05-03): hard safety net even when
                 # a pending exit is in flight.  The 3-tick `_pending_exit`
                 # cooldown was previously skipping ALL exit checks including
