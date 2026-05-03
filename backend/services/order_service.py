@@ -745,7 +745,25 @@ class OrderService:
             reduce_only: If True, bypass PnL circuit breaker (exit/risk-reducing orders)
 
         Returns:
-            Order submission result
+            Order submission result. Shape on success::
+
+                {
+                    "order_id":         str,  # internal DB UUID
+                    "symbol":           str,
+                    "side":             "buy" | "sell",
+                    "qty":              str,
+                    "status":           "submitted" | "rejected" | "deferred",
+                    "idempotency_key":  str,
+                }
+
+            V4 H-2 / Wave-16c (2026-05-02): the result deliberately does
+            NOT carry `filled_qty` or `avg_fill_price`. Broker submission
+            is asynchronous: this method enqueues to the outbox and
+            returns; the actual fill arrives later via the WebSocket
+            (alpaca_stream._on_trade_update) and is written to the
+            `orders.filled_qty` / `orders.avg_fill_price` columns. Read
+            those from the DB if you need fill data, or wait for the
+            tick-loop reconciliation to surface them.
 
         Raises:
             RuntimeError: If circuit breaker is tripped (and not reduce_only)

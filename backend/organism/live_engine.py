@@ -3544,13 +3544,19 @@ class OrganismLiveEngine:
                             reason="organism_entry",
                         )
 
-                        # Use filled qty from broker response when available
-                        # (partial fills may occur)
+                        # V4 H-2 / Wave-16c (2026-05-02): the sync
+                        # `submit_symbol_order` response intentionally
+                        # carries no fill data — the broker submission
+                        # is async (sync response → outbox → broker →
+                        # WS `_on_trade_update` → DB row). The previous
+                        # `order_result.get("filled_qty")` read was dead
+                        # code: `filled_qty` is never present in the
+                        # sync result. Partial fills are correctly
+                        # handled in `_reconcile_fills` from the DB
+                        # `orders.filled_qty` column. Use `initial_shares`
+                        # as the optimistic fill estimate; reconciliation
+                        # will adjust on the next tick.
                         filled_shares = initial_shares
-                        if isinstance(order_result, dict):
-                            filled_qty = order_result.get("filled_qty")
-                            if filled_qty:
-                                filled_shares = max(1, int(float(filled_qty)))
 
                         result.orders_submitted += 1
                         fresh_open.add(sz.symbol)  # Track to enforce MAX_OPEN_POSITIONS within tick
@@ -4729,11 +4735,14 @@ class OrganismLiveEngine:
             self._total_exits_submitted += 1
         except Exception:
             pass
-        # Capture fill price for trade attribution
-        if isinstance(result, dict):
-            fp = result.get("avg_fill_price")
-            if fp and float(fp) > 0:
-                self._last_exit_fill_price[symbol] = float(fp)
+        # V4 H-2 / Wave-16c (2026-05-02): the sync `submit_symbol_order`
+        # response carries no `avg_fill_price` (the broker submission
+        # is async — sync response → outbox → broker → WS
+        # `_on_trade_update` → DB `orders.avg_fill_price` column). The
+        # previous read was dead code; `_reconcile_fills` already does
+        # the right thing via `_lookup_exit_fill_from_db()`. Keep the
+        # `_last_exit_fill_price` map populated only by the actual
+        # fill-arrival path (handled at reconciliation time).
         return result
 
     # ═════════════════════════════════════════════════════════════
