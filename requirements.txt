@@ -74,6 +74,13 @@ pytest-asyncio>=0.21.0
 # (tests/test_numerical_properties_v6.py) don't silently skip in CI
 # when only requirements.txt is installed.
 hypothesis>=6.70.0
+# V7 CC / Wave-26 (2026-05-03): pin coverage + xdist so CI runs
+# nightly coverage-ratchet on live_engine.py (highest-risk
+# under-covered surface per CC track audit) and parallelizes the
+# 8,777-test suite (~10min serial → ~2min parallel).
+pytest-cov>=5.0.0
+pytest-xdist>=3.5.0
+coverage>=7.6.0
 
 # Utilities
 python-dateutil>=2.8.0

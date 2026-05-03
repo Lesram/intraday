@@ -15,6 +15,8 @@ jobs:
       changed_docs_arch: ${{ steps.filter.outputs.docs_arch }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # V7 W2 / Wave-26: full history for wave-marker checker
       - uses: dorny/paths-filter@v3
         id: filter
         with:
@@ -31,6 +33,21 @@ jobs:
               - 'tests/**'
             docs_arch:
               - 'docs/architecture/**'
+
+      # V7 W2 / Wave-26 (2026-05-03): enforce V6 W's audit-wave PR
+      # checklist on every wave commit. Validates finding-ID citation,
+      # same-class grep command presence, and asserted-zero claim.
+      # Currently runs as `continue-on-error: true` (warn-mode) until
+      # wave authors have a chance to adopt; flip to required after a
+      # one-week transition period.
+      - name: Wave-PR marker enforcement (V6 W / V7 W2)
+        if: github.event.pull_request.head.ref != github.event.pull_request.base.ref
+        continue-on-error: true
+        run: |
+          set -e
+          BASE_SHA="${{ github.event.pull_request.base.sha }}"
+          HEAD_SHA="${{ github.event.pull_request.head.sha }}"
+          python3 scripts/ci/check_wave_markers.py --base "$BASE_SHA" --head "$HEAD_SHA"
 
   organism-tests:
     needs: detect
