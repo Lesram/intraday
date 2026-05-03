@@ -1971,6 +1971,32 @@ class OrganismLiveEngine:
                             ))
                         except Exception:
                             pass
+
+                        # V8 BB-10 / Wave-30 (2026-05-03): compliance audit row.
+                        try:
+                            from backend.services.audit_service import (
+                                AuditAction, AuditEntity, fire_audit_log,
+                            )
+                            import asyncio as _aio_audit
+                            _aio_audit.create_task(fire_audit_log(
+                                self._sessionmaker,
+                                action=AuditAction.RISK_LIMIT_BREACH,
+                                entity=AuditEntity.RISK,
+                                entity_id="daily_max_loss_halt",
+                                actor="system:live_engine",
+                                payload={
+                                    "daily_pnl": float(daily_pnl),
+                                    "limit": float(MAX_DAILY_LOSS),
+                                    "starting_equity": float(self._daily_starting_equity),
+                                    "current_equity": float(equity),
+                                    "tick": self._tick_count,
+                                },
+                            ))
+                        except Exception as _audit_err:
+                            logger.warning(
+                                "BB-10: daily-loss audit log dispatch failed: %s",
+                                _audit_err,
+                            )
             else:
                 self._consecutive_equity_zero += 1
                 if self._consecutive_equity_zero >= self._EQUITY_ZERO_THRESHOLD:
@@ -2041,6 +2067,38 @@ class OrganismLiveEngine:
                         logger.error(
                             "Drawdown-kill alert dispatch failed: %s",
                             _alert_err,
+                        )
+
+                    # V8 BB-10 / Wave-30 (2026-05-03): write a
+                    # compliance audit row for the drawdown-kill event.
+                    # V7 Track BB found audit_logs empty despite many
+                    # high-blast events fired alerts but never wrote
+                    # compliance rows. This is the canonical drawdown
+                    # event site.
+                    try:
+                        from backend.services.audit_service import (
+                            AuditAction, AuditEntity, fire_audit_log,
+                        )
+                        import asyncio as _aio_audit
+                        _aio_audit.create_task(fire_audit_log(
+                            self._sessionmaker,
+                            action=AuditAction.RISK_LIMIT_BREACH,
+                            entity=AuditEntity.RISK,
+                            entity_id="drawdown_kill",
+                            actor="system:live_engine",
+                            payload={
+                                "drawdown_pct": float(drawdown),
+                                "limit_pct": float(self.governance._drawdown_limit),
+                                "peak_equity": float(self._peak_equity),
+                                "current_equity": float(equity),
+                                "open_positions": len(current_positions),
+                                "tick": self._tick_count,
+                            },
+                        ))
+                    except Exception as _audit_err:
+                        logger.warning(
+                            "BB-10: drawdown-kill audit log dispatch failed: %s",
+                            _audit_err,
                         )
                     # CORE-011 fix: cancel pending entry orders at the broker
                     # so they don't fill after the drawdown kill triggers.

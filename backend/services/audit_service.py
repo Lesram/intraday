@@ -617,3 +617,97 @@ async def get_audit_service(db_session: AsyncSession) -> ComplianceAuditService:
     (COMP-001 fix).
     """
     return ComplianceAuditService(db_session)
+
+
+# V8 BB-10 / Wave-30 (2026-05-03): fire-and-forget audit helper.
+#
+# V7 Track BB found that the `audit_logs` table was empty despite
+# 1,369 orders processed — `ComplianceAuditService.log()` was only
+# invoked by the read-only viewer route. Drawdown-kill, governance
+# halt, daily-loss halt, login/logout, config changes — none wrote
+# audit rows. The compliance trail did not exist.
+#
+# Wiring `log()` at every event site requires a DB session at call
+# time. Many event sites (live_engine.trigger_drawdown_kill,
+# governance.halt_trading) don't currently have a session handle —
+# they need one provided.
+#
+# This helper is the fire-and-forget interface: pass a sessionmaker
+# (engine has one), the audit fields, and let the helper own session
+# lifecycle. Exceptions are logged-and-swallowed so audit-log failure
+# never breaks the originating event.
+
+async def fire_audit_log(
+    sessionmaker: Any,
+    *,
+    action: AuditAction,
+    entity: AuditEntity,
+    entity_id: str,
+    actor: str,
+    payload: dict[str, Any] | None = None,
+) -> bool:
+    """Open a fresh session, write one audit row, close. Returns True
+    on success, False on any failure (logged-and-swallowed).
+    """
+    if sessionmaker is None:
+        logger.warning(
+            "fire_audit_log: no sessionmaker provided; audit row dropped "
+            "(action=%s entity=%s entity_id=%s)",
+            action.value, entity.value, entity_id,
+        )
+        return False
+    try:
+        async with sessionmaker() as session:
+            svc = ComplianceAuditService(session)
+            await svc.log(
+                action=action,
+                entity=entity,
+                entity_id=entity_id,
+                actor=actor,
+                payload=payload or {},
+            )
+            await session.commit()
+        return True
+    except Exception as e:
+        # Best-effort: never let audit failure propagate to the caller.
+        logger.warning(
+            "fire_audit_log failed: action=%s entity=%s entity_id=%s err=%s",
+            action.value, entity.value, entity_id, e,
+        )
+        return False
+
+
+def fire_audit_log_threadsafe(
+    sessionmaker: Any,
+    *,
+    action: AuditAction,
+    entity: AuditEntity,
+    entity_id: str,
+    actor: str,
+    payload: dict[str, Any] | None = None,
+) -> bool:
+    """Cross-thread variant of `fire_audit_log` for sync paths reached
+    via `asyncio.to_thread` (e.g. drawdown-kill, brain-save guards).
+
+    Uses the wave-17a dispatch_alert_from_thread pattern: schedules
+    the coroutine on the captured main loop. Returns True if scheduled,
+    False otherwise.
+    """
+    try:
+        import asyncio
+        from backend.infra.alerting import (
+            dispatch_alert_from_thread,
+        )
+        return dispatch_alert_from_thread(
+            lambda: fire_audit_log(
+                sessionmaker,
+                action=action,
+                entity=entity,
+                entity_id=entity_id,
+                actor=actor,
+                payload=payload,
+            )
+        )
+    except Exception as e:
+        logger.warning("fire_audit_log_threadsafe failed: %s", e)
+        return False

@@ -267,6 +267,32 @@ async def login(
         user = await user_repo.authenticate_user(username, password)
 
         if not user:
+            # V8 AA-H-3 / Wave-30 (2026-05-03): audit failed login.
+            # V7 BB BUG-10 + AA-H-3 found that login attempts were
+            # never written to audit_logs despite the enum existing.
+            # Best-effort write — never block login on audit failure.
+            try:
+                from backend.services.audit_service import (
+                    AuditAction, AuditEntity, ComplianceAuditService,
+                )
+                _audit = ComplianceAuditService(db)
+                await _audit.log(
+                    action=AuditAction.USER_LOGIN_FAILED,
+                    entity=AuditEntity.USER,
+                    entity_id=username,
+                    actor=f"user:{username}",
+                    payload={
+                        "reason": "invalid_credentials_or_locked",
+                    },
+                )
+                await db.commit()
+            except Exception as _audit_err:
+                logger.warning("AA-H-3: login_failed audit failed: %s", _audit_err)
+                try:
+                    await db.rollback()
+                except Exception:
+                    pass
+
             # Invalid credentials or account locked
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -286,6 +312,30 @@ async def login(
             sub=user.username,
             roles=user.roles
         )
+
+        # V8 AA-H-3 / Wave-30 (2026-05-03): audit successful login.
+        try:
+            from backend.services.audit_service import (
+                AuditAction, AuditEntity, ComplianceAuditService,
+            )
+            _audit = ComplianceAuditService(db)
+            await _audit.log(
+                action=AuditAction.USER_LOGIN,
+                entity=AuditEntity.USER,
+                entity_id=user.username,
+                actor=f"user:{user.username}",
+                payload={
+                    "roles": list(user.roles),
+                    "expires_in": 3600,
+                },
+            )
+            await db.commit()
+        except Exception as _audit_err:
+            logger.warning("AA-H-3: login audit failed: %s", _audit_err)
+            try:
+                await db.rollback()
+            except Exception:
+                pass
 
         return LoginResponse(
             access_token=token,

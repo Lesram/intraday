@@ -542,6 +542,80 @@ class AlpacaStreamClient:
                            new_status=internal_status,
                            filled_qty=filled_qty)
 
+                # V8 BB-8 / Wave-30 (2026-05-03): wire LotTracker on the
+                # live stream path. V7 Track BB found that
+                # `LotTracker.create_lot` was only called from
+                # `alpaca_stream_production.py` (not loaded in lifespan);
+                # `position_lots` and `realized_trades` were 0 rows
+                # despite 1,369 orders. Mirror the production-stream
+                # logic here so cost basis and realized P&L tables
+                # populate from the live path.
+                if (
+                    internal_status in ("filled", "partially_filled")
+                    and filled_qty
+                    and avg_fill_price
+                    and getattr(order, "symbol", None)
+                    and getattr(order, "side", None)
+                ):
+                    try:
+                        from backend.services.lot_tracker_service import LotTracker
+                        _lot_tracker = LotTracker(session)
+                        _user_id = (
+                            (order.attributes or {}).get("user_id")
+                            if hasattr(order, "attributes") and order.attributes
+                            else None
+                        ) or getattr(order, "user_id", None) or "system"
+                        _qty_dec = Decimal(str(filled_qty))
+                        _price_dec = Decimal(str(avg_fill_price))
+                        _open_dt = (
+                            getattr(order, "filled_at", None)
+                            or getattr(order, "submitted_at", None)
+                            or datetime.now(UTC)
+                        )
+
+                        if order.side == "buy":
+                            await _lot_tracker.create_lot(
+                                user_id=_user_id,
+                                symbol=order.symbol,
+                                qty=_qty_dec,
+                                cost_basis=_price_dec,
+                                order_id=order.id,
+                                open_date=_open_dt,
+                            )
+                            logger.info(
+                                "BB-8: created position lot for buy fill: "
+                                "%s %s @ $%s order=%s",
+                                _qty_dec, order.symbol, _price_dec, order.id,
+                            )
+                        elif order.side == "sell":
+                            realized = await _lot_tracker.close_lots_fifo(
+                                user_id=_user_id,
+                                symbol=order.symbol,
+                                qty_to_close=_qty_dec,
+                                close_price=_price_dec,
+                                close_order_id=order.id,
+                                close_date=_open_dt,
+                            )
+                            _total_pnl = sum(t.realized_pnl for t in realized)
+                            logger.info(
+                                "BB-8: closed %d lot(s) for sell fill: "
+                                "%s %s @ $%s pnl=$%s",
+                                len(realized), _qty_dec, order.symbol,
+                                _price_dec, _total_pnl,
+                            )
+                        await session.commit()
+                    except Exception as _lot_err:
+                        # Don't fail order processing on lot-tracking error.
+                        logger.warning(
+                            "BB-8: lot-tracking failed for order %s: %s",
+                            order.id, _lot_err,
+                            exc_info=True,
+                        )
+                        try:
+                            await session.rollback()
+                        except Exception:
+                            pass
+
                 # REMEDIATION: Track terminal order statuses for early pending-entry cleanup.
                 # V4 H-1 / Wave-16d (2026-05-02): record BOTH the broker
                 # `order_data["id"]` AND the internal DB UUID
