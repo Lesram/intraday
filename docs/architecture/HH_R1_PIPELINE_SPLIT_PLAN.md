@@ -25,10 +25,10 @@ is the highest-ROI structural refactor in the codebase.
 |---|---|---|---|
 | 0a | Expire cooldowns + pending-entry maps + terminal-id early-clear | ~40 | **LOW (shipped wave-29)** |
 | 0b | Stream health check + recovery | ~25 | LOW |
-| 0.5 | Stale-data gate (entries-blocked) | ~25 | LOW |
-| 1 | Governance halt check | ~15 | LOW |
-| 1.1 | Warmup gate | ~15 | LOW |
-| 1.2 | Stale-data entries gate | ~10 | LOW |
+| 0.5 | Stale-data gate (entries-blocked) | ~25 | LOW (unblocked by wave-39) |
+| 1 | Governance halt check | ~15 | LOW (unblocked by wave-39) |
+| 1.1 | Warmup gate | ~15 | LOW (unblocked by wave-39) |
+| 1.2 | Stale-data entries gate | ~10 | LOW (unblocked by wave-39) |
 | 1.3 | EOD entry block + flatten | ~30 | MEDIUM |
 | 1.5 | Market scanner pass | ~40 | MEDIUM (state writes to `_universe`) |
 | 2 | Fetch latest data + features | ~60 | MEDIUM |
@@ -58,6 +58,16 @@ would corrupt the platform's mental model of state.
    (preserves the existing single-state-bag pattern).
 3. Each helper has a behavioral test covering the reverted-behavior
    case (V6 W rule #3 / V8 wave-28 enforcement).
+
+## Wave-39 prep (2026-05-03): `entries_blocked` uplifted
+
+V8 HH2 plan-feedback flagged stages 1 / 1.1 / 1.2 as mis-ranked LOW
+risk because they share a local `entries_blocked` flow-var that wasn't
+on `self`. Wave-39 mechanically renamed all 25 occurrences from local
+`entries_blocked` to instance attribute `self._entries_blocked`,
+preserving the per-tick reset (set False at the top of `_live_tick_inner`,
+gates flip True as they fire). Stages 0.5 / 1 / 1.1 / 1.2 are now
+genuinely LOW-risk extractions and unblocked for wave-40.
 4. The extracted helper is named `_stage_<num>_<purpose>`, e.g.
    `_stage_3_detect_regime`, `_stage_5_check_exits`.
 

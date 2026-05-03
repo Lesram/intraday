@@ -1578,6 +1578,11 @@ class OrganismLiveEngine:
         # Gate-level rejection telemetry (reset each tick)
         self._last_gate_rejections: dict[str, int] = {}
         self._last_entries_blocked_reason: str = ""
+        # V8 HH R-1 prep / Wave-39 (2026-05-03): uplift `entries_blocked`
+        # from local var to instance attribute so it's shareable with
+        # extracted stage helpers (waves 39-40 stage 0.5 / 1 / 1.1 / 1.2).
+        # Reset per tick to default False; gates set True as they fire.
+        self._entries_blocked: bool = False
 
         # V8 HH R-1 partial / Wave-29 (2026-05-03): extracted to helper
         # so the cooldown-expiry block is testable in isolation.
@@ -1628,9 +1633,9 @@ class OrganismLiveEngine:
             # 1. GOVERNANCE CHECK
             # When halted, we still MUST process exits and reconciliation
             # to manage open risk.  Only new entries are blocked.
-            entries_blocked = False
+            self._entries_blocked = False
             if self.governance.is_trading_halted:
-                entries_blocked = True
+                self._entries_blocked = True
                 self._last_entries_blocked_reason = "governance_halt"
                 result.errors.append("Trading halted by governance — exits still active")
                 result.activity.append(ActivityEvent(
@@ -1639,8 +1644,8 @@ class OrganismLiveEngine:
                 ))
 
             # 1.1 WARMUP GATE — let features stabilize before entering
-            if not entries_blocked and self._tick_count <= self._WARMUP_TICKS:
-                entries_blocked = True
+            if not self._entries_blocked and self._tick_count <= self._WARMUP_TICKS:
+                self._entries_blocked = True
                 self._last_entries_blocked_reason = "warmup"
                 logger.info(
                     "Warmup period: %d/%d ticks — blocking entries",
@@ -1653,8 +1658,8 @@ class OrganismLiveEngine:
                 ))
 
             # 1.2 STALE DATA GATE — block entries when data > 2 min stale
-            if not entries_blocked and self._data_stale:
-                entries_blocked = True
+            if not self._entries_blocked and self._data_stale:
+                self._entries_blocked = True
                 self._last_entries_blocked_reason = "stale_data"
                 result.activity.append(ActivityEvent(
                     event_type="skip",
@@ -1667,7 +1672,7 @@ class OrganismLiveEngine:
             # don't have time to manage before EOD flatten. ORB/EOD strategies
             # are designed for the late-day window and EOD-flatten immediately,
             # so they should NOT be blocked by this rule.
-            # M3-5 fix: split entries_blocked into a dedicated alpha_breakout
+            # M3-5 fix: split self._entries_blocked into a dedicated alpha_breakout
             # block flag (no longer using the shared safety flag for this
             # time-of-day rule, which was silently shutting down EOD strategy).
             _eod_flatten_triggered = False
@@ -1764,7 +1769,7 @@ class OrganismLiveEngine:
                 result.errors.append(
                     f"Insufficient data: got {len(features_by_symbol)} symbols"
                 )
-                entries_blocked = True
+                self._entries_blocked = True
                 self._last_entries_blocked_reason = "insufficient_data"
                 logger.warning(
                     "Insufficient features (%d symbols) — blocking entries, "
@@ -2008,7 +2013,7 @@ class OrganismLiveEngine:
                     if daily_pnl <= -MAX_DAILY_LOSS:
                         self.governance.halt_trading()
                         self._daily_loss_halt = True
-                        entries_blocked = True
+                        self._entries_blocked = True
                         self._last_entries_blocked_reason = "daily_max_loss"
                         logger.critical(
                             "DAILY MAX-LOSS HALT: PnL=$%.2f exceeds -$%.0f "
@@ -2056,7 +2061,7 @@ class OrganismLiveEngine:
             else:
                 self._consecutive_equity_zero += 1
                 if self._consecutive_equity_zero >= self._EQUITY_ZERO_THRESHOLD:
-                    entries_blocked = True
+                    self._entries_blocked = True
                     self._last_entries_blocked_reason = "equity_zero"
                     logger.error(
                         "equity_returned_zero for %d consecutive ticks — "
@@ -2081,7 +2086,7 @@ class OrganismLiveEngine:
                 was_halted = self.governance.is_trading_halted
                 self.governance.trigger_drawdown_kill(drawdown)
                 if not was_halted and self.governance.is_trading_halted:
-                    entries_blocked = True
+                    self._entries_blocked = True
                     self._last_entries_blocked_reason = "drawdown_kill"
                     result.errors.append(
                         f"Drawdown kill triggered ({drawdown:.2%} >= "
@@ -2162,8 +2167,8 @@ class OrganismLiveEngine:
 
             # Propagate any pre-existing governance halt (from manual halt
             # or prior drawdown cooldown) — separate from drawdown check
-            if self.governance.is_trading_halted and not entries_blocked:
-                entries_blocked = True
+            if self.governance.is_trading_halted and not self._entries_blocked:
+                self._entries_blocked = True
                 self._last_entries_blocked_reason = "governance_halt"
                 result.errors.append("Trading halted by governance — exits still active")
 
@@ -2468,7 +2473,7 @@ class OrganismLiveEngine:
                             self._pending_exit[sym] = self._tick_count
 
             # ── Steps 6-9 and 11 are gated: skip when entries are blocked ──
-            if entries_blocked:
+            if self._entries_blocked:
                 if _PROMETHEUS_AVAILABLE:
                     ORGANISM_ENTRIES_BLOCKED.inc()
                     if current_positions:
@@ -2488,13 +2493,13 @@ class OrganismLiveEngine:
                 # metric export — these ALWAYS run regardless of halt state.
 
             # ── SPY MA filter: block longs when SPY < SMA ──────
-            if not entries_blocked and self._spy_filter_enabled and LONG_ONLY:
+            if not self._entries_blocked and self._spy_filter_enabled and LONG_ONLY:
                 spy_df = features_by_symbol.get("SPY")
                 if spy_df is not None and len(spy_df) >= self._spy_ma_period:
                     spy_close = float(spy_df["close"].iloc[-1])
                     spy_sma = float(spy_df["close"].iloc[-self._spy_ma_period:].mean())
                     if spy_close < spy_sma:
-                        entries_blocked = True
+                        self._entries_blocked = True
                         self._last_entries_blocked_reason = "spy_ma_filter"
                         logger.info(
                             "SPY MA filter: SPY %.2f < SMA%d %.2f — blocking entries",
@@ -2509,7 +2514,7 @@ class OrganismLiveEngine:
                         ))
 
             # ── Opening 30-min block: no entries 9:30-10:00 AM ET ──
-            if not entries_blocked and self._is_intraday:
+            if not self._entries_blocked and self._is_intraday:
                 _now_open = self._now_fn()
                 try:
                     import zoneinfo
@@ -2518,7 +2523,7 @@ class OrganismLiveEngine:
                     _now_et = _now_open
                 _hhmm_open = _now_et.hour * 100 + _now_et.minute
                 if 930 <= _hhmm_open < 1000:
-                    entries_blocked = True
+                    self._entries_blocked = True
                     self._last_entries_blocked_reason = "opening_block"
                     logger.info(
                         "Opening block: %d ET — no entries first 30 min",
@@ -2533,7 +2538,7 @@ class OrganismLiveEngine:
             # ── Fix B: Regime sit-out gate ─────────────────────
             _regime_sit_out = False
             _sitout_ml = None
-            if not entries_blocked and LONG_ONLY and regime in ("high_vol", "stress"):
+            if not self._entries_blocked and LONG_ONLY and regime in ("high_vol", "stress"):
                 _sitout_ml = self.signal_gen.predict_batch(features_by_symbol)
                 _bearish = sum(1 for s in _sitout_ml.values() if s.direction < 0)
                 _bullish = sum(1 for s in _sitout_ml.values() if s.direction > 0)
@@ -2572,7 +2577,7 @@ class OrganismLiveEngine:
 
             # ── A5 (improve8): Block trending_down main-book after 10:00 ET
             _trending_down_block = False
-            if not entries_blocked and LONG_ONLY and regime == "trending_down":
+            if not self._entries_blocked and LONG_ONLY and regime == "trending_down":
                 try:
                     import zoneinfo
                     _now_td = self._now_fn().astimezone(zoneinfo.ZoneInfo("America/New_York"))
@@ -2588,7 +2593,7 @@ class OrganismLiveEngine:
 
             # ── Fix E: Global entries-per-hour throttle ───────
             _throttled = False
-            if not entries_blocked and not _regime_sit_out:
+            if not self._entries_blocked and not _regime_sit_out:
                 now_ts = self._time_fn()
                 self._entry_timestamps = [
                     t for t in self._entry_timestamps if now_ts - t < 3600
@@ -2612,7 +2617,7 @@ class OrganismLiveEngine:
             # ── C2 (improve8): Burst cap — 15-min rolling window ──
             _burst_capped = False
             _burst_remaining = self._MAX_ENTRIES_15M
-            if not entries_blocked and not _regime_sit_out and not _throttled:
+            if not self._entries_blocked and not _regime_sit_out and not _throttled:
                 now_ts_burst = self._time_fn()
                 self._entry_timestamps_15m = [
                     t for t in self._entry_timestamps_15m if now_ts_burst - t < 900
@@ -2635,7 +2640,7 @@ class OrganismLiveEngine:
                 self._last_entry_bar = _current_minute
 
             # ── Steps 6-9: Entry-side logic (gated) ─────────────
-            if not entries_blocked and not _regime_sit_out and not _throttled and not _burst_capped and _is_entry_bar:
+            if not self._entries_blocked and not _regime_sit_out and not _throttled and not _burst_capped and _is_entry_bar:
 
                 # 6. CHECK PYRAMIDS
                 for sym, pos_data in current_positions.items():
@@ -2666,7 +2671,7 @@ class OrganismLiveEngine:
                                 sym,
                             )
                             continue
-                        if entries_blocked:  # daily-loss halt etc.
+                        if self._entries_blocked:  # daily-loss halt etc.
                             logger.info(
                                 "Pyramid add blocked: entries blocked (%s)",
                                 self._last_entries_blocked_reason,
@@ -3922,7 +3927,7 @@ class OrganismLiveEngine:
             await self._reconcile_fills(features_by_symbol)
 
             # ── Step 11: Retrain/evolve (gated) ────────────────
-            if not entries_blocked:
+            if not self._entries_blocked:
                 # 11. PERIODIC RETRAIN + EVOLVE (non-blocking background training)
                 self._bars_since_retrain += 1
 
