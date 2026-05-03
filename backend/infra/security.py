@@ -743,50 +743,53 @@ def require_roles(*required_roles: str):
         *required_roles: One or more roles required for access
 
     Returns:
-        FastAPI dependency function or direct callable for testing
+        An async FastAPI dependency callable. Use with `Depends(...)`:
 
-    Usage:
-        @app.get("/admin-only")
-        async def admin_endpoint(user: AuthenticatedUser = Depends(require_roles("admin"))):
-            pass
+            @app.get("/admin-only")
+            async def admin_endpoint(
+                user: AuthenticatedUser = Depends(require_admin),
+            ): ...
 
-        # For testing/direct use:
-        check_func = require_roles("admin")
-        result = check_func(user)  # Sync call
+    For sync / unit-test role checking against a user object directly,
+    use `check_user_roles(user, *roles)` defined below.
+
+    V7 AA-C-2 / Wave-23b (2026-05-03): the previous implementation
+    returned a `check_roles_hybrid` wrapper that introspected its
+    argument at call time. FastAPI's dependency injection saw a
+    function with an optional `user_or_dependency=None` parameter,
+    called it with no args, and got back the *function reference*
+    `check_roles_async` — never actually executing the role check.
+    Result: 18 admin endpoints (12 organism, 6 audit) silently lost
+    their role gate. Combined with self-registration granting
+    `["user"]` role, any registered user could call any admin route.
+
+    Now: returns the async dependency directly. FastAPI's DI
+    introspects the *async* function's `current_user` parameter,
+    resolves it via `Depends(get_authenticated_user)`, and runs the
+    role check in the function body.
     """
 
-    def check_roles_impl(user: AuthenticatedUser) -> AuthenticatedUser:
-        """Implementation of role checking logic."""
-        user_roles = set(user.roles)
+    async def check_roles_dep(
+        current_user: AuthenticatedUser = Depends(get_authenticated_user),
+    ) -> AuthenticatedUser:
+        """Async FastAPI dependency that enforces the required roles."""
+        user_roles = set(current_user.roles)
         required_roles_set = set(required_roles)
 
         if not required_roles_set.intersection(user_roles):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"Insufficient permissions. Required roles: {', '.join(required_roles)}",
+                detail=(
+                    "Insufficient permissions. Required roles: "
+                    f"{', '.join(required_roles)}"
+                ),
             )
 
-        return user
+        return current_user
 
-    async def check_roles_async(
-        current_user: AuthenticatedUser = Depends(get_authenticated_user),
-    ) -> AuthenticatedUser:
-        """Async FastAPI dependency version."""
-        return check_roles_impl(current_user)
-
-    # Return a function that can handle both sync and async calls
-    def check_roles_hybrid(user_or_dependency=None):
-        if user_or_dependency is None:
-            # Called without arguments - return the async dependency
-            return check_roles_async
-        elif isinstance(user_or_dependency, AuthenticatedUser):
-            # Called with a user directly - do sync check
-            return check_roles_impl(user_or_dependency)
-        else:
-            # This shouldn't happen but handle gracefully
-            return check_roles_async(user_or_dependency)
-
-    return check_roles_hybrid
+    # Tag with the role list so test code / introspection can read it.
+    check_roles_dep.required_roles = list(required_roles)  # type: ignore[attr-defined]
+    return check_roles_dep
 
 
 # Common role-based dependencies

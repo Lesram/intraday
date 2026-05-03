@@ -604,7 +604,12 @@ async def get_scan_presets(
     return presets
 
 @router.get("/symbols")
-async def get_scannable_symbols():
+async def get_scannable_symbols(
+    # V7 AA-H-2 / Wave-23c (2026-05-03): require auth. The endpoint
+    # exposes the trading universe, which an unauthenticated probe
+    # could use to fingerprint the platform's strategy.
+    current_user=Depends(get_current_user),
+):
     """
     Get list of symbols available for scanning
 

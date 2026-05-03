@@ -102,7 +102,13 @@ services:
     image: redis:7-alpine
     ports:
       - "6379:6379"
-    command: redis-server --bind 127.0.0.1 --requirepass ${REDIS_PASSWORD:-changeme_redis} --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru --save 900 1
+    # V7 EE-3 / Wave-23e (2026-05-03): bind 0.0.0.0 (was 127.0.0.1).
+    # 127.0.0.1 inside a container's network namespace refused all
+    # cross-container traffic, leaving the broker SLI permanently red.
+    # docker-compose's user-defined network is the security boundary;
+    # the container is not reachable from the host without explicit
+    # port mapping (we don't publish 6379), so 0.0.0.0 + auth is safe.
+    command: redis-server --bind 0.0.0.0 --requirepass ${REDIS_PASSWORD:-changeme_redis} --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru --save 900 1
     volumes:
       - redis_data:/data
     healthcheck:

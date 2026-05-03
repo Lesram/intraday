@@ -90,6 +90,9 @@ async def get_metrics(
         description="Time window in seconds",
     ),
     service: ObservabilityService = Depends(get_service),
+    # V7 AA-H-2 / Wave-23c (2026-05-03): require auth. Internal
+    # observability data is not for anonymous consumption.
+    current_user=Depends(get_authenticated_user),
 ) -> dict[str, Any]:
     """
     Get system metrics for the specified time window.
@@ -135,6 +138,8 @@ async def get_trading_metrics(
         description="Time window in seconds",
     ),
     service: ObservabilityService = Depends(get_service),
+    # V7 AA-H-2 / Wave-23c (2026-05-03): require auth.
+    current_user=Depends(get_authenticated_user),
 ) -> dict[str, Any]:
     """
     Get trading-specific metrics.
@@ -165,6 +170,8 @@ async def get_trading_metrics(
 @router.get("/dashboard")
 async def get_dashboard_data(
     service: ObservabilityService = Depends(get_service),
+    # V7 AA-H-2 / Wave-23c (2026-05-03): require auth.
+    current_user=Depends(get_authenticated_user),
 ) -> dict[str, Any]:
     """
     Get all data needed for the observability dashboard.
@@ -181,6 +188,8 @@ async def get_dashboard_data(
 @router.get("/alerts")
 async def get_alerts(
     service: ObservabilityService = Depends(get_service),
+    # V7 AA-H-2 / Wave-23c (2026-05-03): require auth.
+    current_user=Depends(get_authenticated_user),
 ) -> dict[str, Any]:
     """
     Get active alerts based on threshold violations.
