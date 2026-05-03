@@ -120,7 +120,15 @@ try:
     )
     ORGANISM_EXITS_SKIPPED_NO_DATA = Counter(
         "organism_exits_skipped_no_data_total",
-        "Exit checks that fell back to broker price due to missing features",
+        # V6 V-T-3 / Wave-20e (2026-05-03): HELP text now describes the
+        # actual emission site (safety-net branch only) rather than
+        # the broader event class. The previous "Exit checks that fell
+        # back to broker price due to missing features" suggested a
+        # ~10× larger event population than is actually emitted.
+        # Operators read this HELP to understand the metric, so its
+        # accuracy matters more than its breadth.
+        "Safety-net exits triggered when no features were available "
+        "(15%-loss broker-price-only fallback)",
     )
     ORGANISM_SECTOR_CAP_BLOCKED = Counter(
         "organism_sector_cap_blocked_total",
@@ -1470,7 +1478,10 @@ class OrganismLiveEngine:
 
     async def _live_tick_inner(self) -> LiveTickResult:
         """Inner tick logic — always called under _tick_lock."""
-        t0 = time.time()
+        # V6 X-2 / Wave-20b (2026-05-03): use injected clock so tick
+        # duration is replay-deterministic. Wall-clock `time.time()`
+        # polluted every per-tick hash in replay.
+        t0 = self._time_fn()
         result = LiveTickResult(
             timestamp=self._now_fn().isoformat(),
         )
@@ -3920,7 +3931,8 @@ class OrganismLiveEngine:
         except Exception:
             pass
 
-        result.duration_s = time.time() - t0
+        # V6 X-2 / Wave-20b (2026-05-03): use injected clock for delta.
+        result.duration_s = self._time_fn() - t0
 
         # ── Phase 3.5: Export Prometheus metrics ─────────────────
         if _PROMETHEUS_AVAILABLE:
@@ -6262,7 +6274,11 @@ class OrganismLiveEngine:
         )
 
         signals = []
-        now = datetime.now(UTC)
+        # V6 W-finding / X-4 / Wave-20b (2026-05-03): use injected clock so
+        # `TradingSignal.timestamp` is replay-deterministic. Three V6 tracks
+        # (Z3, W, X) converged on this site; X reproduced it as a real
+        # determinism bug (pollutes every per-tick hash in replay).
+        now = self._now_fn()
         for c in candidates:
             if LONG_ONLY and not self.evolved_params.shorts_enabled and c.direction < 0:
                 continue

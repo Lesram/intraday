@@ -361,40 +361,42 @@ class CircuitBreaker:
         logger.warning(f"Circuit breaker OPEN: {reason}")
 
         # Trigger alert.
-        # V4 P-P0-4 (2026-05-02): the previous call site
-        # `alert_manager.critical(title=..., message=..., context=...)`
-        # invoked a method that does not exist on AlertManager —
-        # AttributeError was swallowed by `except Exception`, dropping
-        # every circuit-breaker alert. Use the canonical async
-        # send_alert API with the worker-thread-safe dispatch pattern
-        # (wave-8c J-3) since `_trip` is invoked from sync paths reached
-        # via asyncio.to_thread.
+        # V6 V-T-1 / Wave-20a (2026-05-03): wave-12f shipped this site
+        # using the broken wave-8c anti-pattern (`get_running_loop` +
+        # `call_soon_threadsafe` with `asyncio.run` fallback). V5
+        # demonstrated that `get_running_loop()` ALWAYS raises in worker
+        # threads — by definition, since worker threads have no running
+        # loop. Wave-17a fixed 3 sites with the canonical
+        # dispatch_alert_from_thread helper but missed this one (its
+        # same-class scan was incomplete). Result: every "Circuit
+        # Breaker Tripped" alert from a worker-thread caller has been
+        # silently dropped since wave-12f shipped. Use the canonical
+        # cross-thread dispatcher.
         try:
-            import asyncio as _aio
             from backend.infra.alerting import (
                 AlertCategory, AlertSeverity, send_alert,
+                dispatch_alert_from_thread,
             )
-
-            async def _emit():
-                await send_alert(
+            _r = reason
+            _failures = len(self._failures)
+            _daily_pnl = self._daily_pnl
+            ok = dispatch_alert_from_thread(
+                lambda: send_alert(
                     AlertCategory.SYSTEM_ERROR,
                     AlertSeverity.CRITICAL,
                     "Circuit Breaker Tripped",
-                    f"Order flow halted: {reason}",
+                    f"Order flow halted: {_r}",
                     details={
-                        "failures": len(self._failures),
-                        "daily_pnl": self._daily_pnl,
+                        "failures": _failures,
+                        "daily_pnl": _daily_pnl,
                     },
                 )
-
-            try:
-                _loop = _aio.get_running_loop()
-                _loop.call_soon_threadsafe(
-                    lambda: _aio.ensure_future(_emit())
+            )
+            if not ok:
+                logger.warning(
+                    "Circuit Breaker Tripped alert dropped (no main "
+                    "loop ref): %s", _r,
                 )
-            except RuntimeError:
-                # Not on the event-loop thread; fall back to a fresh loop.
-                _aio.run(_emit())
         except Exception as e:
             logger.error(f"Failed to send circuit breaker alert: {e}")
 

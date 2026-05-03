@@ -31,6 +31,22 @@ from backend.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
+# V6 X-1 / Wave-20c (2026-05-03): eager load_dotenv to kill mid-replay
+# determinism bug. Track X reproduced this: live_tick() lazy-imports
+# `alpaca_stream`, which calls `load_dotenv()` in its own module init.
+# The first GovernanceController() constructed (before alpaca_stream
+# loads) read code defaults; the second (after alpaca_stream's
+# load_dotenv mutated os.environ) read .env overrides. Two replay runs
+# produced different governance state. Eagerly loading dotenv at the
+# top of replay_simulator means every os.getenv() call sees the same
+# environment from tick 1.
+try:
+    from dotenv import load_dotenv as _load_dotenv
+    _load_dotenv()
+except Exception:
+    # python-dotenv may not be installed in stripped-down test envs.
+    pass
+
 
 # ═════════════════════════════════════════════════════════════════════════
 #  SIMULATED BROKER
@@ -510,28 +526,37 @@ class ReplayEngine:
 
         # Override clock to use bar time instead of wall time.
         # V5 Wave-17b (2026-05-03): extend the override to the auxiliary
-        # components that also hold their own clocks. V4 R-F-4 / V5
-        # U-RF4 + Track U found that injecting only into the engine
-        # left RegimeDetector, GovernanceController, etc. reading wall
-        # clock — the replay's `regime_state.timestamp` came back with
-        # the year of the deploy, not the replay window. The engine
-        # owns these collaborators, so monkey-patch their `_now_fn`
-        # post-init.
+        # components that also hold their own clocks.
+        # V6 X-5/X-6 / Wave-20d (2026-05-03): the wave-19 loop had two
+        # bugs — (a) it only matched `_now_fn` so StreamingDataProvider
+        # (uses `_time_fn`) was silently skipped; (b) it listed a
+        # nonexistent `promotion_controller` attribute (the engine
+        # holds no such attribute; PromotionController lives on
+        # `app.state`). Now: explicit attr → clock-attr mapping,
+        # use the same `_replay_now` for `_now_fn` and `_replay_time`
+        # for `_time_fn`. `brain` clock added (wave-20b X-3 fix).
         _replay_now = lambda: bar_provider.current_simulated_datetime
         _replay_time = lambda: bar_provider.current_simulated_time
         engine._time_fn = _replay_time
         engine._now_fn = _replay_now
-        # V5 Wave-19 (2026-05-03): extend clock injection to remaining
-        # auxiliary components.
-        for _attr in (
+
+        _now_fn_components = (
             "regime_detector",
             "governance",
-            "promotion_controller",
             "learner",
-        ):
+            "brain",
+        )
+        _time_fn_components = (
+            "_streaming_provider",
+        )
+        for _attr in _now_fn_components:
             _comp = getattr(engine, _attr, None)
             if _comp is not None and hasattr(_comp, "_now_fn"):
                 _comp._now_fn = _replay_now
+        for _attr in _time_fn_components:
+            _comp = getattr(engine, _attr, None)
+            if _comp is not None and hasattr(_comp, "_time_fn"):
+                _comp._time_fn = _replay_time
 
         # Disable MarketScanner — don't hit real APIs during replay
         engine.market_scanner = None

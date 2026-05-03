@@ -124,10 +124,12 @@ def _train_in_process(
         # Train
         metrics = signal_gen.train(features_by_symbol)
 
-        # Stamp evaluation time (J3)
-        if metrics is not None:
-            from datetime import datetime, timezone as _tz
-            metrics.evaluated_at = datetime.now(_tz.utc).isoformat()
+        # V6 X-8 / Wave-20b (2026-05-03): leave `evaluated_at` empty
+        # in the worker; the parent process stamps it via the engine's
+        # injected clock so replay sees the replay clock, not wall.
+        # Workers run in a separate process and can't reach `_now_fn`.
+        if metrics is not None and not getattr(metrics, "evaluated_at", ""):
+            metrics.evaluated_at = ""
 
         if metrics is None:
             return {"error": "Training returned None metrics", "duration_s": time.time() - t0}
@@ -261,7 +263,19 @@ def _train_in_process(
 class BackgroundTrainer:
     """Manages background ML training in a separate process."""
 
-    def __init__(self) -> None:
+    def __init__(self, *, now_fn=None) -> None:
+        # V6 X-8 / Wave-20b (2026-05-03): clock injection so retrain
+        # evaluation timestamps respect replay's clock. The worker
+        # process can't see the engine's `_now_fn` directly (separate
+        # memory space); instead the worker leaves `evaluated_at` empty
+        # and the parent process stamps it with `self._now_fn()` after
+        # results return.
+        if now_fn is None:
+            from datetime import datetime as _dt, timezone as _tz
+            self._now_fn = lambda: _dt.now(_tz.utc)
+        else:
+            self._now_fn = now_fn
+
         self._executor: ProcessPoolExecutor | None = None
         self._future: asyncio.Future | None = None
         self._is_training = False
@@ -418,33 +432,30 @@ class BackgroundTrainer:
         except Exception as e:
             logger.error("BackgroundTrainer process error: %s", e)
             self._last_result = TrainResult(error=str(e))
-            # V4 P-P1 (2026-05-02): ML retrain failures were log-only;
-            # operators couldn't tell why direction accuracy stalled.
-            # Wire a HIGH-severity alert via the canonical send_alert
-            # API. Use the worker-thread-safe pattern since this can
-            # be reached from threadpool callers.
+            # V6 V-T-2 / Wave-20a (2026-05-03): wave-14 shipped this
+            # site with the same broken wave-8c anti-pattern — works
+            # today only because `get_result()` is polled from the main
+            # loop, but the comment anticipates threadpool callers. Use
+            # the canonical cross-thread dispatcher.
             try:
-                import asyncio as _aio
                 from backend.infra.alerting import (
                     AlertCategory, AlertSeverity, send_alert,
+                    dispatch_alert_from_thread,
                 )
-
-                async def _emit():
-                    await send_alert(
+                _err = e
+                ok = dispatch_alert_from_thread(
+                    lambda: send_alert(
                         AlertCategory.SYSTEM_ERROR,
                         AlertSeverity.WARNING,
                         "ML Retrain Failed",
-                        f"Background trainer raised: {e}",
-                        details={"error_type": type(e).__name__},
+                        f"Background trainer raised: {_err}",
+                        details={"error_type": type(_err).__name__},
                     )
-
-                try:
-                    _loop = _aio.get_running_loop()
-                    _loop.call_soon_threadsafe(
-                        lambda: _aio.ensure_future(_emit())
+                )
+                if not ok:
+                    logger.warning(
+                        "ML Retrain Failed alert dropped (no main loop ref)"
                     )
-                except RuntimeError:
-                    _aio.run(_emit())
             except Exception:
                 pass
             return True, self._last_result
@@ -485,6 +496,16 @@ class BackgroundTrainer:
             is_trained=raw.get("is_trained"),
             duration_s=raw.get("duration_s", 0),
         )
+
+        # V6 X-8 / Wave-20b (2026-05-03): stamp evaluation time on the
+        # parent-process side using the injected clock so replay sees
+        # replay-clock timestamps in evaluation_event_history.json.
+        try:
+            tm = self._last_result.train_metrics
+            if isinstance(tm, dict) and not tm.get("evaluated_at"):
+                tm["evaluated_at"] = self._now_fn().isoformat()
+        except Exception:
+            pass
 
         logger.info(
             "BackgroundTrainer: training #%d completed in %.1fs (accepted=%s)",

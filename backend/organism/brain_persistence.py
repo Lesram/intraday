@@ -127,7 +127,23 @@ class OrganismBrain:
     Thread-safe, atomic writes, automatic backups.
     """
 
-    def __init__(self, brain_dir: str | Path = "organism_brain"):
+    def __init__(
+        self,
+        brain_dir: str | Path = "organism_brain",
+        *,
+        now_fn=None,
+    ):
+        # V6 X-3 / Wave-20b (2026-05-03): clock injection for replay
+        # determinism. The previous direct `datetime.now(UTC)` calls
+        # (manifest `saved_at`, etc.) polluted the brain artifacts'
+        # hashes in replay. Default is wall clock for live use.
+        if now_fn is None:
+            def _default_now() -> datetime:
+                return datetime.now(timezone.utc)
+            self._now_fn = _default_now
+        else:
+            self._now_fn = now_fn
+
         self.brain_dir = Path(brain_dir).resolve()
         self.backup_dir = self.brain_dir / "backups"
         self._loaded = False
@@ -951,7 +967,8 @@ class OrganismBrain:
 
         manifest: dict[str, Any] = {
             "brain_format_version": BRAIN_FORMAT_VERSION,
-            "saved_at": datetime.now(timezone.utc).isoformat(),
+            # V6 X-3 / Wave-20b (2026-05-03): use injected clock.
+            "saved_at": self._now_fn().isoformat(),
             "total_runs": base_total_runs + 1,
         }
         self._apply_live_manifest_fields(manifest, signal_gen, learner)
