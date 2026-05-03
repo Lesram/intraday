@@ -265,6 +265,37 @@ See `MASTER_AUDIT_SYNTHESIS_v5.md` for cross-track patterns and wave 17-19 seque
 - 2026-05-03 00:30 PT: V5 audit complete. 4 tracks, 21 findings (0 production regressions in waves 12-16). Wave 17-19 sequence proposed in `MASTER_AUDIT_SYNTHESIS_v5.md`. Container healthy on rc-1.5-curated @ d43dbec.
 - 2026-05-03 03:00 PT: Waves 17 (a-d), 18, and 19 all shipped on rc-1.5-curated. Final HEAD `0ea2695`. Container healthy across 7 force-recreate cycles. All 21 V5 findings closed.
 - 2026-05-03 04:00 PT: V6 audit complete. 5 tracks (Z3/V/W/T2/X), ~18 actionable findings + 14 W-process-gaps + 0 T2 + 2 Z3 cosmetic. 0 production regressions in waves 17-19. See `MASTER_AUDIT_SYNTHESIS_v6.md`.
+- 2026-05-03 04:30 PT: Waves 20 (a-e), 21, and 22 all shipped on rc-1.5-curated. Final HEAD `3baefb4`. Container healthy. All V6 actionable findings closed (V-T-1..V-T-9, X-1..X-8, W-marker gaps, T2 hypothesis pin, regime.py:589 obs).
+
+## V6 closure status (post waves 20-22)
+
+| Finding | Wave | Commit |
+|---|---|---|
+| **V-T-1** (CRITICAL — order_service._trip S-J3-1 same-class) | 20a | 643ba6d |
+| **V-T-2** (HIGH — bg_trainer.get_result S-J3-1 same-class) | 20a | 643ba6d |
+| **V-T-3** (metric undercount HELP/emission mismatch) | 20e | 643ba6d |
+| V-T-4 (outbox dispatcher errors → alert) | 21 | 8430bf6 |
+| V-T-5 (DB startup failure → alert) | 22 | 3baefb4 |
+| V-T-6 (C1 watchdog → alert) | 21 | 8430bf6 |
+| V-T-7 (orphan adoption → INFO alert) | 21 | 8430bf6 |
+| V-T-8 (trace_span coverage) | deferred | — |
+| V-T-9 (feature_engineer + performance log levels) | 22 | 3baefb4 |
+| **X-1** (load_dotenv mid-replay) | 20c | 643ba6d |
+| X-2 / X-3 / X-4 / X-8 (wall-clock leaks) | 20b | 643ba6d |
+| X-5 / X-6 (replay attr-loop bugs) | 20d | 643ba6d |
+| X-7 (brain_dir defense-in-depth) | 22 | 3baefb4 |
+| W-find / live_engine.py:6265 | 20b | 643ba6d |
+| W marker U-1 / U-2 backfill | 21 | 8430bf6 |
+| T2 follow-up: hypothesis pin | 21 | 8430bf6 |
+| Wave-18 behavioral test backfill (8 tests) | 21 | 8430bf6 |
+| regime.py:589 (Z3 obs) | 22 | 3baefb4 |
+| CI determinism smoke test (6 tests) | 22 | 3baefb4 |
+
+V-T-8 (trace_span coverage) deferred to a future round — instrumenting
+3,600 lines of live_engine.py with trace_spans is itself a project
+requiring careful span boundary design; the underlying observability gap
+is documented and the metric coverage backfill (V-T-1..V-T-7) closes
+the immediate blind-spot risk.
 
 ## v6 findings (Tracks Z3/V/W/T2/X, 2026-05-03)
 
