@@ -4,11 +4,12 @@
   "git_head": "38d1b74aeca56ad8b1153e6b7abc735042827d3c",
   "git_head_short": "38d1b74",
   "live_engine_metrics": {
-    "_live_tick_inner_loc": 2724,
+    "_live_tick_inner_loc": 2738,
     "_live_tick_inner_loc_pre_v12_w72": 2707,
+    "_live_tick_inner_loc_post_v12_w75_lint_fixes": 2738,
     "pre_v8_baseline_loc": 2510,
-    "regression_delta": 214,
-    "note": "W72 added DD5-1 helper call + DD5-2 canonical routing + DD5-3 accumulator increment with documenting comments → +17 LOC. W75 is the wave that drives LOC down via subroutine extraction; target = below pre_v8_baseline_loc 2510."
+    "regression_delta": 228,
+    "note": "W72 added DD5-1 helper call + DD5-2 canonical routing + DD5-3 accumulator increment (+17 LOC). W75 added F821 fixes with explanatory comments (+14 LOC). LOC reduction via subroutine extraction is deferred to V13 multi-wave: extracting 200+ LOC from the live tick path in one wave is too risky — the function has zero direct behavioral test coverage and is the most critical hot path."
   },
   "pytest_baseline": {
     "n_failed": 125,

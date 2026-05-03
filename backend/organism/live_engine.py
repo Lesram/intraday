@@ -2020,6 +2020,13 @@ class OrganismLiveEngine:
                                 AlertCategory, AlertSeverity, send_alert,
                                 dispatch_alert_from_thread,
                             )
+                            # V12 W75 (UU3-2 / F821): capture exception text
+                            # as a string before the lambda — Python deletes
+                            # the ``except`` exception variable at block exit,
+                            # and ``dispatch_alert_from_thread`` may run the
+                            # lambda on another thread after that point,
+                            # which would raise NameError on ``e``.
+                            _last_err_text = str(e)
                             dispatch_alert_from_thread(
                                 lambda: send_alert(
                                     AlertCategory.SYSTEM_ERROR,
@@ -2027,7 +2034,7 @@ class OrganismLiveEngine:
                                     "Market Scanner Persistent Failure",
                                     f"Scanner failed {_PP5_FAIL_ALERT} consecutive "
                                     f"runs.  Universe will trade off STALE candidates "
-                                    f"until scanner recovers.  Last error: {e}",
+                                    f"until scanner recovers.  Last error: {_last_err_text}",
                                 )
                             )
                         except Exception as _alert_err:
@@ -2141,7 +2148,14 @@ class OrganismLiveEngine:
                         if triggered:
                             for c in triggered:
                                 # Cross-reference: did alpha+breakout also pick this name?
-                                _in_alpha = c.symbol in (open_symbols if "open_symbols" in dir() else set())
+                                # V12 W75 (UU3-2 / F821): ``dir()`` returned
+                                # a stale list for ruff's static analysis;
+                                # ``locals().get("open_symbols", set())`` is
+                                # equivalent semantics with a name ruff can
+                                # follow.  Same defensive intent: gracefully
+                                # handle the early-tick case where
+                                # ``open_symbols`` hasn't been computed yet.
+                                _in_alpha = c.symbol in locals().get("open_symbols", set())
                                 logger.info(
                                     "ORB shadow BREAKOUT: %s dir=%+.0f rv=%.2f "
                                     "orb_high=%.4f orb_low=%.4f curr=%.4f "

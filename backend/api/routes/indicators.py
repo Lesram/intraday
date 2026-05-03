@@ -231,6 +231,15 @@ async def calculate_indicator(
                 try:
                     logger.warning("IEX feed failed, trying with older date range (15+ days ago)")
 
+                    # V12 W75 (UU3-2 / F821): import the names this block
+                    # uses.  Pre-V12 ``TimeFrame``, ``datetime``, ``UTC``,
+                    # and ``timedelta`` were referenced but never imported
+                    # at this scope — the fallback would always raise
+                    # NameError, leaving the user with the original IEX
+                    # error rather than a daily-bars retry.
+                    from datetime import UTC, datetime, timedelta
+                    from alpaca.data.timeframe import TimeFrame
+
                     # Use daily timeframe with data ending 15 days ago
                     alpaca_timeframe = TimeFrame(1, TimeFrameUnit.Day)
                     fallback_end = datetime.now(UTC) - timedelta(days=15)  # End 15 days ago

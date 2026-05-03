@@ -449,7 +449,12 @@ class TestPyramidLayerCount:
 # ═══════════════════════════════════════════════════════════════════
 
 class TestMinHoldTime:
-    def _make_levels(self, bars_held: int = 0) -> "ExitLevels":
+    def _make_levels(self, bars_held: int = 0):
+        # V12 W75 (UU3-2 / F821): the previous return-type annotation
+        # ``-> "ExitLevels"`` referenced a name not imported at this
+        # scope.  The import is local to the function body — the
+        # annotation never resolves.  Drop the annotation; behavior
+        # unchanged.
         from backend.organism.adaptive_exits import ExitLevels
         return ExitLevels(
             symbol="AAPL", direction=1.0, entry_price=100.0,

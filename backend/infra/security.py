@@ -8,7 +8,13 @@ from datetime import UTC, datetime, timedelta
 import logging
 import os
 import secrets
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
+
+if TYPE_CHECKING:
+    # V12 W75 (UU3-2 / F821): import Redis for the forward-ref type
+    # annotation below.  Static analysers (ruff) flag string-quoted
+    # forward refs without a TYPE_CHECKING import as F821 undefined.
+    from redis.asyncio import Redis  # noqa: F401
 
 import bcrypt
 from fastapi import Depends, HTTPException, Request, status

@@ -292,11 +292,19 @@ def test_v12_state_each_finding_has_required_fields():
     state = json.loads(V12_STATE.read_text())
     required = {"id", "from", "severity", "title", "status",
                 "wave_target", "behavioral_test_path"}
+    # V12 W74 added a fourth status to record findings that are "real
+    # but determined-by-design after investigation" (EXT-3 trade-count
+    # divergence) — distinct from "open / closed / deferred".
+    allowed_status = {
+        "open", "closed", "deferred", "documented_by_design",
+    }
     for f in state["findings"]:
         missing = required - set(f.keys())
         assert not missing, f"{f.get('id', '?')} missing fields: {missing}"
         assert f["severity"] in {"critical", "high", "medium", "low"}
-        assert f["status"] in {"open", "closed", "deferred"}
+        assert f["status"] in allowed_status, (
+            f"{f['id']} has status={f['status']!r} not in {allowed_status}"
+        )
 
 
 # ────────────────────────────────────────────────────────────────────
