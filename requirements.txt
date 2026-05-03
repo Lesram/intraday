@@ -69,6 +69,11 @@ opentelemetry-semantic-conventions>=0.41b0
 # Testing
 pytest>=7.0.0
 pytest-asyncio>=0.21.0
+# V6 T2 follow-up / Wave-21 (2026-05-03): pin hypothesis in prod test
+# requirements so the V6 property-based numerical tests
+# (tests/test_numerical_properties_v6.py) don't silently skip in CI
+# when only requirements.txt is installed.
+hypothesis>=6.70.0
 
 # Utilities
 python-dateutil>=2.8.0

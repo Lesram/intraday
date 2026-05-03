@@ -4375,6 +4375,27 @@ class OrganismLiveEngine:
                     "C1 WATCHDOG: No orders for %d ticks (>12h) — system may be inert",
                     ticks_since_order,
                 )
+                # V6 V-T-6 / Wave-21 (2026-05-03): alert on C1 watchdog
+                # critical state. Was log-only; operators couldn't see
+                # the system going inert.
+                try:
+                    from backend.infra.alerting import (
+                        AlertCategory, AlertSeverity, send_alert,
+                        dispatch_alert_from_thread,
+                    )
+                    _t = ticks_since_order
+                    dispatch_alert_from_thread(
+                        lambda: send_alert(
+                            AlertCategory.SYSTEM_ERROR,
+                            AlertSeverity.CRITICAL,
+                            "C1 Watchdog: System Inert",
+                            f"No orders submitted for {_t} ticks (>12h). "
+                            f"System may be inert; investigate signal pipeline.",
+                            details={"ticks_since_order": _t},
+                        )
+                    )
+                except Exception:
+                    pass
             else:
                 logger.warning(
                     "C1 WATCHDOG: No orders for %d ticks (>6h)",
@@ -4660,6 +4681,10 @@ class OrganismLiveEngine:
             # key would be "tomorrow's date" — across a session boundary
             # the key still uniquely-identifies the order, but the date
             # component is misleading for log-analysis and forensics.
+            # V5 U-1 / Wave-19 (2026-05-03): route through self._now_fn()
+            # so replay's idempotency keys carry the replay date, not
+            # the deploy wall-clock. (Marker backfill: V6 W found this
+            # site shipped without source attribution — adding now.)
             f"_{self._now_fn().astimezone(ZoneInfo('America/New_York')).strftime('%Y%m%d')}"
             f"_{self._session_id}_t{self._tick_count}"
         )
@@ -4781,6 +4806,10 @@ class OrganismLiveEngine:
             # key would be "tomorrow's date" — across a session boundary
             # the key still uniquely-identifies the order, but the date
             # component is misleading for log-analysis and forensics.
+            # V5 U-2 / Wave-19 (2026-05-03): route through self._now_fn()
+            # so replay's exit idempotency keys carry the replay date.
+            # (Marker backfill: V6 W found this site shipped without
+            # source attribution — adding now.)
             f"_{self._now_fn().astimezone(ZoneInfo('America/New_York')).strftime('%Y%m%d')}"
             f"_{self._session_id}_t{self._tick_count}"
         )
@@ -5291,6 +5320,41 @@ class OrganismLiveEngine:
                 int(qty),
                 avg_entry,
             )
+
+            # V6 V-T-7 / Wave-21 (2026-05-03): orphan-adoption silently
+            # mutates entry_metadata; operators couldn't see when this
+            # happens. Wire an INFO-severity alert (not WARNING — orphan
+            # adoption is a recovery path, not an error). Worker-thread-
+            # safe dispatcher in case `_reconcile_fills` runs via
+            # to_thread (it doesn't today, but defense in depth).
+            try:
+                from backend.infra.alerting import (
+                    AlertCategory, AlertSeverity, send_alert,
+                    dispatch_alert_from_thread,
+                )
+                _sym = sym
+                _dir_label = "LONG" if direction > 0 else "SHORT"
+                _qty_int = int(qty)
+                _entry = avg_entry
+                dispatch_alert_from_thread(
+                    lambda: send_alert(
+                        AlertCategory.SYSTEM_ERROR,
+                        AlertSeverity.INFO,
+                        "Orphan Position Adopted",
+                        f"Reconciliation re-tracked broker position "
+                        f"{_sym} {_dir_label} {_qty_int} shares @ ${_entry:.2f}. "
+                        f"Position will be excluded from learning per audit-G v2.",
+                        details={
+                            "symbol": _sym,
+                            "direction": _dir_label,
+                            "qty": _qty_int,
+                            "avg_entry": float(_entry),
+                            "tag": "reconciliation_orphan",
+                        },
+                    )
+                )
+            except Exception:
+                pass
 
     async def _lookup_exit_fill_from_db(self, symbol: str) -> float | None:
         """Look up actual exit fill price from DB for a recently closed position.

@@ -160,6 +160,30 @@ class OutboxWorker:
                            error_type=type(e).__name__,
                            exc_info=True)
 
+                # V6 V-T-4 / Wave-21 (2026-05-03): outbox worker errors
+                # were log-only — operators saw no Slack/PagerDuty when
+                # the broker submission pipeline broke. Wire a HIGH-
+                # severity alert. Worker runs in the main loop so we
+                # can use canonical send_alert; still gate on dispatcher
+                # for safety.
+                try:
+                    from backend.infra.alerting import (
+                        AlertCategory, AlertSeverity, send_alert,
+                        dispatch_alert_from_thread,
+                    )
+                    _err = e
+                    dispatch_alert_from_thread(
+                        lambda: send_alert(
+                            AlertCategory.SYSTEM_ERROR,
+                            AlertSeverity.WARNING,
+                            "Outbox Dispatcher Error",
+                            f"Outbox loop raised: {_err}",
+                            details={"error_type": type(_err).__name__},
+                        )
+                    )
+                except Exception:
+                    pass
+
                 # Back off on errors to avoid tight error loops
                 await asyncio.sleep(self.poll_interval * 2)
 
