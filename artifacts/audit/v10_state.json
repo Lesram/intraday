@@ -1,0 +1,29 @@
+{
+  "version": "v10",
+  "branch": "rc-1.5-curated",
+  "head_at_v10_start": "35a1fe9",
+  "phase": "phase_2_design",
+  "phases": {
+    "phase_1_verify_v9": {
+      "status": "complete",
+      "tests_pass": "190/190"
+    },
+    "phase_2_design_v10": {"status": "in_progress"},
+    "phase_3_audit": {"status": "pending"},
+    "phase_4_synthesis": {"status": "pending"},
+    "phase_5_implementation": {"status": "pending"}
+  },
+  "v10_tracks": [
+    {"id": "Z8",  "name": "closure regression on waves 41-49"},
+    {"id": "AA4", "name": "security Phase 3 — replay protection, RBAC depth, signed-URL"},
+    {"id": "BB4", "name": "data integrity Phase 3 — verify wave-43 DD3-2 reach"},
+    {"id": "DD4", "name": "strategy logic Phase 4 — fitness/pyramider production verify"},
+    {"id": "PP2", "name": "chaos Phase 2 — atomic save under SIGKILL, watchdog under hung broker"},
+    {"id": "UU2", "name": "error-handling Phase 2 — lint rule design + retroactive scan"},
+    {"id": "VV",  "name": "NEW: frontend/backend contract drift (TS types vs pydantic)"},
+    {"id": "WW",  "name": "NEW: multi-day operational soak (5x restart sequence)"},
+    {"id": "XX",  "name": "NEW: migration round-trip on snapshot"},
+    {"id": "YY",  "name": "NEW: observability completeness — what should page that doesn't?"}
+  ],
+  "yield_estimate": "5-25 findings"
+}
