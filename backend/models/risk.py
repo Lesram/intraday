@@ -8,7 +8,7 @@ from decimal import Decimal
 from enum import Enum
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_serializer, field_validator
 
 
 class RiskStatus(str, Enum):
@@ -81,6 +81,16 @@ class TriggerEmergencyStopRequest(BaseModel):
 # ===========================
 
 
+# V11 prep / Wave-65 (VV-2 closure, 2026-05-03): emit Decimals as JSON
+# numbers, not strings.  Pydantic v2's default Decimal -> JSON is a
+# string, which broke the frontend's `RiskMetric.current_value: number`
+# type contract.  Frontend was masking with `parseFloat(x.toString())`
+# in 3 components.  field_serializer returns float on the wire while
+# preserving Decimal precision in Python.
+def _decimal_to_float(value: Decimal | None) -> float | None:
+    return float(value) if value is not None else None
+
+
 class RiskMetric(BaseModel):
     """Real-time risk metric"""
 
@@ -95,6 +105,10 @@ class RiskMetric(BaseModel):
     status: RiskStatus
     last_updated: datetime
     created_at: datetime
+
+    @field_serializer("current_value", "limit_value", "percent_used")
+    def _serialize_decimal_as_number(self, v: Decimal | None) -> float | None:
+        return _decimal_to_float(v)
 
 
 class RiskViolation(BaseModel):
@@ -114,6 +128,10 @@ class RiskViolation(BaseModel):
     resolved_at: datetime | None
     created_at: datetime
 
+    @field_serializer("current_value", "limit_value")
+    def _serialize_decimal_as_number(self, v: Decimal | None) -> float | None:
+        return _decimal_to_float(v)
+
 
 class RiskLimit(BaseModel):
     """User risk limit configuration"""
@@ -130,6 +148,10 @@ class RiskLimit(BaseModel):
     created_at: datetime
     updated_at: datetime
     updated_by: int | None  # Changed from UUID to int
+
+    @field_serializer("limit_value", "warning_threshold", "critical_threshold")
+    def _serialize_decimal_as_number(self, v: Decimal | None) -> float | None:
+        return _decimal_to_float(v)
 
 
 class EmergencyStop(BaseModel):
