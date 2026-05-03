@@ -508,13 +508,15 @@ async def validate_token(request: Request) -> TokenValidationResponse:
 
 @router.post("/logout", response_model=LogoutResponse, openapi_extra={"security": []})
 async def logout(request: Request) -> LogoutResponse:
-    """Logout endpoint for frontend compatibility.
+    """V9 AA3-1 / Wave-42 (2026-05-03): server-side token revocation.
 
-    This platform uses stateless JWTs, so "logout" is client-side (drop token).
-    This endpoint exists to avoid 404s and provide a future hook for server-side
-    revocation if implemented.
+    The previous implementation logged the username and returned 200 but
+    did not blacklist the JWT — a stolen token remained valid for the
+    full TTL.  Now: blacklist_token(jti) is called on the bearer token's
+    jti claim so subsequent requests bearing that token return 401.
 
-    Returns 200 even if no valid token is provided.
+    Returns 200 even if no valid token is provided (compat: client may
+    not have one anymore).
     """
     authorization = request.headers.get("Authorization")
     if authorization and authorization.startswith("Bearer "):
@@ -522,6 +524,24 @@ async def logout(request: Request) -> LogoutResponse:
         try:
             claims = verify_jwt_token(token)
             username = getattr(claims, "sub", None)
+            jti = getattr(claims, "jti", None)
+            # V9 AA3-1: blacklist this token's jti so it can't be reused.
+            if jti:
+                from backend.infra.security import blacklist_token
+                # Pass remaining TTL so the blacklist entry expires when
+                # the token would have anyway (saves blacklist storage).
+                exp = getattr(claims, "exp", None)
+                expires_in = None
+                if exp:
+                    import time
+                    expires_in = max(1, int(exp - time.time()))
+                try:
+                    await blacklist_token(jti, expires_in=expires_in)
+                except Exception as _bl_err:
+                    logger.warning(
+                        "AA3-1: blacklist_token failed for jti=%s: %s",
+                        jti, _bl_err,
+                    )
             if username:
                 return LogoutResponse(ok=True, message=f"Logged out: {username}")
         except Exception:
@@ -699,6 +719,42 @@ async def refresh_token(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="invalid_token"
             )
+
+        # V9 AA3-3 / Wave-42 (2026-05-03): enforce single-use refresh.
+        # Check the presented refresh's jti is not already blacklisted
+        # AND blacklist it now so the same refresh can never be redeemed
+        # twice. Combined with rotation below this gives true single-use.
+        old_jti = payload.get("jti")
+        if old_jti:
+            from backend.infra.security import (
+                is_token_blacklisted, blacklist_token,
+            )
+            try:
+                if await is_token_blacklisted(old_jti):
+                    logger.warning(
+                        "AA3-3: refresh token replay attempted for user=%s "
+                        "jti=%s — blacklisted",
+                        username, old_jti,
+                    )
+                    raise HTTPException(
+                        status_code=status.HTTP_401_UNAUTHORIZED,
+                        detail="refresh_token_already_used",
+                    )
+                # Blacklist the redeemed refresh token's jti so it can't
+                # be used again.  Pass remaining TTL.
+                exp = payload.get("exp")
+                expires_in = None
+                if exp:
+                    import time
+                    expires_in = max(1, int(exp - time.time()))
+                await blacklist_token(old_jti, expires_in=expires_in)
+            except HTTPException:
+                raise
+            except Exception as _bl_err:
+                logger.warning(
+                    "AA3-3: refresh-jti blacklist op failed for jti=%s: %s",
+                    old_jti, _bl_err,
+                )
 
         logger.info(f"Token refresh for user: {username}")
 

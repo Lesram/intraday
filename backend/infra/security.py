@@ -401,6 +401,8 @@ def create_access_token(sub: str, roles: list[str], expires_minutes: int | None 
     expire = now + timedelta(minutes=expires_minutes)
 
     # Normalized JWT claims
+    # V9 AA3-2 / Wave-42 (2026-05-03): include explicit token_type="access"
+    # so decode_token can reject refresh tokens presented as access.
     claims = {
         "sub": sub,
         "roles": roles,
@@ -409,6 +411,7 @@ def create_access_token(sub: str, roles: list[str], expires_minutes: int | None 
         "exp": int(expire.timestamp()),
         "iat": int(now.timestamp()),
         "jti": secrets.token_urlsafe(16),  # Unique token ID
+        "token_type": "access",
     }
 
     try:
@@ -594,6 +597,20 @@ def decode_token(token: str) -> dict:
                 detail="invalid_token"
             )
 
+        # V9 AA3-2 / Wave-42 (2026-05-03): reject refresh tokens on the
+        # access-token verification path.  Previously decode_token did
+        # NOT check token_type; refresh tokens (7-day TTL) were accepted
+        # at /auth/me, /auth/verify, and admin audit endpoints — a
+        # privilege/scope bypass.  The `decode_refresh_token()` helper
+        # at line ~519 enforces token_type == "refresh"; the symmetric
+        # check belongs here for "access".
+        token_type = payload.get("token_type")
+        if token_type and token_type != "access":
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="invalid_token_type",
+            )
+
         return payload
 
     except ExpiredSignatureError:
@@ -694,12 +711,32 @@ async def get_current_user(
     if credentials and credentials.credentials:
         try:
             claims = verify_token(credentials.credentials)
+            # V9 AA3-1 / Wave-42 (2026-05-03): reject blacklisted tokens.
+            # Logout / refresh-rotation blacklist the jti; this gate
+            # ensures a stolen token can be revoked.
+            try:
+                if await is_token_blacklisted(claims.jti):
+                    raise HTTPException(
+                        status_code=status.HTTP_401_UNAUTHORIZED,
+                        detail="token_revoked",
+                    )
+            except HTTPException:
+                raise
+            except Exception as _bl_err:
+                # Blacklist backend (Redis) down — fail-closed in prod
+                # would break logins; fail-open here is acceptable since
+                # the blacklist is a defense-in-depth layer, not the only
+                # auth check. Log and continue.
+                _blacklist_logger.warning(
+                    "AA3-1: blacklist check failed (allowing token): %s",
+                    _bl_err,
+                )
             return AuthenticatedUser(
                 username=claims.sub, roles=claims.roles, token_id=claims.jti
             )
         except HTTPException as e:
             # Re-raise specific JWT errors (expired, invalid signature, etc.)
-            if any(term in str(e.detail).lower() for term in ["expired", "signature", "invalid token"]):
+            if any(term in str(e.detail).lower() for term in ["expired", "signature", "invalid token", "revoked"]):
                 raise
             # Invalid JWT token - continue to try other auth methods
             pass
