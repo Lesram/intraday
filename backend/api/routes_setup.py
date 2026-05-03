@@ -44,6 +44,7 @@ def register_routes(app) -> None:
     from backend.api.routes.signals import router as signals_router
     from backend.api.routes.strategy import router as strategy_router
     from backend.api.routes.strategy_health import router as strategy_health_router
+    from backend.api.routes.deploy_health import router as deploy_health_router
     from backend.api.routes.system import router as system_router
     from backend.api.routes.trades import router as trades_router
     from backend.api.routes.watchlists import router as watchlists_router
@@ -71,6 +72,10 @@ def register_routes(app) -> None:
     # without ever exposing realized PnL/Sharpe/win-rate.  Protected
     # because PnL leak to public is an info-disclosure risk.
     protected.include_router(strategy_health_router, tags=["Health"])
+    # V12 W78 (EXT-8): /api/v1/health/deploy — source SHA, migration
+    # head, build time, runtime config hash.  Operators can detect
+    # build/config skew across fleet without ssh'ing into containers.
+    protected.include_router(deploy_health_router, tags=["Health"])
     protected.include_router(backtest_router, tags=["Backtesting"])
     protected.include_router(optimizations_router, tags=["Optimizations"])
     protected.include_router(indicators_router, tags=["Indicators"])

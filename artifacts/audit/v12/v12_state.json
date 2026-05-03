@@ -334,9 +334,11 @@
       "from": "external_review_v11",
       "severity": "medium",
       "title": "no /health/deploy endpoint; source SHA / migration head / build time not exposed",
-      "status": "open",
+      "status": "closed",
       "wave_target": 78,
-      "behavioral_test_path": null
+      "wave_closed": 78,
+      "behavioral_test_path": "tests/test_v12_w78_deploy_health.py",
+      "notes": "Closed wave-78. New /api/v1/health/deploy endpoint exposes 7 deploy-state fields: source_sha (env GIT_SHA / git rev-parse fallback), migration_head (live SELECT from alembic_version), build_time (env BUILD_TIME), image_sha (env IMAGE_SHA), runtime_config_hash (sha256 of risk-cap env + non-secret settings), container_hostname, app_environment. Operators can now detect skew across fleet without ssh. 7 behavioral tests cover schema completeness, hash sensitivity to risk-cap drift, no secret leakage, route registration."
     },
     {
       "id": "EXT-9",
@@ -359,7 +361,7 @@
     "75": "completed",
     "76": "completed",
     "77": "completed",
-    "78": "pending",
+    "78": "completed",
     "79": "pending"
   }
 }
