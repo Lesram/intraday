@@ -289,15 +289,32 @@ async def get_risk_manager(request: Request):
     return RiskManager()
 
 
-def require_trader(current_user=Depends(get_current_user)):
-    """Dependency that requires authenticated user with trader role"""
+def require_trader(
+    current_user=Depends(get_current_user),
+):
+    """V11 AAA-F2 / Wave-68 (2026-05-03): canonical RBAC for trader+admin.
+
+    Pre-V11 this stub IGNORED roles ("In production, would check
+    roles/permissions") — letting any self-registered user (default
+    role ["user"] per auth.py:661) place / cancel / modify orders.
+    Same RBAC bypass class wave-23b closed for organism / audit, but
+    missed on the orders surface.
+
+    Now: delegates to the canonical require_roles factory in
+    infra/security.  Allowed roles: trader OR admin.  Anything else
+    (including default "user") → 403.
+    """
     if not current_user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Authentication required"
+            detail="Authentication required",
         )
-
-    # In production, would check roles/permissions
+    user_roles = set(getattr(current_user, "roles", []) or [])
+    if not (user_roles & {"trader", "admin"}):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="trader or admin role required",
+        )
     return current_user
 
 

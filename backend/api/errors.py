@@ -377,11 +377,23 @@ def http_500():
     raise HTTPException(500, detail="Server error")
 
 
-# Only expose test endpoints in development
+# V11 AAA-F1 / Wave-68 (2026-05-03): debug-endpoint gate hardened.
+# The previous gate exposed /test/http-* in any APP_ENVIRONMENT ==
+# "development" container — which paper trading runs as (per the
+# memory note "paper compose gotcha: APP_ENVIRONMENT must be
+# `development`, not `paper`").  Result: deployed paper API exposes
+# unauthenticated 401/403/422/500 endpoints that are also
+# advertised in /openapi.json.
+#
+# Tightened: require BOTH (a) APP_ENVIRONMENT is dev/local AND
+# (b) explicit `EXPOSE_TEST_ERROR_ENDPOINTS=1` env opt-in.  Paper
+# and production never set the opt-in.
 _app_env = os.getenv("APP_ENVIRONMENT", "development")
-if _app_env == "development":
+_expose_debug = os.getenv("EXPOSE_TEST_ERROR_ENDPOINTS", "").strip() == "1"
+if _app_env in ("development", "dev", "local") and _expose_debug:
     router = _test_router
 else:
+    # Empty stub router — no /test/* paths registered.
     router = APIRouter(prefix="/test", tags=["test-errors"])
 
 

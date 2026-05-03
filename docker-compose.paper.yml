@@ -43,6 +43,18 @@ services:
       - ALPACA_STREAM_URL=wss://paper-api.alpaca.markets/stream
       - ALPACA_PAPER=true
 
+      # V11 CCC-2 / Wave-68 (2026-05-03): explicit risk-cap wiring.
+      # Pre-V11 paper compose did NOT wire these — code defaults are
+      # 0.05 / 0 / 0 (max_daily_loss + max_notional DISABLED), and a
+      # missing .env silently allowed unbounded loss windows.  Now:
+      # paper has explicit fallbacks matching the conservative
+      # paper-trading risk profile (kill at 5% drawdown; 5500 daily
+      # max-loss; 2000 max single-position notional).
+      - ORGANISM_DRAWDOWN_KILL_PCT=${ORGANISM_DRAWDOWN_KILL_PCT:-0.05}
+      - ORGANISM_DRAWDOWN_COOLDOWN_S=${ORGANISM_DRAWDOWN_COOLDOWN_S:-300}
+      - ORGANISM_MAX_DAILY_LOSS=${ORGANISM_MAX_DAILY_LOSS:-5500}
+      - ORGANISM_MAX_NOTIONAL=${ORGANISM_MAX_NOTIONAL:-2000}
+
       # Security Settings - PRODUCTION SECURE JWT
       - JWT_SECRET_KEY=${JWT_SECRET_KEY}
       - SECURITY_JWT_SECRET=${JWT_SECRET_KEY}
