@@ -683,12 +683,19 @@ def verify_api_key(api_key: str) -> bool:
     """
     settings = get_settings()
 
-    if not settings.security.api_keys:
+    # V10 AA4-4 / Wave-59 (2026-05-03): defensive `api_keys` lookup.
+    # The wave-50 fix coerced settings.app.environment but the actual
+    # 500 came from this path: `SecuritySettings` object has no
+    # `api_keys` attribute in the current pydantic config.  `getattr`
+    # with default returns falsy, allowing the existing branch to
+    # return False cleanly instead of raising AttributeError.
+    api_keys = getattr(settings.security, "api_keys", None)
+    if not api_keys:
         return False
 
     # Use constant-time comparison to prevent timing attacks
     return any(
-        secrets.compare_digest(api_key, valid_key) for valid_key in settings.security.api_keys
+        secrets.compare_digest(api_key, valid_key) for valid_key in api_keys
     )
 
 
