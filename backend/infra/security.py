@@ -572,7 +572,11 @@ def decode_token(token: str) -> dict:
         # SECURITY: No test token bypass - all tokens must be valid JWTs
         # Tests should use proper JWT fixtures via create_access_token()
 
-        # Decode with normalized options
+        # Decode with normalized options.
+        # V9 AA3-4 / Wave-47 (2026-05-03): pass JWT_CLOCK_SKEW as leeway=
+        # so the constant isn't dead code.  python-jose's `jwt.decode`
+        # accepts a `leeway` kwarg in seconds for both `exp` and `nbf`
+        # validation.
         payload = jwt.decode(
             token,
             secret,
@@ -588,6 +592,7 @@ def decode_token(token: str) -> dict:
             },
             issuer=JWT_ISSUER,
             audience=JWT_AUDIENCE,
+            leeway=JWT_CLOCK_SKEW,
         )
 
         # Validate required claims

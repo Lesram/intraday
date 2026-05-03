@@ -260,9 +260,17 @@ class ContinuousLearner:
         self._bars_since_retrain = 0
         self._reference_features: pd.DataFrame | None = None
 
+    # V9 TT-5 / Wave-47 (2026-05-03): bound the lists that append per-trade
+    # so they don't grow unboundedly across years of operation.  10k entries
+    # is roughly 25 years of paper trading at current ~400 trades/year and
+    # well below pandas perf cliffs.
+    _TT5_MAX_HISTORY = 10_000
+
     def record_trade(self, trade: TradeRecord) -> None:
         """Record a completed trade for attribution."""
         self.trade_history.append(trade)
+        if len(self.trade_history) > self._TT5_MAX_HISTORY:
+            self.trade_history = self.trade_history[-self._TT5_MAX_HISTORY:]
         self.state.total_trades += 1
         self.state.cumulative_pnl += trade.pnl
 
@@ -366,6 +374,11 @@ class ContinuousLearner:
             "effective_mean_pred_return": getattr(metrics, "effective_mean_pred_return", 0.0),
         }
         self.state.evaluation_events.append(eval_event)
+        # V9 TT-5: bound the evaluation_events list.
+        if len(self.state.evaluation_events) > self._TT5_MAX_HISTORY:
+            self.state.evaluation_events = self.state.evaluation_events[
+                -self._TT5_MAX_HISTORY:
+            ]
 
         if not accepted:
             # Rollback to old model
@@ -380,8 +393,16 @@ class ContinuousLearner:
 
         # Accepted — update state
         self.state.model_metrics.append(metrics)
+        if len(self.state.model_metrics) > self._TT5_MAX_HISTORY:
+            self.state.model_metrics = self.state.model_metrics[
+                -self._TT5_MAX_HISTORY:
+            ]
         if metrics.accuracy > 0:
             self.state.generation_accuracies.append(metrics.accuracy)
+            if len(self.state.generation_accuracies) > self._TT5_MAX_HISTORY:
+                self.state.generation_accuracies = (
+                    self.state.generation_accuracies[-self._TT5_MAX_HISTORY:]
+                )
 
         logger.info(
             "Gen %d: model accepted (acc=%.3f, hit=%.3f)",

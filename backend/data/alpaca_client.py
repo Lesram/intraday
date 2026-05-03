@@ -484,7 +484,7 @@ class AlpacaClient:
                     raise ValueError(f"Invalid symbol format: {symbol}")
 
                 # Rate limiting
-                self._rate_limit()
+                await self._async_rate_limit()
 
                 # Convert string enums
                 side_enum = OrderSide.BUY if side.lower() == "buy" else OrderSide.SELL
@@ -635,7 +635,7 @@ class AlpacaClient:
             {"alpaca.operation": "cancel_order", "alpaca.order_id": order_id},
         ) as span:
             try:
-                self._rate_limit()
+                await self._async_rate_limit()
 
                 # Cancel order with API call timing (async wrapper for sync API)
                 api_start_time = time.time()
@@ -700,7 +700,7 @@ class AlpacaClient:
             Dictionary with account information
         """
         try:
-            self._rate_limit()
+            await self._async_rate_limit()
 
             # Get account info (async wrapper for sync API)
             account = await asyncio.to_thread(self.trading_client.get_account)
@@ -777,7 +777,7 @@ class AlpacaClient:
             List of order dictionaries
         """
         try:
-            self._rate_limit()
+            await self._async_rate_limit()
 
             # Get orders (async wrapper for sync API)
             # Some test doubles expect simple kwargs; keep it minimal/compatible
@@ -900,6 +900,13 @@ class AlpacaClient:
 
         Use this in async code paths instead of _rate_limit() to avoid
         blocking the event loop.
+
+        V9 TT-4 / Wave-47 (2026-05-03): the 4 async methods (submit_order,
+        cancel_order, get_account_status, get_recent_orders) previously
+        called sync `self._rate_limit()` which blocked the event loop
+        on `time.sleep()`.  All 4 sites migrated to await this method.
+        Sync methods (get_historical_data, get_current_price) still use
+        the sync version.
         """
         current_time = time.time()
         elapsed = current_time - self.last_request_time
