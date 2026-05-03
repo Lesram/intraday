@@ -340,6 +340,54 @@ W2: 3 CI rule ship gaps. CC: 8 organism modules at 0% coverage; 13 deterministic
 ## Status legend update history
 
 - 2026-05-03 06:00 PT: V7 round complete. Largest open backlog since V1. Wave 23 (security URGENT) recommended within 24-48 hours. Synthesis in `MASTER_AUDIT_SYNTHESIS_v7.md`.
+- 2026-05-03 07:30 PT: Waves 23-27 shipped on rc-1.5-curated. ~33 V7 findings closed across 5 wave commits (73f96e7, 7ed1aa6, 413cf9e, 614f0a3, f7d8df8). Container healthy. ~58 remain deferred (mostly BB-8/10 audit wiring, EE runbooks, HH structural refactors). Wave 23 closed both AA-C-1 + AA-C-2 (the audit cycle's most operationally severe pair); Wave 24 closed all 4 DD strategy-logic findings + AA security hardening; Wave 25 added 7 orders CHECK constraints + closed FF-1/2/3; Wave 26 shipped V6 W's CI rules (PR template + check_wave_markers.py + workflow); Wave 27 shipped HH R-5 shared clock helpers (R-1 deferred, needs maintenance window).
+
+## V7 closure status (post waves 23-27)
+
+| Finding | Wave | Commit |
+|---|---|---|
+| **AA-C-1** (JWT public default) | 23a | 73f96e7 |
+| **AA-C-2** (require_roles broken factory; 18 admin endpoints) | 23b | 73f96e7 |
+| AA-H-2 (5 endpoints public) | 23c | 73f96e7 |
+| AA-M-1 (Redis default password) | 23d | 73f96e7 |
+| EE-3 (Redis bind 127.0.0.1) | 23e | 73f96e7 |
+| **DD-1** (manufactures breakout score from flat-price data) | 24 | 7ed1aa6 |
+| **DD-2** (regime ATR-missing default = 10x high-vol) | 24 | 7ed1aa6 |
+| **DD-3** (SPY positional misalignment) | 24 | 7ed1aa6 |
+| **DD-4** (Kelly regime-stratified bypass) | 24 | 7ed1aa6 |
+| AA-H-1 (security headers middleware) | 24 | 7ed1aa6 |
+| AA-H-4 (container hardening) | 24 | 7ed1aa6 |
+| AA-M-3..5 (settings/risk role enforcement) | 24 | 7ed1aa6 |
+| EE-7 (redis/postgres log rotation) | 24 | 7ed1aa6 |
+| BB-1/2/3 (orders CHECK constraints) | 25 | 413cf9e |
+| FF-1 (validate_order wired) | 25 | 413cf9e |
+| FF-2 (idempotency body verify) | 25 | 413cf9e |
+| FF-3 (WS null filled_qty) | 25 | 413cf9e |
+| EE-2 (/observability/health/ready) | 25 | 413cf9e |
+| EE-8 (MetricsRegistry.create_gauge) | 25 | 413cf9e |
+| W2-1 (V6 W's 3 CI rules shipped) | 26 | 614f0a3 |
+| T2-pin (pytest-cov + xdist + coverage) | 26 | 614f0a3 |
+| GG-6 (OPERATOR_COMMAND_SHEET stale) | 26 | 614f0a3 |
+| GG-7 (MONDAY_DEPLOY_eb90fa3 stale flag) | 26 | 614f0a3 |
+| GG-9 (README quick-setup broken) | 26 | 614f0a3 |
+| HH R-5 (shared clock-injection helpers) | 27 | f7d8df8 |
+
+### V7 deferred (~58 items)
+
+- **BB-6** order_events FK ondelete=CASCADE migration
+- **BB-8** LotTracker dead code wiring (production stream integration)
+- **BB-10** ComplianceAuditService event-by-event invocation
+- **AA-H-3** USER_LOGIN/LOGOUT/CONFIG_UPDATED audit invocation (depends on BB-10)
+- **EE-1** healthcheck deepens to /readyz
+- **EE-4** pg_backup cron + restore script + integrity check
+- **EE-5** DR runbooks for 6 scenarios
+- **EE-6** graceful shutdown per-component timeout
+- **CC** fix 13 deterministic regressions; mutation testing; flaky cleanup
+- **GG-1..5/8/10/11** mapss.md drift; FINDINGS_LEDGER inconsistency; live_engine docstring; etc.
+- **HH R-1** pipeline-split _live_tick_inner (2,510 lines — needs maintenance window)
+- **HH R-2** consolidate 7 settings entry-points (cross-cutting)
+- **HH R-3** brain serializer registry
+- **DD-5..11**, **FF-4..11**, **AA-L-1..3**, **AA-M-2** medium/low residuals
 
 ## V6 closure status (post waves 20-22)
 
