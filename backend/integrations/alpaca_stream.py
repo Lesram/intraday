@@ -679,6 +679,37 @@ class AlpacaStreamClient:
                                         "EXEC-002 gap-fill: reconciled order %s: %s -> %s",
                                         order.broker_order_id, current_db_status, broker_status,
                                     )
+
+                                    # V5 S-WS-GAP-1 / Wave-17c (2026-05-03):
+                                    # the steady-state path
+                                    # (`_on_trade_update`) records terminal
+                                    # ids into `_terminal_order_ids` so
+                                    # live_engine's early-clear path can
+                                    # un-stick rejected symbols. Across a
+                                    # WS gap, that path doesn't fire — the
+                                    # terminal status was discovered by
+                                    # gap-fill REST polling instead. We
+                                    # must re-populate `_terminal_order_ids`
+                                    # here too, otherwise wave-16d's
+                                    # H-1 unification holds in-process but
+                                    # regresses across every WS reconnect:
+                                    # the symbol stays locked for the full
+                                    # 30-tick TTL after a gap-window reject.
+                                    if broker_status in (
+                                        "rejected", "cancelled", "expired"
+                                    ):
+                                        broker_oid = order.broker_order_id
+                                        if broker_oid:
+                                            self._terminal_order_ids.add(broker_oid)
+                                        try:
+                                            if order.id is not None:
+                                                self._terminal_order_ids.add(str(order.id))
+                                        except Exception:
+                                            pass
+                                        if len(self._terminal_order_ids) > 2000:
+                                            self._terminal_order_ids = set(
+                                                list(self._terminal_order_ids)[-1000:]
+                                            )
                     except Exception as e:
                         logger.warning("EXEC-002 gap-fill: failed to reconcile order %s: %s",
                                       order.broker_order_id, e)

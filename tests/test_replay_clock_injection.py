@@ -57,7 +57,10 @@ def test_governance_drawdown_cooldown_uses_injected_clock():
     """V5 U-4: drawdown cooldown anchor must use injected clock so
     replay sees cooldown elapse on replay-clock time, not wall."""
     gov = GovernanceController(now_fn=_frozen_clock(2024, 1, 15))
-    gov.trigger_drawdown_kill(0.10)  # well above default 0.05 limit
+    # Trigger with a drawdown comfortably above any plausible env-override
+    # limit (.env in this repo sets ORGANISM_DRAWDOWN_KILL_PCT=0.20).
+    big_drawdown = max(0.99, gov._drawdown_limit + 0.10)
+    gov.trigger_drawdown_kill(big_drawdown)
     # The drawdown trigger anchor should be 2024, not 2026.
     assert gov._drawdown_triggered_at is not None
     assert gov._drawdown_triggered_at.year == 2024

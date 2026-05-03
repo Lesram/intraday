@@ -532,6 +532,41 @@ class OrganismBrain:
                 generation_accuracies=ls.get("generation_accuracies", []),
             )
 
+            # V5 B-T-2 / Wave-17d (2026-05-03): cumulative_pnl /
+            # trade_history.csv reconciliation. Sum the per-trade pnls
+            # from the loaded CSV; the result, rounded to 2dp, must
+            # equal the saved cumulative_pnl. Surface any drift as a
+            # warning so we can detect schema/save-path bugs early.
+            # Pre-Wave-17d CSVs stored 2dp pnls; the 6dp upgrade only
+            # affects new writes — drift on legacy data is expected
+            # and the threshold reflects that (10c tolerance for the
+            # ~498-trade ledger; tighten over time as old rows roll out).
+            try:
+                _csv_pnl_sum = sum(
+                    float(td.get("pnl", 0.0) or 0.0)
+                    for td in (self.trade_history or [])
+                )
+                _state_pnl = float(learner.state.cumulative_pnl or 0.0)
+                _drift = abs(round(_csv_pnl_sum, 2) - round(_state_pnl, 2))
+                if _drift > 0.10:
+                    logger.warning(
+                        "cumulative_pnl reconciliation drift on load: "
+                        "state=%.2f csv_sum=%.2f drift=$%.2f "
+                        "(B-T-2; tolerance $0.10 — investigate if growing)",
+                        _state_pnl, _csv_pnl_sum, _drift,
+                    )
+                else:
+                    logger.info(
+                        "cumulative_pnl reconciles: state=%.2f csv_sum=%.2f "
+                        "drift=$%.2f within tolerance",
+                        _state_pnl, _csv_pnl_sum, _drift,
+                    )
+            except Exception as _reconcile_err:
+                logger.debug(
+                    "cumulative_pnl reconcile check skipped: %s",
+                    _reconcile_err,
+                )
+
             # Restore model metrics history
             from backend.organism.ml_signal import ModelMetrics
             for mm in self.ml_state.get("model_metrics_history", []):
@@ -1278,7 +1313,17 @@ class OrganismBrain:
                 "entry_bar": t.entry_bar,
                 "exit_bar": t.exit_bar,
                 "shares": t.shares,
-                "pnl": round(t.pnl, 2),
+                # V5 B-T-2 / Wave-17d (2026-05-03): the CSV used to
+                # store `round(t.pnl, 2)` per trade. learning_state.json
+                # stores `round(sum(raw), 2)` as cumulative_pnl. After
+                # restart, recomputing `sum(CSV.pnl)` produced 2¢ drift
+                # versus the saved cumulative_pnl (sum-of-rounded vs
+                # round-of-sum asymmetry; banker's rounding adds bias).
+                # Storing 6 decimals here is well within float precision
+                # for dollar P&L and lets `round(sum(CSV.pnl), 2)`
+                # reconcile to the saved cumulative_pnl exactly across
+                # restart. Display layers format to 2dp on render.
+                "pnl": round(t.pnl, 6),
                 "exit_reason": t.exit_reason,
                 "predicted_return": round(t.predicted_return, 6),
                 "actual_return": round(t.actual_return, 6),

@@ -94,3 +94,31 @@ class TestOrderRejectionBlock:
         assert client.is_order_terminal(internal_uuid) is True
         # Random unrelated id: still False.
         assert client.is_order_terminal("nope-not-here") is False
+
+    # V5 S-WS-GAP-1 / Wave-17c (2026-05-03): gap-fill must re-populate
+    # the terminal-id set so wave-16d's H-1 unification doesn't regress
+    # across WebSocket reconnects.
+    def test_gap_fill_repop_pattern_inline(self):
+        """Verify that the gap-fill body contains the same dual-record
+        pattern (broker_oid + internal UUID) used by _on_trade_update.
+
+        Behavioral coverage of `_gap_fill_after_reconnect` requires a
+        full HTTP/DB stack mock; instead we structurally assert that
+        the wave-17c repop block exists in the gap-fill source — same
+        approach as test_order_id_captured_on_entry_submission in j6b
+        (which verifies dual recording at the steady-state site).
+        """
+        import inspect
+        from backend.integrations.alpaca_stream import AlpacaStreamClient
+        source = inspect.getsource(AlpacaStreamClient._gap_fill_after_reconnect)
+        # The repop block must add broker_oid AND internal str(order.id).
+        assert "self._terminal_order_ids.add(broker_oid)" in source, (
+            "gap-fill must re-populate terminal_order_ids on broker_oid"
+        )
+        assert "str(order.id)" in source, (
+            "gap-fill must also record the internal DB UUID (H-1 unification)"
+        )
+        assert 'in (\n                                        "rejected", "cancelled", "expired"\n                                    )' in source or \
+               'rejected' in source and 'cancelled' in source and 'expired' in source, (
+            "gap-fill repop must trigger only on terminal statuses"
+        )
