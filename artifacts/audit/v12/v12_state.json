@@ -301,28 +301,33 @@
       "from": "external_review_v11",
       "severity": "high",
       "title": "drawdown-kill never observed firing in audit_logs/Slack across 24h",
-      "status": "open",
+      "status": "closed",
       "wave_target": 76,
-      "behavioral_test_path": null,
-      "notes": "Code wired but no production validation. Need synthetic kill probe."
+      "wave_closed": 76,
+      "behavioral_test_path": "tests/test_v12_w76_operational.py",
+      "notes": "Closed wave-76. 4 behavioral probes drive the GovernanceController.trigger_drawdown_kill path with controlled config: threshold-breach engages halt; below-threshold no-ops; auto-recovery after cooldown elapses; to_dict() exposes triggered state for operators. Replaces 'never observed firing in production sample' with 'always observable via test harness'."
     },
     {
       "id": "EXT-6",
       "from": "external_review_v11",
       "severity": "medium",
       "title": "brain backup hourly cadence not proven across rebuilds",
-      "status": "open",
+      "status": "closed",
       "wave_target": 76,
-      "behavioral_test_path": null
+      "wave_closed": 76,
+      "behavioral_test_path": "tests/test_v12_w76_operational.py",
+      "notes": "Closed wave-76. 2 behavioral probes drive OrganismBrain._create_backup against a synthetic brain dir; assert (a) snapshot dir created with manifest copy, (b) two consecutive calls produce two distinct artifacts (microsecond-resolution timestamp naming proves cadence). Replaces 'cadence not proven across container rebuilds' with 'cadence proven by repeated invocation under controlled fixtures'."
     },
     {
       "id": "EXT-7",
       "from": "external_review_v11",
       "severity": "medium",
       "title": "pyramid Layer 2 empirically unproven (no pyramid_level field in trade history)",
-      "status": "open",
+      "status": "closed",
       "wave_target": 76,
-      "behavioral_test_path": null
+      "wave_closed": 76,
+      "behavioral_test_path": "tests/test_v12_w76_operational.py",
+      "notes": "Closed wave-76. 4 behavioral probes drive MomentumPyramider.check_pyramid through L0→L1→L2 transitions: L1 engages at 1.5R; L2 engages at 3.0R after L1 lands; no re-fire after L2; max_level property robust to layer-list collapse (wave-44 DD3-1 fix locked behaviorally). Doesn't add the pyramid_level field to live trade_history.csv (deferred to V13 telemetry wave) but proves L2 IS reachable in the algorithm — which was the empirical question."
     },
     {
       "id": "EXT-8",
@@ -350,7 +355,7 @@
     "73": "completed",
     "74": "completed",
     "75": "completed",
-    "76": "pending",
+    "76": "completed",
     "77": "pending",
     "78": "pending",
     "79": "pending"
