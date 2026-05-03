@@ -20,30 +20,33 @@
       "from": "v11",
       "severity": "high",
       "title": "chop-min-hold gate compares ticks to bar-units (live_engine.py:3026-3030)",
-      "status": "open",
+      "status": "closed",
       "wave_target": 72,
-      "behavioral_test_path": null,
-      "notes": "_bars_held = self._tick_count - _entry_tick → at 1-min bars, ticks ≫ bars; gate inert. Auditor confirmed."
+      "wave_closed": 72,
+      "behavioral_test_path": "tests/test_v12_dd5_strategy.py",
+      "notes": "Closed wave-72. New helper _should_suppress_chop_cut() computes bars_held from wall-clock seconds (now_ts - entry_time) // 60. 5 behavioral tests cover: in-window suppress, out-of-window allow, non-chop never suppresses, missing entry_time falls open, pre-V12 30-tick=5-bar bug demonstrated."
     },
     {
       "id": "DD5-2",
       "from": "v11",
       "severity": "high",
       "title": "live_engine carries private _INVERSE_ETFS_CHOP_SUPPRESSED parallel to canonical _INVERSE_ETFS",
-      "status": "open",
+      "status": "closed",
       "wave_target": 72,
-      "behavioral_test_path": null,
-      "notes": "live_engine.py:4021 = {PSQ, SH}; regime.py:47 = {SH, PSQ, DOG, RWM}. Auditor confirmed."
+      "wave_closed": 72,
+      "behavioral_test_path": "tests/test_v12_dd5_strategy.py",
+      "notes": "Closed wave-72. _INVERSE_ETFS_CHOP_SUPPRESSED deleted; routes through is_inverse_etf() from regime.py. AST-scan test asserts no Assign/AnnAssign binding to the forbidden symbol; functional test asserts SH/PSQ/DOG/RWM all return True from canonical helper (DOG and RWM were silently missing pre-V12)."
     },
     {
       "id": "DD5-3",
       "from": "v11",
       "severity": "high",
       "title": "wave-53 fitness-gate persistence is identity copy of promotion-gated counter",
-      "status": "open",
+      "status": "closed",
       "wave_target": 72,
-      "behavioral_test_path": null,
-      "notes": "live_engine.py:6309-6314: symbol_trade_counts_runtime = dict(evolved_params.symbol_trade_counts). Snapshot, not separate accumulator. Auditor confirmed."
+      "wave_closed": 72,
+      "behavioral_test_path": "tests/test_v12_dd5_strategy.py",
+      "notes": "Closed wave-72. New self._symbol_trade_counts_runtime dict initialized in __init__, incremented at the same source as evolved_params.symbol_trade_counts but NEVER reset by the promotion gate. Persistence write at extra_counters['symbol_trade_counts_runtime'] now reads from self._symbol_trade_counts_runtime, not from evolved_params. 3 behavioral tests cover: separate __init__ allocation (AST-asserted not derived from evolved_params), independent advancement during simulated freeze, persistence-write source-of-truth."
     },
     {
       "id": "DD5-4",
@@ -266,7 +269,7 @@
   "wave_progress": {
     "70": "completed",
     "71": "completed",
-    "72": "pending",
+    "72": "completed",
     "73": "pending",
     "74": "pending",
     "75": "pending",

@@ -363,6 +363,39 @@ class LiveTickResult:
         }
 
 
+def _should_suppress_chop_cut(
+    *,
+    regime: str,
+    now_ts: float,
+    entry_time: float | None,
+    chop_min_hold_bars: int,
+    bar_seconds: int = 60,
+) -> tuple[bool, int]:
+    """V12 W72 (DD5-1): chop-min-hold gate computed in BARS, not ticks.
+
+    Returns ``(suppress, bars_held)``.
+
+    The pre-V12 implementation used ``self._tick_count - entry_tick``
+    which counts SCHEDULER ticks (10s interval), not minute-bars.  At
+    a 1-min bar timeframe the gate fired well before ``min_hold_bars``
+    elapsed, leaving the chop-cut suppression effectively inert (V11
+    DD5-1 + external auditor finding).
+
+    Now: ``bars_held = floor((now - entry_time) / 60s)``.  A 5-minute
+    hold reads as 5 bars; a 11-minute hold reads as 11 bars.
+
+    Falls open (no suppression) when ``entry_time`` is missing — that
+    matches the prior behavior on entries minted before V12 W72 (no
+    ``entry_time`` was ever stored as None) and is the safe default for
+    non-chop regimes anyway.
+    """
+    if entry_time is None:
+        return False, 0
+    bars_held = max(0, int((now_ts - entry_time) // bar_seconds))
+    suppress = (regime == "chop") and (bars_held < chop_min_hold_bars)
+    return suppress, bars_held
+
+
 class OrganismLiveEngine:
     """Unified live trading engine — the organism in production.
 
@@ -676,6 +709,17 @@ class OrganismLiveEngine:
         self._symbol_stop_loss_times: dict[str, list[float]] = {}  # symbol → timestamps of stop-loss exits
         self._symbol_banned: set[str] = set()                  # banned symbols for the session
         self._SYMBOL_BAN_CONSEC_LOSSES = 2  # ban after this many consecutive losers with 0 wins
+        # V12 W72 / DD5-3: separate runtime accumulator from the
+        # promotion-gated ``evolved_params.symbol_trade_counts``.  Pre-V12
+        # the persisted ``symbol_trade_counts_runtime`` was an identity
+        # copy of evolved_params.symbol_trade_counts, defeating the
+        # "runtime tracker that advances during the 300-trade evolution
+        # freeze" purpose (V11 DD5-3 + external auditor finding).  This
+        # dict is incremented at the same source as
+        # evolved_params.symbol_trade_counts but is NEVER reset by the
+        # promotion gate, so it reflects true cumulative live trades
+        # regardless of evolution status.
+        self._symbol_trade_counts_runtime: dict[str, int] = {}
 
         # A5 (improve8): Regime transition cooldown
         self._last_regime: str = "unknown"
@@ -1235,6 +1279,11 @@ class OrganismLiveEngine:
             # truth copy in extra_counters is updated every essential save.
             # Use the larger of (evolved_params version, extra_counters
             # version) so we never go backwards on a restart.
+            #
+            # V12 W72 / DD5-3 (2026-05-03): also restore the separate
+            # runtime accumulator from disk so its cross-restart history
+            # is preserved.  Previously this dict was reconstructed-by-
+            # snapshot from evolved_params, defeating the point.
             try:
                 _ec_counts = self.brain.extra_counters.get(
                     "symbol_trade_counts_runtime", {}
@@ -1242,6 +1291,12 @@ class OrganismLiveEngine:
                 _ec_fitness = self.brain.extra_counters.get(
                     "symbol_fitness_runtime", {}
                 )
+                # Always rehydrate the runtime accumulator from disk; it
+                # is the cross-restart authoritative source.
+                if isinstance(_ec_counts, dict) and _ec_counts:
+                    self._symbol_trade_counts_runtime = {
+                        str(k): int(v) for k, v in _ec_counts.items()
+                    }
                 if isinstance(_ec_counts, dict) and _ec_counts:
                     _ep_counts = (
                         getattr(self.evolved_params,
@@ -3016,19 +3071,26 @@ class OrganismLiveEngine:
                     elif action.action == "close_partial" and action.shares_to_add < 0:
                         # EXPERIMENT 1A: chop-regime minimum-hold gate for
                         # pyramid cuts. In chop, suppress pyramid_cut exits
-                        # until the trade has been held for at least 10 bars.
-                        # Rationale: Apr 7-10 baseline shows 24/32 trades
-                        # exit via pyramid_cut, ALL losers (-$63.80), while
-                        # 78% of entries go green (MFE > 0). Premature cuts
-                        # in chop destroy edge that would have been captured
-                        # by holding. Timeout exits (18-30 bars) are 100%
-                        # winners (+$18.68).
+                        # until the trade has been held for at least 10 BARS
+                        # (not ticks!).
+                        #
+                        # V12 W72 / DD5-1: pre-V12 the comparison was
+                        # ``self._tick_count - entry_tick``, which counts
+                        # SCHEDULER TICKS not BARS.  At a 10s scheduler
+                        # interval and 60s bars, ticks ≫ bars, so the
+                        # gate fired far too early — V11 DD5-1 + the
+                        # external auditor both confirmed it was inert.
+                        # Now: bars-held = wall-clock minutes since entry.
                         _CHOP_MIN_HOLD_BARS = 10
-                        _is_chop = (regime == "chop")
                         _meta = self._entry_metadata.get(sym, {})
-                        _entry_tick = _meta.get("entry_tick", 0)
-                        _bars_held = self._tick_count - _entry_tick
-                        if _is_chop and _bars_held < _CHOP_MIN_HOLD_BARS:
+                        _entry_time = _meta.get("entry_time")
+                        _suppress, _bars_held = _should_suppress_chop_cut(
+                            regime=regime,
+                            now_ts=self._time_fn(),
+                            entry_time=_entry_time,
+                            chop_min_hold_bars=_CHOP_MIN_HOLD_BARS,
+                        )
+                        if _suppress:
                             _unrealized = pyr.unrealized_pnl(current_price) if pyr else 0.0
                             logger.info(
                                 "Exp1A: pyramid_cut suppressed (chop min-hold): "
@@ -4017,8 +4079,18 @@ class OrganismLiveEngine:
                 except Exception:
                     fresh_open = open_symbols
 
-                # INVERSE_ETFS that should not enter in chop regime.
-                _INVERSE_ETFS_CHOP_SUPPRESSED = frozenset({"PSQ", "SH"})
+                # V12 W72 / DD5-2: route through the canonical helper from
+                # backend.organism.regime instead of carrying a private
+                # parallel set.  Pre-V12 this was
+                # ``_INVERSE_ETFS_CHOP_SUPPRESSED = {"PSQ", "SH"}`` which
+                # silently diverged from regime.py's
+                # ``_INVERSE_ETFS = {"SH", "PSQ", "DOG", "RWM"}`` —
+                # DOG and RWM were never suppressed in chop even though
+                # they exhibit the same regime-flip pattern.  Wave-60
+                # added ``is_inverse_etf()`` as the single source of
+                # truth; this commit deletes the parallel set so all
+                # callers agree.
+                from backend.organism.regime import is_inverse_etf as _is_inverse_etf
 
                 for sz in sizes:
                     # EXPERIMENT 2: suppress inverse ETF entries in chop.
@@ -4027,7 +4099,7 @@ class OrganismLiveEngine:
                     # green. The improve9 inverse-ETF logic was intended for
                     # trending_down hedging, not chop entries.
                     if (
-                        sz.symbol in _INVERSE_ETFS_CHOP_SUPPRESSED
+                        _is_inverse_etf(sz.symbol)
                         and regime == "chop"
                     ):
                         logger.info(
@@ -5644,6 +5716,13 @@ class OrganismLiveEngine:
                 self.evolved_params.symbol_trade_counts[sym] = (
                     self.evolved_params.symbol_trade_counts.get(sym, 0) + 1
                 )
+                # V12 W72 / DD5-3: parallel SEPARATE runtime accumulator.
+                # This must NOT just snapshot evolved_params — the whole
+                # point is to advance during evolution freeze when
+                # evolved_params is intentionally pinned.
+                self._symbol_trade_counts_runtime[sym] = (
+                    self._symbol_trade_counts_runtime.get(sym, 0) + 1
+                )
 
             # v5 (improve8): Session-aware symbol loss gating
             # Audit-G BUG-G: skip reconciliation artifacts to avoid
@@ -6315,10 +6394,19 @@ class OrganismLiveEngine:
             # not just evolved_params.json (full-save promotion-gated path).
             # Previously the production fitness gate was defeated because
             # evolved_params.json wasn't being updated between deploys —
-            # only 62 counts on disk vs 491 trades in CSV.  Now: every
-            # essential save (every tick) preserves the runtime counts.
+            # only 62 counts on disk vs 491 trades in CSV.
+            #
+            # V12 W72 / DD5-3 (2026-05-03): write the SEPARATE runtime
+            # accumulator (``self._symbol_trade_counts_runtime``), not
+            # an identity copy of ``evolved_params.symbol_trade_counts``.
+            # The pre-V12 ``dict(getattr(self.evolved_params,
+            # "symbol_trade_counts", ...))`` was just a snapshot — both
+            # values incremented together so the "runtime" qualifier was
+            # meaningless.  Now the runtime counter advances during the
+            # 300-trade evolution freeze (B5) when evolved_params is
+            # pinned, giving operators a true live count.
             "symbol_trade_counts_runtime": dict(
-                getattr(self.evolved_params, "symbol_trade_counts", {}) or {}
+                self._symbol_trade_counts_runtime
             ),
             "symbol_fitness_runtime": dict(
                 getattr(self.evolved_params, "symbol_fitness", {}) or {}
