@@ -573,10 +573,17 @@ def decode_token(token: str) -> dict:
         # Tests should use proper JWT fixtures via create_access_token()
 
         # Decode with normalized options.
-        # V9 AA3-4 / Wave-47 (2026-05-03): pass JWT_CLOCK_SKEW as leeway=
-        # so the constant isn't dead code.  python-jose's `jwt.decode`
-        # accepts a `leeway` kwarg in seconds for both `exp` and `nbf`
-        # validation.
+        # V11 AA5-1 / Wave-67 (2026-05-03): the wave-47 fix passed
+        # `leeway=JWT_CLOCK_SKEW` as a top-level kwarg, but
+        # python-jose 3.5's `jwt.decode` signature only accepts:
+        #   (token, key, algorithms, options, audience, issuer,
+        #    subject, access_token)
+        # — `leeway` was raising TypeError, swallowed by decode_token's
+        # catch-all `except Exception`, returned as 401 invalid_token,
+        # silently breaking EVERY JWT-authenticated endpoint in the
+        # post-wave-50 image.  python-jose accepts leeway INSIDE the
+        # options dict; PyJWT (a different library) accepts the kwarg
+        # form.  Wave-47's source-grep test mistook one for the other.
         payload = jwt.decode(
             token,
             secret,
@@ -589,10 +596,10 @@ def decode_token(token: str) -> dict:
                 "require_exp": True,
                 "require_iss": True,
                 "require_aud": True,
+                "leeway": JWT_CLOCK_SKEW,
             },
             issuer=JWT_ISSUER,
             audience=JWT_AUDIENCE,
-            leeway=JWT_CLOCK_SKEW,
         )
 
         # Validate required claims

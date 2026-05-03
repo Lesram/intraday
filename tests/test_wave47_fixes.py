@@ -72,10 +72,29 @@ def test_tt_5_record_trade_truncates_oversize_history():
 
 
 def test_aa3_4_jwt_decode_passes_leeway():
-    """decode_token must pass JWT_CLOCK_SKEW as leeway= to jwt.decode."""
+    """decode_token must include JWT_CLOCK_SKEW as the leeway value
+    in the options dict (python-jose API).
+
+    V11 AA5-1 / Wave-67: original test was a literal-string source
+    grep for `leeway=JWT_CLOCK_SKEW` (PyJWT API) and passed even
+    though python-jose 3.5 raised TypeError on that kwarg, breaking
+    every JWT-authenticated endpoint.  Now: behavioral check that
+    a freshly-minted token actually decodes successfully.
+    """
     from backend.infra import security
+    from backend.infra.security import (
+        create_access_token, decode_token,
+    )
+    token = create_access_token(
+        sub="aa3_4_smoke@example.com",
+        roles=["user"],
+        expires_minutes=5,
+    )
+    payload = decode_token(token)
+    assert payload["sub"] == "aa3_4_smoke@example.com"
+    # Marker on the new code path:
     src = inspect.getsource(security.decode_token)
-    assert "leeway=JWT_CLOCK_SKEW" in src, (
-        "AA3-4 regression: JWT_CLOCK_SKEW is dead code again — "
-        "leeway not passed to jwt.decode."
+    assert '"leeway": JWT_CLOCK_SKEW' in src, (
+        "AA3-4 regression: leeway no longer passed inside options dict "
+        "(python-jose API)."
     )
