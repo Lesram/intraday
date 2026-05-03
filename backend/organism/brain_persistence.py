@@ -239,10 +239,86 @@ class OrganismBrain:
             return True
 
         except Exception as e:
-            logger.error("Failed to load brain: %s — starting fresh", e)
-            print(f"  ⚠️  Brain load failed ({e}) — starting fresh")
+            # V9 PP-2 / Wave-41 (2026-05-03): try the most-recent backup
+            # before falling through to "starting fresh". The previous
+            # behavior — single bad save = lose 161 generations / 482
+            # trades — was a single-OOM-kill bomb. Now: walk
+            # `backups/` newest-first, attempt each, restore the first
+            # one that loads cleanly.
+            logger.warning(
+                "PP-2: HEAD brain load failed (%s); attempting backup fallback",
+                e,
+            )
+            if self._restore_from_latest_backup():
+                gen = self._manifest.get("generation", 0)
+                trades = len(self.trade_history)
+                logger.warning(
+                    "PP-2: brain restored from backup; gen=%d trades=%d "
+                    "(HEAD save was corrupt)", gen, trades,
+                )
+                print(
+                    f"  🧠 HEAD brain corrupt; restored from backup: "
+                    f"generation {gen}, {trades} historical trades"
+                )
+                self._loaded = True
+                return True
+            logger.error(
+                "PP-2: all backup attempts failed — starting fresh "
+                "(HEAD error: %s)", e,
+            )
+            print(f"  ⚠️  Brain load failed ({e}) — no usable backup — starting fresh")
             self._loaded = False
             return False
+
+    def _restore_from_latest_backup(self) -> bool:
+        """V9 PP-2 / Wave-41 (2026-05-03): walk backups/ newest-first;
+        return True if a backup loads cleanly; False if none usable.
+
+        Each backup is a snapshot directory. We swap it into place
+        atomically by renaming current brain_dir aside, then renaming
+        the backup over brain_dir. On failure we restore the original.
+        """
+        backups_dir = self.brain_dir / "backups"
+        if not backups_dir.is_dir():
+            logger.warning("PP-2: no backups/ dir at %s", backups_dir)
+            return False
+        candidates = sorted(
+            (p for p in backups_dir.iterdir() if p.is_dir()),
+            key=lambda p: p.stat().st_mtime,
+            reverse=True,
+        )
+        for backup in candidates:
+            try:
+                logger.info("PP-2: trying backup %s", backup.name)
+                # Try loading from the backup directory directly without
+                # mutating the live brain_dir. We do this by temporarily
+                # repointing self.brain_dir; reset on success/failure.
+                original_dir = self.brain_dir
+                self.brain_dir = backup
+                try:
+                    self._load_manifest()
+                    self._load_ml_models()
+                    self._load_ml_state()
+                    self._load_learning_state()
+                    self._load_reference_features()
+                    self._load_trade_history()
+                    self._load_equity_curve()
+                    self._load_epoch_metrics()
+                    self._load_extra_counters()
+                    self._load_evolved_params()
+                    self._load_governance_state()
+                    self._load_regime_state()
+                    self._load_evaluation_event_history()
+                    return True
+                finally:
+                    self.brain_dir = original_dir
+            except Exception as backup_err:
+                logger.warning(
+                    "PP-2: backup %s also failed: %s",
+                    backup.name, backup_err,
+                )
+                continue
+        return False
 
     def save(
         self,
@@ -335,12 +411,24 @@ class OrganismBrain:
                         "Brain Save Blocked alert dropped (no main loop ref): %s",
                         _r,
                     )
-            except Exception:
-                pass
+            except Exception as _alert_err:
+                # V9 UU-3 / Wave-41 (2026-05-03): surface the alert path
+                # exception at WARNING (was bare pass) so a broken
+                # alerter doesn't get masked by a brain-save block.
+                logger.warning(
+                    "UU-3: brain-save-blocked alert path raised: %s",
+                    _alert_err,
+                )
             try:
                 lock.release()
-            except Exception:
-                pass
+            except Exception as _rel_err:
+                # V9 UU-3 / Wave-41: lock-release failure here can leak
+                # into next save attempt; log at WARNING.
+                logger.warning(
+                    "UU-3: brain-save lock.release() failed: %s — next "
+                    "save attempt may also fail. Manual intervention may "
+                    "be needed if this persists.", _rel_err,
+                )
             return
 
         # 1. Backup current brain (if it exists)
@@ -1313,7 +1401,8 @@ class OrganismBrain:
     def _save_reference_features(self, target: Path, learner: Any) -> None:
         ref = getattr(learner, "_reference_features", None)
         if ref is not None and isinstance(ref, pd.DataFrame) and len(ref) > 0:
-            ref.to_csv(target / "reference_feats.csv", index=False)
+            # V9 PP-1 / Wave-41 (2026-05-03): atomic write-then-rename.
+            _write_csv_atomic(ref, target / "reference_feats.csv")
 
     def _save_trade_history(
         self, target: Path, all_trades: list[Any]
@@ -1420,7 +1509,12 @@ class OrganismBrain:
     ) -> None:
         if equity_curve:
             df = pd.DataFrame({"equity": equity_curve})
-            df.to_csv(target / "equity_curve.csv", index=False)
+            # V9 PP-1 / Wave-41 (2026-05-03): atomic write-then-rename.
+            # Previously direct df.to_csv could leave a truncated CSV on
+            # SIGKILL or disk-full. Same pattern as trade_history.csv
+            # (audit-H H-8). One OOM-kill could lose 161 generations of
+            # equity history under the old behavior.
+            _write_csv_atomic(df, target / "equity_curve.csv")
 
     def _save_epoch_metrics(
         self, target: Path, epoch_metrics: list[Any]
@@ -1435,7 +1529,8 @@ class OrganismBrain:
                 records.append(m)
         if records:
             df = pd.DataFrame(records)
-            df.to_csv(target / "epoch_metrics.csv", index=False)
+            # V9 PP-1 / Wave-41 (2026-05-03): atomic write-then-rename.
+            _write_csv_atomic(df, target / "epoch_metrics.csv")
 
     def _save_extra_counters(
         self,
@@ -2060,6 +2155,36 @@ def _write_json(path: Path, data: dict[str, Any]) -> None:
         tmp_path.replace(path)
     except Exception:
         # Best-effort cleanup; let the caller see the error.
+        try:
+            if tmp_path.exists():
+                tmp_path.unlink()
+        except Exception:
+            pass
+        raise
+
+
+def _write_csv_atomic(df: "pd.DataFrame", path: Path) -> None:
+    """V9 PP-1 / Wave-41 (2026-05-03): atomic write-then-rename for CSVs.
+
+    Same pattern as `_write_json`: write to `<path>.tmp`, fsync, then
+    `os.replace` (atomic on POSIX). Readers see either the previous
+    full state or the new full state — never partial. Required by
+    PP-1 because `df.to_csv(path)` was leaving truncated files on
+    SIGKILL or disk-full, and the brain `load()` path then either
+    failed or silently reset state to "fresh".
+    """
+    tmp_path = path.with_suffix(path.suffix + ".tmp")
+    try:
+        df.to_csv(tmp_path, index=False)
+        # fsync the tmp file before rename for durability.
+        try:
+            import os as _os
+            with open(tmp_path, "rb") as _f:
+                _os.fsync(_f.fileno())
+        except Exception:
+            pass
+        tmp_path.replace(path)
+    except Exception:
         try:
             if tmp_path.exists():
                 tmp_path.unlink()

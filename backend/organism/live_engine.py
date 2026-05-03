@@ -2044,17 +2044,37 @@ class OrganismLiveEngine:
                             "calendar day; /organism/resume to override.",
                             daily_pnl, MAX_DAILY_LOSS,
                         )
-                        # Alert wiring: emit Slack/webhook alert
+                        # V9 UU-1 / Wave-41 (2026-05-03): use the canonical
+                        # cross-thread dispatcher (V5 S-J3-1 pattern).  The
+                        # previous bare `try/create_task/except: pass` had
+                        # the same failure mode wave-17a closed elsewhere:
+                        # `get_running_loop()` raises in the worker thread
+                        # this runs in, alerts silently lost.  Now: fail
+                        # at WARNING with a Prometheus counter bump.
                         try:
-                            from backend.infra.alerting import send_alert, AlertCategory, AlertSeverity
-                            import asyncio as _aio
-                            _aio.create_task(send_alert(
-                                AlertCategory.RISK_VIOLATION, AlertSeverity.CRITICAL,
-                                "Daily Max-Loss Halt",
-                                f"PnL=${daily_pnl:.2f} crossed -${MAX_DAILY_LOSS:.0f}. Trading halted.",
-                            ))
-                        except Exception:
-                            pass
+                            from backend.infra.alerting import (
+                                AlertCategory, AlertSeverity, send_alert,
+                                dispatch_alert_from_thread,
+                            )
+                            ok = dispatch_alert_from_thread(
+                                lambda: send_alert(
+                                    AlertCategory.RISK_VIOLATION,
+                                    AlertSeverity.CRITICAL,
+                                    "Daily Max-Loss Halt",
+                                    f"PnL=${daily_pnl:.2f} crossed "
+                                    f"-${MAX_DAILY_LOSS:.0f}. Trading halted.",
+                                )
+                            )
+                            if not ok:
+                                logger.warning(
+                                    "UU-1: daily-max-loss alert dropped "
+                                    "(no main loop ref). Operator may not page."
+                                )
+                        except Exception as _alert_err:
+                            logger.warning(
+                                "UU-1: daily-max-loss alert dispatch failed: %s",
+                                _alert_err,
+                            )
 
                         # V8 BB-10 / Wave-30 (2026-05-03): compliance audit row.
                         try:

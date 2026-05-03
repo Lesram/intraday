@@ -149,7 +149,23 @@ async def startup(app) -> dict:
 
             if env in ("production", "prod", "staging"):
                 raise RuntimeError(f"Database init failed in {env}: {e}") from e
-            logger.warning("Database init failed, continuing (dev only)", error=str(e))
+            # V9 PP-4 / Wave-41 (2026-05-03): paper trading runs as
+            # APP_ENVIRONMENT=development by design (memory: paper
+            # compose gotcha). Allowing DB-down in development silently
+            # dropped audit rows + tick telemetry from paper.  Now:
+            # require explicit `ALLOW_NO_DB=1` for unit tests / local
+            # smoke; everything else (including paper) fails fast.
+            if os.getenv("ALLOW_NO_DB", "").strip() != "1":
+                raise RuntimeError(
+                    f"PP-4: Database init failed in '{env}' mode and "
+                    f"ALLOW_NO_DB!=1. Paper trading silently drops audit "
+                    f"rows without a DB. Set ALLOW_NO_DB=1 for unit "
+                    f"tests; otherwise fix the DB connection. Original: {e}"
+                ) from e
+            logger.warning(
+                "PP-4: Database init failed; ALLOW_NO_DB=1 set, continuing "
+                "(unit-test mode only): %s", e,
+            )
             app.state.sessionmaker = None
             app.state.db_sessionmaker = None
     else:

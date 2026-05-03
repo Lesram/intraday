@@ -243,18 +243,27 @@ class AlertManager:
         Returns:
             True if alert was sent, False if deduplicated/rate-limited/suppressed
         """
+        # V9 PP-3 / Wave-41 (2026-05-03): CRITICAL severity bypasses
+        # market-hours gate, dedup, AND rate limit. The previous logic
+        # could silently drop a CRITICAL halt alert if N WARNINGs had
+        # already filled the dedup window or rate-limiter bucket.  A
+        # daily-max-loss halt at 09:31 must always page operator.
+        _is_critical = severity == AlertSeverity.CRITICAL
+
         # L-25: Suppress non-critical alerts outside market hours
-        if respect_market_hours and severity in (AlertSeverity.INFO, AlertSeverity.WARNING):
+        if (respect_market_hours
+                and severity in (AlertSeverity.INFO, AlertSeverity.WARNING)
+                and not _is_critical):
             if not is_market_hours(include_extended=True):
                 logger.debug(f"Alert suppressed outside market hours: {title}")
                 return False
 
         # Check deduplication
-        if dedup and not await self._dedup.should_send(category, severity, title):
+        if dedup and not _is_critical and not await self._dedup.should_send(category, severity, title):
             return False
 
         # Check rate limit
-        if not await self._limiter.acquire():
+        if not _is_critical and not await self._limiter.acquire():
             logger.warning(f"Alert rate-limited: {title}")
             return False
 
@@ -288,6 +297,13 @@ class AlertManager:
 
         if not tasks:
             logger.warning(f"No alert channels configured for: {title}")
+            # V9 PP-3 / Wave-41: log CRITICAL events at CRITICAL level even
+            # without channels — log scrapers can still catch them.
+            if _is_critical:
+                logger.critical(
+                    "ALERT-NO-CHANNELS: %s — %s — details=%s",
+                    title, description, context.get("details"),
+                )
             return False
 
         # Execute in parallel
@@ -299,6 +315,16 @@ class AlertManager:
                 logger.error(f"Alert delivery failed: {result}")
 
         success = any(r is True for r in results if not isinstance(r, Exception))
+
+        # V9 PP-3 / Wave-41: when CRITICAL fails to deliver to ANY channel,
+        # log at CRITICAL with full context so log scrapers / external
+        # alerting systems still catch it as last-resort signal.
+        if not success and _is_critical:
+            logger.critical(
+                "ALERT-DELIVERY-FAILED: %s — %s — all_channels_failed; "
+                "results=%s — details=%s",
+                title, description, results, context.get("details"),
+            )
         return success
 
     async def _send_slack(self, context: dict[str, Any]) -> bool:

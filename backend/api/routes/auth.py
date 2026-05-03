@@ -288,10 +288,17 @@ async def login(
                 await db.commit()
             except Exception as _audit_err:
                 logger.warning("AA-H-3: login_failed audit failed: %s", _audit_err)
+                # V9 UU-2 / Wave-41 (2026-05-03): surface rollback failure
+                # at ERROR — silent failure here previously masked the audit
+                # gap entirely. Compliance regimes treat auth audit rows as
+                # mandatory.
                 try:
                     await db.rollback()
-                except Exception:
-                    pass
+                except Exception as _rb_err:
+                    logger.error(
+                        "UU-2: db.rollback() after auth audit failure also "
+                        "failed: %s — db session may be poisoned", _rb_err,
+                    )
 
             # Invalid credentials or account locked
             raise HTTPException(
