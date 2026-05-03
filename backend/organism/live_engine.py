@@ -141,6 +141,21 @@ try:
     ORGANISM_ENTRIES_BLOCKED = Counter(
         "organism_entries_blocked_total",
         "Ticks where new entries were blocked (halt/drawdown/zero equity)",
+        # V11 prep / Wave-62 (YY-3 closure, 2026-05-03): label dimension
+        # so dashboards can break down halt cause without scraping logs.
+        # Reasons mirror self._last_entries_blocked_reason:
+        #   governance_halt, warmup, stale_data, daily_max_loss,
+        #   equity_zero, drawdown_kill, insufficient_data, throttle,
+        #   burst_cap, fitness_gate, sector_gate, liquidity, long_only.
+        labelnames=("reason",),
+    )
+    # V11 prep / Wave-62 (YY-4 closure): ML retrain failure counter so
+    # operators see the failure rate.  BackgroundTrainer's training-
+    # internal-error path was alert-silent + counter-less pre-V11.
+    ML_RETRAIN_FAILURES = Counter(
+        "ml_retrain_failures_total",
+        "BackgroundTrainer retrain failures by phase (executor / training).",
+        labelnames=("phase",),
     )
     _PROMETHEUS_AVAILABLE = True
 except ImportError:
@@ -2753,7 +2768,13 @@ class OrganismLiveEngine:
             # ── Steps 6-9 and 11 are gated: skip when entries are blocked ──
             if self._entries_blocked:
                 if _PROMETHEUS_AVAILABLE:
-                    ORGANISM_ENTRIES_BLOCKED.inc()
+                    # V11 prep / Wave-62 (YY-3 closure): include the reason
+                    # as a label dimension so dashboards can break down
+                    # halt cause without scraping logs.
+                    _reason_label = (
+                        self._last_entries_blocked_reason or "unknown"
+                    )
+                    ORGANISM_ENTRIES_BLOCKED.labels(reason=_reason_label).inc()
                     if current_positions:
                         ORGANISM_HALTED_WITH_POSITIONS.inc()
                 logger.info(

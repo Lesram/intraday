@@ -432,6 +432,15 @@ class BackgroundTrainer:
         except Exception as e:
             logger.error("BackgroundTrainer process error: %s", e)
             self._last_result = TrainResult(error=str(e))
+            # V11 prep / Wave-62 (YY-4 closure): counter symmetry.
+            try:
+                from backend.organism.live_engine import (
+                    ML_RETRAIN_FAILURES, _PROMETHEUS_AVAILABLE,
+                )
+                if _PROMETHEUS_AVAILABLE:
+                    ML_RETRAIN_FAILURES.labels(phase="executor").inc()
+            except Exception:
+                pass
             # V6 V-T-2 / Wave-20a (2026-05-03): wave-14 shipped this
             # site with the same broken wave-8c anti-pattern — works
             # today only because `get_result()` is polled from the main
@@ -469,6 +478,42 @@ class BackgroundTrainer:
                 duration_s=raw.get("duration_s", 0),
             )
             logger.warning("BackgroundTrainer training failed: %s", raw["error"])
+            # V11 prep / Wave-62 (YY-4 closure, 2026-05-03): the training-
+            # internal-error path was alert-silent + counter-less.
+            # Operators relying on dashboards / Slack to spot retrain
+            # failures had no signal.  Wire counter + alert.
+            try:
+                from backend.organism.live_engine import (
+                    ML_RETRAIN_FAILURES, _PROMETHEUS_AVAILABLE,
+                )
+                if _PROMETHEUS_AVAILABLE:
+                    ML_RETRAIN_FAILURES.labels(phase="training").inc()
+            except Exception:
+                pass
+            try:
+                from backend.infra.alerting import (
+                    AlertCategory, AlertSeverity, send_alert,
+                    dispatch_alert_from_thread,
+                )
+                _err = raw["error"]
+                ok = dispatch_alert_from_thread(
+                    lambda: send_alert(
+                        AlertCategory.SYSTEM_ERROR,
+                        AlertSeverity.WARNING,
+                        "ML Retrain Internal Failure",
+                        f"BackgroundTrainer training-internal error: {_err}",
+                        details={"phase": "training-internal"},
+                    )
+                )
+                if not ok:
+                    logger.warning(
+                        "YY-4: ML Retrain Internal alert dropped (no main loop ref)"
+                    )
+            except Exception as _alert_err:
+                logger.warning(
+                    "YY-4: ML retrain alert dispatch failed: %s",
+                    _alert_err,
+                )
             return True, self._last_result
 
         # Quality-gate rejection: training succeeded but model was rejected
