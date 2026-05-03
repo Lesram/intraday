@@ -4648,7 +4648,7 @@ class OrganismLiveEngine:
             # key would be "tomorrow's date" — across a session boundary
             # the key still uniquely-identifies the order, but the date
             # component is misleading for log-analysis and forensics.
-            f"_{datetime.now(UTC).astimezone(ZoneInfo('America/New_York')).strftime('%Y%m%d')}"
+            f"_{self._now_fn().astimezone(ZoneInfo('America/New_York')).strftime('%Y%m%d')}"
             f"_{self._session_id}_t{self._tick_count}"
         )
 
@@ -4769,7 +4769,7 @@ class OrganismLiveEngine:
             # key would be "tomorrow's date" — across a session boundary
             # the key still uniquely-identifies the order, but the date
             # component is misleading for log-analysis and forensics.
-            f"_{datetime.now(UTC).astimezone(ZoneInfo('America/New_York')).strftime('%Y%m%d')}"
+            f"_{self._now_fn().astimezone(ZoneInfo('America/New_York')).strftime('%Y%m%d')}"
             f"_{self._session_id}_t{self._tick_count}"
         )
         result = await self._order_service.submit_symbol_order(

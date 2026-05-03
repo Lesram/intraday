@@ -43,7 +43,17 @@ _STALENESS_REJECT_S = float(os.getenv("ORGANISM_STREAMING_STALENESS_REJECT_S", "
 class StreamingDataProvider:
     """In-memory streaming data provider backed by Alpaca WebSocket."""
 
-    def __init__(self, buffer_size: int = _DEFAULT_BUFFER_SIZE) -> None:
+    def __init__(
+        self,
+        buffer_size: int = _DEFAULT_BUFFER_SIZE,
+        time_fn=None,
+    ) -> None:
+        # V5 B-T-4 / Wave-19 (2026-05-03): clock injection so replay /
+        # synthetic-time tests can drive `get_bar_age()` and the
+        # internal staleness checks against a deterministic clock.
+        # Default is the canonical `time.time` for live use.
+        self._time_fn = time_fn if time_fn is not None else time.time
+
         self._buffer_size = buffer_size
         self._stream: AlpacaMarketDataStream | None = None
 
@@ -144,7 +154,7 @@ class StreamingDataProvider:
 
         # Freshness check — reject if stale (force REST fallback)
         last_ts = self._last_bar_ts.get(symbol, 0)
-        staleness = time.time() - last_ts
+        staleness = self._time_fn() - last_ts
         if staleness > _STALENESS_REJECT_S:
             logger.warning(
                 "Streaming bars REJECTED for %s: %.0fs stale (> %.0fs threshold) "
@@ -246,7 +256,7 @@ class StreamingDataProvider:
                         "volume": row.get("volume"),
                     })
                 self._bars[symbol] = buf
-                _now = time.time()
+                _now = self._time_fn()
                 self._last_bar_ts[symbol] = _now
                 self.last_update_time = _now
                 filled += 1
@@ -271,7 +281,7 @@ class StreamingDataProvider:
             "close": bar_data.get("close"),
             "volume": bar_data.get("volume"),
         })
-        _now = time.time()
+        _now = self._time_fn()
         self._last_bar_ts[symbol] = _now
         self.last_update_time = _now
 
@@ -295,7 +305,7 @@ class StreamingDataProvider:
         ts = self._last_bar_ts.get(symbol.upper())
         if ts is None:
             return float("inf")
-        return time.time() - ts
+        return self._time_fn() - ts
 
     async def check_and_recover_stale_stream(
         self, stale_threshold: float = 300.0,
@@ -314,7 +324,7 @@ class StreamingDataProvider:
         if not self._last_bar_ts:
             return False  # No data yet — don't trigger
 
-        now = time.time()
+        now = self._time_fn()
         stale_count = sum(
             1 for ts in self._last_bar_ts.values()
             if now - ts > stale_threshold
@@ -346,7 +356,7 @@ class StreamingDataProvider:
 
     def get_stats(self) -> dict[str, Any]:
         """Return provider statistics."""
-        now = time.time()
+        now = self._time_fn()
         max_staleness = 0.0
         if self._last_bar_ts:
             max_staleness = max(now - ts for ts in self._last_bar_ts.values())

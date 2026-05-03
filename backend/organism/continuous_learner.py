@@ -235,7 +235,18 @@ class ContinuousLearner:
         drift_threshold: float = 0.10,    # PSI threshold for drift
         drift_check_window: int = 30,     # Check drift every 30 bars
         max_generations: int = 50,        # Safety cap
+        now_fn=None,
     ):
+        # V5 U-7 / Wave-19 (2026-05-03): clock injection for replay
+        # determinism. Retrain evaluation event timestamps must use the
+        # replay clock so post-replay logs reflect the bar window, not
+        # the deploy wall-clock.
+        if now_fn is None:
+            from datetime import UTC as _UTC, datetime as _dt
+            self._now_fn = lambda: _dt.now(_UTC)
+        else:
+            self._now_fn = now_fn
+
         self.signal_gen = signal_generator
         self.retrain_interval = retrain_every_n_bars
         self.min_trades = min_trades_for_eval
@@ -324,7 +335,7 @@ class ContinuousLearner:
 
         # Stamp evaluation time before acceptance gate (J3)
         if metrics is not None:
-            metrics.evaluated_at = datetime.now(timezone.utc).isoformat()
+            metrics.evaluated_at = self._now_fn().isoformat()
 
         if metrics is None:
             # Training failed — rollback
@@ -343,7 +354,7 @@ class ContinuousLearner:
 
         # Record evaluation event (J4)
         eval_event = {
-            "evaluated_at": getattr(metrics, "evaluated_at", "") or datetime.now(timezone.utc).isoformat(),
+            "evaluated_at": getattr(metrics, "evaluated_at", "") or self._now_fn().isoformat(),
             "accepted": accepted,
             "rejection_reason": "" if accepted else reason,
             "generation": self.state.generation,

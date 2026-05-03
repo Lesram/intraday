@@ -386,8 +386,23 @@ class WalkForwardEvaluator:
             result.total_return = float(np.sum(daily_pnls))
 
             mean = float(np.mean(daily_pnls))
-            std = float(np.std(daily_pnls, ddof=1)) if len(daily_pnls) > 1 else 1.0
-            result.sharpe = (mean / std * math.sqrt(252)) if std > 0 else 0.0
+            # V5 B-T-5 / Wave-19 (2026-05-03): the previous fallback
+            # `std=1.0` for single-pnl windows synthesized a fake
+            # Sharpe number that downstream consumers couldn't
+            # distinguish from a real one. Refuse to grade in the
+            # under-determined regime — Sharpe stays 0.0 (same as the
+            # std==0 branch). Continuous_learner.py:403's `>1e-8` floor
+            # is the stricter sibling that rejects near-zero variance;
+            # mirror that semantic here.
+            if len(daily_pnls) <= 1:
+                result.sharpe = 0.0
+            else:
+                std = float(np.std(daily_pnls, ddof=1))
+                result.sharpe = (
+                    mean / std * math.sqrt(252)
+                    if std > 1e-8
+                    else 0.0
+                )
 
             cumulative = np.cumsum(daily_pnls)
             peak = np.maximum.accumulate(cumulative)

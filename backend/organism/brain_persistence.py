@@ -2016,9 +2016,39 @@ def _sanitize_for_json(obj: Any) -> Any:
 
 
 def _write_json(path: Path, data: dict[str, Any]) -> None:
-    """Write JSON with pretty formatting."""
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump(_sanitize_for_json(data), f, indent=2, default=_json_serializer)
+    """Write JSON with pretty formatting.
+
+    V5 S-DISK-1 / Wave-19 (2026-05-03): atomic write-then-rename. The
+    previous direct open(path, 'w') would leave a partial / truncated
+    file if the process died mid-write OR if the disk filled mid-write.
+    Writing to `path.tmp` then `os.replace`-ing into place is atomic on
+    POSIX — readers see either the previous full state or the new full
+    state, never partial. This is the same pattern audit-H H-8 applied
+    to trade_history.csv; extending it to every JSON save covers every
+    `save_essential_state` companion file (learning_state, governance,
+    regime, manifest, evaluation events, ml_state, extra_counters,
+    evolved_params).
+    """
+    tmp_path = path.with_suffix(path.suffix + ".tmp")
+    try:
+        with open(tmp_path, "w", encoding="utf-8") as f:
+            json.dump(_sanitize_for_json(data), f, indent=2, default=_json_serializer)
+            f.flush()
+            try:
+                import os as _os
+                _os.fsync(f.fileno())
+            except Exception:
+                # fsync isn't critical for atomicity; skip if unavailable.
+                pass
+        tmp_path.replace(path)
+    except Exception:
+        # Best-effort cleanup; let the caller see the error.
+        try:
+            if tmp_path.exists():
+                tmp_path.unlink()
+        except Exception:
+            pass
+        raise
 
 
 def _read_json(path: Path) -> dict[str, Any]:

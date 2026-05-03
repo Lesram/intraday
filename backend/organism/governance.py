@@ -114,6 +114,10 @@ class GovernanceController:
             os.getenv("ORGANISM_DRAWDOWN_COOLDOWN_S", str(DEFAULT_DRAWDOWN_COOLDOWN_S))
         )
         self._drawdown_triggered_at: datetime | None = None
+        # V5 S-CLK-1 / Wave-19 (2026-05-03): monotonic-clock companion
+        # to the wall-clock anchor; used for the actual cooldown elapsed
+        # check so an NTP step doesn't shift the window.
+        self._drawdown_triggered_monotonic: float | None = None
         # P&L-028: adaptive cooldown — may be scaled up by trigger_drawdown_kill()
         self._effective_cooldown_s: int = self._drawdown_cooldown_s
 
@@ -158,13 +162,25 @@ class GovernanceController:
         if self._trading_halted:
             return True
         if self._drawdown_triggered_at:
-            # V5 U-4 / Wave-17b (2026-05-03): use injected clock so
-            # drawdown cooldown elapses on replay-clock time, not wall.
-            elapsed = (self._now_fn() - self._drawdown_triggered_at).total_seconds()
+            # V5 S-CLK-1 / Wave-19 (2026-05-03): cooldown elapsed uses
+            # `time.monotonic()` when available so an NTP step (or any
+            # wall-clock adjustment) doesn't shift the cooldown window.
+            # The wall-clock anchor `_drawdown_triggered_at` is kept for
+            # to_dict() display.
+            #
+            # Fallback path (no monotonic anchor): use the injected
+            # `_now_fn()` for replay determinism (V5 U-4 / Wave-17b).
+            _mono_anchor = getattr(self, "_drawdown_triggered_monotonic", None)
+            if _mono_anchor is not None:
+                import time as _time
+                elapsed = _time.monotonic() - _mono_anchor
+            else:
+                elapsed = (self._now_fn() - self._drawdown_triggered_at).total_seconds()
             if elapsed < self._effective_cooldown_s:
                 return True
             # Cooldown expired — reset
             self._drawdown_triggered_at = None
+            self._drawdown_triggered_monotonic = None
         return False
 
     def is_strategy_disabled(self, source: str) -> bool:
@@ -224,8 +240,16 @@ class GovernanceController:
         detect cooldown expiry and auto-recover.
         """
         if drawdown_pct >= self._drawdown_limit:
-            # V5 U-4 / Wave-17b (2026-05-03): use injected clock.
+            # V5 U-4 / Wave-17b (2026-05-03): use injected clock for
+            # the wall-clock anchor.
             self._drawdown_triggered_at = self._now_fn()
+            # V5 S-CLK-1 / Wave-19 (2026-05-03): also stash a monotonic
+            # anchor so the cooldown elapsed calc is immune to NTP steps.
+            try:
+                import time as _time
+                self._drawdown_triggered_monotonic = _time.monotonic()
+            except Exception:
+                self._drawdown_triggered_monotonic = None
             # P&L-028: Adaptive cooldown — scale with drawdown severity.
             # Base cooldown at the limit; 2× at +5% over limit; 3× at +10%.
             excess = max(0.0, drawdown_pct - self._drawdown_limit)

@@ -521,7 +521,14 @@ class ReplayEngine:
         _replay_time = lambda: bar_provider.current_simulated_time
         engine._time_fn = _replay_time
         engine._now_fn = _replay_now
-        for _attr in ("regime_detector", "governance"):
+        # V5 Wave-19 (2026-05-03): extend clock injection to remaining
+        # auxiliary components.
+        for _attr in (
+            "regime_detector",
+            "governance",
+            "promotion_controller",
+            "learner",
+        ):
             _comp = getattr(engine, _attr, None)
             if _comp is not None and hasattr(_comp, "_now_fn"):
                 _comp._now_fn = _replay_now
