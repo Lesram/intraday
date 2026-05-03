@@ -1,0 +1,277 @@
+{
+  "schema_version": 1,
+  "created_at": "2026-05-03",
+  "branch": "rc-1.5-curated",
+  "head_at_v12_start": "38d1b74",
+  "scope": "backend, platform, brain, trading. frontend OUT.",
+  "predecessors": {
+    "v8_findings_critical_high_count": "8 lenses, severity_weight=148",
+    "v9_findings_critical_high_count": "severity_weight=129",
+    "v10_findings_critical_high_count": "severity_weight=105",
+    "v11_findings_total": 49,
+    "v11_severity_weight": 158,
+    "v11_closed_at_v12_start": [
+      "AA5-1", "BB5-F4", "CCC-2", "AAA-F1", "AAA-F2", "Z9-F1"
+    ]
+  },
+  "findings": [
+    {
+      "id": "DD5-1",
+      "from": "v11",
+      "severity": "high",
+      "title": "chop-min-hold gate compares ticks to bar-units (live_engine.py:3026-3030)",
+      "status": "open",
+      "wave_target": 72,
+      "behavioral_test_path": null,
+      "notes": "_bars_held = self._tick_count - _entry_tick → at 1-min bars, ticks ≫ bars; gate inert. Auditor confirmed."
+    },
+    {
+      "id": "DD5-2",
+      "from": "v11",
+      "severity": "high",
+      "title": "live_engine carries private _INVERSE_ETFS_CHOP_SUPPRESSED parallel to canonical _INVERSE_ETFS",
+      "status": "open",
+      "wave_target": 72,
+      "behavioral_test_path": null,
+      "notes": "live_engine.py:4021 = {PSQ, SH}; regime.py:47 = {SH, PSQ, DOG, RWM}. Auditor confirmed."
+    },
+    {
+      "id": "DD5-3",
+      "from": "v11",
+      "severity": "high",
+      "title": "wave-53 fitness-gate persistence is identity copy of promotion-gated counter",
+      "status": "open",
+      "wave_target": 72,
+      "behavioral_test_path": null,
+      "notes": "live_engine.py:6309-6314: symbol_trade_counts_runtime = dict(evolved_params.symbol_trade_counts). Snapshot, not separate accumulator. Auditor confirmed."
+    },
+    {
+      "id": "DD5-4",
+      "from": "v11",
+      "severity": "medium",
+      "title": "pyramider telemetry not wired into manifest export",
+      "status": "open",
+      "wave_target": 72,
+      "behavioral_test_path": null
+    },
+    {
+      "id": "AA5-2",
+      "from": "v11",
+      "severity": "high",
+      "title": "Source-grep fake-positive tests pattern (wave-47 JWT was canonical)",
+      "status": "open",
+      "wave_target": 73,
+      "behavioral_test_path": null,
+      "notes": "External auditor: 85/154 (55.2%) wave tests are marker-only. V12 W73 converts Critical/High."
+    },
+    {
+      "id": "BB5-F1",
+      "from": "v11",
+      "severity": "high",
+      "title": "outbox_events unbounded (1393 rows, 60 days, no auto-prune)",
+      "status": "open",
+      "wave_target": 74,
+      "behavioral_test_path": null
+    },
+    {
+      "id": "BB5-F2",
+      "from": "v11",
+      "severity": "high",
+      "title": "GDPR right-to-be-forgotten structurally unimplementable (FK refactor)",
+      "status": "deferred",
+      "wave_target": null,
+      "behavioral_test_path": null,
+      "notes": "Defer to V13. FK refactor scope larger than V12."
+    },
+    {
+      "id": "CCC-1",
+      "from": "v11",
+      "severity": "high",
+      "title": "production.py validator demands wrong env var names",
+      "status": "open",
+      "wave_target": 75,
+      "behavioral_test_path": null
+    },
+    {
+      "id": "DDD-1",
+      "from": "v11",
+      "severity": "high",
+      "title": "ecdsa CVE-2024-23342 unpatched (transitive via python-jose)",
+      "status": "open",
+      "wave_target": 75,
+      "behavioral_test_path": null
+    },
+    {
+      "id": "DDD-2",
+      "from": "v11",
+      "severity": "high",
+      "title": "npm audit: 13 high / 7 moderate (axios SSRF/DoS, vite, mermaid)",
+      "status": "deferred",
+      "wave_target": null,
+      "behavioral_test_path": null,
+      "notes": "FRONTEND scope — out for V12. Defer to V13."
+    },
+    {
+      "id": "HH3-N-1",
+      "from": "v11",
+      "severity": "high",
+      "title": "_live_tick_inner regressing not refactoring (+196 LOC since V8)",
+      "status": "open",
+      "wave_target": 75,
+      "behavioral_test_path": null,
+      "notes": "External auditor confirms LOC = 2707 vs pre-V8 baseline 2510."
+    },
+    {
+      "id": "III-F1",
+      "from": "v11",
+      "severity": "high",
+      "title": "configure_structured_logging is dead code; production has no trace_id",
+      "status": "open",
+      "wave_target": 75,
+      "behavioral_test_path": null
+    },
+    {
+      "id": "III-F2",
+      "from": "v11",
+      "severity": "high",
+      "title": "PII (email/username) logged cleartext; scrubber unreachable in production",
+      "status": "open",
+      "wave_target": 75,
+      "behavioral_test_path": null
+    },
+    {
+      "id": "TT3-F1",
+      "from": "v11",
+      "severity": "high",
+      "title": "ix_orders_attributes_gin idx_scan=0 — call sites use text extraction not @>",
+      "status": "open",
+      "wave_target": 74,
+      "behavioral_test_path": null
+    },
+    {
+      "id": "UU3-1",
+      "from": "v11",
+      "severity": "high",
+      "title": "2 of 7 grandfather entries point at non-existent paths (120+ violations leaked)",
+      "status": "open",
+      "wave_target": 75,
+      "behavioral_test_path": null
+    },
+    {
+      "id": "UU3-2",
+      "from": "v11",
+      "severity": "high",
+      "title": "wave-57 lint rule unenforced (3542 / 34256 errors); CI cannot pass",
+      "status": "open",
+      "wave_target": 75,
+      "behavioral_test_path": null,
+      "notes": "External auditor: total ruff errors = 34256, V11's 3542 was the new-rule subset only."
+    },
+    {
+      "id": "EXT-1",
+      "from": "external_review_v11",
+      "severity": "critical",
+      "title": "Brain unprofitable — manifest lacks PnL/Sharpe/win-rate/drawdown fields",
+      "status": "open",
+      "wave_target": 71,
+      "behavioral_test_path": null,
+      "notes": "498 trades, total PnL -$634.90, mean -$1.27, win rate 33.73%, sharpe per-trade -1.06, max DD -$985.93. 11 audits validated execution-correctness without expectancy gate. Top V12 priority."
+    },
+    {
+      "id": "EXT-2",
+      "from": "external_review_v11",
+      "severity": "high",
+      "title": "Test corpus 55.2% marker-only — wave-47 JWT was symptomatic, not isolated",
+      "status": "open",
+      "wave_target": 73,
+      "behavioral_test_path": null,
+      "notes": "Closes alongside AA5-2 in W73."
+    },
+    {
+      "id": "EXT-3",
+      "from": "external_review_v11",
+      "severity": "high",
+      "title": "realized_trades=0 vs brain.total_trades=498 — source-of-truth divergence",
+      "status": "open",
+      "wave_target": 74,
+      "behavioral_test_path": null
+    },
+    {
+      "id": "EXT-4",
+      "from": "external_review_v11",
+      "severity": "medium",
+      "title": "audit_logs schema has hash_chain not prev_hash/current_hash — independent SQL chain verification blocked",
+      "status": "open",
+      "wave_target": 74,
+      "behavioral_test_path": null
+    },
+    {
+      "id": "EXT-5",
+      "from": "external_review_v11",
+      "severity": "high",
+      "title": "drawdown-kill never observed firing in audit_logs/Slack across 24h",
+      "status": "open",
+      "wave_target": 76,
+      "behavioral_test_path": null,
+      "notes": "Code wired but no production validation. Need synthetic kill probe."
+    },
+    {
+      "id": "EXT-6",
+      "from": "external_review_v11",
+      "severity": "medium",
+      "title": "brain backup hourly cadence not proven across rebuilds",
+      "status": "open",
+      "wave_target": 76,
+      "behavioral_test_path": null
+    },
+    {
+      "id": "EXT-7",
+      "from": "external_review_v11",
+      "severity": "medium",
+      "title": "pyramid Layer 2 empirically unproven (no pyramid_level field in trade history)",
+      "status": "open",
+      "wave_target": 76,
+      "behavioral_test_path": null
+    },
+    {
+      "id": "EXT-8",
+      "from": "external_review_v11",
+      "severity": "medium",
+      "title": "no /health/deploy endpoint; source SHA / migration head / build time not exposed",
+      "status": "open",
+      "wave_target": 78,
+      "behavioral_test_path": null
+    },
+    {
+      "id": "EXT-9",
+      "from": "external_review_v11",
+      "severity": "medium",
+      "title": "no machine-readable findings ledger; deferral state lives in prose",
+      "status": "open",
+      "wave_target": 77,
+      "behavioral_test_path": null
+    },
+    {
+      "id": "EXT-10",
+      "from": "external_review_v11",
+      "severity": "medium",
+      "title": "god-method watchlist incomplete — 26 functions >150 LOC not in V8 list",
+      "status": "open",
+      "wave_target": 75,
+      "behavioral_test_path": null,
+      "notes": "Top: run_backtest 373, save 209, _save_brain 161, apply_to_learner 152."
+    }
+  ],
+  "wave_progress": {
+    "70": "in_progress",
+    "71": "pending",
+    "72": "pending",
+    "73": "pending",
+    "74": "pending",
+    "75": "pending",
+    "76": "pending",
+    "77": "pending",
+    "78": "pending",
+    "79": "pending"
+  }
+}
