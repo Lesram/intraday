@@ -1500,19 +1500,20 @@ class OrganismLiveEngine:
         async with self._tick_lock:
             return await self._live_tick_inner()
 
-    async def _live_tick_inner(self) -> LiveTickResult:
-        """Inner tick logic — always called under _tick_lock."""
-        # V6 X-2 / Wave-20b (2026-05-03): use injected clock so tick
-        # duration is replay-deterministic. Wall-clock `time.time()`
-        # polluted every per-tick hash in replay.
-        t0 = self._time_fn()
-        result = LiveTickResult(
-            timestamp=self._now_fn().isoformat(),
-        )
-        self._tick_count += 1
-        # Gate-level rejection telemetry (reset each tick)
-        self._last_gate_rejections: dict[str, int] = {}
-        self._last_entries_blocked_reason: str = ""
+    # V8 HH R-1 partial / Wave-29 (2026-05-03): extracted helper.
+    # The full pipeline-split of `_live_tick_inner` is multi-day
+    # work; this wave extracts the simplest bounded block (cooldown
+    # expiry at the top of the method) so future audits can test it
+    # in isolation. See `docs/architecture/HH_R1_PIPELINE_SPLIT_PLAN.md`
+    # for the full 13-step extraction plan.
+    def _stage_expire_cooldowns(self) -> None:
+        """Stage 0a: expire cooldowns and pending-entry tracking maps.
+
+        Pure state mutation; no inputs, no return value. Runs at the
+        very top of every tick to drop entries older than their TTL.
+        Extracted from _live_tick_inner for HH R-1 (V7 architecture
+        finding: 2,510-line method with no isolated stages).
+        """
         # Expire old cooldowns (keep only recent exits)
         self._exit_cooldown = {
             sym: tick for sym, tick in self._exit_cooldown.items()
@@ -1549,6 +1550,25 @@ class OrganismLiveEngine:
             sym: tick for sym, tick in self._pending_exit.items()
             if self._tick_count - tick < self._PENDING_EXIT_TICKS
         }
+
+    async def _live_tick_inner(self) -> LiveTickResult:
+        """Inner tick logic — always called under _tick_lock."""
+        # V6 X-2 / Wave-20b (2026-05-03): use injected clock so tick
+        # duration is replay-deterministic. Wall-clock `time.time()`
+        # polluted every per-tick hash in replay.
+        t0 = self._time_fn()
+        result = LiveTickResult(
+            timestamp=self._now_fn().isoformat(),
+        )
+        self._tick_count += 1
+        # Gate-level rejection telemetry (reset each tick)
+        self._last_gate_rejections: dict[str, int] = {}
+        self._last_entries_blocked_reason: str = ""
+
+        # V8 HH R-1 partial / Wave-29 (2026-05-03): extracted to helper
+        # so the cooldown-expiry block is testable in isolation.
+        self._stage_expire_cooldowns()
+
 
         try:
             now_iso = result.timestamp
