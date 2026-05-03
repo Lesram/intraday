@@ -512,9 +512,31 @@ class MLSignalGenerator:
 
     # ── Internal ───────────────────────────────────────────────────
 
-    def record_prediction_outcome(self, confidence: float, was_correct: bool) -> None:
-        """Record whether a prediction at a given confidence was correct."""
-        bin_idx = min(int(confidence * 5), 4)
+    def record_prediction_outcome(
+        self,
+        confidence: float,
+        was_correct: bool,
+        raw_confidence: float | None = None,
+    ) -> None:
+        """Record whether a prediction at a given confidence was correct.
+
+        V8 DD2-2 / Wave-33 (2026-05-03): outcomes MUST be binned on the
+        same axis used at lookup time in `calibrate_confidence`.
+        `calibrate_confidence` indexes `_calibration_map` by raw confidence,
+        so outcomes also bin by raw. If the caller passes only the
+        calibrated `confidence` (legacy path, e.g. reconciliation), we
+        fall back to that axis with a warning — the feedback loop is
+        documented in DD2-2 and tracks toward DD-7 anti-predictivity.
+
+        Args:
+            confidence: calibrated confidence (legacy / fallback axis).
+            was_correct: whether the predicted direction matched outcome.
+            raw_confidence: the model's pre-calibration confidence; when
+                provided, takes precedence as the binning axis. New
+                callers should always supply this.
+        """
+        axis = raw_confidence if raw_confidence is not None else confidence
+        bin_idx = min(int(axis * 5), 4)
         self._calibration_counts[bin_idx][1] += 1  # total
         if was_correct:
             self._calibration_counts[bin_idx][0] += 1  # correct

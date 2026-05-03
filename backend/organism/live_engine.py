@@ -3030,6 +3030,12 @@ class OrganismLiveEngine:
                             c.ml_signal.predicted_return if c.ml_signal else 0.01
                         ),
                         "confidence": confidence,
+                        # V8 DD2-2 / Wave-33: carry raw_confidence so calibration
+                        # outcome-recording bins on the same axis as
+                        # calibrate_confidence's lookup.
+                        "ml_raw_confidence": (
+                            c.ml_signal.raw_confidence if c.ml_signal else None
+                        ),
                         "effective_confidence": _eff_conf,
                         "breakout_score": breakout_score,
                         "expected_return_source": c.expected_return_source,
@@ -5329,10 +5335,14 @@ class OrganismLiveEngine:
             # Record for ML calibration.
             # Audit-G v2 GAP-3: skip reconciliation artifacts (their
             # confidence=0.5 default would skew calibration map).
+            # V8 DD2-2 / Wave-33: pass raw_confidence (when available) so
+            # outcome-binning matches calibrate_confidence's lookup axis.
             if meta.get("confidence") is not None and not _is_reconciliation:
                 was_correct = actual_return > 0
                 self.signal_gen.record_prediction_outcome(
-                    meta["confidence"], was_correct
+                    meta["confidence"],
+                    was_correct,
+                    raw_confidence=meta.get("ml_raw_confidence"),
                 )
 
             # Clean up tracking state
