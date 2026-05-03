@@ -264,6 +264,62 @@ See `MASTER_AUDIT_SYNTHESIS_v5.md` for cross-track patterns and wave 17-19 seque
 
 - 2026-05-03 00:30 PT: V5 audit complete. 4 tracks, 21 findings (0 production regressions in waves 12-16). Wave 17-19 sequence proposed in `MASTER_AUDIT_SYNTHESIS_v5.md`. Container healthy on rc-1.5-curated @ d43dbec.
 - 2026-05-03 03:00 PT: Waves 17 (a-d), 18, and 19 all shipped on rc-1.5-curated. Final HEAD `0ea2695`. Container healthy across 7 force-recreate cycles. All 21 V5 findings closed.
+- 2026-05-03 04:00 PT: V6 audit complete. 5 tracks (Z3/V/W/T2/X), ~18 actionable findings + 14 W-process-gaps + 0 T2 + 2 Z3 cosmetic. 0 production regressions in waves 17-19. See `MASTER_AUDIT_SYNTHESIS_v6.md`.
+
+## v6 findings (Tracks Z3/V/W/T2/X, 2026-05-03)
+
+**Total: ~18 actionable findings + 14 wave-process gaps.**
+
+### V6 Critical / High (9 actionable)
+
+| ID | Track | Title | Severity | Wave |
+|---|---|---|---|---|
+| **V-T-1** | V | Latent S-J3-1 regression: `order_service.py:_trip()` ships broken wave-8c anti-pattern | Critical | 20a |
+| **V-T-2** | V | Same broken pattern at `background_trainer.py:get_result()` | High | 20a |
+| **V-T-3** | V | `ORGANISM_EXITS_SKIPPED_NO_DATA` undercounts by ~10× (HELP/emission mismatch) | High | 20e |
+| V-T-4 | V | Outbox worker errors: 11 logger.error sites, zero send_alert | High | 21 |
+| V-T-5 | V | DB connection failure silent in dev mode | High | 21 |
+| V-T-6 | V | C1/C2/stream-instability watchdog: no alert wiring | High | 21 |
+| V-T-7 | V | Reconciliation orphan adoption silently mutates entry metadata | High | 21 |
+| **X-1** | X | `live_tick()` lazy-imports alpaca_stream → triggers `load_dotenv()` mid-replay → first/second GovernanceController read different limits | High | 20c |
+| **X-8** | X | `background_trainer.py:130` writes `metrics.evaluated_at = datetime.now()` — bypasses `_now_fn` chain. Wall-clock leaks into brain artifact | High | 20b |
+
+### V6 Medium (4 actionable)
+
+| ID | Track | Title | Wave |
+|---|---|---|---|
+| V-T-8 | V | Zero `trace_span` calls in 3,600-line live_engine.py — no tick-internal latency observability | 22 |
+| X-2 | X | `live_engine.py:1473, 3923` use raw `time.time()` for tick `duration_s` | 20b |
+| X-3 | X | `brain_persistence.py:954` writes `saved_at` from wall clock | 20b |
+| X-5/6 | X | Wave-19 attr-loop has bugs: only matches `_now_fn` (skips StreamingDataProvider's `_time_fn`), lists nonexistent `promotion_controller` attribute | 20d |
+
+### V6 Low / Latent (5 actionable)
+
+| ID | Track | Title | Wave |
+|---|---|---|---|
+| W-find / X-4 | W,X,Z3 | `live_engine.py:6265` direct `datetime.now(UTC)` in `TradingSignal` stamping (3-track convergence) | 20b |
+| V-T-9 | V | Log stream 99.6% INFO; feature_engineer + performance produce 60.7% of lines | 22 |
+| X-7 | X | `OrganismLiveEngine` defaults `brain_dir=organism_brain` (production); no defense-in-depth assertion | 22 |
+| Z3-1 | Z3 | `regime.py:589` non-injected clock in offline `regime.check_drift` metadata | 22 |
+| W-marker-1 | W | U-1, U-2 (wave-19) shipped without source markers | 21 |
+| W-marker-2 | W | P-P0-3 (wave-12f) marker overwritten by wave-17a re-fix | 21 |
+
+### V6 Process-level (W: 14 wave gaps; T2: 0 bugs but coverage backfill)
+
+W-process: 15 of 37 waves fail (a)/(b)/(c). Behavioral/structural test ratio
+~25%/~25%/~50% mixed. Wave 18 highest silent-regression risk (6 findings, 0
+behavioral tests).
+
+T2-process: 5 numerical invariants had zero regression-test coverage before T2;
+`tests/test_numerical_properties_v6.py` (26 tests) closes the gap.
+
+## V6 cross-track patterns (see synthesis)
+
+1. **Same-class scans need machine enforcement** (V-T-1/2 missed by 17a; X-4/X-8 missed by 17b/19)
+2. **Three tracks converged on `live_engine.py:6265`** — Z3 wrong (cosmetic); X right (real bug)
+3. **Replay determinism harder than wave-17b/19 made it look** (X found 8 issues despite the fix waves)
+4. **Phantom telemetry persists despite wave-12e** (V found 5 missing alerts + metric undercount + 0 traces)
+5. **Behavioral testing is the durable defense** (T2 closes coverage gap; W shows wave 18 is highest risk)
 
 ## V5 closure status (post waves 17-19)
 
