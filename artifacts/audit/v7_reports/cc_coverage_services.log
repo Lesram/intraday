@@ -1,0 +1,105 @@
+/Users/marselkei/VS/intra/venv/lib/python3.12/site-packages/_hypothesis_pytestplugin.py:481: UserWarning: Skipping collection of '.hypothesis' directory - this usually means you've explicitly set the `norecursedirs` pytest config option, replacing rather than extending the default ignores.
+  warnings.warn(
+........................................................................ [ 30%]
+........................................................................ [ 60%]
+........................................................................ [ 91%]
+.....................                                                    [100%]
+================================ tests coverage ================================
+______________ coverage: platform darwin, python 3.12.12-final-0 _______________
+
+Name                                                  Stmts   Miss  Cover
+-------------------------------------------------------------------------
+backend/infra/__init__.py                                 0      0   100%
+backend/infra/alerting.py                               201    144    28%
+backend/infra/broker.py                                  31     31     0%
+backend/infra/cache.py                                  118    118     0%
+backend/infra/db.py                                     151    151     0%
+backend/infra/guardrails.py                             174    174     0%
+backend/infra/guardrails_production.py                  128    128     0%
+backend/infra/logging.py                                216    184    15%
+backend/infra/metrics.py                                269    210    22%
+backend/infra/object_pool.py                            178    178     0%
+backend/infra/observability.py                          249    184    26%
+backend/infra/observability_contracts.py                 59     45    24%
+backend/infra/order_guardrails.py                       147    147     0%
+backend/infra/outbox.py                                 265    209    21%
+backend/infra/outbox_worker.py                          330    279    15%
+backend/infra/performance.py                            286    286     0%
+backend/infra/production.py                             261    261     0%
+backend/infra/repositories.py                            24     24     0%
+backend/infra/repositories/__init__.py                   15     15     0%
+backend/infra/repositories/audits.py                    139    139     0%
+backend/infra/repositories/executions.py                109    109     0%
+backend/infra/repositories/models.py                    123    123     0%
+backend/infra/repositories/orders.py                    172    172     0%
+backend/infra/repositories/positions.py                 136    136     0%
+backend/infra/repositories/signals.py                   132    132     0%
+backend/infra/repositories/strategies.py                153    153     0%
+backend/infra/resilience.py                             294    192    35%
+backend/infra/schemas.py                                395      5    99%
+backend/infra/security.py                               308    308     0%
+backend/infra/security_hardening.py                     302    302     0%
+backend/infra/unified_database.py                       172    172     0%
+backend/infra/users.py                                  307    307     0%
+backend/infra/validation.py                              88     88     0%
+backend/integrations/__init__.py                          4      0   100%
+backend/integrations/alpaca_broker.py                   386    250    35%
+backend/integrations/alpaca_data.py                     143    120    16%
+backend/integrations/alpaca_market_data_stream.py       319    319     0%
+backend/integrations/alpaca_outbox.py                    84     67    20%
+backend/integrations/alpaca_stream.py                   415    415     0%
+backend/integrations/alpaca_stream_production.py        273    273     0%
+backend/risk/__init__.py                                  0      0   100%
+backend/risk/advanced_risk.py                           363    363     0%
+backend/risk/advanced_risk_manager.py                   373    373     0%
+backend/risk/black_swan_protection.py                   213    213     0%
+backend/risk/correlation_breakdown.py                   215    215     0%
+backend/risk/margin_calculator.py                        50     50     0%
+backend/risk/math.py                                     89     89     0%
+backend/risk/metrics.py                                 150    150     0%
+backend/risk/position_limits.py                          63     63     0%
+backend/risk/risk_calculator.py                          65     65     0%
+backend/risk/risk_manager.py                            695    582    16%
+backend/risk/types.py                                   168     64    62%
+backend/risk/volatility_checker.py                       87     87     0%
+backend/services/__init__.py                              1      0   100%
+backend/services/audit_service.py                       208    208     0%
+backend/services/auto_breakout_scanner.py               117    117     0%
+backend/services/auto_breakout_scanner_scheduler.py      60     60     0%
+backend/services/backtest_service.py                   1190   1190     0%
+backend/services/cache.py                               250    250     0%
+backend/services/indicators.py                          390    279    28%
+backend/services/lot_tracker_service.py                  78     78     0%
+backend/services/market_data_service.py                 255    255     0%
+backend/services/multi_strategy_live_runner.py          179    179     0%
+backend/services/multi_strategy_live_scheduler.py       137    137     0%
+backend/services/observability_service.py               180    180     0%
+backend/services/order_service.py                       715    637    11%
+backend/services/portfolio_service.py                   140    140     0%
+backend/services/portfolio_sync_service.py               48     48     0%
+backend/services/position_import_service.py              82     82     0%
+backend/services/position_reconciliation_service.py      74      2    97%
+backend/services/positions_service.py                    82     82     0%
+backend/services/quote_manager.py                       157    157     0%
+backend/services/risk_manager.py                        292    292     0%
+backend/services/scheduled_reconciliation.py             83     83     0%
+backend/services/signal_service.py                       27     27     0%
+backend/services/slippage_model.py                      145    145     0%
+backend/services/strategy_service.py                    285    285     0%
+backend/services/symbol_validator.py                     81     81     0%
+backend/services/trade_analytics_service.py             187    187     0%
+backend/services/trade_service.py                       206    206     0%
+backend/services/trading_execution_mode.py               73     42    42%
+backend/utils/__init__.py                                 3      0   100%
+backend/utils/helpers.py                                201      5    98%
+backend/utils/import_tracker.py                         114    114     0%
+backend/utils/logger.py                                 192     84    56%
+backend/utils/logging.py                                 90     43    52%
+backend/utils/market_hours.py                           130     20    85%
+backend/utils/port_management.py                        146    146     0%
+backend/utils/secure_pickle.py                           81      2    98%
+backend/utils/utilities.py                              374    374     0%
+backend/utils/validators.py                             157    127    19%
+-------------------------------------------------------------------------
+TOTAL                                                 17297  15208    12%
+237 passed in 3.64s

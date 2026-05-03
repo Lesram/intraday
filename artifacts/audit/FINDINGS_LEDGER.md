@@ -266,6 +266,80 @@ See `MASTER_AUDIT_SYNTHESIS_v5.md` for cross-track patterns and wave 17-19 seque
 - 2026-05-03 03:00 PT: Waves 17 (a-d), 18, and 19 all shipped on rc-1.5-curated. Final HEAD `0ea2695`. Container healthy across 7 force-recreate cycles. All 21 V5 findings closed.
 - 2026-05-03 04:00 PT: V6 audit complete. 5 tracks (Z3/V/W/T2/X), ~18 actionable findings + 14 W-process-gaps + 0 T2 + 2 Z3 cosmetic. 0 production regressions in waves 17-19. See `MASTER_AUDIT_SYNTHESIS_v6.md`.
 - 2026-05-03 04:30 PT: Waves 20 (a-e), 21, and 22 all shipped on rc-1.5-curated. Final HEAD `3baefb4`. Container healthy. All V6 actionable findings closed (V-T-1..V-T-9, X-1..X-8, W-marker gaps, T2 hypothesis pin, regime.py:589 obs).
+- 2026-05-03 06:00 PT: V7 audit complete. **10 tracks (largest round in the cycle).** 0 wave-20-22 regressions confirmed by Z4. ~91 actionable findings open — the largest open backlog since V1. Most severe: AA-C-1 (JWT secret = public default), AA-C-2 (require_roles returns function ref → 18 admin endpoints lose role gate), DD-1 (manufactures breakout score from flat-price data), BB BUG-10 (audit_logs empty), BB BUG-8 (LotTracker dead code; position_lots/realized_trades empty despite 1,369 orders). Wave 23-27 sequence proposed in `MASTER_AUDIT_SYNTHESIS_v7.md`.
+
+## v7 findings (Tracks Z4/W2/AA/BB/CC/DD/EE/FF/GG/HH, 2026-05-03)
+
+**Total: ~91 actionable findings + 14 wave-process gaps + 13 deterministic test regressions.**
+See `MASTER_AUDIT_SYNTHESIS_v7.md` for cross-track patterns and wave 23-27 sequence.
+
+### V7 Critical (4)
+
+| ID | Track | Title | Wave |
+|---|---|---|---|
+| **AA-C-1** | AA | JWT secret = public default `dev_secret_key_minimum_32_chars_for_development_only` | 23a |
+| **AA-C-2** | AA | `require_roles()` factory returns function ref → 18 admin endpoints lose role gate | 23b |
+| **BB BUG-10** | BB | `audit_logs` table empty; ComplianceAuditService.log only invoked by viewer | 24 |
+| **BB BUG-8** | BB | `LotTracker` dead in production; position_lots + realized_trades = 0 rows despite 1,369 orders | 24 |
+
+### V7 High (23)
+
+| ID | Track | Title | Wave |
+|---|---|---|---|
+| AA-H-1 | AA | SecurityHeadersMiddleware exists but never imported | 24 |
+| AA-H-2 | AA | 5 endpoints public without auth (`/scanner/symbols`, `/observability/*`) | 23c |
+| AA-H-3 | AA | AuditAction.USER_LOGIN/LOGOUT/CONFIG_UPDATED enums never invoked | 24 |
+| AA-H-4 | AA | Container: no cap_drop, no read_only, no security_opt; gid=0 (root) | 24 |
+| BB BUG-1/2/3 | BB | orders table missing CHECK constraints on qty>0, filled_qty<=qty, status, side, tif, order_type | 25 |
+| **DD-1** | DD | `comp_breakout_readiness` returns 0.633 on flat-price data (manufactures breakout score) | 24 |
+| **DD-2** | DD | Regime detector default atr_ratio=0.02 = 10× high-vol threshold when ATR cols missing | 24 |
+| **DD-3** | DD | SPY cross-asset features positional iloc[-len(df):] silent misalignment | 24 |
+| **DD-4** | DD | Kelly regime-stratified path bypasses spread-cost / ML-conf / breakout floors | 24 |
+| EE-1 | EE | Compose healthcheck targets shallow `/healthz`; `/readyz` 503 ignored | 25 |
+| EE-3 | EE | redis-server bind 127.0.0.1 refuses cross-container traffic | 23e |
+| EE-4 | EE | Single manual pg dump; no cron/restore script/integrity check | 25 |
+| FF-1 | FF | submit_symbol_order does NOT call validate_order; qty=0/-1/injection reach outbox | 25 |
+| FF-2 | FF | Idempotency-key cache returns prior result without verifying body matches | 25 |
+| FF-3 | FF | WS _process_trade_update silently drops messages on JSON null filled_qty | 25 |
+| GG-6 | GG | OPERATOR_COMMAND_SHEET 92 commits behind HEAD; brain numbers stale by 70+ trades | 26 |
+| GG-7 | GG | MONDAY_DEPLOY_eb90fa3.md still at repo root as live runbook | 26 |
+| GG-9 | GG | README quick-setup commands literally broken (cd algotrading_platform; ./scripts/run_ci_locally.sh) | 26 |
+| HH-1 | HH | live_engine.py 6,401 LOC; 2,510-line `_live_tick_inner`; 374-line `__init__` | 27 |
+| HH-2 | HH | OrganismBrain god-class: 2,119 LOC, 13 hand-paired _save_X/_load_X | 27 |
+| HH-3 | HH | 7 settings entry-points, 383 os.getenv calls (configuration sprawl) | 27 |
+| W2-1 | W | V6 W's 3 CI rules never shipped: no PR template, no workflow checks | 26 |
+| AA-M-2 | AA | Rate limiter keys on never-populated user_id → defaults to per-IP | 24 |
+
+### V7 Medium / Low (~50)
+
+See `MASTER_AUDIT_SYNTHESIS_v7.md` for full per-track tables. Highlights:
+- AA-M-1 Redis password = `changeme_redis` default
+- AA-M-3..5 `/settings/organism|trading|ml`, `/risk/emergency-stop` lack role enforcement
+- BB BUG-6 order_events ondelete=CASCADE in ORM, missing in migration
+- BB BUG-9 scheduled_reconciliation drift logs only to stdout
+- BB BUG-11 save_essential_state writes 7+ files non-atomically
+- DD-5..11 Kelly historic on zero-edge; regime tie-break dict-order; system anti-predictivity not surfaced; pure-breakout mis-tag; sector "Unknown" bypass
+- EE-2/5/6/7/8 health/ready sentinel; DR scenarios without runbooks; shutdown timeout; no resource limits; SLI gauges 503ing every 10s
+- FF-4..11 empty body 502; negative MAX_NOTIONAL silent disable; empty/duplicate ORGANISM_LIVE_SYMBOLS; etc.
+- GG-1..5/8/10/11 mapss.md drift; README references 9 non-existent files; FINDINGS_LEDGER inconsistent; live_engine docstring omits Ferrari scanners
+- HH-4..10 layering violations; 136 lazy imports; strategies/ vs organism/ duplication; public surface implicit
+
+### V7 Process gaps
+
+W2: 3 CI rule ship gaps. CC: 8 organism modules at 0% coverage; 13 deterministic regressions; 224 redundant @pytest.mark.asyncio decorators.
+
+## V7 cross-track patterns (see synthesis)
+
+1. **Auth + Audit + Compliance trio is broken** (AA-C-1/2, AA-H-3, BB-10, BB-8 converge — single most operationally severe pattern in the cycle)
+2. **Strategy logic was the unaudited blind spot** (V1-V6 audited infra; DD found 11)
+3. **Process enforcement gap** (W2 confirms V5 Pattern 1 / V6 Pattern 1 never shipped)
+4. **Dead code with live-looking telemetry** (LotTracker, audit_logs, strategies/, anti-predictivity)
+5. **Documentation drift accelerates after a deploy** (OPERATOR_COMMAND_SHEET 92 commits behind)
+6. **`live_engine.py` is the gravitational center of pain** (every track touched it; R-1 split is highest-ROI refactor)
+
+## Status legend update history
+
+- 2026-05-03 06:00 PT: V7 round complete. Largest open backlog since V1. Wave 23 (security URGENT) recommended within 24-48 hours. Synthesis in `MASTER_AUDIT_SYNTHESIS_v7.md`.
 
 ## V6 closure status (post waves 20-22)
 

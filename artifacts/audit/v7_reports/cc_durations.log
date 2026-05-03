@@ -1,0 +1,44 @@
+/Users/marselkei/VS/intra/venv/lib/python3.12/site-packages/_hypothesis_pytestplugin.py:481: UserWarning: Skipping collection of '.hypothesis' directory - this usually means you've explicitly set the `norecursedirs` pytest config option, replacing rather than extending the default ignores.
+  warnings.warn(
+.....................FF.........F.F...............FFF.............FFFFF................................... [ 26%]
+....F................................................................... [ 44%]
+........................................................................ [ 62%]
+........................................................................ [ 81%]
+.....................................................ssssss............. [ 99%]
+...                                                                      [100%]
+============================= slowest 20 durations =============================
+15.35s call     tests/test_replay_simulator.py::test_replay_intraday_timeframe_uses_tight_stops
+15.11s call     tests/test_replay_simulator.py::test_replay_trades_have_valid_pnl
+15.01s call     tests/test_replay_simulator.py::test_replay_completes_100_ticks
+15.01s call     tests/test_replay_simulator.py::test_replay_no_throttle_blocking
+11.08s call     tests/test_replay_simulator.py::test_replay_daily_timeframe_uses_wider_stops
+10.84s call     tests/test_replay_simulator.py::test_replay_with_crash_data
+3.98s call     tests/test_replay_simulator.py::test_replay_regime_history_populated
+2.87s call     tests/test_system_integration.py::TestMLTrainingWithDecay::test_retrained_model_improves_or_maintains
+2.10s call     tests/test_replay_simulator.py::test_replay_equity_monotonic_start
+1.63s call     tests/test_system_integration.py::TestMLKellyPipeline::test_train_predict_size_flow
+1.15s call     tests/test_system_integration.py::TestMLTrainingWithDecay::test_training_with_decay_succeeds
+0.26s call     tests/test_apr7_p0_p1_fixes.py::test_update_watchdog_c1_fires_critical_when_truly_idle
+0.16s call     tests/test_apr7_p0_p1_fixes.py::test_update_watchdog_c1_stays_quiet_while_orders_flow
+0.15s call     tests/test_secure_pickle.py::TestSecurePickleBasics::test_different_data_types
+0.06s call     tests/test_system_integration.py::TestFeatureComputation::test_no_nan_in_features
+0.06s call     tests/test_system_integration.py::TestFeatureComputation::test_all_feature_columns_present
+0.06s call     tests/test_system_integration.py::TestFeatureComputation::test_momentum_persistence_features_reasonable
+0.06s call     tests/test_replay_simulator_errors.py::test_from_alpaca_raises_when_keys_missing
+0.05s call     tests/test_numerical_properties_v6.py::test_cumulative_pnl_roundtrip_property
+0.03s call     tests/test_alpaca_broker_comprehensive.py::TestRetryOnTransientError::test_max_retries_exhausted
+=========================== short test summary info ============================
+FAILED tests/test_replay_simulator.py::test_replay_completes_100_ticks - Fail...
+FAILED tests/test_replay_simulator.py::test_replay_trades_have_valid_pnl - Fa...
+FAILED tests/test_replay_simulator.py::test_replay_no_throttle_blocking - Fai...
+FAILED tests/test_replay_simulator.py::test_replay_intraday_timeframe_uses_tight_stops
+FAILED tests/test_audit_patch_queue_b2.py::TestMLConfidenceLeakage::test_learning_mode_ignores_ml_confidence
+FAILED tests/test_audit_patch_queue_b2.py::TestMLConfidenceLeakage::test_learning_mode_uses_composite_score
+FAILED tests/test_audit_patch_queue_b2.py::TestMLConfidenceLeakage::test_production_mode_uses_ml_confidence
+FAILED tests/test_audit_patch_queue_d1.py::TestValidateNewModelEconomic::test_acceptance_rejects_negative_edge
+FAILED tests/test_audit_patch_queue_d1.py::TestValidateNewModelEconomic::test_acceptance_accepts_positive_edge
+FAILED tests/test_audit_patch_queue_d1.py::TestValidateNewModelEconomic::test_poor_model_rejected
+FAILED tests/test_audit_patch_queue_d1.py::TestValidateNewModelEconomic::test_improved_model_accepted
+FAILED tests/test_audit_patch_queue_d1.py::TestValidateNewModelEconomic::test_improved_but_negative_edge_rejected
+FAILED tests/test_apr7_p0_p1_fixes.py::test_submit_entry_order_counters_increment
+13 failed, 378 passed, 6 skipped in 97.37s (0:01:37)

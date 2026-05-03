@@ -1,0 +1,69 @@
+/Users/marselkei/VS/intra/venv/lib/python3.12/site-packages/_hypothesis_pytestplugin.py:481: UserWarning: Skipping collection of '.hypothesis' directory - this usually means you've explicitly set the `norecursedirs` pytest config option, replacing rather than extending the default ignores.
+  warnings.warn(
+........................FFF.............FFFFF........................... [ 47%]
+............F...............................................FF..F......FFF.....                                                                   [100%]
+================================ tests coverage ================================
+______________ coverage: platform darwin, python 3.12.12-final-0 _______________
+
+Name                                          Stmts   Miss  Cover
+-----------------------------------------------------------------
+backend/organism/__init__.py                      0      0   100%
+backend/organism/adaptive_exits.py              307    227    26%
+backend/organism/alpha_scanner.py               182     45    75%
+backend/organism/attribution.py                 208    208     0%
+backend/organism/background_trainer.py          257    144    44%
+backend/organism/brain_persistence.py           914    454    50%
+backend/organism/breakout_scanner.py            212     18    92%
+backend/organism/composite_indicators.py        206     20    90%
+backend/organism/continuous_learner.py          244    133    45%
+backend/organism/decision_telemetry.py          208     45    78%
+backend/organism/diagnostic_checks.py           521    305    41%
+backend/organism/diagnostic_scheduler.py        106    106     0%
+backend/organism/diagnostics.py                  88      7    92%
+backend/organism/ensemble_models.py             187    133    29%
+backend/organism/eod_scanner.py                 146     78    47%
+backend/organism/feature_store.py               129    129     0%
+backend/organism/governance.py                  158     81    49%
+backend/organism/kelly_sizer.py                 295     60    80%
+backend/organism/live_engine.py                2450   1519    38%
+backend/organism/market_scanner.py              227    168    26%
+backend/organism/mean_reversion_scanner.py      209    121    42%
+backend/organism/ml_features.py                 244     13    95%
+backend/organism/ml_signal.py                   387    279    28%
+backend/organism/multi_timeframe.py              72     50    31%
+backend/organism/nightly_scheduler.py            69     69     0%
+backend/organism/orb_scanner.py                 251    142    43%
+backend/organism/promotion.py                   161    161     0%
+backend/organism/pyramider.py                   137     80    42%
+backend/organism/regime.py                      302    140    54%
+backend/organism/replay_simulator.py            390     87    78%
+backend/organism/routes.py                      435    435     0%
+backend/organism/runner.py                       60     60     0%
+backend/organism/scheduler.py                   169    169     0%
+backend/organism/sector_map.py                   15      1    93%
+backend/organism/self_evolution.py              451    109    76%
+backend/organism/streaming_data_provider.py     157    157     0%
+backend/organism/trading_phase.py                18      3    83%
+backend/organism/training.py                    155    155     0%
+backend/organism/transfer_learning.py           230    162    30%
+backend/organism/universe_selector.py           155    108    30%
+backend/organism/walk_forward.py                217    217     0%
+-----------------------------------------------------------------
+TOTAL                                         11329   6598    42%
+=========================== short test summary info ============================
+FAILED tests/test_audit_patch_queue_b2.py::TestMLConfidenceLeakage::test_learning_mode_ignores_ml_confidence
+FAILED tests/test_audit_patch_queue_b2.py::TestMLConfidenceLeakage::test_learning_mode_uses_composite_score
+FAILED tests/test_audit_patch_queue_b2.py::TestMLConfidenceLeakage::test_production_mode_uses_ml_confidence
+FAILED tests/test_audit_patch_queue_d1.py::TestValidateNewModelEconomic::test_acceptance_rejects_negative_edge
+FAILED tests/test_audit_patch_queue_d1.py::TestValidateNewModelEconomic::test_acceptance_accepts_positive_edge
+FAILED tests/test_audit_patch_queue_d1.py::TestValidateNewModelEconomic::test_poor_model_rejected
+FAILED tests/test_audit_patch_queue_d1.py::TestValidateNewModelEconomic::test_improved_model_accepted
+FAILED tests/test_audit_patch_queue_d1.py::TestValidateNewModelEconomic::test_improved_but_negative_edge_rejected
+FAILED tests/test_apr7_p0_p1_fixes.py::test_submit_entry_order_counters_increment
+FAILED tests/test_replay_simulator.py::test_replay_completes_100_ticks - Fail...
+FAILED tests/test_replay_simulator.py::test_replay_trades_have_valid_pnl - Fa...
+FAILED tests/test_replay_simulator.py::test_replay_with_crash_data - Failed: ...
+FAILED tests/test_replay_simulator.py::test_replay_no_throttle_blocking - Fai...
+FAILED tests/test_replay_simulator.py::test_replay_daily_timeframe_uses_wider_stops
+FAILED tests/test_replay_simulator.py::test_replay_intraday_timeframe_uses_tight_stops
+15 failed, 136 passed in 107.86s (0:01:47)

@@ -1,0 +1,21 @@
+/Users/marselkei/VS/intra/venv/lib/python3.12/site-packages/_hypothesis_pytestplugin.py:481: UserWarning: Skipping collection of '.hypothesis' directory - this usually means you've explicitly set the `norecursedirs` pytest config option, replacing rather than extending the default ignores.
+  warnings.warn(
+........................FFF.............FFFFF........................... [ 24%]
+............F........................................................... [ 48%]
+........................................................................ [ 72%]
+.............................................................FF.........F.F.....                                                                   [100%]
+=========================== short test summary info ============================
+FAILED tests/test_audit_patch_queue_b2.py::TestMLConfidenceLeakage::test_learning_mode_ignores_ml_confidence
+FAILED tests/test_audit_patch_queue_b2.py::TestMLConfidenceLeakage::test_learning_mode_uses_composite_score
+FAILED tests/test_audit_patch_queue_b2.py::TestMLConfidenceLeakage::test_production_mode_uses_ml_confidence
+FAILED tests/test_audit_patch_queue_d1.py::TestValidateNewModelEconomic::test_acceptance_rejects_negative_edge
+FAILED tests/test_audit_patch_queue_d1.py::TestValidateNewModelEconomic::test_acceptance_accepts_positive_edge
+FAILED tests/test_audit_patch_queue_d1.py::TestValidateNewModelEconomic::test_poor_model_rejected
+FAILED tests/test_audit_patch_queue_d1.py::TestValidateNewModelEconomic::test_improved_model_accepted
+FAILED tests/test_audit_patch_queue_d1.py::TestValidateNewModelEconomic::test_improved_but_negative_edge_rejected
+FAILED tests/test_apr7_p0_p1_fixes.py::test_submit_entry_order_counters_increment
+FAILED tests/test_replay_simulator.py::test_replay_completes_100_ticks - Fail...
+FAILED tests/test_replay_simulator.py::test_replay_trades_have_valid_pnl - Fa...
+FAILED tests/test_replay_simulator.py::test_replay_no_throttle_blocking - Fai...
+FAILED tests/test_replay_simulator.py::test_replay_intraday_timeframe_uses_tight_stops
+13 failed, 283 passed in 91.61s (0:01:31)
