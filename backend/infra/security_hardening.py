@@ -334,8 +334,18 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             "geolocation=(), microphone=(), camera=()"
         )
 
-        # HSTS for HTTPS
-        if request.url.scheme == "https":
+        # V8 AA2-NEW-3 / Wave-32 (2026-05-03): honour X-Forwarded-Proto for
+        # HSTS emission so the canonical reverse-proxy / TLS-terminator
+        # production deployment still gets HSTS.  Previously HSTS was only
+        # emitted when `request.url.scheme == "https"`, which is false behind
+        # nginx / ALB / Cloudfront where the upstream sees scheme=http.
+        forwarded_proto = (
+            request.headers.get("x-forwarded-proto", "")
+            .split(",")[0]
+            .strip()
+            .lower()
+        )
+        if request.url.scheme == "https" or forwarded_proto == "https":
             headers["Strict-Transport-Security"] = (
                 f"max-age={self.hsts_max_age}; includeSubDomains"
             )

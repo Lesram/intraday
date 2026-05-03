@@ -2150,10 +2150,46 @@ class OrganismLiveEngine:
                         sym, pos_data.get("qty", "?"),
                     )
                     continue
-                # Skip symbols with pending exit orders (prevent duplicate exits)
+                # V8 / DD2-1 / Wave-32 (2026-05-03): hard safety net even when
+                # a pending exit is in flight.  The 3-tick `_pending_exit`
+                # cooldown was previously skipping ALL exit checks including
+                # max-loss; the unsold portion of a partial-TP / ML-reversal
+                # exit could blow through max_loss_pct during that 30s window.
+                # Now: routine exit logic still skipped, but max-loss STILL
+                # checked against broker price.
                 if sym in self._pending_exit:
+                    broker_price = float(pos_data.get("current_price", 0))
+                    avg_entry = float(pos_data.get("avg_entry_price", 0))
+                    if broker_price > 0 and avg_entry > 0:
+                        side = pos_data.get("side", "long")
+                        _dir = 1.0 if side == "long" else -1.0
+                        pnl_pct = (broker_price - avg_entry) / avg_entry * _dir
+                        if pnl_pct <= -_MAX_LOSS_PCT:
+                            qty = abs(float(pos_data.get("qty", 0)))
+                            sell_shares = int(qty)
+                            if sell_shares > 0:
+                                try:
+                                    await self._submit_exit_order(
+                                        sym, sell_shares,
+                                        "safety_net_pending_exit_breach",
+                                        direction=_dir,
+                                        broker_positions=current_positions,
+                                    )
+                                    self._exit_cooldown[sym] = self._tick_count
+                                    exits_submitted += 1
+                                    result.orders_submitted += 1
+                                    logger.warning(
+                                        "DD2-1 breach: %s pnl=%.2f%% past max_loss "
+                                        "during pending-exit window — safety net fired",
+                                        sym, pnl_pct * 100,
+                                    )
+                                except Exception as e:
+                                    result.errors.append(
+                                        f"DD2-1 safety net failed for {sym}: {e}"
+                                    )
                     logger.debug(
-                        "Skipping exit check for %s — pending exit from tick %d",
+                        "Skipping routine exit check for %s — pending exit "
+                        "from tick %d (no breach)",
                         sym, self._pending_exit[sym],
                     )
                     continue

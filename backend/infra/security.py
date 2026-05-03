@@ -626,7 +626,27 @@ def verify_token(token: str) -> UserClaims:
         HTTPException: If token is invalid, expired, or malformed
     """
     payload = decode_token(token)
-    return UserClaims(**payload)
+    # V8 AA2-NEW-2 / Wave-32 (2026-05-03): catch pydantic ValidationError on
+    # malformed claims (missing roles / iat / jti, wrong types) and return 401
+    # instead of letting it bubble up as 500 + stack trace.  Previously a
+    # signed-but-malformed token gave attackers a low-cost DoS + schema-leak
+    # vector; now it presents identically to any other invalid token.
+    try:
+        return UserClaims(**payload)
+    except (TypeError, ValueError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="invalid_token",
+        ) from exc
+    except Exception as exc:
+        # pydantic ValidationError is not in the import surface; catch broadly
+        # but only for the constructor path.
+        if exc.__class__.__name__ == "ValidationError":
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="invalid_token",
+            ) from exc
+        raise
 
 
 def verify_api_key(api_key: str) -> bool:

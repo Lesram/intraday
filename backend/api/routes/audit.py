@@ -19,7 +19,7 @@ from pydantic import BaseModel, ConfigDict
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.api.dependencies import get_db_session as get_db
-from backend.infra.security import require_trader  # M-09 FIX: Added authentication
+from backend.infra.security import require_admin  # V8 AA2-NEW-1 / Wave-32: forensic audit data is admin-only
 from backend.services.audit_service import (
     AuditAction,
     AuditEntity,
@@ -106,7 +106,7 @@ class AuditActionsResponse(BaseModel):
 )
 async def get_audit_trail(
     db: Annotated[AsyncSession, Depends(get_db)],
-    current_user=Depends(require_trader),  # M-09 FIX: Added authentication
+    current_user=Depends(require_admin),  # V8 AA2-NEW-1 / Wave-32: admin-only audit access
     entity: str | None = Query(None, description="Filter by entity type (order, position, user, etc.)"),
     entity_id: str | None = Query(None, description="Filter by specific entity ID"),
     action: str | None = Query(None, description="Filter by action type"),
@@ -196,7 +196,7 @@ async def get_entity_audit_history(
     entity_type: str,
     entity_id: str,
     db: Annotated[AsyncSession, Depends(get_db)],
-    current_user=Depends(require_trader),  # M-09 FIX: Added authentication
+    current_user=Depends(require_admin),  # V8 AA2-NEW-1 / Wave-32: admin-only audit access
     limit: int = Query(100, ge=1, le=1000),
     offset: int = Query(0, ge=0),
 ):
@@ -251,7 +251,7 @@ async def get_entity_audit_history(
 )
 async def verify_chain_integrity(
     db: Annotated[AsyncSession, Depends(get_db)],
-    current_user=Depends(require_trader),  # M-09 FIX: Added authentication
+    current_user=Depends(require_admin),  # V8 AA2-NEW-1 / Wave-32: admin-only audit access
     start_time: datetime | None = Query(None, description="Start of time range to verify"),
     end_time: datetime | None = Query(None, description="End of time range to verify"),
     limit: int = Query(10000, ge=1, le=100000, description="Maximum records to verify"),
@@ -287,7 +287,7 @@ async def verify_chain_integrity(
 )
 async def get_audit_statistics(
     db: Annotated[AsyncSession, Depends(get_db)],
-    current_user=Depends(require_trader),  # M-09 FIX: Added authentication
+    current_user=Depends(require_admin),  # V8 AA2-NEW-1 / Wave-32: admin-only audit access
     start_time: datetime | None = Query(None, description="Start of time range"),
     end_time: datetime | None = Query(None, description="End of time range"),
 ):
@@ -310,7 +310,7 @@ async def get_audit_statistics(
 )
 async def export_audit_data(
     db: Annotated[AsyncSession, Depends(get_db)],
-    current_user=Depends(require_trader),  # M-09 FIX: Added authentication
+    current_user=Depends(require_admin),  # V8 AA2-NEW-1 / Wave-32: admin-only audit access
     start_date: datetime = Query(..., description="Start date for export"),
     end_date: datetime = Query(..., description="End date for export"),
 ):
@@ -345,7 +345,7 @@ async def export_audit_data(
     description="List all available audit action types.",
 )
 async def list_audit_actions(
-    current_user=Depends(require_trader),  # M-09 FIX: Added authentication
+    current_user=Depends(require_admin),  # V8 AA2-NEW-1 / Wave-32: admin-only audit access
 ) -> AuditActionsResponse:
     """List all available audit action types for reference."""
     return AuditActionsResponse(

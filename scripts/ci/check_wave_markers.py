@@ -45,8 +45,11 @@ FINDING_ID_RE = re.compile(
     r"|BUG-\d+"                         # BUG-8, BUG-10
     r")\b"
 )
+# V8 / W3-G3 / Wave-32 (2026-05-03): tolerate pasted shell-prompt prefixes
+# (`$ grep ...`, `> grep ...`) so paste-from-terminal sessions don't fail the
+# missing-grep rule on cosmetic prefix.
 SAMECLASS_BLOCK_RE = re.compile(
-    r"^[ \t]*(grep -[^\n]+|grep[ \t][^\n]+)$",
+    r"^[ \t]*(?:[\$>][ \t]+)?(grep -[^\n]+|grep[ \t][^\n]+)$",
     re.MULTILINE,
 )
 ASSERT_ZERO_RE = re.compile(
@@ -151,23 +154,26 @@ def _re_run_grep(cmd_str: str, repo_root: str) -> tuple[int, str]:
 
 
 def _diff_test_count(base: str, head: str) -> int:
-    """Return the net change in `def test_` lines under tests/ between base and head."""
-    diff = _run(
-        ["git", "diff", "--numstat", f"{base}..{head}", "--", "tests/"],
-    )
-    if not diff.strip():
+    """Return net change in test functions across all paths between base and head.
+
+    V8 / W3-G2 / Wave-32 (2026-05-03): scope widened from `-- tests/` to all
+    paths.  Behavioral tests added in `backend/tests/`, integration suites
+    under other directories, or `@pytest.fixture` additions to conftest.py
+    are now counted.  Markers: `def test_`, `async def test_`, `@pytest.fixture`.
+    """
+    full_diff = _run(["git", "diff", f"{base}..{head}"])
+    if not full_diff.strip():
         return 0
-    # Count actual added test functions via diff content.
-    full_diff = _run(["git", "diff", f"{base}..{head}", "--", "tests/"])
+    markers = ("def test_", "async def test_", "@pytest.fixture")
     added = sum(
         1 for line in full_diff.splitlines()
         if line.startswith("+") and not line.startswith("+++")
-        and ("def test_" in line or "async def test_" in line)
+        and any(m in line for m in markers)
     )
     removed = sum(
         1 for line in full_diff.splitlines()
         if line.startswith("-") and not line.startswith("---")
-        and ("def test_" in line or "async def test_" in line)
+        and any(m in line for m in markers)
     )
     return added - removed
 
@@ -237,10 +243,22 @@ def check_wave_compliance(
                 fails += 1
         else:
             print(f"  [ok] same-class grep cited: {len(ctx['grep_cmds'])} command(s)")
+            # V8 / W3-G1 / Wave-32 (2026-05-03): `count < 0` means the cited
+            # grep timed out or errored.  Previously printed [WARN] without
+            # incrementing `fails`, so a pathological/timeout grep silently
+            # bypassed required-mode.  Now: in required mode, un-evaluated
+            # grep is treated as FAIL — at least one grep must successfully
+            # evaluate to count == 0.
             for cmd_str in ctx["grep_cmds"]:
                 count, _out = _re_run_grep(cmd_str, repo_root)
                 if count < 0:
-                    print(f"    [WARN] could not re-run: {cmd_str!r}")
+                    sev = "FAIL" if enforce_grep_zero else "WARN"
+                    print(
+                        f"    [{sev}] could not re-run (count<0; timeout or "
+                        f"error): {cmd_str[:80]}"
+                    )
+                    if enforce_grep_zero:
+                        fails += 1
                 elif count == 0:
                     print(f"    [ok] re-ran, count=0: {cmd_str[:80]}")
                 else:
