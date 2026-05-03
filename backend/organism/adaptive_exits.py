@@ -273,12 +273,20 @@ class AdaptiveExitEngine:
         if atr < 1e-6 or np.isnan(atr):
             atr = entry_price * 0.02  # 2 % fallback
 
+        # V11 prep / Wave-60 (DD4-3 closure): use symbol-aware effective
+        # regime so SH/PSQ/DOG/RWM get the flipped-regime stop math
+        # instead of un-flipped market regime (which produced too-wide
+        # stops on inverse-ETF longs in trending_up = "favourable for
+        # short" markets).
+        from backend.organism.regime import effective_regime_for_symbol
+        _eff_regime = effective_regime_for_symbol(regime, symbol)
+
         # Regime-adjusted stop distance
-        stop_atr_mult = self.REGIME_STOP_ATR.get(regime, self.atr_multiplier)
+        stop_atr_mult = self.REGIME_STOP_ATR.get(_eff_regime, self.atr_multiplier)
         risk_distance = atr * stop_atr_mult
 
         # Regime-adjusted R-multiple for full TP
-        tp_r = self.REGIME_TP_R.get(regime, self.profit_r_multiple)
+        tp_r = self.REGIME_TP_R.get(_eff_regime, self.profit_r_multiple)
 
         # Partial TP distance (always 3R)
         partial_r = self.partial_tp_r

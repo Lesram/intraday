@@ -38,6 +38,49 @@ class RegimeLabel:
     UNKNOWN = "unknown"
 
 
+# V11 prep / Wave-60 (DD4-3 closure, 2026-05-03): canonical inverse-ETF
+# universe.  Single source of truth used by Kelly + AdaptiveExits +
+# AlphaScanner + cooldown logic.  Previously each consumer carried its
+# own definition (alpha_scanner.INVERSE_ETFS = {"SH", "PSQ", "DOG", "RWM"};
+# live_engine._INVERSE_ETFS_CHOP_SUPPRESSED = {"PSQ", "SH"}); now
+# unified.
+_INVERSE_ETFS = frozenset({"SH", "PSQ", "DOG", "RWM"})
+
+
+def is_inverse_etf(symbol: str) -> bool:
+    """Return True if `symbol` is a canonical inverse-direction ETF."""
+    return symbol.upper() in _INVERSE_ETFS
+
+
+def effective_regime_for_symbol(regime: str, symbol: str) -> str:
+    """V11 prep / Wave-60 (DD4-3 closure): single helper for the
+    inverse-ETF regime flip.
+
+    For inverse ETFs (SH, PSQ, DOG, RWM), buying the ticker is
+    economically equivalent to shorting the underlying — so a
+    `trending_down` market is favourable, and `trending_up` is
+    unfavourable.  The flip swaps these two regime labels;
+    chop / high_vol / low_vol / stress are passed through unchanged.
+
+    Used by:
+      - Kelly._regime_scale (sizing)
+      - AdaptiveExitEngine REGIME_STOP_ATR / REGIME_MAX_BARS / REGIME_TP_R / REGIME_TRAIL_ATR (exits)
+      - AlphaScanner._regime_alignment (entry score)
+      - regime-transition cooldown
+
+    Previously only AlphaScanner did the flip locally — the other
+    consumers saw the un-flipped market regime and produced
+    inconsistent semantics for SH/PSQ trades (V8 DD2-6 / V10 DD4-3).
+    """
+    if not is_inverse_etf(symbol):
+        return regime
+    if regime == RegimeLabel.TRENDING_UP:
+        return RegimeLabel.TRENDING_DOWN
+    if regime == RegimeLabel.TRENDING_DOWN:
+        return RegimeLabel.TRENDING_UP
+    return regime
+
+
 @dataclass
 class RegimeState:
     """Current detected regime with probability vector."""

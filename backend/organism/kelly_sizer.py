@@ -338,8 +338,14 @@ class KellySizer:
             # 3. Drawdown scaling (always active)
             drawdown_scale = self._drawdown_scale(current_drawdown)
 
-            # 5. Regime scaling (always active for safety)
-            regime_scale, _regime_scale_source, _regime_trade_count = self._regime_scale(current_regime)
+            # 5. Regime scaling (always active for safety).
+            # V11 prep / Wave-60 (DD4-3 closure): use the symbol-aware
+            # effective regime so SH/PSQ/DOG/RWM (inverse ETFs) get
+            # sized against the flipped regime label — matching the
+            # AlphaScanner score and the AdaptiveExits stop math.
+            from backend.organism.regime import effective_regime_for_symbol
+            _eff_regime = effective_regime_for_symbol(current_regime, symbol)
+            regime_scale, _regime_scale_source, _regime_trade_count = self._regime_scale(_eff_regime)
 
             if _is_learning:
                 # ── LEARNING MODE: Fixed ATR-dollar risk sizing ──
