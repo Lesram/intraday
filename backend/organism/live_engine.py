@@ -1214,6 +1214,50 @@ class OrganismLiveEngine:
             if isinstance(saved_mr_used, list):
                 self._ml_reversal_used = set(saved_mr_used)
 
+            # V10 DD4-1 / Wave-53 (2026-05-03): restore symbol_trade_counts +
+            # symbol_fitness from extra_counters if present.  evolved_params
+            # is promotion-gated, so its counts can be stale; the runtime-
+            # truth copy in extra_counters is updated every essential save.
+            # Use the larger of (evolved_params version, extra_counters
+            # version) so we never go backwards on a restart.
+            try:
+                _ec_counts = self.brain.extra_counters.get(
+                    "symbol_trade_counts_runtime", {}
+                )
+                _ec_fitness = self.brain.extra_counters.get(
+                    "symbol_fitness_runtime", {}
+                )
+                if isinstance(_ec_counts, dict) and _ec_counts:
+                    _ep_counts = (
+                        getattr(self.evolved_params,
+                                "symbol_trade_counts", {}) or {}
+                    )
+                    for sym, n in _ec_counts.items():
+                        existing = int(_ep_counts.get(sym, 0))
+                        if int(n) > existing:
+                            _ep_counts[sym] = int(n)
+                    self.evolved_params.symbol_trade_counts = _ep_counts
+                if isinstance(_ec_fitness, dict) and _ec_fitness:
+                    _ep_fit = (
+                        getattr(self.evolved_params,
+                                "symbol_fitness", {}) or {}
+                    )
+                    for sym, f in _ec_fitness.items():
+                        if sym not in _ep_fit:
+                            _ep_fit[sym] = float(f)
+                    self.evolved_params.symbol_fitness = _ep_fit
+                if _ec_counts or _ec_fitness:
+                    logger.info(
+                        "DD4-1: restored runtime symbol_trade_counts "
+                        "(%d syms) + fitness (%d syms) from extra_counters",
+                        len(_ec_counts or {}), len(_ec_fitness or {}),
+                    )
+            except Exception as _dd41_err:
+                logger.warning(
+                    "DD4-1: runtime counters/fitness restore failed: %s",
+                    _dd41_err,
+                )
+
             # Restore daily counters only if same session
             saved_session = self.brain.extra_counters.get("daily_session_date", "")
             try:
@@ -5323,21 +5367,57 @@ class OrganismLiveEngine:
                         or pyr.total_shares != int(broker_qty)
                     ):
                         old_shares = pyr.total_shares
-                        # Collapse pyramid layers to a single layer with
-                        # the broker's authoritative cost basis and qty.
-                        # Preserve the highest layer level so the pyramider
-                        # won't re-trigger already-filled add levels.
-                        highest_level = max(lay.level for lay in pyr.layers)
-                        # If broker qty increased, a pyramid add filled —
-                        # advance the level so pyramider skips that tier.
-                        if int(broker_qty) > old_shares and highest_level < 2:
-                            highest_level += 1
-                        pyr.layers = [PyramidLevel(
-                            shares=int(broker_qty),
-                            entry_price=broker_avg,
-                            bar_added=pyr.layers[0].bar_added,
-                            level=highest_level,
-                        )]
+                        # V10 DD4-2 / Wave-53 (2026-05-03): preserve the L0
+                        # original entry_price for R-multiple math.  The
+                        # prior implementation collapsed all layers and set
+                        # `entry_price = broker_avg`, which inflated the
+                        # +3R Layer 2 trigger by ~0.5R for any position
+                        # that filled L1 — empirically 0/498 trades reached
+                        # Layer 2 since deploy.  Now: keep layers[0].entry
+                        # for R-mult; if broker qty increased over old, add
+                        # a NEW layer at the increment with its actual fill
+                        # price, NOT a synthetic broker_avg.
+                        l0_entry = pyr.layers[0].entry_price
+                        l0_shares = pyr.layers[0].shares
+                        l0_bar = pyr.layers[0].bar_added
+                        if int(broker_qty) > old_shares:
+                            # Pyramid add filled.  Compute the implied add-
+                            # fill price from broker_avg + qty math:
+                            # broker_avg * broker_qty = l0_entry * l0_shares
+                            # + add_fill_price * (broker_qty - l0_shares)
+                            added = int(broker_qty) - l0_shares
+                            if added > 0:
+                                add_fill = (
+                                    (broker_avg * broker_qty - l0_entry * l0_shares)
+                                    / added
+                                )
+                            else:
+                                add_fill = broker_avg
+                            highest_level = max(lay.level for lay in pyr.layers)
+                            new_level = min(2, highest_level + 1)
+                            pyr.layers = [
+                                PyramidLevel(
+                                    shares=l0_shares,
+                                    entry_price=l0_entry,
+                                    bar_added=l0_bar,
+                                    level=0,
+                                ),
+                                PyramidLevel(
+                                    shares=added,
+                                    entry_price=add_fill,
+                                    bar_added=l0_bar,  # approx; bar_added is for telemetry
+                                    level=new_level,
+                                ),
+                            ]
+                        else:
+                            # Partial close / share mismatch without growth.
+                            # Truncate L0 to broker_qty; preserve entry.
+                            pyr.layers = [PyramidLevel(
+                                shares=int(broker_qty),
+                                entry_price=l0_entry,
+                                bar_added=l0_bar,
+                                level=0,
+                            )]
                         # H5: Reanchor exit levels from confirmed fill,
                         # not speculative order-time state
                         exit_lvl = self._exit_levels.get(sym)
@@ -6209,6 +6289,19 @@ class OrganismLiveEngine:
                 sym: pyr.to_persistence()
                 for sym, pyr in self._pyramid_positions.items()
             },
+            # V10 DD4-1 / Wave-53 (2026-05-03): persist symbol_trade_counts
+            # and symbol_fitness via extra_counters (essential-save path),
+            # not just evolved_params.json (full-save promotion-gated path).
+            # Previously the production fitness gate was defeated because
+            # evolved_params.json wasn't being updated between deploys —
+            # only 62 counts on disk vs 491 trades in CSV.  Now: every
+            # essential save (every tick) preserves the runtime counts.
+            "symbol_trade_counts_runtime": dict(
+                getattr(self.evolved_params, "symbol_trade_counts", {}) or {}
+            ),
+            "symbol_fitness_runtime": dict(
+                getattr(self.evolved_params, "symbol_fitness", {}) or {}
+            ),
         }
 
     def force_save_brain(self) -> dict:

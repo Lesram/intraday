@@ -203,6 +203,20 @@ class MomentumPyramider:
         self._pyramid_count = 0
         self._max_layers_reached = 0
 
+    def telemetry(self) -> dict:
+        """V10 DD4-4 / Wave-53 (2026-05-03): expose pyramid counters.
+
+        Previously `_pyramid_count` and `_max_layers_reached` were
+        write-only — incremented but never read or telemetered.  The
+        result was that DD3-1 / DD4-2 fixes couldn't be self-verified
+        from runtime artifacts.  Now: callers can include this in
+        tick telemetry / brain manifest export.
+        """
+        return {
+            "pyramid_count_total": int(self._pyramid_count),
+            "max_layers_reached": int(self._max_layers_reached),
+        }
+
     def initial_shares(self, target_shares: int) -> int:
         """Calculate initial entry size (Layer 0)."""
         return max(1, int(target_shares * self.LAYER_0_PCT))
