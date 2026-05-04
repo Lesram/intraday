@@ -330,6 +330,48 @@ def _current_user_identity(current_user: Any) -> str:
     )
 
 
+def _order_owner_id(order_status: Any) -> str | None:
+    """V13 W96 (Lens 5): extract user_id from a heterogeneous order
+    payload (dict, ORM model, or pydantic schema).  Returns None if
+    no ownership field is present — callers may treat as "no owner",
+    which is the legacy default for system-placed orders.
+    """
+    if isinstance(order_status, dict):
+        return order_status.get("user_id")
+    return getattr(order_status, "user_id", None)
+
+
+def assert_order_owner_or_404(
+    order_status: Any,
+    current_user: Any,
+) -> None:
+    """V13 W96 (Lens 5): canonical IDOR ownership check.
+
+    Raises ``HTTPException(404)`` if ``order_status`` exists and is
+    owned by a user other than ``current_user``.  Returns silently
+    on owned orders or orders without an owner field.
+
+    The 404 (not 403) is intentional: surfacing 403 would confirm
+    that the order ID exists, which is itself an information leak.
+    """
+    if order_status is None:
+        return  # "not found" path; caller already raised or will
+    owner = _order_owner_id(order_status)
+    if not owner:
+        return  # no ownership field — system order, allow
+    user = _current_user_identity(current_user)
+    if owner != user:
+        # NB: we log the attempt but do NOT distinguish via response.
+        logger.warning(
+            "V13 W96 IDOR rejected: user=%s tried to access order owned by %s",
+            user, owner,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Order not found",
+        )
+
+
 # ============================================================================
 # PRE-TRADE VALIDATION ENDPOINT
 # ============================================================================
