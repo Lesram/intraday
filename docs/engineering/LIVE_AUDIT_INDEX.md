@@ -1,8 +1,8 @@
 # Live Audit Index
 
-Generated: 2026-05-04T21:04:33Z
-PR: n/a
-SHA: `9f4639deec`
+Generated: 2026-05-04T22:17:51Z
+PR: PR #6
+SHA: `6deb738e9c`
 Branch: `codex/v13-phase2-expectancy`
 Scope: **backend_logic**
 Change scope: `task` (`HEAD`)
@@ -11,10 +11,10 @@ Change scope: `task` (`HEAD`)
 
 | Category | Count | Files |
 |----------|-------|-------|
-| Backend | 3 | `backend/api/routes/strategy_health.py`, `backend/organism/brain_persistence.py`, `backend/organism/strategy_attribution.py` |
-| Organism | 2 | `backend/organism/brain_persistence.py`, `backend/organism/strategy_attribution.py` |
-| Tests | 1 | `tests/test_phase2_strategy_attribution.py` |
-| Docs | 1 | `docs/engineering/LIVE_AUDIT_INDEX.md` |
+| Backend | 5 | `backend/organism/alpha_scanner.py`, `backend/organism/decision_telemetry.py`, `backend/organism/kelly_sizer.py`, `backend/organism/live_engine.py`, `backend/organism/trading_phase.py` |
+| Organism | 5 | `backend/organism/alpha_scanner.py`, `backend/organism/decision_telemetry.py`, `backend/organism/kelly_sizer.py`, `backend/organism/live_engine.py`, `backend/organism/trading_phase.py` |
+| Tests | 4 | `tests/test_ferrari_v1_fixes.py`, `tests/test_phase2_guarded_promotion.py`, `tests/test_semantic_invariants.py`, `tests/test_wave35_fixes.py` |
+| Docs | 1 | `docs/architecture/mapss.md` |
 
 ## Live constants
 
@@ -49,4 +49,4 @@ Source: `resolved_config_snapshot.json`
 
 ## Open risks
 
-- 2 organism file(s) changed — require replay verification
+- 5 organism file(s) changed — require replay verification
