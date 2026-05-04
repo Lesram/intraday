@@ -49,7 +49,11 @@ def _order(
     user_id: str = "audit-user",
     broker_order_id: str | None = None,
     filled_qty: Decimal = Decimal("0"),
+    position_intent: str | None = None,
 ) -> Order:
+    attributes = {"user_id": user_id}
+    if position_intent:
+        attributes["position_intent"] = position_intent
     return Order(
         id=uuid.uuid4(),
         user_id=user_id,
@@ -63,7 +67,7 @@ def _order(
         status="accepted",
         broker_order_id=broker_order_id,
         submitted_at=datetime.now(UTC),
-        attributes={"user_id": user_id},
+        attributes=attributes,
     )
 
 
@@ -189,6 +193,133 @@ async def test_sell_fill_creates_execution_and_realized_trade(accounting_session
         assert len(realized) == 1
         assert realized[0].realized_pnl == Decimal("20.000000")
         assert lots[0].remaining_qty == Decimal("6.000000")
+
+
+@pytest.mark.asyncio
+async def test_short_open_fill_creates_execution_and_short_lot(accounting_sessionmaker):
+    async with accounting_sessionmaker() as session:
+        short_open = _order(
+            side="sell",
+            symbol="XLE",
+        )
+        short_open.attributes["alpaca_response"] = repr({
+            "position_intent": "sell_to_open",
+        })
+        session.add(short_open)
+        await session.flush()
+
+        result = await apply_incremental_fill_accounting(
+            session,
+            short_open,
+            previous_filled_qty=Decimal("0"),
+            cumulative_filled_qty=Decimal("37"),
+            avg_fill_price=Decimal("56.52"),
+            status="filled",
+        )
+
+        assert result["applied"] is True
+        assert result["action"] == "open_short"
+        assert result["position_side"] == "short"
+        executions = await _rows(session, Execution)
+        lots = await _rows(session, PositionLot)
+        assert len(executions) == 1
+        assert executions[0].fill_qty == Decimal("37.000000")
+        assert len(lots) == 1
+        assert lots[0].order_id == short_open.id
+        assert lots[0].remaining_qty == Decimal("37.000000")
+
+
+@pytest.mark.asyncio
+async def test_short_close_fill_creates_short_realized_trade(accounting_sessionmaker):
+    async with accounting_sessionmaker() as session:
+        short_open = _order(side="sell", symbol="XLE")
+        short_close = _order(side="buy", symbol="XLE")
+        session.add_all([short_open, short_close])
+        await session.flush()
+
+        await apply_incremental_fill_accounting(
+            session,
+            short_open,
+            previous_filled_qty=Decimal("0"),
+            cumulative_filled_qty=Decimal("37"),
+            avg_fill_price=Decimal("56.52"),
+            status="filled",
+            broker_order_data={"position_intent": "sell_to_open"},
+        )
+        result = await apply_incremental_fill_accounting(
+            session,
+            short_close,
+            previous_filled_qty=Decimal("0"),
+            cumulative_filled_qty=Decimal("37"),
+            avg_fill_price=Decimal("58.06"),
+            status="filled",
+            broker_order_data={"position_intent": "buy_to_close"},
+        )
+
+        assert result["applied"] is True
+        assert result["action"] == "close_short"
+        assert result["position_side"] == "short"
+        executions = await _rows(session, Execution)
+        realized = await _rows(session, RealizedTrade)
+        lots = await _rows(session, PositionLot)
+        assert len(executions) == 2
+        assert len(realized) == 1
+        assert realized[0].realized_pnl == Decimal("-56.980000")
+        assert realized[0].attributes == {"position_side": "short"}
+        assert lots[0].status == "closed"
+        assert lots[0].remaining_qty == Decimal("0.000000")
+
+
+@pytest.mark.asyncio
+async def test_long_close_does_not_consume_open_short_lot(accounting_sessionmaker):
+    async with accounting_sessionmaker() as session:
+        long_open = _order(side="buy", symbol="XLE")
+        short_open = _order(
+            side="sell",
+            symbol="XLE",
+            position_intent="sell_to_open",
+        )
+        long_close = _order(
+            side="sell",
+            symbol="XLE",
+            position_intent="sell_to_close",
+        )
+        session.add_all([long_open, short_open, long_close])
+        await session.flush()
+
+        await apply_incremental_fill_accounting(
+            session,
+            long_open,
+            previous_filled_qty=Decimal("0"),
+            cumulative_filled_qty=Decimal("10"),
+            avg_fill_price=Decimal("50"),
+            status="filled",
+        )
+        await apply_incremental_fill_accounting(
+            session,
+            short_open,
+            previous_filled_qty=Decimal("0"),
+            cumulative_filled_qty=Decimal("7"),
+            avg_fill_price=Decimal("60"),
+            status="filled",
+        )
+        result = await apply_incremental_fill_accounting(
+            session,
+            long_close,
+            previous_filled_qty=Decimal("0"),
+            cumulative_filled_qty=Decimal("10"),
+            avg_fill_price=Decimal("55"),
+            status="filled",
+        )
+
+        assert result["applied"] is True
+        assert result["action"] == "close_long"
+        lots = sorted(await _rows(session, PositionLot), key=lambda lot: lot.open_date)
+        assert lots[0].order_id == long_open.id
+        assert lots[0].status == "closed"
+        assert lots[1].order_id == short_open.id
+        assert lots[1].status == "open"
+        assert lots[1].remaining_qty == Decimal("7.000000")
 
 
 @pytest.mark.asyncio

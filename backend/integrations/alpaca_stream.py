@@ -13,6 +13,7 @@ Key Features:
 """
 
 import asyncio
+import ast
 from datetime import UTC, datetime
 from decimal import Decimal, InvalidOperation
 import json
@@ -43,6 +44,175 @@ def _decimal_or_none(value: Any) -> Decimal | None:
         return None
 
 
+def _dict_or_empty(value: Any) -> dict[str, Any]:
+    if isinstance(value, dict):
+        return value
+    if not isinstance(value, str) or not value.strip():
+        return {}
+    try:
+        parsed = json.loads(value)
+    except json.JSONDecodeError:
+        try:
+            parsed = ast.literal_eval(value)
+        except (SyntaxError, ValueError):
+            return {}
+    return parsed if isinstance(parsed, dict) else {}
+
+
+def _order_attributes(order: Any) -> dict[str, Any]:
+    attrs = getattr(order, "attributes", None)
+    return attrs if isinstance(attrs, dict) else {}
+
+
+def _alpaca_response(order: Any) -> dict[str, Any]:
+    return _dict_or_empty(_order_attributes(order).get("alpaca_response"))
+
+
+def _position_intent(
+    order: Any,
+    *,
+    broker_order_data: dict[str, Any] | None = None,
+) -> str:
+    broker_intent = _dict_or_empty(broker_order_data).get("position_intent")
+    if isinstance(broker_intent, str) and broker_intent:
+        return broker_intent
+
+    attrs = _order_attributes(order)
+    direct = attrs.get("position_intent")
+    if isinstance(direct, str) and direct:
+        return direct
+
+    response_intent = _alpaca_response(order).get("position_intent")
+    if isinstance(response_intent, str) and response_intent:
+        return response_intent
+
+    side = str(getattr(order, "side", "")).lower()
+    return "buy_to_open" if side == "buy" else "sell_to_close"
+
+
+def _accounting_action(
+    order: Any,
+    *,
+    broker_order_data: dict[str, Any] | None = None,
+) -> str:
+    intent = _position_intent(order, broker_order_data=broker_order_data)
+    side = str(getattr(order, "side", "")).lower()
+    if intent == "sell_to_open":
+        return "open_short"
+    if intent == "buy_to_close":
+        return "close_short"
+    if intent == "buy_to_open":
+        return "open_long"
+    if intent == "sell_to_close":
+        return "close_long"
+    if side == "buy":
+        return "open_long"
+    if side == "sell":
+        return "close_long"
+    return f"unsupported:{side}"
+
+
+def _order_user_id(order: Any) -> str:
+    return (
+        _order_attributes(order).get("user_id")
+        or getattr(order, "user_id", None)
+        or "system"
+    )
+
+
+async def _close_position_lots_fifo(
+    session: AsyncSession,
+    *,
+    user_id: str,
+    symbol: str,
+    qty_to_close: Decimal,
+    close_price: Decimal,
+    close_order_id: Any,
+    close_date: datetime,
+    open_side: str,
+    position_side: str,
+) -> list[Any]:
+    from backend.infra.schemas import Order, PositionLot, RealizedTrade
+
+    stmt = (
+        select(PositionLot)
+        .join(Order, PositionLot.order_id == Order.id)
+        .where(
+            PositionLot.user_id == user_id,
+            PositionLot.symbol == symbol,
+            PositionLot.status == "open",
+            PositionLot.remaining_qty > 0,
+            Order.side == open_side,
+        )
+        .order_by(PositionLot.open_date.asc())
+        .with_for_update()
+    )
+    result = await session.execute(stmt)
+    open_lots = list(result.scalars().all())
+    if not open_lots:
+        raise ValueError(
+            f"No open {position_side} lots found for "
+            f"{user_id}/{symbol} to close {qty_to_close} shares"
+        )
+
+    total_available = sum(lot.remaining_qty for lot in open_lots)
+    if total_available < qty_to_close:
+        raise ValueError(
+            f"Insufficient {position_side} lots for {user_id}/{symbol}: "
+            f"need {qty_to_close}, available {total_available}"
+        )
+
+    remaining_to_close = qty_to_close
+    realized_trades = []
+    for lot in open_lots:
+        if remaining_to_close <= 0:
+            break
+
+        qty_from_lot = min(lot.remaining_qty, remaining_to_close)
+        if position_side == "short":
+            realized_pnl = qty_from_lot * (lot.cost_basis - close_price)
+            realized_pnl_percent = (
+                ((lot.cost_basis - close_price) / lot.cost_basis * 100)
+                if lot.cost_basis != 0
+                else Decimal("0")
+            )
+            attributes = {"position_side": "short"}
+        else:
+            realized_pnl = qty_from_lot * (close_price - lot.cost_basis)
+            realized_pnl_percent = (
+                ((close_price - lot.cost_basis) / lot.cost_basis * 100)
+                if lot.cost_basis != 0
+                else Decimal("0")
+            )
+            attributes = {}
+
+        realized_trade = RealizedTrade(
+            user_id=user_id,
+            symbol=symbol,
+            qty=qty_from_lot,
+            open_price=lot.cost_basis,
+            close_price=close_price,
+            realized_pnl=realized_pnl,
+            realized_pnl_percent=realized_pnl_percent,
+            open_order_id=lot.order_id,
+            close_order_id=close_order_id,
+            lot_id=lot.id,
+            open_date=lot.open_date,
+            close_date=close_date,
+            attributes=attributes,
+        )
+        session.add(realized_trade)
+        realized_trades.append(realized_trade)
+
+        lot.remaining_qty -= qty_from_lot
+        if lot.remaining_qty == 0:
+            lot.status = "closed"
+        remaining_to_close -= qty_from_lot
+
+    await session.flush()
+    return realized_trades
+
+
 async def apply_incremental_fill_accounting(
     session: AsyncSession,
     order: Any,
@@ -53,6 +223,7 @@ async def apply_incremental_fill_accounting(
     status: str,
     fill_time: datetime | None = None,
     venue: str = "alpaca",
+    broker_order_data: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Persist execution + lot accounting for the positive incremental fill.
 
@@ -78,8 +249,9 @@ async def apply_incremental_fill_accounting(
     side = str(order.side).lower()
     if side not in ("buy", "sell"):
         return {"applied": False, "reason": f"unsupported_side:{order.side}"}
+    action = _accounting_action(order, broker_order_data=broker_order_data)
 
-    from backend.infra.schemas import Execution
+    from backend.infra.schemas import Execution, PositionLot
 
     existing_stmt = select(func.coalesce(func.sum(Execution.fill_qty), 0)).where(
         Execution.order_id == order.id
@@ -121,14 +293,10 @@ async def apply_incremental_fill_accounting(
     from backend.services.lot_tracker_service import LotTracker
 
     lot_tracker = LotTracker(session)
-    user_id = (
-        (order.attributes or {}).get("user_id")
-        if hasattr(order, "attributes") and order.attributes
-        else None
-    ) or getattr(order, "user_id", None) or "system"
+    user_id = _order_user_id(order)
 
     realized = []
-    if side == "buy":
+    if action == "open_long":
         await lot_tracker.create_lot(
             user_id=user_id,
             symbol=order.symbol,
@@ -137,20 +305,55 @@ async def apply_incremental_fill_accounting(
             order_id=order.id,
             open_date=fill_dt,
         )
-    elif side == "sell":
-        realized = await lot_tracker.close_lots_fifo(
+        position_side = "long"
+    elif action == "close_long":
+        realized = await _close_position_lots_fifo(
+            session,
             user_id=user_id,
             symbol=order.symbol,
             qty_to_close=incremental,
             close_price=price,
             close_order_id=order.id,
             close_date=fill_dt,
+            open_side="buy",
+            position_side="long",
         )
+        position_side = "long"
+    elif action == "open_short":
+        lot = PositionLot(
+            user_id=user_id,
+            symbol=order.symbol,
+            qty=incremental,
+            remaining_qty=incremental,
+            cost_basis=price,
+            order_id=order.id,
+            open_date=fill_dt,
+            status="open",
+        )
+        session.add(lot)
+        position_side = "short"
+    elif action == "close_short":
+        realized = await _close_position_lots_fifo(
+            session,
+            user_id=user_id,
+            symbol=order.symbol,
+            qty_to_close=incremental,
+            close_price=price,
+            close_order_id=order.id,
+            close_date=fill_dt,
+            open_side="sell",
+            position_side="short",
+        )
+        position_side = "short"
+    else:
+        return {"applied": False, "reason": f"unsupported_action:{action}"}
 
     await session.flush()
     return {
         "applied": True,
         "side": side,
+        "action": action,
+        "position_side": position_side,
         "incremental_qty": str(incremental),
         "price": str(price),
         "execution_id": str(execution.id),
@@ -693,6 +896,7 @@ class AlpacaStreamClient:
                         cumulative_filled_qty=filled_qty,
                         avg_fill_price=avg_fill_price,
                         status=internal_status,
+                        broker_order_data=order_data,
                     )
                     if accounting["applied"]:
                         logger.info(
@@ -933,6 +1137,7 @@ class AlpacaStreamClient:
                                             cumulative_filled_qty=filled_qty,
                                             avg_fill_price=avg_price,
                                             status=broker_status,
+                                            broker_order_data=broker_data,
                                         )
                                         if accounting["applied"]:
                                             await session.commit()

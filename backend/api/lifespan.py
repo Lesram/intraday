@@ -757,6 +757,7 @@ async def _sync_orders(app):
                             cumulative_filled_qty=alpaca_filled,
                             avg_fill_price=alpaca_price,
                             status=alpaca_status,
+                            broker_order_data=ao,
                         )
                         if accounting["applied"]:
                             await session.commit()
