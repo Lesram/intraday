@@ -23,6 +23,8 @@
       "summary": "`_pending_exit` TTL bypasses hard stop_loss + max_loss for 30s (live trading safety)",
       "track": "DD2",
       "v12_audit": null,
+      "v13_lens": null,
+      "v13_triage_status": "closed_in_unrecorded_wave",
       "wave_closed": null,
       "wave_target_raw": "32"
     },
@@ -36,6 +38,8 @@
       "summary": "CI grep-timeout returns count=-1 \u2192 silent pass \u2192 wave-28 enforcement bypass",
       "track": "W3",
       "v12_audit": null,
+      "v13_lens": null,
+      "v13_triage_status": "closed_in_unrecorded_wave",
       "wave_closed": null,
       "wave_target_raw": "32"
     },
@@ -49,6 +53,8 @@
       "summary": "3 financial `position_import` endpoints defined but unmounted in routes_setup.py",
       "track": "NN",
       "v12_audit": null,
+      "v13_lens": null,
+      "v13_triage_status": "closed_in_unrecorded_wave",
       "wave_closed": null,
       "wave_target_raw": "33"
     },
@@ -62,6 +68,8 @@
       "summary": "15 `BaseStrategy` subclasses (4,872 LOC) decorative \u2014 mutex-OFF when organism active",
       "track": "NN",
       "v12_audit": null,
+      "v13_lens": null,
+      "v13_triage_status": "closed_in_unrecorded_wave",
       "wave_closed": null,
       "wave_target_raw": "36"
     },
@@ -75,6 +83,8 @@
       "summary": "`audit.py` uses `require_trader` not `require_admin` \u2014 trader tokens read forensic data",
       "track": "AA2",
       "v12_audit": null,
+      "v13_lens": null,
+      "v13_triage_status": "closed_in_unrecorded_wave",
       "wave_closed": null,
       "wave_target_raw": "32"
     },
@@ -88,6 +98,8 @@
       "summary": "`UserClaims(**payload)` no try/except \u2192 500 + stack-trace on malformed JWT (DoS)",
       "track": "AA2",
       "v12_audit": null,
+      "v13_lens": null,
+      "v13_triage_status": "closed_in_unrecorded_wave",
       "wave_closed": null,
       "wave_target_raw": "32"
     },
@@ -101,6 +113,8 @@
       "summary": "ML calibration: populated by raw_confidence, consumed by calibrated_confidence",
       "track": "DD2",
       "v12_audit": null,
+      "v13_lens": null,
+      "v13_triage_status": "closed_in_unrecorded_wave",
       "wave_closed": null,
       "wave_target_raw": "33"
     },
@@ -114,6 +128,8 @@
       "summary": "Wave-30 BB-8 wired but `position_lots` 0 rows since deploy (markets closed)",
       "track": "BB2",
       "v12_audit": null,
+      "v13_lens": "v13_w92_lens1_deploy",
+      "v13_triage_status": "absorbed_into_v13_lens",
       "wave_closed": null,
       "wave_target_raw": "Verify Mon"
     },
@@ -127,6 +143,8 @@
       "summary": "6 more dark tables: executions, positions, order_events, risk_violations, daily_ledger, tick_telemetry",
       "track": "BB2",
       "v12_audit": null,
+      "v13_lens": null,
+      "v13_triage_status": "closed_in_unrecorded_wave",
       "wave_closed": null,
       "wave_target_raw": "34"
     },
@@ -140,6 +158,8 @@
       "summary": "`calculate_indicator` 614 LOC at routes/indicators.py:78 \u2014 new god-method V7 missed",
       "track": "HH2",
       "v12_audit": null,
+      "v13_lens": null,
+      "v13_triage_status": "closed_in_unrecorded_wave",
       "wave_closed": null,
       "wave_target_raw": "35"
     },
@@ -153,6 +173,8 @@
       "summary": "`validate_order_pre_trade` 477 LOC at routes/orders.py:300 \u2014 security-adjacent god-method",
       "track": "HH2",
       "v12_audit": null,
+      "v13_lens": null,
+      "v13_triage_status": "closed_in_unrecorded_wave",
       "wave_closed": null,
       "wave_target_raw": "35"
     },
@@ -166,6 +188,8 @@
       "summary": "`tick_telemetry` write target at live_engine:5780, zero rows (silent import-error)",
       "track": "NN",
       "v12_audit": null,
+      "v13_lens": null,
+      "v13_triage_status": "closed_in_unrecorded_wave",
       "wave_closed": null,
       "wave_target_raw": "34"
     },
@@ -179,6 +203,8 @@
       "summary": "OrderStateMachine + OrderIntegrityService orphan; live engine never invokes",
       "track": "NN",
       "v12_audit": null,
+      "v13_lens": null,
+      "v13_triage_status": "closed_in_unrecorded_wave",
       "wave_closed": null,
       "wave_target_raw": "33"
     },
@@ -192,6 +218,8 @@
       "summary": "SecurityMiddleware + 4 hardening helpers (rate limit, JWT verifier, input validator) never wired",
       "track": "NN",
       "v12_audit": null,
+      "v13_lens": null,
+      "v13_triage_status": "closed_in_unrecorded_wave",
       "wave_closed": null,
       "wave_target_raw": "32"
     },
@@ -205,6 +233,8 @@
       "summary": "8 risk modules entirely uninstantiated (black_swan, correlation, margin, \u2026)",
       "track": "NN",
       "v12_audit": null,
+      "v13_lens": null,
+      "v13_triage_status": "closed_in_unrecorded_wave",
       "wave_closed": null,
       "wave_target_raw": "36"
     },
@@ -218,6 +248,8 @@
       "summary": "_diff_test_count filters to `tests/` only; misses conftest fixture additions",
       "track": "W3",
       "v12_audit": null,
+      "v13_lens": null,
+      "v13_triage_status": "closed_in_unrecorded_wave",
       "wave_closed": null,
       "wave_target_raw": "32"
     },
@@ -231,6 +263,8 @@
       "summary": "HSTS only emits when `request.url.scheme == \"https\"`; no X-Forwarded-Proto support",
       "track": "AA2",
       "v12_audit": null,
+      "v13_lens": null,
+      "v13_triage_status": "closed_in_unrecorded_wave",
       "wave_closed": null,
       "wave_target_raw": "32"
     },
@@ -244,6 +278,8 @@
       "summary": "Hash-chain integrity check clean (informational)",
       "track": "BB2",
       "v12_audit": null,
+      "v13_lens": null,
+      "v13_triage_status": "still_open",
       "wave_closed": null,
       "wave_target_raw": "\u2014"
     },
@@ -257,6 +293,8 @@
       "summary": "`detect_market_regime` save/restore `_history` skips churn computation in cross-asset path",
       "track": "DD2",
       "v12_audit": null,
+      "v13_lens": null,
+      "v13_triage_status": "closed_in_unrecorded_wave",
       "wave_closed": null,
       "wave_target_raw": "34"
     },
@@ -270,6 +308,8 @@
       "summary": "Regime argmax has no hysteresis band; one-bar slope flips at threshold",
       "track": "DD2",
       "v12_audit": null,
+      "v13_lens": null,
+      "v13_triage_status": "closed_in_unrecorded_wave",
       "wave_closed": null,
       "wave_target_raw": "34"
     },
@@ -283,6 +323,8 @@
       "summary": "Kelly `_regime_eligible` bypasses unconditional Kelly path zero-vol refusal",
       "track": "DD2",
       "v12_audit": null,
+      "v13_lens": null,
+      "v13_triage_status": "closed_in_unrecorded_wave",
       "wave_closed": null,
       "wave_target_raw": "34"
     },
@@ -296,6 +338,8 @@
       "summary": "Inverse-ETF regime flip only in AlphaScanner; Kelly/Exits/Cooldown see un-flipped",
       "track": "DD2",
       "v12_audit": null,
+      "v13_lens": null,
+      "v13_triage_status": "closed_in_unrecorded_wave",
       "wave_closed": null,
       "wave_target_raw": "34"
     },
@@ -309,6 +353,8 @@
       "summary": "`_is_learning_mode` recomputed every read; mid-tick reconciliation race",
       "track": "DD2",
       "v12_audit": null,
+      "v13_lens": null,
+      "v13_triage_status": "closed_in_unrecorded_wave",
       "wave_closed": null,
       "wave_target_raw": "35"
     },
@@ -322,6 +368,8 @@
       "summary": "`size_positions` 424 LOC at kelly_sizer.py:175 \u2014 sizing-kernel god-method",
       "track": "HH2",
       "v12_audit": null,
+      "v13_lens": null,
+      "v13_triage_status": "closed_in_unrecorded_wave",
       "wave_closed": null,
       "wave_target_raw": "36"
     },
@@ -335,6 +383,8 @@
       "summary": "backend/mlops/ ~5k LOC entirely orphan",
       "track": "NN",
       "v12_audit": null,
+      "v13_lens": null,
+      "v13_triage_status": "closed_in_unrecorded_wave",
       "wave_closed": null,
       "wave_target_raw": "38"
     },
@@ -348,6 +398,8 @@
       "summary": "6/14 backend/ml/ modules orphan",
       "track": "NN",
       "v12_audit": null,
+      "v13_lens": null,
+      "v13_triage_status": "closed_in_unrecorded_wave",
       "wave_closed": null,
       "wave_target_raw": "38"
     },
@@ -361,6 +413,8 @@
       "summary": "backend/optimization/portfolio_optimizer.py orphan",
       "track": "NN",
       "v12_audit": null,
+      "v13_lens": null,
+      "v13_triage_status": "closed_in_unrecorded_wave",
       "wave_closed": null,
       "wave_target_raw": "38"
     },
@@ -374,6 +428,8 @@
       "summary": "backend/brokers/{alpaca_production, broker_failover}.py orphan",
       "track": "NN",
       "v12_audit": null,
+      "v13_lens": null,
+      "v13_triage_status": "closed_in_unrecorded_wave",
       "wave_closed": null,
       "wave_target_raw": "38"
     },
@@ -387,6 +443,8 @@
       "summary": "SAMECLASS_BLOCK_RE doesn't strip `$ ` / `> ` shell-prompt prefixes",
       "track": "W3",
       "v12_audit": null,
+      "v13_lens": null,
+      "v13_triage_status": "closed_in_unrecorded_wave",
       "wave_closed": null,
       "wave_target_raw": "32"
     },
@@ -400,6 +458,8 @@
       "summary": "Pure-breakout fallback uses abs(predicted_return) \u2014 neutral ML feeds long entry",
       "track": "DD2",
       "v12_audit": null,
+      "v13_lens": null,
+      "v13_triage_status": "closed_in_unrecorded_wave",
       "wave_closed": null,
       "wave_target_raw": "35"
     },
@@ -413,6 +473,8 @@
       "summary": "EOD flatten has no upper time bound; broker rejects retry indefinitely",
       "track": "DD2",
       "v12_audit": null,
+      "v13_lens": null,
+      "v13_triage_status": "closed_in_unrecorded_wave",
       "wave_closed": null,
       "wave_target_raw": "35"
     },
@@ -426,6 +488,8 @@
       "summary": "runner.py:104, routes.py:677,704 bypass `_now_fn` injection",
       "track": "DD2",
       "v12_audit": null,
+      "v13_lens": null,
+      "v13_triage_status": "closed_in_unrecorded_wave",
       "wave_closed": null,
       "wave_target_raw": "35"
     },
@@ -439,6 +503,8 @@
       "summary": "Brain-save not atomic; `backups/` dir missing on production container",
       "track": "PP",
       "v12_audit": null,
+      "v13_lens": null,
+      "v13_triage_status": "closed_in_unrecorded_wave",
       "wave_closed": null,
       "wave_target_raw": "41"
     },
@@ -452,6 +518,8 @@
       "summary": "Brain `load()` exception falls through to \"starting fresh\" with no backup fallback",
       "track": "PP",
       "v12_audit": null,
+      "v13_lens": null,
+      "v13_triage_status": "closed_in_unrecorded_wave",
       "wave_closed": null,
       "wave_target_raw": "41"
     },
@@ -465,6 +533,8 @@
       "summary": "DB-down non-fatal in `APP_ENVIRONMENT=development`; paper drops audit rows silently",
       "track": "PP",
       "v12_audit": null,
+      "v13_lens": null,
+      "v13_triage_status": "closed_in_unrecorded_wave",
       "wave_closed": null,
       "wave_target_raw": "41"
     },
@@ -478,6 +548,8 @@
       "summary": "Daily-max-loss Slack alert uses bare `try/create_task/except: pass` (V5 S-J3-1 redux)",
       "track": "UU",
       "v12_audit": null,
+      "v13_lens": null,
+      "v13_triage_status": "closed_in_unrecorded_wave",
       "wave_closed": null,
       "wave_target_raw": "41"
     },
@@ -491,6 +563,8 @@
       "summary": "Login audit-log failure swallows `db.rollback()`; compliance silent failure",
       "track": "UU",
       "v12_audit": null,
+      "v13_lens": null,
+      "v13_triage_status": "closed_in_unrecorded_wave",
       "wave_closed": null,
       "wave_target_raw": "41"
     },
@@ -504,6 +578,8 @@
       "summary": "`POST /auth/logout` returns 200 but doesn't blacklist JWT; stolen tokens valid for full TTL",
       "track": "AA3",
       "v12_audit": null,
+      "v13_lens": null,
+      "v13_triage_status": "closed_in_unrecorded_wave",
       "wave_closed": null,
       "wave_target_raw": "42"
     },
@@ -517,6 +593,8 @@
       "summary": "Refresh tokens (7-day TTL) accepted as access tokens; `decode_token` no `token_type` check",
       "track": "AA3",
       "v12_audit": null,
+      "v13_lens": null,
+      "v13_triage_status": "closed_in_unrecorded_wave",
       "wave_closed": null,
       "wave_target_raw": "42"
     },
@@ -530,6 +608,8 @@
       "summary": "14 of 17 substantive tables are dark; brain CSV is sole source of truth",
       "track": "BB3",
       "v12_audit": null,
+      "v13_lens": null,
+      "v13_triage_status": "closed_in_unrecorded_wave",
       "wave_closed": null,
       "wave_target_raw": "43 (root: DD3-2)"
     },
@@ -543,6 +623,8 @@
       "summary": "Pyramider Layer 1 re-fires indefinitely; Layer 2 unreachable (layer_count vs level key)",
       "track": "DD3",
       "v12_audit": null,
+      "v13_lens": null,
+      "v13_triage_status": "closed_in_unrecorded_wave",
       "wave_closed": null,
       "wave_target_raw": "44"
     },
@@ -556,6 +638,8 @@
       "summary": "`LotTracker.create_lot` per `partially_filled` event uses cumulative qty \u2192 duplicate rows",
       "track": "DD3",
       "v12_audit": null,
+      "v13_lens": null,
+      "v13_triage_status": "closed_in_unrecorded_wave",
       "wave_closed": null,
       "wave_target_raw": "43"
     },
@@ -569,6 +653,8 @@
       "summary": "`_pending_exit` 3-tick TTL expires before slow broker fills \u2192 exit re-fire oversell race",
       "track": "DD3",
       "v12_audit": null,
+      "v13_lens": null,
+      "v13_triage_status": "closed_in_unrecorded_wave",
       "wave_closed": null,
       "wave_target_raw": "43"
     },
@@ -582,6 +668,8 @@
       "summary": "Alert dispatch dedup + rate-limiter + Slack 5xx all silently drop",
       "track": "PP",
       "v12_audit": null,
+      "v13_lens": null,
+      "v13_triage_status": "closed_in_unrecorded_wave",
       "wave_closed": null,
       "wave_target_raw": "41 (with UU-1)"
     },
@@ -595,6 +683,8 @@
       "summary": "Universe scanner caches forever; persistent Alpaca movers failure \u2192 trade on stale",
       "track": "PP",
       "v12_audit": null,
+      "v13_lens": null,
+      "v13_triage_status": "closed_in_unrecorded_wave",
       "wave_closed": null,
       "wave_target_raw": "45"
     },
@@ -608,6 +698,8 @@
       "summary": "`_data_stale` gate uses aggregate timestamp; per-symbol stalls invisible",
       "track": "PP",
       "v12_audit": null,
+      "v13_lens": null,
+      "v13_triage_status": "closed_in_unrecorded_wave",
       "wave_closed": null,
       "wave_target_raw": "45"
     },
@@ -621,6 +713,8 @@
       "summary": "Tick budget routinely overrun (p99=13s on 10s scheduler)",
       "track": "TT",
       "v12_audit": null,
+      "v13_lens": null,
+      "v13_triage_status": "closed_in_unrecorded_wave",
       "wave_closed": null,
       "wave_target_raw": "46"
     },
@@ -634,6 +728,8 @@
       "summary": "Stream reconnect can stall a tick for 33 minutes; no watchdog",
       "track": "TT",
       "v12_audit": null,
+      "v13_lens": null,
+      "v13_triage_status": "closed_in_unrecorded_wave",
       "wave_closed": null,
       "wave_target_raw": "46"
     },
@@ -647,6 +743,8 @@
       "summary": "Refresh tokens not single-use; old access tokens stay valid after re-login",
       "track": "AA3",
       "v12_audit": null,
+      "v13_lens": null,
+      "v13_triage_status": "closed_in_unrecorded_wave",
       "wave_closed": null,
       "wave_target_raw": "42"
     },
@@ -660,6 +758,8 @@
       "summary": "`orders.user_id` is varchar `'system'`; no FK link to `users.id`",
       "track": "BB3",
       "v12_audit": null,
+      "v13_lens": null,
+      "v13_triage_status": "closed_in_unrecorded_wave",
       "wave_closed": null,
       "wave_target_raw": "47"
     },
@@ -673,6 +773,8 @@
       "summary": "EOD flatten doesn't cancel pending entries; 15:57 entries fill post-16:00",
       "track": "DD3",
       "v12_audit": null,
+      "v13_lens": null,
+      "v13_triage_status": "closed_in_unrecorded_wave",
       "wave_closed": null,
       "wave_target_raw": "44"
     },
@@ -686,6 +788,8 @@
       "summary": "`symbol_fitness = {}` empty in saved brain \u2192 0.45 production gate defaults to 0.5, never rejects",
       "track": "DD3",
       "v12_audit": null,
+      "v13_lens": null,
+      "v13_triage_status": "closed_in_unrecorded_wave",
       "wave_closed": null,
       "wave_target_raw": "44"
     },
@@ -699,6 +803,8 @@
       "summary": "`attributes->>'source'='organism'` JSON predicate forces Seq Scan on `orders`",
       "track": "TT",
       "v12_audit": null,
+      "v13_lens": null,
+      "v13_triage_status": "closed_in_unrecorded_wave",
       "wave_closed": null,
       "wave_target_raw": "47"
     },
@@ -712,6 +818,8 @@
       "summary": "4 async methods in `AlpacaClient` call sync `time.sleep()` despite `_async_rate_limit` existing",
       "track": "TT",
       "v12_audit": null,
+      "v13_lens": null,
+      "v13_triage_status": "closed_in_unrecorded_wave",
       "wave_closed": null,
       "wave_target_raw": "47"
     },
@@ -725,6 +833,8 @@
       "summary": "Wave-38 left ~20 orphan test files in `tests/unit/` (pytest collection broken)",
       "track": "Z7",
       "v12_audit": null,
+      "v13_lens": null,
+      "v13_triage_status": "closed_in_unrecorded_wave",
       "wave_closed": null,
       "wave_target_raw": "48"
     },
@@ -738,6 +848,8 @@
       "summary": "Brain-save-blocked alert + lock-release double-swallow",
       "track": "UU",
       "v12_audit": null,
+      "v13_lens": null,
+      "v13_triage_status": "closed_in_unrecorded_wave",
       "wave_closed": null,
       "wave_target_raw": "41 (with UU-1/2)"
     },
@@ -751,6 +863,8 @@
       "summary": "`JWT_CLOCK_SKEW = 60` is dead code; never passed to `jwt.decode`",
       "track": "AA3",
       "v12_audit": null,
+      "v13_lens": null,
+      "v13_triage_status": "closed_in_unrecorded_wave",
       "wave_closed": null,
       "wave_target_raw": "47"
     },
@@ -764,6 +878,8 @@
       "summary": "`executions/position_lots/realized_trades` use `ON DELETE CASCADE` against `orders.id`",
       "track": "BB3",
       "v12_audit": null,
+      "v13_lens": null,
+      "v13_triage_status": "closed_in_unrecorded_wave",
       "wave_closed": null,
       "wave_target_raw": "47"
     },
@@ -777,6 +893,8 @@
       "summary": "`orders.broker_order_id` non-unique index; small race window",
       "track": "BB3",
       "v12_audit": null,
+      "v13_lens": null,
+      "v13_triage_status": "closed_in_unrecorded_wave",
       "wave_closed": null,
       "wave_target_raw": "47"
     },
@@ -790,6 +908,8 @@
       "summary": "6 unbounded brain-resident lists",
       "track": "TT",
       "v12_audit": null,
+      "v13_lens": null,
+      "v13_triage_status": "closed_in_unrecorded_wave",
       "wave_closed": null,
       "wave_target_raw": "47"
     },
@@ -803,6 +923,8 @@
       "summary": "14 cargo-culted `try/except: pass` around safe in-memory ops",
       "track": "UU",
       "v12_audit": null,
+      "v13_lens": null,
+      "v13_triage_status": "closed_in_unrecorded_wave",
       "wave_closed": null,
       "wave_target_raw": "49"
     },
@@ -816,6 +938,8 @@
       "summary": "Aliased `from pytest import fixture as fx; @fx` missed by literal-string scan",
       "track": "W4",
       "v12_audit": null,
+      "v13_lens": null,
+      "v13_triage_status": "closed_in_unrecorded_wave",
       "wave_closed": null,
       "wave_target_raw": "48"
     },
@@ -829,6 +953,8 @@
       "summary": "Positive-assertion grep convention drift surfaces 16 fails on real branch",
       "track": "W4",
       "v12_audit": null,
+      "v13_lens": null,
+      "v13_triage_status": "closed_in_unrecorded_wave",
       "wave_closed": null,
       "wave_target_raw": "48"
     },
@@ -842,6 +968,8 @@
       "summary": "`WAVE_COMMIT_RE` excludes `-` in suffix \u2192 `audit-wave99-w3g1-test` bypasses ALL enforcement",
       "track": "W4",
       "v12_audit": null,
+      "v13_lens": null,
+      "v13_triage_status": "closed_in_unrecorded_wave",
       "wave_closed": null,
       "wave_target_raw": "48"
     },
@@ -855,6 +983,8 @@
       "summary": "(Diagnostic) Day-1 +$69.35 was 1 AMD trade; rest near-zero edge",
       "track": "DD3",
       "v12_audit": null,
+      "v13_lens": null,
+      "v13_triage_status": "closed_in_unrecorded_wave",
       "wave_closed": null,
       "wave_target_raw": "\u2014 observe"
     },
@@ -868,6 +998,8 @@
       "summary": "Paper container running OLD image; ALL V9 wave-32/42/47 fixes undeployed",
       "track": "AA4",
       "v12_audit": null,
+      "v13_lens": null,
+      "v13_triage_status": "closed_in_unrecorded_wave",
       "wave_closed": null,
       "wave_target_raw": "**50 (deploy)**"
     },
@@ -881,6 +1013,8 @@
       "summary": "`init_token_blacklist()` has zero callers; Redis backend never initialized; blacklist is in-memory only, wipes on restart",
       "track": "AA4",
       "v12_audit": null,
+      "v13_lens": null,
+      "v13_triage_status": "closed_in_unrecorded_wave",
       "wave_closed": null,
       "wave_target_raw": "50"
     },
@@ -894,6 +1028,8 @@
       "summary": "Wave-44 fitness gate defeated by promotion-gated persistence; symbol_trade_counts wipes on restart",
       "track": "DD4",
       "v12_audit": null,
+      "v13_lens": null,
+      "v13_triage_status": "closed_in_unrecorded_wave",
       "wave_closed": null,
       "wave_target_raw": "53"
     },
@@ -907,6 +1043,8 @@
       "summary": "Wave-44 max_level fix surface-only; `_reconcile_fills` still collapses layers; **0/498 trades reach Layer 2**",
       "track": "DD4",
       "v12_audit": null,
+      "v13_lens": null,
+      "v13_triage_status": "closed_in_unrecorded_wave",
       "wave_closed": null,
       "wave_target_raw": "53"
     },
@@ -920,6 +1058,8 @@
       "summary": "PP-4 ALLOW_NO_DB gate at wrong line \u2014 runtime DB unreachability hits inner prewarm except, silently proceeds",
       "track": "PP2",
       "v12_audit": null,
+      "v13_lens": null,
+      "v13_triage_status": "closed_in_unrecorded_wave",
       "wave_closed": null,
       "wave_target_raw": "51"
     },
@@ -933,6 +1073,8 @@
       "summary": "Wave-41 UU-2 partial \u2014 successful-login `db.rollback()` still has `except: pass`",
       "track": "UU2",
       "v12_audit": null,
+      "v13_lens": null,
+      "v13_triage_status": "closed_in_unrecorded_wave",
       "wave_closed": null,
       "wave_target_raw": "51"
     },
@@ -946,6 +1088,8 @@
       "summary": "OrderValidationResponse snake_case backend vs camelCase frontend \u2192 pre-trade UI shows `undefined`",
       "track": "VV",
       "v12_audit": null,
+      "v13_lens": null,
+      "v13_triage_status": "closed_in_unrecorded_wave",
       "wave_closed": null,
       "wave_target_raw": "54"
     },
@@ -959,6 +1103,8 @@
       "summary": "Risk endpoints serialize Decimals as strings; TS types lie about being `number`",
       "track": "VV",
       "v12_audit": null,
+      "v13_lens": null,
+      "v13_triage_status": "closed_in_unrecorded_wave",
       "wave_closed": null,
       "wave_target_raw": "54"
     },
@@ -972,6 +1118,8 @@
       "summary": "OrderStatus defined 3x in FE; none matches backend; none covers Alpaca's wire vocabulary",
       "track": "VV",
       "v12_audit": null,
+      "v13_lens": null,
+      "v13_triage_status": "closed_in_unrecorded_wave",
       "wave_closed": null,
       "wave_target_raw": "54"
     },
@@ -985,6 +1133,8 @@
       "summary": "Production brain has ZERO `backups/` dir; wave-41 PP-2 safety net empty",
       "track": "WW",
       "v12_audit": null,
+      "v13_lens": null,
+      "v13_triage_status": "closed_in_unrecorded_wave",
       "wave_closed": null,
       "wave_target_raw": "51"
     },
@@ -998,6 +1148,8 @@
       "summary": "`downgrade base` broken at `ec197100938a:147` \u2014 drops constraint that's never created",
       "track": "XX",
       "v12_audit": null,
+      "v13_lens": null,
+      "v13_triage_status": "closed_in_unrecorded_wave",
       "wave_closed": null,
       "wave_target_raw": "55"
     },
@@ -1011,6 +1163,8 @@
       "summary": "`ck_orders_status` rejects `'new'`/`'pending_new'`/`'submitting'` despite repo expecting them",
       "track": "XX",
       "v12_audit": null,
+      "v13_lens": null,
+      "v13_triage_status": "closed_in_unrecorded_wave",
       "wave_closed": null,
       "wave_target_raw": "55"
     },
@@ -1024,6 +1178,8 @@
       "summary": "6 of 16 `logger.critical` sites have NO alert dispatch (drawdown-kill, emergency-stop, circuit-breaker, SLO burn)",
       "track": "YY",
       "v12_audit": null,
+      "v13_lens": null,
+      "v13_triage_status": "closed_in_unrecorded_wave",
       "wave_closed": null,
       "wave_target_raw": "52"
     },
@@ -1037,6 +1193,8 @@
       "summary": "17 of 19 sampled `AuditAction` enum values have ZERO emit sites",
       "track": "YY",
       "v12_audit": null,
+      "v13_lens": null,
+      "v13_triage_status": "closed_in_unrecorded_wave",
       "wave_closed": null,
       "wave_target_raw": "52"
     },
@@ -1050,6 +1208,8 @@
       "summary": "GET /settings/organism + GET /settings/trading lack `require_admin`",
       "track": "AA4",
       "v12_audit": null,
+      "v13_lens": null,
+      "v13_triage_status": "closed_in_unrecorded_wave",
       "wave_closed": null,
       "wave_target_raw": "50"
     },
@@ -1063,6 +1223,8 @@
       "summary": "Wave-44 EOD-cancel may not have wired (agent searched for fn name; my fix was inline) \u2014 verify",
       "track": "BB4",
       "v12_audit": null,
+      "v13_lens": null,
+      "v13_triage_status": "closed_in_unrecorded_wave",
       "wave_closed": null,
       "wave_target_raw": "55"
     },
@@ -1076,6 +1238,8 @@
       "summary": "DD2-6 inverse-ETF regime flip still only in alpha_scanner",
       "track": "DD4",
       "v12_audit": null,
+      "v13_lens": null,
+      "v13_triage_status": "closed_in_unrecorded_wave",
       "wave_closed": null,
       "wave_target_raw": "53"
     },
@@ -1089,6 +1253,8 @@
       "summary": "PP-2 corrupt-HEAD recovery has no sticky forensic artifact",
       "track": "PP2",
       "v12_audit": null,
+      "v13_lens": null,
+      "v13_triage_status": "closed_in_unrecorded_wave",
       "wave_closed": null,
       "wave_target_raw": "56"
     },
@@ -1102,6 +1268,8 @@
       "summary": "Wave-43 LotTracker block at `alpaca_stream.py:643` retains silent rollback `except: pass`",
       "track": "UU2",
       "v12_audit": null,
+      "v13_lens": null,
+      "v13_triage_status": "closed_in_unrecorded_wave",
       "wave_closed": null,
       "wave_target_raw": "51"
     },
@@ -1115,6 +1283,8 @@
       "summary": "broadcast_settings_update emits but FE has zero listeners + missing WebSocketTopic.settings",
       "track": "VV",
       "v12_audit": null,
+      "v13_lens": null,
+      "v13_triage_status": "closed_in_unrecorded_wave",
       "wave_closed": null,
       "wave_target_raw": "54"
     },
@@ -1128,6 +1298,8 @@
       "summary": "Rich error envelope dropped \u2014 FE reads only data.detail",
       "track": "VV",
       "v12_audit": null,
+      "v13_lens": null,
+      "v13_triage_status": "closed_in_unrecorded_wave",
       "wave_closed": null,
       "wave_target_raw": "54"
     },
@@ -1141,6 +1313,8 @@
       "summary": "Backup naming 1-second resolution \u2014 5 backups in 1 sec collapse via mkdir(exist_ok=True)",
       "track": "WW",
       "v12_audit": null,
+      "v13_lens": null,
+      "v13_triage_status": "closed_in_unrecorded_wave",
       "wave_closed": null,
       "wave_target_raw": "56"
     },
@@ -1154,6 +1328,8 @@
       "summary": "Significant ORM-vs-DB drift; ~50 ops; `portfolio_history` ORM-declared, no migration",
       "track": "XX",
       "v12_audit": null,
+      "v13_lens": null,
+      "v13_triage_status": "closed_in_unrecorded_wave",
       "wave_closed": null,
       "wave_target_raw": "55"
     },
@@ -1167,6 +1343,8 @@
       "summary": "ORGANISM_ENTRIES_BLOCKED buckets drawdown_kill / daily_max_loss / governance_halt / equity_zero",
       "track": "YY",
       "v12_audit": null,
+      "v13_lens": null,
+      "v13_triage_status": "closed_in_unrecorded_wave",
       "wave_closed": null,
       "wave_target_raw": "52"
     },
@@ -1180,6 +1358,8 @@
       "summary": "BackgroundTrainer training-internal failure alert-silent",
       "track": "YY",
       "v12_audit": null,
+      "v13_lens": null,
+      "v13_triage_status": "closed_in_unrecorded_wave",
       "wave_closed": null,
       "wave_target_raw": "52"
     },
@@ -1193,6 +1373,8 @@
       "summary": "/readyz returns 200 even when brain unloaded or tick loop dead",
       "track": "YY",
       "v12_audit": null,
+      "v13_lens": null,
+      "v13_triage_status": "closed_in_unrecorded_wave",
       "wave_closed": null,
       "wave_target_raw": "52"
     },
@@ -1206,6 +1388,8 @@
       "summary": "X-API-Key returns 500 due to `.lower()` on Environment enum",
       "track": "AA4",
       "v12_audit": null,
+      "v13_lens": null,
+      "v13_triage_status": "closed_in_unrecorded_wave",
       "wave_closed": null,
       "wave_target_raw": "50"
     },
@@ -1219,6 +1403,8 @@
       "summary": "audit_logs has only user.login rows; no organism-emitted entries",
       "track": "BB4",
       "v12_audit": null,
+      "v13_lens": "v13_w95_lens4_data",
+      "v13_triage_status": "absorbed_into_v13_lens",
       "wave_closed": null,
       "wave_target_raw": "52 (with YY-2)"
     },
@@ -1232,6 +1418,8 @@
       "summary": "Pyramider counters write-only; cannot self-verify",
       "track": "DD4",
       "v12_audit": null,
+      "v13_lens": null,
+      "v13_triage_status": "closed_in_unrecorded_wave",
       "wave_closed": null,
       "wave_target_raw": "53"
     },
@@ -1245,6 +1433,8 @@
       "summary": "`.tmp` orphans accumulate on SIGKILL",
       "track": "PP2",
       "v12_audit": null,
+      "v13_lens": null,
+      "v13_triage_status": "closed_in_unrecorded_wave",
       "wave_closed": null,
       "wave_target_raw": "56"
     },
@@ -1258,6 +1448,8 @@
       "summary": "save_essential_state skips evolved_params; long save-gating windows drift on disk",
       "track": "WW",
       "v12_audit": null,
+      "v13_lens": null,
+      "v13_triage_status": "closed_in_unrecorded_wave",
       "wave_closed": null,
       "wave_target_raw": "56"
     },
@@ -1271,6 +1463,8 @@
       "summary": "CI checker spurious fails on em-dash / slash subjects",
       "track": "Z8",
       "v12_audit": null,
+      "v13_lens": null,
+      "v13_triage_status": "closed_in_unrecorded_wave",
       "wave_closed": null,
       "wave_target_raw": "56"
     },
@@ -1375,6 +1569,8 @@
       "summary": "production.py validator demands wrong env var names",
       "track": "CCC",
       "v12_audit": null,
+      "v13_lens": null,
+      "v13_triage_status": "still_open",
       "wave_closed": null,
       "wave_target_raw": "69"
     },
@@ -1427,6 +1623,8 @@
       "summary": "ecdsa CVE-2024-23342 unpatched (transitive via python-jose)",
       "track": "DDD",
       "v12_audit": null,
+      "v13_lens": null,
+      "v13_triage_status": "closed_in_unrecorded_wave",
       "wave_closed": null,
       "wave_target_raw": "70"
     },
@@ -1466,6 +1664,8 @@
       "summary": "configure_structured_logging is dead code; production has no trace_id",
       "track": "III",
       "v12_audit": null,
+      "v13_lens": null,
+      "v13_triage_status": "still_open",
       "wave_closed": null,
       "wave_target_raw": "72"
     },
@@ -1479,6 +1679,8 @@
       "summary": "PII (email/username) logged cleartext; scrubber unreachable in production",
       "track": "III",
       "v12_audit": null,
+      "v13_lens": null,
+      "v13_triage_status": "closed_in_unrecorded_wave",
       "wave_closed": null,
       "wave_target_raw": "72"
     },
@@ -1531,6 +1733,8 @@
       "summary": "pyramider telemetry not wired into manifest export",
       "track": "v11",
       "v12_audit": null,
+      "v13_lens": null,
+      "v13_triage_status": "still_open",
       "wave_closed": null,
       "wave_target_raw": "72"
     },
@@ -1622,6 +1826,8 @@
       "summary": "AuditLog schema declares ix_audit_logs_ts twice (column-level index=True + explicit Index in __table_args__)",
       "track": "v12",
       "v12_audit": null,
+      "v13_lens": null,
+      "v13_triage_status": "closed_in_unrecorded_wave",
       "wave_closed": null,
       "wave_target_raw": ""
     },

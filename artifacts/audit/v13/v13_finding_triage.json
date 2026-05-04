@@ -1,0 +1,1243 @@
+{
+  "by_status": {
+    "absorbed_into_v13_lens": 2,
+    "closed_in_unrecorded_wave": 97,
+    "still_open": 4
+  },
+  "n_open_findings": 103,
+  "triage_at_branch_head": "20656f6225e25756e298ab9006899eaba3075734",
+  "triaged": [
+    {
+      "evidence": {
+        "id_in_commit_messages": true,
+        "id_in_test_files": true
+      },
+      "first_version": "v8",
+      "id": "DD2-1",
+      "severity": "critical",
+      "summary": "`_pending_exit` TTL bypasses hard stop_loss + max_loss for 30s (live trading safety)",
+      "v13_lens": null,
+      "v13_status": "closed_in_unrecorded_wave"
+    },
+    {
+      "evidence": {
+        "id_in_commit_messages": true,
+        "id_in_test_files": true
+      },
+      "first_version": "v8",
+      "id": "W3-G1",
+      "severity": "critical",
+      "summary": "CI grep-timeout returns count=-1 \u2192 silent pass \u2192 wave-28 enforcement bypass",
+      "v13_lens": null,
+      "v13_status": "closed_in_unrecorded_wave"
+    },
+    {
+      "evidence": {
+        "id_in_commit_messages": true,
+        "id_in_test_files": true
+      },
+      "first_version": "v8",
+      "id": "NN-CRIT-1",
+      "severity": "critical",
+      "summary": "3 financial `position_import` endpoints defined but unmounted in routes_setup.py",
+      "v13_lens": null,
+      "v13_status": "closed_in_unrecorded_wave"
+    },
+    {
+      "evidence": {
+        "id_in_commit_messages": true,
+        "id_in_test_files": true
+      },
+      "first_version": "v8",
+      "id": "NN-CRIT-2",
+      "severity": "critical",
+      "summary": "15 `BaseStrategy` subclasses (4,872 LOC) decorative \u2014 mutex-OFF when organism active",
+      "v13_lens": null,
+      "v13_status": "closed_in_unrecorded_wave"
+    },
+    {
+      "evidence": {
+        "id_in_commit_messages": true,
+        "id_in_test_files": true
+      },
+      "first_version": "v8",
+      "id": "AA2-NEW-1",
+      "severity": "high",
+      "summary": "`audit.py` uses `require_trader` not `require_admin` \u2014 trader tokens read forensic data",
+      "v13_lens": null,
+      "v13_status": "closed_in_unrecorded_wave"
+    },
+    {
+      "evidence": {
+        "id_in_commit_messages": true,
+        "id_in_test_files": true
+      },
+      "first_version": "v8",
+      "id": "AA2-NEW-2",
+      "severity": "high",
+      "summary": "`UserClaims(**payload)` no try/except \u2192 500 + stack-trace on malformed JWT (DoS)",
+      "v13_lens": null,
+      "v13_status": "closed_in_unrecorded_wave"
+    },
+    {
+      "evidence": {
+        "id_in_commit_messages": true,
+        "id_in_test_files": true
+      },
+      "first_version": "v8",
+      "id": "DD2-2",
+      "severity": "high",
+      "summary": "ML calibration: populated by raw_confidence, consumed by calibrated_confidence",
+      "v13_lens": null,
+      "v13_status": "closed_in_unrecorded_wave"
+    },
+    {
+      "evidence": {
+        "matched_lens": "v13_w92_lens1_deploy",
+        "summary": "Wave-30 BB-8 wired but `position_lots` 0 rows since deploy (markets closed)"
+      },
+      "first_version": "v8",
+      "id": "BB2-F1",
+      "severity": "high",
+      "summary": "Wave-30 BB-8 wired but `position_lots` 0 rows since deploy (markets closed)",
+      "v13_lens": "v13_w92_lens1_deploy",
+      "v13_status": "absorbed_into_v13_lens"
+    },
+    {
+      "evidence": {
+        "id_in_commit_messages": true,
+        "id_in_test_files": true
+      },
+      "first_version": "v8",
+      "id": "BB2-F2",
+      "severity": "high",
+      "summary": "6 more dark tables: executions, positions, order_events, risk_violations, daily_ledger, tick_telemetry",
+      "v13_lens": null,
+      "v13_status": "closed_in_unrecorded_wave"
+    },
+    {
+      "evidence": {
+        "id_in_commit_messages": true,
+        "id_in_test_files": true
+      },
+      "first_version": "v8",
+      "id": "HH2-N-1",
+      "severity": "high",
+      "summary": "`calculate_indicator` 614 LOC at routes/indicators.py:78 \u2014 new god-method V7 missed",
+      "v13_lens": null,
+      "v13_status": "closed_in_unrecorded_wave"
+    },
+    {
+      "evidence": {
+        "id_in_commit_messages": true,
+        "id_in_test_files": true
+      },
+      "first_version": "v8",
+      "id": "HH2-N-2",
+      "severity": "high",
+      "summary": "`validate_order_pre_trade` 477 LOC at routes/orders.py:300 \u2014 security-adjacent god-method",
+      "v13_lens": null,
+      "v13_status": "closed_in_unrecorded_wave"
+    },
+    {
+      "evidence": {
+        "id_in_commit_messages": true,
+        "id_in_test_files": true
+      },
+      "first_version": "v8",
+      "id": "NN-HIGH-1",
+      "severity": "high",
+      "summary": "`tick_telemetry` write target at live_engine:5780, zero rows (silent import-error)",
+      "v13_lens": null,
+      "v13_status": "closed_in_unrecorded_wave"
+    },
+    {
+      "evidence": {
+        "id_in_commit_messages": true,
+        "id_in_test_files": true
+      },
+      "first_version": "v8",
+      "id": "NN-HIGH-2",
+      "severity": "high",
+      "summary": "OrderStateMachine + OrderIntegrityService orphan; live engine never invokes",
+      "v13_lens": null,
+      "v13_status": "closed_in_unrecorded_wave"
+    },
+    {
+      "evidence": {
+        "id_in_commit_messages": true,
+        "id_in_test_files": true
+      },
+      "first_version": "v8",
+      "id": "NN-HIGH-3",
+      "severity": "high",
+      "summary": "SecurityMiddleware + 4 hardening helpers (rate limit, JWT verifier, input validator) never wired",
+      "v13_lens": null,
+      "v13_status": "closed_in_unrecorded_wave"
+    },
+    {
+      "evidence": {
+        "id_in_commit_messages": true,
+        "id_in_test_files": true
+      },
+      "first_version": "v8",
+      "id": "NN-CRIT-3",
+      "severity": "high",
+      "summary": "8 risk modules entirely uninstantiated (black_swan, correlation, margin, \u2026)",
+      "v13_lens": null,
+      "v13_status": "closed_in_unrecorded_wave"
+    },
+    {
+      "evidence": {
+        "id_in_commit_messages": true,
+        "id_in_test_files": true
+      },
+      "first_version": "v8",
+      "id": "W3-G2",
+      "severity": "medium",
+      "summary": "_diff_test_count filters to `tests/` only; misses conftest fixture additions",
+      "v13_lens": null,
+      "v13_status": "closed_in_unrecorded_wave"
+    },
+    {
+      "evidence": {
+        "id_in_commit_messages": true,
+        "id_in_test_files": true
+      },
+      "first_version": "v8",
+      "id": "AA2-NEW-3",
+      "severity": "medium",
+      "summary": "HSTS only emits when `request.url.scheme == \"https\"`; no X-Forwarded-Proto support",
+      "v13_lens": null,
+      "v13_status": "closed_in_unrecorded_wave"
+    },
+    {
+      "evidence": {
+        "summary": "Hash-chain integrity check clean (informational)"
+      },
+      "first_version": "v8",
+      "id": "BB2-F3",
+      "severity": "medium",
+      "summary": "Hash-chain integrity check clean (informational)",
+      "v13_lens": null,
+      "v13_status": "still_open"
+    },
+    {
+      "evidence": {
+        "id_in_commit_messages": true,
+        "id_in_test_files": true
+      },
+      "first_version": "v8",
+      "id": "DD2-3",
+      "severity": "medium",
+      "summary": "`detect_market_regime` save/restore `_history` skips churn computation in cross-asset path",
+      "v13_lens": null,
+      "v13_status": "closed_in_unrecorded_wave"
+    },
+    {
+      "evidence": {
+        "id_in_commit_messages": true,
+        "id_in_test_files": true
+      },
+      "first_version": "v8",
+      "id": "DD2-4",
+      "severity": "medium",
+      "summary": "Regime argmax has no hysteresis band; one-bar slope flips at threshold",
+      "v13_lens": null,
+      "v13_status": "closed_in_unrecorded_wave"
+    },
+    {
+      "evidence": {
+        "id_in_commit_messages": true,
+        "id_in_test_files": true
+      },
+      "first_version": "v8",
+      "id": "DD2-5",
+      "severity": "medium",
+      "summary": "Kelly `_regime_eligible` bypasses unconditional Kelly path zero-vol refusal",
+      "v13_lens": null,
+      "v13_status": "closed_in_unrecorded_wave"
+    },
+    {
+      "evidence": {
+        "id_in_commit_messages": true,
+        "id_in_test_files": true
+      },
+      "first_version": "v8",
+      "id": "DD2-6",
+      "severity": "medium",
+      "summary": "Inverse-ETF regime flip only in AlphaScanner; Kelly/Exits/Cooldown see un-flipped",
+      "v13_lens": null,
+      "v13_status": "closed_in_unrecorded_wave"
+    },
+    {
+      "evidence": {
+        "id_in_commit_messages": true,
+        "id_in_test_files": true
+      },
+      "first_version": "v8",
+      "id": "DD2-7",
+      "severity": "medium",
+      "summary": "`_is_learning_mode` recomputed every read; mid-tick reconciliation race",
+      "v13_lens": null,
+      "v13_status": "closed_in_unrecorded_wave"
+    },
+    {
+      "evidence": {
+        "id_in_commit_messages": true,
+        "id_in_test_files": false
+      },
+      "first_version": "v8",
+      "id": "HH2-N-3",
+      "severity": "medium",
+      "summary": "`size_positions` 424 LOC at kelly_sizer.py:175 \u2014 sizing-kernel god-method",
+      "v13_lens": null,
+      "v13_status": "closed_in_unrecorded_wave"
+    },
+    {
+      "evidence": {
+        "id_in_commit_messages": true,
+        "id_in_test_files": true
+      },
+      "first_version": "v8",
+      "id": "NN-MED-1",
+      "severity": "medium",
+      "summary": "backend/mlops/ ~5k LOC entirely orphan",
+      "v13_lens": null,
+      "v13_status": "closed_in_unrecorded_wave"
+    },
+    {
+      "evidence": {
+        "id_in_commit_messages": true,
+        "id_in_test_files": true
+      },
+      "first_version": "v8",
+      "id": "NN-MED-2",
+      "severity": "medium",
+      "summary": "6/14 backend/ml/ modules orphan",
+      "v13_lens": null,
+      "v13_status": "closed_in_unrecorded_wave"
+    },
+    {
+      "evidence": {
+        "id_in_commit_messages": true,
+        "id_in_test_files": true
+      },
+      "first_version": "v8",
+      "id": "NN-MED-3",
+      "severity": "medium",
+      "summary": "backend/optimization/portfolio_optimizer.py orphan",
+      "v13_lens": null,
+      "v13_status": "closed_in_unrecorded_wave"
+    },
+    {
+      "evidence": {
+        "id_in_commit_messages": true,
+        "id_in_test_files": true
+      },
+      "first_version": "v8",
+      "id": "NN-MED-4",
+      "severity": "medium",
+      "summary": "backend/brokers/{alpaca_production, broker_failover}.py orphan",
+      "v13_lens": null,
+      "v13_status": "closed_in_unrecorded_wave"
+    },
+    {
+      "evidence": {
+        "id_in_commit_messages": true,
+        "id_in_test_files": true
+      },
+      "first_version": "v8",
+      "id": "W3-G3",
+      "severity": "low",
+      "summary": "SAMECLASS_BLOCK_RE doesn't strip `$ ` / `> ` shell-prompt prefixes",
+      "v13_lens": null,
+      "v13_status": "closed_in_unrecorded_wave"
+    },
+    {
+      "evidence": {
+        "id_in_commit_messages": true,
+        "id_in_test_files": true
+      },
+      "first_version": "v8",
+      "id": "DD2-8",
+      "severity": "low",
+      "summary": "Pure-breakout fallback uses abs(predicted_return) \u2014 neutral ML feeds long entry",
+      "v13_lens": null,
+      "v13_status": "closed_in_unrecorded_wave"
+    },
+    {
+      "evidence": {
+        "id_in_commit_messages": true,
+        "id_in_test_files": true
+      },
+      "first_version": "v8",
+      "id": "DD2-9",
+      "severity": "low",
+      "summary": "EOD flatten has no upper time bound; broker rejects retry indefinitely",
+      "v13_lens": null,
+      "v13_status": "closed_in_unrecorded_wave"
+    },
+    {
+      "evidence": {
+        "id_in_commit_messages": true,
+        "id_in_test_files": true
+      },
+      "first_version": "v8",
+      "id": "DD2-10",
+      "severity": "low",
+      "summary": "runner.py:104, routes.py:677,704 bypass `_now_fn` injection",
+      "v13_lens": null,
+      "v13_status": "closed_in_unrecorded_wave"
+    },
+    {
+      "evidence": {
+        "id_in_commit_messages": true,
+        "id_in_test_files": true
+      },
+      "first_version": "v9",
+      "id": "PP-1",
+      "severity": "critical",
+      "summary": "Brain-save not atomic; `backups/` dir missing on production container",
+      "v13_lens": null,
+      "v13_status": "closed_in_unrecorded_wave"
+    },
+    {
+      "evidence": {
+        "id_in_commit_messages": true,
+        "id_in_test_files": true
+      },
+      "first_version": "v9",
+      "id": "PP-2",
+      "severity": "critical",
+      "summary": "Brain `load()` exception falls through to \"starting fresh\" with no backup fallback",
+      "v13_lens": null,
+      "v13_status": "closed_in_unrecorded_wave"
+    },
+    {
+      "evidence": {
+        "id_in_commit_messages": true,
+        "id_in_test_files": true
+      },
+      "first_version": "v9",
+      "id": "PP-4",
+      "severity": "critical",
+      "summary": "DB-down non-fatal in `APP_ENVIRONMENT=development`; paper drops audit rows silently",
+      "v13_lens": null,
+      "v13_status": "closed_in_unrecorded_wave"
+    },
+    {
+      "evidence": {
+        "id_in_commit_messages": true,
+        "id_in_test_files": true
+      },
+      "first_version": "v9",
+      "id": "UU-1",
+      "severity": "critical",
+      "summary": "Daily-max-loss Slack alert uses bare `try/create_task/except: pass` (V5 S-J3-1 redux)",
+      "v13_lens": null,
+      "v13_status": "closed_in_unrecorded_wave"
+    },
+    {
+      "evidence": {
+        "id_in_commit_messages": true,
+        "id_in_test_files": true
+      },
+      "first_version": "v9",
+      "id": "UU-2",
+      "severity": "critical",
+      "summary": "Login audit-log failure swallows `db.rollback()`; compliance silent failure",
+      "v13_lens": null,
+      "v13_status": "closed_in_unrecorded_wave"
+    },
+    {
+      "evidence": {
+        "id_in_commit_messages": true,
+        "id_in_test_files": true
+      },
+      "first_version": "v9",
+      "id": "AA3-1",
+      "severity": "high",
+      "summary": "`POST /auth/logout` returns 200 but doesn't blacklist JWT; stolen tokens valid for full TTL",
+      "v13_lens": null,
+      "v13_status": "closed_in_unrecorded_wave"
+    },
+    {
+      "evidence": {
+        "id_in_commit_messages": true,
+        "id_in_test_files": true
+      },
+      "first_version": "v9",
+      "id": "AA3-2",
+      "severity": "high",
+      "summary": "Refresh tokens (7-day TTL) accepted as access tokens; `decode_token` no `token_type` check",
+      "v13_lens": null,
+      "v13_status": "closed_in_unrecorded_wave"
+    },
+    {
+      "evidence": {
+        "id_in_commit_messages": true,
+        "id_in_test_files": false
+      },
+      "first_version": "v9",
+      "id": "BB3-F2",
+      "severity": "high",
+      "summary": "14 of 17 substantive tables are dark; brain CSV is sole source of truth",
+      "v13_lens": null,
+      "v13_status": "closed_in_unrecorded_wave"
+    },
+    {
+      "evidence": {
+        "id_in_commit_messages": true,
+        "id_in_test_files": true
+      },
+      "first_version": "v9",
+      "id": "DD3-1",
+      "severity": "high",
+      "summary": "Pyramider Layer 1 re-fires indefinitely; Layer 2 unreachable (layer_count vs level key)",
+      "v13_lens": null,
+      "v13_status": "closed_in_unrecorded_wave"
+    },
+    {
+      "evidence": {
+        "id_in_commit_messages": true,
+        "id_in_test_files": true
+      },
+      "first_version": "v9",
+      "id": "DD3-2",
+      "severity": "high",
+      "summary": "`LotTracker.create_lot` per `partially_filled` event uses cumulative qty \u2192 duplicate rows",
+      "v13_lens": null,
+      "v13_status": "closed_in_unrecorded_wave"
+    },
+    {
+      "evidence": {
+        "id_in_commit_messages": true,
+        "id_in_test_files": true
+      },
+      "first_version": "v9",
+      "id": "DD3-3",
+      "severity": "high",
+      "summary": "`_pending_exit` 3-tick TTL expires before slow broker fills \u2192 exit re-fire oversell race",
+      "v13_lens": null,
+      "v13_status": "closed_in_unrecorded_wave"
+    },
+    {
+      "evidence": {
+        "id_in_commit_messages": true,
+        "id_in_test_files": true
+      },
+      "first_version": "v9",
+      "id": "PP-3",
+      "severity": "high",
+      "summary": "Alert dispatch dedup + rate-limiter + Slack 5xx all silently drop",
+      "v13_lens": null,
+      "v13_status": "closed_in_unrecorded_wave"
+    },
+    {
+      "evidence": {
+        "id_in_commit_messages": true,
+        "id_in_test_files": true
+      },
+      "first_version": "v9",
+      "id": "PP-5",
+      "severity": "high",
+      "summary": "Universe scanner caches forever; persistent Alpaca movers failure \u2192 trade on stale",
+      "v13_lens": null,
+      "v13_status": "closed_in_unrecorded_wave"
+    },
+    {
+      "evidence": {
+        "id_in_commit_messages": true,
+        "id_in_test_files": true
+      },
+      "first_version": "v9",
+      "id": "PP-6",
+      "severity": "high",
+      "summary": "`_data_stale` gate uses aggregate timestamp; per-symbol stalls invisible",
+      "v13_lens": null,
+      "v13_status": "closed_in_unrecorded_wave"
+    },
+    {
+      "evidence": {
+        "id_in_commit_messages": true,
+        "id_in_test_files": true
+      },
+      "first_version": "v9",
+      "id": "TT-1",
+      "severity": "high",
+      "summary": "Tick budget routinely overrun (p99=13s on 10s scheduler)",
+      "v13_lens": null,
+      "v13_status": "closed_in_unrecorded_wave"
+    },
+    {
+      "evidence": {
+        "id_in_commit_messages": true,
+        "id_in_test_files": true
+      },
+      "first_version": "v9",
+      "id": "TT-2",
+      "severity": "high",
+      "summary": "Stream reconnect can stall a tick for 33 minutes; no watchdog",
+      "v13_lens": null,
+      "v13_status": "closed_in_unrecorded_wave"
+    },
+    {
+      "evidence": {
+        "id_in_commit_messages": true,
+        "id_in_test_files": true
+      },
+      "first_version": "v9",
+      "id": "AA3-3",
+      "severity": "medium",
+      "summary": "Refresh tokens not single-use; old access tokens stay valid after re-login",
+      "v13_lens": null,
+      "v13_status": "closed_in_unrecorded_wave"
+    },
+    {
+      "evidence": {
+        "id_in_commit_messages": true,
+        "id_in_test_files": true
+      },
+      "first_version": "v9",
+      "id": "BB3-F1",
+      "severity": "medium",
+      "summary": "`orders.user_id` is varchar `'system'`; no FK link to `users.id`",
+      "v13_lens": null,
+      "v13_status": "closed_in_unrecorded_wave"
+    },
+    {
+      "evidence": {
+        "id_in_commit_messages": true,
+        "id_in_test_files": true
+      },
+      "first_version": "v9",
+      "id": "DD3-4",
+      "severity": "medium",
+      "summary": "EOD flatten doesn't cancel pending entries; 15:57 entries fill post-16:00",
+      "v13_lens": null,
+      "v13_status": "closed_in_unrecorded_wave"
+    },
+    {
+      "evidence": {
+        "id_in_commit_messages": true,
+        "id_in_test_files": true
+      },
+      "first_version": "v9",
+      "id": "DD3-5",
+      "severity": "medium",
+      "summary": "`symbol_fitness = {}` empty in saved brain \u2192 0.45 production gate defaults to 0.5, never rejects",
+      "v13_lens": null,
+      "v13_status": "closed_in_unrecorded_wave"
+    },
+    {
+      "evidence": {
+        "id_in_commit_messages": true,
+        "id_in_test_files": true
+      },
+      "first_version": "v9",
+      "id": "TT-3",
+      "severity": "medium",
+      "summary": "`attributes->>'source'='organism'` JSON predicate forces Seq Scan on `orders`",
+      "v13_lens": null,
+      "v13_status": "closed_in_unrecorded_wave"
+    },
+    {
+      "evidence": {
+        "id_in_commit_messages": true,
+        "id_in_test_files": true
+      },
+      "first_version": "v9",
+      "id": "TT-4",
+      "severity": "medium",
+      "summary": "4 async methods in `AlpacaClient` call sync `time.sleep()` despite `_async_rate_limit` existing",
+      "v13_lens": null,
+      "v13_status": "closed_in_unrecorded_wave"
+    },
+    {
+      "evidence": {
+        "id_in_commit_messages": true,
+        "id_in_test_files": true
+      },
+      "first_version": "v9",
+      "id": "Z7-1",
+      "severity": "medium",
+      "summary": "Wave-38 left ~20 orphan test files in `tests/unit/` (pytest collection broken)",
+      "v13_lens": null,
+      "v13_status": "closed_in_unrecorded_wave"
+    },
+    {
+      "evidence": {
+        "id_in_commit_messages": true,
+        "id_in_test_files": true
+      },
+      "first_version": "v9",
+      "id": "UU-3",
+      "severity": "medium",
+      "summary": "Brain-save-blocked alert + lock-release double-swallow",
+      "v13_lens": null,
+      "v13_status": "closed_in_unrecorded_wave"
+    },
+    {
+      "evidence": {
+        "id_in_commit_messages": true,
+        "id_in_test_files": true
+      },
+      "first_version": "v9",
+      "id": "AA3-4",
+      "severity": "low",
+      "summary": "`JWT_CLOCK_SKEW = 60` is dead code; never passed to `jwt.decode`",
+      "v13_lens": null,
+      "v13_status": "closed_in_unrecorded_wave"
+    },
+    {
+      "evidence": {
+        "id_in_commit_messages": true,
+        "id_in_test_files": true
+      },
+      "first_version": "v9",
+      "id": "BB3-F3",
+      "severity": "low",
+      "summary": "`executions/position_lots/realized_trades` use `ON DELETE CASCADE` against `orders.id`",
+      "v13_lens": null,
+      "v13_status": "closed_in_unrecorded_wave"
+    },
+    {
+      "evidence": {
+        "id_in_commit_messages": true,
+        "id_in_test_files": true
+      },
+      "first_version": "v9",
+      "id": "BB3-F4",
+      "severity": "low",
+      "summary": "`orders.broker_order_id` non-unique index; small race window",
+      "v13_lens": null,
+      "v13_status": "closed_in_unrecorded_wave"
+    },
+    {
+      "evidence": {
+        "id_in_commit_messages": true,
+        "id_in_test_files": true
+      },
+      "first_version": "v9",
+      "id": "TT-5",
+      "severity": "low",
+      "summary": "6 unbounded brain-resident lists",
+      "v13_lens": null,
+      "v13_status": "closed_in_unrecorded_wave"
+    },
+    {
+      "evidence": {
+        "id_in_commit_messages": true,
+        "id_in_test_files": false
+      },
+      "first_version": "v9",
+      "id": "UU-4",
+      "severity": "low",
+      "summary": "14 cargo-culted `try/except: pass` around safe in-memory ops",
+      "v13_lens": null,
+      "v13_status": "closed_in_unrecorded_wave"
+    },
+    {
+      "evidence": {
+        "id_in_commit_messages": true,
+        "id_in_test_files": true
+      },
+      "first_version": "v9",
+      "id": "W4-1",
+      "severity": "low",
+      "summary": "Aliased `from pytest import fixture as fx; @fx` missed by literal-string scan",
+      "v13_lens": null,
+      "v13_status": "closed_in_unrecorded_wave"
+    },
+    {
+      "evidence": {
+        "id_in_commit_messages": true,
+        "id_in_test_files": false
+      },
+      "first_version": "v9",
+      "id": "W4-2",
+      "severity": "low",
+      "summary": "Positive-assertion grep convention drift surfaces 16 fails on real branch",
+      "v13_lens": null,
+      "v13_status": "closed_in_unrecorded_wave"
+    },
+    {
+      "evidence": {
+        "id_in_commit_messages": true,
+        "id_in_test_files": true
+      },
+      "first_version": "v9",
+      "id": "W4-3",
+      "severity": "low",
+      "summary": "`WAVE_COMMIT_RE` excludes `-` in suffix \u2192 `audit-wave99-w3g1-test` bypasses ALL enforcement",
+      "v13_lens": null,
+      "v13_status": "closed_in_unrecorded_wave"
+    },
+    {
+      "evidence": {
+        "id_in_commit_messages": true,
+        "id_in_test_files": false
+      },
+      "first_version": "v9",
+      "id": "DD3-6",
+      "severity": "low",
+      "summary": "(Diagnostic) Day-1 +$69.35 was 1 AMD trade; rest near-zero edge",
+      "v13_lens": null,
+      "v13_status": "closed_in_unrecorded_wave"
+    },
+    {
+      "evidence": {
+        "id_in_commit_messages": true,
+        "id_in_test_files": true
+      },
+      "first_version": "v10",
+      "id": "AA4-1",
+      "severity": "critical",
+      "summary": "Paper container running OLD image; ALL V9 wave-32/42/47 fixes undeployed",
+      "v13_lens": null,
+      "v13_status": "closed_in_unrecorded_wave"
+    },
+    {
+      "evidence": {
+        "id_in_commit_messages": true,
+        "id_in_test_files": true
+      },
+      "first_version": "v10",
+      "id": "AA4-2",
+      "severity": "high",
+      "summary": "`init_token_blacklist()` has zero callers; Redis backend never initialized; blacklist is in-memory only, wipes on restart",
+      "v13_lens": null,
+      "v13_status": "closed_in_unrecorded_wave"
+    },
+    {
+      "evidence": {
+        "id_in_commit_messages": true,
+        "id_in_test_files": true
+      },
+      "first_version": "v10",
+      "id": "DD4-1",
+      "severity": "high",
+      "summary": "Wave-44 fitness gate defeated by promotion-gated persistence; symbol_trade_counts wipes on restart",
+      "v13_lens": null,
+      "v13_status": "closed_in_unrecorded_wave"
+    },
+    {
+      "evidence": {
+        "id_in_commit_messages": true,
+        "id_in_test_files": true
+      },
+      "first_version": "v10",
+      "id": "DD4-2",
+      "severity": "high",
+      "summary": "Wave-44 max_level fix surface-only; `_reconcile_fills` still collapses layers; **0/498 trades reach Layer 2**",
+      "v13_lens": null,
+      "v13_status": "closed_in_unrecorded_wave"
+    },
+    {
+      "evidence": {
+        "id_in_commit_messages": true,
+        "id_in_test_files": true
+      },
+      "first_version": "v10",
+      "id": "PP2-1",
+      "severity": "high",
+      "summary": "PP-4 ALLOW_NO_DB gate at wrong line \u2014 runtime DB unreachability hits inner prewarm except, silently proceeds",
+      "v13_lens": null,
+      "v13_status": "closed_in_unrecorded_wave"
+    },
+    {
+      "evidence": {
+        "id_in_commit_messages": true,
+        "id_in_test_files": true
+      },
+      "first_version": "v10",
+      "id": "UU2-A",
+      "severity": "high",
+      "summary": "Wave-41 UU-2 partial \u2014 successful-login `db.rollback()` still has `except: pass`",
+      "v13_lens": null,
+      "v13_status": "closed_in_unrecorded_wave"
+    },
+    {
+      "evidence": {
+        "id_in_commit_messages": true,
+        "id_in_test_files": true
+      },
+      "first_version": "v10",
+      "id": "VV-1",
+      "severity": "high",
+      "summary": "OrderValidationResponse snake_case backend vs camelCase frontend \u2192 pre-trade UI shows `undefined`",
+      "v13_lens": null,
+      "v13_status": "closed_in_unrecorded_wave"
+    },
+    {
+      "evidence": {
+        "id_in_commit_messages": true,
+        "id_in_test_files": true
+      },
+      "first_version": "v10",
+      "id": "VV-2",
+      "severity": "high",
+      "summary": "Risk endpoints serialize Decimals as strings; TS types lie about being `number`",
+      "v13_lens": null,
+      "v13_status": "closed_in_unrecorded_wave"
+    },
+    {
+      "evidence": {
+        "id_in_commit_messages": true,
+        "id_in_test_files": true
+      },
+      "first_version": "v10",
+      "id": "VV-3",
+      "severity": "high",
+      "summary": "OrderStatus defined 3x in FE; none matches backend; none covers Alpaca's wire vocabulary",
+      "v13_lens": null,
+      "v13_status": "closed_in_unrecorded_wave"
+    },
+    {
+      "evidence": {
+        "id_in_commit_messages": true,
+        "id_in_test_files": true
+      },
+      "first_version": "v10",
+      "id": "WW-1",
+      "severity": "high",
+      "summary": "Production brain has ZERO `backups/` dir; wave-41 PP-2 safety net empty",
+      "v13_lens": null,
+      "v13_status": "closed_in_unrecorded_wave"
+    },
+    {
+      "evidence": {
+        "id_in_commit_messages": true,
+        "id_in_test_files": true
+      },
+      "first_version": "v10",
+      "id": "XX-1",
+      "severity": "high",
+      "summary": "`downgrade base` broken at `ec197100938a:147` \u2014 drops constraint that's never created",
+      "v13_lens": null,
+      "v13_status": "closed_in_unrecorded_wave"
+    },
+    {
+      "evidence": {
+        "id_in_commit_messages": true,
+        "id_in_test_files": true
+      },
+      "first_version": "v10",
+      "id": "XX-2",
+      "severity": "high",
+      "summary": "`ck_orders_status` rejects `'new'`/`'pending_new'`/`'submitting'` despite repo expecting them",
+      "v13_lens": null,
+      "v13_status": "closed_in_unrecorded_wave"
+    },
+    {
+      "evidence": {
+        "id_in_commit_messages": true,
+        "id_in_test_files": true
+      },
+      "first_version": "v10",
+      "id": "YY-1",
+      "severity": "high",
+      "summary": "6 of 16 `logger.critical` sites have NO alert dispatch (drawdown-kill, emergency-stop, circuit-breaker, SLO burn)",
+      "v13_lens": null,
+      "v13_status": "closed_in_unrecorded_wave"
+    },
+    {
+      "evidence": {
+        "id_in_commit_messages": true,
+        "id_in_test_files": true
+      },
+      "first_version": "v10",
+      "id": "YY-2",
+      "severity": "high",
+      "summary": "17 of 19 sampled `AuditAction` enum values have ZERO emit sites",
+      "v13_lens": null,
+      "v13_status": "closed_in_unrecorded_wave"
+    },
+    {
+      "evidence": {
+        "id_in_commit_messages": true,
+        "id_in_test_files": true
+      },
+      "first_version": "v10",
+      "id": "AA4-3",
+      "severity": "medium",
+      "summary": "GET /settings/organism + GET /settings/trading lack `require_admin`",
+      "v13_lens": null,
+      "v13_status": "closed_in_unrecorded_wave"
+    },
+    {
+      "evidence": {
+        "id_in_commit_messages": true,
+        "id_in_test_files": true
+      },
+      "first_version": "v10",
+      "id": "BB4-F2",
+      "severity": "medium",
+      "summary": "Wave-44 EOD-cancel may not have wired (agent searched for fn name; my fix was inline) \u2014 verify",
+      "v13_lens": null,
+      "v13_status": "closed_in_unrecorded_wave"
+    },
+    {
+      "evidence": {
+        "id_in_commit_messages": true,
+        "id_in_test_files": true
+      },
+      "first_version": "v10",
+      "id": "DD4-3",
+      "severity": "medium",
+      "summary": "DD2-6 inverse-ETF regime flip still only in alpha_scanner",
+      "v13_lens": null,
+      "v13_status": "closed_in_unrecorded_wave"
+    },
+    {
+      "evidence": {
+        "id_in_commit_messages": true,
+        "id_in_test_files": true
+      },
+      "first_version": "v10",
+      "id": "PP2-2",
+      "severity": "medium",
+      "summary": "PP-2 corrupt-HEAD recovery has no sticky forensic artifact",
+      "v13_lens": null,
+      "v13_status": "closed_in_unrecorded_wave"
+    },
+    {
+      "evidence": {
+        "id_in_commit_messages": true,
+        "id_in_test_files": true
+      },
+      "first_version": "v10",
+      "id": "UU2-C",
+      "severity": "medium",
+      "summary": "Wave-43 LotTracker block at `alpaca_stream.py:643` retains silent rollback `except: pass`",
+      "v13_lens": null,
+      "v13_status": "closed_in_unrecorded_wave"
+    },
+    {
+      "evidence": {
+        "id_in_commit_messages": true,
+        "id_in_test_files": true
+      },
+      "first_version": "v10",
+      "id": "VV-4",
+      "severity": "medium",
+      "summary": "broadcast_settings_update emits but FE has zero listeners + missing WebSocketTopic.settings",
+      "v13_lens": null,
+      "v13_status": "closed_in_unrecorded_wave"
+    },
+    {
+      "evidence": {
+        "id_in_commit_messages": true,
+        "id_in_test_files": true
+      },
+      "first_version": "v10",
+      "id": "VV-5",
+      "severity": "medium",
+      "summary": "Rich error envelope dropped \u2014 FE reads only data.detail",
+      "v13_lens": null,
+      "v13_status": "closed_in_unrecorded_wave"
+    },
+    {
+      "evidence": {
+        "id_in_commit_messages": true,
+        "id_in_test_files": true
+      },
+      "first_version": "v10",
+      "id": "WW-2",
+      "severity": "medium",
+      "summary": "Backup naming 1-second resolution \u2014 5 backups in 1 sec collapse via mkdir(exist_ok=True)",
+      "v13_lens": null,
+      "v13_status": "closed_in_unrecorded_wave"
+    },
+    {
+      "evidence": {
+        "id_in_commit_messages": true,
+        "id_in_test_files": true
+      },
+      "first_version": "v10",
+      "id": "XX-3",
+      "severity": "medium",
+      "summary": "Significant ORM-vs-DB drift; ~50 ops; `portfolio_history` ORM-declared, no migration",
+      "v13_lens": null,
+      "v13_status": "closed_in_unrecorded_wave"
+    },
+    {
+      "evidence": {
+        "id_in_commit_messages": true,
+        "id_in_test_files": true
+      },
+      "first_version": "v10",
+      "id": "YY-3",
+      "severity": "medium",
+      "summary": "ORGANISM_ENTRIES_BLOCKED buckets drawdown_kill / daily_max_loss / governance_halt / equity_zero",
+      "v13_lens": null,
+      "v13_status": "closed_in_unrecorded_wave"
+    },
+    {
+      "evidence": {
+        "id_in_commit_messages": true,
+        "id_in_test_files": true
+      },
+      "first_version": "v10",
+      "id": "YY-4",
+      "severity": "medium",
+      "summary": "BackgroundTrainer training-internal failure alert-silent",
+      "v13_lens": null,
+      "v13_status": "closed_in_unrecorded_wave"
+    },
+    {
+      "evidence": {
+        "id_in_commit_messages": true,
+        "id_in_test_files": true
+      },
+      "first_version": "v10",
+      "id": "YY-5",
+      "severity": "medium",
+      "summary": "/readyz returns 200 even when brain unloaded or tick loop dead",
+      "v13_lens": null,
+      "v13_status": "closed_in_unrecorded_wave"
+    },
+    {
+      "evidence": {
+        "id_in_commit_messages": true,
+        "id_in_test_files": true
+      },
+      "first_version": "v10",
+      "id": "AA4-4",
+      "severity": "low",
+      "summary": "X-API-Key returns 500 due to `.lower()` on Environment enum",
+      "v13_lens": null,
+      "v13_status": "closed_in_unrecorded_wave"
+    },
+    {
+      "evidence": {
+        "matched_lens": "v13_w95_lens4_data",
+        "summary": "audit_logs has only user.login rows; no organism-emitted entries"
+      },
+      "first_version": "v10",
+      "id": "BB4-F3",
+      "severity": "low",
+      "summary": "audit_logs has only user.login rows; no organism-emitted entries",
+      "v13_lens": "v13_w95_lens4_data",
+      "v13_status": "absorbed_into_v13_lens"
+    },
+    {
+      "evidence": {
+        "id_in_commit_messages": true,
+        "id_in_test_files": true
+      },
+      "first_version": "v10",
+      "id": "DD4-4",
+      "severity": "low",
+      "summary": "Pyramider counters write-only; cannot self-verify",
+      "v13_lens": null,
+      "v13_status": "closed_in_unrecorded_wave"
+    },
+    {
+      "evidence": {
+        "id_in_commit_messages": true,
+        "id_in_test_files": true
+      },
+      "first_version": "v10",
+      "id": "PP2-3",
+      "severity": "low",
+      "summary": "`.tmp` orphans accumulate on SIGKILL",
+      "v13_lens": null,
+      "v13_status": "closed_in_unrecorded_wave"
+    },
+    {
+      "evidence": {
+        "id_in_commit_messages": true,
+        "id_in_test_files": true
+      },
+      "first_version": "v10",
+      "id": "WW-3",
+      "severity": "low",
+      "summary": "save_essential_state skips evolved_params; long save-gating windows drift on disk",
+      "v13_lens": null,
+      "v13_status": "closed_in_unrecorded_wave"
+    },
+    {
+      "evidence": {
+        "id_in_commit_messages": true,
+        "id_in_test_files": true
+      },
+      "first_version": "v10",
+      "id": "Z8-1",
+      "severity": "low",
+      "summary": "CI checker spurious fails on em-dash / slash subjects",
+      "v13_lens": null,
+      "v13_status": "closed_in_unrecorded_wave"
+    },
+    {
+      "evidence": {
+        "summary": "production.py validator demands wrong env var names"
+      },
+      "first_version": "v11",
+      "id": "CCC-1",
+      "severity": "high",
+      "summary": "production.py validator demands wrong env var names",
+      "v13_lens": null,
+      "v13_status": "still_open"
+    },
+    {
+      "evidence": {
+        "id_in_commit_messages": true,
+        "id_in_test_files": false
+      },
+      "first_version": "v11",
+      "id": "DDD-1",
+      "severity": "high",
+      "summary": "ecdsa CVE-2024-23342 unpatched (transitive via python-jose)",
+      "v13_lens": null,
+      "v13_status": "closed_in_unrecorded_wave"
+    },
+    {
+      "evidence": {
+        "summary": "configure_structured_logging is dead code; production has no trace_id"
+      },
+      "first_version": "v11",
+      "id": "III-F1",
+      "severity": "high",
+      "summary": "configure_structured_logging is dead code; production has no trace_id",
+      "v13_lens": null,
+      "v13_status": "still_open"
+    },
+    {
+      "evidence": {
+        "id_in_commit_messages": true,
+        "id_in_test_files": false
+      },
+      "first_version": "v11",
+      "id": "III-F2",
+      "severity": "high",
+      "summary": "PII (email/username) logged cleartext; scrubber unreachable in production",
+      "v13_lens": null,
+      "v13_status": "closed_in_unrecorded_wave"
+    },
+    {
+      "evidence": {
+        "summary": "pyramider telemetry not wired into manifest export"
+      },
+      "first_version": "v12",
+      "id": "DD5-4",
+      "severity": "medium",
+      "summary": "pyramider telemetry not wired into manifest export",
+      "v13_lens": null,
+      "v13_status": "still_open"
+    },
+    {
+      "evidence": {
+        "id_in_commit_messages": true,
+        "id_in_test_files": true
+      },
+      "first_version": "v12",
+      "id": "W74-FOLLOWUP-1",
+      "severity": "medium",
+      "summary": "AuditLog schema declares ix_audit_logs_ts twice (column-level index=True + explicit Index in __table_args__)",
+      "v13_lens": null,
+      "v13_status": "closed_in_unrecorded_wave"
+    }
+  ]
+}
