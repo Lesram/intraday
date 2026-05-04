@@ -50,12 +50,19 @@ jobs:
     name: "🔍 Scan Dockerfile"
     runs-on: ubuntu-latest
     permissions:
+      actions: read
       contents: read
       security-events: write
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Free runner disk before image build
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL || true
+          docker system prune -af || true
+          df -h
 
       - name: Build Docker image for scanning
         run: |
@@ -72,7 +79,7 @@ jobs:
 
       - name: Upload Trivy scan results to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v3
-        if: always()
+        if: always() && hashFiles('trivy-results.sarif') != ''
         with:
           sarif_file: 'trivy-results.sarif'
 
@@ -89,6 +96,7 @@ jobs:
     name: "🔍 Scan Production Dockerfile"
     runs-on: ubuntu-latest
     permissions:
+      actions: read
       contents: read
       security-events: write
 
@@ -106,6 +114,13 @@ jobs:
             echo "Dockerfile.production not present; skipping production image scan."
           fi
 
+      - name: Free runner disk before production image build
+        if: steps.production-dockerfile.outputs.exists == 'true'
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL || true
+          docker system prune -af || true
+          df -h
+
       - name: Build Production Docker image for scanning
         if: steps.production-dockerfile.outputs.exists == 'true'
         run: |
@@ -122,7 +137,7 @@ jobs:
           ignore-unfixed: true
 
       - name: Upload Trivy scan results to GitHub Security tab
-        if: always() && steps.production-dockerfile.outputs.exists == 'true'
+        if: always() && steps.production-dockerfile.outputs.exists == 'true' && hashFiles('trivy-prod-results.sarif') != ''
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: 'trivy-prod-results.sarif'
@@ -142,6 +157,7 @@ jobs:
     name: "📁 Scan Filesystem/IaC"
     runs-on: ubuntu-latest
     permissions:
+      actions: read
       contents: read
       security-events: write
 
@@ -161,7 +177,7 @@ jobs:
 
       - name: Upload filesystem scan results
         uses: github/codeql-action/upload-sarif@v3
-        if: always()
+        if: always() && hashFiles('trivy-fs-results.sarif') != ''
         with:
           sarif_file: 'trivy-fs-results.sarif'
           category: 'trivy-filesystem'
