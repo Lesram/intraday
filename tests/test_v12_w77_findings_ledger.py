@@ -214,9 +214,26 @@ def test_w77_ledger_every_record_has_required_fields():
         missing = required - set(f.keys())
         assert not missing, f"{f.get('id', '?')} missing fields: {missing}"
         assert f["status"] in {
-            "open", "closed", "closed_unverified", "absorbed",
+            "open", "closed", "absorbed",
             "deferred", "documented_by_design",
         }, f"{f['id']}: bad status {f['status']}"
+
+
+def test_w77_no_closed_unverified_records_remain():
+    """Ambiguous closure state is not allowed in the Phase-1 ledger.
+
+    A finding is either closed with behavioral evidence or deferred
+    until that evidence is backfilled.
+    """
+    data = json.loads(LEDGER_JSON.read_text())
+    ambiguous = [
+        f["id"] for f in data["findings"]
+        if f["status"] == "closed_unverified"
+    ]
+    assert not ambiguous, (
+        "closed_unverified findings must be promoted to closed with "
+        f"evidence or deferred: {ambiguous[:10]}"
+    )
 
 
 def test_w77_open_records_do_not_claim_v13_closed_triage():

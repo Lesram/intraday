@@ -1827,6 +1827,19 @@ class OrganismLiveEngine:
                 timestamp=now_iso,
             ))
 
+    async def _stage_update_equity_curve(self) -> None:
+        """Append latest equity while bounding in-memory curve retention."""
+        try:
+            eq = await self._get_equity()
+            self._equity_curve.append(eq)
+            max_equity_curve_len = 100_000
+            if len(self._equity_curve) > max_equity_curve_len:
+                # Drop oldest entries in one O(n) trim, cheaper than per-tick.
+                drop_count = len(self._equity_curve) - max_equity_curve_len
+                del self._equity_curve[:drop_count]
+        except Exception:
+            pass
+
     async def _live_tick_inner(self) -> LiveTickResult:
         """Inner tick logic — always called under _tick_lock."""
         # V6 X-2 / Wave-20b (2026-05-03): use injected clock so tick
@@ -4519,22 +4532,8 @@ class OrganismLiveEngine:
             logger.exception("Organism live tick failed")
             result.errors.append(f"Live tick error: {e}")
 
-        # Update equity curve.
-        # V4 Q-Q2 (2026-05-02): cap retention. The list grows by one
-        # entry per tick (~5s), unbounded — already at 37k+ entries
-        # in production; every brain save rewrites the full CSV. Keep
-        # the most recent ~100,000 ticks (~6 trading days) in memory;
-        # callers needing longer history read from equity_curve.csv.
-        try:
-            eq = await self._get_equity()
-            self._equity_curve.append(eq)
-            _MAX_EQUITY_CURVE_LEN = 100_000
-            if len(self._equity_curve) > _MAX_EQUITY_CURVE_LEN:
-                # Drop oldest 10% in one O(n) trim (cheaper than per-tick).
-                _drop = len(self._equity_curve) - _MAX_EQUITY_CURVE_LEN
-                del self._equity_curve[:_drop]
-        except Exception:
-            pass
+        # V13.1 cleanup: extracted post-tick equity retention.
+        await self._stage_update_equity_curve()
 
         # V6 X-2 / Wave-20b (2026-05-03): use injected clock for delta.
         result.duration_s = self._time_fn() - t0

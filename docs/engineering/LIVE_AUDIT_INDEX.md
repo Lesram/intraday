@@ -1,20 +1,20 @@
 # Live Audit Index
 
-Generated: 2026-05-04T08:26:22Z
-PR: n/a
-SHA: `bac86a65f3`
+Generated: 2026-05-04T17:59:05Z
+PR: PR #4
+SHA: `4a4479e238`
 Branch: `codex/v13-root-fixes`
 Scope: **backend_logic**
-Change scope: `task` (`HEAD`)
+Change scope: `working-tree` (`HEAD+working-tree`)
 
 ## Changed files
 
 | Category | Count | Files |
 |----------|-------|-------|
-| Backend | 1 | `backend/services/audit_service.py` |
-| Organism | 0 | none |
-| Tests | 1 | `tests/test_audit_chain_locking.py` |
-| Docs | 0 | none |
+| Backend | 1 | `backend/organism/live_engine.py` |
+| Organism | 1 | `backend/organism/live_engine.py` |
+| Tests | 1 | `tests/test_v12_w77_findings_ledger.py` |
+| Docs | 2 | `docs/engineering/LIVE_AUDIT_INDEX.md`, `docs/engineering/CI_ADVISORY_GATES.md` |
 
 ## Live constants
 
@@ -49,4 +49,4 @@ Source: `resolved_config_snapshot.json`
 
 ## Open risks
 
-- 1 backend runtime file(s) changed — require targeted verification
+- 1 organism file(s) changed — require replay verification

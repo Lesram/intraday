@@ -10,6 +10,9 @@ Asserts:
 5. V13 triage states are canonicalized: a finding cannot remain
    ``open`` while carrying ``closed_in_unrecorded_wave`` or
    ``absorbed_into_v13_lens`` triage.
+6. Ambiguous ``closed_unverified`` records are not allowed.  They must
+   either be promoted to ``closed`` with behavioral evidence or kept as
+   ``deferred`` until that evidence is backfilled.
 
 Exit codes:
 - 0: ledger is internally consistent
@@ -30,7 +33,6 @@ LEDGER = REPO_ROOT / "artifacts" / "audit" / "findings_ledger.json"
 VALID_STATUSES = {
     "open",
     "closed",
-    "closed_unverified",
     "absorbed",
     "deferred",
     "documented_by_design",
@@ -80,17 +82,6 @@ def main() -> int:
                 violations.append(
                     f"  [{ident}] status=deferred but deferral_reason "
                     f"is empty — every deferral must explain why."
-                )
-        elif status == "closed_unverified":
-            if triage_status != "closed_in_unrecorded_wave":
-                violations.append(
-                    f"  [{ident}] status=closed_unverified requires "
-                    f"v13_triage_status=closed_in_unrecorded_wave."
-                )
-            if not f.get("deferral_reason"):
-                violations.append(
-                    f"  [{ident}] status=closed_unverified but no "
-                    f"deferral_reason explains the missing closure evidence."
                 )
         elif status == "absorbed":
             if triage_status != "absorbed_into_v13_lens":

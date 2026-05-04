@@ -123,12 +123,15 @@ build pipeline. **No production regressions** vs V12 baseline.
   via commit-message + tests-dir grep, summary-keyword → V13 lens
   fallback.
 - Outcome (better than plan estimate of 70/20/10):
-  - 97/103 closed_in_unrecorded_wave (94.2%)
+  - 97/103 closed_in_unrecorded_wave candidates (94.2%)
   - 2/103 absorbed_into_v13_lens (1.9%)
   - 4/103 still_open (3.9%) — none critical
 - `artifacts/audit/v13/v13_finding_triage.json` committed.
 - Ledger updated with `v13_triage_status` + `v13_lens` fields.
 - 7 behavioral tests + critical-still-open bound.
+- V13.1 Phase-1 cleanup: these candidates are not treated as closed
+  without behavioral close records; ambiguous `closed_unverified`
+  ledger entries were reclassified as `deferred`.
 
 ### W100 — `_live_tick_inner` behavioral coverage
 - 11 tests covering 4 hot sub-blocks via ReplayEngine end-to-end.
@@ -147,7 +150,7 @@ build pipeline. **No production regressions** vs V12 baseline.
 | V10 | 105 | 17 lenses | not measured |
 | V11 | 158 | 49 + 14 ext = 63 | not measured |
 | V12 | (after closure) | 21 closed + 5 deferred + 103 open | 61.4% (waves only) |
-| V13 | (after closure) | +5 closed + 0 newly deferred + 99 triaged-as-closed | 38.72% (full corpus) |
+| V13 | (after closure) | +5 closed + 0 newly deferred + 99 triage candidates | 38.72% (full corpus) |
 
 ---
 
@@ -212,8 +215,9 @@ The V13 framework predicted: "audit cycle should become quarterly
 health-check, not monthly deep-dive." V13 confirmed this is the right
 trajectory:
 
-- 94% of V8-V11 "still-open" findings were already closed (just
-  un-ledgered). V13's automation revealed this in one script run.
+- 94% of V8-V11 "still-open" findings had closure candidates, but
+  Phase-1 cleanup keeps them deferred until behavioral close evidence
+  is backfilled.
 - V13's seven CI gates make most regressions impossible to merge —
   mutation smoke + ratchets + deploy parity + findings ledger
   verifier collectively replace the manual deep-dive cadence.

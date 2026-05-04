@@ -224,3 +224,40 @@ Thumbs.db
 !logs/current.log
 !logs/.gitkeep
 organism_brain_archive/
+
+# Local operator / agent state
+.claude/*.lock
+.codex/
+staging.db
+monitoring/memory_monitoring.json
+
+# Local archive bundles and forensic snapshots
+*.zip
+*.tar.gz
+intra_control_plane_starter_kit/
+organism_brain.pre_*/
+organism_brain_forensic_snapshot_*/
+docs/platform_master_narrative_*.md
+docs/engineering/PLATFORM_BASELINE_SNAPSHOT_*.md
+
+# Generated engineering evidence bundles kept locally, not in PRs
+docs/engineering/away_mode_hardening/
+docs/engineering/daily_report/
+docs/engineering/gated_persistence_final/
+docs/engineering/incident_recovery_wave/
+docs/engineering/last_mile_audit/
+docs/engineering/march31_safe_fix/
+docs/engineering/master_remediation/
+docs/engineering/no_trade_incident_master/
+docs/engineering/no_trade_remediation_*/
+docs/engineering/preopen_j6_*/
+docs/engineering/residual_backlog_triage/
+docs/engineering/residual_master_remediation/
+docs/engineering/residual_risk_closure/
+docs/engineering/weekend_audit/
+docs/engineering/weekend_master_audit/
+docs/engineering/weekend_master_audit_complete/
+
+# Local experiment scripts; promote intentionally with explicit names.
+scripts/backtest_*.py
+scripts/empirical_*_replay.py
