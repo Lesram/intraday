@@ -90,10 +90,11 @@ def test_drop_ml_from_gate_constant_present_default_true():
 
 def test_drop_ml_gate_uses_h2_learning_mode_formula():
     """When DROP_ML_FROM_GATE active, gate uses 0.65×breakout + 0.35×tension
-    (mirroring H2's learning-mode formula)."""
+    (mirroring H2's ML-isolated formula)."""
     src = _engine_source()
     # Check the actual gating substitution is present
-    assert "if DROP_ML_FROM_GATE and not self._is_learning_mode:" in src
+    assert "self._ml_isolation_mode" in src
+    assert "DROP_ML_FROM_GATE and not self._is_learning_mode" in src
     assert "0.65 * breakout_score" in src
     assert "0.35 * min(tension, 1.0)" in src
 

@@ -35,6 +35,14 @@ def _build_defaults_snapshot() -> dict:
             DEFAULT_MAX_CHANGES_PER_DAY,
         )
         from backend.organism.kelly_sizer import KellySizer
+        from backend.organism.trading_phase import (
+            EVOLUTION_FREEZE_TRADES,
+            PROMOTION_MIN_LAST_50_MEAN_PNL,
+            PROMOTION_MIN_LAST_50_WIN_RATE,
+            PROMOTION_MIN_SHARPE_PER_TRADE,
+            PROMOTION_MIN_TOTAL_PNL,
+            ML_ISOLATION_TRADES,
+        )
         from backend.organism.live_engine import (
             ALPHA_TOP_N,
             EXPLORATION_ENABLED,
@@ -61,8 +69,14 @@ def _build_defaults_snapshot() -> dict:
             "universe": [s.strip() for s in LIVE_UNIVERSE_CSV.split(",") if s.strip()],
             "universe_size": len([s for s in LIVE_UNIVERSE_CSV.split(",") if s.strip()]),
 
-            "learning_mode_threshold_trades": 200,
-            "evolution_freeze_until_trades": 300,
+            "learning_mode_threshold_trades": ML_ISOLATION_TRADES,
+            "evolution_freeze_until_trades": EVOLUTION_FREEZE_TRADES,
+            "production_promotion_gate": {
+                "min_total_pnl": PROMOTION_MIN_TOTAL_PNL,
+                "min_last_50_mean_pnl": PROMOTION_MIN_LAST_50_MEAN_PNL,
+                "min_last_50_win_rate": PROMOTION_MIN_LAST_50_WIN_RATE,
+                "min_sharpe_per_trade": PROMOTION_MIN_SHARPE_PER_TRADE,
+            },
 
             "max_positions": MAX_OPEN_POSITIONS,
             "alpha_top_n": ALPHA_TOP_N,
@@ -85,6 +99,7 @@ def _build_defaults_snapshot() -> dict:
 
             "risk_budget_production": KellySizer._RISK_BUDGET_PER_TRADE,
             "risk_budget_learning": KellySizer._RISK_BUDGET_PER_TRADE_LEARNING,
+            "risk_budget_guarded": KellySizer._RISK_BUDGET_PER_TRADE_LEARNING,
             "risk_budget_stop_atr": KellySizer._RISK_BUDGET_STOP_ATR,
 
             "stop_atr_table": AdaptiveExitEngine.REGIME_STOP_ATR,
@@ -99,6 +114,9 @@ def _build_defaults_snapshot() -> dict:
             "inverse_etf_enabled": True,
 
             "confidence_weights_learning": {
+                "breakout": 0.65, "tension": 0.35, "ml": 0.0,
+            },
+            "confidence_weights_guarded": {
                 "breakout": 0.65, "tension": 0.35, "ml": 0.0,
             },
             "confidence_weights_production": {
@@ -120,6 +138,12 @@ def _build_defaults_snapshot() -> dict:
             "max_daily_loss": float(os.getenv("ORGANISM_MAX_DAILY_LOSS", "0")),
             "learning_mode_threshold_trades": 200,
             "evolution_freeze_until_trades": 300,
+            "production_promotion_gate": {
+                "min_total_pnl": 0.0,
+                "min_last_50_mean_pnl": 0.0,
+                "min_last_50_win_rate": 0.35,
+                "min_sharpe_per_trade": 0.0,
+            },
             "alpha_top_n": 5,
             "horizon_timeout_bars": 18,
             "bar_boundary_entry_only": True,
@@ -256,16 +280,19 @@ def _build_resolved_config_snapshot() -> dict:
         "timeframe_source": timeframe_source,
         "learning_mode_threshold_trades": defaults.get("learning_mode_threshold_trades"),
         "evolution_freeze_until_trades": defaults.get("evolution_freeze_until_trades"),
+        "production_promotion_gate": defaults.get("production_promotion_gate"),
         "horizon_timeout_bars": defaults.get("horizon_timeout_bars"),
         "bar_boundary_entry_only": defaults.get("bar_boundary_entry_only"),
         "confidence_gate_baseline": defaults.get("confidence_gate_baseline"),
         "confidence_gate_defensive": defaults.get("confidence_gate_defensive"),
         "fitness_gate_production": defaults.get("fitness_gate_production"),
         "risk_budget_learning": defaults.get("risk_budget_learning"),
+        "risk_budget_guarded": defaults.get("risk_budget_guarded"),
         "risk_budget_production": defaults.get("risk_budget_production"),
         "inverse_etfs": defaults.get("inverse_etfs"),
         "universe_size": defaults.get("universe_size"),
         "confidence_weights_learning": defaults.get("confidence_weights_learning"),
+        "confidence_weights_guarded": defaults.get("confidence_weights_guarded"),
         "confidence_weights_production": defaults.get("confidence_weights_production"),
         "stop_atr_table": defaults.get("stop_atr_table"),
     }
@@ -302,6 +329,9 @@ def _build_legacy_runtime_snapshot(
             "max_positions": defaults.get("max_positions"),
             "max_daily_loss": defaults.get("max_daily_loss"),
             "max_notional_per_trade": defaults.get("max_notional_per_trade"),
+            "production_promotion_gate": defaults.get("production_promotion_gate"),
+            "risk_budget_guarded": defaults.get("risk_budget_guarded"),
+            "confidence_weights_guarded": defaults.get("confidence_weights_guarded"),
         },
         "live_process_reachable": live_process.get("reachable"),
         "config_truth_status": _assess_config_truth(resolved, live_process),
@@ -466,6 +496,17 @@ def _build_live_process_snapshot() -> dict:
         )
         live["is_learning_mode"] = _pick_annotated(
             "is_learning_mode", "learning_mode", "is_learning_mode",
+        )
+        live["trading_phase"] = _pick_annotated("trading_phase", "trading_phase")
+        live["guarded_mode"] = _pick_annotated("guarded_mode", "guarded_mode")
+        live["ml_influence_enabled"] = _pick_annotated(
+            "ml_influence_enabled", "ml_influence_enabled",
+        )
+        live["fixed_risk_sizing"] = _pick_annotated(
+            "fixed_risk_sizing", "fixed_risk_sizing",
+        )
+        live["promotion_blockers"] = _pick_annotated(
+            "promotion_blockers", "promotion_blockers",
         )
         live["brain_generation"] = _pick_annotated("brain_generation", "brain_generation")
         live["uptime_seconds"] = _pick_annotated("uptime_seconds", "uptime_seconds")

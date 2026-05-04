@@ -157,7 +157,8 @@ class AlphaScanner:
                 _eff_conf = ml_sig.effective_confidence if ml_sig.effective_confidence > 0 else ml_sig.confidence
                 ml_score = _eff_conf * abs(ml_sig.predicted_return) * 20  # Scale up
                 ml_score = min(ml_score, 1.0)
-                direction = ml_sig.direction
+                if not learning_mode:
+                    direction = ml_sig.direction
 
             # 2. Breakout readiness (composite: squeeze + coil + resistance proximity)
             breakout_readiness = float(row.get("comp_breakout_readiness", 0.0))
@@ -212,9 +213,13 @@ class AlphaScanner:
                 + self.WEIGHT_REGIME * regime_score
             )
 
-            # If ML says hold, penalize — but less when untrained
+            # If ML says hold, penalize — but less when ML is isolated or
+            # untrained.  Phase 2 guarded-production mode reuses
+            # learning_mode to mean "ML must not influence the main book";
+            # in that state direction is derived from observable
+            # momentum/breakout, not the model's direction output.
             if direction == 0:
-                if not ml_is_trained:
+                if learning_mode or not ml_is_trained:
                     # Derive direction from momentum/breakout when ML is untrained
                     ret_5d = float(row.get("ret_5d", 0.0))
                     _bo_readiness = float(row.get("comp_breakout_readiness", 0.0))
@@ -256,10 +261,23 @@ class AlphaScanner:
             # "calibrated_breakout" if breakout + ML confirms direction
             # "heuristic" if no ML or synthetic floor
             _exp_ret_source = "heuristic"
-            if ml_is_trained and ml_sig and ml_sig.direction != 0 and abs(ml_sig.predicted_return) > 1e-6:
+            if (
+                not learning_mode
+                and ml_is_trained
+                and ml_sig
+                and ml_sig.direction != 0
+                and abs(ml_sig.predicted_return) > 1e-6
+            ):
                 _exp_ret_source = "ml"
-            elif breakout_score >= 0.4 and ml_is_trained and ml_sig and ml_sig.direction != 0:
+            elif (
+                not learning_mode
+                and breakout_score >= 0.4
+                and ml_is_trained
+                and ml_sig
+                and ml_sig.direction != 0
+            ):
                 _exp_ret_source = "calibrated_breakout"
+            candidate_ml_signal = None if learning_mode else ml_sig
 
             candidates.append(AlphaCandidate(
                 symbol=symbol,
@@ -271,7 +289,7 @@ class AlphaScanner:
                 regime_score=regime_score,
                 institutional_score=inst_score,
                 momentum_quality_score=mom_quality,
-                ml_signal=ml_sig,
+                ml_signal=candidate_ml_signal,
                 direction=direction,
                 expected_return_source=_exp_ret_source,
             ))

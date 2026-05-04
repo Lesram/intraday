@@ -828,6 +828,46 @@ class OrganismLiveEngine:
         ]
 
     @property
+    def _trading_phase(self) -> dict[str, Any]:
+        """Phase 2: cached phase resolver with expectancy-aware promotion.
+
+        Trade count still controls bootstrap thresholds.  Once the brain
+        has enough strategy trades, realized expectancy can demote it to
+        ``production_guarded`` so full Kelly/ML behavior is not enabled
+        solely because a losing system crossed 300 trades.
+        """
+        cache: tuple[int, dict[str, Any]] | None = getattr(
+            self, "_trading_phase_tick_cache", None
+        )
+        tick = getattr(self, "_tick_count", -1)
+        if cache is not None and cache[0] == tick:
+            return cache[1]
+
+        trades = self._strategy_trades()
+        expectancy: dict[str, Any] | None = None
+        try:
+            from backend.organism.trading_phase import EVOLUTION_FREEZE_TRADES
+            if len(trades) >= EVOLUTION_FREEZE_TRADES:
+                from backend.organism.strategy_expectancy import compute_from_trades
+                expectancy = compute_from_trades(trades)
+            from backend.organism.trading_phase import resolve_trading_phase
+            phase = resolve_trading_phase(
+                len(trades),
+                strategy_expectancy=expectancy,
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(
+                "Trading phase resolver failed; falling back to count-only "
+                "learning mode check: %s",
+                exc,
+            )
+            from backend.organism.trading_phase import resolve_trading_phase
+            phase = resolve_trading_phase(len(trades))
+
+        self._trading_phase_tick_cache = (tick, phase)
+        return phase
+
+    @property
     def _is_learning_mode(self) -> bool:
         """True when engine has < LEARNING_MODE_TRADES completed strategy trades.
 
@@ -837,6 +877,7 @@ class OrganismLiveEngine:
         Cache is keyed on `self._tick_count`; the next tick recomputes.
         """
         from backend.organism.trading_phase import LEARNING_MODE_TRADES
+        threshold = LEARNING_MODE_TRADES
         # V4 R-F-8 (2026-05-02): filter reconciliation artifacts.
         cache: tuple[int, bool] | None = getattr(
             self, "_learning_mode_tick_cache", None
@@ -844,9 +885,33 @@ class OrganismLiveEngine:
         tick = getattr(self, "_tick_count", -1)
         if cache is not None and cache[0] == tick:
             return cache[1]
-        value = len(self._strategy_trades()) < LEARNING_MODE_TRADES
+        phase = getattr(self, "_trading_phase", None)
+        if isinstance(phase, dict):
+            value = bool(
+                phase.get(
+                    "is_learning",
+                    len(self._strategy_trades()) < threshold,
+                )
+            )
+        else:
+            value = len(self._strategy_trades()) < threshold
         self._learning_mode_tick_cache = (tick, value)
         return value
+
+    @property
+    def _is_guarded_production_mode(self) -> bool:
+        """True when realized expectancy blocks full production promotion."""
+        return bool(self._trading_phase.get("is_guarded", False))
+
+    @property
+    def _ml_isolation_mode(self) -> bool:
+        """True when ML must not influence main-book ranking/gates."""
+        return not bool(self._trading_phase.get("ml_influence_enabled", False))
+
+    @property
+    def _fixed_risk_sizing_mode(self) -> bool:
+        """True when Kelly sizing must be bypassed for fixed ATR risk."""
+        return bool(self._trading_phase.get("fixed_risk_sizing", False))
 
     @property
     def _dynamic_max_entries_per_hour(self) -> int:
@@ -1388,9 +1453,16 @@ class OrganismLiveEngine:
         else:
             logger.info("Organism live engine starting fresh (no brain)")
 
-        # H4: Log resolved trading phase using shared resolver
+        # H4 / Phase 2: log resolved trading phase using shared resolver.
+        # Use strategy-trade count plus expectancy so a high-trade losing
+        # brain is logged as production_guarded rather than full production.
+        from backend.organism.strategy_expectancy import compute_from_trades
         from backend.organism.trading_phase import log_trading_phase
-        log_trading_phase(len(self._all_trades))
+        _strategy_trades_for_phase = self._strategy_trades()
+        log_trading_phase(
+            len(_strategy_trades_for_phase),
+            strategy_expectancy=compute_from_trades(_strategy_trades_for_phase),
+        )
 
         # ── Phase 4.7: Transfer learning warm-start ──────────────
         # Hardening: skip warm-start during 300-trade evolution freeze.
@@ -2990,7 +3062,7 @@ class OrganismLiveEngine:
                         "Entry throttle: %d entries in last hour (max %d, %s) — "
                         "blocking new entries this tick",
                         len(self._entry_timestamps), _effective_max,
-                        "learning" if self._is_learning_mode else "production",
+                        self._trading_phase.get("phase", "unknown"),
                     )
                     result.activity.append(ActivityEvent(
                         event_type="skip",
@@ -3197,7 +3269,7 @@ class OrganismLiveEngine:
                 candidates = self.alpha_scanner.scan(
                     features_by_symbol, ml_signals, regime,
                     ml_is_trained=self.signal_gen.is_trained,
-                    learning_mode=self._is_learning_mode,
+                    learning_mode=self._ml_isolation_mode,
                 )
 
                 # Build candidate list
@@ -3321,10 +3393,10 @@ class OrganismLiveEngine:
                             from backend.organism.ml_features import compute_tension_proxy
                             tension = compute_tension_proxy(feat_df)
                     # Additive confidence — preserves ranking granularity
-                    if self._is_learning_mode:
-                        # improve9: ML weight = 0 in learning mode. ML is
-                        # untrained and anti-predictive (high conf = worse
-                        # outcomes on Mar 6). Use only observable signals.
+                    if self._ml_isolation_mode:
+                        # improve9 / Phase 2: ML weight = 0 while the
+                        # brain is bootstrapping or guarded by realized
+                        # expectancy. Use only observable signals.
                         confidence = (
                             0.65 * breakout_score
                             + 0.35 * min(tension, 1.0)
@@ -3369,7 +3441,7 @@ class OrganismLiveEngine:
                     )
                     _conf_ml_component = (
                         (c.ml_signal.confidence if c.ml_signal else 0.0)
-                        if not self._is_learning_mode
+                        if not self._ml_isolation_mode
                         else 0.0
                     )
                     # Will the candidate pass the main-book gate?
@@ -3380,11 +3452,13 @@ class OrganismLiveEngine:
                         "Exp3: confidence side-by-side: %s regime=%s "
                         "conf_live=%.4f conf_bt_only=%.4f ml_component=%.4f "
                         "gate_pass_live=%s gate_pass_bt_only=%s "
-                        "breakout=%.4f tension=%.4f learning_mode=%s",
+                        "breakout=%.4f tension=%.4f learning_mode=%s "
+                        "ml_isolation_mode=%s",
                         c.symbol, regime,
                         confidence, _conf_bt_only, _conf_ml_component,
                         _would_pass_live, _would_pass_bt_only,
                         breakout_score, tension, self._is_learning_mode,
+                        self._ml_isolation_mode,
                     )
 
                     # A2 (improve8): Two-tier confidence gate
@@ -3393,12 +3467,17 @@ class OrganismLiveEngine:
                     # both paths (unified threshold).
 
                     # B1 (improve8): Heuristic expected_return → exploration only
-                    # Exception: in learning mode, allow heuristic through main-book
-                    # (A4 risk caps protect sizing). Otherwise engine can never
-                    # accumulate 200 trades to train ML.
+                    # Exception: in bootstrap learning or guarded production,
+                    # allow heuristic through main-book (fixed risk caps
+                    # protect sizing). Otherwise a guarded losing brain
+                    # would have ML disabled but no non-ML entry route.
+                    _heuristic_main_book_allowed = (
+                        self._is_learning_mode
+                        or self._is_guarded_production_mode
+                    )
                     _is_heuristic = (
                         c.expected_return_source == "heuristic"
-                        and not self._is_learning_mode
+                        and not _heuristic_main_book_allowed
                     )
 
                     # Track 1 fix (RC-1.5 curated): gate on composite confidence,
@@ -3419,7 +3498,10 @@ class OrganismLiveEngine:
                     # the relative ordering of candidates still benefits
                     # from any ML signal that does exist; only the
                     # pass/fail threshold drops the ML weight.
-                    if DROP_ML_FROM_GATE and not self._is_learning_mode:
+                    if (
+                        self._ml_isolation_mode
+                        or (DROP_ML_FROM_GATE and not self._is_learning_mode)
+                    ):
                         _eff_conf = (
                             0.65 * breakout_score
                             + 0.35 * min(tension, 1.0)
@@ -3518,7 +3600,7 @@ class OrganismLiveEngine:
                     # vetoing breakout signals on ML direction blocks valid
                     # entries from accumulating training data.
                     ml_sig = ml_signals.get(bs.symbol)
-                    if not self._is_learning_mode and ml_sig and ml_sig.direction < 0:
+                    if not self._ml_isolation_mode and ml_sig and ml_sig.direction < 0:
                         continue
                     # Surgical fix (Ferrari v1, ML leakage audit): the
                     # 0.003 floor was masking weak ML signals — 49% of
@@ -3542,7 +3624,7 @@ class OrganismLiveEngine:
                     # predicted_return still feed Kelly a positive expected
                     # return for a LONG entry.
                     if (
-                        ml_sig and not self._is_learning_mode
+                        ml_sig and not self._ml_isolation_mode
                         and ml_sig.direction > 0
                         and abs(ml_sig.predicted_return) > 1e-4
                     ):
@@ -3552,7 +3634,7 @@ class OrganismLiveEngine:
                     # Determine expected_return_source for breakout
                     _bo_ret_source = "heuristic"
                     if (
-                        ml_sig and not self._is_learning_mode
+                        ml_sig and not self._ml_isolation_mode
                         and ml_sig.direction > 0
                         and abs(ml_sig.predicted_return) > 1e-6
                     ):
@@ -3581,7 +3663,7 @@ class OrganismLiveEngine:
                 if (
                     ORB_LIVE_ENABLED
                     and self._latest_orb_triggered
-                    and not self._is_learning_mode
+                    and not self._ml_isolation_mode
                 ):
                     _existing_syms = {d["symbol"] for d in cand_dicts}
                     for orbc in self._latest_orb_triggered:
@@ -3744,7 +3826,7 @@ class OrganismLiveEngine:
                 if (
                     EOD_LIVE_ENABLED
                     and self._latest_eod_candidates
-                    and not self._is_learning_mode
+                    and not self._ml_isolation_mode
                 ):
                     _existing_syms = {d["symbol"] for d in cand_dicts}
                     for eodc in self._latest_eod_candidates:
@@ -3905,7 +3987,7 @@ class OrganismLiveEngine:
                 if (
                     MEAN_REVERSION_LIVE_ENABLED
                     and self._latest_mr_candidates
-                    and not self._is_learning_mode
+                    and not self._ml_isolation_mode
                 ):
                     _existing_syms = {d["symbol"] for d in cand_dicts}
                     for mrc in self._latest_mr_candidates:
@@ -4095,6 +4177,7 @@ class OrganismLiveEngine:
                     # learning-mode-vs-production sizing; reconciliation
                     # bookkeeping should not advance the regime-promote.
                     trade_count=len(self._strategy_trades()),
+                    fixed_risk_mode=self._fixed_risk_sizing_mode,
                 )
                 self._last_kelly_sizes = sizes
 
@@ -4817,6 +4900,13 @@ class OrganismLiveEngine:
             effective_fitness_gate=getattr(self, "_last_eff_fitness_gate", 0.45),
             effective_confidence_gate=getattr(self, "_last_eff_conf_gate", 0.30),
             burst_cap_remaining=getattr(self, "_last_burst_remaining", 4),
+            trading_phase=str(self._trading_phase.get("phase", "")),
+            guarded_mode=self._is_guarded_production_mode,
+            ml_isolation_mode=self._ml_isolation_mode,
+            fixed_risk_sizing=self._fixed_risk_sizing_mode,
+            promotion_blockers=list(
+                self._trading_phase.get("promotion_blockers", [])
+            ),
         )
 
         return snap
@@ -6901,6 +6991,7 @@ class OrganismLiveEngine:
         if hasattr(self.learner, "generation_metrics"):
             training_history = list(self.learner.generation_metrics)
 
+        trading_phase = self._trading_phase
         return {
             "initialized": self._initialized,
             "tick_count": self._tick_count,
@@ -6929,6 +7020,17 @@ class OrganismLiveEngine:
             "shorts_enabled": self.evolved_params.shorts_enabled,
             "data_stale": self._data_stale,
             "learning_mode": self._is_learning_mode,
+            "trading_phase": trading_phase.get("phase", ""),
+            "guarded_mode": trading_phase.get("is_guarded", False),
+            "ml_influence_enabled": trading_phase.get(
+                "ml_influence_enabled",
+                not self._ml_isolation_mode,
+            ),
+            "fixed_risk_sizing": trading_phase.get(
+                "fixed_risk_sizing",
+                self._fixed_risk_sizing_mode,
+            ),
+            "promotion_blockers": trading_phase.get("promotion_blockers", []),
             "watchdog": self.get_watchdog_state(),
             **scanner_info,
         }
@@ -7028,7 +7130,7 @@ class OrganismLiveEngine:
         candidates = self.alpha_scanner.scan(
             features_by_symbol, ml_signals, regime,
             ml_is_trained=self.signal_gen.is_trained,
-            learning_mode=self._is_learning_mode,
+            learning_mode=self._ml_isolation_mode,
         )
 
         signals = []
@@ -7040,9 +7142,9 @@ class OrganismLiveEngine:
         for c in candidates:
             if LONG_ONLY and not self.evolved_params.shorts_enabled and c.direction < 0:
                 continue
-            # Learning mode: use composite_score (breakout+tension based,
-            # no ML). Production: use ML confidence if available.
-            if self._is_learning_mode:
+            # ML isolation mode: use composite_score (observable factors,
+            # no ML). Full production: use ML confidence if available.
+            if self._ml_isolation_mode:
                 confidence = c.composite_score
             else:
                 confidence = c.ml_signal.confidence if c.ml_signal else 0.3

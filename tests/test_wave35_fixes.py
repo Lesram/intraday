@@ -93,7 +93,8 @@ def test_dd2_8_pure_breakout_gates_on_direction():
     # Locate the pure-breakout pred_ret block (the one with the
     # 1e-4 threshold and pred_ret = 0.005 + 0.015 * bs.composite_score).
     # Confirm direction > 0 is in the same conditional.
-    block = src[src.find("ml_sig and not self._is_learning_mode\n"):]
+    block = src[src.find("ml_sig and not self._ml_isolation_mode\n"):]
+    assert block, "Pure-breakout ML-isolation guard no longer present"
     # Iterate until we find the bs.composite_score reference (the pure
     # breakout fallback).
     idx = src.find("0.005 + 0.015 * bs.composite_score")
