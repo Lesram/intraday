@@ -195,6 +195,7 @@ async def test_replay_completes_100_ticks():
         bars_by_symbol=bars,
         initial_cash=100_000,
         slippage_bps=5,
+        lookback=200,
     )
     result = await engine.run(max_ticks=100)
 
@@ -211,7 +212,7 @@ async def test_replay_trades_have_valid_pnl():
     bars = make_features_dict(
         ["AAPL", "MSFT", "SPY"], n=700, seed=42, trend="up",
     )
-    engine = ReplayEngine(bars_by_symbol=bars, initial_cash=100_000)
+    engine = ReplayEngine(bars_by_symbol=bars, initial_cash=100_000, lookback=200)
     result = await engine.run(max_ticks=100)
 
     for trade in result.trades:
@@ -403,6 +404,7 @@ async def test_replay_no_throttle_blocking():
         initial_cash=1_000_000,  # V13 W93: lifts Kelly notionals above $2k floor
         slippage_bps=5,
         max_entries_per_hour=20,
+        lookback=200,
     )
     result = await engine.run(max_ticks=100)
 
@@ -440,6 +442,7 @@ async def test_replay_throttle_actually_blocks_at_low_limit():
         slippage_bps=5,
         max_entries_per_hour=1,  # tight throttle
         timeframe="1Min",
+        lookback=200,
     )
     result = await engine.run(max_ticks=100)
     total_orders = sum(
@@ -490,6 +493,7 @@ async def test_replay_intraday_timeframe_uses_tight_stops():
         initial_cash=100_000,
         slippage_bps=5,
         timeframe="1Min",
+        lookback=200,
     )
     result = await engine.run(max_ticks=50)
 
