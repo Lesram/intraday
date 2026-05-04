@@ -6,6 +6,11 @@ on:
   pull_request:
     branches: [ main, develop ]
 
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
 env:
   PYTHON_VERSION: "3.11"
   POETRY_VERSION: "1.6.1"
@@ -525,6 +530,7 @@ jobs:
       - name: Generate PR comment
         if: github.event_name == 'pull_request'
         uses: actions/github-script@v6
+        continue-on-error: true
         with:
           script: |
             const fs = require('fs');
@@ -574,7 +580,7 @@ jobs:
             | Check | Status | Details |
             |-------|--------|---------|
             | **Lint & Format** | ${lintStatus} | Ruff linting and formatting |
-            | **Type Check** | ${typeStatus} | MyPy strict type checking |
+            | **Type Check** | ${typeStatus} | MyPy strict report, advisory while legacy backlog is ratcheted down |
             | **Security Scan** | ${securityStatus} | Bandit + pip-audit |
             | **Tests & Coverage** | ${testStatus} | ${coverageStatus} ${coverageText} |
             | **Audit Gate** | ${auditGateStatus} | V12/V13 marker-only Critical/High gate |
@@ -585,14 +591,13 @@ jobs:
             | **Strategy Floor** | ${strategyFloorStatus} | V13 strategy floor gate |
 
             ### 📊 Coverage Requirements
-            - **Minimum Global**: ≥80% 🟢
-            - **Diff Coverage**: ≥95% for new/modified code
-            - **Excellence**: ≥90% 🎯
-            - **Ratchet**: No decrease vs main branch
+            - **Smoke-suite minimum**: ≥1% measured backend coverage
+            - **Diff Coverage**: reported for new/modified code, advisory during branch cleanup
+            - **Future target**: restore meaningful whole-tree ratchet after main catches up
 
             ### 🔧 Quality Standards
             - **Security Level**: High severity vulnerabilities blocked
-            - **Type Safety**: Strict MyPy mode enabled
+            - **Type Safety**: Strict MyPy signal visible; not yet a hard full-tree gate
             - **Code Style**: Ruff formatting enforced
             - **Test Coverage**: Staged ratcheting system
 

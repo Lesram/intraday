@@ -62,13 +62,18 @@ def _make_engine(
     )
     brain_dir = brain_dir or "/tmp/test_brain_scenarios"
 
-    return OrganismLiveEngine(
+    engine = OrganismLiveEngine(
         data_client=data_client,
         order_service=broker,
         positions_service=broker,
         brain_dir=brain_dir,
         universe=universe,
     )
+    # Scenario tests must stay hermetic. The production default can enable the
+    # Alpaca screener, but CI has no market-data credentials and should not
+    # spend timeout budget retrying external 401s.
+    engine.market_scanner = None
+    return engine
 
 
 async def _run_ticks(engine, n: int) -> list:
