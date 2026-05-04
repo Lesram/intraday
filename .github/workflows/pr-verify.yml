@@ -111,7 +111,9 @@ jobs:
         run: |
           python -m pytest -q tests/test_self_evolution.py --timeout=30
       - name: Generate artifact pack
-        timeout-minutes: 10
+        # Full artifact generation replays evidence after the explicit
+        # organism suites; GitHub runners are much slower than local here.
+        timeout-minutes: 20
         run: python scripts/ci/generate_artifacts.py full
       - name: Generate audit index
         timeout-minutes: 2
