@@ -1,8 +1,8 @@
 # Live Audit Index
 
-Generated: 2026-05-04T22:17:51Z
+Generated: 2026-05-04T22:30:36Z
 PR: PR #6
-SHA: `6deb738e9c`
+SHA: `a3451ffd67`
 Branch: `codex/v13-phase2-expectancy`
 Scope: **backend_logic**
 Change scope: `task` (`HEAD`)
@@ -11,9 +11,9 @@ Change scope: `task` (`HEAD`)
 
 | Category | Count | Files |
 |----------|-------|-------|
-| Backend | 5 | `backend/organism/alpha_scanner.py`, `backend/organism/decision_telemetry.py`, `backend/organism/kelly_sizer.py`, `backend/organism/live_engine.py`, `backend/organism/trading_phase.py` |
-| Organism | 5 | `backend/organism/alpha_scanner.py`, `backend/organism/decision_telemetry.py`, `backend/organism/kelly_sizer.py`, `backend/organism/live_engine.py`, `backend/organism/trading_phase.py` |
-| Tests | 4 | `tests/test_ferrari_v1_fixes.py`, `tests/test_phase2_guarded_promotion.py`, `tests/test_semantic_invariants.py`, `tests/test_wave35_fixes.py` |
+| Backend | 1 | `backend/organism/live_engine.py` |
+| Organism | 1 | `backend/organism/live_engine.py` |
+| Tests | 1 | `tests/test_phase2_guarded_promotion.py` |
 | Docs | 1 | `docs/architecture/mapss.md` |
 
 ## Live constants
@@ -49,4 +49,4 @@ Source: `resolved_config_snapshot.json`
 
 ## Open risks
 
-- 5 organism file(s) changed — require replay verification
+- 1 organism file(s) changed — require replay verification
