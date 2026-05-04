@@ -31,6 +31,7 @@ from typing import Any
 from fastapi import APIRouter, HTTPException
 
 from backend.organism import strategy_expectancy as _sx
+from backend.organism import strategy_attribution as _attr
 
 
 router = APIRouter(prefix="/health", tags=["Health"])
@@ -74,7 +75,7 @@ def _read_manifest_expectancy(brain_dir: Path) -> dict[str, Any] | None:
         return None
     try:
         m = json.loads(mpath.read_text())
-    except Exception:
+    except (OSError, json.JSONDecodeError):
         return None
     sx = m.get("strategy_expectancy")
     if isinstance(sx, dict) and "n_trades" in sx:
@@ -82,28 +83,63 @@ def _read_manifest_expectancy(brain_dir: Path) -> dict[str, Any] | None:
     return None
 
 
-def _compute_from_csv(brain_dir: Path) -> dict[str, Any] | None:
-    """Recompute expectancy from trade_history.csv (fallback)."""
+def _read_manifest_attribution(brain_dir: Path) -> dict[str, Any] | None:
+    """Return the manifest's ``strategy_attribution`` block if present."""
+    mpath = brain_dir / "manifest.json"
+    if not mpath.is_file():
+        return None
+    try:
+        m = json.loads(mpath.read_text())
+    except (OSError, json.JSONDecodeError):
+        return None
+    attr = m.get("strategy_attribution")
+    if isinstance(attr, dict) and "segments" in attr:
+        return attr
+    return None
+
+
+def _read_csv_rows(brain_dir: Path) -> list[dict[str, Any]] | None:
+    """Read trade_history.csv rows for fallback computations."""
     csv_path = brain_dir / "trade_history.csv"
     if not csv_path.is_file():
         return None
-    pnls: list[float] = []
+    rows: list[dict[str, Any]] = []
     with csv_path.open() as fh:
         reader = csv.DictReader(fh)
         for row in reader:
-            try:
-                pnls.append(float(row.get("pnl", 0)))
-            except (TypeError, ValueError):
-                continue
+            rows.append(dict(row))
+    return rows
+
+
+def _compute_from_csv(brain_dir: Path) -> dict[str, Any] | None:
+    """Recompute expectancy from trade_history.csv (fallback)."""
+    rows = _read_csv_rows(brain_dir)
+    if rows is None:
+        return None
+    pnls: list[float] = []
+    for row in rows:
+        try:
+            pnls.append(float(row.get("pnl", 0)))
+        except (TypeError, ValueError):
+            continue
     return _sx.compute_from_pnls(pnls)
 
 
+def _compute_attribution_from_csv(brain_dir: Path) -> dict[str, Any] | None:
+    rows = _read_csv_rows(brain_dir)
+    if rows is None:
+        return None
+    return _attr.compute_from_trades(rows)
+
+
 _ALLOWED_WINDOWS = {"last_25", "last_50"}
+_ALLOWED_DETAILS = {"attribution"}
 
 
 @router.get("/strategy")
 async def strategy_health(
     window: str | None = None,
+    detail: str | None = None,
 ) -> dict[str, Any]:
     """V12 W71: live strategy-expectancy snapshot.
 
@@ -124,6 +160,11 @@ async def strategy_health(
         raise HTTPException(
             status_code=400,
             detail=f"window must be one of {sorted(_ALLOWED_WINDOWS)}",
+        )
+    if detail is not None and detail not in _ALLOWED_DETAILS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"detail must be one of {sorted(_ALLOWED_DETAILS)}",
         )
     brain_dir = _resolve_brain_dir()
 
@@ -154,6 +195,13 @@ async def strategy_health(
     if csv_path.is_file():
         payload["csv_mtime"] = os.path.getmtime(csv_path)
 
+    if detail == "attribution":
+        attribution = _read_manifest_attribution(brain_dir)
+        if attribution is None:
+            attribution = _compute_attribution_from_csv(brain_dir)
+        if attribution is not None:
+            payload["strategy_attribution"] = attribution
+
     # V13 W94: windowed projection.
     if window is not None:
         prefix = f"{window}_"
@@ -167,6 +215,14 @@ async def strategy_health(
         for k, v in payload.items():
             if k.startswith(prefix):
                 slim[k] = v
+        if detail == "attribution" and "strategy_attribution" in payload:
+            window_attr = (
+                payload["strategy_attribution"]
+                .get("windows", {})
+                .get(window)
+            )
+            if window_attr is not None:
+                slim["strategy_attribution"] = window_attr
         return slim
 
     return payload

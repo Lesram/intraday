@@ -1,20 +1,20 @@
 # Live Audit Index
 
-Generated: 2026-05-04T19:17:53Z
-PR: PR #4
-SHA: `955a53bc17`
-Branch: `codex/v13-root-fixes`
+Generated: 2026-05-04T21:04:33Z
+PR: n/a
+SHA: `9f4639deec`
+Branch: `codex/v13-phase2-expectancy`
 Scope: **backend_logic**
-Change scope: `working-tree` (`HEAD+working-tree`)
+Change scope: `task` (`HEAD`)
 
 ## Changed files
 
 | Category | Count | Files |
 |----------|-------|-------|
-| Backend | 1 | `backend/organism/self_evolution.py` |
-| Organism | 1 | `backend/organism/self_evolution.py` |
-| Tests | 1 | `tests/test_self_evolution.py` |
-| Docs | 0 | none |
+| Backend | 3 | `backend/api/routes/strategy_health.py`, `backend/organism/brain_persistence.py`, `backend/organism/strategy_attribution.py` |
+| Organism | 2 | `backend/organism/brain_persistence.py`, `backend/organism/strategy_attribution.py` |
+| Tests | 1 | `tests/test_phase2_strategy_attribution.py` |
+| Docs | 1 | `docs/engineering/LIVE_AUDIT_INDEX.md` |
 
 ## Live constants
 
@@ -49,4 +49,4 @@ Source: `resolved_config_snapshot.json`
 
 ## Open risks
 
-- 1 organism file(s) changed — require replay verification
+- 2 organism file(s) changed — require replay verification

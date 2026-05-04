@@ -1356,6 +1356,20 @@ class OrganismBrain:
             elif self.trade_history:
                 trades_src = self.trade_history
             manifest["strategy_expectancy"] = _sx.compute_from_trades(trades_src)
+            # Phase 2: persist bounded attribution so strategy health is
+            # actionable, not just a headline PnL number.
+            from backend.organism import strategy_attribution as _attr
+            manifest["strategy_attribution"] = _attr.compute_from_trades(trades_src)
+            try:
+                from backend.organism.strategy_alerts import (
+                    maybe_dispatch_low_win_rate_alert,
+                )
+                maybe_dispatch_low_win_rate_alert(manifest["strategy_expectancy"])
+            except Exception as alert_exc:  # noqa: BLE001
+                logger.warning(
+                    "V13 W94: strategy health alert dispatch failed (%s)",
+                    alert_exc,
+                )
         except Exception as e:
             # Manifest writes must never crash on expectancy compute —
             # the manifest is too important to block on a math error.
