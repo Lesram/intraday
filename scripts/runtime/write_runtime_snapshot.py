@@ -426,9 +426,21 @@ def _curl_organism_status() -> dict | None:
 
 
 def _get_auth_token(base: str) -> str:
-    """Get auth token for API access."""
-    username = os.getenv("INTRA_API_USER", "") or "admin@example.com"
-    password = os.getenv("INTRA_API_PASSWORD", "") or "admin123"
+    """Get auth token for API access.
+
+    V12 W89 (post-cleanup, COMP-407/408): removed dev-credential
+    fallbacks that were used as the default when INTRA_API_USER /
+    INTRA_API_PASSWORD were unset.  Operators must now set the env
+    vars explicitly; an unset var returns an empty token, which
+    makes the failure visible instead of silently authenticating as
+    the dev admin user.
+    """
+    username = os.getenv("INTRA_API_USER", "")
+    password = os.getenv("INTRA_API_PASSWORD", "")
+    if not username or not password:
+        # Operator hasn't supplied credentials — return empty token
+        # so callers see the auth failure explicitly.
+        return ""
     try:
         import urllib.request
         import urllib.error

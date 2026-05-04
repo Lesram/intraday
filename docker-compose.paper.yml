@@ -141,7 +141,13 @@ services:
   redis:
     image: redis:7-alpine
     ports:
-      - "6379:6379"
+      # V12 W89 (post-cleanup, COMP-409): bind host port to 127.0.0.1
+      # only.  Pre-W89 the publish was ``"6379:6379"`` (host 0.0.0.0),
+      # exposing Redis on all host interfaces.  Even with auth, that's
+      # not appropriate for paper-trading on a dev machine.  Container
+      # internal --bind stays 0.0.0.0 (V7 EE-3 / Wave-23e: required for
+      # cross-container traffic on the docker-compose network).
+      - "127.0.0.1:6379:6379"
     # V7 EE-3 / Wave-23e (2026-05-03): bind 0.0.0.0 (was 127.0.0.1).
     # 127.0.0.1 inside a container's network namespace refused all
     # cross-container traffic, leaving the broker SLI permanently red.

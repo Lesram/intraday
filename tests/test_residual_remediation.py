@@ -19,13 +19,28 @@ class TestCOMP409RedisBinding:
     """COMP-409: Redis must bind to 127.0.0.1 in paper compose."""
 
     def test_redis_binds_to_localhost(self):
+        """COMP-409: Redis port must be 127.0.0.1-only on the host.
+
+        V12 W89 (post-cleanup): V7 EE-3 / Wave-23e set the
+        container-internal ``--bind 0.0.0.0`` because cross-container
+        traffic on the docker-compose network requires it.  But the
+        HOST port mapping was ``"6379:6379"`` (all-interfaces), which
+        is the actual security concern COMP-409 raised.  W89 set the
+        host mapping to ``"127.0.0.1:6379:6379"`` and updated this
+        test to look for the host-side bind, not the container bind.
+        """
         compose_path = os.path.join(
             os.path.dirname(__file__), "..", "docker-compose.paper.yml"
         )
         with open(compose_path, "r") as f:
             content = f.read()
-        assert "--bind 127.0.0.1" in content or "--bind localhost" in content, (
-            "Redis must bind to 127.0.0.1 in docker-compose.paper.yml"
+        assert (
+            '"127.0.0.1:6379:6379"' in content
+            or "127.0.0.1:6379:6379" in content
+        ), (
+            "Redis host port must publish to 127.0.0.1 only — "
+            "either ``- 127.0.0.1:6379:6379`` in ports, or remove "
+            "the host port publication entirely."
         )
 
 
@@ -88,9 +103,18 @@ class TestXSYS009SHA256:
     """XSYS-009: File checksums and ETags must use SHA-256, not MD5."""
 
     def test_model_management_uses_sha256(self):
+        """V12 W89 (post-cleanup): backend/ml/model_management.py was
+        removed in a prior wave but this test still references it.
+        Skip when the file is absent (the XSYS-009 concern lives only
+        if the file exists)."""
         path = os.path.join(
             os.path.dirname(__file__), "..", "backend", "ml", "model_management.py"
         )
+        if not os.path.isfile(path):
+            pytest.skip(
+                "backend/ml/model_management.py removed; XSYS-009 not "
+                "applicable in current architecture"
+            )
         with open(path, "r") as f:
             content = f.read()
         # Find _calculate_checksum function -- should use sha256 not md5
