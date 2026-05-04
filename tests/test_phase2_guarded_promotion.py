@@ -71,12 +71,16 @@ def test_live_engine_phase_cache_demotes_losing_brain_without_learning_gates():
     engine._tick_count = 123
     engine._all_trades = [
         SimpleNamespace(pnl=-1.0, is_reconciliation_artifact=False)
-        for _ in range(508)
+        for _ in range(501)
+    ] + [
+        SimpleNamespace(pnl=100.0, is_reconciliation_artifact=True)
+        for _ in range(7)
     ]
 
     phase = engine._trading_phase
 
     assert phase["phase"] == "production_guarded"
+    assert phase["total_trades"] == 501
     assert engine._is_learning_mode is False
     assert engine._is_guarded_production_mode is True
     assert engine._ml_isolation_mode is True

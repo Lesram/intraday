@@ -6978,6 +6978,9 @@ class OrganismLiveEngine:
         win_rate = len(winning) / total_trades if total_trades > 0 else 0.0
         avg_win = sum(t.pnl for t in winning) / len(winning) if winning else 0.0
         avg_loss = sum(t.pnl for t in losing) / len(losing) if losing else 0.0
+        strategy_trades = self._strategy_trades()
+        from backend.organism.strategy_expectancy import compute_from_trades
+        strategy_expectancy = compute_from_trades(strategy_trades)
 
         # ML model metrics
         ml_accuracy = 0.0
@@ -7013,6 +7016,16 @@ class OrganismLiveEngine:
             "losing_trades": len(losing),
             "avg_win": round(avg_win, 2),
             "avg_loss": round(avg_loss, 2),
+            "strategy_total_trades": len(strategy_trades),
+            "strategy_cumulative_pnl": round(
+                float(strategy_expectancy.get("total_pnl", 0.0)),
+                2,
+            ),
+            "strategy_win_rate": strategy_expectancy.get("win_rate", 0.0),
+            "strategy_sharpe_ratio_per_trade": strategy_expectancy.get(
+                "sharpe_ratio_per_trade",
+                0.0,
+            ),
             "ml_accuracy": round(ml_accuracy, 4),
             "ml_trained": self.signal_gen.is_trained,
             "training_history": training_history,

@@ -1820,6 +1820,9 @@ FilteringSummary:
   - trading_phase: "learning" | "production_frozen" | "production_guarded" | "production"
   - guarded_mode / ml_isolation_mode / fixed_risk_sizing: bool flags from trading_phase
   - promotion_blockers: list of realized-expectancy floors blocking full production
+  - strategy_total_trades / strategy_cumulative_pnl / strategy_win_rate /
+    strategy_sharpe_ratio_per_trade: reconciliation-artifact-filtered stats
+    used by the promotion gate
   - effective_max_entries_per_hour: int (12 in learning, max(3, 6-open_positions) in production)
   - effective_fitness_gate: float (0.0 in learning = no gate, 0.45 in production for 10+ trade symbols)
   - burst_cap_remaining: int (entries left in rolling 15-min window, max 4)
