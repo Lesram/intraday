@@ -49,6 +49,7 @@ jobs:
   trivy-scan-dockerfile:
     name: "🔍 Scan Dockerfile"
     runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request'
     permissions:
       actions: read
       contents: read
@@ -97,6 +98,7 @@ jobs:
   trivy-scan-production:
     name: "🔍 Scan Production Dockerfile"
     runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request'
     permissions:
       actions: read
       contents: read
@@ -232,7 +234,7 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| Scan | Status |" >> $GITHUB_STEP_SUMMARY
           echo "|------|--------|" >> $GITHUB_STEP_SUMMARY
-          echo "| Dockerfile | ${{ needs.trivy-scan-dockerfile.result == 'success' && '✅ Passed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Filesystem | ${{ needs.trivy-scan-fs.result == 'success' && '✅ Passed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Dockerfile | ${{ needs.trivy-scan-dockerfile.result == 'success' && '✅ Passed' || needs.trivy-scan-dockerfile.result == 'skipped' && '⏭️ Skipped for PR' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Filesystem | ${{ needs.trivy-scan-fs.result == 'success' && '✅ Passed' || needs.trivy-scan-fs.result == 'skipped' && '⏭️ Skipped' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "View detailed SARIF outputs in the workflow artifacts." >> $GITHUB_STEP_SUMMARY
+          echo "PRs run filesystem/IaC scan and SBOM generation. Full image scans run on push, schedule, and manual dispatch." >> $GITHUB_STEP_SUMMARY
