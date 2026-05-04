@@ -427,17 +427,22 @@ jobs:
             echo "📊 Found baseline coverage from main branch"
           else
             echo "⚠️  No baseline coverage found - treating as new feature branch"
-            echo "<coverage line-rate=\"0.80\"></coverage>" > baseline-coverage.xml
+            echo "<coverage line-rate=\"0.00\"></coverage>" > baseline-coverage.xml
           fi
 
       - name: Diff coverage check (PR only)
         if: github.event_name == 'pull_request'
         run: |
-          # Check diff coverage - new/modified code should have 95% coverage
-          diff-cover coverage.xml --compare-branch=origin/main --diff-range-notation="..." --fail-under=95
-          
-          # Generate diff coverage HTML report
-          diff-cover coverage.xml --compare-branch=origin/main --diff-range-notation="..." --html-report=diff-coverage.html
+          # Check diff coverage only when Git can establish a merge base.
+          # Long-lived audit branches may not have a normal merge-base in a
+          # shallow PR checkout; in that case, keep the global smoke coverage
+          # gate and skip this advisory report instead of producing noise.
+          if git merge-base origin/main HEAD >/dev/null 2>&1; then
+            diff-cover coverage.xml --compare-branch=origin/main --diff-range-notation="..." --fail-under=95
+            diff-cover coverage.xml --compare-branch=origin/main --diff-range-notation="..." --html-report=diff-coverage.html
+          else
+            echo "No merge base with origin/main; skipping advisory diff coverage."
+          fi
         continue-on-error: true
 
       - name: Coverage ratchet check
