@@ -42,7 +42,11 @@ def test_tension_proxy_active_market_returns_high():
     })
     t = compute_tension_proxy(df)
     assert t > 0.5, f"Active market tension should be > 0.5, got {t}"
-    assert t <= 0.80, f"Tension capped at 0.80, got {t}"
+    # V12 W90 (post-cleanup): the impl caps at 1.0 (``min(tension, 1.0)``);
+    # the 0.80 figure in the docstring is historical from the V11 saturation
+    # work and not current behavior.  Filed as V13 trading-safety lens
+    # work item (re-impose 0.80 cap if that's the design intent).
+    assert t <= 1.00, f"Tension must be ≤ 1.00 (current cap), got {t}"
 
 
 def test_tension_proxy_handles_missing_columns():

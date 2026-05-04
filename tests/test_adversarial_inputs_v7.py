@@ -213,24 +213,19 @@ def test_order_validate_special_chars_symbol_rejected():
     assert res["valid"] is False
 
 
-@pytest.mark.xfail(
-    reason="FINDING FF-4: submit_symbol_order does NOT call validate_order. "
-           "Negative/zero/symbol-injection qty bypass validation and are written "
-           "to the outbox. Defense-in-depth gap.",
-    strict=True,
-)
+# V12 W90 (post-cleanup): FF-4 and FF-5 were xfail(strict=True) since
+# the V7 audit; pytest's strict-xfail mode then turns into XPASS(strict)
+# = test failure when the underlying fix ships.  Verified that
+# OrderService.submit_symbol_order now calls _validate / validate_order
+# AND idempotency cache compares request body — both fixes landed in
+# unrecorded waves between V8-V11.  Removed the xfail decorators so
+# the tests serve as positive regression locks going forward.
 def test_submit_symbol_order_validates_inputs():
     from backend.services.order_service import OrderService
     src = inspect.getsource(OrderService.submit_symbol_order)
     assert "validate_order" in src or "_validate" in src
 
 
-@pytest.mark.xfail(
-    reason="FINDING FF-5: idempotency cache returns existing result without "
-           "verifying the new request body matches. A reused key with different "
-           "(symbol, side, qty) silently returns the previous order's response.",
-    strict=True,
-)
 def test_idempotency_collision_with_different_body():
     from backend.services.order_service import OrderService
     src = inspect.getsource(OrderService.submit_symbol_order)

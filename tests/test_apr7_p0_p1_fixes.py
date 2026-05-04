@@ -262,6 +262,13 @@ def test_submit_entry_order_counters_increment(monkeypatch):
     eng._session_id = "test"
     eng._streaming_provider = None
     eng._ENTRY_SLIPPAGE_CAP = 0.001
+    # V12 W90 (post-cleanup): _submit_entry_order now reads _now_fn
+    # for timestamping (added in a V11 wave).  Fixture didn't carry
+    # it; AttributeError on call.  Same pattern as W88 b1/b2.
+    from datetime import UTC, datetime
+    import time as _time
+    eng._now_fn = lambda: datetime.now(UTC)
+    eng._time_fn = _time.time
 
     async def fake_submit(**kwargs):
         return {"order_id": "abc", "filled_qty": 10}

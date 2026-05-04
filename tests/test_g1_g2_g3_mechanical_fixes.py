@@ -19,6 +19,13 @@ class FakeLevel:
     entry_price: float = 100.0
     shares: int = 10
     cost_basis: float = 1000.0
+    # V12 W90 (post-cleanup): V9 DD3-1 / Wave-44 added the ``level``
+    # field to PyramidLevel + ``max_level`` property on PyramidPosition,
+    # so the pyramider could decide which next-level to add even after
+    # ``_reconcile_fills`` collapsed the layers list.  FakePosition stub
+    # didn't have either; pyramider.check_pyramid raised AttributeError
+    # on the new max_level keyed dispatch.
+    level: int = 0
 
 
 @dataclass
@@ -41,6 +48,14 @@ class FakePosition:
     @property
     def layer_count(self):
         return len(self.layers)
+
+    @property
+    def max_level(self):
+        # V12 W90: matches PyramidPosition.max_level — largest level
+        # field across surviving layers, or -1 if none.
+        if not self.layers:
+            return -1
+        return max(getattr(l, "level", 0) for l in self.layers)
 
 
 def test_g3_nan_price_returns_none():

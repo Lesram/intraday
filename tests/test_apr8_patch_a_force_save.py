@@ -243,7 +243,7 @@ def _fake_request(engine):
 def test_route_rejects_without_force_query():
     req = _fake_request(engine=MagicMock())
     with pytest.raises(HTTPException) as exc:
-        asyncio.get_event_loop().run_until_complete(
+        asyncio.new_event_loop().run_until_complete(
             force_save(request=req, force=False, _admin=None)
         )
     assert exc.value.status_code == 400
@@ -265,7 +265,7 @@ def test_route_calls_force_save_brain_when_forced():
         }
     )
     req = _fake_request(engine=engine)
-    result = asyncio.get_event_loop().run_until_complete(
+    result = asyncio.new_event_loop().run_until_complete(
         force_save(request=req, force=True, _admin=None)
     )
     assert engine.force_save_brain.called
@@ -278,7 +278,7 @@ def test_route_returns_409_when_engine_inactive():
     req = MagicMock()
     req.app.state.organism_scheduler = None
     with pytest.raises(HTTPException) as exc:
-        asyncio.get_event_loop().run_until_complete(
+        asyncio.new_event_loop().run_until_complete(
             force_save(request=req, force=True, _admin=None)
         )
     assert exc.value.status_code == 409

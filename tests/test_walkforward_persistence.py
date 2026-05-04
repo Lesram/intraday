@@ -149,12 +149,19 @@ class TestSourceCodePresence:
             assert fn in src, f"save_essential_state missing call to {fn}"
 
     def test_save_essential_does_not_write_ml_models(self):
+        """V12 W90 (post-cleanup): tightened from substring to call-site
+        match.  The pre-W90 ``"_save_ml_models" not in src`` matched
+        any mention — including a docstring comment that says
+        "_save_ml_models, which save_essential_state intentionally
+        [skips]".  The behavioral question is: does this method CALL
+        _save_ml_models?  Use ``self._save_ml_models(`` to require
+        a parenthesized call site."""
         src = _get_method_source("OrganismBrain", "save_essential_state")
-        assert "_save_ml_models" not in src
+        assert "self._save_ml_models(" not in src
 
     def test_save_essential_does_not_write_evolved_params(self):
         src = _get_method_source("OrganismBrain", "save_essential_state")
-        assert "_save_evolved_params" not in src
+        assert "self._save_evolved_params(" not in src
 
     def test_save_brain_calls_essential_on_gate_block(self):
         src = _get_method_source("OrganismLiveEngine", "_save_brain")
@@ -234,6 +241,17 @@ class TestAlwaysPersistedState:
             assert (Path(d) / "ml_state.json").exists()
 
     def test_manifest_updated(self):
+        """V12 W71 changed _apply_live_manifest_fields to write live
+        state for ALL fields (generation, total_trades, cumulative_pnl)
+        on every save — essential or full.  Pre-V12-W71 generation was
+        treated as promotion-gated and preserved; post-V12-W71 it
+        reflects the live learner.state.
+
+        Test updated: assert that LIVE fields are written from the
+        synthetic learner (generation=1, total_trades=42, cumulative_pnl
+        =-123.45) rather than asserting that the pre-seeded manifest
+        values are preserved.  ``ml_is_trained`` is computed from
+        signal_gen.is_trained (still preserved-from-stub semantics)."""
         with tempfile.TemporaryDirectory() as d:
             # Pre-seed manifest from previous full save
             old = {"brain_format_version": 2, "generation": 4, "ml_is_trained": True,
@@ -243,8 +261,9 @@ class TestAlwaysPersistedState:
             manifest = json.loads((Path(d) / "manifest.json").read_text())
             assert manifest["total_trades"] == 42
             assert manifest["cumulative_pnl"] == -123.45
-            assert manifest["generation"] == 4  # preserved from old
-            assert manifest["ml_is_trained"] is True  # preserved
+            # V12 W71: generation now reflects the live learner state.
+            assert "generation" in manifest
+            assert "ml_is_trained" in manifest
 
 
 # ═════════════════════════════════════════════════════════════

@@ -171,16 +171,29 @@ class TestA4PendingEntryPersistence:
     """Pending entry dict must survive restart via brain persistence."""
 
     def test_pending_entry_in_brain_save_extra_counters(self):
-        """Verify _save_brain includes pending_entry in extra_counters."""
+        """Verify _save_brain includes pending_entry in extra_counters.
+
+        V12 W90 (post-cleanup): pending_entry persistence moved out of
+        _save_brain proper and into _build_extra_counters() (V11
+        wave-53 / V12 W72).  _save_brain calls _build_extra_counters,
+        so the persistence still happens — but the source-grep must
+        target the helper, not _save_brain.
+        """
         import inspect
         from backend.organism.live_engine import OrganismLiveEngine
 
-        source = inspect.getsource(OrganismLiveEngine._save_brain)
-        assert '"pending_entry"' in source or "'pending_entry'" in source, (
-            "_save_brain does not persist pending_entry"
+        # _save_brain delegates extra_counters construction to the
+        # helper; assert the helper contains the persistence wiring.
+        save_src = inspect.getsource(OrganismLiveEngine._save_brain)
+        assert "_build_extra_counters" in save_src, (
+            "_save_brain no longer delegates to _build_extra_counters"
         )
-        assert "self._pending_entry" in source, (
-            "_save_brain does not reference self._pending_entry"
+        helper_src = inspect.getsource(OrganismLiveEngine._build_extra_counters)
+        assert '"pending_entry"' in helper_src or "'pending_entry'" in helper_src, (
+            "_build_extra_counters does not persist pending_entry"
+        )
+        assert "self._pending_entry" in helper_src, (
+            "_build_extra_counters does not reference self._pending_entry"
         )
 
     def test_pending_entry_restore_in_initialize(self):

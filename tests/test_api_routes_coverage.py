@@ -159,10 +159,23 @@ class TestOrdersRoutes:
 
 
 class TestPositionImportRoutes:
-    """Test position import routes"""
-    
+    """Test position import routes.
+
+    V12 W90 (post-cleanup): backend/api/routes/position_import.py was
+    removed in a prior wave (V8 NN-CRIT-1 — endpoints were defined but
+    never mounted in routes_setup.py; deleted as dead code).  Test
+    skips when the module is absent."""
+
     def test_import_position_import(self):
         """Import position_import module"""
+        import importlib.util
+        spec = importlib.util.find_spec("backend.api.routes.position_import")
+        if spec is None:
+            import pytest
+            pytest.skip(
+                "backend.api.routes.position_import removed in V8 NN-CRIT-1 "
+                "cleanup; module is no longer part of the route surface."
+            )
         from backend.api.routes import position_import
         assert position_import is not None
         assert hasattr(position_import, 'router')
