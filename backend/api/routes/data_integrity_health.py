@@ -16,7 +16,7 @@ Response surfaces:
 - Both counts.
 - Variance + variance percentage.
 - A boolean ``within_tolerance`` (default 5%).
-- Order, lot, realized-trade, and tick-telemetry row counts.
+- Order, execution, lot, realized-trade, and tick-telemetry row counts.
 - A machine-readable ``accounting_status`` so by-design fill-vs-
   round-trip semantics are not confused with missing persistence.
 
@@ -143,6 +143,7 @@ def _classify_accounting_status(
     brain: int | None,
     realized: int | None,
     orders: int | None,
+    executions: int | None,
     position_lots: int | None,
     tick_telemetry: int | None,
 ) -> dict[str, Any]:
@@ -157,6 +158,8 @@ def _classify_accounting_status(
 
     if brain > 0 and realized == 0:
         reasons.append("brain_has_trades_but_realized_trades_empty")
+    if (orders or 0) > 0 and executions == 0:
+        reasons.append("orders_exist_but_executions_empty")
     if (orders or 0) > 0 and brain > 0 and position_lots == 0:
         reasons.append("orders_and_brain_trades_exist_but_position_lots_empty")
     if (orders or 0) > 0 and tick_telemetry == 0:
@@ -174,6 +177,7 @@ def _classify_accounting_status(
             r in reasons
             for r in (
                 "brain_has_trades_but_realized_trades_empty",
+                "orders_exist_but_executions_empty",
                 "orders_and_brain_trades_exist_but_position_lots_empty",
             )
         ) else "warning"
@@ -200,6 +204,7 @@ async def data_integrity(request: Request) -> dict[str, Any]:
     realized: int | None = None
     table_counts: dict[str, int | None] = {
         "orders": None,
+        "executions": None,
         "realized_trades": None,
         "position_lots": None,
         "tick_telemetry": None,
@@ -207,10 +212,11 @@ async def data_integrity(request: Request) -> dict[str, Any]:
     sm = getattr(request.app.state, "sessionmaker", None)
     if sm is not None:
         async with sm() as session:
-            from backend.infra.schemas import Order, PositionLot, TickTelemetry
+            from backend.infra.schemas import Execution, Order, PositionLot, TickTelemetry
 
             realized = await _count_realized_trades(session)
             table_counts["orders"] = await _count_model_rows(session, Order)
+            table_counts["executions"] = await _count_model_rows(session, Execution)
             table_counts["realized_trades"] = realized
             table_counts["position_lots"] = await _count_model_rows(session, PositionLot)
             table_counts["tick_telemetry"] = await _count_model_rows(session, TickTelemetry)
@@ -227,6 +233,7 @@ async def data_integrity(request: Request) -> dict[str, Any]:
         brain=brain,
         realized=realized,
         orders=table_counts["orders"],
+        executions=table_counts["executions"],
         position_lots=table_counts["position_lots"],
         tick_telemetry=table_counts["tick_telemetry"],
     ))
@@ -236,7 +243,7 @@ async def data_integrity(request: Request) -> dict[str, Any]:
         "brain.total_trades increments at fill (entry + exit each count); "
         "realized_trades stores ONE row per closed round-trip, so a clean "
         "run should be approximately brain.total_trades = 2 * realized_trades. "
-        "If brain/orders exist while realized_trades or position_lots remain "
+        "If brain/orders exist while executions, realized_trades, or position_lots remain "
         "empty, the endpoint reports critical accounting drift rather than "
         "treating the divergence as by-design."
     )

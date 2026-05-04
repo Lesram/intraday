@@ -682,8 +682,14 @@ async def _sync_orders(app):
         from datetime import datetime
         from decimal import Decimal
 
+        from sqlalchemy.exc import SQLAlchemyError
+
         from backend.infra.repositories.orders import OrdersRepo
         from backend.integrations.alpaca_broker import get_alpaca_broker_client
+        from backend.integrations.alpaca_stream import (
+            _decimal_or_none,
+            apply_incremental_fill_accounting,
+        )
 
         logger.info("Starting initial order sync from Alpaca...")
         broker_client = get_alpaca_broker_client()
@@ -725,20 +731,62 @@ async def _sync_orders(app):
                     continue
 
                 alpaca_status = status_mapping.get(ao.get("status", ""), ao.get("status", ""))
-                alpaca_filled = float(ao.get("filled_qty", 0))
-                alpaca_price = ao.get("filled_avg_price")
+                previous_filled = _decimal_or_none(db_order.filled_qty) or Decimal("0")
+                previous_price = _decimal_or_none(db_order.avg_fill_price)
+                alpaca_filled = _decimal_or_none(ao.get("filled_qty")) or Decimal("0")
+                alpaca_price = _decimal_or_none(ao.get("filled_avg_price"))
 
                 needs_update = (
-                    float(db_order.filled_qty or 0) != alpaca_filled
+                    previous_filled != alpaca_filled
                     or db_order.status != alpaca_status
+                    or (alpaca_price is not None and alpaca_price != previous_price)
                 )
                 if needs_update:
                     await repo.attach_broker_result(
                         db_order.id,
                         status=alpaca_status,
-                        filled_qty=Decimal(str(alpaca_filled)),
-                        avg_fill_price=Decimal(str(alpaca_price)) if alpaca_price else None,
+                        filled_qty=alpaca_filled,
+                        avg_fill_price=alpaca_price,
                     )
+                    await session.commit()
+                    try:
+                        accounting = await apply_incremental_fill_accounting(
+                            session,
+                            db_order,
+                            previous_filled_qty=previous_filled,
+                            cumulative_filled_qty=alpaca_filled,
+                            avg_fill_price=alpaca_price,
+                            status=alpaca_status,
+                        )
+                        if accounting["applied"]:
+                            await session.commit()
+                            logger.warning(
+                                "Order sync: persisted fill accounting",
+                                order_id=db_order.id,
+                                broker_order_id=broker_id,
+                                side=accounting["side"],
+                                incremental_qty=accounting["incremental_qty"],
+                                execution_id=accounting["execution_id"],
+                            )
+                        elif accounting["reason"] != "non_fill_status":
+                            logger.debug(
+                                "Order sync: accounting skipped for %s: %s",
+                                broker_id,
+                                accounting,
+                            )
+                    except (
+                        AttributeError,
+                        SQLAlchemyError,
+                        TypeError,
+                        ValueError,
+                    ) as accounting_error:
+                        await session.rollback()
+                        logger.warning(
+                            "Order sync: accounting failed for order %s: %s",
+                            broker_id,
+                            accounting_error,
+                            exc_info=True,
+                        )
                     updated += 1
 
                     try:
@@ -755,7 +803,7 @@ async def _sync_orders(app):
                                 "symbol": db_order.symbol,
                                 "side": db_order.side,
                                 "qty": float(db_order.qty),
-                                "filled_qty": alpaca_filled,
+                                "filled_qty": float(alpaca_filled),
                                 "avg_fill_price": float(alpaca_price) if alpaca_price else None,
                                 "status": alpaca_status,
                                 "order_type": db_order.order_type,

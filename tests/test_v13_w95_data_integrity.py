@@ -226,11 +226,13 @@ def test_w95_data_integrity_classifies_empty_realized_as_critical():
         brain=498,
         realized=0,
         orders=1369,
+        executions=0,
         position_lots=0,
         tick_telemetry=0,
     )
     assert out["accounting_status"] == "critical"
     assert "brain_has_trades_but_realized_trades_empty" in out["reasons"]
+    assert "orders_exist_but_executions_empty" in out["reasons"]
     assert "orders_and_brain_trades_exist_but_position_lots_empty" in out["reasons"]
 
 
@@ -243,6 +245,7 @@ def test_w95_data_integrity_classifies_clean_round_trip_as_ok():
         brain=100,
         realized=50,
         orders=100,
+        executions=100,
         position_lots=50,
         tick_telemetry=500,
     )

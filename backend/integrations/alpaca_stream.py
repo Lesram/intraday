@@ -14,12 +14,15 @@ Key Features:
 
 import asyncio
 from datetime import UTC, datetime
+from decimal import Decimal, InvalidOperation
 import json
 import os
 import time
 from pathlib import Path
 from typing import Any
 
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
 import websockets
 from websockets.exceptions import ConnectionClosed, WebSocketException
 
@@ -29,6 +32,134 @@ from backend.infra.repositories.orders import OrdersRepo
 from backend.utils.logger import get_structured_logger
 
 logger = get_structured_logger(__name__)
+
+
+def _decimal_or_none(value: Any) -> Decimal | None:
+    if value is None or value == "":
+        return None
+    try:
+        return Decimal(str(value))
+    except (InvalidOperation, TypeError, ValueError):
+        return None
+
+
+async def apply_incremental_fill_accounting(
+    session: AsyncSession,
+    order: Any,
+    *,
+    previous_filled_qty: Any,
+    cumulative_filled_qty: Any,
+    avg_fill_price: Any,
+    status: str,
+    fill_time: datetime | None = None,
+    venue: str = "alpaca",
+) -> dict[str, Any]:
+    """Persist execution + lot accounting for the positive incremental fill.
+
+    Alpaca reports cumulative ``filled_qty``.  This helper is intentionally
+    side-effect-free for duplicate/stale updates and records exactly the
+    delta that has not already been represented by execution rows.
+    """
+    if status not in ("filled", "partially_filled"):
+        return {"applied": False, "reason": "non_fill_status"}
+
+    cumulative = _decimal_or_none(cumulative_filled_qty)
+    previous = _decimal_or_none(previous_filled_qty) or Decimal("0")
+    price = _decimal_or_none(avg_fill_price)
+
+    if cumulative is None or cumulative <= 0:
+        return {"applied": False, "reason": "missing_cumulative_fill_qty"}
+    if price is None or price <= 0:
+        return {"applied": False, "reason": "missing_avg_fill_price"}
+    if not getattr(order, "id", None):
+        return {"applied": False, "reason": "missing_order_id"}
+    if not getattr(order, "symbol", None) or not getattr(order, "side", None):
+        return {"applied": False, "reason": "missing_symbol_or_side"}
+    side = str(order.side).lower()
+    if side not in ("buy", "sell"):
+        return {"applied": False, "reason": f"unsupported_side:{order.side}"}
+
+    from backend.infra.schemas import Execution
+
+    existing_stmt = select(func.coalesce(func.sum(Execution.fill_qty), 0)).where(
+        Execution.order_id == order.id
+    )
+    existing_result = await session.execute(existing_stmt)
+    existing_execution_qty = (
+        _decimal_or_none(existing_result.scalar_one_or_none()) or Decimal("0")
+    )
+    effective_previous = (
+        existing_execution_qty
+        if existing_execution_qty > previous
+        else previous
+    )
+    incremental = cumulative - effective_previous
+    if incremental <= 0:
+        return {
+            "applied": False,
+            "reason": "duplicate_or_stale_fill",
+            "previous_filled_qty": str(previous),
+            "existing_execution_qty": str(existing_execution_qty),
+            "cumulative_filled_qty": str(cumulative),
+        }
+
+    fill_dt = (
+        fill_time
+        or getattr(order, "filled_at", None)
+        or getattr(order, "submitted_at", None)
+        or datetime.now(UTC)
+    )
+    execution = Execution(
+        order_id=order.id,
+        fill_qty=incremental,
+        fill_price=price,
+        ts=fill_dt,
+        venue=venue,
+    )
+    session.add(execution)
+
+    from backend.services.lot_tracker_service import LotTracker
+
+    lot_tracker = LotTracker(session)
+    user_id = (
+        (order.attributes or {}).get("user_id")
+        if hasattr(order, "attributes") and order.attributes
+        else None
+    ) or getattr(order, "user_id", None) or "system"
+
+    realized = []
+    if side == "buy":
+        await lot_tracker.create_lot(
+            user_id=user_id,
+            symbol=order.symbol,
+            qty=incremental,
+            cost_basis=price,
+            order_id=order.id,
+            open_date=fill_dt,
+        )
+    elif side == "sell":
+        realized = await lot_tracker.close_lots_fifo(
+            user_id=user_id,
+            symbol=order.symbol,
+            qty_to_close=incremental,
+            close_price=price,
+            close_order_id=order.id,
+            close_date=fill_dt,
+        )
+
+    await session.flush()
+    return {
+        "applied": True,
+        "side": side,
+        "incremental_qty": str(incremental),
+        "price": str(price),
+        "execution_id": str(execution.id),
+        "realized_count": len(realized),
+        "realized_pnl": str(sum(t.realized_pnl for t in realized)),
+        "previous_filled_qty": str(previous),
+        "existing_execution_qty": str(existing_execution_qty),
+        "cumulative_filled_qty": str(cumulative),
+    }
 
 
 class AlpacaStreamClient:
@@ -554,99 +685,27 @@ class AlpacaStreamClient:
                            new_status=internal_status,
                            filled_qty=filled_qty)
 
-                # V8 BB-8 / Wave-30 (2026-05-03): wire LotTracker on the
-                # live stream path. V7 Track BB found that
-                # `LotTracker.create_lot` was only called from
-                # `alpaca_stream_production.py` (not loaded in lifespan);
-                # `position_lots` and `realized_trades` were 0 rows
-                # despite 1,369 orders. Mirror the production-stream
-                # logic here so cost basis and realized P&L tables
-                # populate from the live path.
-                if (
-                    internal_status in ("filled", "partially_filled")
-                    and filled_qty
-                    and avg_fill_price
-                    and getattr(order, "symbol", None)
-                    and getattr(order, "side", None)
-                ):
-                    try:
-                        from backend.services.lot_tracker_service import LotTracker
-                        _lot_tracker = LotTracker(session)
-                        _user_id = (
-                            (order.attributes or {}).get("user_id")
-                            if hasattr(order, "attributes") and order.attributes
-                            else None
-                        ) or getattr(order, "user_id", None) or "system"
-                        # V9 DD3-2 / Wave-43 (2026-05-03): use INCREMENTAL
-                        # qty (filled_qty is cumulative in Alpaca's
-                        # semantics).  Previously each partially_filled
-                        # event called create_lot with the cumulative
-                        # value, producing duplicate rows on multi-event
-                        # fills.  If the increment is <= 0 (duplicate
-                        # event or stale data), skip the lot op entirely.
-                        _filled_now_f = float(filled_qty)
-                        _incremental = _filled_now_f - _prev_filled_qty
-                        _qty_dec = Decimal(str(_incremental))
-                        _price_dec = Decimal(str(avg_fill_price))
-                        _open_dt = (
-                            getattr(order, "filled_at", None)
-                            or getattr(order, "submitted_at", None)
-                            or datetime.now(UTC)
+                try:
+                    accounting = await apply_incremental_fill_accounting(
+                        session,
+                        order,
+                        previous_filled_qty=_prev_filled_qty,
+                        cumulative_filled_qty=filled_qty,
+                        avg_fill_price=avg_fill_price,
+                        status=internal_status,
+                    )
+                    if accounting["applied"]:
+                        logger.info(
+                            "BB-8 / DD3-2: fill accounting persisted",
+                            order_id=order.id,
+                            broker_order_id=broker_order_id,
+                            side=accounting["side"],
+                            incremental_qty=accounting["incremental_qty"],
+                            execution_id=accounting["execution_id"],
                         )
-
-                        if _incremental <= 0:
-                            # V9 DD3-2: duplicate or stale event; skip
-                            # the lot op but continue with the rest of
-                            # _process_trade_update (terminal-id tracking).
-                            logger.debug(
-                                "DD3-2: skipping LotTracker op for order=%s "
-                                "(incremental_qty=%.4f cum=%.4f prev=%.4f)",
-                                order.id, _incremental, _filled_now_f,
-                                _prev_filled_qty,
-                            )
-                        elif order.side == "buy":
-                            await _lot_tracker.create_lot(
-                                user_id=_user_id,
-                                symbol=order.symbol,
-                                qty=_qty_dec,
-                                cost_basis=_price_dec,
-                                order_id=order.id,
-                                open_date=_open_dt,
-                            )
-                            logger.info(
-                                "BB-8 / DD3-2: created position lot for buy "
-                                "fill: %s %s @ $%s order=%s "
-                                "(incremental; cum=%s prev=%s)",
-                                _qty_dec, order.symbol, _price_dec,
-                                order.id, _filled_now_f, _prev_filled_qty,
-                            )
-                            await session.commit()
-                        elif order.side == "sell":
-                            realized = await _lot_tracker.close_lots_fifo(
-                                user_id=_user_id,
-                                symbol=order.symbol,
-                                qty_to_close=_qty_dec,
-                                close_price=_price_dec,
-                                close_order_id=order.id,
-                                close_date=_open_dt,
-                            )
-                            _total_pnl = sum(t.realized_pnl for t in realized)
-                            logger.info(
-                                "BB-8 / DD3-2: closed %d lot(s) for sell "
-                                "fill: %s %s @ $%s pnl=$%s "
-                                "(incremental; cum=%s prev=%s)",
-                                len(realized), _qty_dec, order.symbol,
-                                _price_dec, _total_pnl,
-                                _filled_now_f, _prev_filled_qty,
-                            )
-                            await session.commit()
+                        if accounting["side"] == "sell":
                             # V10 YY-2 / Wave-52 (2026-05-03): emit
-                            # ORDER_FILLED audit row.  Previously the
-                            # audit_logs table only had user.login rows
-                            # — every order/position lifecycle event was
-                            # silent despite the helper being live.  We
-                            # write directly through the live session
-                            # already in scope (no sessionmaker dance).
+                            # ORDER_FILLED audit row for realized exits.
                             try:
                                 from backend.services.audit_service import (
                                     AuditAction, AuditEntity,
@@ -661,38 +720,39 @@ class AlpacaStreamClient:
                                     payload={
                                         "symbol": order.symbol,
                                         "side": order.side,
-                                        "qty": float(_incremental),
-                                        "price": float(_price_dec),
+                                        "qty": float(accounting["incremental_qty"]),
+                                        "price": float(accounting["price"]),
                                         "status": internal_status,
                                         "broker_order_id": broker_order_id,
                                     },
                                 )
-                                await session.commit()
                             except Exception as _audit_err:
                                 logger.debug(
                                     "YY-2: ORDER_FILLED audit dispatch "
                                     "skipped: %s", _audit_err,
                                 )
-                    except Exception as _lot_err:
-                        # Don't fail order processing on lot-tracking error.
-                        logger.warning(
-                            "BB-8: lot-tracking failed for order %s: %s",
-                            order.id, _lot_err,
-                            exc_info=True,
+                        await session.commit()
+                    elif accounting["reason"] != "non_fill_status":
+                        logger.debug(
+                            "Fill accounting skipped for order %s: %s",
+                            order.id,
+                            accounting,
                         )
-                        # V10 UU2-C / Wave-51 (2026-05-03): same pattern as
-                        # wave-41 UU-2 / wave-51 UU2-A.  Surface rollback
-                        # failure so a poisoned session doesn't silently
-                        # propagate to the next order event.
-                        try:
-                            await session.rollback()
-                        except Exception as _rb_err:
-                            logger.error(
-                                "UU2-C: db.rollback() after LotTracker "
-                                "failure also failed for order %s: %s — "
-                                "session may be poisoned",
-                                order.id, _rb_err,
-                            )
+                except Exception as _accounting_err:
+                    # Don't fail order processing on accounting failure.
+                    logger.warning(
+                        "BB-8: fill accounting failed for order %s: %s",
+                        order.id, _accounting_err,
+                        exc_info=True,
+                    )
+                    try:
+                        await session.rollback()
+                    except Exception as _rb_err:
+                        logger.error(
+                            "UU2-C: db.rollback() after accounting failure "
+                            "also failed for order %s: %s — session may be poisoned",
+                            order.id, _rb_err,
+                        )
 
                 # REMEDIATION: Track terminal order statuses for early pending-entry cleanup.
                 # V4 H-1 / Wave-16d (2026-05-02): record BOTH the broker
@@ -837,17 +897,65 @@ class AlpacaStreamClient:
                                 broker_data = resp.json()
                                 broker_status = self._map_alpaca_status(broker_data.get("status", ""))
                                 current_db_status = order.status
-                                if broker_status != current_db_status:
-                                    filled_qty = float(broker_data.get("filled_qty", 0))
-                                    avg_price = float(broker_data.get("filled_avg_price", 0) or 0) or None
-                                    from decimal import Decimal
+                                previous_filled_qty = _decimal_or_none(
+                                    getattr(order, "filled_qty", None)
+                                ) or Decimal("0")
+                                filled_qty = _decimal_or_none(
+                                    broker_data.get("filled_qty")
+                                ) or Decimal("0")
+                                avg_price = _decimal_or_none(
+                                    broker_data.get("filled_avg_price")
+                                )
+                                previous_price = _decimal_or_none(
+                                    getattr(order, "avg_fill_price", None)
+                                )
+                                needs_update = (
+                                    broker_status != current_db_status
+                                    or filled_qty != previous_filled_qty
+                                    or (
+                                        avg_price is not None
+                                        and avg_price != previous_price
+                                    )
+                                )
+                                if needs_update:
                                     await orders_repo.attach_broker_result(
                                         order.id,
                                         status=broker_status,
-                                        filled_qty=Decimal(str(filled_qty)) if filled_qty else None,
-                                        avg_fill_price=Decimal(str(avg_price)) if avg_price else None,
+                                        filled_qty=filled_qty if filled_qty else None,
+                                        avg_fill_price=avg_price,
                                     )
                                     await session.commit()
+                                    try:
+                                        accounting = await apply_incremental_fill_accounting(
+                                            session,
+                                            order,
+                                            previous_filled_qty=previous_filled_qty,
+                                            cumulative_filled_qty=filled_qty,
+                                            avg_fill_price=avg_price,
+                                            status=broker_status,
+                                        )
+                                        if accounting["applied"]:
+                                            await session.commit()
+                                            logger.warning(
+                                                "EXEC-002 gap-fill: persisted fill accounting for order %s qty=%s execution=%s",
+                                                order.broker_order_id,
+                                                accounting["incremental_qty"],
+                                                accounting["execution_id"],
+                                            )
+                                        elif accounting["reason"] != "non_fill_status":
+                                            logger.debug(
+                                                "EXEC-002 gap-fill: accounting skipped for %s: %s",
+                                                order.broker_order_id,
+                                                accounting,
+                                            )
+                                    except Exception as accounting_error:
+                                        await session.rollback()
+                                        logger.warning(
+                                            "EXEC-002 gap-fill: accounting failed for order %s: %s",
+                                            order.broker_order_id,
+                                            accounting_error,
+                                            exc_info=True,
+                                        )
                                     reconciled += 1
                                     logger.warning(
                                         "EXEC-002 gap-fill: reconciled order %s: %s -> %s",

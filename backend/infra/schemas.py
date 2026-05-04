@@ -197,7 +197,7 @@ class Execution(Base):
     fill_qty: Mapped[Decimal] = mapped_column(DECIMAL(18, 6), nullable=False)
     fill_price: Mapped[Decimal] = mapped_column(DECIMAL(18, 6), nullable=False)
     ts: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, index=True
+        DateTime(timezone=True), nullable=False
     )
     venue: Mapped[str] = mapped_column(String(50), nullable=False)
 
@@ -822,7 +822,7 @@ class PositionLot(Base):
 
     # Timestamps
     open_date: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, index=True
+        DateTime(timezone=True), nullable=False
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
@@ -838,7 +838,7 @@ class PositionLot(Base):
 
     # Status
     status: Mapped[str] = mapped_column(
-        String(20), nullable=False, default="open", index=True
+        String(20), nullable=False, default="open"
     )  # 'open', 'closed'
 
     # Relationships
@@ -906,10 +906,10 @@ class RealizedTrade(Base):
 
     # Timestamps
     open_date: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, index=True
+        DateTime(timezone=True), nullable=False
     )
     close_date: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, index=True
+        DateTime(timezone=True), nullable=False
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
