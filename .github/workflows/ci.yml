@@ -176,6 +176,26 @@ jobs:
         run: |
           python scripts/ci/forbid_marker_only_critical_high.py
 
+  deploy_parity:
+    name: "🚢 V13 W92 Deploy Parity Gate"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Sandbox self-test (no live container needed)
+        # V13 W92 (Lens 1): the parity checker validates its own
+        # logic — parity_compare must reject `unknown`, hot-path
+        # files must exist on host.  Live probes (V13_LIVE_PROBES=1)
+        # require a running paper container and are NOT run in CI.
+        run: |
+          python scripts/ci/check_deploy_parity.py
+
   # V12 W81 (post-audit cleanup): the standalone lint_ratchet job was
   # consolidated into the main ``lint`` job above (which now runs the
   # ratchet as its real gate, with strict Ruff demoted to advisory).

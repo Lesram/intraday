@@ -2,7 +2,7 @@
 # AlgoTrading Platform Development Makefile
 # =====================================
 
-.PHONY: help install test-fast test-deep auto format lint typecheck coverage coverage-quality-gate coverage-full coverage-diff clean
+.PHONY: help install test-fast test-deep auto format lint typecheck coverage coverage-quality-gate coverage-full coverage-diff clean rebuild-paper deploy-parity deploy-parity-live
 
 # Configuration
 PYTHON := python
@@ -190,6 +190,21 @@ full-check: ## Full check before commit (all quality + deep tests)
 	@$(MAKE) coverage
 	@$(MAKE) test-deep
 	@echo "$(GREEN)✅ Full check completed - ready to commit!$(NC)"
+
+# =====================================
+# V13 W92 Deploy / Runtime Truth (Lens 1)
+# =====================================
+
+rebuild-paper: ## Rebuild + restart the paper API container (V12 W82, promoted to V13)
+	@echo "$(BLUE)🚢 Rebuilding paper container (V12 W82 → V13 W92)...$(NC)"
+	@./scripts/deploy/rebuild_paper.sh
+	@echo "$(GREEN)✅ Paper container rebuilt; run 'make deploy-parity-live' to verify$(NC)"
+
+deploy-parity: ## Sandbox parity self-test (no container needed)
+	@$(PYTHON) scripts/ci/check_deploy_parity.py
+
+deploy-parity-live: ## Live parity probes (requires running paper container on :8000)
+	@V13_LIVE_PROBES=1 $(PYTHON) scripts/ci/check_deploy_parity.py
 
 # Show configuration
 show-config: ## Show current configuration
