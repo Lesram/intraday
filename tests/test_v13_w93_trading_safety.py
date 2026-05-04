@@ -44,13 +44,22 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 # ────────────────────────────────────────────────────────────────────
 
 
+def _gov_with_known_limit(limit: float = 0.05):
+    """V13 W93: build a GovernanceController and pin its drawdown
+    limit explicitly so ORGANISM_DRAWDOWN_KILL_PCT env var (which can
+    be set by other test harnesses or the dev shell) doesn't change
+    the threshold behind the test."""
+    from backend.organism.governance import GovernanceController
+    gov = GovernanceController()
+    gov._drawdown_limit = limit
+    return gov
+
+
 def test_w93_drawdown_kill_sets_halted_state():
     """Triggering the kill-switch via the public method must produce
     a `is_trading_halted` True snapshot — within the cooldown window."""
-    from backend.organism.governance import GovernanceController
-
-    gov = GovernanceController()
-    # Limit defaults to 5%; trigger at 7% to ensure crossing.
+    gov = _gov_with_known_limit(0.05)
+    # Limit pinned at 5%; trigger at 7% to ensure crossing.
     gov.trigger_drawdown_kill(0.07)
 
     snap = gov.snapshot()
@@ -62,11 +71,8 @@ def test_w93_drawdown_kill_sets_halted_state():
 
 def test_w93_drawdown_kill_below_limit_no_halt():
     """If drawdown is under the limit, the kill-switch must NOT trip."""
-    from backend.organism.governance import GovernanceController
-
-    gov = GovernanceController()
-    # 3% < default 5% limit.
-    gov.trigger_drawdown_kill(0.03)
+    gov = _gov_with_known_limit(0.05)
+    gov.trigger_drawdown_kill(0.03)  # 3% < 5% limit
 
     snap = gov.snapshot()
     assert snap.trading_halted is False, (
@@ -78,8 +84,6 @@ def test_w93_drawdown_kill_dispatches_alert():
     """The kill-switch must invoke `dispatch_alert_from_thread` so
     operators get paged.  V10 YY-1 wired this; W93 verifies the wire
     is still live."""
-    from backend.organism.governance import GovernanceController
-
     captured: list[object] = []
 
     def _fake_dispatch(fn):
@@ -87,7 +91,7 @@ def test_w93_drawdown_kill_dispatches_alert():
         return True
 
     with patch("backend.infra.alerting.dispatch_alert_from_thread", _fake_dispatch):
-        gov = GovernanceController()
+        gov = _gov_with_known_limit(0.05)
         gov.trigger_drawdown_kill(0.10)  # well over 5% limit
 
     assert len(captured) == 1, (
