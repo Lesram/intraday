@@ -401,6 +401,7 @@ class ReplayResult:
     """Structured output from a replay run."""
 
     ticks: int = 0
+    orders: list[dict] = field(default_factory=list)
     trades: list[dict] = field(default_factory=list)
     equity_curve: list[float] = field(default_factory=list)
     regime_history: list[str] = field(default_factory=list)
@@ -622,6 +623,7 @@ class ReplayEngine:
         await engine.shutdown()
 
         result.ticks = tick_count
+        result.orders = list(broker.filled_orders)
         result.trades = list(broker.trade_log)
 
         return result

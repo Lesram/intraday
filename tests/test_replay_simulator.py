@@ -445,14 +445,17 @@ async def test_replay_throttle_actually_blocks_at_low_limit():
         lookback=200,
     )
     result = await engine.run(max_ticks=100)
-    total_orders = sum(
-        r.get("orders_submitted", 0)
-        for r in result.tick_results if isinstance(r, dict)
-    )
-    # 100 minutes ≈ 1.66 hours, so a 1/hr throttle caps at ≤ 2.
+    entry_orders = [
+        order for order in result.orders
+        if order.get("side") == "buy"
+    ]
+    # 100 minutes ≈ 1.66 hours, so a 1/hr entry throttle caps at ≤ 2.
     # We allow up to 3 to absorb edge effects in the throttle window math.
-    assert total_orders <= 3, (
-        f"Throttle ineffective: got {total_orders} orders with 1/hr cap"
+    # The companion high-throttle test proves replay is not always-blocked;
+    # this low-throttle test proves the cap is honored when entries appear.
+    assert len(entry_orders) <= 3, (
+        "Entry throttle ineffective: got "
+        f"{len(entry_orders)} entry orders with 1/hr cap"
     )
 
 
