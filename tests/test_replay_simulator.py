@@ -179,15 +179,15 @@ def test_bar_provider_current_price():
 #  ReplayEngine tests
 # ═════════════════════════════════════════════════════════════════════════
 
-@pytest.mark.timeout(60)
+@pytest.mark.timeout(180)
 @pytest.mark.asyncio
 async def test_replay_completes_100_ticks():
     """Synthetic data, 100 ticks, no crash.
 
-    V12 W90 (post-cleanup): bumped per-test timeout from default 15s to
-    60s.  100 ticks across 3 symbols + the post-V11 entry-gate path
-    takes ~20s on a clean machine; the default 15s caused this and 2
-    sibling tests to time out under the global default."""
+    V12 W90 (post-cleanup): bumped per-test timeout from default 15s.
+    V13 cleanup bumped it again to 180s after GitHub's cold runner
+    exceeded 60s in the pandas-heavy feature path.  The test still runs
+    the full 100-tick replay; only the CI budget changed."""
     bars = make_features_dict(
         ["AAPL", "MSFT", "SPY"], n=700, seed=42, trend="up",
     )
@@ -204,7 +204,7 @@ async def test_replay_completes_100_ticks():
     assert result.equity_curve[0] > 0
 
 
-@pytest.mark.timeout(60)
+@pytest.mark.timeout(180)
 @pytest.mark.asyncio
 async def test_replay_trades_have_valid_pnl():
     """All trades should have non-NaN PnL."""
@@ -420,7 +420,7 @@ async def test_replay_no_throttle_blocking():
 
 
 # wave: V13-W93
-@pytest.mark.timeout(60)
+@pytest.mark.timeout(180)
 @pytest.mark.asyncio
 async def test_replay_throttle_actually_blocks_at_low_limit():
     """Companion test: prove the throttle DOES bite when the limit is low.
@@ -478,7 +478,7 @@ async def test_replay_daily_timeframe_uses_wider_stops():
             )
 
 
-@pytest.mark.timeout(60)
+@pytest.mark.timeout(180)
 @pytest.mark.asyncio
 async def test_replay_intraday_timeframe_uses_tight_stops():
     """Intraday replay should use intraday exit config (tighter stops, 8% max loss)."""
