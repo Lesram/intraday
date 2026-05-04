@@ -495,10 +495,16 @@ class AuditLog(Base):
     )
 
     # Audit details
+    # V13 W95 (Lens 4): `ts` had both `index=True` AND a named
+    # Index("ix_audit_logs_ts", "ts") in __table_args__ below; removed
+    # `index=True` so the explicit named index is the single canonical
+    # declaration.  `action` and `entity` retain `index=True` because
+    # the composite indexes that include them (`*_ts`) start with a
+    # different column and don't substitute for a single-column index
+    # on the column itself.
     ts: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
-        index=True,
         server_default=sa.text("CURRENT_TIMESTAMP"),
     )
     actor: Mapped[str] = mapped_column(

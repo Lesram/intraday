@@ -24,6 +24,33 @@ from backend.utils.logger import get_structured_logger
 logger = get_structured_logger(__name__)
 
 
+# V13 W95 (Lens 4): Prometheus observability for the outbox prune loop.
+# `outbox_pruned_total` increments by every batch's pruned-row count;
+# `outbox_prune_last_run_timestamp_seconds` lets alerts fire if the
+# loop hasn't run in >36h.  Both are guarded against duplicate
+# registration (test envs reimport this module).
+try:
+    from prometheus_client import Counter as _PCounter, Gauge as _PGauge
+    try:
+        OUTBOX_PRUNED_TOTAL = _PCounter(
+            "outbox_pruned_total",
+            "V13 W95: total outbox events pruned (BB5-F1 retention).",
+        )
+    except ValueError:  # already registered (re-import in tests)
+        OUTBOX_PRUNED_TOTAL = None
+    try:
+        OUTBOX_PRUNE_LAST_RUN_TS = _PGauge(
+            "outbox_prune_last_run_timestamp_seconds",
+            "V13 W95: unix timestamp of the most-recent outbox prune "
+            "completion.  Alert if (now - this) > 36h.",
+        )
+    except ValueError:
+        OUTBOX_PRUNE_LAST_RUN_TS = None
+except ImportError:  # prometheus_client not installed
+    OUTBOX_PRUNED_TOTAL = None
+    OUTBOX_PRUNE_LAST_RUN_TS = None
+
+
 def serialize_datetime_recursive(obj: Any) -> Any:
     """
     Recursively convert datetime objects to ISO strings for JSON serialization.
@@ -194,6 +221,18 @@ class OutboxWorker:
                 "(statuses=%s)",
                 total_pruned, max_age_days, list(statuses),
             )
+        # V13 W95: emit metrics regardless of pruned count so the
+        # last-run timestamp updates even on no-op runs.
+        if OUTBOX_PRUNED_TOTAL is not None and total_pruned > 0:
+            try:
+                OUTBOX_PRUNED_TOTAL.inc(total_pruned)
+            except Exception as _e:  # noqa: BLE001
+                logger.debug("V13 W95: prune metric emit suppressed: %s", _e)
+        if OUTBOX_PRUNE_LAST_RUN_TS is not None:
+            try:
+                OUTBOX_PRUNE_LAST_RUN_TS.set(time.time())
+            except Exception as _e:  # noqa: BLE001
+                logger.debug("V13 W95: prune metric emit suppressed: %s", _e)
         return total_pruned
 
     async def start_prune_loop(

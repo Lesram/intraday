@@ -45,6 +45,7 @@ def register_routes(app) -> None:
     from backend.api.routes.strategy import router as strategy_router
     from backend.api.routes.strategy_health import router as strategy_health_router
     from backend.api.routes.deploy_health import router as deploy_health_router
+    from backend.api.routes.data_integrity_health import router as data_integrity_health_router
     from backend.api.routes.system import router as system_router
     from backend.api.routes.trades import router as trades_router
     from backend.api.routes.watchlists import router as watchlists_router
@@ -76,6 +77,10 @@ def register_routes(app) -> None:
     # head, build time, runtime config hash.  Operators can detect
     # build/config skew across fleet without ssh'ing into containers.
     protected.include_router(deploy_health_router, tags=["Health"])
+    # V13 W95 (Lens 4): /api/v1/health/data-integrity — realized_trades
+    # vs brain.total_trades reconciliation.  Surfaces V12 EXT-3 drift
+    # programmatically.
+    protected.include_router(data_integrity_health_router, tags=["Health"])
     protected.include_router(backtest_router, tags=["Backtesting"])
     protected.include_router(optimizations_router, tags=["Optimizations"])
     protected.include_router(indicators_router, tags=["Indicators"])
