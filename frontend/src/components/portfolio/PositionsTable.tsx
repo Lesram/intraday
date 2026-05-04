@@ -11,7 +11,10 @@ import { colors } from '@/styles/theme';
 import { formatCurrency, formatPercent } from '@/utils/formatters';
 import type { Position } from '@/store/portfolioStore';
 import { useAuthStore } from '@/store/authStore';
-import { api } from '@/services/api';
+// V13 W98 (Lens 7): the shared axios instance is exported as
+// `apiClient`, not `api`.  Aliasing here keeps call-site readability
+// while fixing the missing export that broke `npm run build`.
+import { apiClient as api } from '@/services/api';
 
 interface PositionsTableProps {
   positions: Position[];
