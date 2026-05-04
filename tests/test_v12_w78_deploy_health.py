@@ -96,3 +96,66 @@ def test_w78_migration_head_resolves_to_string():
     head = _resolve_migration_head()
     assert isinstance(head, str)
     assert len(head) > 0
+
+
+def test_w83_migration_head_translates_asyncpg_url(monkeypatch):
+    """V12 W83 (post-rebuild verification): the migration_head resolver
+    must translate ``postgresql+asyncpg://`` URLs to a sync-compatible
+    scheme.  Pre-W83 it always raised because sqlalchemy.create_engine
+    (sync) doesn't accept an async-only driver — endpoint reported
+    ``migration_head=unknown`` even with a healthy DB.
+
+    Behavioral: set DATABASE_URL to a fake asyncpg URL, monkeypatch
+    create_engine to capture the URL the resolver passed, assert it's
+    been translated."""
+    monkeypatch.setenv(
+        "DATABASE_URL",
+        "postgresql+asyncpg://user:pw@host:5432/db",
+    )
+    captured: dict[str, str] = {}
+
+    def _fake_engine(url, **_kw):
+        captured["url"] = str(url)
+
+        class _Conn:
+            def __enter__(self_):
+                return self_
+
+            def __exit__(self_, *_a):
+                return False
+
+            def execute(self_, _q):
+                # Pretend the row exists so the resolver returns a
+                # non-"unknown" value.
+                class _Row:
+                    def first(self_inner):
+                        return ("test_head_value",)
+                return _Row()
+
+        class _Engine:
+            def connect(self_):
+                return _Conn()
+
+            def dispose(self_):
+                pass
+
+        return _Engine()
+
+    import sqlalchemy
+    monkeypatch.setattr(sqlalchemy, "create_engine", _fake_engine)
+    # Also patch the imported reference inside the module.
+    from backend.api.routes import deploy_health as dh
+    monkeypatch.setattr(dh, "_resolve_migration_head", dh._resolve_migration_head)
+
+    head = dh._resolve_migration_head()
+    # The resolver should have called create_engine with a sync URL,
+    # not the asyncpg one.
+    assert "+asyncpg" not in captured.get("url", ""), (
+        f"V12 W83 regression: asyncpg URL leaked to sync engine: "
+        f"{captured.get('url', '')}"
+    )
+    assert captured.get("url", "").startswith("postgresql://"), (
+        f"V12 W83 regression: URL not translated to plain postgresql:// — "
+        f"got {captured.get('url', '')!r}"
+    )
+    assert head == "test_head_value"

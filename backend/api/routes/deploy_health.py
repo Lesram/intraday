@@ -58,6 +58,14 @@ def _resolve_migration_head() -> str:
 
     Best-effort: if the DB layer isn't initialized yet (early startup),
     return ``"unknown"`` rather than 500.
+
+    V12 W83 (post-rebuild verification): translate asyncpg URLs to a
+    sync driver before opening the engine.  The app's DATABASE_URL is
+    typically ``postgresql+asyncpg://...`` for the async runtime, but
+    SQLAlchemy ``create_engine`` (sync) needs ``postgresql://`` or
+    ``postgresql+psycopg2://``.  Without this translation the resolver
+    raised on every call — endpoint reported migration_head=unknown
+    even with a healthy DB.
     """
     try:
         from sqlalchemy import create_engine, text
@@ -67,9 +75,12 @@ def _resolve_migration_head() -> str:
         url = getattr(s, "DATABASE_URL", None) or os.environ.get("DATABASE_URL")
         if not url:
             return "unknown"
-        # Sync engine for a one-shot read.  Async path would require an
-        # event loop dance; this endpoint runs in FastAPI's worker
-        # context so a brief sync read is acceptable.
+        # Translate async-only schemes to a sync-compatible scheme.
+        for async_prefix in ("postgresql+asyncpg://", "postgresql+psycopg_async://"):
+            if url.startswith(async_prefix):
+                url = "postgresql://" + url[len(async_prefix):]
+                break
+        # Sync engine for a one-shot read.
         engine = create_engine(url, future=True)
         try:
             with engine.connect() as conn:
