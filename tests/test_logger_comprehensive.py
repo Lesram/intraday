@@ -670,18 +670,22 @@ class TestPerformanceLogger:
         assert ctx.operation == "test_operation"
         
     def test_log_latency(self):
-        """Test PerformanceLogger.log_latency method."""
+        """Test PerformanceLogger.log_latency method.
+
+        V12 W87 (post-cleanup): V6 V-T-9 / Wave-22 demoted log_latency
+        from INFO to DEBUG (per-op INFO was 100 lines/min noise; histogram
+        carries the signal).  Test was still asserting on info; fixed."""
         pl = PerformanceLogger()
-        with patch.object(pl.logger, 'info') as mock_info:
+        with patch.object(pl.logger, 'debug') as mock_debug:
             pl.log_latency("db_query", 15.5)
-            mock_info.assert_called_once()
-            
+            mock_debug.assert_called_once()
+
     def test_log_latency_with_context(self):
         """Test log_latency with additional context."""
         pl = PerformanceLogger()
-        with patch.object(pl.logger, 'info') as mock_info:
+        with patch.object(pl.logger, 'debug') as mock_debug:
             pl.log_latency("api_call", 50.0, context={"endpoint": "/orders"})
-            mock_info.assert_called_once()
+            mock_debug.assert_called_once()
             
     def test_log_throughput(self):
         """Test PerformanceLogger.log_throughput method."""

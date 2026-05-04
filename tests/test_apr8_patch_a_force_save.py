@@ -148,6 +148,18 @@ def _make_stub_engine():
     )
     # Bind extra: signal_gen needs calibration_to_dict
     stub.signal_gen.calibration_to_dict = lambda: {}
+    # V12 W87 (post-cleanup): force_save_brain() calls
+    # ``self._build_extra_counters()`` (added in V11 wave-53 / V12 W72
+    # for symbol_trade_counts_runtime persistence).  The pre-W87 stub
+    # didn't carry it, so every test failed with
+    # ``AttributeError: 'types.SimpleNamespace' object has no attribute
+    # '_build_extra_counters'``.  Bind a no-op so force_save_brain's
+    # unit-level logic can be tested without spinning up a real engine.
+    stub._build_extra_counters = lambda: {}
+    # Same pattern: _persist_pyramid_positions_standalone is called from
+    # force_save_brain.  Provide a no-op MagicMock if missing.
+    if not hasattr(stub, "_persist_pyramid_positions_standalone"):
+        stub._persist_pyramid_positions_standalone = MagicMock()
     return stub
 
 
