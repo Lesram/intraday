@@ -335,13 +335,36 @@ def main() -> int:
         help="glob for wave-fix test files",
     )
     parser.add_argument(
+        "--full-corpus", action="store_true",
+        help=(
+            "V13 W97: scan all wave-style test files: test_wave*_fixes.py, "
+            "test_v??_w*.py, test_v??_wave*.py.  Replaces --pattern."
+        ),
+    )
+    parser.add_argument(
         "--json", default="-",
         help="output path (- for stdout)",
     )
     args = parser.parse_args()
 
     root = Path(args.root)
-    files = sorted(root.glob(args.pattern))
+    if args.full_corpus:
+        # V13 W97: aggregate all wave-style file conventions.
+        patterns = (
+            "test_wave*_fixes.py",
+            "test_v[0-9][0-9]_w*.py",
+            "test_v[0-9][0-9]_wave*.py",
+        )
+        seen: set[Path] = set()
+        files = []
+        for pat in patterns:
+            for f in root.glob(pat):
+                if f not in seen:
+                    seen.add(f)
+                    files.append(f)
+        files.sort()
+    else:
+        files = sorted(root.glob(args.pattern))
     rows: list[TestClassification] = []
     for f in files:
         rows.extend(classify_file(f))

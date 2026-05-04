@@ -196,6 +196,52 @@ jobs:
         run: |
           python scripts/ci/check_deploy_parity.py
 
+  marker_only_ratchet:
+    name: "🧪 V13 W97 Marker-Only Full-Corpus Ratchet"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Run W97 marker-only ratchet
+        # V13 W97 (Lens 6): expanded V12 W73's Critical/High gate to
+        # the FULL wave-test corpus.  Ratchet, not absolute — fails
+        # when marker-only count regresses vs the V13 baseline at
+        # artifacts/audit/v13/marker_only_baseline.json.
+        run: |
+          python scripts/ci/forbid_marker_only_full_corpus.py
+
+  mutation_smoke:
+    name: "🧬 V13 W97 Mutation Smoke (3 critical functions)"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install test deps
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+      - name: Run mutation smoke
+        # V13 W97 (Lens 6): mutates 3 critical functions across the
+        # V13 lens space and asserts at least one wave test FAILS for
+        # each mutation.  If a mutation slips through, the suite has
+        # a hole — fail CI.
+        run: |
+          python scripts/ci/mutation_smoke.py
+
   strategy_floor:
     name: "📉 V13 W94 Strategy Floor Gate (opt-in)"
     runs-on: ubuntu-latest
