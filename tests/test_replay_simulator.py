@@ -367,45 +367,89 @@ async def test_replay_time_override_uses_bar_time():
     assert sim_dt.tzinfo is not None, "Simulated datetime should be timezone-aware"
 
 
-@pytest.mark.xfail(
-    reason=(
-        "V12 W80 (post-audit cleanup): pre-existing failure across HEAD~10 "
-        "(pre-V12 baseline) AND post-V12.  100 ticks across AAPL/MSFT/SPY "
-        "synthetic upward-trend bars produce 0 orders even with "
-        "max_entries_per_hour=20 and time overrides.  Root cause is in "
-        "the upstream entry-gates path (likely fitness-gate or scanner-"
-        "candidates), not the throttle itself.  Fixing requires deeper "
-        "replay-engine investigation than V12 cleanup scope.  Tracked "
-        "for V13 trading-safety lens."
-    ),
-    strict=False,  # accept the failure; do not fail if it accidentally passes
-)
+# wave: V13-W93
+@pytest.mark.timeout(120)
 @pytest.mark.asyncio
 async def test_replay_no_throttle_blocking():
-    """With time overrides, replay should not be throttled by entries-per-hour limit.
+    """With time overrides + adequate initial cash, replay should not be
+    throttled by entries-per-hour limit.
 
-    Without the fix, 89.5% of ticks would be blocked. With it, the engine
-    should submit significantly more than 3 orders across 100 ticks.
+    V13 W93 root-cause investigation (scripts/debug/replay_throttle_diagnose.py):
+    the V12-era xfail was misdiagnosed.  100 ticks at $100k initial cash did
+    produce 42 signals — but every one of them was rejected by the
+    Kelly min-notional floor ($2,000), not by the entries-per-hour throttle.
+
+    Diagnostic:
+      total_signals_generated = 42
+      total_orders_submitted  = 0
+      Kelly skip … notional=1438 < min=2000  (×40+)
+      Confidence reject … eff_conf=0.17 < 0.25  (×2)
+
+    With $100k cash + 0.10% learning-mode risk budget, calculated notionals
+    fall in the $1,300-$1,500 range — below the $2,000 protective floor that
+    prevents micro-positions in production.  Bumping to $1,000,000 keeps
+    the same risk-budget ratio but lifts notionals to ~$13k-$15k, well above
+    the floor.  This is the realistic test setup; the engine semantics are
+    unchanged.
+
+    With this fix the test passes, proving the entries-per-hour throttle is
+    NOT blocking replay at max_entries_per_hour=20.
     """
     bars = make_features_dict(
         ["AAPL", "MSFT", "SPY"], n=700, seed=42, trend="up",
     )
     engine = ReplayEngine(
         bars_by_symbol=bars,
-        initial_cash=100_000,
+        initial_cash=1_000_000,  # V13 W93: lifts Kelly notionals above $2k floor
         slippage_bps=5,
         max_entries_per_hour=20,
     )
     result = await engine.run(max_ticks=100)
 
     assert result.ticks == 100
-    total_orders = sum(r.get("orders_submitted", 0) for r in result.tick_results if isinstance(r, dict))
-    # With time overrides + relaxed throttle, we should get more than the old
-    # production limit of 3 entries per hour (which blocked everything in replay)
-    # Hardening: exploration execution path removed — main-book entries only.
-    # With 3 symbols and bar-boundary gating, expect at least 3 orders.
+    total_orders = sum(
+        r.get("orders_submitted", 0)
+        for r in result.tick_results if isinstance(r, dict)
+    )
+    # With $1M cash, Kelly clears the $2k floor; with max_entries_per_hour=20
+    # the throttle is well above the actual entry rate (replay produces
+    # ~0.4 signals/tick).  Expect > 3 orders.
     assert total_orders >= 3, (
-        f"Only {total_orders} orders in 100 ticks — throttle may still be blocking"
+        f"Only {total_orders} orders in 100 ticks — V13-W93 fix may have regressed"
+    )
+
+
+# wave: V13-W93
+@pytest.mark.timeout(60)
+@pytest.mark.asyncio
+async def test_replay_throttle_actually_blocks_at_low_limit():
+    """Companion test: prove the throttle DOES bite when the limit is low.
+
+    If we set max_entries_per_hour=1, the throttle should cap orders at
+    roughly 1/hour.  100 ticks at 1-min cadence ≈ ~1.6 hours ≈ ≤2 entries.
+    This pairs with test_replay_no_throttle_blocking: together they prove
+    the throttle is responsive to its parameter (not always-block, not
+    always-pass).
+    """
+    bars = make_features_dict(
+        ["AAPL", "MSFT", "SPY"], n=700, seed=42, trend="up",
+    )
+    engine = ReplayEngine(
+        bars_by_symbol=bars,
+        initial_cash=1_000_000,
+        slippage_bps=5,
+        max_entries_per_hour=1,  # tight throttle
+        timeframe="1Min",
+    )
+    result = await engine.run(max_ticks=100)
+    total_orders = sum(
+        r.get("orders_submitted", 0)
+        for r in result.tick_results if isinstance(r, dict)
+    )
+    # 100 minutes ≈ 1.66 hours, so a 1/hr throttle caps at ≤ 2.
+    # We allow up to 3 to absorb edge effects in the throttle window math.
+    assert total_orders <= 3, (
+        f"Throttle ineffective: got {total_orders} orders with 1/hr cap"
     )
 
 
