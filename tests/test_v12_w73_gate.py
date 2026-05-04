@@ -9,12 +9,13 @@ v12_state.json fixtures to verify it correctly flags violations and
 passes when all closures have behavioral tests.
 
 Run with:
-    ./venv/bin/python -m pytest tests/test_v12_w73_gate.py -v
+    python -m pytest tests/test_v12_w73_gate.py -v
 """
 from __future__ import annotations
 
 import json
 import subprocess
+import sys
 import textwrap
 from pathlib import Path
 
@@ -23,12 +24,13 @@ import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 GATE = REPO_ROOT / "scripts" / "ci" / "forbid_marker_only_critical_high.py"
+PYTHON = sys.executable
 
 
 def test_gate_script_exists_and_runs():
     """Gate must be runnable as a Python entrypoint."""
     proc = subprocess.run(
-        ["./venv/bin/python", str(GATE)],
+        [PYTHON, str(GATE)],
         capture_output=True, text=True, timeout=30, cwd=REPO_ROOT,
     )
     # Exit 0 = pass (current state); exit 1 = at least one Crit/High
@@ -42,7 +44,7 @@ def test_gate_passes_on_real_state_file():
     """Live invariant: the live findings ledger + tests must pass the
     gate (W73 is itself supposed to satisfy the gate it just built)."""
     proc = subprocess.run(
-        ["./venv/bin/python", str(GATE)],
+        [PYTHON, str(GATE)],
         capture_output=True, text=True, timeout=30, cwd=REPO_ROOT,
     )
     assert proc.returncode == 0, (
@@ -109,8 +111,7 @@ def test_gate_prefers_findings_ledger_over_stale_v12_state(tmp_path: Path):
     (tmp_path / "scripts" / "ci" / "forbid_marker_only_critical_high.py").write_text(gate_src)
 
     proc = subprocess.run(
-        [str(REPO_ROOT / "venv" / "bin" / "python"),
-         "scripts/ci/forbid_marker_only_critical_high.py"],
+        [PYTHON, "scripts/ci/forbid_marker_only_critical_high.py"],
         capture_output=True, text=True, timeout=30, cwd=tmp_path,
     )
     assert proc.returncode == 1, proc.stdout
@@ -147,8 +148,7 @@ def test_gate_fails_when_critical_finding_lacks_test(tmp_path: Path):
     (tmp_path / "scripts" / "ci" / "forbid_marker_only_critical_high.py").write_text(gate_src)
 
     proc = subprocess.run(
-        [str(REPO_ROOT / "venv" / "bin" / "python"),
-         "scripts/ci/forbid_marker_only_critical_high.py"],
+        [PYTHON, "scripts/ci/forbid_marker_only_critical_high.py"],
         capture_output=True, text=True, timeout=30, cwd=tmp_path,
     )
     assert proc.returncode == 1, (
@@ -199,8 +199,7 @@ def test_gate_fails_on_marker_only_test_for_high_finding(tmp_path: Path):
     (tmp_path / "scripts" / "ci" / "forbid_marker_only_critical_high.py").write_text(gate_src)
 
     proc = subprocess.run(
-        [str(REPO_ROOT / "venv" / "bin" / "python"),
-         "scripts/ci/forbid_marker_only_critical_high.py"],
+        [PYTHON, "scripts/ci/forbid_marker_only_critical_high.py"],
         capture_output=True, text=True, timeout=30, cwd=tmp_path,
     )
     assert proc.returncode == 1, (
@@ -250,8 +249,7 @@ def test_gate_passes_on_behavioral_test(tmp_path: Path):
     (tmp_path / "scripts" / "ci" / "forbid_marker_only_critical_high.py").write_text(gate_src)
 
     proc = subprocess.run(
-        [str(REPO_ROOT / "venv" / "bin" / "python"),
-         "scripts/ci/forbid_marker_only_critical_high.py"],
+        [PYTHON, "scripts/ci/forbid_marker_only_critical_high.py"],
         capture_output=True, text=True, timeout=30, cwd=tmp_path,
     )
     assert proc.returncode == 0, (
