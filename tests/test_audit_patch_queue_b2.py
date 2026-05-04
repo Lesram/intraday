@@ -218,6 +218,10 @@ class TestMLConfidenceLeakage:
     """Verify ML confidence is not used for target_exposure in learning mode."""
 
     def _make_engine(self):
+        # V12 W88 (post-cleanup): generate_trading_signals path post-V11
+        # reads _now_fn / _time_fn for timestamping signals.  Pre-W88 the
+        # fixture didn't carry them, so every test failed with
+        # ``AttributeError: '...' object has no attribute '_now_fn'``.
         from backend.organism.live_engine import OrganismLiveEngine
         engine = OrganismLiveEngine.__new__(OrganismLiveEngine)
         engine._all_trades = []
@@ -226,6 +230,12 @@ class TestMLConfidenceLeakage:
         engine.evolved_params = EvolvedParams()
         engine.alpha_scanner = MagicMock()
         engine.signal_gen = MagicMock(is_trained=False)
+        from datetime import UTC, datetime
+        import time as _time
+        engine._now_fn = lambda: datetime.now(UTC)
+        engine._time_fn = _time.time
+        engine._tick_count = 0
+        engine._entry_metadata = {}
         return engine
 
     def _make_candidate(self, ml_confidence=0.9, composite_score=0.6):

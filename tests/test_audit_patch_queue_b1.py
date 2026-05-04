@@ -39,17 +39,37 @@ class TestConfidenceGateFullParity:
             "Alpha path must gate effective confidence against _MIN_MAIN_CONF"
 
     def test_unified_threshold_uses_regime_conf_guard(self):
-        """The unified threshold must include the learning-mode regime_conf >= 0.50 guard."""
+        """The unified threshold must reference the defensive constant.
+
+        V12 W88 (post-cleanup): the 2026-03-29 incident-recovery commit
+        replaced the original ``_regime_conf >= 0.50`` guard with a
+        simpler ``self._is_learning_mode`` branch — in learning mode
+        the formula caps confidence at ~0.43 and the 0.40/0.45 gates
+        were unreachable for 10+ days (zero trades).  Test expectation
+        updated: assert the threshold dispatch references either the
+        learning-mode branch OR the regime_conf guard (covers both
+        pre- and post-recovery designs)."""
         import inspect
         from backend.organism import live_engine
         source = inspect.getsource(live_engine)
 
-        # Find the section where _MIN_MAIN_CONF is SET (not where it's used)
-        # It should include the regime_conf guard
         conf_section_start = source.index("Unified confidence threshold")
-        conf_section = source[conf_section_start:conf_section_start + 900]
-        assert "_regime_conf >= 0.50" in conf_section or "_regime_conf >= 0.5" in conf_section, \
-            "Unified threshold must include regime confidence guard"
+        # V12 W88: extended window from 900 to 1500 chars — the
+        # post-incident-recovery dispatch logic is longer than the
+        # original (more comments documenting the 2026-03-29 incident).
+        conf_section = source[conf_section_start:conf_section_start + 1500]
+        # Either the learning-mode branch (post-2026-03-29) OR the
+        # regime_conf guard (original) is acceptable evidence of the
+        # threshold dispatch logic.
+        has_learning_branch = "_is_learning_mode" in conf_section
+        has_regime_guard = (
+            "_regime_conf >= 0.50" in conf_section
+            or "_regime_conf >= 0.5" in conf_section
+        )
+        assert has_learning_branch or has_regime_guard, (
+            "Unified threshold must dispatch on either _is_learning_mode "
+            "(post-incident) or _regime_conf >= 0.50 (original)"
+        )
         assert "_MAIN_CONF_DEFENSIVE" in conf_section, \
             "Unified threshold must reference defensive constant"
 
@@ -161,7 +181,13 @@ class TestEquityStatusReporting:
     """Verify status reports actual equity, not cumulative PnL."""
 
     def _make_engine(self):
-        """Create a minimal OrganismLiveEngine for status testing."""
+        """Create a minimal OrganismLiveEngine for status testing.
+
+        V12 W88 (post-cleanup): added _watchdog_state and _now_fn —
+        the engine's status() path post-V11 reads both.  Pre-W88 the
+        fixture didn't carry them, so every test failed with
+        ``AttributeError: '...' object has no attribute '_watchdog_state'``.
+        """
         from backend.organism.live_engine import OrganismLiveEngine
         engine = OrganismLiveEngine.__new__(OrganismLiveEngine)
         engine._all_trades = []
@@ -189,6 +215,21 @@ class TestEquityStatusReporting:
         # _is_learning_mode is a property based on len(_all_trades) < _LEARNING_MODE_TRADES
         # With _all_trades=[] and default _LEARNING_MODE_TRADES=200, it will be True.
         engine._LEARNING_MODE_TRADES = 200
+        # V12 W88: status() depends on these (added in V10/V11 waves).
+        engine._watchdog_state = "OK"
+        engine._watchdog_last_order_tick = 0
+        engine._watchdog_last_brain_save_tick = 0
+        engine._watchdog_last_total_orders = 0
+        engine._watchdog_zero_candidates_ticks = 0
+        engine._watchdog_equity_fallback_count = 0
+        engine._watchdog_equity_fallback_streak = 0
+        engine._watchdog_universe_drift = {}
+        engine._total_orders_submitted = 0
+        from datetime import UTC, datetime
+        import time as _time
+        engine._now_fn = lambda: datetime.now(UTC)
+        engine._time_fn = _time.time
+        engine._last_tick_completed_ts = None
         return engine
 
     def test_status_current_equity_none_when_no_ticks(self):

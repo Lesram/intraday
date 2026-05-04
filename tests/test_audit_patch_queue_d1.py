@@ -67,6 +67,15 @@ def _make_model_metrics(**overrides) -> ModelMetrics:
         feature_importance_top10=[("feat_a", 0.3), ("feat_b", 0.2)],
     )
     defaults.update(overrides)
+    # V12 W88 (post-cleanup): the gate checks
+    # ``effective_mean_pred_return > 0`` (the calibration-damped edge),
+    # not ``mean_pred_return``.  Pre-W88 this fixture left
+    # ``effective_mean_pred_return`` at its default 0.0, so the gate
+    # always rejected with `eff_mean_pred_return=0.0000`.  Default it
+    # to mean_pred_return unless explicitly overridden — that mirrors
+    # the production behavior at maturity (system_calibration mature
+    # → effective ≈ mean).
+    defaults.setdefault("effective_mean_pred_return", defaults["mean_pred_return"])
     return ModelMetrics(**defaults)
 
 
@@ -308,7 +317,7 @@ class TestValidateNewModelEconomic:
         )
 
         # No old model -> still rejected because of negative edge
-        result = learner._validate_new_model({}, metrics, old_clf=None)
+        result, _reason = learner._validate_new_model({}, metrics, old_clf=None)
         assert result is False
 
     def test_acceptance_accepts_positive_edge(self):
@@ -322,7 +331,7 @@ class TestValidateNewModelEconomic:
             mean_pred_return=0.003,  # positive edge
         )
 
-        result = learner._validate_new_model({}, metrics, old_clf=None)
+        result, _reason = learner._validate_new_model({}, metrics, old_clf=None)
         assert result is True
 
     def test_poor_model_rejected(self):
@@ -338,7 +347,7 @@ class TestValidateNewModelEconomic:
 
         # score = 0.10*0.4 + 0.10*0.3 + max(0.40-0.5,0)*0.6 = 0.04+0.03+0 = 0.07
         # 0.07 < 0.25 threshold
-        result = learner._validate_new_model({}, metrics, old_clf=None)
+        result, _reason = learner._validate_new_model({}, metrics, old_clf=None)
         assert result is False
 
     def test_improved_model_accepted(self):
@@ -366,7 +375,7 @@ class TestValidateNewModelEconomic:
         # new_score = 0.62*0.4 + 0.65*0.3 + max(0.20,0)*0.6 = 0.248+0.195+0.12 = 0.563
         # improvement = 0.563 - 0.38 = 0.183 > 0.05 threshold
         old_clf = object()  # non-None to trigger comparison path
-        result = learner._validate_new_model({}, new_mm, old_clf=old_clf)
+        result, _reason = learner._validate_new_model({}, new_mm, old_clf=old_clf)
         assert result is True
 
     def test_improved_but_negative_edge_rejected(self):
@@ -389,5 +398,5 @@ class TestValidateNewModelEconomic:
         )
 
         old_clf = object()
-        result = learner._validate_new_model({}, new_mm, old_clf=old_clf)
+        result, _reason = learner._validate_new_model({}, new_mm, old_clf=old_clf)
         assert result is False

@@ -79,6 +79,11 @@ def _make_metrics(**overrides) -> ModelMetrics:
         hit_rate=0.55,
     )
     defaults.update(overrides)
+    # V12 W88 (post-cleanup): the gate checks
+    # ``effective_mean_pred_return > 0`` (the calibration-damped edge),
+    # not ``mean_pred_return``.  Default to mean_pred_return so positive
+    # edge propagates — same fix as test_audit_patch_queue_d1.py.
+    defaults.setdefault("effective_mean_pred_return", defaults["mean_pred_return"])
     return ModelMetrics(**defaults)
 
 
@@ -296,7 +301,7 @@ class TestModelAcceptancePrecisionGate:
         )
 
         # No old model => first-model path
-        accepted = learner._validate_new_model({}, metrics, None)
+        accepted, _reason = learner._validate_new_model({}, metrics, None)
         assert not accepted, (
             "Model with precision < 0.45 should be rejected "
             "even with positive mean_pred_return"
@@ -316,7 +321,7 @@ class TestModelAcceptancePrecisionGate:
         )
 
         # No old model => first-model path
-        accepted = learner._validate_new_model({}, metrics, None)
+        accepted, _reason = learner._validate_new_model({}, metrics, None)
         assert accepted, (
             "Model with precision >= 0.45 and positive edge "
             "should be accepted"
@@ -348,7 +353,7 @@ class TestModelAcceptancePrecisionGate:
             precision=0.55,
         )
         old_clf = SimpleNamespace()  # truthy old classifier
-        accepted = learner._validate_new_model({}, new_metrics_good, old_clf)
+        accepted, _reason = learner._validate_new_model({}, new_metrics_good, old_clf)
         assert accepted, "Better model with quality_ok should be accepted"
 
         # New model: better score but low precision => rejected
@@ -360,8 +365,8 @@ class TestModelAcceptancePrecisionGate:
             mean_pred_return=0.005,
             precision=0.40,  # below 0.45
         )
-        rejected = learner._validate_new_model({}, new_metrics_bad, old_clf)
-        assert not rejected, (
+        rejected_accepted, _reason = learner._validate_new_model({}, new_metrics_bad, old_clf)
+        assert not rejected_accepted, (
             "Model with low precision should be rejected even if "
             "score is better than old model"
         )

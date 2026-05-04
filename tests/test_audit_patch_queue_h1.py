@@ -197,7 +197,7 @@ class TestAcceptanceGateCalibration:
         """Model with good stats + honest calibration is accepted."""
         learner = self._make_learner()
         metrics = self._good_metrics()
-        accepted = learner._validate_new_model({}, metrics, None)
+        accepted, _reason = learner._validate_new_model({}, metrics, None)
         assert accepted
 
     def test_inverted_calibration_rejected_with_sufficient_data(self):
@@ -209,7 +209,7 @@ class TestAcceptanceGateCalibration:
             candidate_calibration_sample_count=50,
             candidate_calibration_monotonic=False,
         )
-        accepted = learner._validate_new_model({}, metrics, None)
+        accepted, _reason = learner._validate_new_model({}, metrics, None)
         assert not accepted, \
             "Model with inverted calibration must be rejected"
 
@@ -226,7 +226,7 @@ class TestAcceptanceGateCalibration:
             hit_rate=0.60,
             direction_accuracy=0.65,
         )
-        accepted = learner._validate_new_model({}, metrics, None)
+        accepted, _reason = learner._validate_new_model({}, metrics, None)
         # Should be accepted because insufficient data means monotonicity is not enforced
         assert accepted
 
@@ -241,7 +241,7 @@ class TestAcceptanceGateCalibration:
             hit_rate=0.45,
             direction_accuracy=0.50,
         )
-        accepted = learner._validate_new_model({}, metrics, None)
+        accepted, _reason = learner._validate_new_model({}, metrics, None)
         assert not accepted, \
             "Weakly calibrated model with borderline score should be rejected"
 
@@ -258,7 +258,7 @@ class TestAcceptanceGateCalibration:
             hit_rate=0.48,
             direction_accuracy=0.52,
         )
-        accepted = learner._validate_new_model({}, metrics, None)
+        accepted, _reason = learner._validate_new_model({}, metrics, None)
         assert accepted, \
             "With sufficient calibration, lower score threshold should apply"
 

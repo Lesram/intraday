@@ -314,6 +314,16 @@ class TestTradeForensicFields:
         }
         brain.ml_state = {}
         brain.reference_features = None
+        # V12 W88 (post-cleanup): apply_to_learner now reads
+        # evaluation_event_history (added in V8/V9 wave for J4 coverage).
+        # Pre-W88 the test fixture didn't carry it; apply_to_learner
+        # raised AttributeError and returned False.  Provide an empty
+        # list so the restore succeeds.
+        brain.evaluation_event_history = []
+        brain.extra_counters = {}
+        brain.evolved_params = {}
+        brain.governance_state = {}
+        brain.regime_state = {}
         brain.trade_history = [{
             "symbol": "AAPL", "direction": 1.0, "entry_price": 150.0,
             "exit_price": 155.0, "entry_bar": 10, "exit_bar": 20,

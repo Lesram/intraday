@@ -142,12 +142,17 @@ class TestLearnerDelegatesToSharedGate:
         assert learner._validate_new_model({}, m, None)
 
     def test_learner_rejects_inverted_calibration(self):
+        # V12 W88: _validate_new_model returns tuple[bool, str] (S17 sprint).
+        # Pre-W88 ``assert not learner._validate_new_model(...)`` was always
+        # False (any non-empty tuple is truthy → not <truthy> is False) so
+        # the test was effectively never asserting reject behavior.
         learner = self._make_learner()
         m = _good_metrics(
             calibration_sample_count=50, calibration_monotonic=False,
             candidate_calibration_sample_count=50, candidate_calibration_monotonic=False,
         )
-        assert not learner._validate_new_model({}, m, None)
+        accepted, _reason = learner._validate_new_model({}, m, None)
+        assert not accepted
 
     def test_learner_raises_threshold_for_insufficient_cal(self):
         learner = self._make_learner()
@@ -155,7 +160,8 @@ class TestLearnerDelegatesToSharedGate:
             calibration_sample_count=5,
             accuracy=0.50, hit_rate=0.45, direction_accuracy=0.50,
         )
-        assert not learner._validate_new_model({}, m, None)
+        accepted, _reason = learner._validate_new_model({}, m, None)
+        assert not accepted
 
 
 # ==============================================================================
@@ -192,12 +198,18 @@ class TestBackgroundAndLearnerAgree:
         return ContinuousLearner(sig_gen)
 
     def _check_agreement(self, metrics: ModelMetrics) -> None:
-        """Both paths must give the same accept/reject decision."""
+        """Both paths must give the same accept/reject decision.
+
+        V12 W88: _validate_new_model and acceptance_gate both return
+        tuple[bool, str].  Pre-W88 the test compared a tuple
+        (learner) to a bool (gate, after destructuring), which never
+        matched.  Compare just the accept/reject bool.
+        """
         learner = self._make_learner()
-        learner_decision = learner._validate_new_model({}, metrics, None)
+        learner_accepted, _ = learner._validate_new_model({}, metrics, None)
         gate_decision, _ = acceptance_gate(metrics, old_metrics=None)
-        assert learner_decision == gate_decision, \
-            f"Learner={learner_decision}, gate={gate_decision} for {metrics}"
+        assert learner_accepted == gate_decision, \
+            f"Learner={learner_accepted}, gate={gate_decision} for {metrics}"
 
     def test_agreement_good_model(self):
         self._check_agreement(_good_metrics())
