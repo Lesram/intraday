@@ -114,6 +114,41 @@ def test_w3_g1_grep_count_negative_increments_fails_in_required_mode():
     )
 
 
+def test_w3_g1_grep_timeout_fails_default_ci_mode(monkeypatch):
+    """Behavioral: an un-runnable cited grep must fail default CI mode too."""
+    import scripts.ci.check_wave_markers as cwm
+
+    body = textwrap.dedent("""
+    fix(audit-wave99): synthetic w3-g1 timeout test (CRITICAL)
+
+    Finding-ID: W3-G1
+    Same-class scan:
+    grep -rn '' /
+    same-class scan count: 0
+    """).strip()
+
+    monkeypatch.setattr(
+        cwm,
+        "commits_in_range",
+        lambda base, head: [("abc1234", body)],
+    )
+    monkeypatch.setattr(
+        cwm,
+        "_re_run_grep",
+        lambda cmd, repo_root: (-1, "[timeout]"),
+    )
+
+    fails = cwm.check_wave_compliance(
+        "base",
+        "head",
+        enforce_grep_zero=False,
+        enforce_test_delta=False,
+        repo_root=".",
+    )
+
+    assert fails == 1
+
+
 # ─────────────────────────────────────────────────────────────────────
 # W3-G2 — behavioral-test diff scope
 # ─────────────────────────────────────────────────────────────────────

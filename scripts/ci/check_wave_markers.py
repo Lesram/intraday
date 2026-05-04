@@ -273,6 +273,10 @@ def check_wave_compliance(
       followed by ``count: 0`` in the commit body) was V8-era process
       that didn't survive contact with reality.  No one has been
       satisfying it for many waves, making it decorative governance.
+      V13 cleanup keeps one hard floor: if a commit cites a grep command,
+      that command must be runnable.  A timeout/error is failed even in
+      default mode, because un-evaluated evidence is worse than absent
+      evidence.
     - behavioral test on Critical/High: ADVISORY (was REQUIRED).
       The V12 ``audit_gate`` job in ``.github/workflows/ci.yml``
       enforces a stronger version of this rule: it checks the
@@ -318,19 +322,17 @@ def check_wave_compliance(
             # V8 / W3-G1 / Wave-32 (2026-05-03): `count < 0` means the cited
             # grep timed out or errored.  Previously printed [WARN] without
             # incrementing `fails`, so a pathological/timeout grep silently
-            # bypassed required-mode.  Now: in required mode, un-evaluated
-            # grep is treated as FAIL — at least one grep must successfully
-            # evaluate to count == 0.
+            # bypassed required-mode.  V13 cleanup closes the remaining
+            # default-mode hole too: once evidence is cited, it must be
+            # evaluable.
             for cmd_str in ctx["grep_cmds"]:
                 count, _out = _re_run_grep(cmd_str, repo_root)
                 if count < 0:
-                    sev = "FAIL" if enforce_grep_zero else "WARN"
                     print(
-                        f"    [{sev}] could not re-run (count<0; timeout or "
+                        f"    [FAIL] could not re-run (count<0; timeout or "
                         f"error): {cmd_str[:80]}"
                     )
-                    if enforce_grep_zero:
-                        fails += 1
+                    fails += 1
                 elif count == 0:
                     print(f"    [ok] re-ran, count=0: {cmd_str[:80]}")
                 else:

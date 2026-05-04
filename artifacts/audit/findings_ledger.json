@@ -7,8 +7,8 @@
   },
   "by_status": {
     "absorbed": 2,
-    "closed": 29,
-    "closed_unverified": 93,
+    "closed": 30,
+    "closed_unverified": 92,
     "deferred": 5,
     "documented_by_design": 1
   },
@@ -30,18 +30,18 @@
       "wave_target_raw": "32"
     },
     {
-      "behavioral_test_path": null,
-      "deferral_reason": "V13 triage found finding ID evidence in commits/tests, but the V12 ledger lacks a behavioral close record. Backfill close commit + behavioral_test_path before promoting to status=closed.",
+      "behavioral_test_path": "tests/test_wave32_fixes.py::test_w3_g1_grep_timeout_fails_default_ci_mode",
+      "deferral_reason": null,
       "first_appearance_version": "v8",
       "id": "W3-G1",
       "severity_at_first_appearance": "critical",
-      "status": "closed_unverified",
+      "status": "closed",
       "summary": "CI grep-timeout returns count=-1 \u2192 silent pass \u2192 wave-28 enforcement bypass",
       "track": "W3",
       "v12_audit": null,
       "v13_lens": null,
-      "v13_triage_status": "closed_in_unrecorded_wave",
-      "wave_closed": null,
+      "v13_triage_status": "closed_with_behavioral_test",
+      "wave_closed": 106,
       "wave_target_raw": "32"
     },
     {
