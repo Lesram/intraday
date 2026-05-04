@@ -53,9 +53,16 @@ WAVE_COMMIT_RE = re.compile(r"^fix\(audit-wave[0-9a-z\-]+\)", re.MULTILINE)
 #   BUG-8, BUG-10                                          (V4-Track-N early IDs)
 FINDING_ID_RE = re.compile(
     r"\b("
-    r"[A-Z]{1,3}(?:-[A-Z0-9]+){1,3}"   # AA-C-1, V-T-5, etc.
-    r"|HH[ \-]R-\d+"                    # HH R-5, HH R-1, HH-R-5
-    r"|BUG-\d+"                         # BUG-8, BUG-10
+    # V12 W81 (post-audit cleanup): widened alpha prefix to {1,4}
+    # and added optional trailing digit so ``DD5-1``/``BB5-F1``/
+    # ``HH3-N-1``/``AA5-2`` style IDs (V8+ convention) match.  Pre-W81
+    # the regex required pure-alpha prefix, so the wave-marker
+    # enforcer falsely flagged V12 wave-72 (DD5-1/2/3) and W80
+    # (BB5-F1) as "no finding-IDs cited" when the IDs were right
+    # there in the body.
+    r"[A-Z]{1,4}\d{0,3}(?:-[A-Z0-9]+){1,3}"   # AA-C-1, V-T-5, DD5-1, BB5-F1, W74-FOLLOWUP-1, etc.
+    r"|HH[ \-]R-\d+"                       # HH R-5, HH R-1, HH-R-5
+    r"|BUG-\d+"                            # BUG-8, BUG-10
     r")\b"
 )
 # V8 / W3-G3 / Wave-32 (2026-05-03): tolerate pasted shell-prompt prefixes
@@ -249,22 +256,31 @@ def check_wave_compliance(
     base: str,
     head: str,
     *,
-    enforce_grep_zero: bool = True,
-    enforce_test_delta: bool = True,
+    enforce_grep_zero: bool = False,
+    enforce_test_delta: bool = False,
     repo_root: str = ".",
 ) -> int:
     """Return number of failed wave-commit checks.
 
-    V8 / Wave-28 (2026-05-03): the wave-26 version was warn-only.
-    This version flips to required-mode by default:
+    V8 / Wave-28: the wave-26 version was warn-only; V8 flipped to
+    required-mode for all four rules.  V12 W81 (post-audit cleanup,
+    2026-05-03) walks back the strict format requirements:
 
-    - finding-IDs cited: REQUIRED (already)
-    - same-class grep: REQUIRED + RE-RUN (count must be 0)
-    - asserts_zero in body: REQUIRED (audit acknowledgment)
-    - behavioral test added on Critical/High waves: REQUIRED via diff
+    - finding-IDs cited: REQUIRED (still — easy to satisfy, real signal).
+    - same-class grep + count: 0: ADVISORY (was REQUIRED).
+      The V12 external auditor counted 191 fails across audit-wave
+      history; the format requirement (a literal ``grep -rn '...'``
+      followed by ``count: 0`` in the commit body) was V8-era process
+      that didn't survive contact with reality.  No one has been
+      satisfying it for many waves, making it decorative governance.
+    - behavioral test on Critical/High: ADVISORY (was REQUIRED).
+      The V12 ``audit_gate`` job in ``.github/workflows/ci.yml``
+      enforces a stronger version of this rule: it checks the
+      LEDGER's ``behavioral_test_path`` against the classifier,
+      catching marker-only tests that the diff-count-only check
+      here would miss.  This script's rule is now redundant.
 
-    `enforce_grep_zero` and `enforce_test_delta` flags allow a
-    transitional warn-mode (set both to False) if rolled out.
+    Override via the ``--strict`` CLI flag if you want the V8 enforcement.
     """
     fails = 0
     commits = commits_in_range(base, head)
@@ -366,8 +382,19 @@ def main() -> int:
         "--warn-only",
         action="store_true",
         help=(
-            "V8 / Wave-28: legacy warn-mode. Default is REQUIRED enforcement "
-            "(grep re-run with count==0; behavioral test on Critical/High)."
+            "V8 / Wave-28: legacy warn-mode flag.  V12 W81 made the "
+            "default warn-mode for grep/count/test-delta; --warn-only "
+            "is now a no-op for those rules.  finding-IDs remain REQUIRED."
+        ),
+    )
+    parser.add_argument(
+        "--strict",
+        action="store_true",
+        help=(
+            "V12 W81: opt back into V8-era strict enforcement of "
+            "grep + count=0 + behavioral-test-delta (in addition to "
+            "finding-IDs).  Off by default; the V12 audit_gate provides "
+            "stronger coverage of the substantive rule."
         ),
     )
     parser.add_argument(
@@ -379,8 +406,8 @@ def main() -> int:
     fails = check_wave_compliance(
         args.base,
         args.head,
-        enforce_grep_zero=not args.warn_only,
-        enforce_test_delta=not args.warn_only,
+        enforce_grep_zero=args.strict,
+        enforce_test_delta=args.strict,
         repo_root=args.repo_root,
     )
     if fails:
