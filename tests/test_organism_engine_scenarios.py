@@ -209,6 +209,7 @@ async def test_empty_features_for_position_symbol(broker, brain_dir):
 # ═════════════════════════════════════════════════════════════════════════
 
 @pytest.mark.asyncio
+@pytest.mark.timeout(120)
 async def test_regime_stability_over_20_ticks(broker, brain_dir):
     """Run 20 ticks with smooth uptrend data — regime should not flap excessively."""
     bars = make_features_dict(["AAPL", "MSFT", "SPY"], n=600, seed=42, trend="up")
@@ -794,6 +795,7 @@ async def test_reconstructed_trades_fed_to_learner(broker, brain_dir):
 # ═════════════════════════════════════════════════════════════════════════
 
 @pytest.mark.asyncio
+@pytest.mark.timeout(120)
 async def test_brain_save_interval_20_ticks(broker, brain_dir):
     """Run 25 ticks — brain should be saved at tick 20."""
     engine = _make_engine(broker, brain_dir=brain_dir)
