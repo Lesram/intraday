@@ -20,12 +20,16 @@ import logging
 from typing import Any
 from uuid import UUID, uuid4
 
-from sqlalchemy import and_, desc, func, select
+from sqlalchemy import and_, desc, func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.infra.schemas import AuditLog
 
 logger = logging.getLogger(__name__)
+
+
+_AUDIT_CHAIN_LOCK_CLASS = 0x41554454  # "AUDT"
+_AUDIT_CHAIN_LOCK_OBJECT = 0x48415348  # "HASH"
 
 
 class AuditAction(Enum):
@@ -196,9 +200,38 @@ class ComplianceAuditService:
             return False
         return True
 
-    async def _get_last_hash(self) -> str | None:
+    def _dialect_name(self) -> str | None:
+        """Return the bound database dialect when SQLAlchemy exposes it."""
+        get_bind = getattr(self.db, "get_bind", None)
+        if get_bind is None:
+            return None
+        try:
+            bind = get_bind()
+        except Exception:
+            return None
+        return getattr(getattr(bind, "dialect", None), "name", None)
+
+    async def _acquire_hash_chain_lock(self) -> None:
+        """Serialize PostgreSQL audit-chain writers within the transaction.
+
+        The hash for a new audit row depends on the most recent stored
+        hash.  Without a DB-level lock, concurrent writers can both read
+        the same previous hash and one of the two rows will break the
+        chain.  Non-PostgreSQL test sessions skip the lock.
+        """
+        if self._dialect_name() != "postgresql":
+            return
+        await self.db.execute(
+            text("SELECT pg_advisory_xact_lock(:class_id, :object_id)"),
+            {
+                "class_id": _AUDIT_CHAIN_LOCK_CLASS,
+                "object_id": _AUDIT_CHAIN_LOCK_OBJECT,
+            },
+        )
+
+    async def _get_last_hash(self, *, use_cache: bool = True) -> str | None:
         """Get the hash of the most recent audit record."""
-        if self._last_hash_cache:
+        if use_cache and self._last_hash_cache:
             return self._last_hash_cache
 
         result = await self.db.execute(
@@ -238,8 +271,9 @@ class ComplianceAuditService:
         now = datetime.now(UTC)
         payload = payload or {}
 
-        # Get previous hash for chain
-        prev_hash = await self._get_last_hash()
+        # Get previous hash for chain while holding the writer lock.
+        await self._acquire_hash_chain_lock()
+        prev_hash = await self._get_last_hash(use_cache=False)
 
         # Compute hash for this record
         record_hash = _compute_hash(
