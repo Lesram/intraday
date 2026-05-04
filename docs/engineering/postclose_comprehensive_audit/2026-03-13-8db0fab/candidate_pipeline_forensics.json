@@ -1,0 +1,61 @@
+{
+  "date": "2026-03-13",
+  "head_sha": "8db0fab",
+
+  "pipeline_overview": {
+    "total_ticks": 942,
+    "ticks_with_candidate_evaluation": 138,
+    "ticks_with_entries_blocked": 42,
+    "entries_blocked_pct": "30.4%",
+    "total_rejection_events": "~120",
+    "unique_symbols_evaluated": 11
+  },
+
+  "gate_pipeline_flow": {
+    "stage_1_confidence_gate": {
+      "candidates_reaching": "~120",
+      "candidates_passing": 0,
+      "rejection_rate": "100%",
+      "gate_value": 0.25,
+      "max_score_seen": 0.20,
+      "gap_to_passing": 0.05,
+      "note": "ALL candidates rejected at first gate. No candidate reached stage 2."
+    },
+    "stage_2_liquidity_gate": {"candidates_reaching": 0, "note": "Never reached"},
+    "stage_3_sector_exposure": {"candidates_reaching": 0, "note": "Never reached"},
+    "stage_4_circuit_breaker": {"candidates_reaching": 0, "note": "Never reached"},
+    "stage_5_bar_boundary": {"candidates_reaching": 0, "note": "Never reached"},
+    "stage_6_kelly_sizing": {"candidates_reaching": 0, "note": "Never reached"}
+  },
+
+  "confidence_score_distribution": {
+    "range_0_to_0.05": "~40% of evaluations (mostly inverse ETFs with breakout=0)",
+    "range_0.05_to_0.10": "~25% of evaluations",
+    "range_0.10_to_0.15": "~20% of evaluations",
+    "range_0.15_to_0.20": "~15% of evaluations (PSQ, SH, XOM, WMT)",
+    "range_0.20_plus": "< 1% (PSQ peaked at 0.20)",
+    "note": "Distribution heavily left-skewed. The confidence formula produces low scores when breakout_readiness is low, which is expected in sell-off/rotation markets."
+  },
+
+  "entries_blocked_analysis": {
+    "blocked_ticks": 42,
+    "total_visible_ticks": 138,
+    "blocked_pct": "30.4%",
+    "cause": "Scheduler backing-off after repeated zero-candidate ticks. Self-recovering behavior.",
+    "impact": "Even during blocked ticks, no candidate would have passed the confidence gate."
+  },
+
+  "symbols_evaluated": [
+    {"symbol": "PSQ", "max_eff_conf": 0.20, "evaluations": "~15", "rejection_reason": "confidence < 0.25"},
+    {"symbol": "SH", "max_eff_conf": 0.19, "evaluations": "~15", "rejection_reason": "confidence < 0.25"},
+    {"symbol": "XOM", "max_eff_conf": 0.18, "evaluations": "~12", "rejection_reason": "confidence < 0.25"},
+    {"symbol": "WMT", "max_eff_conf": 0.16, "evaluations": "~10", "rejection_reason": "confidence < 0.25"},
+    {"symbol": "COST", "max_eff_conf": 0.12, "evaluations": "~8", "rejection_reason": "confidence < 0.25"},
+    {"symbol": "XLE", "max_eff_conf": 0.10, "evaluations": "~10", "rejection_reason": "confidence < 0.25"},
+    {"symbol": "META", "max_eff_conf": 0.08, "evaluations": "~12", "rejection_reason": "confidence < 0.25"},
+    {"symbol": "AMZN", "max_eff_conf": 0.06, "evaluations": "~12", "rejection_reason": "confidence < 0.25"},
+    {"symbol": "GOOGL", "max_eff_conf": 0.05, "evaluations": "~10", "rejection_reason": "confidence < 0.25"},
+    {"symbol": "AAPL", "max_eff_conf": 0.04, "evaluations": "~10", "rejection_reason": "confidence < 0.25"},
+    {"symbol": "LLY", "max_eff_conf": 0.03, "evaluations": "~6", "rejection_reason": "confidence < 0.25"}
+  ]
+}

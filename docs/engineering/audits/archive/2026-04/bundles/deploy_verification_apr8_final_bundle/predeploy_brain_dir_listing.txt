@@ -1,0 +1,19 @@
+total 1360
+drwxrwxrwx@ 18 marselkei  staff     576 Apr  8 12:59 .
+drwxr-xr-x  94 marselkei  staff    3008 Apr  8 18:22 ..
+-rw-rw-rw-@  1 marselkei  staff       0 Apr  8 12:59 .brain.lock
+drwxr-xr-x   3 marselkei  staff      96 Apr  8 13:05 diagnostics
+-rw-r--r--   1 marselkei  staff   88951 Apr  8 12:59 equity_curve.csv
+-rw-r--r--   1 marselkei  staff   47898 Apr  8 12:59 evaluation_event_history.json
+-rw-r--r--   1 marselkei  staff    3717 Apr  8 12:59 evolved_params.json
+-rw-r--r--   1 marselkei  staff    9699 Apr  8 12:59 extra_counters.json
+-rw-r--r--   1 marselkei  staff     297 Apr  8 12:59 governance_state.json
+-rw-r--r--   1 marselkei  staff     264 Apr  8 12:59 learning_state.json
+-rw-r--r--   1 marselkei  staff     247 Apr  8 12:59 manifest.json
+-rw-r--r--   1 marselkei  staff  248507 Apr  8 12:59 ml_classifier.joblib
+-rw-r--r--   1 marselkei  staff  168098 Apr  8 12:59 ml_regressor.joblib
+-rw-r--r--   1 marselkei  staff    3131 Apr  8 12:59 ml_state.json
+-rw-r--r--   1 marselkei  staff   21191 Apr  8 12:59 reference_feats.csv
+-rw-r--r--   1 marselkei  staff     178 Apr  8 12:59 regime_state.json
+-rw-r--r--   1 marselkei  staff   24816 Apr  8 12:59 trade_history.csv
+-rw-r--r--   1 marselkei  staff   41640 Apr  8 12:59 transfer_knowledge.json

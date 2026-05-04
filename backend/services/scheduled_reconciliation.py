@@ -95,10 +95,16 @@ async def run_scheduled_reconciliation() -> dict[str, Any]:
 async def _reconciliation_loop(interval_minutes: int) -> None:
     """
     Internal loop that runs reconciliation at specified intervals.
+
+    Audit-J finding J-4 (2026-05-02): _stop_event must be initialized
+    by start_reconciliation_scheduler BEFORE create_task, not in the
+    loop body. If stop is called between create_task and the loop's
+    first line, _stop_event was None → stop_event.set() was a no-op
+    → wait_for(timeout=interval) burned the full interval before
+    canceling. Now: just enter the loop; _stop_event is already set up.
     """
     global _stop_event
-    _stop_event = asyncio.Event()
-    
+
     logger.info(f"H-20: Reconciliation scheduler started (interval: {interval_minutes} minutes)")
     
     while not _stop_event.is_set():
@@ -146,6 +152,11 @@ async def start_reconciliation_scheduler() -> bool:
         interval = 15
         logger.warning(f"H-20: Invalid RECONCILIATION_INTERVAL_MINUTES, using default: {interval}")
     
+    # Audit-J finding J-4 (2026-05-02): initialize _stop_event BEFORE
+    # create_task so a fast stop_*() right after start_*() works.
+    global _stop_event
+    _stop_event = asyncio.Event()
+
     # Start background task
     _reconciliation_task = asyncio.create_task(
         _reconciliation_loop(interval),

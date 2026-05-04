@@ -1,0 +1,3 @@
+ce06d41 experiment(instrumentation): confidence inversion side-by-side logging [Exp 3 prep]
+d79cae0 experiment(entries): suppress inverse ETF entries in chop regime [Exp 2]
+6754223 feat(tooling): automated experiment observation report generator

@@ -1,0 +1,61 @@
+{
+  "program": "Away-Mode Hardening",
+  "date": "2026-03-18",
+  "start_sha": "16dcdd83fd2fe04df2f798b879ca9fbefb8e7b04",
+  "issues_fixed": {
+    "wave_A": {
+      "count": 4,
+      "items": [
+        "A1: Universe drift / SH-PSQ protected from rotation",
+        "A2: Scanner decoupled from entry blocking (death spiral fix)",
+        "A3: Runtime snapshot reports unreachable reason + scanner data",
+        "A4: Pending entry persisted across restart (duplicate prevention)"
+      ]
+    },
+    "wave_B": {
+      "count": 3,
+      "items": [
+        "B1: Trade update DLQ (failed fills persisted, not silently dropped)",
+        "B2: WebSocket gap-fill uses actual disconnect duration (min 5m, max 1hr)",
+        "B3: Audit service session resilience (refresh, health check, fail-loud)"
+      ]
+    },
+    "wave_C": {
+      "count": 5,
+      "items": [
+        "C1: No-trade watchdog (OK → WARNING → CRITICAL state machine)",
+        "C2: Equity fallback watchdog (count + streak + escalation)",
+        "C3: Universe drift watchdog (base vs active vs protected)",
+        "C4: Brain save watchdog (stale save detection)",
+        "C5: Unified watchdog state in tick results and engine status"
+      ]
+    },
+    "wave_D": "SKIPPED — no justified strategy-support fixes needed",
+    "total_issues_fixed": 12
+  },
+  "remaining_unresolved": {
+    "count": 7,
+    "blocks_paper_path": 0,
+    "blocks_away_mode": 0,
+    "items": "See away_mode_remaining_backlog.json"
+  },
+  "paper_path_blockers_remaining": 0,
+  "unattended_two_week_operation": "READY_WITH_RISKS",
+  "risks": [
+    "No external alerting (watchdog states log-only)",
+    "DLQ not auto-replayed",
+    "WebSocket gaps > 1hr not covered (extremely rare)"
+  ],
+  "strategy_behavior_changed": false,
+  "strategy_note": "No confidence formulas, thresholds, exit logic, or entry logic was modified. All changes are correctness fixes (persisting state, decoupling gates) and observability additions (watchdogs).",
+  "files_changed": [
+    "backend/organism/live_engine.py (+208 lines)",
+    "backend/organism/universe_selector.py (+17 lines)",
+    "backend/integrations/alpaca_stream.py (+66 lines)",
+    "backend/services/audit_service.py (+36 lines)",
+    "scripts/runtime/write_runtime_snapshot.py (+10 lines)"
+  ],
+  "tests_added": 51,
+  "tests_all_passing": true,
+  "regressions_introduced": 0
+}

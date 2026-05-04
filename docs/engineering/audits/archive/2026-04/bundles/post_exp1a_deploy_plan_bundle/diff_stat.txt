@@ -1,0 +1,5 @@
+ backend/organism/live_engine.py                    |  59 +++
+ scripts/generate_experiment_observation_report.py  | 412 +++++++++++++++++++++
+ .../test_experiment_2_inverse_chop_suppression.py  | 119 ++++++
+ tests/test_experiment_3_confidence_inversion.py    | 206 +++++++++++
+ 4 files changed, 796 insertions(+)

@@ -1,0 +1,12 @@
+{
+  "decision": "SKIP",
+  "rationale": "No optional strategy-support fixes are clearly justified at this time.",
+  "d1_dollar_liquidity_gate": {
+    "status": "DEFERRED",
+    "reason": "Current share-volume gate (500k avg 20-bar volume) is functional for the 22-symbol universe. All symbols are large/mega-cap with >1M daily volume. No evidence of obvious liquid high-price names being blocked. Not worth the risk of unintended changes before a 2-week unattended period."
+  },
+  "d2_protected_inverse_etf_handling": {
+    "status": "ALREADY_FIXED_IN_WAVE_A",
+    "reason": "Wave A (A1) added protected_symbols={'SH','PSQ'} to DynamicUniverseSelector. These symbols can no longer be rotated out. No additional strategy-level changes needed."
+  }
+}

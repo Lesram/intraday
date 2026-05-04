@@ -12,7 +12,7 @@ from decimal import Decimal
 from typing import Any
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Request, Response, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.infra.db import get_db_session
@@ -64,7 +64,7 @@ def _check_order_rate_limit(user_id: str) -> None:
 def _compute_etag(data: Any) -> str:
     """Compute ETag from response data for cache validation (L-08)."""
     content = json.dumps(data, sort_keys=True, default=str)
-    return f'"{hashlib.md5(content.encode()).hexdigest()}"'
+    return f'"{hashlib.md5(content.encode(), usedforsecurity=False).hexdigest()}"'
 
 
 @router.get("/", response_model=list[dict[str, Any]])
@@ -228,14 +228,41 @@ class ValidationCheck(BaseModel):
 
 
 class OrderValidationResponse(BaseModel):
-    """Pre-trade order validation response."""
+    """Pre-trade order validation response.
+
+    V11 prep / Wave-64 (VV-1 closure, 2026-05-03): emit BOTH snake_case
+    AND camelCase aliases so the frontend (which reads camelCase) and
+    operator-facing curl/clients (which expect snake_case) both work
+    without a coordinated rename.  pydantic emits the alias by default
+    when `populate_by_name=True` + `by_alias=True` on serialization.
+    The frontend's previous undefined/N/A bug came from snake_case
+    keys it didn't recognize; now we ship both.
+    """
+    model_config = ConfigDict(
+        populate_by_name=True,
+        # alias_generator preserved for forward-compat; explicit per-field
+        # aliases below are the source of truth.
+    )
+
     valid: bool = Field(..., description="Overall validation result")
     checks: list[ValidationCheck] = Field(default_factory=list, description="Individual validation checks")
     warnings: list[str] = Field(default_factory=list, description="Warning messages")
     errors: list[str] = Field(default_factory=list, description="Error messages")
-    estimated_cost: float | None = Field(None, description="Estimated cost of the order")
-    estimated_price: float | None = Field(None, description="Estimated price per share (fetched for market orders)")
-    estimated_buying_power_after: float | None = Field(None, description="Buying power after order")
+    estimated_cost: float | None = Field(
+        None,
+        description="Estimated cost of the order",
+        serialization_alias="estimatedCost",
+    )
+    estimated_price: float | None = Field(
+        None,
+        description="Estimated price per share (fetched for market orders)",
+        serialization_alias="estimatedPrice",
+    )
+    estimated_buying_power_after: float | None = Field(
+        None,
+        description="Buying power after order",
+        serialization_alias="estimatedBuyingPowerAfter",
+    )
 
 
 # Service Dependencies
@@ -262,15 +289,32 @@ async def get_risk_manager(request: Request):
     return RiskManager()
 
 
-def require_trader(current_user=Depends(get_current_user)):
-    """Dependency that requires authenticated user with trader role"""
+def require_trader(
+    current_user=Depends(get_current_user),
+):
+    """V11 AAA-F2 / Wave-68 (2026-05-03): canonical RBAC for trader+admin.
+
+    Pre-V11 this stub IGNORED roles ("In production, would check
+    roles/permissions") — letting any self-registered user (default
+    role ["user"] per auth.py:661) place / cancel / modify orders.
+    Same RBAC bypass class wave-23b closed for organism / audit, but
+    missed on the orders surface.
+
+    Now: delegates to the canonical require_roles factory in
+    infra/security.  Allowed roles: trader OR admin.  Anything else
+    (including default "user") → 403.
+    """
     if not current_user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Authentication required"
+            detail="Authentication required",
         )
-
-    # In production, would check roles/permissions
+    user_roles = set(getattr(current_user, "roles", []) or [])
+    if not (user_roles & {"trader", "admin"}):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="trader or admin role required",
+        )
     return current_user
 
 
@@ -284,6 +328,48 @@ def _current_user_identity(current_user: Any) -> str:
         or get_user_attribute(current_user, "sub", None)
         or "anonymous"
     )
+
+
+def _order_owner_id(order_status: Any) -> str | None:
+    """V13 W96 (Lens 5): extract user_id from a heterogeneous order
+    payload (dict, ORM model, or pydantic schema).  Returns None if
+    no ownership field is present — callers may treat as "no owner",
+    which is the legacy default for system-placed orders.
+    """
+    if isinstance(order_status, dict):
+        return order_status.get("user_id")
+    return getattr(order_status, "user_id", None)
+
+
+def assert_order_owner_or_404(
+    order_status: Any,
+    current_user: Any,
+) -> None:
+    """V13 W96 (Lens 5): canonical IDOR ownership check.
+
+    Raises ``HTTPException(404)`` if ``order_status`` exists and is
+    owned by a user other than ``current_user``.  Returns silently
+    on owned orders or orders without an owner field.
+
+    The 404 (not 403) is intentional: surfacing 403 would confirm
+    that the order ID exists, which is itself an information leak.
+    """
+    if order_status is None:
+        return  # "not found" path; caller already raised or will
+    owner = _order_owner_id(order_status)
+    if not owner:
+        return  # no ownership field — system order, allow
+    user = _current_user_identity(current_user)
+    if owner != user:
+        # NB: we log the attempt but do NOT distinguish via response.
+        logger.warning(
+            "V13 W96 IDOR rejected: user=%s tried to access order owned by %s",
+            user, owner,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Order not found",
+        )
 
 
 # ============================================================================
@@ -1552,4 +1638,3 @@ async def close_position_from_order(
         import traceback
         traceback.print_exc()
         raise HTTPException(500, f"Failed to close position: {str(e)}")
-

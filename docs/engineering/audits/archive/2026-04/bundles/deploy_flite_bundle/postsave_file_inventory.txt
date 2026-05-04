@@ -1,0 +1,14 @@
+  ✅ manifest.json  247 B
+  ✅ learning_state.json  264 B
+  ✅ ml_classifier.joblib  248507 B
+  ✅ ml_regressor.joblib  168098 B
+  ✅ reference_feats.csv  20126 B
+  ✅ trade_history.csv  24816 B
+  ✅ equity_curve.csv  89011 B
+  ✅ evaluation_event_history.json  47898 B
+  ✅ evolved_params.json  3717 B
+  ✅ governance_state.json  297 B
+  ✅ regime_state.json  178 B
+  ✅ ml_state.json  3131 B
+  ✅ extra_counters.json  9749 B
+  ❌ transfer_knowledge.json  MISSING

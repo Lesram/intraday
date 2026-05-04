@@ -4,7 +4,10 @@ Decision Telemetry — Full transparency into the organism's decision pipeline.
 Captures per-tick snapshots of every indicator, threshold, and decision gate
 so the frontend can render the full "why" behind every trade action.
 
-In-memory ring buffer only — no DB storage. Ephemeral diagnostic data.
+This module provides an in-memory ring buffer (~360 ticks / ~1 hour).
+A separate persistence path (TickTelemetry table via live_engine) writes
+summarised snapshots to the database for longer-term analysis. This module
+does not perform DB writes itself.
 """
 
 from __future__ import annotations

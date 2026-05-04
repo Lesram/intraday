@@ -14,15 +14,130 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from typing import Any
 
 import numpy as np
 import pandas as pd
 
-from backend.organism.ml_features import FEATURE_COLUMNS, compute_ml_features
+from backend.organism.ml_features import FEATURE_COLUMNS
 from backend.organism.ml_signal import MLSignalGenerator, MLSignal, ModelMetrics
 
 logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# Shared acceptance gate — used by both ContinuousLearner (sync) and
+# BackgroundTrainer (async process).  Extracted as a module-level function
+# so that both paths enforce identical rules.
+# ---------------------------------------------------------------------------
+
+# Minimum calibration samples for full acceptance confidence.
+# Below this, the composite score threshold is raised from 0.25 to 0.35,
+# requiring stronger statistical evidence from uncalibrated models.
+MIN_CALIBRATION_SAMPLES_FOR_ACCEPTANCE = 30
+
+
+def acceptance_gate(
+    new_metrics: "ModelMetrics",
+    old_metrics: "ModelMetrics | None" = None,
+    improvement_threshold: float = 0.05,
+) -> tuple[bool, str]:
+    """Unified model acceptance gate.
+
+    Returns (accepted, reason).
+
+    Composite score:
+        score = hit_rate * 0.4 + accuracy * 0.3 + (direction_acc - 0.5) * 0.6
+
+    Quality constraints (all must hold):
+        1. effective_mean_pred_return > 0 -- damped predicted edge must be positive
+           (damped by system calibration maturity, NOT per-signal confidence)
+        2. precision >= 0.45             -- minimum classification precision
+        3. candidate calibration honesty -- if the candidate model's own
+           validation calibration has sufficient samples (>= 30), its
+           confidence monotonicity must not be inverted
+        4. candidate calibration error   -- if candidate calibration has
+           sufficient samples, calibration_error must be < 0.25
+
+    Two calibration scopes:
+        - System-level (calibration_sample_count, calibration_monotonic,
+          calibration_error): from the generator's rolling live state.
+          Used for system maturity gate (score threshold adjustment).
+        - Candidate-level (candidate_calibration_sample_count,
+          candidate_calibration_monotonic, candidate_calibration_error):
+          from this model's validation predictions in _evaluate().
+          Used for model quality gate (honesty and error checks).
+
+    When system calibration_sample_count < 30 (system immature), the
+    minimum composite score threshold is raised from 0.25 to 0.35.
+    When candidate calibration sample count < 30, score threshold is
+    also raised to 0.35 (candidate unverified).
+    """
+
+    def _score(m: "ModelMetrics") -> float:
+        return (
+            m.hit_rate * 0.4
+            + m.accuracy * 0.3
+            + max(m.direction_accuracy - 0.5, 0.0) * 0.6
+        )
+
+    new_score = _score(new_metrics)
+
+    # Economic and statistical quality constraints.
+    has_positive_edge = new_metrics.effective_mean_pred_return > 0
+    has_min_precision = new_metrics.precision >= 0.45
+    quality_ok = has_positive_edge and has_min_precision
+
+    # System-level calibration maturity gate — determines score threshold.
+    sys_cal_samples = new_metrics.calibration_sample_count
+    sys_mature = sys_cal_samples >= MIN_CALIBRATION_SAMPLES_FOR_ACCEPTANCE
+
+    # Candidate-level calibration honesty gate (I1) — uses the candidate
+    # model's own validation-set calibration, not the system-level state.
+    cand_cal_samples = getattr(new_metrics, "candidate_calibration_sample_count", 0)
+    cand_cal_mono = getattr(new_metrics, "candidate_calibration_monotonic", True)
+    cand_cal_err = getattr(new_metrics, "candidate_calibration_error", 0.0)
+    cand_sufficient = cand_cal_samples >= MIN_CALIBRATION_SAMPLES_FOR_ACCEPTANCE
+
+    # If candidate calibration is sufficiently sampled but inverted, reject.
+    if cand_sufficient and not cand_cal_mono:
+        quality_ok = False
+
+    # If candidate calibration error is too high, reject.
+    if cand_sufficient and cand_cal_err >= 0.25:
+        quality_ok = False
+
+    # Score threshold: raised if either system or candidate calibration
+    # is immature (insufficient samples).
+    min_score = 0.25 if (sys_mature and cand_sufficient) else 0.35
+
+    # No old model — first model acceptance
+    if old_metrics is None:
+        accepted = new_score > min_score and quality_ok
+        reason = (
+            "accepted" if accepted
+            else f"score={new_score:.3f}<{min_score}, precision={new_metrics.precision:.3f}, "
+                 f"eff_mean_pred_return={new_metrics.effective_mean_pred_return:.4f}, "
+                 f"cand_cal_mono={cand_cal_mono}, cand_cal_err={cand_cal_err:.3f}, "
+                 f"cand_cal_samples={cand_cal_samples}, sys_cal_samples={sys_cal_samples}"
+        )
+        return accepted, reason
+
+    old_score = _score(old_metrics)
+
+    # New model must beat old by threshold, OR be above absolute bar
+    improved = (new_score - old_score) >= improvement_threshold
+    good_enough = new_score >= 0.40 and new_metrics.hit_rate >= 0.48
+
+    accepted = (improved or good_enough) and quality_ok
+    reason = (
+        "accepted" if accepted
+        else f"score={new_score:.3f}, old={old_score:.3f}, precision={new_metrics.precision:.3f}, "
+             f"eff_mean_pred_return={new_metrics.effective_mean_pred_return:.4f}, "
+             f"cand_cal_mono={cand_cal_mono}, cand_cal_err={cand_cal_err:.3f}, "
+             f"cand_cal_samples={cand_cal_samples}, sys_cal_samples={sys_cal_samples}"
+    )
+    return accepted, reason
 
 
 @dataclass
@@ -39,6 +154,8 @@ class LearningState:
     model_metrics: list[ModelMetrics] = field(default_factory=list)
     # Rolling accuracy for each generation
     generation_accuracies: list[float] = field(default_factory=list)
+    # Evaluation events: accepted + rejected model evaluations (J4)
+    evaluation_events: list[dict] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -81,6 +198,15 @@ class TradeRecord:
     mae: float = 0.0              # max adverse excursion ($)
     bars_held_at_exit: int = 0    # actual bars held when exited
     time_in_trade_seconds: float = 0.0  # wall-clock seconds in trade
+    closed_at: str = ""  # ISO-8601 UTC timestamp when trade was closed (J2)
+
+    # Audit-G BUG-G fix (2026-05-01): first-class flag for reconciliation
+    # artifacts (orphan adoption, stale-metadata cleanup). When True, this
+    # trade is BOOKKEEPING — broker reality vs platform metadata mismatch
+    # — not a strategy outcome. ALL learning consumers must filter on
+    # this flag (Kelly stats, ML calibration, symbol_daily_pnl, fitness
+    # gate counters) to avoid pollution of strategy-edge signals.
+    is_reconciliation_artifact: bool = False
 
     @property
     def correct_direction(self) -> bool:
@@ -109,7 +235,18 @@ class ContinuousLearner:
         drift_threshold: float = 0.10,    # PSI threshold for drift
         drift_check_window: int = 30,     # Check drift every 30 bars
         max_generations: int = 50,        # Safety cap
+        now_fn=None,
     ):
+        # V5 U-7 / Wave-19 (2026-05-03): clock injection for replay
+        # determinism. Retrain evaluation event timestamps must use the
+        # replay clock so post-replay logs reflect the bar window, not
+        # the deploy wall-clock.
+        if now_fn is None:
+            from datetime import UTC as _UTC, datetime as _dt
+            self._now_fn = lambda: _dt.now(_UTC)
+        else:
+            self._now_fn = now_fn
+
         self.signal_gen = signal_generator
         self.retrain_interval = retrain_every_n_bars
         self.min_trades = min_trades_for_eval
@@ -123,9 +260,17 @@ class ContinuousLearner:
         self._bars_since_retrain = 0
         self._reference_features: pd.DataFrame | None = None
 
+    # V9 TT-5 / Wave-47 (2026-05-03): bound the lists that append per-trade
+    # so they don't grow unboundedly across years of operation.  10k entries
+    # is roughly 25 years of paper trading at current ~400 trades/year and
+    # well below pandas perf cliffs.
+    _TT5_MAX_HISTORY = 10_000
+
     def record_trade(self, trade: TradeRecord) -> None:
         """Record a completed trade for attribution."""
         self.trade_history.append(trade)
+        if len(self.trade_history) > self._TT5_MAX_HISTORY:
+            self.trade_history = self.trade_history[-self._TT5_MAX_HISTORY:]
         self.state.total_trades += 1
         self.state.cumulative_pnl += trade.pnl
 
@@ -196,6 +341,10 @@ class ContinuousLearner:
         # Train new model
         metrics = self.signal_gen.train(features_by_symbol)
 
+        # Stamp evaluation time before acceptance gate (J3)
+        if metrics is not None:
+            metrics.evaluated_at = self._now_fn().isoformat()
+
         if metrics is None:
             # Training failed — rollback
             self.signal_gen._clf = old_clf
@@ -203,10 +352,33 @@ class ContinuousLearner:
             self.signal_gen._is_trained = old_trained
             return False, None
 
-        # Walk-forward validation gate
-        accepted = self._validate_new_model(
-            features_by_symbol, metrics, old_clf
+        # Walk-forward validation gate (S17: now passes old_reg too,
+        # so the gate can do same-holdout comparison if old model was
+        # previously trained).
+        accepted, reason = self._validate_new_model(
+            features_by_symbol, metrics, old_clf, old_reg=old_reg,
+            old_trained=old_trained,
         )
+
+        # Record evaluation event (J4)
+        eval_event = {
+            "evaluated_at": getattr(metrics, "evaluated_at", "") or self._now_fn().isoformat(),
+            "accepted": accepted,
+            "rejection_reason": "" if accepted else reason,
+            "generation": self.state.generation,
+            "accuracy": metrics.accuracy,
+            "precision": metrics.precision,
+            "direction_accuracy": metrics.direction_accuracy,
+            "hit_rate": metrics.hit_rate,
+            "mean_pred_return": metrics.mean_pred_return,
+            "effective_mean_pred_return": getattr(metrics, "effective_mean_pred_return", 0.0),
+        }
+        self.state.evaluation_events.append(eval_event)
+        # V9 TT-5: bound the evaluation_events list.
+        if len(self.state.evaluation_events) > self._TT5_MAX_HISTORY:
+            self.state.evaluation_events = self.state.evaluation_events[
+                -self._TT5_MAX_HISTORY:
+            ]
 
         if not accepted:
             # Rollback to old model
@@ -221,8 +393,16 @@ class ContinuousLearner:
 
         # Accepted — update state
         self.state.model_metrics.append(metrics)
+        if len(self.state.model_metrics) > self._TT5_MAX_HISTORY:
+            self.state.model_metrics = self.state.model_metrics[
+                -self._TT5_MAX_HISTORY:
+            ]
         if metrics.accuracy > 0:
             self.state.generation_accuracies.append(metrics.accuracy)
+            if len(self.state.generation_accuracies) > self._TT5_MAX_HISTORY:
+                self.state.generation_accuracies = (
+                    self.state.generation_accuracies[-self._TT5_MAX_HISTORY:]
+                )
 
         logger.info(
             "Gen %d: model accepted (acc=%.3f, hit=%.3f)",
@@ -243,7 +423,10 @@ class ContinuousLearner:
         correct = sum(1 for t in trades if t.correct_direction)
         total_pnl = sum(t.pnl for t in trades)
         pnl_list = [t.pnl for t in trades]
-        returns_list = [t.actual_return for t in trades]
+        # Direction-adjusted returns: profitable trades (long or short)
+        # contribute positive return. A profitable short has direction=-1
+        # and actual_return<0 (price fell), so actual_return * direction > 0.
+        returns_list = [t.actual_return * t.direction for t in trades]
 
         # Sharpe-like metric on trade returns
         if len(returns_list) > 1:
@@ -286,46 +469,64 @@ class ContinuousLearner:
             "exit_reasons": exit_reasons,
         }
 
+    # Keep class-level constant for backward compatibility with existing tests.
+    MIN_CALIBRATION_SAMPLES_FOR_ACCEPTANCE = MIN_CALIBRATION_SAMPLES_FOR_ACCEPTANCE
+
     def _validate_new_model(
         self,
         features_by_symbol: dict[str, pd.DataFrame],
         new_metrics: ModelMetrics,
         old_clf: Any,
-    ) -> bool:
-        """Walk-forward validation: new model must be profitable.
+        old_reg: Any = None,
+        old_trained: bool = False,
+    ) -> tuple[bool, str]:
+        """Walk-forward validation: delegates to the shared acceptance_gate().
 
-        Uses a **PnL-weighted score** instead of raw accuracy:
-            score = hit_rate × 0.4 + accuracy × 0.3 + (direction_acc - 0.5) × 0.6
+        S17 (RC-1.5 sprint): when an old (previously-trained) model exists,
+        evaluate it on the SAME validation holdout the new model was just
+        evaluated on. This gives apples-to-apples comparison instead of
+        comparing against old metrics from a different historical window.
 
-        A model that's 51% accurate but gets big moves right is better
-        than 60% accuracy on noise.  The hit_rate (sign-match on
-        predicted return) captures this.
+        Falls back to historical comparison if same-holdout eval is
+        unavailable (e.g., first training, no cached val data).
+
+        Note: this is the LIVE acceptance gate, used by both the synchronous
+        retrain path and the background trainer. walk_forward.py provides a
+        richer offline evaluation but is not used for live model promotion.
+
+        Returns (accepted, reason).
         """
-        def _score(m: ModelMetrics) -> float:
-            return (
-                m.hit_rate * 0.4
-                + m.accuracy * 0.3
-                + max(m.direction_accuracy - 0.5, 0.0) * 0.6
-            )
+        # Determine old metrics for comparison.
+        old_m: ModelMetrics | None = None
 
-        new_score = _score(new_metrics)
+        # S17 — preferred: same-holdout comparison.
+        if old_trained and old_clf is not None and old_reg is not None:
+            try:
+                old_m = self.signal_gen.evaluate_external_clf_reg(old_clf, old_reg)
+                if old_m is not None:
+                    logger.info(
+                        "S17 same-holdout comparison: old_acc=%.3f new_acc=%.3f "
+                        "old_dir_acc=%.3f new_dir_acc=%.3f",
+                        old_m.accuracy, new_metrics.accuracy,
+                        old_m.direction_accuracy, new_metrics.direction_accuracy,
+                    )
+            except Exception as e:
+                logger.warning(
+                    "S17 same-holdout eval failed, falling back to historical: %s", e,
+                )
+                old_m = None
 
-        # If no old model exists, accept any reasonable model
-        if not old_clf:
-            return new_score > 0.25
+        # Fallback: historical metrics from when old model was trained
+        # (apples-to-oranges, but better than nothing if same-holdout failed).
+        if old_m is None and old_clf and self.state.model_metrics:
+            old_m = self.state.model_metrics[-1]
 
-        # Get old model's last composite score
-        old_metrics = self.state.model_metrics
-        if not old_metrics:
-            return new_score > 0.25
-
-        old_score = _score(old_metrics[-1])
-
-        # New model must beat old by threshold, OR be above absolute bar
-        improved = (new_score - old_score) >= self.improvement_threshold
-        good_enough = new_score >= 0.40 and new_metrics.hit_rate >= 0.48
-
-        return improved or good_enough
+        accepted, reason = acceptance_gate(
+            new_metrics,
+            old_metrics=old_m,
+            improvement_threshold=self.improvement_threshold,
+        )
+        return accepted, reason
 
     def _check_drift(
         self,

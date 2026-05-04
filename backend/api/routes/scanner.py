@@ -13,7 +13,7 @@ Phase 7 - Market Data & Charting
 Created: October 16, 2025
 """
 
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from enum import Enum
 import logging
 from typing import Any
@@ -22,7 +22,13 @@ from fastapi import APIRouter, Depends, HTTPException, status
 import pandas as pd
 from pydantic import BaseModel, Field
 
-from backend.infra.security import get_current_user
+# Audit-I finding I-2 (2026-05-02): scanner endpoints used get_current_user
+# which silently returns None on missing auth — endpoints then 500-crashed
+# anonymously instead of 401-ing. Switched to get_authenticated_user which
+# raises 401 cleanly when no creds are present.
+from backend.infra.security import (
+    get_authenticated_user as get_current_user,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -151,7 +157,7 @@ async def get_real_market_data(symbol: str) -> dict[str, Any] | None:
         request = StockBarsRequest(
             symbol_or_symbols=symbol,
             timeframe=TimeFrame(1, TimeFrameUnit.Day),
-            start=datetime.utcnow() - timedelta(days=7),
+            start=datetime.now(UTC) - timedelta(days=7),
             limit=10
         )
 
@@ -219,7 +225,7 @@ async def calculate_indicators_for_symbol(symbol: str, bars_data: list = None) -
             request = StockBarsRequest(
                 symbol_or_symbols=symbol,
                 timeframe=TimeFrame(1, TimeFrameUnit.Day),
-                start=datetime.utcnow() - timedelta(days=365),
+                start=datetime.now(UTC) - timedelta(days=365),
                 limit=250
             )
 
@@ -267,6 +273,33 @@ async def calculate_indicators_for_symbol(symbol: str, bars_data: list = None) -
             'atr': round(float(latest.get('ATRr_14', 0)), 2),
         }
 
+    except AttributeError as e:
+        # V4 P-P2 (2026-05-02): pandas_ta isn't a hard dependency in
+        # paper deployment. Without it, df.ta accessor is missing and
+        # an AttributeError used to flood ERROR per-symbol per-scan.
+        # Downgrade to a single WARNING the first time the module is
+        # detected as missing; everything else is DEBUG. Other
+        # exceptions still log at ERROR.
+        if "ta" in str(e).lower():
+            global _PANDAS_TA_WARNED
+            try:
+                _PANDAS_TA_WARNED  # type: ignore[name-defined]
+            except NameError:
+                _PANDAS_TA_WARNED = False
+            if not _PANDAS_TA_WARNED:
+                logger.warning(
+                    "pandas_ta not installed — scanner indicators "
+                    "(RSI/MACD/SMA/ATR) skipped. Install pandas_ta "
+                    "to re-enable."
+                )
+                _PANDAS_TA_WARNED = True
+            else:
+                logger.debug(
+                    "pandas_ta indicators skipped for %s: %s", symbol, e,
+                )
+        else:
+            logger.error(f"Error calculating indicators for {symbol}: {e}")
+        return None
     except Exception as e:
         logger.error(f"Error calculating indicators for {symbol}: {e}")
         return None
@@ -571,7 +604,12 @@ async def get_scan_presets(
     return presets
 
 @router.get("/symbols")
-async def get_scannable_symbols():
+async def get_scannable_symbols(
+    # V7 AA-H-2 / Wave-23c (2026-05-03): require auth. The endpoint
+    # exposes the trading universe, which an unauthenticated probe
+    # could use to fingerprint the platform's strategy.
+    current_user=Depends(get_current_user),
+):
     """
     Get list of symbols available for scanning
 

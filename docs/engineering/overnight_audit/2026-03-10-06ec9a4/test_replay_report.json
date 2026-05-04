@@ -1,0 +1,51 @@
+{
+  "report_date": "2026-03-10",
+  "suites": {
+    "audit_patch_queue_j2_j5": {
+      "status": "PASS",
+      "total": 70,
+      "passed": 70,
+      "failed": 0,
+      "skipped": 0,
+      "duration_s": 3.16,
+      "breakdown": {
+        "j2": 22,
+        "j3": 21,
+        "j4": 17,
+        "j5": 10
+      }
+    },
+    "replay_simulator": {
+      "status": "PASS",
+      "total": 46,
+      "passed": 46,
+      "failed": 0,
+      "skipped": 0,
+      "duration_s": 66.84,
+      "note": "Includes semantic invariants. All 46 passed."
+    },
+    "organism_tests": {
+      "status": "PASS",
+      "total": 118,
+      "passed": 118,
+      "failed": 0,
+      "skipped": 0,
+      "duration_s": 39.58,
+      "warnings": [
+        "3 numpy RuntimeWarning (invalid value in divide) in test_missing_exit_levels_triggers_safety_net — cosmetic, non-failing"
+      ]
+    }
+  },
+  "known_flaky_tests": {
+    "count": 4,
+    "description": "4 async tests pass individually but may fail in full suite due to timing. Not encountered in this run.",
+    "tests": [
+      "tests/test_async_*  (exact names not enumerated — documented in MEMORY.md)"
+    ]
+  },
+  "overall_test_verdict": "PASS",
+  "total_tests_run": 234,
+  "total_passed": 234,
+  "total_failed": 0,
+  "pre_existing_failures": 0
+}

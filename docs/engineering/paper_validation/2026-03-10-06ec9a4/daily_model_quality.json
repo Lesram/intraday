@@ -1,0 +1,54 @@
+{
+  "ml_trained": false,
+  "ml_generation": 0,
+  "brain_generation": 0,
+  "learner_generation": 0,
+  "learner_retrain_count": 0,
+  "learner_best_sharpe": null,
+  "learner_total_trades": 142,
+  "learner_cumulative_pnl": -944.74,
+  "system_calibration": {
+    "sample_count": 0,
+    "correct_count": 0,
+    "monotonic": true,
+    "error": 0.0,
+    "bin_counts": [
+      [
+        0,
+        0
+      ],
+      [
+        0,
+        0
+      ],
+      [
+        0,
+        0
+      ],
+      [
+        0,
+        0
+      ],
+      [
+        0,
+        0
+      ]
+    ],
+    "bin_accuracies": [
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ]
+  },
+  "candidate_calibration": {
+    "note": "No model evaluations yet (ML not trained)."
+  },
+  "model_metrics_history_count": 0,
+  "acceptance_events": {
+    "total_evaluations": 0,
+    "accepted": 0,
+    "rejected": 0
+  }
+}

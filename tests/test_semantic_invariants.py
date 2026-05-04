@@ -209,11 +209,16 @@ class TestBreakoutSharedGates:
     """Verify pure breakout path uses the shared _passes_entry_gates helper."""
 
     def test_breakout_path_uses_shared_helper(self):
-        """Breakout section must call _passes_entry_gates (same as alpha)."""
+        """Breakout section must call _passes_entry_gates (same as alpha).
+
+        Audit-M follow-up (2026-05-02): the previous search-anchor
+        ``"pure breakout"`` is too generic and matches comments in the
+        ALPHA path's Exp3 instrumentation. Now: anchor on the unique
+        ``_MAX_PURE_BREAKOUT`` constant which appears only in the actual
+        pure-breakout block.
+        """
         source = (ROOT / "backend" / "organism" / "live_engine.py").read_text()
-        breakout_start = source.lower().find("pure breakout")
-        if breakout_start == -1:
-            breakout_start = source.find("_MAX_PURE_BREAKOUT")
+        breakout_start = source.find("_MAX_PURE_BREAKOUT")
         assert breakout_start != -1, "Could not find pure breakout section"
         breakout_section = source[breakout_start:breakout_start + 3000]
         assert "_passes_entry_gates" in breakout_section, \
@@ -243,8 +248,8 @@ class TestBreakoutSharedGates:
             breakout_start = source.find("_MAX_PURE_BREAKOUT")
         assert breakout_start != -1
         breakout_section = source[breakout_start:breakout_start + 3000]
-        assert "_MAIN_CONF_BASELINE" in breakout_section, \
-            "Breakout path must check _MAIN_CONF_BASELINE confidence threshold"
+        assert "_MIN_MAIN_CONF" in breakout_section, \
+            "Breakout path must check unified _MIN_MAIN_CONF confidence threshold"
 
     def test_ml_veto_gated_by_learning_mode(self):
         """ML negative-direction veto must only apply in production mode."""

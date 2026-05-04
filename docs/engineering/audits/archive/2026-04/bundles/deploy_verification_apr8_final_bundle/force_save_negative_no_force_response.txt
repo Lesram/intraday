@@ -1,0 +1,1 @@
+{"detail":{"success":false,"error":"force=true query parameter required for /save","hint":"Use POST /api/v1/organism/save?force=true"},"error":{"type":"http_error","detail":{"success":false,"error":"force=true query parameter required for /save","hint":"Use POST /api/v1/organism/save?force=true"}}}HTTP 400

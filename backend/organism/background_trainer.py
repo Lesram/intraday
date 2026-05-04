@@ -47,7 +47,9 @@ class TrainResult:
     evolved_params_dict: dict[str, Any] | None = None
     feature_cols: list[str] | None = None
     duration_s: float = 0.0
-    error: str | None = None
+    is_trained: bool | None = None       # worker's actual _is_trained outcome
+    error: str | None = None             # actual training failure
+    rejection_reason: str | None = None  # quality-gate rejection (not a training error)
 
 
 def _train_in_process(
@@ -84,12 +86,18 @@ def _train_in_process(
         for sym, data in features_by_symbol_pickle.items():
             features_by_symbol[sym] = pd.DataFrame(data)
 
-        # Reconstruct signal generator with saved params
+        # Reconstruct signal generator with saved params (full xgb_params surface)
+        xgb_p = signal_gen_state.get("xgb_params", {})
         signal_gen = MLSignalGenerator(
             train_window=signal_gen_state.get("train_window", 200),
-            n_estimators=signal_gen_state.get("n_estimators", 200),
-            max_depth=signal_gen_state.get("max_depth", 5),
-            learning_rate=signal_gen_state.get("learning_rate", 0.05),
+            n_estimators=xgb_p.get("n_estimators", signal_gen_state.get("n_estimators", 200)),
+            max_depth=xgb_p.get("max_depth", signal_gen_state.get("max_depth", 5)),
+            learning_rate=xgb_p.get("learning_rate", signal_gen_state.get("learning_rate", 0.05)),
+            min_child_weight=xgb_p.get("min_child_weight", 5),
+            subsample=xgb_p.get("subsample", 0.8),
+            colsample_bytree=xgb_p.get("colsample_bytree", 0.8),
+            reg_alpha=xgb_p.get("reg_alpha", 0.1),
+            reg_lambda=xgb_p.get("reg_lambda", 1.0),
         )
 
         # Restore model state if available
@@ -102,17 +110,112 @@ def _train_in_process(
         if signal_gen_state.get("feature_cols"):
             signal_gen._feature_cols = signal_gen_state["feature_cols"]
 
+        # Restore full signal generator state
+        signal_gen.prediction_horizon = signal_gen_state.get("prediction_horizon", 1)
+        signal_gen._direction_threshold_buy = signal_gen_state.get("direction_threshold_buy", 0.52)
+        signal_gen._direction_threshold_sell = signal_gen_state.get("direction_threshold_sell", 0.48)
+        if signal_gen_state.get("calibration_counts"):
+            signal_gen._calibration_counts = signal_gen_state["calibration_counts"]
+        if signal_gen_state.get("calibration_map"):
+            signal_gen._calibration_map = signal_gen_state["calibration_map"]
+        if signal_gen_state.get("evolved_feature_weights"):
+            signal_gen._evolved_feature_weights = signal_gen_state["evolved_feature_weights"]
+
         # Train
         metrics = signal_gen.train(features_by_symbol)
+
+        # V6 X-8 / Wave-20b (2026-05-03): leave `evaluated_at` empty
+        # in the worker; the parent process stamps it via the engine's
+        # injected clock so replay sees the replay clock, not wall.
+        # Workers run in a separate process and can't reach `_now_fn`.
+        if metrics is not None and not getattr(metrics, "evaluated_at", ""):
+            metrics.evaluated_at = ""
 
         if metrics is None:
             return {"error": "Training returned None metrics", "duration_s": time.time() - t0}
 
-        # Evolve params
+        # Acceptance gate — delegates to the shared acceptance_gate() function
+        # so background and sync paths enforce identical rules.
+        from backend.organism.continuous_learner import acceptance_gate
+        from backend.organism.ml_signal import ModelMetrics as _MM
+
+        # Reconstruct old metrics for comparison (if available)
+        old_metrics_obj = None
+        old_metrics_dict = learner_state.get("old_model_metrics")
+        if old_metrics_dict:
+            old_metrics_obj = _MM(
+                generation=old_metrics_dict.get("generation", 0),
+                accuracy=old_metrics_dict.get("accuracy", 0),
+                precision=old_metrics_dict.get("precision", 0),
+                recall=old_metrics_dict.get("recall", 0),
+                f1=old_metrics_dict.get("f1", 0),
+                direction_accuracy=old_metrics_dict.get("direction_accuracy", 0),
+                mean_pred_return=old_metrics_dict.get("mean_pred_return", 0),
+                hit_rate=old_metrics_dict.get("hit_rate", 0),
+                calibration_sample_count=old_metrics_dict.get("calibration_sample_count", 0),
+                calibration_monotonic=old_metrics_dict.get("calibration_monotonic", True),
+                calibration_error=old_metrics_dict.get("calibration_error", 0.0),
+                effective_mean_pred_return=old_metrics_dict.get("effective_mean_pred_return", 0.0),
+                candidate_calibration_sample_count=old_metrics_dict.get("candidate_calibration_sample_count", 0),
+                candidate_calibration_monotonic=old_metrics_dict.get("candidate_calibration_monotonic", True),
+                candidate_calibration_error=old_metrics_dict.get("candidate_calibration_error", 0.0),
+            )
+
+        accepted, rejection_reason = acceptance_gate(
+            metrics,
+            old_metrics=old_metrics_obj,
+        )
+
+        # Helper to build train_metrics dict (includes calibration + effective fields)
+        def _build_train_metrics(m):
+            return {
+                "accuracy": getattr(m, "accuracy", 0),
+                "precision": getattr(m, "precision", 0),
+                "recall": getattr(m, "recall", 0),
+                "f1": getattr(m, "f1", 0),
+                "direction_accuracy": getattr(m, "direction_accuracy", 0),
+                "mean_pred_return": getattr(m, "mean_pred_return", 0),
+                "effective_mean_pred_return": getattr(m, "effective_mean_pred_return", 0.0),
+                "hit_rate": getattr(m, "hit_rate", 0),
+                "generation": getattr(m, "generation", 0),
+                "calibration_sample_count": getattr(m, "calibration_sample_count", 0),
+                "calibration_monotonic": getattr(m, "calibration_monotonic", True),
+                "calibration_error": getattr(m, "calibration_error", 0.0),
+                "candidate_calibration_sample_count": getattr(m, "candidate_calibration_sample_count", 0),
+                "candidate_calibration_monotonic": getattr(m, "candidate_calibration_monotonic", True),
+                "candidate_calibration_error": getattr(m, "candidate_calibration_error", 0.0),
+                "evaluated_at": getattr(m, "evaluated_at", ""),
+            }
+
+        if not accepted:
+            return {
+                "accepted": False,
+                "rejection_reason": f"Model rejected by quality gate ({rejection_reason})",
+                "train_metrics": _build_train_metrics(metrics),
+                "duration_s": time.time() - t0,
+            }
+
+        # Evolve params — gated by evolution freeze (300 trades)
         evolved_params_dict = None
-        if trades_pickle:
+        _total_trades = evolution_state.get("total_trades", 0)
+        if _total_trades < 300:
+            logging.getLogger(__name__).info(
+                "Evolution freeze active (%d < 300 trades) — skipping evolution in background trainer",
+                _total_trades,
+            )
+        elif trades_pickle:
             from backend.organism.continuous_learner import TradeRecord
             trades = [TradeRecord(**t) if isinstance(t, dict) else t for t in trades_pickle]
+            # V4 R-F-6 (2026-05-02): filter reconciliation artifacts before
+            # evolution. The synchronous fallback in live_engine._maybe_evolve
+            # already filters; the BG path is the primary evolution route in
+            # production and was previously unfiltered, leaking
+            # cross-session-cleanup bookkeeping into evolved params and
+            # creating an organism-level split between sync and BG fitness.
+            trades = [
+                t for t in trades
+                if not getattr(t, "is_reconciliation_artifact", False)
+            ]
             recent_trades = trades[-200:]
 
             if recent_trades:
@@ -134,11 +237,7 @@ def _train_in_process(
 
         result = {
             "accepted": True,
-            "train_metrics": {
-                "accuracy": getattr(metrics, "accuracy", 0),
-                "direction_accuracy": getattr(metrics, "direction_accuracy", 0),
-                "generation": getattr(metrics, "generation", 0),
-            },
+            "train_metrics": _build_train_metrics(metrics),
             "clf_pickle": pickle.dumps(signal_gen._clf),
             "reg_pickle": pickle.dumps(signal_gen._reg),
             "feature_cols": signal_gen._feature_cols,
@@ -164,7 +263,19 @@ def _train_in_process(
 class BackgroundTrainer:
     """Manages background ML training in a separate process."""
 
-    def __init__(self) -> None:
+    def __init__(self, *, now_fn=None) -> None:
+        # V6 X-8 / Wave-20b (2026-05-03): clock injection so retrain
+        # evaluation timestamps respect replay's clock. The worker
+        # process can't see the engine's `_now_fn` directly (separate
+        # memory space); instead the worker leaves `evaluated_at` empty
+        # and the parent process stamps it with `self._now_fn()` after
+        # results return.
+        if now_fn is None:
+            from datetime import datetime as _dt, timezone as _tz
+            self._now_fn = lambda: _dt.now(_tz.utc)
+        else:
+            self._now_fn = now_fn
+
         self._executor: ProcessPoolExecutor | None = None
         self._future: asyncio.Future | None = None
         self._is_training = False
@@ -177,10 +288,22 @@ class BackgroundTrainer:
         logger.info("BackgroundTrainer started (ProcessPoolExecutor, max_workers=1)")
 
     async def stop(self) -> None:
-        """Shut down the executor."""
+        """Shut down the executor.
+
+        Audit-J finding J-1 (2026-05-02): executor.shutdown(wait=True) is
+        a SYNC blocking call. Calling it inside an async function froze
+        the event loop for 10-60s during lifespan shutdown, undermining
+        the Phase 1 brain-save-first ordering. Now: offload to a thread
+        via asyncio.to_thread so the event loop keeps running.
+        """
         if self._executor:
-            self._executor.shutdown(wait=True)
+            executor = self._executor
             self._executor = None
+            try:
+                await asyncio.to_thread(executor.shutdown, wait=True)
+            except Exception as e:
+                # Don't let shutdown failure cascade — brain_save already ran
+                logger.warning("BackgroundTrainer executor shutdown error: %s", e)
 
     @property
     def is_training(self) -> bool:
@@ -198,6 +321,7 @@ class BackgroundTrainer:
         signal_gen: Any,
         evolution_engine: Any,
         evolved_params: Any,
+        total_trades: int = 0,
     ) -> None:
         """Submit a retrain job to the background process pool.
 
@@ -222,15 +346,24 @@ class BackgroundTrainer:
             except Exception:
                 continue
 
-        # Serialize model state
+        # Serialize model state — include full _xgb_params surface for config parity
         signal_gen_state = {
             "train_window": signal_gen.train_window,
+            "xgb_params": {k: v for k, v in signal_gen._xgb_params.items()},
+            # Legacy keys for backward compatibility with older workers
             "n_estimators": signal_gen._xgb_params.get("n_estimators", 200),
             "max_depth": signal_gen._xgb_params.get("max_depth", 5),
             "learning_rate": signal_gen._xgb_params.get("learning_rate", 0.05),
             "is_trained": signal_gen._is_trained,
             "feature_cols": signal_gen._feature_cols,
+            "prediction_horizon": signal_gen.prediction_horizon,
+            "direction_threshold_buy": signal_gen._direction_threshold_buy,
+            "direction_threshold_sell": signal_gen._direction_threshold_sell,
+            "calibration_counts": signal_gen._calibration_counts,
+            "calibration_map": signal_gen._calibration_map,
         }
+        if hasattr(signal_gen, "_evolved_feature_weights") and signal_gen._evolved_feature_weights:
+            signal_gen_state["evolved_feature_weights"] = signal_gen._evolved_feature_weights
         try:
             signal_gen_state["clf_pickle"] = pickle.dumps(signal_gen._clf)
             signal_gen_state["reg_pickle"] = pickle.dumps(signal_gen._reg)
@@ -253,10 +386,13 @@ class BackgroundTrainer:
             "max_shift": getattr(evolution_engine, "max_shift", 0.20),
             "min_trades": getattr(evolution_engine, "min_trades", 8),
             "evolved_params": evolved_params.to_dict() if hasattr(evolved_params, "to_dict") else {},
+            "total_trades": total_trades,
         }
 
-        # Learner state (minimal)
+        # Pass old model metrics for acceptance comparison
         learner_state = {}
+        if signal_gen._latest_metrics:
+            learner_state["old_model_metrics"] = signal_gen._latest_metrics.to_dict()
 
         self._is_training = True
         loop = asyncio.get_running_loop()
@@ -296,14 +432,102 @@ class BackgroundTrainer:
         except Exception as e:
             logger.error("BackgroundTrainer process error: %s", e)
             self._last_result = TrainResult(error=str(e))
+            # V11 prep / Wave-62 (YY-4 closure): counter symmetry.
+            try:
+                from backend.organism.live_engine import (
+                    ML_RETRAIN_FAILURES, _PROMETHEUS_AVAILABLE,
+                )
+                if _PROMETHEUS_AVAILABLE:
+                    ML_RETRAIN_FAILURES.labels(phase="executor").inc()
+            except Exception:
+                pass
+            # V6 V-T-2 / Wave-20a (2026-05-03): wave-14 shipped this
+            # site with the same broken wave-8c anti-pattern — works
+            # today only because `get_result()` is polled from the main
+            # loop, but the comment anticipates threadpool callers. Use
+            # the canonical cross-thread dispatcher.
+            try:
+                from backend.infra.alerting import (
+                    AlertCategory, AlertSeverity, send_alert,
+                    dispatch_alert_from_thread,
+                )
+                _err = e
+                ok = dispatch_alert_from_thread(
+                    lambda: send_alert(
+                        AlertCategory.SYSTEM_ERROR,
+                        AlertSeverity.WARNING,
+                        "ML Retrain Failed",
+                        f"Background trainer raised: {_err}",
+                        details={"error_type": type(_err).__name__},
+                    )
+                )
+                if not ok:
+                    logger.warning(
+                        "ML Retrain Failed alert dropped (no main loop ref)"
+                    )
+            except Exception:
+                pass
             return True, self._last_result
 
-        if isinstance(raw, dict) and raw.get("error"):
+        # Distinguish true training errors from quality-gate rejections.
+        # Training errors: raw has "error" but no "rejection_reason" and no "accepted" key.
+        # Quality-gate rejections: raw has "rejection_reason" (and accepted=False).
+        if isinstance(raw, dict) and raw.get("error") and "accepted" not in raw:
             self._last_result = TrainResult(
                 error=raw["error"],
                 duration_s=raw.get("duration_s", 0),
             )
             logger.warning("BackgroundTrainer training failed: %s", raw["error"])
+            # V11 prep / Wave-62 (YY-4 closure, 2026-05-03): the training-
+            # internal-error path was alert-silent + counter-less.
+            # Operators relying on dashboards / Slack to spot retrain
+            # failures had no signal.  Wire counter + alert.
+            try:
+                from backend.organism.live_engine import (
+                    ML_RETRAIN_FAILURES, _PROMETHEUS_AVAILABLE,
+                )
+                if _PROMETHEUS_AVAILABLE:
+                    ML_RETRAIN_FAILURES.labels(phase="training").inc()
+            except Exception:
+                pass
+            try:
+                from backend.infra.alerting import (
+                    AlertCategory, AlertSeverity, send_alert,
+                    dispatch_alert_from_thread,
+                )
+                _err = raw["error"]
+                ok = dispatch_alert_from_thread(
+                    lambda: send_alert(
+                        AlertCategory.SYSTEM_ERROR,
+                        AlertSeverity.WARNING,
+                        "ML Retrain Internal Failure",
+                        f"BackgroundTrainer training-internal error: {_err}",
+                        details={"phase": "training-internal"},
+                    )
+                )
+                if not ok:
+                    logger.warning(
+                        "YY-4: ML Retrain Internal alert dropped (no main loop ref)"
+                    )
+            except Exception as _alert_err:
+                logger.warning(
+                    "YY-4: ML retrain alert dispatch failed: %s",
+                    _alert_err,
+                )
+            return True, self._last_result
+
+        # Quality-gate rejection: training succeeded but model was rejected
+        if isinstance(raw, dict) and raw.get("rejection_reason"):
+            self._last_result = TrainResult(
+                accepted=False,
+                train_metrics=raw.get("train_metrics"),
+                rejection_reason=raw["rejection_reason"],
+                duration_s=raw.get("duration_s", 0),
+            )
+            logger.info(
+                "BackgroundTrainer: model rejected by quality gate: %s",
+                raw["rejection_reason"],
+            )
             return True, self._last_result
 
         self._last_result = TrainResult(
@@ -314,8 +538,19 @@ class BackgroundTrainer:
             new_ensemble_state=raw.get("ensemble_pickle"),
             evolved_params_dict=raw.get("evolved_params_dict"),
             feature_cols=raw.get("feature_cols"),
+            is_trained=raw.get("is_trained"),
             duration_s=raw.get("duration_s", 0),
         )
+
+        # V6 X-8 / Wave-20b (2026-05-03): stamp evaluation time on the
+        # parent-process side using the injected clock so replay sees
+        # replay-clock timestamps in evaluation_event_history.json.
+        try:
+            tm = self._last_result.train_metrics
+            if isinstance(tm, dict) and not tm.get("evaluated_at"):
+                tm["evaluated_at"] = self._now_fn().isoformat()
+        except Exception:
+            pass
 
         logger.info(
             "BackgroundTrainer: training #%d completed in %.1fs (accepted=%s)",
@@ -334,6 +569,7 @@ class BackgroundTrainer:
         breakout_scanner: Any,
         kelly_sizer: Any,
         exit_engine: Any,
+        total_trades: int = 0,
     ) -> Any:
         """Atomically swap trained model weights into the live engine.
 
@@ -370,10 +606,38 @@ class BackgroundTrainer:
         if result.feature_cols:
             signal_gen._feature_cols = result.feature_cols
 
-        signal_gen._is_trained = True
+        # Use the worker's actual _is_trained outcome when available.
+        # Do not infer trained state from pickle presence.
+        if result.is_trained is not None:
+            signal_gen._is_trained = result.is_trained
 
-        # Apply evolved params
-        if result.evolved_params_dict:
+        # Update metrics and generation from accepted training result
+        if result.train_metrics:
+            from backend.organism.ml_signal import ModelMetrics
+            tm = result.train_metrics
+            signal_gen._latest_metrics = ModelMetrics(
+                generation=tm.get("generation", signal_gen.generation),
+                accuracy=tm.get("accuracy", 0),
+                precision=tm.get("precision", 0),
+                recall=tm.get("recall", 0),
+                f1=tm.get("f1", 0),
+                direction_accuracy=tm.get("direction_accuracy", 0),
+                mean_pred_return=tm.get("mean_pred_return", 0),
+                hit_rate=tm.get("hit_rate", 0),
+                calibration_sample_count=tm.get("calibration_sample_count", 0),
+                calibration_monotonic=tm.get("calibration_monotonic", True),
+                calibration_error=tm.get("calibration_error", 0.0),
+                effective_mean_pred_return=tm.get("effective_mean_pred_return", 0.0),
+                candidate_calibration_sample_count=tm.get("candidate_calibration_sample_count", 0),
+                candidate_calibration_monotonic=tm.get("candidate_calibration_monotonic", True),
+                candidate_calibration_error=tm.get("candidate_calibration_error", 0.0),
+                evaluated_at=tm.get("evaluated_at", ""),
+            )
+            if "generation" in tm:
+                signal_gen.generation = tm["generation"]
+
+        # Apply evolved params — gated by evolution freeze (300 trades)
+        if result.evolved_params_dict and total_trades >= 300:
             try:
                 from backend.organism.self_evolution import (
                     EvolvedParams, apply_evolved_params,
@@ -396,8 +660,40 @@ class BackgroundTrainer:
                 return new_params
             except Exception as e:
                 logger.warning("Failed to apply evolved params: %s", e)
+        elif result.evolved_params_dict and total_trades < 300:
+            logger.warning(
+                "Evolution freeze active (%d < 300 trades) — skipping evolved params application",
+                total_trades,
+            )
 
         return evolved_params
+
+    def get_last_evaluation_event(self) -> dict | None:
+        """Build an evaluation event dict from the last training result.
+
+        Returns None if no result, or if the result was a training error
+        (not a quality-gate evaluation).
+        """
+        result = self._last_result
+        if result is None:
+            return None
+        # Training errors are not evaluation events
+        if result.error and not result.train_metrics:
+            return None
+
+        tm = result.train_metrics or {}
+        return {
+            "evaluated_at": tm.get("evaluated_at", ""),
+            "accepted": result.accepted,
+            "rejection_reason": result.rejection_reason or "",
+            "generation": tm.get("generation", 0),
+            "accuracy": tm.get("accuracy", 0),
+            "precision": tm.get("precision", 0),
+            "direction_accuracy": tm.get("direction_accuracy", 0),
+            "hit_rate": tm.get("hit_rate", 0),
+            "mean_pred_return": tm.get("mean_pred_return", 0),
+            "effective_mean_pred_return": tm.get("effective_mean_pred_return", 0.0),
+        }
 
     def get_stats(self) -> dict[str, Any]:
         """Return trainer statistics."""

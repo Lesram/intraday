@@ -1,0 +1,52 @@
+{
+  "source": "organism_brain/evolved_params.json",
+  "file_mtime_utc": "2026-04-16T02:43Z (image-build era)",
+  "note": "evolved_params.json has not been rewritten since Apr 15; evolution generation is tracked in learning_state (gen 115) and manifest (gen 115). This file is the warm-start snapshot, not the running live weights — those live in learner.state in memory.",
+  "alpha_weights": {
+    "ml": 0.3558,
+    "volume": 0.1949,
+    "momentum": 0.1529,
+    "breakout": 0.1461,
+    "regime": 0.10
+  },
+  "direction_thresholds": {
+    "buy": 0.5555,
+    "sell": 0.4484
+  },
+  "exit_params": {
+    "stop_atr_scale": 0.985,
+    "trailing_start_atr_scale": 1.0,
+    "trailing_distance_scale": 0.8916,
+    "partial_tp_r_scale": 1.0,
+    "partial_tp_pct": 0.20
+  },
+  "regime_size_scales": {
+    "trending_up": 1.2,
+    "trending_down": 0.6,
+    "chop": 0.5,
+    "high_vol": 0.7,
+    "low_vol": 1.0,
+    "stress": 0.3,
+    "unknown": 0.7
+  },
+  "breakout_weights": {
+    "squeeze": 0.25,
+    "volume": 0.25,
+    "contraction": 0.15,
+    "rs": 0.15,
+    "pivot": 0.15,
+    "flow": 0.05
+  },
+  "xgb": {
+    "n_estimators": 177,
+    "max_depth": 3,
+    "learning_rate": 0.0398,
+    "subsample": 0.8632,
+    "colsample_bytree": 0.8632
+  },
+  "shorts_enabled": false,
+  "symbol_trade_counts_total": 62,
+  "feature_weight_count": 79,
+  "evolution_generation_field": 0,
+  "total_adaptations_field": 0
+}

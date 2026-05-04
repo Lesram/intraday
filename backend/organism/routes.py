@@ -16,6 +16,7 @@ Provides visibility and control endpoints for the living organism:
 
 from __future__ import annotations
 
+import asyncio
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from typing import Any
@@ -26,6 +27,7 @@ from sqlalchemy import select, text
 
 from backend.infra.schemas import Order
 from backend.infra.security import require_admin
+from backend.utils.clock_injection import default_now_fn
 from backend.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -113,10 +115,27 @@ async def get_organism_status(request: Request):
     promotion = _get_promotion(request)
     policy = getattr(request.app.state, "living_policy", None)
 
+    # Audit-I finding I-11 (2026-05-02): top-level tick_count used to read
+    # runner._tick_count which was the slow-brain OrganismRunner's counter
+    # (always 0). The live-engine tick counter lives on organism_scheduler.
+    # Prefer scheduler's engine tick_count, fall back to runner's for
+    # backwards compat with consumers still reading the legacy field.
+    _scheduler = getattr(request.app.state, "organism_scheduler", None)
+    _tick_count = 0
+    if _scheduler is not None:
+        try:
+            _engine = getattr(_scheduler, "_engine", None)
+            if _engine is not None:
+                _tick_count = int(getattr(_engine, "_tick_count", 0))
+        except Exception:
+            pass
+    if _tick_count == 0 and runner is not None:
+        _tick_count = int(getattr(runner, "_tick_count", 0))
+
     status = OrganismStatusResponse(
         governance=gov.to_dict(),
         policy_weights=policy.get_weights() if policy else {},
-        tick_count=runner._tick_count if runner else 0,
+        tick_count=_tick_count,
     )
 
     if runner:
@@ -330,6 +349,42 @@ async def manual_tick(request: Request, _admin=Depends(require_admin)):
         pass  # WebSocket not available — that's fine
 
     return result_dict
+
+
+@router.post("/save")
+async def force_save(
+    request: Request,
+    force: bool = Query(default=False),
+    _admin=Depends(require_admin),
+) -> dict:
+    """Admin-only force-save endpoint: persist full brain bypassing the
+    walk-forward gate.
+
+    Requires explicit ``?force=true`` query parameter. Without it, returns
+    HTTP 400. This is a recovery path for the case where the walk-forward
+    gate has been blocking ML joblib persistence for an entire session.
+    Calls ``LiveEngine.force_save_brain()`` on the live engine instance
+    attached to ``app.state`` — never instantiates a new persistence object.
+    """
+    if not force:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "success": False,
+                "error": "force=true query parameter required for /save",
+                "hint": "Use POST /api/v1/organism/save?force=true",
+            },
+        )
+
+    engine = _get_engine(request)
+    if engine is None:
+        raise HTTPException(
+            status_code=409,
+            detail="Live engine not active. Cannot force-save brain.",
+        )
+
+    result = await asyncio.to_thread(engine.force_save_brain)
+    return result
 
 
 # ── Phase 5: Scanner & Universe Endpoints ────────────────────────────
@@ -620,7 +675,11 @@ async def cleanup_stuck_orders(request: Request, _admin=Depends(require_admin)):
     if not sessionmaker:
         raise HTTPException(status_code=503, detail="Database not available")
 
-    cutoff = datetime.now(UTC) - timedelta(hours=1)
+    # V8 DD2-10 / Wave-35 (2026-05-03): use the canonical clock helper so
+    # replay tests that exercise this admin route share the same clock as
+    # the live engine.  Production behavior is unchanged (wall-clock UTC).
+    _now = default_now_fn()
+    cutoff = _now - timedelta(hours=1)
 
     async with sessionmaker() as session:
         # Count first
@@ -647,7 +706,7 @@ async def cleanup_stuck_orders(request: Request, _admin=Depends(require_admin)):
                 "AND broker_order_id IS NULL "
                 "AND submitted_at < :cutoff"
             ),
-            {"cutoff": cutoff, "now": datetime.now(UTC)},
+            {"cutoff": cutoff, "now": _now},
         )
         await session.commit()
 

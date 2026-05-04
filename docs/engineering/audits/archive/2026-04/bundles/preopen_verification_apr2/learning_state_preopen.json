@@ -1,0 +1,12 @@
+{
+  "generation": 0,
+  "total_bars_seen": 0,
+  "total_trades": 161,
+  "cumulative_pnl": -714.26,
+  "best_sharpe": null,
+  "best_generation": 0,
+  "retrain_count": 0,
+  "drift_events": 0,
+  "generation_accuracies": [],
+  "bars_since_retrain": 0
+}

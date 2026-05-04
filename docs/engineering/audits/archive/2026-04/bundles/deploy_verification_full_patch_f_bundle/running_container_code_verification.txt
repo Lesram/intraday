@@ -1,0 +1,55 @@
+=== 1. Patch C: learner.state.best_sharpe ===
+1625:        # from learner.state.best_sharpe when available. The previous
+1629:        # learner.state.best_sharpe is maintained by ContinuousLearner as
+=== 2. Patch B: _apply_live_manifest_fields ===
+733:        - Applies ``_apply_live_manifest_fields`` for authoritative
+823:        self._apply_live_manifest_fields(manifest, signal_gen, learner)
+944:    def _apply_live_manifest_fields(
+=== 3. Patch A: save(force=...) ===
+243:        force: bool = False,
+643:        force: bool = False,
+=== 4. Patch A: force_save_brain ===
+4285:    def force_save_brain(self) -> dict:
+4366:            logger.error("force_save_brain failed: %s", e, exc_info=True)
+=== 5. Patch A: POST /save route ===
+336:@router.post("/save")
+=== 6. Patch D: sandbox defaults ===
+/app/scripts/run_hft_organism.py:1052:        "--brain-dir", type=str, default="organism_brain_sandbox",
+/app/scripts/run_hft_organism.py:1053:        help="Directory for brain persistence (default: organism_brain_sandbox)",
+/app/scripts/run_breakout_organism.py:1632:        "--brain-dir", type=str, default="organism_brain_sandbox",
+/app/scripts/run_breakout_organism.py:1633:        help="Directory for brain persistence (default: organism_brain_sandbox)",
+=== 7. Patch E: trained-state guard ===
+290:                "BRAIN SAVE BLOCKED (save): refusing to overwrite trained "
+=== 8. F-lite → F2: save_essential_state protection ===
+616:                caller="save_essential_state",
+=== 9. F1: _write_manifest_guarded ===
+587:        # F2: trained-state guard is now inside _write_manifest_guarded
+614:            wrote = self._write_manifest_guarded(
+715:    def _write_manifest_guarded(
+=== 10. F2: save_essential_state routed through helper ===
+=== 11. F3: break-glass ===
+244:        allow_reset: bool = False,
+261:        ``allow_reset=True``, and a non-empty ``reset_reason``.
+279:            force=force, allow_reset=allow_reset, reset_reason=reset_reason,
+286:                force=force, allow_reset=allow_reset,
+=== 12. F3: suspicious-write instrumentation ===
+283:            self._log_suspicious_manifest_write(
+752:            self._log_suspicious_manifest_write(
+792:            self._log_suspicious_manifest_write(
+880:    def _log_suspicious_manifest_write(
+=== 13. F3: read-back invariant ===
+868:                    "BRAIN MANIFEST READ-BACK INVARIANT FAILED (%s): %s",
+=== 14. F4: forensic guard ===
+351:        self._forensic_signal_gen_id: int = id(self.signal_gen)
+352:        self._forensic_learner_id: int = id(self.learner)
+4380:                id(self.signal_gen) != self._forensic_signal_gen_id
+4381:                or id(self.learner) != self._forensic_learner_id
+4385:                    "FORENSIC GUARD: live engine's learner/signal_gen object "
+=== 15. F4: bypass audit ===
+1311:        # F4 BYPASS AUDIT: this is the only direct manifest write
+=== BOOT LOG ===
+{"timestamp": "2026-04-10T06:25:06", "level": "INFO", "logger": "backend.organism.brain_persistence", "message": "Brain loaded: gen=36, runs=211, trades=208", "module": "brain_persistence", "function": "load", "line": 219}
+{"timestamp": "2026-04-10T06:25:06", "level": "INFO", "logger": "backend.organism.brain_persistence", "message": "Learner state restored: gen=36, trades=208", "module": "brain_persistence", "function": "apply_to_learner", "line": 535}
+{"timestamp": "2026-04-10T06:25:06", "level": "INFO", "logger": "backend.organism.trading_phase", "message": "Trading phase: production_frozen (trades=208, ML_isolation_exit=0, freeze_exit=92)", "module": "trading_phase", "function": "log_trading_phase", "line": 75}
+{"timestamp": "2026-04-10T06:25:06", "level": "INFO", "logger": "backend.organism.live_engine", "message": "{"event": "PREFLIGHT: 16/18 checks passed (0 critical failures, 2 warnings)", "logger": "backend.organism.live_engine", "level": "info", "timestamp": "2026-04-10T06:25:06.530329Z"}", "module": "live_engine", "function": "initialize", "line": 972}
+{"timestamp": "2026-04-10T06:25:06", "level": "INFO", "logger": "backend.organism.scheduler", "message": "{"event": "Organism scheduler loop started", "logger": "backend.organism.scheduler", "level": "info", "timestamp": "2026-04-10T06:25:06.542182Z"}", "module": "scheduler", "function": "_run_loop", "line": 303}

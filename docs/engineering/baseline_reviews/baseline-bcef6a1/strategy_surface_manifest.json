@@ -1,0 +1,173 @@
+{
+  "generated": "2026-03-14",
+  "sha": "bcef6a1",
+  "description": "Trading strategy surface: every module that participates in trade decisions",
+  "platform_state": {
+    "branch": "main",
+    "mode": "paper trading, development",
+    "learning_mode": true,
+    "trade_count": 158,
+    "learning_threshold": 200,
+    "evolution_freeze_threshold": 300,
+    "brain_generation": 0,
+    "brain_runs": 66,
+    "brain_pnl": -1008.77,
+    "ml_trained": false,
+    "ml_training_attempts": 23,
+    "ml_best_score": 0.355,
+    "equity": 111612.21,
+    "consecutive_zero_trade_days": 3,
+    "last_trade_date": "2026-03-10"
+  },
+  "trading_pipeline": {
+    "1_data_ingestion": {
+      "modules": [
+        {"path": "backend/organism/streaming_data_provider.py", "lines": 336, "role": "WebSocket OHLCV ring buffer"},
+        {"path": "backend/data/alpaca_client.py", "lines": 925, "role": "Alpaca REST data + account API"},
+        {"path": "backend/integrations/alpaca_market_data_stream.py", "lines": 713, "role": "Real-time bar/quote/trade stream"}
+      ]
+    },
+    "2_feature_computation": {
+      "modules": [
+        {"path": "backend/organism/ml_features.py", "lines": 457, "role": "70+ ML features per bar"},
+        {"path": "backend/organism/composite_indicators.py", "lines": 534, "role": "7 composite conviction indicators"},
+        {"path": "backend/organism/multi_timeframe.py", "lines": 172, "role": "Weekly/monthly resampled features"}
+      ]
+    },
+    "3_regime_detection": {
+      "modules": [
+        {"path": "backend/organism/regime.py", "lines": 680, "role": "6-regime classifier + drift detection"}
+      ],
+      "regimes": ["trending_up", "trending_down", "chop", "high_vol", "low_vol", "stress"],
+      "known_issues": ["INV-003: SMA(200) + EMA smoothing creates 15-20 bar lag. Cross-session state persists."]
+    },
+    "4_signal_generation": {
+      "modules": [
+        {
+          "path": "backend/organism/ml_signal.py", "lines": 619,
+          "role": "XGBoost direction + magnitude prediction",
+          "learning_mode_note": "ML weight = 0% — computed but not used",
+          "production_mode_note": "ML weight = 50% of confidence"
+        },
+        {
+          "path": "backend/organism/alpha_scanner.py", "lines": 396,
+          "role": "Composite alpha scoring (ML + breakout + volume + regime)",
+          "learning_mode_note": "ML weight redistributed: breakout 0.40, momentum 0.20",
+          "production_mode_note": "ML weight = 0.25 with dynamic adjustment",
+          "inverse_etfs": ["DOG", "PSQ", "RWM", "SH"],
+          "known_issues": ["INV-008: Confidence formula structurally cannot score inverse ETFs or defensive rotations above ~0.20"]
+        },
+        {"path": "backend/organism/breakout_scanner.py", "lines": 477, "role": "6-pattern breakout detection"},
+        {"path": "backend/organism/market_scanner.py", "lines": 475, "role": "Most-actives/movers screener (awareness only)"}
+      ]
+    },
+    "5_entry_gating": {
+      "module": "backend/organism/live_engine.py",
+      "lines": 4139,
+      "gates": [
+        "open_position_check",
+        "exit_cooldown",
+        "pending_entry_check",
+        "entry_metadata_check",
+        "direction_gate (LONG_ONLY in learning)",
+        "sector_gate (max 2 per GICS sector)",
+        "fitness_gate (learning: OFF / production: >= 0.45 for 10+ trades)",
+        "liquidity_gate (minimum dollar volume)",
+        "circuit_breaker (symbol ban after repeated losses)",
+        "missingness_gate (sufficient feature data)",
+        "confidence_gate (0.25 floor / 0.40 baseline / 0.45 defensive)",
+        "bar_boundary_gate (1-min boundaries only)",
+        "burst_cap (learning: 12/hr)"
+      ],
+      "pure_breakout_path": "composite_score >= 0.55, shares liquidity gate + confidence threshold",
+      "supporting_modules": [
+        {"path": "backend/organism/sector_map.py", "lines": 96, "role": "GICS sector mapping"},
+        {"path": "backend/organism/governance.py", "lines": 250, "role": "Drawdown kill, halt, freeze"}
+      ]
+    },
+    "6_position_sizing": {
+      "modules": [
+        {
+          "path": "backend/organism/kelly_sizer.py", "lines": 643,
+          "role": "Kelly sizing + confidence scaling + risk-budget floor",
+          "learning_mode_note": "Fixed ATR-dollar: equity*0.001/stop. Kelly OFF. Cap 0.10% equity + 5% notional",
+          "production_mode_note": "Kelly fraction, confidence scaling [0.3-1.5], breakout bonus [1.0-2.0], floor 0.25%"
+        }
+      ]
+    },
+    "7_order_execution": {
+      "modules": [
+        {"path": "backend/integrations/alpaca_broker.py", "lines": 881, "role": "Alpaca paper order execution"},
+        {"path": "backend/services/order_service.py", "lines": 1714, "role": "Order lifecycle management"},
+        {"path": "backend/integrations/alpaca_stream.py", "lines": 733, "role": "Fill/cancel/reject event stream"}
+      ]
+    },
+    "8_exit_management": {
+      "modules": [
+        {
+          "path": "backend/organism/adaptive_exits.py", "lines": 720,
+          "role": "ATR trailing stops, partial TP, horizon timeout, EOD flatten",
+          "learning_mode_note": "Horizon timeout 18 bars (hard exit). Partial TP DISABLED",
+          "production_mode_note": "Regime-dependent max bars. Partial TP at 3R (30%/70%)"
+        },
+        {"path": "backend/organism/pyramider.py", "lines": 267, "role": "Add to winners at 1.5R/3.0R"}
+      ]
+    },
+    "9_learning_evolution": {
+      "modules": [
+        {"path": "backend/organism/self_evolution.py", "lines": 1247, "role": "Meta-learning parameter adaptation"},
+        {"path": "backend/organism/continuous_learner.py", "lines": 529, "role": "Train-trade-attribute-evaluate loop"},
+        {"path": "backend/organism/background_trainer.py", "lines": 412, "role": "Non-blocking ML retraining"},
+        {"path": "backend/organism/transfer_learning.py", "lines": 581, "role": "Cross-reset knowledge distillation"},
+        {"path": "backend/organism/walk_forward.py", "lines": 459, "role": "Out-of-sample validation"}
+      ],
+      "freeze_note": "First 300 trades: all param adaptation frozen. Current: 158 trades, frozen"
+    },
+    "10_persistence_telemetry": {
+      "modules": [
+        {"path": "backend/organism/brain_persistence.py", "lines": 1341, "role": "Brain save/load, atomic writes, versioning, 8 forensic fields"},
+        {"path": "backend/organism/decision_telemetry.py", "lines": 464, "role": "Full decision transparency capture"},
+        {"path": "backend/organism/attribution.py", "lines": 421, "role": "Fill-based P&L attribution"}
+      ]
+    }
+  },
+  "live_constants": {
+    "timeframe": "1Min",
+    "timeframe_source": "container_env (ORGANISM_LIVE_TIMEFRAME)",
+    "max_positions": 8,
+    "max_positions_source": "container_env (ORGANISM_MAX_POSITIONS), aligned to code default",
+    "alpha_top_n": 5,
+    "alpha_top_n_source": "container_env (ORGANISM_ALPHA_TOP_N)",
+    "learning_mode_threshold": 200,
+    "evolution_freeze": 300,
+    "horizon_timeout_bars": 18,
+    "drawdown_kill_pct": 0.20,
+    "drawdown_kill_source": "container_env (ORGANISM_DRAWDOWN_KILL_PCT)",
+    "exploration_enabled": false,
+    "bar_boundary_entry_only": true,
+    "fitness_gate_production": 0.45,
+    "confidence_gate_floor": 0.25,
+    "confidence_gate_baseline": 0.40,
+    "confidence_gate_defensive": 0.45,
+    "risk_budget_learning": 0.001,
+    "risk_budget_production": 0.0025,
+    "universe_size": 22,
+    "inverse_etfs": ["DOG", "PSQ", "RWM", "SH"],
+    "stop_atr_multipliers": {
+      "trending_up": 3.5,
+      "trending_down": 2.5,
+      "chop": 2.5,
+      "high_vol": 4.0,
+      "low_vol": 3.0,
+      "stress": 2.5,
+      "unknown": 3.0
+    },
+    "confidence_weights": {
+      "learning": {"breakout": 0.65, "tension": 0.35, "ml": 0.0},
+      "production": {"ml": 0.50, "breakout": 0.30, "tension": 0.20}
+    }
+  },
+  "total_strategy_surface_lines": 10268,
+  "total_strategy_surface_modules": 24,
+  "total_pipeline_modules_with_infra": 32
+}

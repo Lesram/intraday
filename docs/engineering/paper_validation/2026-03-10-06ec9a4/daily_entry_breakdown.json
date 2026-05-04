@@ -1,0 +1,10 @@
+{
+  "unknown": {
+    "count": 142,
+    "total_pnl": -944.75,
+    "avg_pnl": -6.65,
+    "win_rate": 0.4014,
+    "avg_confidence": 0.4968,
+    "avg_predicted_return": 0.0
+  }
+}

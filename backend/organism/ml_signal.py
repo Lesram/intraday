@@ -41,35 +41,104 @@ from backend.organism.ml_features import FEATURE_COLUMNS
 
 @dataclass
 class MLSignal:
-    """One ML-generated trading signal."""
+    """One ML-generated trading signal.
+
+    Confidence pipeline (three distinct stages):
+        1. raw_confidence    — abs(p_up - 0.5) * 2, direct model output
+        2. confidence        — after calibration correction (calibrate_confidence()),
+                               this is what most downstream consumers use
+        3. effective_confidence — min(calibrated, empirical_precision) or
+                               calibrated * 0.75 if insufficient calibration data;
+                               used for sizing/gating
+
+    Predicted return pipeline (two stages):
+        1. predicted_return          — raw regressor output, may be over-optimistic
+        2. effective_predicted_return — damped by calibration_factor * confidence_factor;
+                                       used for economic decisions
+    """
     symbol: str
     direction: float       # +1 buy, -1 sell, 0 hold
-    confidence: float      # [0, 1] — raw model confidence
-    predicted_return: float  # expected next-bar return
+    confidence: float      # [0, 1] — calibrated model confidence (post calibrate_confidence())
+    predicted_return: float  # raw regressor output — may be over-optimistic
     feature_importance: dict[str, float] = field(default_factory=dict)
-    effective_confidence: float = 0.0  # min(raw, empirical_precision) or raw * 0.75
+    raw_confidence: float = 0.0       # [0, 1] — pre-calibration model confidence
+    effective_confidence: float = 0.0  # min(calibrated, empirical_precision) or calibrated * 0.75
+    effective_predicted_return: float = 0.0  # damped by calibration quality + confidence
 
 
 @dataclass
 class ModelMetrics:
-    """Training/validation metrics for a model generation."""
+    """Training/validation metrics for a model generation.
+
+    Two calibration scopes:
+
+    1. System-level (calibration_sample_count, calibration_monotonic,
+       calibration_error): from the generator's **rolling live calibration
+       state** — accumulated across all past predictions.  Measures the
+       *system's* calibration maturity, used for score threshold adjustment.
+
+    2. Candidate-level (candidate_calibration_sample_count,
+       candidate_calibration_monotonic, candidate_calibration_error):
+       derived from this candidate model's own validation-set predictions
+       in _evaluate().  Measures how well *this specific model* is
+       calibrated on its holdout data.  Used by the acceptance gate
+       for model quality honesty checks (monotonicity, error threshold).
+
+    Effective mean predicted return (effective_mean_pred_return) uses only
+    the system calibration sample factor: raw * min(1, cal_samples/30).
+    This is intentionally different from the per-signal
+    effective_predicted_return (which also multiplies by confidence_factor)
+    because at the aggregate model-evaluation level there is no single
+    per-signal confidence to apply.
+    """
     generation: int
     accuracy: float = 0.0
     precision: float = 0.0
     recall: float = 0.0
     f1: float = 0.0
     direction_accuracy: float = 0.0
-    mean_pred_return: float = 0.0
+    mean_pred_return: float = 0.0       # raw regressor mean — may be over-optimistic
     hit_rate: float = 0.0  # % of predictions with correct sign
     feature_importance_top10: list[tuple[str, float]] = field(default_factory=list)
+    # System-level calibration maturity fields (H1).
+    # Source: generator's rolling _calibration_counts, NOT candidate validation.
+    calibration_sample_count: int = 0    # total observations across all bins
+    calibration_monotonic: bool = True   # are bucket win-rates non-decreasing?
+    calibration_error: float = 0.0       # mean abs(expected - actual) across bins
+    # Effective (damped) mean predicted return (H3).
+    # Damped by system calibration maturity only: raw * min(1, cal_samples/30).
+    # Distinct from per-signal effective_predicted_return which also uses
+    # confidence_factor.  This is the value the acceptance gate uses for
+    # edge verification.
+    effective_mean_pred_return: float = 0.0
+    # Candidate-model calibration fields (I1).
+    # Derived from the candidate model's own validation-set predictions in
+    # _evaluate().  These measure how well *this specific model* is calibrated
+    # on its holdout data, independent of system-level live calibration maturity.
+    candidate_calibration_sample_count: int = 0
+    candidate_calibration_monotonic: bool = True
+    candidate_calibration_error: float = 0.0
+    evaluated_at: str = ""  # ISO-8601 UTC when evaluated (J3)
 
     def to_dict(self) -> dict[str, Any]:
         return {
             "generation": self.generation,
             "accuracy": round(self.accuracy, 4),
+            "precision": round(self.precision, 4),
+            "recall": round(self.recall, 4),
+            "f1": round(self.f1, 4),
             "direction_accuracy": round(self.direction_accuracy, 4),
+            "mean_pred_return": round(self.mean_pred_return, 6),
+            "effective_mean_pred_return": round(self.effective_mean_pred_return, 6),
             "hit_rate": round(self.hit_rate, 4),
             "feature_importance_top10": self.feature_importance_top10[:10],
+            "calibration_sample_count": self.calibration_sample_count,
+            "calibration_monotonic": self.calibration_monotonic,
+            "calibration_error": round(self.calibration_error, 4),
+            "candidate_calibration_sample_count": self.candidate_calibration_sample_count,
+            "candidate_calibration_monotonic": self.candidate_calibration_monotonic,
+            "candidate_calibration_error": round(self.candidate_calibration_error, 4),
+            "evaluated_at": self.evaluated_at,
         }
 
 
@@ -247,7 +316,42 @@ class MLSignalGenerator:
         self._latest_metrics = metrics
         self._is_trained = True
 
+        # S17 — cache the validation set so callers can re-evaluate
+        # the OLD model on this same holdout. Enables apples-to-apples
+        # comparison in continuous_learner._validate_new_model and
+        # addresses Data Leakage Audit Concern 1 (same-holdout fairness).
+        self._last_val_X = X_val
+        self._last_val_y_dir = y_dir_val
+        self._last_val_y_ret = y_ret_val
+
         return metrics
+
+    def evaluate_external_clf_reg(
+        self,
+        ext_clf: Any,
+        ext_reg: Any,
+    ) -> "ModelMetrics | None":
+        """Evaluate an external clf+reg on the most-recent training run's
+        validation set. Used to compare an OLD model on the SAME holdout
+        the NEW model was just evaluated on.
+
+        Returns None if no validation data is cached (i.e., train() has not
+        been called this session).
+        """
+        if (getattr(self, "_last_val_X", None) is None or
+                ext_clf is None or ext_reg is None):
+            return None
+        # Temporarily swap models, evaluate, swap back.
+        saved_clf, saved_reg = self._clf, self._reg
+        try:
+            self._clf, self._reg = ext_clf, ext_reg
+            return self._evaluate(
+                self._last_val_X,
+                self._last_val_y_dir,
+                self._last_val_y_ret,
+            )
+        finally:
+            self._clf, self._reg = saved_clf, saved_reg
 
     def predict(self, features_df: pd.DataFrame, symbol: str = "") -> MLSignal:
         """Generate ML signal for the latest bar.
@@ -262,7 +366,7 @@ class MLSignalGenerator:
         MLSignal with direction, confidence, predicted_return.
         """
         if not self._is_trained:
-            return MLSignal(symbol=symbol, direction=0, confidence=0, predicted_return=0, effective_confidence=0)
+            return MLSignal(symbol=symbol, direction=0, confidence=0, predicted_return=0, raw_confidence=0, effective_confidence=0)
 
         # Use only feature columns that were available during training
         available_cols = [c for c in self._feature_cols if c in features_df.columns]
@@ -270,11 +374,57 @@ class MLSignalGenerator:
             return MLSignal(symbol=symbol, direction=0, confidence=0, predicted_return=0)
 
         if len(available_cols) < len(self._feature_cols):
+            missing_pct = 1 - len(available_cols) / len(self._feature_cols)
+            # H2: If >20% of features are missing, the zero-padded
+            # signal is degraded beyond usefulness. Return neutral
+            # instead of producing garbage predictions.
+            if missing_pct > 0.20:
+                logger.error(
+                    "H2: Feature drift detected for %s — %d/%d features "
+                    "available (%.0f%% missing). Returning neutral signal "
+                    "instead of zero-padding degraded inference.",
+                    symbol, len(available_cols), len(self._feature_cols),
+                    missing_pct * 100,
+                )
+                # Alert wiring: feature drift.
+                # V5 S-J3-1 / Wave-17a (2026-05-03): wave-8c's J-3 fix
+                # routed every alert to logger.warning because
+                # get_running_loop() always raises in worker threads.
+                # Use the canonical cross-thread dispatcher which
+                # schedules on the captured main loop via
+                # asyncio.run_coroutine_threadsafe.
+                try:
+                    from backend.infra.alerting import (
+                        AlertCategory, AlertSeverity, send_alert,
+                        dispatch_alert_from_thread,
+                    )
+                    _sym = symbol
+                    _avail = len(available_cols)
+                    _total = len(self._feature_cols)
+                    ok = dispatch_alert_from_thread(
+                        lambda s=_sym, a=_avail, t=_total: send_alert(
+                            AlertCategory.SYSTEM_ERROR, AlertSeverity.WARNING,
+                            "Feature Drift Detected",
+                            f"ML signal neutralized for {s}: {a}/{t} features available.",
+                        )
+                    )
+                    if not ok:
+                        logger.warning(
+                            "Feature Drift alert dropped (no main loop ref): %s",
+                            symbol,
+                        )
+                except Exception:
+                    pass
+                return MLSignal(
+                    symbol=symbol, direction=0, confidence=0,
+                    predicted_return=0, raw_confidence=0,
+                    effective_confidence=0,
+                )
             logger.warning(
-                "Feature column mismatch for %s: %d/%d available — zero-padding missing columns",
-                symbol,
-                len(available_cols),
-                len(self._feature_cols),
+                "Feature column mismatch for %s: %d/%d available "
+                "(%.0f%% missing) — zero-padding missing columns",
+                symbol, len(available_cols), len(self._feature_cols),
+                missing_pct * 100,
             )
 
         # Build full-width feature row: use available columns, zero-pad missing ones
@@ -320,27 +470,35 @@ class MLSignalGenerator:
         else:
             direction = 0.0
 
-        # Confidence: how far from 0.5
-        confidence = abs(p_up - 0.5) * 2  # [0, 1]
-        confidence = min(confidence, 1.0)
+        # Stage 1: raw confidence — how far from 0.5
+        raw_confidence = abs(p_up - 0.5) * 2  # [0, 1]
+        raw_confidence = min(raw_confidence, 1.0)
 
-        # Apply calibration correction
-        confidence = self.calibrate_confidence(confidence)
+        # Stage 2: calibrated confidence — apply calibration correction
+        calibrated_confidence = self.calibrate_confidence(raw_confidence)
 
         # Feature importance
         fi = self._get_feature_importance()
 
-        # B2 (improve8): effective_confidence — cap raw confidence by
+        # Stage 3: effective confidence — cap calibrated confidence by
         # empirical precision from calibration data when available.
-        eff_conf = self._compute_effective_confidence(confidence)
+        eff_conf = self._compute_effective_confidence(calibrated_confidence)
+
+        # H1: effective_predicted_return — damp raw prediction when
+        # system calibration maturity is weak or confidence is low.
+        eff_pred_return = self._compute_effective_predicted_return(
+            pred_return, eff_conf,
+        )
 
         return MLSignal(
             symbol=symbol,
             direction=direction,
-            confidence=confidence,
+            confidence=calibrated_confidence,
             predicted_return=pred_return,
             feature_importance=fi,
+            raw_confidence=raw_confidence,
             effective_confidence=eff_conf,
+            effective_predicted_return=eff_pred_return,
         )
 
     def predict_batch(
@@ -354,9 +512,31 @@ class MLSignalGenerator:
 
     # ── Internal ───────────────────────────────────────────────────
 
-    def record_prediction_outcome(self, confidence: float, was_correct: bool) -> None:
-        """Record whether a prediction at a given confidence was correct."""
-        bin_idx = min(int(confidence * 5), 4)
+    def record_prediction_outcome(
+        self,
+        confidence: float,
+        was_correct: bool,
+        raw_confidence: float | None = None,
+    ) -> None:
+        """Record whether a prediction at a given confidence was correct.
+
+        V8 DD2-2 / Wave-33 (2026-05-03): outcomes MUST be binned on the
+        same axis used at lookup time in `calibrate_confidence`.
+        `calibrate_confidence` indexes `_calibration_map` by raw confidence,
+        so outcomes also bin by raw. If the caller passes only the
+        calibrated `confidence` (legacy path, e.g. reconciliation), we
+        fall back to that axis with a warning — the feedback loop is
+        documented in DD2-2 and tracks toward DD-7 anti-predictivity.
+
+        Args:
+            confidence: calibrated confidence (legacy / fallback axis).
+            was_correct: whether the predicted direction matched outcome.
+            raw_confidence: the model's pre-calibration confidence; when
+                provided, takes precedence as the binning axis. New
+                callers should always supply this.
+        """
+        axis = raw_confidence if raw_confidence is not None else confidence
+        bin_idx = min(int(axis * 5), 4)
         self._calibration_counts[bin_idx][1] += 1  # total
         if was_correct:
             self._calibration_counts[bin_idx][0] += 1  # correct
@@ -376,24 +556,86 @@ class MLSignalGenerator:
             else:
                 self._calibration_map[i] = min(actual_rate / bin_midpoint, 2.0)
 
-    def _compute_effective_confidence(self, raw_confidence: float) -> float:
-        """Compute effective_confidence = min(raw, empirical_precision).
+    def _compute_effective_confidence(self, calibrated_confidence: float) -> float:
+        """Compute effective_confidence from calibrated (not raw) confidence.
 
-        If calibration data exists (>= 10 observations in bin), cap raw
-        confidence by the actual precision rate. Otherwise, apply a 0.75
-        discount to account for overconfident untested predictions.
+        If calibration data exists (>= 10 observations in bin), cap
+        calibrated confidence by the actual empirical precision rate.
+        Otherwise, apply a 0.75 discount to account for untested predictions.
+
+        Input is calibrated_confidence (post calibrate_confidence()), not
+        the raw model output.
         """
-        bin_idx = min(int(raw_confidence * 5), 4)
+        bin_idx = min(int(calibrated_confidence * 5), 4)
         total = self._calibration_counts[bin_idx][1]
         if total >= 10:
             empirical = self._calibration_counts[bin_idx][0] / total
-            return min(raw_confidence, empirical)
-        return raw_confidence * 0.75
+            return min(calibrated_confidence, empirical)
+        return calibrated_confidence * 0.75
+
+    # Minimum calibration samples for full trust in predicted_return.
+    # Below this, predicted_return is damped by (samples / threshold).
+    MIN_CALIBRATION_SAMPLES = 30
+
+    def _compute_effective_predicted_return(
+        self, raw_return: float, effective_confidence: float,
+    ) -> float:
+        """Per-signal effective predicted return — damps raw by two factors.
+
+        Damping = calibration_factor * confidence_factor
+        - calibration_factor: min(1.0, total_samples / MIN_CALIBRATION_SAMPLES)
+          where total_samples is from the system-level rolling calibration state
+        - confidence_factor: max(effective_confidence, 0.1) — floor prevents
+          zeroing out
+
+        Note: this is the per-signal version.  The aggregate model-level
+        version (effective_mean_pred_return in ModelMetrics) uses only
+        calibration_factor because there is no single per-signal confidence
+        at the aggregate level.
+        """
+        total_samples = sum(c[1] for c in self._calibration_counts)
+        cal_factor = min(1.0, total_samples / self.MIN_CALIBRATION_SAMPLES)
+        conf_factor = max(effective_confidence, 0.1)  # floor to avoid zeroing out
+        damping = cal_factor * conf_factor
+        return raw_return * damping
 
     def calibrate_confidence(self, raw_confidence: float) -> float:
         """Apply calibration correction to raw confidence."""
         bin_idx = min(int(raw_confidence * 5), 4)
         return float(min(raw_confidence * self._calibration_map[bin_idx], 1.0))
+
+    def calibration_quality(self) -> tuple[int, bool, float]:
+        """Compute calibration quality summary.
+
+        Returns (total_samples, is_monotonic, calibration_error):
+        - total_samples: total observations across all 5 bins
+        - is_monotonic: True if bucket win-rates are non-decreasing
+          (higher confidence bins should have higher accuracy)
+        - calibration_error: mean |expected_rate - actual_rate| across
+          bins with >= 10 samples (0.0 if no bins qualify)
+        """
+        total_samples = sum(c[1] for c in self._calibration_counts)
+
+        # Compute per-bin actual win rates for bins with data
+        win_rates: list[float] = []
+        errors: list[float] = []
+        for i in range(5):
+            total = self._calibration_counts[i][1]
+            bin_midpoint = (i * 0.2 + (i + 1) * 0.2) / 2
+            if total >= 10:
+                actual = self._calibration_counts[i][0] / total
+                win_rates.append(actual)
+                errors.append(abs(bin_midpoint - actual))
+            else:
+                win_rates.append(float("nan"))
+
+        # Monotonicity: check that non-nan win rates are non-decreasing
+        valid = [r for r in win_rates if not math.isnan(r)]
+        is_monotonic = all(a <= b + 1e-9 for a, b in zip(valid, valid[1:])) if len(valid) >= 2 else True
+
+        cal_error = float(sum(errors) / len(errors)) if errors else 0.0
+
+        return total_samples, is_monotonic, cal_error
 
     def calibration_to_dict(self) -> dict[str, Any]:
         """Serialize calibration state for brain persistence."""
@@ -601,7 +843,81 @@ class MLSignalGenerator:
         # Feature importance
         metrics.feature_importance_top10 = list(self._get_feature_importance().items())[:10]
 
+        # System-level calibration maturity (H1) — snapshot from generator's
+        # rolling _calibration_counts, NOT from this candidate model's
+        # validation predictions.  These measure how much the *system* has
+        # been calibrated by live outcome feedback, which determines how
+        # much trust the acceptance gate places in the model.
+        cal_samples, cal_mono, cal_err = self.calibration_quality()
+        metrics.calibration_sample_count = cal_samples
+        metrics.calibration_monotonic = cal_mono
+        metrics.calibration_error = cal_err
+
+        # Effective mean predicted return (H3) — damp raw by system calibration
+        # maturity only (cal_factor).  Unlike per-signal effective_predicted_return
+        # which also multiplies by confidence_factor, this aggregate metric has
+        # no single per-signal confidence to apply.
+        cal_factor = min(1.0, cal_samples / self.MIN_CALIBRATION_SAMPLES)
+        metrics.effective_mean_pred_return = metrics.mean_pred_return * cal_factor
+
+        # Candidate-model calibration (I1) — evaluate how well this specific
+        # model's confidence predictions match actual outcomes on the validation
+        # set.  Unlike system-level calibration (above), this is derived entirely
+        # from the candidate's own validation predictions.
+        try:
+            val_proba = self._clf.predict_proba(X_val)
+            if val_proba.shape[1] > 1:
+                val_confidence = np.abs(val_proba[:, 1] - 0.5) * 2
+            else:
+                val_confidence = np.abs(val_proba[:, 0] - 0.5) * 2
+            val_correct = (dir_pred == y_dir_val).astype(int)
+            cand_samples, cand_mono, cand_err = self._candidate_calibration_summary(
+                val_confidence, val_correct,
+            )
+            metrics.candidate_calibration_sample_count = cand_samples
+            metrics.candidate_calibration_monotonic = cand_mono
+            metrics.candidate_calibration_error = cand_err
+        except Exception:
+            pass  # dir_pred may not exist if classifier failed above
+
         return metrics
+
+    @staticmethod
+    def _candidate_calibration_summary(
+        confidences: np.ndarray, correct: np.ndarray,
+    ) -> tuple[int, bool, float]:
+        """Compute calibration summary from validation predictions.
+
+        Same 5-bin structure as calibration_quality() but operates on
+        arrays of (confidence, was_correct) from the validation set,
+        not the generator's rolling live state.
+
+        Returns (total_samples, is_monotonic, calibration_error).
+        """
+        total = len(confidences)
+        bins: list[list[int]] = [[0, 0] for _ in range(5)]
+        for conf, corr in zip(confidences, correct):
+            idx = min(int(float(conf) * 5), 4)
+            bins[idx][1] += 1
+            if corr:
+                bins[idx][0] += 1
+
+        win_rates: list[float] = []
+        errors: list[float] = []
+        for i in range(5):
+            mid = (i * 0.2 + (i + 1) * 0.2) / 2
+            if bins[i][1] >= 5:
+                actual = bins[i][0] / bins[i][1]
+                win_rates.append(actual)
+                errors.append(abs(mid - actual))
+            else:
+                win_rates.append(float("nan"))
+
+        valid = [r for r in win_rates if not math.isnan(r)]
+        is_mono = all(a <= b + 1e-9 for a, b in zip(valid, valid[1:])) if len(valid) >= 2 else True
+        cal_err = float(sum(errors) / len(errors)) if errors else 0.0
+
+        return total, is_mono, cal_err
 
     def _get_feature_importance(self) -> dict[str, float]:
         """Get feature importance from the classifier."""

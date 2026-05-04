@@ -1,0 +1,102 @@
+{
+  "date": "2026-03-18",
+  "residual_risks": {
+    "FIXED_THIS_PROGRAM": [
+      {
+        "id": "A1",
+        "title": "Universe drift / SH-PSQ rotation",
+        "severity_before": "HIGH",
+        "status": "FIXED",
+        "residual": "NONE"
+      },
+      {
+        "id": "A2",
+        "title": "Scanner death spiral from entry blocking",
+        "severity_before": "HIGH",
+        "status": "FIXED",
+        "residual": "NONE"
+      },
+      {
+        "id": "A3",
+        "title": "Runtime snapshot missing active universe",
+        "severity_before": "MEDIUM",
+        "status": "FIXED",
+        "residual": "NONE"
+      },
+      {
+        "id": "A4",
+        "title": "Pending entry orphan on restart",
+        "severity_before": "HIGH",
+        "status": "FIXED",
+        "residual": "NONE"
+      },
+      {
+        "id": "B1",
+        "title": "Failed trade update silently dropped",
+        "severity_before": "HIGH",
+        "status": "FIXED",
+        "residual": "LOW — DLQ file needs periodic manual review"
+      },
+      {
+        "id": "B2",
+        "title": "WebSocket reconnect gap-fill too narrow",
+        "severity_before": "MEDIUM",
+        "status": "FIXED",
+        "residual": "LOW — gaps > 1hr still not covered"
+      },
+      {
+        "id": "B3",
+        "title": "Audit service stale session",
+        "severity_before": "MEDIUM",
+        "status": "FIXED",
+        "residual": "NONE"
+      },
+      {
+        "id": "C1-C5",
+        "title": "No observability during unattended operation",
+        "severity_before": "HIGH",
+        "status": "FIXED",
+        "residual": "NONE — watchdog states exposed in tick results and status"
+      }
+    ],
+    "REMAINING_RESIDUAL": [
+      {
+        "id": "R1",
+        "title": "DLQ file not auto-replayed",
+        "severity": "LOW",
+        "mitigation": "Manual check of /tmp/intra_trade_update_dlq.jsonl. Broker position query provides eventual consistency.",
+        "blocks_away_mode": false
+      },
+      {
+        "id": "R2",
+        "title": "realized_trades DB table empty (CSV only)",
+        "severity": "LOW",
+        "mitigation": "CSV persists correctly via atomic brain save. Analytics-only gap.",
+        "blocks_away_mode": false
+      },
+      {
+        "id": "R3",
+        "title": "os.environ captured by import_tracker",
+        "severity": "LOW",
+        "mitigation": "Paper env uses test credentials. Not logged externally.",
+        "blocks_away_mode": false
+      },
+      {
+        "id": "R4",
+        "title": "Settings endpoints lack authentication",
+        "severity": "LOW (paper only)",
+        "mitigation": "Local Docker network only.",
+        "blocks_away_mode": false
+      },
+      {
+        "id": "R5",
+        "title": "Runtime snapshot has hardcoded fallback credentials",
+        "severity": "LOW",
+        "mitigation": "Only used when env vars unset. Paper mode only.",
+        "blocks_away_mode": false
+      }
+    ]
+  },
+  "paper_path_blockers": 0,
+  "away_mode_blockers": 0
+}

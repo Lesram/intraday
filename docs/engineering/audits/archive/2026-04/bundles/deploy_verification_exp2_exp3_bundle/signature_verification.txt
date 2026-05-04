@@ -1,0 +1,32 @@
+=== A. Exp2 PRESENT ===
+PSQ/SH suppression:
+2423:                _INVERSE_ETFS_CHOP_SUPPRESSED = frozenset({"PSQ", "SH"})
+2432:                        sz.symbol in _INVERSE_ETFS_CHOP_SUPPRESSED
+2437:                            "%s regime=%s confidence=%.3f reason=inverse_etf_suppressed_chop",
+2444:                            details={"reason": "inverse_etf_suppressed_chop", "regime": str(regime)},
+
+=== B. Exp3 prep PRESENT ===
+2168:                        "Exp3: confidence side-by-side: %s regime=%s "
+2170:                        "gate_pass_live=%s gate_pass_bt_only=%s "
+2247:                        # Exp3 instrumentation: side-by-side confidence
+2248:                        "confidence_bt_only": _conf_bt_only,
+2249:                        "confidence_ml_component": _conf_ml_component,
+2250:                        "gate_pass_bt_only": _would_pass_bt_only,
+
+=== C. Exp4 ABSENT ===
+0
+
+=== D. Exp1A PRESERVED ===
+1936:                        _CHOP_MIN_HOLD_BARS = 10
+1944:                                "Exp1A: pyramid_cut suppressed (chop min-hold): "
+
+=== E. Full Patch F PRESERVED ===
+/app/backend/organism/live_engine.py:5
+/app/backend/organism/brain_persistence.py:7
+
+=== BOOT LOG ===
+{"timestamp": "2026-04-16T02:42:20", "level": "INFO", "logger": "backend.organism.scheduler", "message": "{"event": "Organism scheduler loop exiting", "logger": "backend.organism.scheduler", "level": "info", "timestamp": "2026-04-16T02:42:20.088031Z"}", "module": "scheduler", "function": "_run_loop", "line": 388}
+{"timestamp": "2026-04-16T02:42:29", "level": "INFO", "logger": "backend.organism.brain_persistence", "message": "Brain loaded: gen=70, runs=606, trades=258", "module": "brain_persistence", "function": "load", "line": 219}
+{"timestamp": "2026-04-16T02:42:29", "level": "INFO", "logger": "backend.organism.trading_phase", "message": "Trading phase: production_frozen (trades=258, ML_isolation_exit=0, freeze_exit=42)", "module": "trading_phase", "function": "log_trading_phase", "line": 75}
+{"timestamp": "2026-04-16T02:42:29", "level": "INFO", "logger": "backend.organism.live_engine", "message": "{"event": "PREFLIGHT: 16/18 checks passed (0 critical failures, 2 warnings)", "logger": "backend.organism.live_engine", "level": "info", "timestamp": "2026-04-16T02:42:29.935358Z"}", "module": "live_engine", "function": "initialize", "line": 972}
+{"timestamp": "2026-04-16T02:42:29", "level": "INFO", "logger": "backend.organism.scheduler", "message": "{"event": "Organism scheduler loop started", "logger": "backend.organism.scheduler", "level": "info", "timestamp": "2026-04-16T02:42:29.947931Z"}", "module": "scheduler", "function": "_run_loop", "line": 303}

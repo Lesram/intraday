@@ -28,7 +28,23 @@ import pandas as pd
 # ── Helpers ───────────────────────────────────────────────────────
 
 def _safe_div(a: pd.Series, b: pd.Series) -> pd.Series:
-    return a / b.replace(0, 1e-10)
+    """Element-wise division that survives zero denominators.
+
+    V7 DD-1 / Wave-24 (2026-05-03): the previous implementation
+    `a / b.replace(0, 1e-10)` collapsed `0/0` to `0`. Combined with
+    `(1 - _safe_div(...)).clip(0, 1)`, this produced a SATURATED
+    score (1.0) on flat-price / warmup / halted bars — the platform
+    manufactured synthetic "high breakout score" out of zero signal.
+    Now: when BOTH a and b are ~0 at the same index, the result is
+    NaN, which downstream `.fillna(0.0)` converts to a clean 0
+    (no signal → no score). Non-zero numerator over zero denominator
+    still uses the 1e-10 epsilon (same legacy semantics for those).
+    """
+    a_zero = a.abs() < 1e-12
+    b_zero = b.abs() < 1e-12
+    raw = a / b.replace(0, 1e-10)
+    # Mark 0/0 explicitly as NaN so callers don't propagate phantom values.
+    return raw.where(~(a_zero & b_zero), other=float("nan"))
 
 
 def _norm_01(s: pd.Series) -> pd.Series:

@@ -1,0 +1,43 @@
+{
+  "date": "2026-03-11",
+  "head_sha": "8db0fab",
+
+  "signal_generation": {
+    "signals_generated_today": 0,
+    "orders_generated_today": 0,
+    "candidates_reaching_confidence_gate": 27,
+    "candidates_passing_confidence_gate": 0,
+    "pass_rate": "0%"
+  },
+
+  "confidence_distribution_today": {
+    "formula": "eff_conf = 0.65 * breakout_score + 0.35 * min(tension, 1.0)",
+    "max_eff_conf": 0.22,
+    "min_eff_conf": 0.00,
+    "mean_eff_conf_logged": 0.057,
+    "gate_floor": 0.25,
+    "main_book_baseline": 0.40,
+    "main_book_defensive": 0.45,
+    "note": "Best candidate (TSLA at 0.22 in trending_down) was still 0.03 below the 0.25 exploration gate"
+  },
+
+  "breakout_score_quality": {
+    "observation": "Majority of candidates had breakout_score=0 (producing eff_conf=0.00). Non-zero breakout scores were concentrated in TSLA, XLE, NVDA, GOOGL during trending_down and high_vol regimes.",
+    "max_implied_breakout": 0.34,
+    "note": "Derived from max eff_conf=0.22: if tension=0, breakout = 0.22/0.65 = 0.34"
+  },
+
+  "tension_quality": {
+    "observation": "Tension readings appear near-zero across the universe today. The formula produces eff_conf=0.00 for most candidates, implying both breakout_score and tension are 0.",
+    "note": "This is consistent with a regime-unstable day (4 transitions) where neither momentum nor mean-reversion signals are clear."
+  },
+
+  "scanner_output": {
+    "movers_up_passed": 0,
+    "movers_down_passed": 0,
+    "most_actives_passed": 0,
+    "note": "Market scanner returned zero candidates all day"
+  },
+
+  "conclusion": "Signal generation was completely dry today. The heuristic confidence formula correctly identified this as a no-edge environment. No signals were artificially suppressed — the market genuinely offered no actionable setups for the breakout+tension model."
+}

@@ -1,0 +1,39 @@
+{
+  "date": "2026-03-13",
+  "head_sha": "8db0fab",
+
+  "trades_today": 0,
+  "exits_today": 0,
+
+  "note": "No exit economics to audit — zero trades today. Reviewing lifetime statistics for context.",
+
+  "lifetime_exit_statistics": {
+    "total_trades": 158,
+    "persisted_trades": 142,
+    "in_memory_only": 16,
+    "winning_trades": 68,
+    "losing_trades": 89,
+    "scratch_trades": 1,
+    "win_rate": 0.4304,
+    "avg_win": 17.70,
+    "avg_loss": -24.86,
+    "payoff_ratio": 0.71,
+    "cumulative_pnl": -1008.77,
+    "expected_value_per_trade": -6.39
+  },
+
+  "exit_reason_breakdown": {
+    "note": "Exit reason granularity not available from runtime stats. Full breakdown requires trade_history.csv analysis which shows all 142 persisted trades have blank forensic fields (pre-C2-patch legacy).",
+    "known_exit_types": ["stop_loss", "take_profit", "horizon_timeout", "eod_flatten", "manual"],
+    "distribution": "UNKNOWN — forensic fields not populated on legacy trades"
+  },
+
+  "exit_quality_assessment": {
+    "payoff_ratio_vs_target": "0.71 actual vs ~1.5 target for profitable breakout strategies. Below target.",
+    "win_rate_vs_target": "43.0% actual vs 45-55% target. Slightly below target.",
+    "combined": "Both metrics below target → negative expected value. This is expected during learning mode with conservative sizing.",
+    "trend": "Unable to assess trend — no trades in last 3 days"
+  },
+
+  "recommendation": "No exit parameter changes warranted. Zero trades today means zero exit data. Lifetime exit economics show the expected learning-phase profile (negative EV with small position sizes). Exit improvements will come from better entry selection, not exit parameter tuning."
+}

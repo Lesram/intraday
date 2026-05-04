@@ -1,0 +1,19 @@
+=== git status --short ===
+ M backend/organism/adaptive_exits.py
+ M backend/organism/pyramider.py
+ M monitoring/memory_monitoring.json
+ M scripts/generate_experiment_observation_report.py
+
+=== git diff --stat HEAD (4 dirty files) ===
+ backend/organism/adaptive_exits.py                | 40 +-----------
+ backend/organism/pyramider.py                     |  8 ---
+ monitoring/memory_monitoring.json                 | 26 ++++----
+ scripts/generate_experiment_observation_report.py | 80 -----------------------
+ 4 files changed, 16 insertions(+), 138 deletions(-)
+
+=== Interpretation (from DEPLOY_VERIFICATION_DEPLOY2_33d6138.md §2) ===
+Worktree md5s of adaptive_exits.py and pyramider.py match ce06d41 exactly, NOT 33d6138.
+Meaning: these 4 edits REVERT Exp4 (trailing giveback) + G3 (pyramider NaN guard) + observation tooling giveback section + monitoring threshold tweak.
+They are backward deltas toward the currently-running ce06d41, not forward progress from 33d6138.
+
+Decision still pending: keep (→ roll container back to ce06d41 semantic) or revert (→ deploy 33d6138).

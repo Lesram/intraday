@@ -1,0 +1,55 @@
+{
+  "remaining_items": [
+    {
+      "id": "BACKLOG-001",
+      "title": "External alerting for watchdog CRITICAL states",
+      "priority": "MEDIUM",
+      "category": "observability",
+      "description": "Watchdog states log internally but don't push to Slack/email. For true unattended operation, CRITICAL states should trigger external notifications."
+    },
+    {
+      "id": "BACKLOG-002",
+      "title": "Auto-replay DLQ entries",
+      "priority": "LOW",
+      "category": "execution_resilience",
+      "description": "DLQ entries are persisted but not automatically retried. A periodic job could replay them."
+    },
+    {
+      "id": "BACKLOG-003",
+      "title": "Wire organism trades to realized_trades DB",
+      "priority": "LOW",
+      "category": "persistence",
+      "description": "Trades only in CSV via brain save. No INSERT to realized_trades table."
+    },
+    {
+      "id": "BACKLOG-004",
+      "title": "Remove os.environ capture in import_tracker",
+      "priority": "LOW",
+      "category": "security",
+      "description": "import_tracker.py:70 captures os.environ at import time."
+    },
+    {
+      "id": "BACKLOG-005",
+      "title": "Real beta calculation in risk_calculator",
+      "priority": "LOW",
+      "category": "analytics",
+      "description": "Beta always returns 1.0. No market-beta computation."
+    },
+    {
+      "id": "BACKLOG-006",
+      "title": "Consolidate DatabaseConfig implementations",
+      "priority": "LOW",
+      "category": "architecture",
+      "description": "Four separate DatabaseConfig classes across the codebase."
+    },
+    {
+      "id": "BACKLOG-007",
+      "title": "Replace fabricated SLI metrics endpoint",
+      "priority": "LOW",
+      "category": "monitoring",
+      "description": "SLI metrics endpoint returns hardcoded data."
+    }
+  ],
+  "total": 7,
+  "blocks_away_mode": 0
+}

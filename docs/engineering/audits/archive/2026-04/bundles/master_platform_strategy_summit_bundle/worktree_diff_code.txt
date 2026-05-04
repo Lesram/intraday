@@ -1,0 +1,70 @@
+diff --git a/backend/organism/adaptive_exits.py b/backend/organism/adaptive_exits.py
+index 7983f85..ebcfb14 100644
+--- a/backend/organism/adaptive_exits.py
++++ b/backend/organism/adaptive_exits.py
+@@ -640,43 +640,9 @@ class AdaptiveExitEngine:
+         levels.trailing_active = True
+ 
+         # Regime-adaptive trail distance
+-        # EXPERIMENT 4: In chop, widen trailing stop to reduce giveback.
+-        # Giveback analysis (Apr 7-13) shows trailing_stop has the worst
+-        # avg giveback ($10.17/trade), with one NVDA trade giving back
+-        # $13.81 of MFE. The 3.0× ATR trail distance in chop is too
+-        # tight — normal chop oscillation routinely retraces 3× ATR.
+-        #
+-        # Variant A: widen to 5.0× ATR in chop
+-        # Variant B: disable trailing entirely in chop (rely on timeout)
+-        # Active variant controlled by _EXP4_CHOP_TRAIL_MODE:
+-        #   "widen" = Variant A (default)
+-        #   "disable" = Variant B
+-        _EXP4_CHOP_TRAIL_MODE = "widen"  # "widen" or "disable"
+-        _EXP4_CHOP_TRAIL_ATR = 5.0       # Variant A trail distance
+-
+-        if current_regime == "chop":
+-            if _EXP4_CHOP_TRAIL_MODE == "disable":
+-                # Variant B: skip trailing entirely in chop
+-                import logging as _lg
+-                _lg.getLogger(__name__).debug(
+-                    "Exp4: trailing_stop disabled in chop for %s "
+-                    "(excursion=%.1f ATR, mode=disable)",
+-                    getattr(levels, 'symbol', '?'), excursion_atr,
+-                )
+-                return ExitSignal(False)
+-            else:
+-                # Variant A: widened trail
+-                trail_atr = _EXP4_CHOP_TRAIL_ATR
+-                import logging as _lg
+-                _lg.getLogger(__name__).debug(
+-                    "Exp4: trailing_stop widened in chop for %s "
+-                    "(excursion=%.1f ATR, trail=%.1f ATR, mode=widen)",
+-                    getattr(levels, 'symbol', '?'), excursion_atr, trail_atr,
+-                )
+-        else:
+-            trail_atr = self.REGIME_TRAIL_ATR.get(
+-                current_regime, self.trailing_distance_atr
+-            )
++        trail_atr = self.REGIME_TRAIL_ATR.get(
++            current_regime, self.trailing_distance_atr
++        )
+         trail_distance = atr * trail_atr
+ 
+         if direction > 0:
+diff --git a/backend/organism/pyramider.py b/backend/organism/pyramider.py
+index eddca5c..7a5a08b 100644
+--- a/backend/organism/pyramider.py
++++ b/backend/organism/pyramider.py
+@@ -162,14 +162,6 @@ class MomentumPyramider:
+         if not position.layers:
+             return PyramidAction(action="none")
+ 
+-        # G3: guard against NaN/Inf current_price. If streaming data
+-        # is stale or corrupt, current_price can be NaN, which would
+-        # silently disable all pyramid actions (NaN comparisons are
+-        # always False). Catch early and return safely.
+-        import math
+-        if not math.isfinite(current_price) or current_price <= 0:
+-            return PyramidAction(action="none")
+-
+         entry = position.layers[0].entry_price
+         atr = position.atr_at_entry
+         if atr < 1e-6:

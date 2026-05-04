@@ -1,0 +1,23 @@
+{
+  "date": "2026-03-10",
+  "deployed_sha": "06ec9a4",
+  "total_trades": 142,
+  "realized_pnl": -944.75,
+  "win_rate": 0.4014,
+  "avg_win": 16.84,
+  "avg_loss": -22.67,
+  "payoff_ratio": 0.7426,
+  "stop_loss_share_of_total_loss": 0.3633,
+  "FTF_share_of_total_loss": 0.2274,
+  "trailing_share_of_total_profit": 0.1298,
+  "horizon_timeout_share_of_total_profit": 0.0,
+  "exploration_execution_count": 0,
+  "critical_runtime_errors": false,
+  "stale_state_anomalies": false,
+  "artifact_bundle_complete": true,
+  "paper_validation_pass": true,
+  "strategy_quality_pass": false,
+  "strategy_quality_fail_reasons": [
+    "payoff_ratio=0.7426"
+  ]
+}

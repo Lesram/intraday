@@ -1,0 +1,49 @@
+{
+  "date": "2026-03-13",
+  "head_sha": "8db0fab",
+
+  "classification": "STRUCTURAL_CONFIDENCE_GAP",
+
+  "root_causes": [
+    {
+      "rank": 1,
+      "cause": "Confidence formula structural limitation",
+      "category": "DESIGN_GAP",
+      "contribution": "70%",
+      "detail": "The learning-mode formula (0.65*breakout + 0.35*tension) produces max ~0.20 for today's market conditions. Inverse ETFs (SH, PSQ) have near-zero breakout_readiness. Defensive rotations (XOM, WMT) have low breakout scores because their moves are gradual, not sharp.",
+      "evidence": "Max eff_conf=0.20 (PSQ) vs gate=0.25. Three consecutive days with same pattern.",
+      "fix_type": "STRATEGY_CHANGE (Phase C)",
+      "fix_urgency": "NOT_NOW — requires design discussion, not a quick fix"
+    },
+    {
+      "rank": 2,
+      "cause": "Market regime unfavorable for breakout strategy",
+      "category": "MARKET_CONDITIONS",
+      "contribution": "20%",
+      "detail": "Three consecutive down days (SPY: -0.76%, -1.12%, -0.57%). The organism is designed for breakout/momentum in uptrending markets. Sell-off and rotation days naturally produce fewer opportunities for this strategy style.",
+      "evidence": "SPY down 3 consecutive days. Strongest movers were inverse ETFs and defensives — not breakout candidates.",
+      "fix_type": "NONE — market conditions are external",
+      "fix_urgency": "N/A"
+    },
+    {
+      "rank": 3,
+      "cause": "Regime detector lag",
+      "category": "KNOWN_LIMITATION",
+      "contribution": "10%",
+      "detail": "SMA(200) + EMA smoothing (alpha=0.3) creates 15-20 bar lag. Regime was still trending_up until 18:43 UTC despite obvious market weakness. However, even with perfect regime detection, confidence scores would still be below the gate.",
+      "evidence": "Regime timeline shows trending_up as dominant until late afternoon. But confidence scores were already below gate regardless of regime.",
+      "fix_type": "INVESTIGATION (INV-003)",
+      "fix_urgency": "After 5+ more sessions of evidence"
+    }
+  ],
+
+  "is_this_a_bug": "NO — the organism is behaving exactly as designed. The confidence formula was intentionally built for breakout/momentum patterns. Its inability to score defensive rotations and inverse ETFs is a known structural limitation, not a defect.",
+
+  "three_day_pattern": {
+    "2026-03-11": {"spy": -0.76, "trades": 0, "max_conf": 0.17, "dominant_opportunity": "XLE rotation"},
+    "2026-03-12": {"spy": -1.12, "trades": 0, "max_conf": 0.20, "dominant_opportunity": "SH/PSQ inverse, broad sell-off"},
+    "2026-03-13": {"spy": -0.57, "trades": 0, "max_conf": 0.20, "dominant_opportunity": "XOM energy, PSQ/SH inverse"}
+  },
+
+  "verdict": "The three-day zero-trade streak is the EXPECTED behavior of a breakout/momentum strategy during a rotation/sell-off market. The confidence gate is working correctly — it is preventing low-confidence entries that would likely be unprofitable. The structural gap in the confidence formula (INV-008) is the primary area for future improvement but requires Phase C design work."
+}

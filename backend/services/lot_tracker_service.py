@@ -109,7 +109,14 @@ class LotTracker:
         Raises:
             ValueError: If insufficient lots available to close
         """
-        # Get all open lots for this symbol (FIFO order: oldest first)
+        # Get all open lots for this symbol (FIFO order: oldest first).
+        # V4 N-H-2 (2026-05-02): SELECT FOR UPDATE serializes concurrent
+        # close paths (alpaca-stream WS fill vs the position-reconcile
+        # loop). Without the row lock both readers see the same
+        # remaining_qty, both compute closures, and the second commit
+        # produces a lost update — only the per-row CHECK constraint
+        # eventually catches it (sometimes with a partial close already
+        # written). The lock is released on session commit/rollback.
         stmt = (
             select(PositionLot)
             .where(
@@ -119,6 +126,7 @@ class LotTracker:
                 PositionLot.remaining_qty > 0,
             )
             .order_by(PositionLot.open_date.asc())  # FIFO: oldest first
+            .with_for_update()
         )
 
         result = await self.session.execute(stmt)

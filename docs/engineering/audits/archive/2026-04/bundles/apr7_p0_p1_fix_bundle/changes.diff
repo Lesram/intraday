@@ -1,0 +1,185 @@
+diff --git a/backend/organism/brain_persistence.py b/backend/organism/brain_persistence.py
+index de34504..e19d43e 100644
+--- a/backend/organism/brain_persistence.py
++++ b/backend/organism/brain_persistence.py
+@@ -132,6 +132,13 @@ class OrganismBrain:
+         self.backup_dir = self.brain_dir / "backups"
+         self._loaded = False
+         self._manifest: dict[str, Any] = {}
++        # Apr-7 P1 fix: rate-limit walk_forward_gate best_sharpe decay
++        # to at most once per calendar day. Previously, `self._manifest
++        # ["best_sharpe"] *= 0.95` ran on every gated save attempt
++        # (~every 20 ticks), compounding into a ~250x collapse in one
++        # session (2.776 -> 0.011 on 2026-04-07). Root cause: decay
++        # frequency tracked tick cadence, not sessions.
++        self._last_sharpe_decay_date: str = ""
+ 
+         # ── Restored state containers ────────────────────────────
+         # ML models (joblib objects)
+@@ -1221,17 +1228,33 @@ class OrganismBrain:
+ 
+         # Regression detected — decay best_sharpe by 5% so the gate doesn't
+         # permanently block saves after an exceptional one-off session.
+-        decayed = best_sharpe * 0.95
+-        self._manifest["best_sharpe"] = decayed
+-        logger.warning(
+-            "Walk-forward regression: current_sharpe=%.3f, "
+-            "best_sharpe=%.3f (decayed to %.3f), ratio=%.3f < %.3f",
+-            current_sharpe,
+-            best_sharpe,
+-            decayed,
+-            ratio,
+-            regression_threshold,
+-        )
++        # Apr-7 P1 fix: rate-limit to at most once per calendar day.
++        # Otherwise gated saves every ~20 ticks compound to a ~250x
++        # collapse in one session (observed 2026-04-07: 2.776 -> 0.011).
++        today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
++        if self._last_sharpe_decay_date != today:
++            decayed = best_sharpe * 0.95
++            self._manifest["best_sharpe"] = decayed
++            self._last_sharpe_decay_date = today
++            logger.warning(
++                "Walk-forward regression: current_sharpe=%.3f, "
++                "best_sharpe=%.3f (decayed to %.3f), ratio=%.3f < %.3f",
++                current_sharpe,
++                best_sharpe,
++                decayed,
++                ratio,
++                regression_threshold,
++            )
++        else:
++            logger.warning(
++                "Walk-forward regression: current_sharpe=%.3f, "
++                "best_sharpe=%.3f (no decay — already decayed today), "
++                "ratio=%.3f < %.3f",
++                current_sharpe,
++                best_sharpe,
++                ratio,
++                regression_threshold,
++            )
+         return False, (
+             f"Walk-forward FAIL: current={current_sharpe:.3f}, "
+             f"best={best_sharpe:.3f}, ratio={ratio:.3f}"
+diff --git a/backend/organism/live_engine.py b/backend/organism/live_engine.py
+index 6cbafb1..b8c8eb1 100644
+--- a/backend/organism/live_engine.py
++++ b/backend/organism/live_engine.py
+@@ -535,6 +535,14 @@ class OrganismLiveEngine:
+         self._watchdog_universe_drift: dict[str, Any] = {}
+         # C4: Brain save watchdog
+         self._watchdog_last_brain_save_tick: int = 0
++        # Apr-7 P0 fix: monotonic authoritative submission counters.
++        # These are bumped inside _submit_entry_order / _submit_exit_order
++        # on every successful broker submission, independent of per-tick
++        # LiveTickResult counters. The C1 watchdog reads these so it can
++        # never disagree with reality even if a result field is missed.
++        self._total_orders_submitted: int = 0
++        self._total_exits_submitted: int = 0
++        self._watchdog_last_total_orders: int = 0
+ 
+     # ── Dynamic throttle ──────────────────────────────────────
+ 
+@@ -966,6 +974,14 @@ class OrganismLiveEngine:
+         except Exception as e:
+             logger.debug("Preflight diagnostics error (non-fatal): %s", e)
+ 
++        # Apr-7 P0: seed watchdog baselines so a fresh boot does NOT
++        # immediately claim "no orders" / "no brain save" since tick 0.
++        # Real liveness is enforced once tick_count advances past the
++        # 6h/3h thresholds without a real order / save.
++        self._watchdog_last_order_tick = self._tick_count
++        self._watchdog_last_brain_save_tick = self._tick_count
++        self._watchdog_last_total_orders = self._total_orders_submitted
++
+         return brain_loaded
+ 
+     async def _reconstruct_trades_from_db(self) -> None:
+@@ -1482,6 +1498,7 @@ class OrganismLiveEngine:
+                                         broker_positions=current_positions,
+                                     )
+                                     exits_submitted += 1
++                                    result.orders_submitted += 1
+                                     if _PROMETHEUS_AVAILABLE:
+                                         ORGANISM_SAFETY_NET_TRIGGERED.inc()
+                                         ORGANISM_EXITS_SKIPPED_NO_DATA.inc()
+@@ -1554,6 +1571,7 @@ class OrganismLiveEngine:
+                                     )
+                                     self._exit_cooldown[sym] = self._tick_count
+                                     exits_submitted += 1
++                                    result.orders_submitted += 1
+                                     if _PROMETHEUS_AVAILABLE:
+                                         ORGANISM_SAFETY_NET_TRIGGERED.inc()
+                                     logger.warning(
+@@ -1626,6 +1644,7 @@ class OrganismLiveEngine:
+                             self._exit_cooldown[sym] = self._tick_count
+                             self._pending_exit[sym] = self._tick_count
+                             exits_submitted += 1
++                            result.orders_submitted += 1
+                             result.activity.append(ActivityEvent(
+                                 event_type="exit",
+                                 symbol=sym,
+@@ -1667,6 +1686,7 @@ class OrganismLiveEngine:
+                             self._exit_cooldown[sym] = self._tick_count
+                             self._pending_exit[sym] = self._tick_count
+                             result.trades_closed += 1
++                            result.orders_submitted += 1
+                             result.activity.append(ActivityEvent(
+                                 event_type="exit",
+                                 symbol=sym,
+@@ -3052,7 +3072,16 @@ class OrganismLiveEngine:
+     def _update_watchdog_state(self, result: LiveTickResult) -> None:
+         """Update all watchdog states at the end of each tick."""
+         # C1: No-trade watchdog
+-        if result.orders_submitted > 0:
++        # Apr-7 P0: drive from the authoritative monotonic counter
++        # (`_total_orders_submitted`) so the watchdog can never disagree
++        # with real broker submissions even if result.orders_submitted
++        # is missed at a callsite.
++        if self._total_orders_submitted > self._watchdog_last_total_orders:
++            self._watchdog_last_order_tick = self._tick_count
++            self._watchdog_last_total_orders = self._total_orders_submitted
++            self._watchdog_zero_candidates_ticks = 0
++        elif result.orders_submitted > 0:
++            # Belt-and-suspenders: any local bump also counts
+             self._watchdog_last_order_tick = self._tick_count
+             self._watchdog_zero_candidates_ticks = 0
+         elif result.signals_generated == 0:
+@@ -3371,7 +3400,7 @@ class OrganismLiveEngine:
+             except Exception:
+                 pass  # Fallback to market order
+ 
+-        return await self._order_service.submit_symbol_order(
++        _entry_result = await self._order_service.submit_symbol_order(
+             symbol=symbol,
+             side=side,
+             qty=shares,
+@@ -3386,6 +3415,14 @@ class OrganismLiveEngine:
+                 "tick": self._tick_count,
+             },
+         )
++        # Apr-7 P0: authoritative monotonic counter — survives result
++        # field drift. Counts every entry/pyramid order that broker-submit
++        # did not raise on (blocked/rejected dicts are still submissions).
++        try:
++            self._total_orders_submitted += 1
++        except Exception:
++            pass
++        return _entry_result
+ 
+     async def _submit_exit_order(
+         self,
+@@ -3473,6 +3510,13 @@ class OrganismLiveEngine:
+                 "tick": self._tick_count,
+             },
+         )
++        # Apr-7 P0: authoritative monotonic counters. Only reach here
++        # after LONG_ONLY guard and a real broker submit attempt.
++        try:
++            self._total_orders_submitted += 1
++            self._total_exits_submitted += 1
++        except Exception:
++            pass
+         # Capture fill price for trade attribution
+         if isinstance(result, dict):
+             fp = result.get("avg_fill_price")

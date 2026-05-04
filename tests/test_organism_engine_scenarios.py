@@ -62,13 +62,18 @@ def _make_engine(
     )
     brain_dir = brain_dir or "/tmp/test_brain_scenarios"
 
-    return OrganismLiveEngine(
+    engine = OrganismLiveEngine(
         data_client=data_client,
         order_service=broker,
         positions_service=broker,
         brain_dir=brain_dir,
         universe=universe,
     )
+    # Scenario tests must stay hermetic. The production default can enable the
+    # Alpaca screener, but CI has no market-data credentials and should not
+    # spend timeout budget retrying external 401s.
+    engine.market_scanner = None
+    return engine
 
 
 async def _run_ticks(engine, n: int) -> list:
@@ -204,6 +209,7 @@ async def test_empty_features_for_position_symbol(broker, brain_dir):
 # ═════════════════════════════════════════════════════════════════════════
 
 @pytest.mark.asyncio
+@pytest.mark.timeout(120)
 async def test_regime_stability_over_20_ticks(broker, brain_dir):
     """Run 20 ticks with smooth uptrend data — regime should not flap excessively."""
     bars = make_features_dict(["AAPL", "MSFT", "SPY"], n=600, seed=42, trend="up")
@@ -602,10 +608,10 @@ async def test_reconcile_detects_closed_position(broker, brain_dir):
     engine._tick_count = 10  # Ensure past grace period
     await engine.live_tick()
 
-    # Check trade was recorded
-    if len(engine._all_trades) > 0:
-        trade = engine._all_trades[-1]
-        assert trade.symbol == "AAPL"
+    # Check the AAPL closure was recorded. Reconciliation can record more
+    # than one stale metadata adjustment in the same tick, so ordering is not
+    # the contract under test here.
+    assert any(trade.symbol == "AAPL" for trade in engine._all_trades)
 
 
 @pytest.mark.asyncio
@@ -789,6 +795,7 @@ async def test_reconstructed_trades_fed_to_learner(broker, brain_dir):
 # ═════════════════════════════════════════════════════════════════════════
 
 @pytest.mark.asyncio
+@pytest.mark.timeout(120)
 async def test_brain_save_interval_20_ticks(broker, brain_dir):
     """Run 25 ticks — brain should be saved at tick 20."""
     engine = _make_engine(broker, brain_dir=brain_dir)

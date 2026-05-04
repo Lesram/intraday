@@ -31,6 +31,35 @@ from backend.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
+# V6 X-1 / Wave-20c (2026-05-03): eager load_dotenv to kill mid-replay
+# determinism bug. Track X reproduced this: live_tick() lazy-imports
+# `alpaca_stream`, which calls `load_dotenv()` in its own module init.
+# The first GovernanceController() constructed (before alpaca_stream
+# loads) read code defaults; the second (after alpaca_stream's
+# load_dotenv mutated os.environ) read .env overrides. Two replay runs
+# produced different governance state. Eagerly loading dotenv at the
+# top of replay_simulator means every os.getenv() call sees the same
+# environment from tick 1.
+try:
+    from dotenv import load_dotenv as _load_dotenv
+    _load_dotenv()
+except Exception:
+    # python-dotenv may not be installed in stripped-down test envs.
+    pass
+
+# V6 X-7 / Wave-22 (2026-05-03): mark replay mode so OrganismLiveEngine
+# refuses to write to the production brain dir without explicit override.
+# Defense-in-depth — replay's tempdir wrapper is supposed to handle this,
+# but if a future change constructs the engine directly without the
+# wrapper, this assertion is the safety net.
+#
+# V12 W80 (post-audit cleanup): the V12 external auditor flagged the
+# original ``os.environ.setdefault("ORGANISM_REPLAY_MODE", "1")`` here
+# as global env pollution on import — any test that merely imports this
+# module would inherit replay-mode env, polluting unrelated test runs.
+# The flag is now set inside ``ReplayEngine.__init__`` (constructor-time)
+# instead of at module import.
+
 
 # ═════════════════════════════════════════════════════════════════════════
 #  SIMULATED BROKER
@@ -47,10 +76,15 @@ class SimulatedBroker:
         self,
         initial_cash: float = 100_000,
         slippage_bps: float = 0,
+        delay_fill: bool = False,
     ) -> None:
         self.cash: float = initial_cash
         self.initial_cash: float = initial_cash
         self.slippage_bps: float = slippage_bps
+        # delay_fill: when True, orders observe the current bar's close
+        # but fill at the NEXT bar's open. More realistic than instant
+        # same-bar fill at observed close. Default False for backward-compat.
+        self.delay_fill: bool = delay_fill
 
         # symbol → {qty, avg_entry_price, side, market_value, cost_basis, ...}
         self._positions: dict[str, dict[str, Any]] = {}
@@ -82,6 +116,15 @@ class SimulatedBroker:
         if self._bar_provider is not None:
             return self._bar_provider.current_price(symbol)
         return 0.0
+
+    def _fill_price(self, symbol: str) -> float:
+        """Get fill price. With delay_fill=True, returns NEXT bar's open
+        (more realistic than same-bar close). Otherwise returns current price.
+        """
+        if not self.delay_fill or self._bar_provider is None:
+            return self._current_price(symbol)
+        # Look up next bar's open via bar provider
+        return self._bar_provider.next_bar_open(symbol)
 
     def _apply_slippage(self, price: float, side: str) -> float:
         """Apply slippage in basis points."""
@@ -141,7 +184,9 @@ class SimulatedBroker:
         symbol = kwargs["symbol"]
         side = kwargs["side"]
         qty = int(float(kwargs["qty"]))
-        price = self._current_price(symbol)
+        # With delay_fill, orders observe the current bar's close but fill
+        # at next bar's open (more realistic). Without it, fill at current.
+        price = self._fill_price(symbol)
 
         if price <= 0:
             return {"id": str(uuid.uuid4()), "status": "rejected", "reason": "no_price"}
@@ -295,6 +340,20 @@ class HistoricalBarProvider:
         idx = min(self._current_idx - 1, len(df) - 1)
         return float(df["close"].iloc[idx])
 
+    def next_bar_open(self, symbol: str) -> float:
+        """Get the OPEN of the bar AFTER the current cursor — the price an
+        order submitted at the current bar's close would actually fill at.
+        Falls back to current_price if at last bar.
+        """
+        df = self._bars.get(symbol)
+        if df is None or self._current_idx <= 0:
+            return 0.0
+        # current_idx points to the bar we just observed; next bar's open
+        # is at df.iloc[current_idx]['open'] (if it exists).
+        if self._current_idx < len(df) and "open" in df.columns:
+            return float(df["open"].iloc[self._current_idx])
+        return self.current_price(symbol)
+
     @property
     def current_time(self) -> datetime | None:
         """Timestamp at current cursor position."""
@@ -342,6 +401,7 @@ class ReplayResult:
     """Structured output from a replay run."""
 
     ticks: int = 0
+    orders: list[dict] = field(default_factory=list)
     trades: list[dict] = field(default_factory=list)
     equity_curve: list[float] = field(default_factory=list)
     regime_history: list[str] = field(default_factory=list)
@@ -436,7 +496,16 @@ class ReplayEngine:
         max_entries_per_hour: int = 20,
         timeframe: str = "1Day",
         lookback: int | None = None,
+        delay_fill: bool = False,
     ) -> None:
+        # V12 W80 (post-audit cleanup): set the replay-mode env flag at
+        # constructor time, not at module import.  V12 external auditor
+        # flagged the import-time setdefault as global env pollution.
+        # Setting here ensures the flag is set whenever a real replay
+        # engine is built — and not when the module is merely imported
+        # (e.g. for type hints or constants in unrelated tests).
+        os.environ.setdefault("ORGANISM_REPLAY_MODE", "1")
+
         self.bars_by_symbol = bars_by_symbol
         self.initial_cash = initial_cash
         self.slippage_bps = slippage_bps
@@ -444,6 +513,7 @@ class ReplayEngine:
         self.brain_dir = brain_dir
         self.max_entries_per_hour = max_entries_per_hour
         self.timeframe = timeframe
+        self.delay_fill = delay_fill
 
         if lookback is not None:
             self.lookback = lookback
@@ -460,6 +530,7 @@ class ReplayEngine:
         broker = SimulatedBroker(
             initial_cash=self.initial_cash,
             slippage_bps=self.slippage_bps,
+            delay_fill=self.delay_fill,
         )
         broker.set_bar_provider(bar_provider)
 
@@ -475,15 +546,46 @@ class ReplayEngine:
         )
         await engine.initialize()
 
-        # Override clock to use bar time instead of wall time
-        engine._time_fn = lambda: bar_provider.current_simulated_time
-        engine._now_fn = lambda: bar_provider.current_simulated_datetime
+        # Override clock to use bar time instead of wall time.
+        # V5 Wave-17b (2026-05-03): extend the override to the auxiliary
+        # components that also hold their own clocks.
+        # V6 X-5/X-6 / Wave-20d (2026-05-03): the wave-19 loop had two
+        # bugs — (a) it only matched `_now_fn` so StreamingDataProvider
+        # (uses `_time_fn`) was silently skipped; (b) it listed a
+        # nonexistent `promotion_controller` attribute (the engine
+        # holds no such attribute; PromotionController lives on
+        # `app.state`). Now: explicit attr → clock-attr mapping,
+        # use the same `_replay_now` for `_now_fn` and `_replay_time`
+        # for `_time_fn`. `brain` clock added (wave-20b X-3 fix).
+        _replay_now = lambda: bar_provider.current_simulated_datetime
+        _replay_time = lambda: bar_provider.current_simulated_time
+        engine._time_fn = _replay_time
+        engine._now_fn = _replay_now
+
+        _now_fn_components = (
+            "regime_detector",
+            "governance",
+            "learner",
+            "brain",
+        )
+        _time_fn_components = (
+            "_streaming_provider",
+        )
+        for _attr in _now_fn_components:
+            _comp = getattr(engine, _attr, None)
+            if _comp is not None and hasattr(_comp, "_now_fn"):
+                _comp._now_fn = _replay_now
+        for _attr in _time_fn_components:
+            _comp = getattr(engine, _attr, None)
+            if _comp is not None and hasattr(_comp, "_time_fn"):
+                _comp._time_fn = _replay_time
 
         # Disable MarketScanner — don't hit real APIs during replay
         engine.market_scanner = None
 
-        # Relax entry throttle for learning (production default is 3)
-        engine._MAX_ENTRIES_PER_HOUR = self.max_entries_per_hour
+        # Replay must be able to exercise both loose and tight throttle
+        # settings even while the live engine is in learning mode.
+        engine._entry_throttle_override_per_hour = self.max_entries_per_hour
 
         result = ReplayResult()
         tick_count = 0
@@ -521,6 +623,7 @@ class ReplayEngine:
         await engine.shutdown()
 
         result.ticks = tick_count
+        result.orders = list(broker.filled_orders)
         result.trades = list(broker.trade_log)
 
         return result

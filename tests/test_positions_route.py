@@ -116,26 +116,31 @@ def test_positions_response_schema_mock_data(mock_settings, mock_alpaca, client)
         assert isinstance(positions, list)
         assert len(positions) > 0
 
-        # Validate schema for each position
+        # Validate schema for each position.
+        # V12 W87 (post-cleanup): the V11 wave-54 VV-1 fix changed
+        # PositionResponse to serialize camelCase (matching the
+        # frontend's TS contract).  This test still asserted on the
+        # snake_case input field names — that's the V11 VV-1 finding
+        # showing up in tests.  Now: assert on the wire-format keys.
         for position in positions:
             assert "symbol" in position
             assert "qty" in position
-            assert "avg_price" in position
-            assert "market_price" in position
-            assert "market_value" in position
-            assert "unrealized_pl" in position
-            assert "updated_at" in position
+            assert "averagePrice" in position
+            assert "currentPrice" in position
+            assert "marketValue" in position
+            assert "unrealizedPnL" in position
+            assert "updatedAt" in position
 
             # Type validation
             assert isinstance(position["symbol"], str)
             assert isinstance(position["qty"], (int, float))
-            assert isinstance(position["avg_price"], (int, float))
-            assert isinstance(position["updated_at"], str)
+            assert isinstance(position["averagePrice"], (int, float))
+            assert isinstance(position["updatedAt"], str)
 
             # Optional fields can be None
-            assert position["market_price"] is None or isinstance(position["market_price"], (int, float))
-            assert position["market_value"] is None or isinstance(position["market_value"], (int, float))
-            assert position["unrealized_pl"] is None or isinstance(position["unrealized_pl"], (int, float))
+            assert position["currentPrice"] is None or isinstance(position["currentPrice"], (int, float))
+            assert position["marketValue"] is None or isinstance(position["marketValue"], (int, float))
+            assert position["unrealizedPnL"] is None or isinstance(position["unrealizedPnL"], (int, float))
     finally:
         client.app.dependency_overrides.clear()
 
@@ -157,12 +162,12 @@ def test_positions_mock_data_content(mock_settings, mock_alpaca, client):
         assert "GOOGL" in symbols
         assert "MSFT" in symbols
 
-        # Verify AAPL position details
+        # Verify AAPL position details (V11 wave-54 VV-1: camelCase wire keys)
         aapl_position = next(pos for pos in positions if pos["symbol"] == "AAPL")
         assert aapl_position["qty"] == 10.0
-        assert aapl_position["avg_price"] == 180.0
-        assert aapl_position["market_price"] == 185.50
-        assert aapl_position["unrealized_pl"] == 55.0
+        assert aapl_position["averagePrice"] == 180.0
+        assert aapl_position["currentPrice"] == 185.50
+        assert aapl_position["unrealizedPnL"] == 55.0
     finally:
         client.app.dependency_overrides.clear()
 
@@ -188,7 +193,8 @@ def test_positions_alpaca_mode(mock_settings, mock_alpaca, client):
         for position in positions:
             assert "symbol" in position
             assert "qty" in position
-            assert "avg_price" in position
+            # V11 wave-54 VV-1: camelCase wire keys.
+            assert "averagePrice" in position
     finally:
         client.app.dependency_overrides.clear()
 

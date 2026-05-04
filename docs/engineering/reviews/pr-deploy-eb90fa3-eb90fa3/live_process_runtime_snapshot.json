@@ -1,0 +1,176 @@
+{
+  "source": "live_process",
+  "snapshot_taken_at": "2026-04-25T02:07:52Z",
+  "container": "intra-api-1",
+  "reachable": true,
+  "organism_status": {
+    "enabled": true,
+    "governance": {
+      "frozen": false,
+      "trading_halted": false,
+      "disabled_strategies": [],
+      "policy_version": "",
+      "config_hash": "",
+      "change_count_today": 0,
+      "max_changes_per_day": 500
+    },
+    "regime": {
+      "last_regime": ""
+    },
+    "promotion": null,
+    "policy_weights": {
+      "momentum": 1.0023455365351297,
+      "mean_reversion": 2.5,
+      "stat_arb": 2.5,
+      "regime_momentum": 1.7562395161534294,
+      "breakout": 2.5,
+      "ensemble": 1.0,
+      "order_flow": 2.5,
+      "vol_structure": 1.060594946053946,
+      "cross_momentum": 1.0,
+      "microstructure": 0.1,
+      "adaptive_regime": 1.6161843624050236
+    },
+    "tick_count": 0,
+    "live_engine": {
+      "running": true,
+      "tick_interval_s": 10,
+      "last_tick": null,
+      "tick_history": [],
+      "engine": {
+        "initialized": true,
+        "tick_count": 28680,
+        "total_trades": 396,
+        "brain_generation": 124,
+        "brain_total_runs": 1300,
+        "evolved_generation": 0,
+        "evolved_adaptations": 0,
+        "peak_equity": 111784.74,
+        "current_equity": 111531.07,
+        "governance": {
+          "frozen": false,
+          "trading_halted": false,
+          "disabled_strategies": [],
+          "policy_version": "",
+          "config_hash": "",
+          "change_count_today": 1,
+          "max_changes_per_day": 500
+        },
+        "universe_size": 22,
+        "universe_symbols": [
+          "NVDA",
+          "SPY",
+          "QQQ",
+          "XLK",
+          "XLE",
+          "COST",
+          "LLY",
+          "PSQ",
+          "SH",
+          "AAPL",
+          "AMD",
+          "AMZN",
+          "AVGO",
+          "CAT",
+          "CRM",
+          "GOOGL",
+          "IWM",
+          "META",
+          "MSFT",
+          "TSLA",
+          "WMT",
+          "XOM"
+        ],
+        "positions_tracked": 0,
+        "cumulative_pnl": -621.9,
+        "win_rate": 0.3409,
+        "winning_trades": 135,
+        "losing_trades": 259,
+        "avg_win": 13.36,
+        "avg_loss": -9.37,
+        "ml_accuracy": 0.0,
+        "ml_trained": true,
+        "training_history": [],
+        "regime": "unknown",
+        "shorts_enabled": false,
+        "data_stale": false,
+        "learning_mode": false,
+        "watchdog": {
+          "no_trade": {
+            "state": "OK",
+            "ticks_since_last_order": 0,
+            "zero_candidate_ticks": 0
+          },
+          "equity_fallback": {
+            "total_fallback_count": 0,
+            "current_streak": 0
+          },
+          "universe_drift": {},
+          "brain_save": {
+            "ticks_since_last_save": 0,
+            "healthy": true
+          }
+        },
+        "scanner_enabled": true,
+        "scanner_scan_count": 0,
+        "scanner_candidates_count": 0,
+        "scanner_last_scan_time": 0.0
+      }
+    }
+  },
+  "brain_state": {
+    "brain_format_version": 2,
+    "saved_at": "2026-04-24T20:00:24.499026+00:00",
+    "total_runs": 1300,
+    "generation": 124,
+    "total_trades": 396,
+    "cumulative_pnl": -621.92,
+    "best_sharpe": 3.4363,
+    "ml_is_trained": true,
+    "feature_count": 79
+  },
+  "process_env": {
+    "APP_ENVIRONMENT": "development",
+    "ALPACA_PAPER": "true",
+    "ORGANISM_DRAWDOWN_KILL_PCT": "0.20",
+    "ORGANISM_MAX_POSITIONS": "8",
+    "ORGANISM_TICK_INTERVAL_SECONDS": "10"
+  },
+  "source_annotations": {
+    "tick_count": "api_top_level.tick_count",
+    "trade_count": "engine_memory.total_trades",
+    "open_positions": "engine_memory.positions_tracked",
+    "is_learning_mode": "engine_memory.learning_mode",
+    "brain_generation": "engine_memory.brain_generation",
+    "regime": "api_top_level.regime.last_regime",
+    "equity": "engine_memory.current_equity",
+    "ml_trained": "engine_memory.ml_trained",
+    "win_rate": "engine_memory.win_rate",
+    "cumulative_pnl": "engine_memory.cumulative_pnl",
+    "universe_size": "engine_memory.universe_size",
+    "scanner_candidates_count": "engine_memory.scanner_candidates_count"
+  },
+  "container_started_at": "2026-04-25T00:48:48.400479042Z",
+  "live": {
+    "tick_count": 0,
+    "trade_count": 396,
+    "open_positions": 0,
+    "is_learning_mode": false,
+    "brain_generation": 124,
+    "uptime_seconds": null,
+    "last_tick_at": null,
+    "idle_reason": "market_closed_or_no_ticks_yet",
+    "regime": "idle",
+    "drawdown_pct": null,
+    "equity": 111531.07,
+    "ml_trained": true,
+    "win_rate": 0.3409,
+    "cumulative_pnl": -621.9,
+    "universe_size": 22,
+    "scanner_candidates_count": 0,
+    "running": true
+  },
+  "coherence_notes": [
+    "All cross-source values are consistent."
+  ]
+}

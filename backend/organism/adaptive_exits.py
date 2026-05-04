@@ -58,28 +58,34 @@ class ExitLevels:
     ftf_stop_tightened: bool = False  # True after FTF tightened stop in chop (one-shot)
     price_two_bars_ago: float = 0.0   # Price 2 bars ago (for multi-bar momentum)
 
+    # ── v5 additions (patch-queue-e2) ──
+    initial_risk_at_entry: float = 0.0   # Stable risk denominator for FTF R-calc
+
     def to_dict(self) -> dict[str, Any]:
+        # Audit-I finding I-4 (2026-05-02): cast to native types to keep
+        # JSON serialization safe from np.float64 / np.bool_ inputs.
         return {
-            "symbol": self.symbol,
-            "direction": self.direction,
-            "entry": round(self.entry_price, 4),
-            "stop_loss": round(self.stop_loss, 4),
-            "take_profit": round(self.take_profit, 4),
-            "trailing_stop": round(self.trailing_stop, 4),
-            "atr": round(self.atr_at_entry, 4),
-            "regime_at_entry": self.regime_at_entry,
-            "highest_favorable": round(self.highest_favorable, 4),
-            "bars_held": self.bars_held,
-            "partial_tp_price": round(self.partial_tp_price, 4),
-            "partial_tp_taken": self.partial_tp_taken,
-            "trailing_active": self.trailing_active,
-            "stress_tightened": self.stress_tightened,
-            "profit_locked": self.profit_locked,
+            "symbol": str(self.symbol),
+            "direction": float(self.direction),
+            "entry": round(float(self.entry_price), 4),
+            "stop_loss": round(float(self.stop_loss), 4),
+            "take_profit": round(float(self.take_profit), 4),
+            "trailing_stop": round(float(self.trailing_stop), 4),
+            "atr": round(float(self.atr_at_entry), 4),
+            "regime_at_entry": str(self.regime_at_entry),
+            "highest_favorable": round(float(self.highest_favorable), 4),
+            "bars_held": int(self.bars_held),
+            "partial_tp_price": round(float(self.partial_tp_price), 4),
+            "partial_tp_taken": bool(self.partial_tp_taken),
+            "trailing_active": bool(self.trailing_active),
+            "stress_tightened": bool(self.stress_tightened),
+            "profit_locked": bool(self.profit_locked),
             "last_bar_time": self.last_bar_time,
-            "prediction_horizon": self.prediction_horizon,
-            "price_at_prior_bar": round(self.price_at_prior_bar, 4),
-            "ftf_stop_tightened": self.ftf_stop_tightened,
-            "price_two_bars_ago": round(self.price_two_bars_ago, 4),
+            "prediction_horizon": int(self.prediction_horizon),
+            "price_at_prior_bar": round(float(self.price_at_prior_bar), 4),
+            "ftf_stop_tightened": bool(self.ftf_stop_tightened),
+            "price_two_bars_ago": round(float(self.price_two_bars_ago), 4),
+            "initial_risk_at_entry": round(float(self.initial_risk_at_entry), 6),
         }
 
 
@@ -95,14 +101,15 @@ class ExitSignal:
     partial_pct: float = 0.0     # e.g. 0.30 = sell 30 %
 
     def to_dict(self) -> dict[str, Any]:
+        # Audit-I finding I-4 (2026-05-02): native-type casts.
         d: dict[str, Any] = {
-            "should_exit": self.should_exit,
-            "reason": self.reason,
-            "exit_price": round(self.exit_price, 4),
+            "should_exit": bool(self.should_exit),
+            "reason": str(self.reason),
+            "exit_price": round(float(self.exit_price), 4),
         }
         if self.partial_exit:
             d["partial_exit"] = True
-            d["partial_pct"] = self.partial_pct
+            d["partial_pct"] = float(self.partial_pct)
         return d
 
 
@@ -266,12 +273,20 @@ class AdaptiveExitEngine:
         if atr < 1e-6 or np.isnan(atr):
             atr = entry_price * 0.02  # 2 % fallback
 
+        # V11 prep / Wave-60 (DD4-3 closure): use symbol-aware effective
+        # regime so SH/PSQ/DOG/RWM get the flipped-regime stop math
+        # instead of un-flipped market regime (which produced too-wide
+        # stops on inverse-ETF longs in trending_up = "favourable for
+        # short" markets).
+        from backend.organism.regime import effective_regime_for_symbol
+        _eff_regime = effective_regime_for_symbol(regime, symbol)
+
         # Regime-adjusted stop distance
-        stop_atr_mult = self.REGIME_STOP_ATR.get(regime, self.atr_multiplier)
+        stop_atr_mult = self.REGIME_STOP_ATR.get(_eff_regime, self.atr_multiplier)
         risk_distance = atr * stop_atr_mult
 
         # Regime-adjusted R-multiple for full TP
-        tp_r = self.REGIME_TP_R.get(regime, self.profit_r_multiple)
+        tp_r = self.REGIME_TP_R.get(_eff_regime, self.profit_r_multiple)
 
         # Partial TP distance (always 3R)
         partial_r = self.partial_tp_r
@@ -304,6 +319,7 @@ class AdaptiveExitEngine:
             partial_tp_taken=False,
             trailing_active=False,
             prediction_horizon=prediction_horizon,
+            initial_risk_at_entry=risk_distance,
         )
 
     def update_levels_for_pyramid(
@@ -408,16 +424,14 @@ class AdaptiveExitEngine:
         if levels.bars_held < min_hold:
             return ExitSignal(False)
 
-        # 1.5. PROFIT LOCK — at 2R, move stop to 1R (one-shot)
-        self._check_profit_lock(levels, current_price)
-
-        # improve9 A3: Hard vertical barrier at thesis horizon.
-        # In learning mode, exit after 18 bars (H=15 + 3 bar grace)
-        # regardless of P&L. This aligns exits to the thesis horizon
-        # and prevents slow-bag losers from running to 120-bar cap.
-        _HORIZON_TIMEOUT_BARS = 18
-        if self.learning_mode and levels.bars_held >= _HORIZON_TIMEOUT_BARS:
-            return ExitSignal(True, "horizon_timeout", current_price)
+        # 1.5. PROFIT LOCK — at 2R, move stop to 1R (one-shot).
+        # Disabled in learning mode: profit lock tightens stops early,
+        # clipping winners before the 18-bar thesis horizon plays out.
+        # Learning-mode exit stack: hard stop → max-loss → trailing →
+        # FTF → horizon_timeout → EOD flatten. No profit lock, partial TP,
+        # or full TP.
+        if not self.learning_mode:
+            self._check_profit_lock(levels, current_price)
 
         # 2. Partial take-profit at 3R (sell 30 %, let rest ride)
         # improve9 A4: Disabled in learning mode — stops clipping
@@ -428,10 +442,14 @@ class AdaptiveExitEngine:
                 return partial_signal
 
         # 3. Full take-profit check
-        if direction > 0 and current_price >= levels.take_profit:
-            return ExitSignal(True, "take_profit", levels.take_profit)
-        if direction < 0 and current_price <= levels.take_profit:
-            return ExitSignal(True, "take_profit", levels.take_profit)
+        # Disabled in learning mode: same rationale as profit lock and
+        # partial TP -- learning-mode trades must run to horizon_timeout
+        # so the thesis expresses fully, giving clean fitness signal.
+        if not self.learning_mode:
+            if direction > 0 and current_price >= levels.take_profit:
+                return ExitSignal(True, "take_profit", levels.take_profit)
+            if direction < 0 and current_price <= levels.take_profit:
+                return ExitSignal(True, "take_profit", levels.take_profit)
 
         # 4. ATR-based trailing stop update and check
         trail_signal = self._update_trailing_stop(levels, current_price, current_regime)
@@ -454,7 +472,7 @@ class AdaptiveExitEngine:
                 early_check = max(levels.prediction_horizon // 2, 3)
             if levels.bars_held >= early_check:
                 pnl_dir = (current_price - levels.entry_price) * direction
-                initial_risk = max(abs(levels.entry_price - levels.stop_loss), 0.01)
+                initial_risk = levels.initial_risk_at_entry if levels.initial_risk_at_entry > 0 else max(abs(levels.entry_price - levels.stop_loss), 0.01)
                 r_achieved = pnl_dir / initial_risk
                 # Regime-dependent R threshold
                 _FTF_R_THRESHOLDS = {
@@ -492,6 +510,13 @@ class AdaptiveExitEngine:
                         # Non-chop regimes: original FTF logic with momentum
                         if not _has_momentum:
                             return ExitSignal(True, "failure_to_follow", current_price)
+
+        # 4c. HORIZON TIMEOUT — learning-mode hard barrier at thesis horizon.
+        # Placed after trailing/FTF so those exits take priority when active.
+        # If neither trailing nor FTF fires by bar 18, horizon forces exit.
+        _HORIZON_TIMEOUT_BARS = 18
+        if self.learning_mode and levels.bars_held >= _HORIZON_TIMEOUT_BARS:
+            return ExitSignal(True, "horizon_timeout", current_price)
 
         # 5. Time-based exit (regime-adaptive — disabled in trending)
         if max_bars > 0 and levels.bars_held >= max_bars:
@@ -626,9 +651,43 @@ class AdaptiveExitEngine:
         levels.trailing_active = True
 
         # Regime-adaptive trail distance
-        trail_atr = self.REGIME_TRAIL_ATR.get(
-            current_regime, self.trailing_distance_atr
-        )
+        # EXPERIMENT 4: In chop, widen trailing stop to reduce giveback.
+        # Giveback analysis (Apr 7-13) shows trailing_stop has the worst
+        # avg giveback ($10.17/trade), with one NVDA trade giving back
+        # $13.81 of MFE. The 3.0× ATR trail distance in chop is too
+        # tight — normal chop oscillation routinely retraces 3× ATR.
+        #
+        # Variant A: widen to 5.0× ATR in chop
+        # Variant B: disable trailing entirely in chop (rely on timeout)
+        # Active variant controlled by _EXP4_CHOP_TRAIL_MODE:
+        #   "widen" = Variant A (default)
+        #   "disable" = Variant B
+        _EXP4_CHOP_TRAIL_MODE = "widen"  # "widen" or "disable"
+        _EXP4_CHOP_TRAIL_ATR = 5.0       # Variant A trail distance
+
+        if current_regime == "chop":
+            if _EXP4_CHOP_TRAIL_MODE == "disable":
+                # Variant B: skip trailing entirely in chop
+                import logging as _lg
+                _lg.getLogger(__name__).debug(
+                    "Exp4: trailing_stop disabled in chop for %s "
+                    "(excursion=%.1f ATR, mode=disable)",
+                    getattr(levels, 'symbol', '?'), excursion_atr,
+                )
+                return ExitSignal(False)
+            else:
+                # Variant A: widened trail
+                trail_atr = _EXP4_CHOP_TRAIL_ATR
+                import logging as _lg
+                _lg.getLogger(__name__).debug(
+                    "Exp4: trailing_stop widened in chop for %s "
+                    "(excursion=%.1f ATR, trail=%.1f ATR, mode=widen)",
+                    getattr(levels, 'symbol', '?'), excursion_atr, trail_atr,
+                )
+        else:
+            trail_atr = self.REGIME_TRAIL_ATR.get(
+                current_regime, self.trailing_distance_atr
+            )
         trail_distance = atr * trail_atr
 
         if direction > 0:

@@ -30,6 +30,26 @@ async def startup(app) -> dict:
         "reconciliation_scheduler": False,
     }
 
+    # V5 S-J3-1 / Wave-17a (2026-05-03): capture the main event loop now,
+    # while we are guaranteed to be on it. Worker threads (asyncio.to_thread,
+    # ThreadPoolExecutor) use this captured ref to dispatch alerts via
+    # asyncio.run_coroutine_threadsafe. The wave-8c J-3 fix tried to
+    # re-fetch the loop from the worker thread itself — that always raises
+    # RuntimeError because worker threads have no running loop.
+    try:
+        import asyncio as _aio_startup
+        from backend.infra.alerting import set_main_event_loop
+        set_main_event_loop(_aio_startup.get_running_loop())
+        logger.info(
+            "Main event loop captured for cross-thread alert dispatch "
+            "(S-J3-1 fix)"
+        )
+    except Exception as _loop_err:
+        logger.warning(
+            "Failed to capture main event loop for alert dispatch: %s",
+            _loop_err,
+        )
+
     # ── Observability ────────────────────────────────────────────────
     try:
         from backend.infra.observability import (
@@ -79,7 +99,25 @@ async def startup(app) -> dict:
             app.state.db_sessionmaker = sessionmaker
             logger.info("Database initialized successfully")
 
-            # Pre-warm connection pool
+            # V10 PP2-1 / Wave-51 (2026-05-03): connectivity smoke check
+            # MUST be in the outer try/except so unreachable host /
+            # bad credentials / wrong database trigger the same fail-fast
+            # path as engine-construction errors.  Previously the
+            # prewarm was the only connection attempt and its inner
+            # `except Exception as warm_e: logger.warning(...)` masked
+            # the silent-audit-drops failure mode PP-4 was meant to
+            # close.  Now: a single SELECT 1 in the outer try first;
+            # only after that succeeds do we run the optional prewarm.
+            try:
+                async with sessionmaker() as _smoke_session:
+                    from sqlalchemy import text as _text
+                    await _smoke_session.execute(_text("SELECT 1"))
+            except Exception:
+                # Re-raise into the outer except below; the outer block
+                # decides production-fail-fast vs ALLOW_NO_DB development.
+                raise
+
+            # Pre-warm connection pool (best-effort post-smoke).
             try:
                 pool_size = min(int(os.getenv("DB_POOL_PREWARM_SIZE", "5")), 20)
                 if pool_size > 0:
@@ -97,9 +135,55 @@ async def startup(app) -> dict:
 
         except Exception as e:
             env = os.getenv("APP_ENVIRONMENT", os.getenv("ENVIRONMENT", "development")).lower()
+            # V6 V-T-5 / Wave-22 (2026-05-03): DB connection failure on
+            # startup was silent in dev mode — only logged at WARNING.
+            # In paper trading the container runs as APP_ENVIRONMENT=development
+            # by design, so this silenced an event operators absolutely need
+            # to see (no DB → no tick telemetry, no orders, no
+            # reconciliation). Wire a CRITICAL alert regardless of env;
+            # alert volume is one-shot at startup.
+            try:
+                from backend.infra.alerting import (
+                    AlertCategory, AlertSeverity, send_alert,
+                    dispatch_alert_from_thread,
+                )
+                _err = e
+                _env = env
+                dispatch_alert_from_thread(
+                    lambda: send_alert(
+                        AlertCategory.SYSTEM_ERROR,
+                        AlertSeverity.CRITICAL,
+                        "Database Init Failed at Startup",
+                        f"App environment={_env}; DB init raised: {_err}. "
+                        f"Tick telemetry, orders, and reconciliation will fail.",
+                        details={
+                            "environment": _env,
+                            "error_type": type(_err).__name__,
+                        },
+                    )
+                )
+            except Exception:
+                pass
+
             if env in ("production", "prod", "staging"):
                 raise RuntimeError(f"Database init failed in {env}: {e}") from e
-            logger.warning("Database init failed, continuing (dev only)", error=str(e))
+            # V9 PP-4 / Wave-41 (2026-05-03): paper trading runs as
+            # APP_ENVIRONMENT=development by design (memory: paper
+            # compose gotcha). Allowing DB-down in development silently
+            # dropped audit rows + tick telemetry from paper.  Now:
+            # require explicit `ALLOW_NO_DB=1` for unit tests / local
+            # smoke; everything else (including paper) fails fast.
+            if os.getenv("ALLOW_NO_DB", "").strip() != "1":
+                raise RuntimeError(
+                    f"PP-4: Database init failed in '{env}' mode and "
+                    f"ALLOW_NO_DB!=1. Paper trading silently drops audit "
+                    f"rows without a DB. Set ALLOW_NO_DB=1 for unit "
+                    f"tests; otherwise fix the DB connection. Original: {e}"
+                ) from e
+            logger.warning(
+                "PP-4: Database init failed; ALLOW_NO_DB=1 set, continuing "
+                "(unit-test mode only): %s", e,
+            )
             app.state.sessionmaker = None
             app.state.db_sessionmaker = None
     else:
@@ -110,6 +194,40 @@ async def startup(app) -> dict:
     _reload_active = os.getenv("UVICORN_RELOAD_ACTIVE") == "1"
     _skip_bg = _reload_active and os.getenv("PYTEST_CURRENT_TEST") is None
     _has_db = hasattr(app.state, "sessionmaker") and app.state.sessionmaker
+
+    # ── V10 AA4-2 / Wave-50 (2026-05-03): Token Blacklist Redis init ─
+    # The blacklist machinery in backend/infra/security.py was orphan —
+    # the helper init_token_blacklist() existed but had ZERO callers.
+    # Wave-42 wired logout to call blacklist_token() but the Redis
+    # backend was permanently None, so the blacklist was in-memory only
+    # and wiped on every container restart.  Now: connect to Redis on
+    # startup so AA3-1 logout actually persists revocations.
+    try:
+        import redis.asyncio as _redis
+        from backend.infra.security import init_token_blacklist
+        _redis_url = (
+            os.environ.get("REDIS_URL")
+            or "redis://localhost:6379/0"
+        )
+        _redis_client = _redis.from_url(_redis_url, decode_responses=False)
+        # Ping to fail fast if Redis is unreachable.
+        await _redis_client.ping()
+        await init_token_blacklist(_redis_client)
+        app.state.redis = _redis_client
+        logger.info(
+            "AA4-2: token blacklist Redis backend initialized at %s",
+            _redis_url,
+        )
+    except Exception as _redis_err:
+        # In-memory fallback is still active; warn but don't fail-fast
+        # so paper / dev still boot when Redis is down.  Production
+        # would benefit from a stricter gate but that's a follow-up.
+        logger.warning(
+            "AA4-2: token blacklist Redis init failed (%s); "
+            "falling back to in-memory only (wipes on restart)",
+            _redis_err,
+        )
+        app.state.redis = None
 
     # ── Outbox Worker ────────────────────────────────────────────────
     if _has_db and not _skip_bg:
@@ -306,6 +424,23 @@ async def startup(app) -> dict:
 
 async def shutdown(app, ctx: dict, baseline: set) -> None:
     """Graceful shutdown of all services."""
+    # Audit-G BUG-H fix: save brain FIRST, before any other cleanup that
+    # could hang. Track-G audit (2026-05-01) traced both reconciliation
+    # incidents this week (NVDA Wed, AMD Thu) to brain not being saved
+    # on container shutdown — orphan positions left at the broker while
+    # platform metadata is wiped on next startup. The defensive fix is
+    # belt-and-suspenders: scheduler.stop() will also trigger engine
+    # shutdown's brain save, but if streaming-provider stop hangs (or
+    # SIGTERM timeout fires) the engine save never runs. So save here
+    # first, before anything else that can block.
+    scheduler = ctx.get("organism_scheduler")
+    if scheduler and getattr(scheduler, "_engine", None) is not None:
+        try:
+            scheduler._engine.force_save_brain()
+            logger.info("Brain saved at shutdown (lifespan defensive save)")
+        except Exception as e:
+            logger.error(f"Defensive brain save failed at shutdown: {e}")
+
     # ML scheduler
     if ctx.get("ml_scheduler"):
         try:
@@ -452,6 +587,40 @@ async def _start_organism_scheduler(app):
                 if _ak and _sk:
                     _trading_client = TradingClient(api_key=_ak, secret_key=_sk, paper=_paper)
                     logger.info("PositionsService TradingClient created (paper=%s)", _paper)
+                    # S18 (Stage-1) — prominent startup banner for paper-vs-live mode.
+                    # Helps the operator visually confirm at every container start.
+                    if _paper:
+                        logger.info(
+                            "==================== ALPACA PAPER MODE ===================="
+                        )
+                        logger.info(
+                            "  Mode: PAPER (no real capital at risk)"
+                        )
+                        logger.info(
+                            "  Endpoint: paper-api.alpaca.markets"
+                        )
+                        logger.info(
+                            "==========================================================="
+                        )
+                    else:
+                        logger.warning(
+                            "==================== ALPACA LIVE MODE ====================="
+                        )
+                        logger.warning(
+                            "  Mode: LIVE — REAL CAPITAL AT RISK"
+                        )
+                        logger.warning(
+                            "  Endpoint: api.alpaca.markets"
+                        )
+                        logger.warning(
+                            "  Confirm: pre-Stage-1 gates G1-G12 are green"
+                        )
+                        logger.warning(
+                            "  Run: python scripts/runtime/check_stage1_config.py --live"
+                        )
+                        logger.warning(
+                            "==========================================================="
+                        )
                 else:
                     logger.warning(
                         "PositionsService TradingClient skipped — missing API keys "
@@ -513,8 +682,14 @@ async def _sync_orders(app):
         from datetime import datetime
         from decimal import Decimal
 
+        from sqlalchemy.exc import SQLAlchemyError
+
         from backend.infra.repositories.orders import OrdersRepo
         from backend.integrations.alpaca_broker import get_alpaca_broker_client
+        from backend.integrations.alpaca_stream import (
+            _decimal_or_none,
+            apply_incremental_fill_accounting,
+        )
 
         logger.info("Starting initial order sync from Alpaca...")
         broker_client = get_alpaca_broker_client()
@@ -556,20 +731,63 @@ async def _sync_orders(app):
                     continue
 
                 alpaca_status = status_mapping.get(ao.get("status", ""), ao.get("status", ""))
-                alpaca_filled = float(ao.get("filled_qty", 0))
-                alpaca_price = ao.get("filled_avg_price")
+                previous_filled = _decimal_or_none(db_order.filled_qty) or Decimal("0")
+                previous_price = _decimal_or_none(db_order.avg_fill_price)
+                alpaca_filled = _decimal_or_none(ao.get("filled_qty")) or Decimal("0")
+                alpaca_price = _decimal_or_none(ao.get("filled_avg_price"))
 
                 needs_update = (
-                    float(db_order.filled_qty or 0) != alpaca_filled
+                    previous_filled != alpaca_filled
                     or db_order.status != alpaca_status
+                    or (alpaca_price is not None and alpaca_price != previous_price)
                 )
                 if needs_update:
                     await repo.attach_broker_result(
                         db_order.id,
                         status=alpaca_status,
-                        filled_qty=Decimal(str(alpaca_filled)),
-                        avg_fill_price=Decimal(str(alpaca_price)) if alpaca_price else None,
+                        filled_qty=alpaca_filled,
+                        avg_fill_price=alpaca_price,
                     )
+                    await session.commit()
+                    try:
+                        accounting = await apply_incremental_fill_accounting(
+                            session,
+                            db_order,
+                            previous_filled_qty=previous_filled,
+                            cumulative_filled_qty=alpaca_filled,
+                            avg_fill_price=alpaca_price,
+                            status=alpaca_status,
+                            broker_order_data=ao,
+                        )
+                        if accounting["applied"]:
+                            await session.commit()
+                            logger.warning(
+                                "Order sync: persisted fill accounting",
+                                order_id=db_order.id,
+                                broker_order_id=broker_id,
+                                side=accounting["side"],
+                                incremental_qty=accounting["incremental_qty"],
+                                execution_id=accounting["execution_id"],
+                            )
+                        elif accounting["reason"] != "non_fill_status":
+                            logger.debug(
+                                "Order sync: accounting skipped for %s: %s",
+                                broker_id,
+                                accounting,
+                            )
+                    except (
+                        AttributeError,
+                        SQLAlchemyError,
+                        TypeError,
+                        ValueError,
+                    ) as accounting_error:
+                        await session.rollback()
+                        logger.warning(
+                            "Order sync: accounting failed for order %s: %s",
+                            broker_id,
+                            accounting_error,
+                            exc_info=True,
+                        )
                     updated += 1
 
                     try:
@@ -586,7 +804,7 @@ async def _sync_orders(app):
                                 "symbol": db_order.symbol,
                                 "side": db_order.side,
                                 "qty": float(db_order.qty),
-                                "filled_qty": alpaca_filled,
+                                "filled_qty": float(alpaca_filled),
                                 "avg_fill_price": float(alpaca_price) if alpaca_price else None,
                                 "status": alpaca_status,
                                 "order_type": db_order.order_type,

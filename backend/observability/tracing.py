@@ -8,7 +8,7 @@ from collections import defaultdict
 from collections.abc import AsyncIterator, Callable, Iterator
 from contextlib import asynccontextmanager, contextmanager
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 import functools
 import logging
 from typing import Any, TypeVar
@@ -85,7 +85,7 @@ class TraceStorage:
         if trace_id not in self.traces:
             self.traces[trace_id] = []
             self.trace_metadata[trace_id] = {
-                "start_time": datetime.utcnow(),
+                "start_time": datetime.now(UTC),
                 "span_count": 0,
                 "status": "active"
             }
@@ -112,7 +112,7 @@ class TraceStorage:
         """Mark a trace as complete."""
         if trace_id in self.trace_metadata:
             self.trace_metadata[trace_id]["status"] = "complete"
-            self.trace_metadata[trace_id]["end_time"] = datetime.utcnow()
+            self.trace_metadata[trace_id]["end_time"] = datetime.now(UTC)
 
 
 class TracingCollector(SpanExporter):
@@ -221,7 +221,7 @@ class TraceAnalyzer:
 
     def get_performance_summary(self, hours: int = 1) -> dict[str, Any]:
         """Get performance summary for recent traces."""
-        cutoff_time = datetime.utcnow() - timedelta(hours=hours)
+        cutoff_time = datetime.now(UTC) - timedelta(hours=hours)
 
         recent_traces = []
         for trace_id in self.storage.get_recent_traces(100):

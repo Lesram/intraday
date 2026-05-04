@@ -365,6 +365,13 @@ class OrdersRepo:
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
 
+    async def get_orders_since(self, since: datetime) -> list[Order]:
+        """Get orders updated since the given timestamp."""
+        result = await self.session.execute(
+            select(Order).where(Order.updated_at >= since).order_by(Order.updated_at.desc()).limit(100)
+        )
+        return list(result.scalars().all())
+
     async def get_active_orders(self, limit: int = 100) -> list[Order]:
         """
         Get active orders (not filled, cancelled, or rejected).

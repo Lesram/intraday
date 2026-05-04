@@ -455,7 +455,11 @@ class PerformanceLogger:
         self, operation: str, latency_ms: float, context: dict | None = None
     ) -> None:
         """Log operation latency metrics."""
-        self.logger.info(
+        # V6 V-T-9 / Wave-22 (2026-05-03): per-operation latency emissions
+        # were INFO and dominated the log stream at >100 lines/min. Aggregate
+        # latency belongs in metrics (Histogram), not in INFO logs. Demoted
+        # to DEBUG; Prometheus ORGANISM_TICK_DURATION carries the signal.
+        self.logger.debug(
             "Operation latency",
             operation=operation,
             latency_ms=latency_ms,

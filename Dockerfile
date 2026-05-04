@@ -62,6 +62,16 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     LANG=C.UTF-8 \
     PATH="/opt/venv/bin:$PATH"
 
+# V12 W82 (post-audit cleanup): bake build provenance into runtime
+# environment so /api/v1/health/deploy returns useful values instead of
+# "unknown".  Pre-W82 the deploy endpoint was decorative — VCS_REF and
+# BUILD_DATE were captured as OCI labels but never exposed to the
+# running process.  Now: GIT_SHA, BUILD_TIME, and IMAGE_SHA all read
+# from the build args at container start.
+ENV GIT_SHA=${VCS_REF:-unknown} \
+    BUILD_TIME=${BUILD_DATE:-unknown} \
+    IMAGE_SHA=${VCS_REF:-unknown}
+
 # Install minimal runtime dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq5 \

@@ -60,13 +60,15 @@ class ScannedStock:
     timestamp: float = 0.0
 
     def to_dict(self) -> dict[str, Any]:
+        # Audit-I finding I-4 (2026-05-02): native-type casts to keep JSON
+        # serialization safe from np.float64 / np.bool_ inputs.
         return {
-            "symbol": self.symbol,
-            "source": self.source,
-            "price": round(self.price, 2),
-            "volume": self.volume,
-            "change_pct": round(self.change_pct, 4),
-            "tension_score": round(self.tension_score, 4),
+            "symbol": str(self.symbol),
+            "source": str(self.source),
+            "price": round(float(self.price), 2),
+            "volume": int(self.volume),
+            "change_pct": round(float(self.change_pct), 4),
+            "tension_score": round(float(self.tension_score), 4),
         }
 
 

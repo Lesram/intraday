@@ -14,8 +14,9 @@ _stop_event: asyncio.Event | None = None
 
 
 async def _loop(app) -> None:
+    # Audit-J finding J-4 (2026-05-02): _stop_event is now initialized
+    # in start_*_scheduler before create_task — see that function below.
     global _stop_event
-    _stop_event = asyncio.Event()
 
     interval_seconds = int(os.getenv("AUTO_BREAKOUT_SCAN_INTERVAL_SECONDS", "300"))
     limit = int(os.getenv("AUTO_BREAKOUT_SCAN_LIMIT", "25"))
@@ -78,6 +79,10 @@ async def start_auto_breakout_scanner_scheduler(app) -> bool:
         return False
     if _task is not None and not _task.done():
         return False
+
+    # Audit-J finding J-4 (2026-05-02): init _stop_event BEFORE create_task
+    global _stop_event
+    _stop_event = asyncio.Event()
 
     _task = asyncio.create_task(_loop(app), name="auto_breakout_scanner_scheduler")
     return True

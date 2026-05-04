@@ -1,0 +1,66 @@
+{
+  "date": "2026-03-13",
+  "head_sha": "8db0fab",
+  "plan_for": "2026-03-14",
+
+  "recommendation": "GO_UNCHANGED",
+
+  "config_changes": "NONE",
+  "code_changes": "NONE",
+  "parameter_changes": "NONE",
+  "universe_changes": "NONE",
+
+  "rationale": [
+    "Three consecutive zero-trade days is the EXPECTED behavior of a breakout/momentum strategy during a rotation/sell-off market.",
+    "The confidence gate is working correctly — preventing low-confidence entries.",
+    "Lowering the gate would produce marginal wins with offsetting losses (counterfactual analysis shows ~40% win rate, breakeven PnL).",
+    "The structural confidence gap (INV-008) requires Phase C design work, not a quick parameter tweak.",
+    "Three days of data is still insufficient to justify any strategy parameter change.",
+    "ML training is showing improvement (job #22 nearly passed) — let it continue learning.",
+    "All infrastructure is healthy and self-recovering."
+  ],
+
+  "monitoring_priorities": [
+    {
+      "priority": 1,
+      "item": "First trade validation",
+      "detail": "The next trade that opens and closes will be the first live validation of forensic field wiring. Monitor for all 8 fields populating correctly.",
+      "action_if_triggered": "Verify forensic fields in trade_history.csv are non-blank"
+    },
+    {
+      "priority": 2,
+      "item": "ML training job quality",
+      "detail": "Job #22 nearly passed. Watch for a job that achieves both score >= 0.35 AND calibration_monotonicity=True.",
+      "action_if_triggered": "Verify ML model activates correctly in the confidence formula"
+    },
+    {
+      "priority": 3,
+      "item": "Market regime change",
+      "detail": "Three down days may reverse. If SPY turns positive, breakout candidates should score higher and trades should resume.",
+      "action_if_triggered": "Normal operation — the organism should start trading again naturally"
+    },
+    {
+      "priority": 4,
+      "item": "Consecutive zero-trade day count",
+      "detail": "Currently at 3. If it reaches 5+, reassess whether the starvation risk warrants a more proactive response.",
+      "action_if_triggered": "Escalate to design discussion about confidence formula diversification"
+    }
+  ],
+
+  "preopen_checks": [
+    "Verify containers healthy (docker ps)",
+    "Verify API reachable (GET /api/v1/health)",
+    "Verify no stale accepted orders",
+    "Verify equity matches Alpaca",
+    "Verify learning_mode=true, evolution_freeze=true",
+    "Check overnight for any container restarts"
+  ],
+
+  "escalation_triggers": [
+    "Any CRITICAL error in the tick loop",
+    "Equity discrepancy > $1 between runtime and Alpaca",
+    "Stale accepted order persisting > 2 ticks",
+    "Container crash or restart",
+    "5+ consecutive zero-trade days (starvation escalation)"
+  ]
+}

@@ -127,7 +127,23 @@ class OrganismBrain:
     Thread-safe, atomic writes, automatic backups.
     """
 
-    def __init__(self, brain_dir: str | Path = "organism_brain"):
+    def __init__(
+        self,
+        brain_dir: str | Path = "organism_brain",
+        *,
+        now_fn=None,
+    ):
+        # V6 X-3 / Wave-20b (2026-05-03): clock injection for replay
+        # determinism. The previous direct `datetime.now(UTC)` calls
+        # (manifest `saved_at`, etc.) polluted the brain artifacts'
+        # hashes in replay. Default is wall clock for live use.
+        if now_fn is None:
+            def _default_now() -> datetime:
+                return datetime.now(timezone.utc)
+            self._now_fn = _default_now
+        else:
+            self._now_fn = now_fn
+
         self.brain_dir = Path(brain_dir).resolve()
         self.backup_dir = self.brain_dir / "backups"
         self._loaded = False
@@ -155,6 +171,8 @@ class OrganismBrain:
         self.governance_state: dict[str, Any] = {}
         # Regime detector state (Phase 1.3)
         self.regime_state: dict[str, Any] = {}
+        # Evaluation event history (J4)
+        self.evaluation_event_history: list[dict] = []
 
     # ═════════════════════════════════════════════════════════════
     #  PUBLIC API
@@ -204,6 +222,7 @@ class OrganismBrain:
             self._load_evolved_params()
             self._load_governance_state()
             self._load_regime_state()
+            self._load_evaluation_event_history()
             self._loaded = True
 
             gen = self._manifest.get("generation", 0)
@@ -220,10 +239,123 @@ class OrganismBrain:
             return True
 
         except Exception as e:
-            logger.error("Failed to load brain: %s — starting fresh", e)
-            print(f"  ⚠️  Brain load failed ({e}) — starting fresh")
+            # V9 PP-2 / Wave-41 (2026-05-03): try the most-recent backup
+            # before falling through to "starting fresh". The previous
+            # behavior — single bad save = lose 161 generations / 482
+            # trades — was a single-OOM-kill bomb. Now: walk
+            # `backups/` newest-first, attempt each, restore the first
+            # one that loads cleanly.
+            logger.warning(
+                "PP-2: HEAD brain load failed (%s); attempting backup fallback",
+                e,
+            )
+            if self._restore_from_latest_backup():
+                gen = self._manifest.get("generation", 0)
+                trades = len(self.trade_history)
+                logger.warning(
+                    "PP-2: brain restored from backup; gen=%d trades=%d "
+                    "(HEAD save was corrupt)", gen, trades,
+                )
+                print(
+                    f"  🧠 HEAD brain corrupt; restored from backup: "
+                    f"generation {gen}, {trades} historical trades"
+                )
+                self._loaded = True
+                return True
+            logger.error(
+                "PP-2: all backup attempts failed — starting fresh "
+                "(HEAD error: %s)", e,
+            )
+            print(f"  ⚠️  Brain load failed ({e}) — no usable backup — starting fresh")
             self._loaded = False
             return False
+
+    def _restore_from_latest_backup(self) -> bool:
+        """V9 PP-2 / Wave-41 (2026-05-03): walk backups/ newest-first;
+        return True if a backup loads cleanly; False if none usable.
+
+        Each backup is a snapshot directory. We swap it into place
+        atomically by renaming current brain_dir aside, then renaming
+        the backup over brain_dir. On failure we restore the original.
+        """
+        backups_dir = self.brain_dir / "backups"
+        if not backups_dir.is_dir():
+            logger.warning("PP-2: no backups/ dir at %s", backups_dir)
+            return False
+
+        # V10 PP2-2 / Wave-56 (2026-05-03): copy corrupt HEAD to a
+        # sticky forensic snapshot before the next save() overwrites
+        # it.  Operator's only forensic record was previously a single
+        # logger.warning line.  Keep at most 5 corrupt-head snapshots
+        # to avoid disk bloat.
+        try:
+            from datetime import datetime as _dt
+            forensic_ts = _dt.now().strftime("%Y%m%d_%H%M%S_%f")
+            forensic_dir = self.brain_dir / f"corrupt_head_{forensic_ts}"
+            forensic_dir.mkdir(parents=True, exist_ok=True)
+            for f in self.brain_dir.iterdir():
+                if f.is_file() and f.name != LOCK_FILE:
+                    try:
+                        shutil.copy2(str(f), str(forensic_dir / f.name))
+                    except Exception:
+                        pass
+            # Prune old corrupt-head snapshots — keep at most 5.
+            corrupts = sorted(
+                [d for d in self.brain_dir.iterdir()
+                 if d.is_dir() and d.name.startswith("corrupt_head_")],
+                key=lambda d: d.stat().st_mtime,
+            )
+            while len(corrupts) > 5:
+                old = corrupts.pop(0)
+                shutil.rmtree(old, ignore_errors=True)
+            logger.critical(
+                "PP2-2: corrupt-HEAD captured to %s (operator should "
+                "investigate; next save() would have overwritten)",
+                forensic_dir.name,
+            )
+        except Exception as _forensic_err:
+            logger.warning(
+                "PP2-2: forensic snapshot failed (non-fatal): %s",
+                _forensic_err,
+            )
+
+        candidates = sorted(
+            (p for p in backups_dir.iterdir() if p.is_dir()),
+            key=lambda p: p.stat().st_mtime,
+            reverse=True,
+        )
+        for backup in candidates:
+            try:
+                logger.info("PP-2: trying backup %s", backup.name)
+                # Try loading from the backup directory directly without
+                # mutating the live brain_dir. We do this by temporarily
+                # repointing self.brain_dir; reset on success/failure.
+                original_dir = self.brain_dir
+                self.brain_dir = backup
+                try:
+                    self._load_manifest()
+                    self._load_ml_models()
+                    self._load_ml_state()
+                    self._load_learning_state()
+                    self._load_reference_features()
+                    self._load_trade_history()
+                    self._load_equity_curve()
+                    self._load_epoch_metrics()
+                    self._load_extra_counters()
+                    self._load_evolved_params()
+                    self._load_governance_state()
+                    self._load_regime_state()
+                    self._load_evaluation_event_history()
+                    return True
+                finally:
+                    self.brain_dir = original_dir
+            except Exception as backup_err:
+                logger.warning(
+                    "PP-2: backup %s also failed: %s",
+                    backup.name, backup_err,
+                )
+                continue
+        return False
 
     def save(
         self,
@@ -237,21 +369,117 @@ class OrganismBrain:
         evolved_params: dict[str, Any] | None = None,
         governance_controller: Any | None = None,
         regime_detector: Any | None = None,
+        force: bool = False,
+        allow_reset: bool = False,
+        reset_reason: str | None = None,
     ) -> None:
         """Save the organism's full learned state to disk.
 
         Atomic: writes to temp dir first, then renames.
         Backs up the previous brain before overwriting.
         Thread-safe via cross-platform file lock (Phase 3.1).
+
+        The ``force`` flag is audit-only: ``save()`` always performs the
+        same full atomic save regardless of the flag. The walk-forward
+        gate lives in the caller (``LiveEngine._save_brain``). ``force=True``
+        is set by ``LiveEngine.force_save_brain()`` to signal an explicit
+        admin-initiated recovery save for logging/audit trail.
+
+        F3 break-glass: to intentionally overwrite a trained brain with
+        fresh state, ALL THREE must be set: ``force=True``,
+        ``allow_reset=True``, and a non-empty ``reset_reason``.
         """
         self.brain_dir.mkdir(parents=True, exist_ok=True)
         self.backup_dir.mkdir(parents=True, exist_ok=True)
+
+        # V10 PP2-3 / Wave-56 (2026-05-03): sweep orphan .tmp files left
+        # by a previous SIGKILL'd save.  _write_json / _write_csv_atomic
+        # only unlink on caught exception; SIGKILL leaves them.
+        # Cosmetic but accumulates.
+        try:
+            for f in self.brain_dir.iterdir():
+                if f.is_file() and f.name.endswith(".tmp"):
+                    try:
+                        f.unlink()
+                    except Exception:
+                        pass
+        except Exception:
+            pass
 
         lock = _BrainLock(self.brain_dir / LOCK_FILE)
         try:
             lock.acquire()
         except RuntimeError as e:
             logger.warning("Skipping brain save — lock held: %s", e)
+            return
+
+        # DEFENSIVE GUARD (Patch E, refactored in F1 to use shared check).
+        # Refuse to overwrite a trained manifest with untrained state.
+        # Uses _check_trained_overwrite_guard for consistent logic across
+        # save() and (in F2) save_essential_state().
+        should_block, reason = self._check_trained_overwrite_guard(
+            self.brain_dir, signal_gen, learner,
+            force=force, allow_reset=allow_reset, reset_reason=reset_reason,
+        )
+        if should_block:
+            # F3: suspicious-write instrumentation fires on block
+            self._log_suspicious_manifest_write(
+                caller="save", target=self.brain_dir,
+                signal_gen=signal_gen, learner=learner,
+                force=force, allow_reset=allow_reset,
+                reset_reason=reset_reason,
+            )
+            logger.error(
+                "BRAIN SAVE BLOCKED (save): refusing to overwrite trained "
+                "manifest (%s) with untrained state "
+                "(incoming: total_trades=0, ml_is_trained=False). "
+                "Break-glass reset requires force=True AND allow_reset=True "
+                "AND reset_reason.",
+                reason,
+            )
+            # Alert wiring: emit guard-fire alert.
+            # V5 S-J3-1 / Wave-17a (2026-05-03): wave-8c's J-3 fix
+            # caught the RuntimeError but routed every alert to
+            # logger.warning because get_running_loop() always raises
+            # in worker threads. Use the canonical cross-thread
+            # dispatcher which schedules on the captured main loop via
+            # asyncio.run_coroutine_threadsafe.
+            try:
+                from backend.infra.alerting import (
+                    AlertCategory, AlertSeverity, send_alert,
+                    dispatch_alert_from_thread,
+                )
+                _r = reason
+                ok = dispatch_alert_from_thread(
+                    lambda: send_alert(
+                        AlertCategory.SYSTEM_ERROR, AlertSeverity.ERROR,
+                        "Brain Save Blocked",
+                        f"Trained manifest overwrite blocked (save). {_r}",
+                    )
+                )
+                if not ok:
+                    logger.warning(
+                        "Brain Save Blocked alert dropped (no main loop ref): %s",
+                        _r,
+                    )
+            except Exception as _alert_err:
+                # V9 UU-3 / Wave-41 (2026-05-03): surface the alert path
+                # exception at WARNING (was bare pass) so a broken
+                # alerter doesn't get masked by a brain-save block.
+                logger.warning(
+                    "UU-3: brain-save-blocked alert path raised: %s",
+                    _alert_err,
+                )
+            try:
+                lock.release()
+            except Exception as _rel_err:
+                # V9 UU-3 / Wave-41: lock-release failure here can leak
+                # into next save attempt; log at WARNING.
+                logger.warning(
+                    "UU-3: brain-save lock.release() failed: %s — next "
+                    "save attempt may also fail. Manual intervention may "
+                    "be needed if this persists.", _rel_err,
+                )
             return
 
         # 1. Backup current brain (if it exists)
@@ -268,6 +496,7 @@ class OrganismBrain:
             self._save_ml_models(tmp_dir, signal_gen)
             self._save_ml_state(tmp_dir, signal_gen)
             self._save_model_metrics_history(tmp_dir, learner)
+            self._save_evaluation_event_history(tmp_dir, learner)
             self._save_learning_state(tmp_dir, learner)
             self._save_reference_features(tmp_dir, learner)
             self._save_trade_history(tmp_dir, all_trades)
@@ -277,7 +506,10 @@ class OrganismBrain:
             self._save_evolved_params(tmp_dir, evolved_params)
             self._save_governance_state(tmp_dir, governance_controller)
             self._save_regime_state(tmp_dir, regime_detector)
-            self._save_manifest(tmp_dir, signal_gen, learner)
+            self._save_manifest(
+                tmp_dir, signal_gen, learner,
+                force=force, allow_reset=allow_reset, reset_reason=reset_reason,
+            )
 
             # 3. Atomic swap: rename temp dir to active dir.
             #    First, swap the current brain dir to a staging path,
@@ -287,23 +519,39 @@ class OrganismBrain:
             if old_dir.exists():
                 shutil.rmtree(old_dir, ignore_errors=True)
 
-            # Move current brain -> old, tmp -> brain
+            # Move current brain -> old, tmp -> brain. Preserve safety-history
+            # artifacts that are not regenerated inside tmp_dir.
+            preserved_names = {
+                ".tmp_save",
+                ".brain_old",
+                LOCK_FILE,
+                "backups",
+            }
+
+            def _preserve_during_swap(path: Path) -> bool:
+                return (
+                    path.name in preserved_names
+                    or path.name.startswith("corrupt_head_")
+                    or path.name.startswith(ARCHIVE_PREFIX)
+                )
+
             has_existing = any(
                 f for f in self.brain_dir.iterdir()
-                if f.name not in (".tmp_save", ".brain_old", LOCK_FILE)
+                if not _preserve_during_swap(f)
             )
             try:
                 if has_existing:
                     # Move current files to old_dir
                     old_dir.mkdir(parents=True, exist_ok=True)
                     for f in list(self.brain_dir.iterdir()):
-                        if f.name in (".tmp_save", ".brain_old", LOCK_FILE):
+                        if _preserve_during_swap(f):
                             continue
                         shutil.move(str(f), str(old_dir / f.name))
 
                 # Move new files from tmp to brain dir
                 for f in tmp_dir.iterdir():
                     shutil.move(str(f), str(self.brain_dir / f.name))
+                self.backup_dir.mkdir(parents=True, exist_ok=True)
             except Exception:
                 # Restore from old if anything went wrong
                 if old_dir.exists():
@@ -321,7 +569,11 @@ class OrganismBrain:
             eq_str = f", equity ${equity_curve[-1]:,.0f}" if equity_curve else ""
             print(f"  💾 Brain saved: generation {gen}, "
                   f"{len(all_trades)} trades{eq_str}")
-            logger.info("Brain saved successfully to %s", self.brain_dir)
+            logger.info(
+                "Brain saved successfully to %s%s",
+                self.brain_dir,
+                " (forced)" if force else "",
+            )
 
         except Exception as e:
             logger.error("Brain save failed: %s", e)
@@ -335,9 +587,52 @@ class OrganismBrain:
         """Restore saved ML models into a MLSignalGenerator instance.
 
         Returns True if models were restored.
+        Calibration is restored even when model artifacts are absent.
         """
+        # Restore calibration first — works even without saved models
+        calibration_data = self.ml_state.get("calibration")
+        if calibration_data and hasattr(signal_gen, "load_calibration"):
+            try:
+                signal_gen.load_calibration(calibration_data)
+            except Exception as e:
+                logger.warning("Failed to restore ML calibration: %s", e)
+
         if self.clf is None or self.reg is None:
             return False
+
+        # Audit-C concern 2 (2026-05-02): restore S17 same-holdout cache.
+        for attr_name in ("_last_val_X", "_last_val_y_dir", "_last_val_y_ret"):
+            cache_path = self.brain_dir / f"ml_{attr_name.lstrip('_')}.joblib"
+            if cache_path.is_file():
+                try:
+                    from backend.utils.secure_pickle import (
+                        secure_load_from_path,
+                        is_signed_pickle,
+                    )
+                    raw = cache_path.read_bytes()
+                    if is_signed_pickle(raw):
+                        setattr(signal_gen, attr_name, secure_load_from_path(cache_path))
+                    else:
+                        setattr(signal_gen, attr_name, joblib.load(cache_path))
+                except Exception as e:
+                    logger.debug(
+                        "Failed to restore S17 cache %s: %s", attr_name, e,
+                    )
+
+        # Audit-C concern 1 (2026-05-02): restore RF/LGBM ensemble.
+        # Closes axis-8 parity bug: post-restart predict() now uses
+        # the full 60/40 blend immediately, not XGB-only-until-retrain.
+        ensemble = getattr(signal_gen, "_ensemble", None)
+        if ensemble is not None and hasattr(ensemble, "load"):
+            try:
+                if ensemble.load(self.brain_dir):
+                    logger.info(
+                        "Restored RF/LGBM ensemble from brain (axis-8 parity)"
+                    )
+            except Exception as e:
+                logger.warning(
+                    "Failed to restore ensemble: %s", e,
+                )
 
         try:
             signal_gen._clf = self.clf
@@ -408,6 +703,41 @@ class OrganismBrain:
                 generation_accuracies=ls.get("generation_accuracies", []),
             )
 
+            # V5 B-T-2 / Wave-17d (2026-05-03): cumulative_pnl /
+            # trade_history.csv reconciliation. Sum the per-trade pnls
+            # from the loaded CSV; the result, rounded to 2dp, must
+            # equal the saved cumulative_pnl. Surface any drift as a
+            # warning so we can detect schema/save-path bugs early.
+            # Pre-Wave-17d CSVs stored 2dp pnls; the 6dp upgrade only
+            # affects new writes — drift on legacy data is expected
+            # and the threshold reflects that (10c tolerance for the
+            # ~498-trade ledger; tighten over time as old rows roll out).
+            try:
+                _csv_pnl_sum = sum(
+                    float(td.get("pnl", 0.0) or 0.0)
+                    for td in (self.trade_history or [])
+                )
+                _state_pnl = float(learner.state.cumulative_pnl or 0.0)
+                _drift = abs(round(_csv_pnl_sum, 2) - round(_state_pnl, 2))
+                if _drift > 0.10:
+                    logger.warning(
+                        "cumulative_pnl reconciliation drift on load: "
+                        "state=%.2f csv_sum=%.2f drift=$%.2f "
+                        "(B-T-2; tolerance $0.10 — investigate if growing)",
+                        _state_pnl, _csv_pnl_sum, _drift,
+                    )
+                else:
+                    logger.info(
+                        "cumulative_pnl reconciles: state=%.2f csv_sum=%.2f "
+                        "drift=$%.2f within tolerance",
+                        _state_pnl, _csv_pnl_sum, _drift,
+                    )
+            except Exception as _reconcile_err:
+                logger.debug(
+                    "cumulative_pnl reconcile check skipped: %s",
+                    _reconcile_err,
+                )
+
             # Restore model metrics history
             from backend.organism.ml_signal import ModelMetrics
             for mm in self.ml_state.get("model_metrics_history", []):
@@ -415,15 +745,44 @@ class OrganismBrain:
                 fi_tuples = [tuple(x) for x in raw_fi] if raw_fi else []
                 learner.state.model_metrics.append(ModelMetrics(
                     generation=mm.get("generation", 0),
-                    accuracy=mm.get("accuracy", 0),
-                    direction_accuracy=mm.get("direction_accuracy", 0),
-                    hit_rate=mm.get("hit_rate", 0),
+                    accuracy=mm.get("accuracy", 0.0),
+                    precision=mm.get("precision", 0.0),
+                    recall=mm.get("recall", 0.0),
+                    f1=mm.get("f1", 0.0),
+                    direction_accuracy=mm.get("direction_accuracy", 0.0),
+                    mean_pred_return=mm.get("mean_pred_return", 0.0),
+                    hit_rate=mm.get("hit_rate", 0.0),
                     feature_importance_top10=fi_tuples,
+                    calibration_sample_count=mm.get("calibration_sample_count", 0),
+                    calibration_monotonic=mm.get("calibration_monotonic", True),
+                    calibration_error=mm.get("calibration_error", 0.0),
+                    effective_mean_pred_return=mm.get("effective_mean_pred_return", 0.0),
+                    candidate_calibration_sample_count=mm.get("candidate_calibration_sample_count", 0),
+                    candidate_calibration_monotonic=mm.get("candidate_calibration_monotonic", True),
+                    candidate_calibration_error=mm.get("candidate_calibration_error", 0.0),
+                    evaluated_at=mm.get("evaluated_at", ""),
                 ))
 
             # Restore trade history
             learner.trade_history = []
             for td in self.trade_history:
+                # Audit-G v2 GAP-2 + GAP-5 (2026-05-02): restore the
+                # is_reconciliation_artifact flag from saved trades; if
+                # missing (legacy rows), DERIVE it from exit_reason so that
+                # historical reconciliation_adjustment trades are correctly
+                # excluded from learning consumers post-restart.
+                _saved_artifact = td.get("is_reconciliation_artifact")
+                if _saved_artifact is None:
+                    # V4 R-F-1 (2026-05-02): legacy CSVs without the column
+                    # — derive the flag from BOTH triggers used at runtime
+                    # (live_engine._reconcile_fills sets _is_reconciliation
+                    # for either exit_reason or entry_source). Orphan-adopted
+                    # exits keep their normal exit_reason but must still be
+                    # excluded from learning.
+                    _saved_artifact = (
+                        td.get("exit_reason", "") == "reconciliation_adjustment"
+                        or td.get("entry_source", "") == "reconciliation_orphan"
+                    )
                 learner.trade_history.append(TradeRecord(
                     symbol=td.get("symbol", ""),
                     direction=td.get("direction", 0),
@@ -437,7 +796,20 @@ class OrganismBrain:
                     predicted_return=td.get("predicted_return", 0),
                     actual_return=td.get("actual_return", 0),
                     confidence=td.get("confidence", 0),
+                    is_exploration=td.get("is_exploration", False),
+                    is_reconciliation_artifact=bool(_saved_artifact),
+                    entry_source=td.get("entry_source", ""),
+                    regime_at_entry=td.get("regime_at_entry", ""),
+                    regime_at_exit=td.get("regime_at_exit", ""),
+                    mfe=td.get("mfe", 0.0),
+                    mae=td.get("mae", 0.0),
+                    bars_held_at_exit=td.get("bars_held_at_exit", 0),
+                    time_in_trade_seconds=td.get("time_in_trade_seconds", 0.0),
+                    closed_at=td.get("closed_at", ""),
                 ))
+
+            # Restore evaluation event history (J4)
+            learner.state.evaluation_events = list(self.evaluation_event_history)
 
             # Restore reference features for drift detection
             if self.reference_features is not None:
@@ -457,36 +829,555 @@ class OrganismBrain:
             return False
 
     # ═════════════════════════════════════════════════════════════
+    #  ESSENTIAL STATE SAVE (bypasses walk-forward gate)
+    # ═════════════════════════════════════════════════════════════
+
+    def save_essential_state(
+        self,
+        signal_gen: Any,
+        learner: Any,
+        all_trades: list[Any],
+        equity_curve: list[float] | None = None,
+        epoch_metrics: list[Any] | None = None,
+        peak_equity: float = 0.0,
+        extra_counters: dict[str, Any] | None = None,
+        governance_controller: Any | None = None,
+        regime_detector: Any | None = None,
+    ) -> None:
+        """Persist all runtime truth directly to brain_dir when the
+        walk-forward gate blocks a full (atomic-swap) brain save.
+
+        Writes everything needed for a coherent restart EXCEPT
+        promotion-gated artifacts (ML model binaries + evolved_params).
+        Those remain gated: only a full save() promotes them.
+
+        Always persisted (runtime truth):
+          - trade_history.csv          (closed trades + forensic fields)
+          - learning_state.json        (total_trades, cumulative_pnl)
+          - evaluation_event_history   (ML accept/reject events)
+          - equity_curve.csv           (historical equity)
+          - extra_counters.json        (tick_count, universe, kelly, calibration)
+          - governance_state.json      (frozen/halted flags)
+          - regime_state.json          (detector history)
+          - ml_state.json              (feature config, NOT model weights)
+          - manifest.json              (updated trade count + pnl)
+
+        NOT written (promotion-gated):
+          - ml_classifier.joblib       (model binary — only on gate pass)
+          - ml_regressor.joblib        (model binary — only on gate pass)
+          - evolved_params.json        (evolved strategy params — only on gate pass)
+        """
+        self.brain_dir.mkdir(parents=True, exist_ok=True)
+
+        # F2: trained-state guard is now inside _write_manifest_guarded
+        # (replaces the F-lite inline guard that was here). The helper
+        # also unifies total_runs sourcing with the full save path,
+        # closing the in-memory vs on-disk divergence that allowed the
+        # two paths to drift during the Apr 8/9 wipe incidents.
+
+        try:
+            # Runtime truth — always persist
+            self._save_trade_history(self.brain_dir, all_trades)
+            self._save_learning_state(self.brain_dir, learner)
+            self._save_evaluation_event_history(self.brain_dir, learner)
+            self._save_model_metrics_history(self.brain_dir, learner)
+            if equity_curve is not None:
+                self._save_equity_curve(self.brain_dir, equity_curve)
+            if epoch_metrics is not None:
+                self._save_epoch_metrics(self.brain_dir, epoch_metrics)
+            if extra_counters is not None:
+                self._save_extra_counters(
+                    self.brain_dir, peak_equity, extra_counters
+                )
+            self._save_governance_state(self.brain_dir, governance_controller)
+            self._save_regime_state(self.brain_dir, regime_detector)
+            # ML feature config (not model weights)
+            self._save_ml_state(self.brain_dir, signal_gen)
+
+            # V4 R-F-5 (2026-05-02): persist the RF/LGBM ensemble even
+            # when the walk-forward gate blocks a full save.
+            # The wave-11d ensemble.save() invocation lives inside
+            # _save_ml_models, which save_essential_state intentionally
+            # skips because the main clf/reg are promotion-gated. But
+            # ensemble persistence is idempotent runtime state (not a
+            # promotion), and skipping it means: every tick where the
+            # gate blocks the full save, the ensemble files stay absent
+            # on disk. After restart, predict() runs XGB-only and the
+            # axis-8 parity bug wave-11d closed silently re-opens.
+            ensemble = getattr(signal_gen, "_ensemble", None)
+            if ensemble is not None and hasattr(ensemble, "save"):
+                try:
+                    ensemble.save(self.brain_dir)
+                except Exception as e:
+                    logger.warning(
+                        "save_essential_state: ensemble persist failed: %s",
+                        e,
+                    )
+
+            # Manifest write through the unified guarded helper (F1/F2).
+            # force=False: essential-save path is unconditionally guarded.
+            wrote = self._write_manifest_guarded(
+                self.brain_dir, signal_gen, learner,
+                caller="save_essential_state",
+                force=False,
+            )
+            if not wrote:
+                # Guard blocked the write. Runtime-truth files above were
+                # already persisted (they're harmless without a matching
+                # manifest update). Log and return.
+                return
+
+            logger.info(
+                "Essential state saved (all runtime truth, "
+                "ML models + evolved_params gated): %d trades, PnL=$%.2f",
+                learner.state.total_trades if hasattr(learner, "state") else 0,
+                learner.state.cumulative_pnl if hasattr(learner, "state") else 0,
+            )
+
+            # V10 WW-1 / Wave-51 (2026-05-03): essential-save now ALSO mints
+            # a backup snapshot.  Previously _create_backup was only called
+            # from full save(), but live_engine routes most saves through
+            # save_essential_state (walk-forward gate).  Production had
+            # ZERO backups/ directory, so V9 PP-2's corrupt-HEAD fallback
+            # safety net was empty.  Cadence: mint a backup at most once
+            # per WW1_BACKUP_INTERVAL_SECONDS (default 1 hour) to avoid
+            # disk thrash on every tick.
+            try:
+                import time as _time
+                _now_ts = _time.time()
+                _last = getattr(self, "_ww1_last_backup_ts", 0.0)
+                _interval = float(
+                    os.environ.get("WW1_BACKUP_INTERVAL_SECONDS", "3600")
+                )
+                if (_now_ts - _last) >= _interval:
+                    self._create_backup()
+                    self._ww1_last_backup_ts = _now_ts
+                    logger.info(
+                        "WW-1: minted essential-save backup snapshot",
+                    )
+            except Exception as _bk_err:
+                logger.warning(
+                    "WW-1: essential-save backup failed (non-fatal): %s",
+                    _bk_err,
+                )
+        except Exception as e:
+            logger.error("Failed to save essential state: %s", e)
+
+    # ═════════════════════════════════════════════════════════════
     #  PRIVATE — SAVE HELPERS
     # ═════════════════════════════════════════════════════════════
 
-    def _save_manifest(
-        self, target: Path, signal_gen: Any, learner: Any
-    ) -> None:
-        manifest = {
+    def _check_trained_overwrite_guard(
+        self,
+        target: Path,
+        signal_gen: Any,
+        learner: Any,
+        force: bool = False,
+        allow_reset: bool = False,
+        reset_reason: str | None = None,
+    ) -> tuple[bool, str]:
+        """Check whether an incoming save would overwrite a trained manifest
+        with an untrained/fresh state.
+
+        Returns ``(should_block, reason)``. The caller decides what to do
+        (e.g. release a lock, abort, log). This is a pure predicate — it
+        does NOT write, log, or mutate anything.
+
+        F3 break-glass semantics: ``force=True`` alone is NOT enough to
+        permit a trained→fresh overwrite. The full triad is required:
+        ``force=True AND allow_reset=True AND reset_reason`` (non-empty).
+
+        Resolves existing state from the best available source:
+        ``self._manifest`` (in-memory) > on-disk ``manifest.json`` > empty.
+        """
+        # Resolve best available existing state
+        existing: dict[str, Any] = {}
+        if self._manifest:
+            existing = self._manifest
+        else:
+            manifest_path = target / MANIFEST_FILE
+            if manifest_path.is_file():
+                try:
+                    existing = _read_json(manifest_path)
+                except Exception:
+                    existing = {}
+
+        if not existing:
+            return False, ""  # nothing to protect yet
+
+        existing_trades = existing.get("total_trades", 0) or 0
+        existing_trained = bool(existing.get("ml_is_trained", False))
+        existing_generation = existing.get("generation", 0) or 0
+        is_trained_existing = (
+            existing_trades > 0 or existing_trained or existing_generation > 0
+        )
+
+        incoming_trades = (
+            learner.state.total_trades
+            if learner is not None and hasattr(learner, "state")
+            else 0
+        )
+        incoming_trained = bool(getattr(signal_gen, "_is_trained", False))
+        incoming_generation = (
+            learner.state.generation
+            if learner is not None and hasattr(learner, "state")
+            else 0
+        )
+        is_fresh_incoming = (
+            incoming_trades == 0
+            and not incoming_trained
+            and incoming_generation == 0
+        )
+
+        if is_trained_existing and is_fresh_incoming:
+            reason = (
+                f"existing: total_trades={existing_trades}, "
+                f"ml_is_trained={existing_trained}, generation={existing_generation}"
+            )
+            # F3 break-glass: require the full triad to override.
+            # force=True alone is NOT sufficient.
+            break_glass_ok = bool(
+                force and allow_reset and reset_reason
+            )
+            if not break_glass_ok:
+                return True, reason
+
+        return False, ""
+
+    def _write_manifest_guarded(
+        self,
+        target: Path,
+        signal_gen: Any,
+        learner: Any,
+        *,
+        caller: str,
+        force: bool = False,
+        allow_reset: bool = False,
+        reset_reason: str | None = None,
+    ) -> bool:
+        """The unified manifest write path. Both ``save()`` (via
+        ``_save_manifest``) and (in F2) ``save_essential_state()`` route
+        their manifest writes through this method.
+
+        - Resolves ``total_runs`` from a single source (in-memory >
+          on-disk > 0) so the full-save and essential-save paths never
+          diverge.
+        - Applies ``_apply_live_manifest_fields`` for authoritative
+          field values from live ``learner.state`` / ``signal_gen``.
+        - Applies the trained→fresh overwrite guard as a defense-in-depth
+          safety net (the primary guard for ``save()`` fires earlier in
+          the caller to preserve lock semantics).
+        - Syncs ``self._manifest`` after successful write.
+
+        Returns ``True`` on success, ``False`` if the guard blocked.
+        """
+        # Defense-in-depth guard (primary guard for save() fires earlier,
+        # but this catches any caller that reaches the write path without
+        # an early check — including save_essential_state via F2).
+        should_block, reason = self._check_trained_overwrite_guard(
+            target, signal_gen, learner,
+            force=force, allow_reset=allow_reset, reset_reason=reset_reason,
+        )
+        if should_block:
+            # F3: always log suspicious-write instrumentation first,
+            # regardless of block/allow outcome.
+            self._log_suspicious_manifest_write(
+                caller=caller, target=target,
+                signal_gen=signal_gen, learner=learner,
+                force=force, allow_reset=allow_reset,
+                reset_reason=reset_reason,
+            )
+            logger.error(
+                "BRAIN SAVE BLOCKED (%s): refusing to overwrite trained "
+                "manifest (%s) with untrained state "
+                "(incoming: total_trades=0, ml_is_trained=False). "
+                "Break-glass reset requires force=True AND allow_reset=True "
+                "AND reset_reason.",
+                caller, reason,
+            )
+            return False
+
+        # F3: check if this is a break-glass reset that passed the guard.
+        # If so, the guard check returned (False, reason) because break_glass_ok
+        # was True. We still want the instrumentation + loud warning.
+        # Detect this by re-evaluating the trained→fresh predicate directly.
+        _existing_for_bg = self._manifest if self._manifest else {}
+        if not _existing_for_bg:
+            mp = target / MANIFEST_FILE
+            if mp.is_file():
+                try:
+                    _existing_for_bg = _read_json(mp)
+                except Exception:
+                    _existing_for_bg = {}
+        _ex_tr = _existing_for_bg.get("total_trades", 0) or 0
+        _ex_ml = bool(_existing_for_bg.get("ml_is_trained", False))
+        _ex_gen = _existing_for_bg.get("generation", 0) or 0
+        _in_tr = (learner.state.total_trades
+                  if learner is not None and hasattr(learner, "state") else 0)
+        _in_ml = bool(getattr(signal_gen, "_is_trained", False))
+        _in_gen = (learner.state.generation
+                   if learner is not None and hasattr(learner, "state") else 0)
+        _is_trained_ex = _ex_tr > 0 or _ex_ml or _ex_gen > 0
+        _is_fresh_in = _in_tr == 0 and not _in_ml and _in_gen == 0
+        if _is_trained_ex and _is_fresh_in:
+            # Break-glass passed. Log instrumentation + loud warning.
+            self._log_suspicious_manifest_write(
+                caller=caller, target=target,
+                signal_gen=signal_gen, learner=learner,
+                force=force, allow_reset=allow_reset,
+                reset_reason=reset_reason,
+            )
+            logger.warning(
+                "BRAIN BREAK-GLASS RESET (%s): intentionally overwriting "
+                "trained manifest (total_trades=%d, ml_is_trained=%s). "
+                "Reason: %s",
+                caller, _ex_tr, _ex_ml, reset_reason,
+            )
+
+        # Resolve total_runs from uniform source: in-memory > on-disk > 0
+        base_total_runs = self._manifest.get("total_runs") if self._manifest else None
+        if base_total_runs is None:
+            manifest_path = target / MANIFEST_FILE
+            if manifest_path.is_file():
+                try:
+                    disk = _read_json(manifest_path)
+                    base_total_runs = disk.get("total_runs", 0)
+                except Exception:
+                    base_total_runs = 0
+            else:
+                base_total_runs = 0
+
+        manifest: dict[str, Any] = {
             "brain_format_version": BRAIN_FORMAT_VERSION,
-            "saved_at": datetime.now(timezone.utc).isoformat(),
-            "generation": (
-                learner.state.generation if hasattr(learner, "state") else 0
-            ),
-            "total_runs": self._manifest.get("total_runs", 0) + 1,
-            "total_trades": (
-                learner.state.total_trades if hasattr(learner, "state") else 0
-            ),
-            "cumulative_pnl": (
-                round(learner.state.cumulative_pnl, 2)
-                if hasattr(learner, "state") else 0
-            ),
-            "best_sharpe": (
-                round(learner.state.best_sharpe, 4)
-                if hasattr(learner, "state")
-                and learner.state.best_sharpe != -np.inf
-                else 0
-            ),
-            "ml_is_trained": signal_gen._is_trained,
-            "feature_count": len(signal_gen._feature_cols),
+            # V6 X-3 / Wave-20b (2026-05-03): use injected clock.
+            "saved_at": self._now_fn().isoformat(),
+            "total_runs": base_total_runs + 1,
         }
+        self._apply_live_manifest_fields(manifest, signal_gen, learner)
         _write_json(target / MANIFEST_FILE, manifest)
+        # Keep in-memory copy in sync
+        self._manifest = dict(manifest)
+
+        # F3: read-back invariant — verify what we wrote matches live state
+        try:
+            written = _read_json(target / MANIFEST_FILE)
+            mismatches: list[str] = []
+            if learner is not None and hasattr(learner, "state"):
+                st = learner.state
+                if written.get("generation") != int(getattr(st, "generation", 0)):
+                    mismatches.append(
+                        f"generation {written.get('generation')} != "
+                        f"{int(getattr(st, 'generation', 0))}"
+                    )
+                if written.get("total_trades") != int(getattr(st, "total_trades", 0)):
+                    mismatches.append(
+                        f"total_trades {written.get('total_trades')} != "
+                        f"{int(getattr(st, 'total_trades', 0))}"
+                    )
+                bs_live = getattr(st, "best_sharpe", None)
+                if bs_live is not None and np.isfinite(bs_live):
+                    bs_expected = round(float(bs_live), 4)
+                    if written.get("best_sharpe") != bs_expected:
+                        mismatches.append(
+                            f"best_sharpe {written.get('best_sharpe')} != "
+                            f"{bs_expected}"
+                        )
+            if signal_gen is not None:
+                expected_trained = bool(getattr(signal_gen, "_is_trained", False))
+                if written.get("ml_is_trained") != expected_trained:
+                    mismatches.append(
+                        f"ml_is_trained {written.get('ml_is_trained')} != "
+                        f"{expected_trained}"
+                    )
+                fc = getattr(signal_gen, "_feature_cols", None)
+                expected_fc = len(fc) if fc is not None else 0
+                if written.get("feature_count") != expected_fc:
+                    mismatches.append(
+                        f"feature_count {written.get('feature_count')} != "
+                        f"{expected_fc}"
+                    )
+            if mismatches:
+                logger.critical(
+                    "BRAIN MANIFEST READ-BACK INVARIANT FAILED (%s): %s",
+                    caller, "; ".join(mismatches),
+                )
+                return False
+        except Exception as e:
+            logger.error(
+                "Brain manifest read-back check failed (%s): %s", caller, e,
+            )
+            # Do not fail the save on read-back exceptions — just log
+
+        return True
+
+    def _log_suspicious_manifest_write(
+        self,
+        *,
+        caller: str,
+        target: Path,
+        signal_gen: Any,
+        learner: Any,
+        force: bool,
+        allow_reset: bool,
+        reset_reason: str | None,
+    ) -> None:
+        """F3: log detailed forensic information when a manifest write
+        would regress a trained brain to fresh/untrained state.
+
+        Fires on EVERY regressive attempt regardless of whether the
+        break-glass path then allows it. Captures the caller's stack
+        trace so the exact triggering code path can be identified on
+        the next recurrence.
+        """
+        import os
+        import threading
+        import traceback
+
+        existing = self._manifest if self._manifest else {}
+        if not existing:
+            mp = target / MANIFEST_FILE
+            if mp.is_file():
+                try:
+                    existing = _read_json(mp)
+                except Exception:
+                    existing = {}
+
+        existing_summary = {
+            k: existing.get(k)
+            for k in (
+                "generation", "total_trades", "cumulative_pnl",
+                "best_sharpe", "ml_is_trained", "feature_count", "total_runs",
+            )
+        }
+        live_state = getattr(learner, "state", None)
+        incoming_summary = {
+            "generation": getattr(live_state, "generation", None),
+            "total_trades": getattr(live_state, "total_trades", None),
+            "cumulative_pnl": getattr(live_state, "cumulative_pnl", None),
+            "best_sharpe": getattr(live_state, "best_sharpe", None),
+            "ml_is_trained": bool(getattr(signal_gen, "_is_trained", False)),
+            "feature_count": len(getattr(signal_gen, "_feature_cols", []) or []),
+        }
+        stack = "".join(traceback.format_stack())
+        logger.warning(
+            "SUSPICIOUS MANIFEST WRITE (%s): would regress trained brain. "
+            "pid=%d thread=%s force=%s allow_reset=%s reset_reason=%r "
+            "existing=%s incoming=%s\nStack:\n%s",
+            caller,
+            os.getpid(),
+            threading.current_thread().name,
+            force,
+            allow_reset,
+            reset_reason,
+            existing_summary,
+            incoming_summary,
+            stack,
+        )
+
+    def _apply_live_manifest_fields(
+        self,
+        manifest: dict[str, Any],
+        signal_gen: Any,
+        learner: Any,
+    ) -> None:
+        """PATCH B: write manifest fields from live learner.state and
+        signal_gen. Used by both the full save path (_save_manifest) and
+        the essential-save path (save_essential_state) so both paths
+        produce identical authoritative values and self._manifest can
+        never drift from the truth.
+
+        Fallback safety: when learner or signal_gen is None, or when an
+        attribute is missing, fall back to the existing self._manifest
+        value, then to a safe default. Never crash callers.
+        """
+        if learner is not None and hasattr(learner, "state"):
+            state = learner.state
+            manifest["generation"] = int(getattr(state, "generation", 0))
+            manifest["total_trades"] = int(getattr(state, "total_trades", 0))
+            manifest["cumulative_pnl"] = round(
+                float(getattr(state, "cumulative_pnl", 0.0)), 2
+            )
+            raw_bs = getattr(state, "best_sharpe", None)
+            if raw_bs is not None and np.isfinite(raw_bs):
+                manifest["best_sharpe"] = round(float(raw_bs), 4)
+            else:
+                manifest["best_sharpe"] = self._manifest.get(
+                    "best_sharpe", 0
+                )
+        else:
+            manifest.setdefault(
+                "generation", self._manifest.get("generation", 0)
+            )
+            manifest.setdefault(
+                "total_trades", self._manifest.get("total_trades", 0)
+            )
+            manifest.setdefault(
+                "cumulative_pnl", self._manifest.get("cumulative_pnl", 0)
+            )
+            manifest.setdefault(
+                "best_sharpe", self._manifest.get("best_sharpe", 0)
+            )
+
+        if signal_gen is not None:
+            manifest["ml_is_trained"] = bool(
+                getattr(signal_gen, "_is_trained", False)
+            )
+            feature_cols = getattr(signal_gen, "_feature_cols", None)
+            if feature_cols is not None:
+                manifest["feature_count"] = len(feature_cols)
+            else:
+                manifest["feature_count"] = self._manifest.get(
+                    "feature_count", 0
+                )
+        else:
+            manifest.setdefault(
+                "ml_is_trained", self._manifest.get("ml_is_trained", False)
+            )
+            manifest.setdefault(
+                "feature_count", self._manifest.get("feature_count", 0)
+            )
+
+        # V12 W71 (EXT-1): strategy expectancy gate.  External auditor
+        # caught this as the single most important miss across 11
+        # internal audits — manifest verified execution-correctness
+        # without ever recording realized PnL/Sharpe/win-rate.  Compute
+        # the full expectancy payload and embed under "strategy_expectancy"
+        # so any reader (operator, /health/strategy endpoint, dashboard)
+        # can see whether the brain is actually profitable.
+        try:
+            from backend.organism import strategy_expectancy as _sx
+            # Prefer the learner's trade_history (richer source of truth);
+            # fall back to brain_persistence's loaded list (which is the
+            # CSV view).  Both ultimately resolve to the same closed-trade
+            # set so either is correct.
+            trades_src: Any = []
+            if learner is not None and getattr(learner, "trade_history", None):
+                trades_src = learner.trade_history
+            elif self.trade_history:
+                trades_src = self.trade_history
+            manifest["strategy_expectancy"] = _sx.compute_from_trades(trades_src)
+        except Exception as e:
+            # Manifest writes must never crash on expectancy compute —
+            # the manifest is too important to block on a math error.
+            logger.warning(
+                "V12 W71: strategy_expectancy compute failed (%s); "
+                "manifest written without expectancy fields", e,
+            )
+
+    def _save_manifest(
+        self, target: Path, signal_gen: Any, learner: Any,
+        *, force: bool = False,
+        allow_reset: bool = False,
+        reset_reason: str | None = None,
+    ) -> None:
+        # F1: delegate to the unified guarded write helper.
+        self._write_manifest_guarded(
+            target, signal_gen, learner,
+            caller="save._save_manifest",
+            force=force,
+            allow_reset=allow_reset,
+            reset_reason=reset_reason,
+        )
 
     def _save_ml_models(self, target: Path, signal_gen: Any) -> None:
         if signal_gen._is_trained:
@@ -497,6 +1388,34 @@ class OrganismBrain:
             secure_dump_to_path(
                 signal_gen._reg, target / "ml_regressor.joblib"
             )
+            # Audit-C concern 2 (2026-05-02): persist S17 same-holdout
+            # validation cache.
+            for attr_name in (
+                "_last_val_X", "_last_val_y_dir", "_last_val_y_ret",
+            ):
+                arr = getattr(signal_gen, attr_name, None)
+                if arr is not None:
+                    try:
+                        secure_dump_to_path(
+                            arr, target / f"ml_{attr_name.lstrip('_')}.joblib"
+                        )
+                    except Exception as e:
+                        logger.debug(
+                            "Failed to persist %s: %s", attr_name, e,
+                        )
+
+            # Audit-C concern 1 (2026-05-02): persist RF/LGBM ensemble.
+            # Without this, post-restart predict() runs XGB-only until
+            # next retrain — same input produced 0.349 raw-conf swing
+            # across restart (axis-8 parity bug from v2 audit).
+            ensemble = getattr(signal_gen, "_ensemble", None)
+            if ensemble is not None and hasattr(ensemble, "save"):
+                try:
+                    ensemble.save(target)
+                except Exception as e:
+                    logger.warning(
+                        "Failed to persist ensemble: %s", e,
+                    )
 
     def _save_ml_state(self, target: Path, signal_gen: Any) -> None:
         ml_state = {
@@ -520,6 +1439,20 @@ class OrganismBrain:
                 "hit_rate": m.hit_rate,
                 "feature_importance_top10": m.feature_importance_top10,
             }
+        # Persist ML calibration state.
+        # Audit-D finding D-23 (2026-05-02): calibration is also written
+        # to extra_counters.json["ml_calibration"] by live_engine's
+        # _build_extra_counters. ml_state.json["calibration"] (here) is
+        # the CANONICAL source of truth — apply_to_signal_generator at
+        # line 417 reads from ml_state first. The extra_counters mirror
+        # is kept for backwards compat with consumers that read from
+        # there directly. Both are kept in sync via a single
+        # signal_gen.calibration_to_dict() call upstream.
+        if hasattr(signal_gen, "calibration_to_dict"):
+            try:
+                ml_state["calibration"] = signal_gen.calibration_to_dict()
+            except Exception:
+                pass  # calibration is optional
         _write_json(target / "ml_state.json", ml_state)
 
     def _save_model_metrics_history(
@@ -538,6 +1471,15 @@ class OrganismBrain:
                 "mean_pred_return": mm.mean_pred_return,
                 "hit_rate": mm.hit_rate,
                 "feature_importance_top10": mm.feature_importance_top10,
+                "calibration_sample_count": getattr(mm, "calibration_sample_count", 0),
+                "calibration_monotonic": getattr(mm, "calibration_monotonic", True),
+                "calibration_error": getattr(mm, "calibration_error", 0.0),
+                "effective_mean_pred_return": getattr(mm, "effective_mean_pred_return", 0.0),
+                "candidate_calibration_sample_count": getattr(mm, "candidate_calibration_sample_count", 0),
+                "candidate_calibration_monotonic": getattr(mm, "candidate_calibration_monotonic", True),
+                "candidate_calibration_error": getattr(mm, "candidate_calibration_error", 0.0),
+                "evaluated_at": getattr(mm, "evaluated_at", ""),
+                "accepted": True,  # only accepted models are in model_metrics (J3)
             })
         # Store inside ml_state.json (reload it, add, rewrite)
         ml_state_path = target / "ml_state.json"
@@ -547,6 +1489,14 @@ class OrganismBrain:
             ml_state = {}
         ml_state["model_metrics_history"] = history
         _write_json(ml_state_path, ml_state)
+
+    def _save_evaluation_event_history(
+        self, target: Path, learner: Any
+    ) -> None:
+        """J4: Save evaluation event history (accepted + rejected)."""
+        events = getattr(learner.state, "evaluation_events", [])
+        if events:
+            _write_json(target / "evaluation_event_history.json", events)
 
     def _save_learning_state(self, target: Path, learner: Any) -> None:
         state = learner.state
@@ -572,7 +1522,8 @@ class OrganismBrain:
     def _save_reference_features(self, target: Path, learner: Any) -> None:
         ref = getattr(learner, "_reference_features", None)
         if ref is not None and isinstance(ref, pd.DataFrame) and len(ref) > 0:
-            ref.to_csv(target / "reference_feats.csv", index=False)
+            # V9 PP-1 / Wave-41 (2026-05-03): atomic write-then-rename.
+            _write_csv_atomic(ref, target / "reference_feats.csv")
 
     def _save_trade_history(
         self, target: Path, all_trades: list[Any]
@@ -589,12 +1540,40 @@ class OrganismBrain:
                 "entry_bar": t.entry_bar,
                 "exit_bar": t.exit_bar,
                 "shares": t.shares,
-                "pnl": round(t.pnl, 2),
+                # V5 B-T-2 / Wave-17d (2026-05-03): the CSV used to
+                # store `round(t.pnl, 2)` per trade. learning_state.json
+                # stores `round(sum(raw), 2)` as cumulative_pnl. After
+                # restart, recomputing `sum(CSV.pnl)` produced 2¢ drift
+                # versus the saved cumulative_pnl (sum-of-rounded vs
+                # round-of-sum asymmetry; banker's rounding adds bias).
+                # Storing 6 decimals here is well within float precision
+                # for dollar P&L and lets `round(sum(CSV.pnl), 2)`
+                # reconcile to the saved cumulative_pnl exactly across
+                # restart. Display layers format to 2dp on render.
+                "pnl": round(t.pnl, 6),
                 "exit_reason": t.exit_reason,
                 "predicted_return": round(t.predicted_return, 6),
                 "actual_return": round(t.actual_return, 6),
                 "confidence": round(t.confidence, 4),
                 "correct_direction": t.correct_direction,
+                "is_exploration": getattr(t, "is_exploration", False),
+                # V4 R-F-1 (2026-05-02): persist the runtime flag so the
+                # audit-G isolation survives a restart. Without this column,
+                # only `exit_reason == "reconciliation_adjustment"` rows are
+                # recovered via the load-side fallback; orphan-adopted exits
+                # (entry_source="reconciliation_orphan") with normal exit
+                # reasons would silently lose the flag and re-enter learning.
+                "is_reconciliation_artifact": bool(
+                    getattr(t, "is_reconciliation_artifact", False)
+                ),
+                "entry_source": getattr(t, "entry_source", ""),
+                "regime_at_entry": getattr(t, "regime_at_entry", ""),
+                "regime_at_exit": getattr(t, "regime_at_exit", ""),
+                "mfe": round(getattr(t, "mfe", 0.0), 4),
+                "mae": round(getattr(t, "mae", 0.0), 4),
+                "bars_held_at_exit": getattr(t, "bars_held_at_exit", 0),
+                "time_in_trade_seconds": round(getattr(t, "time_in_trade_seconds", 0.0), 2),
+                "closed_at": getattr(t, "closed_at", ""),
             })
         df = pd.DataFrame(records)
 
@@ -626,14 +1605,37 @@ class OrganismBrain:
             except Exception as e:
                 logger.warning("Trade archive failed (non-fatal): %s", e)
 
-        df.to_csv(target / "trade_history.csv", index=False)
+        # Audit-H finding H-8 (2026-05-02): atomic write — write to .tmp
+        # then rename. SIGKILL during pandas streaming write would have
+        # left a truncated CSV; on next startup _load_trade_history would
+        # fail or lose the latest trades. Now: write-then-rename guarantees
+        # the on-disk file is either the previous full state or the new
+        # full state — never partial.
+        _csv_path = target / "trade_history.csv"
+        _tmp_path = target / "trade_history.csv.tmp"
+        try:
+            df.to_csv(_tmp_path, index=False)
+            _tmp_path.replace(_csv_path)  # atomic on POSIX
+        except Exception:
+            # Best-effort cleanup; re-raise for caller to handle
+            if _tmp_path.exists():
+                try:
+                    _tmp_path.unlink()
+                except Exception:
+                    pass
+            raise
 
     def _save_equity_curve(
         self, target: Path, equity_curve: list[float]
     ) -> None:
         if equity_curve:
             df = pd.DataFrame({"equity": equity_curve})
-            df.to_csv(target / "equity_curve.csv", index=False)
+            # V9 PP-1 / Wave-41 (2026-05-03): atomic write-then-rename.
+            # Previously direct df.to_csv could leave a truncated CSV on
+            # SIGKILL or disk-full. Same pattern as trade_history.csv
+            # (audit-H H-8). One OOM-kill could lose 161 generations of
+            # equity history under the old behavior.
+            _write_csv_atomic(df, target / "equity_curve.csv")
 
     def _save_epoch_metrics(
         self, target: Path, epoch_metrics: list[Any]
@@ -648,7 +1650,8 @@ class OrganismBrain:
                 records.append(m)
         if records:
             df = pd.DataFrame(records)
-            df.to_csv(target / "epoch_metrics.csv", index=False)
+            # V9 PP-1 / Wave-41 (2026-05-03): atomic write-then-rename.
+            _write_csv_atomic(df, target / "epoch_metrics.csv")
 
     def _save_extra_counters(
         self,
@@ -744,7 +1747,12 @@ class OrganismBrain:
             self._manifest["brain_format_version"] = 2
             version = 2
 
-        # Persist the bumped manifest so next load is seamless
+        # Persist the bumped manifest so next load is seamless.
+        # F4 BYPASS AUDIT: this is the only direct manifest write
+        # outside the guarded helper. It is SAFE because it writes
+        # self._manifest (just read from disk at line 1282) with only
+        # brain_format_version bumped. No learner/signal_gen fields are
+        # synthesized. Only fires during load() on an older-format brain.
         _write_json(self.brain_dir / MANIFEST_FILE, self._manifest)
         logger.info("Brain migration complete — now at v%d", version)
 
@@ -839,6 +1847,15 @@ class OrganismBrain:
         """Phase 1.3: Load regime detector running state."""
         path = self.brain_dir / "regime_state.json"
         self.regime_state = _read_json(path) if path.is_file() else {}
+
+    def _load_evaluation_event_history(self) -> None:
+        """J4: Load evaluation event history."""
+        path = self.brain_dir / "evaluation_event_history.json"
+        if path.is_file():
+            data = _read_json(path)
+            self.evaluation_event_history = data if isinstance(data, list) else []
+        else:
+            self.evaluation_event_history = []
 
     # ═════════════════════════════════════════════════════════════
     #  BRAIN QUALITY GATES (Phase 1.6)
@@ -994,6 +2011,7 @@ class OrganismBrain:
         *,
         min_trades: int = 10,
         regression_threshold: float = 0.95,
+        learner: Any = None,
     ) -> tuple[bool, str]:
         """Validate that brain performance hasn't regressed before saving.
 
@@ -1016,11 +2034,14 @@ class OrganismBrain:
         # apples-to-apples even though it is not a true daily Sharpe.
         returns = []
         for t in recent_trades:
+            _dir = float(getattr(t, "direction", 1.0))
             if hasattr(t, "actual_return"):
-                returns.append(float(t.actual_return))
+                # Direction-adjusted: profitable shorts contribute positive return
+                returns.append(float(t.actual_return) * _dir)
             elif hasattr(t, "pnl") and hasattr(t, "entry_price"):
                 ep = float(t.entry_price) if t.entry_price else 1
                 shares = float(getattr(t, "shares", 1)) or 1
+                # PnL is already direction-neutral (positive = profitable)
                 returns.append(
                     float(t.pnl) / (ep * shares) if ep > 0 else 0
                 )
@@ -1040,8 +2061,28 @@ class OrganismBrain:
             std_r = 1e-9
         current_sharpe = mean_r / std_r * _np.sqrt(252)
 
-        # Get best historical Sharpe from brain manifest
-        best_sharpe = self._manifest.get("best_sharpe", 0)
+        # Apr-8 Patch C: read the authoritative high-water mark directly
+        # from learner.state.best_sharpe when available. The previous
+        # implementation read self._manifest["best_sharpe"] and decayed
+        # it *= 0.95 on every gated save attempt, compounding to a ~250x
+        # collapse in one session (2.776 -> 0.011 on 2026-04-07).
+        # learner.state.best_sharpe is maintained by ContinuousLearner as
+        # a monotonic high-water mark and must not be mutated here.
+        best_sharpe: float = 0.0
+        if learner is not None:
+            ls = getattr(learner, "state", None)
+            lbs = getattr(ls, "best_sharpe", None) if ls is not None else None
+            if lbs is not None and _np.isfinite(lbs):
+                best_sharpe = float(lbs)
+        if best_sharpe <= 0:
+            # Fallback for callers that don't pass a learner (e.g. legacy
+            # call sites or tests). Read-only — never mutated.
+            fallback = self._manifest.get("best_sharpe", 0)
+            try:
+                best_sharpe = float(fallback) if fallback is not None else 0.0
+            except (TypeError, ValueError):
+                best_sharpe = 0.0
+
         if best_sharpe <= 0:
             # No meaningful baseline — always save
             return True, f"No baseline Sharpe, current={current_sharpe:.3f}"
@@ -1053,16 +2094,11 @@ class OrganismBrain:
                 f"best={best_sharpe:.3f}, ratio={ratio:.3f}"
             )
 
-        # Regression detected — decay best_sharpe by 5% so the gate doesn't
-        # permanently block saves after an exceptional one-off session.
-        decayed = best_sharpe * 0.95
-        self._manifest["best_sharpe"] = decayed
         logger.warning(
             "Walk-forward regression: current_sharpe=%.3f, "
-            "best_sharpe=%.3f (decayed to %.3f), ratio=%.3f < %.3f",
+            "best_sharpe=%.3f, ratio=%.3f < %.3f",
             current_sharpe,
             best_sharpe,
-            decayed,
             ratio,
             regression_threshold,
         )
@@ -1076,8 +2112,21 @@ class OrganismBrain:
     # ═════════════════════════════════════════════════════════════
 
     def _create_backup(self) -> None:
-        """Backup current brain state before overwrite."""
-        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+        """Backup current brain state before overwrite.
+
+        V10 WW-2 / Wave-56 (2026-05-03): timestamp uses microsecond
+        resolution so 5 backup attempts within one second don't
+        collapse onto a single directory via mkdir(exist_ok=True).
+        Hazard scenario: startup retry storm or rapid force_save_brain
+        admin clicks would silently lose all but the last backup.
+
+        V10 PP2-2 / Wave-56: if a corrupt-HEAD restore was just done
+        (see _restore_from_latest_backup), the next periodic save
+        would overwrite the corrupt manifest.json with a fresh one,
+        losing forensic record.  Capture corrupt HEAD first if a
+        marker file says so.
+        """
+        ts = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
         gen = self._manifest.get("generation", 0)
         backup_name = f"brain_gen{gen}_{ts}"
         backup_path = self.backup_dir / backup_name
@@ -1127,6 +2176,24 @@ class OrganismBrain:
                     predicted_return=td.get("predicted_return", 0),
                     actual_return=td.get("actual_return", 0),
                     confidence=td.get("confidence", 0),
+                    is_exploration=td.get("is_exploration", False),
+                    is_reconciliation_artifact=bool(
+                        td.get(
+                            "is_reconciliation_artifact",
+                            (
+                                td.get("exit_reason", "") == "reconciliation_adjustment"
+                                or td.get("entry_source", "") == "reconciliation_orphan"
+                            ),
+                        )
+                    ),
+                    entry_source=td.get("entry_source", ""),
+                    regime_at_entry=td.get("regime_at_entry", ""),
+                    regime_at_exit=td.get("regime_at_exit", ""),
+                    mfe=td.get("mfe", 0.0),
+                    mae=td.get("mae", 0.0),
+                    bars_held_at_exit=td.get("bars_held_at_exit", 0),
+                    time_in_trade_seconds=td.get("time_in_trade_seconds", 0.0),
+                    closed_at=td.get("closed_at", ""),
                 ))
             return records
         except Exception as e:
@@ -1195,9 +2262,69 @@ def _sanitize_for_json(obj: Any) -> Any:
 
 
 def _write_json(path: Path, data: dict[str, Any]) -> None:
-    """Write JSON with pretty formatting."""
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump(_sanitize_for_json(data), f, indent=2, default=_json_serializer)
+    """Write JSON with pretty formatting.
+
+    V5 S-DISK-1 / Wave-19 (2026-05-03): atomic write-then-rename. The
+    previous direct open(path, 'w') would leave a partial / truncated
+    file if the process died mid-write OR if the disk filled mid-write.
+    Writing to `path.tmp` then `os.replace`-ing into place is atomic on
+    POSIX — readers see either the previous full state or the new full
+    state, never partial. This is the same pattern audit-H H-8 applied
+    to trade_history.csv; extending it to every JSON save covers every
+    `save_essential_state` companion file (learning_state, governance,
+    regime, manifest, evaluation events, ml_state, extra_counters,
+    evolved_params).
+    """
+    tmp_path = path.with_suffix(path.suffix + ".tmp")
+    try:
+        with open(tmp_path, "w", encoding="utf-8") as f:
+            json.dump(_sanitize_for_json(data), f, indent=2, default=_json_serializer)
+            f.flush()
+            try:
+                import os as _os
+                _os.fsync(f.fileno())
+            except Exception:
+                # fsync isn't critical for atomicity; skip if unavailable.
+                pass
+        tmp_path.replace(path)
+    except Exception:
+        # Best-effort cleanup; let the caller see the error.
+        try:
+            if tmp_path.exists():
+                tmp_path.unlink()
+        except Exception:
+            pass
+        raise
+
+
+def _write_csv_atomic(df: "pd.DataFrame", path: Path) -> None:
+    """V9 PP-1 / Wave-41 (2026-05-03): atomic write-then-rename for CSVs.
+
+    Same pattern as `_write_json`: write to `<path>.tmp`, fsync, then
+    `os.replace` (atomic on POSIX). Readers see either the previous
+    full state or the new full state — never partial. Required by
+    PP-1 because `df.to_csv(path)` was leaving truncated files on
+    SIGKILL or disk-full, and the brain `load()` path then either
+    failed or silently reset state to "fresh".
+    """
+    tmp_path = path.with_suffix(path.suffix + ".tmp")
+    try:
+        df.to_csv(tmp_path, index=False)
+        # fsync the tmp file before rename for durability.
+        try:
+            import os as _os
+            with open(tmp_path, "rb") as _f:
+                _os.fsync(_f.fileno())
+        except Exception:
+            pass
+        tmp_path.replace(path)
+    except Exception:
+        try:
+            if tmp_path.exists():
+                tmp_path.unlink()
+        except Exception:
+            pass
+        raise
 
 
 def _read_json(path: Path) -> dict[str, Any]:

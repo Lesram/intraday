@@ -1,0 +1,75 @@
+{
+  "local_code_state": {
+    "branch": "main",
+    "head_sha": "1e0c484",
+    "uncommitted_changes": [],
+    "uncommitted_changes_description": "Clean working tree — J2-J5 committed"
+  },
+  "deployed_runtime_state": {
+    "container": "intra-api-1",
+    "container_status": "Up (healthy)",
+    "container_rebuilt": true,
+    "container_rebuilt_from_sha": "1e0c484",
+    "runtime_sha": "unknown (git not in container)",
+    "api_reachable": true,
+    "data_stale": false,
+    "tick_count": 3,
+    "total_trades": 142,
+    "open_positions": 0,
+    "current_equity": 100000.0,
+    "peak_equity": 100000.0,
+    "brain_generation": 0,
+    "brain_total_runs": 63,
+    "evolved_generation": 0,
+    "ml_trained_api": false,
+    "learning_mode_api": true,
+    "cumulative_pnl": -944.75,
+    "win_rate": 0.4014
+  },
+  "resolved_config": {
+    "timeframe": "1Min",
+    "timeframe_source": "container_env",
+    "max_positions": 8,
+    "max_positions_source": "container_env (was 15, corrected to 8)",
+    "alpha_top_n": 5,
+    "alpha_top_n_source": "container_env (explicitly set)",
+    "tick_interval_seconds": 10,
+    "exploration_enabled": false,
+    "exploration_enabled_source": "container_env (explicitly set)",
+    "drawdown_kill_pct": 0.20,
+    "risk_budget_learning": 0.001,
+    "risk_budget_production": 0.0025,
+    "confidence_gate_baseline": 0.4,
+    "fitness_gate_production": 0.45,
+    "horizon_timeout_bars": 18,
+    "bar_boundary_entry_only_declared": true,
+    "bar_boundary_entry_only_enforced": true,
+    "bar_boundary_entry_enforcement_line": "live_engine.py:1698-1704 (_is_entry_bar gate)",
+    "learning_mode": true,
+    "evolution_freeze": true
+  },
+  "universe": {
+    "env_override": "AAPL,MSFT,GOOGL,AMZN,NVDA,META,TSLA,AMD,AVGO,CRM,COST,WMT,LLY,XOM,CAT,SPY,QQQ,IWM,XLK,XLE,SH,PSQ",
+    "env_count": 22,
+    "code_default": "AAPL,MSFT,GOOGL,AMZN,NVDA,META,TSLA,AMD,AVGO,CRM,COST,WMT,LLY,XOM,CAT,SPY,QQQ,IWM,XLK,XLE,SH,PSQ",
+    "code_default_count": 22,
+    "inverse_etfs_in_env": true,
+    "inverse_etfs_in_code": true,
+    "env_matches_code_default": true
+  },
+  "mismatch_indicators": {
+    "sha_match": "unknown (git not in container)",
+    "max_positions_code_vs_env": "code=8, env=8, ALIGNED",
+    "universe_size_code_vs_env": "code=22, env=22, ALIGNED",
+    "universe_composition": "env matches code default exactly (includes SH/PSQ)",
+    "bar_boundary_config_vs_code": "config=true, code=enforced at line 1698-1704, ALIGNED",
+    "alpha_top_n_code_vs_env": "code=5, env=5, ALIGNED",
+    "exploration_enabled": "code=false, env=false, ALIGNED"
+  },
+  "config_changes_applied": {
+    "ORGANISM_MAX_POSITIONS": "15 → 8",
+    "ORGANISM_LIVE_SYMBOLS": "30 symbols → 22 symbols (code default with SH/PSQ)",
+    "ORGANISM_ALPHA_TOP_N": "(unset) → 5 (explicit)",
+    "ORGANISM_EXPLORATION_ENABLED": "(unset) → false (explicit)"
+  }
+}

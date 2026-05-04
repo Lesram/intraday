@@ -1,0 +1,101 @@
+{
+  "date": "2026-03-12",
+  "head_sha": "8db0fab",
+  "captured_at_utc": "2026-03-12T20:00:00Z",
+
+  "infrastructure": {
+    "branch": "main",
+    "docker_containers": {
+      "api": "healthy (up 23h)",
+      "db": "healthy (up 23h)",
+      "redis": "healthy (up 23h)"
+    },
+    "api_reachable": true,
+    "api_port": 8000
+  },
+
+  "engine": {
+    "running": true,
+    "tick_count": 715,
+    "tick_interval_s": 10,
+    "last_tick_utc": "2026-03-12T19:56:53.516254+00:00",
+    "last_tick_duration_s": 946.064,
+    "regime_at_close": "trending_up",
+    "regime_note": "ANOMALOUS — market was selling off (SPY -1.52%) but regime shows trending_up"
+  },
+
+  "brain": {
+    "generation": 0,
+    "total_runs_api": 65,
+    "total_runs_manifest": 69,
+    "total_trades_api": 158,
+    "total_trades_manifest": 142,
+    "manifest_sync_gap": "16 trades not reflected in manifest",
+    "cumulative_pnl_api": -1008.77,
+    "cumulative_pnl_manifest": -944.74,
+    "win_rate": 0.4304,
+    "winning_trades": 68,
+    "losing_trades": 89,
+    "avg_win": 17.70,
+    "avg_loss": -24.86,
+    "expected_value_per_trade": -6.56,
+    "profit_factor": 0.544,
+    "peak_equity": 111612.21,
+    "current_equity": 111612.21
+  },
+
+  "learning_mode": {
+    "active": true,
+    "trades_to_evolution": 142,
+    "evolution_threshold": 300,
+    "ml_trained": false,
+    "ml_training_attempts": 21,
+    "ml_last_rejection": "score=0.453<0.35, calibration non-monotonic, cal_error=0.345"
+  },
+
+  "alpaca_account": {
+    "equity": 111612.21,
+    "cash": 111612.21,
+    "buying_power": 446448.84,
+    "positions": 0,
+    "status": "ACTIVE",
+    "pdt_flag": true,
+    "daytrade_count": 16
+  },
+
+  "today_activity": {
+    "orders_submitted": 0,
+    "trades_executed": 0,
+    "candidates_reaching_gates": 27,
+    "candidates_passing_gates": 0,
+    "max_eff_conf_observed": 0.18,
+    "max_eff_conf_symbol": "WMT",
+    "confidence_gate_floor": 0.25,
+    "gap_to_passing": 0.07,
+    "scanner_scans": 105,
+    "scanner_candidates": 0,
+    "liquidity_blocks": { "CAT": 10, "COST": 7, "LLY": 2 },
+    "entries_blocked_ticks": 22,
+    "total_visible_ticks": 46,
+    "consecutive_zero_trade_days": 2
+  },
+
+  "errors": {
+    "total_warnings": 443,
+    "total_errors": 11,
+    "alpaca_position_disconnects": 9,
+    "scheduler_timeouts": 2,
+    "websocket_drops": 3,
+    "stale_data_warnings": 355,
+    "all_errors_self_recovered": true
+  },
+
+  "db_state": {
+    "total_orders": 348,
+    "filled_orders": 344,
+    "cancelled_orders": 4,
+    "accepted_stale_orders": 0,
+    "total_positions": 0,
+    "realized_trades": 0
+  }
+}

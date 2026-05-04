@@ -243,18 +243,27 @@ class AlertManager:
         Returns:
             True if alert was sent, False if deduplicated/rate-limited/suppressed
         """
+        # V9 PP-3 / Wave-41 (2026-05-03): CRITICAL severity bypasses
+        # market-hours gate, dedup, AND rate limit. The previous logic
+        # could silently drop a CRITICAL halt alert if N WARNINGs had
+        # already filled the dedup window or rate-limiter bucket.  A
+        # daily-max-loss halt at 09:31 must always page operator.
+        _is_critical = severity == AlertSeverity.CRITICAL
+
         # L-25: Suppress non-critical alerts outside market hours
-        if respect_market_hours and severity in (AlertSeverity.INFO, AlertSeverity.WARNING):
+        if (respect_market_hours
+                and severity in (AlertSeverity.INFO, AlertSeverity.WARNING)
+                and not _is_critical):
             if not is_market_hours(include_extended=True):
                 logger.debug(f"Alert suppressed outside market hours: {title}")
                 return False
 
         # Check deduplication
-        if dedup and not await self._dedup.should_send(category, severity, title):
+        if dedup and not _is_critical and not await self._dedup.should_send(category, severity, title):
             return False
 
         # Check rate limit
-        if not await self._limiter.acquire():
+        if not _is_critical and not await self._limiter.acquire():
             logger.warning(f"Alert rate-limited: {title}")
             return False
 
@@ -288,6 +297,13 @@ class AlertManager:
 
         if not tasks:
             logger.warning(f"No alert channels configured for: {title}")
+            # V9 PP-3 / Wave-41: log CRITICAL events at CRITICAL level even
+            # without channels — log scrapers can still catch them.
+            if _is_critical:
+                logger.critical(
+                    "ALERT-NO-CHANNELS: %s — %s — details=%s",
+                    title, description, context.get("details"),
+                )
             return False
 
         # Execute in parallel
@@ -299,6 +315,16 @@ class AlertManager:
                 logger.error(f"Alert delivery failed: {result}")
 
         success = any(r is True for r in results if not isinstance(r, Exception))
+
+        # V9 PP-3 / Wave-41: when CRITICAL fails to deliver to ANY channel,
+        # log at CRITICAL with full context so log scrapers / external
+        # alerting systems still catch it as last-resort signal.
+        if not success and _is_critical:
+            logger.critical(
+                "ALERT-DELIVERY-FAILED: %s — %s — all_channels_failed; "
+                "results=%s — details=%s",
+                title, description, results, context.get("details"),
+            )
         return success
 
     async def _send_slack(self, context: dict[str, Any]) -> bool:
@@ -530,3 +556,87 @@ async def send_alert(
     """Convenience function to send alert via global manager."""
     manager = get_alert_manager()
     return await manager.send_alert(category, severity, title, description, details)
+
+
+# ─────────────────────────────────────────────────────────────────────
+# V5 S-J3-1 / Wave-17a (2026-05-03): cross-thread alert dispatch.
+#
+# Wave-8c's J-3 fix wrapped the alert path in:
+#     try:
+#         loop = asyncio.get_running_loop()
+#         loop.call_soon_threadsafe(...)
+#     except RuntimeError:
+#         logger.warning("Alert deferred (no running loop in worker thread)")
+#
+# That raised RuntimeError every time it ran from a worker thread because
+# `get_running_loop()` raises when called from a thread that has no
+# running loop — by definition, worker threads do not. The except branch
+# fired on every invocation; alerts routed to logger.warning and never
+# reached Slack/PagerDuty.
+#
+# Correct pattern: capture a reference to the *main* event loop (running
+# in the main thread) at startup; from a worker thread, schedule on that
+# captured loop via `asyncio.run_coroutine_threadsafe`. The captured loop
+# remains valid for the lifetime of the process.
+# ─────────────────────────────────────────────────────────────────────
+
+import threading as _threading
+
+_main_event_loop: asyncio.AbstractEventLoop | None = None
+_main_event_loop_lock = _threading.Lock()
+
+
+def set_main_event_loop(loop: asyncio.AbstractEventLoop | None) -> None:
+    """Capture a reference to the main asyncio loop. Call once at lifespan
+    startup (where `asyncio.get_running_loop()` is well-defined). Worker
+    threads use the captured ref via `dispatch_alert_from_thread`.
+    """
+    global _main_event_loop
+    with _main_event_loop_lock:
+        _main_event_loop = loop
+
+
+def get_main_event_loop() -> asyncio.AbstractEventLoop | None:
+    """Return the captured main loop, or None if not yet set."""
+    return _main_event_loop
+
+
+def dispatch_alert_from_thread(coro_factory) -> bool:
+    """Schedule a coroutine (typically `send_alert(...)`) on the main
+    event loop from any thread.
+
+    Args:
+        coro_factory: a zero-arg callable that returns a fresh coroutine
+            on each call. Use a lambda so the coroutine isn't created
+            until we know we have somewhere to schedule it.
+
+    Returns True iff the coroutine was scheduled, False if no main loop
+    has been captured (caller should fall back to logger.warning).
+    """
+    loop = _main_event_loop
+    if loop is None or loop.is_closed():
+        logger.warning(
+            "dispatch_alert_from_thread: no main loop captured "
+            "(set_main_event_loop must be called at lifespan startup); "
+            "alert dropped"
+        )
+        return False
+    try:
+        # Fast path: if we *are* on the main loop already, schedule
+        # directly. Avoids the cross-thread machinery of
+        # run_coroutine_threadsafe.
+        try:
+            current = asyncio.get_running_loop()
+            if current is loop:
+                loop.create_task(coro_factory())
+                return True
+        except RuntimeError:
+            # No running loop in this thread → use threadsafe path.
+            pass
+        asyncio.run_coroutine_threadsafe(coro_factory(), loop)
+        return True
+    except Exception as e:
+        logger.warning(
+            "dispatch_alert_from_thread failed: %s; alert dropped", e,
+        )
+        return False

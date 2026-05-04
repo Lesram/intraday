@@ -1,19 +1,20 @@
 # Live Audit Index
 
-Generated: 2026-03-09T00:34:45Z
-PR: PR #3
-SHA: `1756a1547c`
-Branch: `control-plane-operationalize`
+Generated: 2026-05-04T19:17:53Z
+PR: PR #4
+SHA: `955a53bc17`
+Branch: `codex/v13-root-fixes`
 Scope: **backend_logic**
+Change scope: `working-tree` (`HEAD+working-tree`)
 
 ## Changed files
 
 | Category | Count | Files |
 |----------|-------|-------|
-| Backend | 2 | `backend/organism/kelly_sizer.py`, `backend/organism/live_engine.py` |
-| Organism | 2 | `backend/organism/kelly_sizer.py`, `backend/organism/live_engine.py` |
-| Tests | 5 | `tests/test_decision_telemetry.py`, `tests/test_multi_tick_state.py`, `tests/test_organism_integration_smoke.py`, `tests/test_self_evolution.py`, `tests/test_semantic_invariants.py` |
-| Docs | 32 | `docs/architecture/mapss.md`, `docs/engineering/CONTROL_PLANE.md`, `docs/engineering/LIVE_AUDIT_INDEX.md`, `docs/engineering/baseline_reviews/baseline-3d7f7c1/BASELINE_AUDIT_CONTEXT.md`, `docs/engineering/baseline_reviews/baseline-3d7f7c1/CODEBASE_INDEX.md`, `docs/engineering/baseline_reviews/baseline-3d7f7c1/backend_file_inventory.json`, `docs/engineering/baseline_reviews/baseline-3d7f7c1/config_file_inventory.json`, `docs/engineering/baseline_reviews/baseline-3d7f7c1/core_backend_snapshot.tar.gz`, `docs/engineering/baseline_reviews/baseline-3d7f7c1/docs_file_inventory.json`, `docs/engineering/baseline_reviews/baseline-3d7f7c1/full_backend_tree.txt` |
+| Backend | 1 | `backend/organism/self_evolution.py` |
+| Organism | 1 | `backend/organism/self_evolution.py` |
+| Tests | 1 | `tests/test_self_evolution.py` |
+| Docs | 0 | none |
 
 ## Live constants
 
@@ -22,7 +23,7 @@ Source: `resolved_config_snapshot.json`
 ```json
 {
   "timeframe": "1Min",
-  "max_positions": 15,
+  "max_positions": 8,
   "alpha_top_n": 5,
   "learning_mode_threshold": 200,
   "evolution_freeze": 300,
@@ -48,4 +49,4 @@ Source: `resolved_config_snapshot.json`
 
 ## Open risks
 
-- 2 organism file(s) changed — require replay verification
+- 1 organism file(s) changed — require replay verification

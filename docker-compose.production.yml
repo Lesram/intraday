@@ -23,18 +23,49 @@ services:
     restart: unless-stopped
     
     # Environment configuration
+    # Audit-L finding L-1 (2026-05-02): production compose previously had
+    # ZERO ORGANISM_* env wiring + used JWT_SECRET (not read by code).
+    # Code reads SECURITY_JWT_SECRET (per backend/infra/security.py:382).
+    # Audit-L finding L-7 (2026-05-02): unified to canonical SECURITY_JWT_SECRET.
     environment:
       - APP_ENVIRONMENT=production
       - APP_VERSION=${APP_VERSION:-1.0.0}
       - DATABASE_URL=postgresql+asyncpg://${DB_USER:-algo}:${DB_PASSWORD}@postgres:5432/${DB_NAME:-algotrading}
       - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
-      - JWT_SECRET=${JWT_SECRET}
-      - ALPACA_API_KEY=${ALPACA_API_KEY}
-      - ALPACA_SECRET_KEY=${ALPACA_SECRET_KEY}
-      - ALPACA_PAPER=${ALPACA_PAPER:-true}
-      # Note: pydantic-settings treats list fields as JSON in env vars.
-      - APP_CORS_ORIGINS=${APP_CORS_ORIGINS:-["http://localhost:3000","http://127.0.0.1:3000","http://localhost:5173","http://127.0.0.1:5173"]}
-      - CORS_ORIGINS=${CORS_ORIGINS:-["http://localhost:3000","http://127.0.0.1:3000","http://localhost:5173","http://127.0.0.1:5173"]}
+      # JWT — canonical name per code (was JWT_SECRET, not read by code)
+      - SECURITY_JWT_SECRET=${SECURITY_JWT_SECRET:?SECURITY_JWT_SECRET is required for production}
+      - JWT_SECRET_KEY=${SECURITY_JWT_SECRET}
+      # Alpaca — production uses different env var names than the SDK
+      - ALPACA_API_KEY_ID=${ALPACA_API_KEY_ID:-${ALPACA_API_KEY}}
+      - ALPACA_API_SECRET_KEY=${ALPACA_API_SECRET_KEY:-${ALPACA_SECRET_KEY}}
+      - ALPACA_BASE_URL=${ALPACA_BASE_URL:-https://api.alpaca.markets}
+      - ALPACA_DATA_URL=${ALPACA_DATA_URL:-https://data.alpaca.markets/v2}
+      - ALPACA_STREAM_URL=${ALPACA_STREAM_URL:-wss://api.alpaca.markets/stream}
+      - ALPACA_PAPER=${ALPACA_PAPER:-false}
+      - ALPACA_DATA_FEED=${ALPACA_DATA_FEED:-sip}
+      # Organism config — DO NOT rely on bare code defaults in production
+      - ORGANISM_ENABLED=${ORGANISM_ENABLED:-1}
+      - ENABLE_ORGANISM_SCHEDULER=${ENABLE_ORGANISM_SCHEDULER:-1}
+      - ORGANISM_LIVE_TIMEFRAME=${ORGANISM_LIVE_TIMEFRAME:-1Min}
+      - ORGANISM_TICK_INTERVAL_SECONDS=${ORGANISM_TICK_INTERVAL_SECONDS:-10}
+      - ORGANISM_LIVE_SYMBOLS=${ORGANISM_LIVE_SYMBOLS}
+      - ORGANISM_LIVE_LOOKBACK=${ORGANISM_LIVE_LOOKBACK:-500}
+      - ORGANISM_MIN_BARS=${ORGANISM_MIN_BARS:-50}
+      - ORGANISM_MAX_POSITIONS=${ORGANISM_MAX_POSITIONS:-2}
+      - ORGANISM_ALPHA_TOP_N=${ORGANISM_ALPHA_TOP_N:-3}
+      - ORGANISM_LONG_ONLY=${ORGANISM_LONG_ONLY:-true}
+      - ORGANISM_RETRAIN_INTERVAL=${ORGANISM_RETRAIN_INTERVAL:-180}
+      - ORGANISM_FREEZE_ADAPTATION=${ORGANISM_FREEZE_ADAPTATION:-0}
+      - ORGANISM_USE_STREAMING=${ORGANISM_USE_STREAMING:-1}
+      - ORGANISM_TRAIN_WINDOW=${ORGANISM_TRAIN_WINDOW:-100}
+      - ORGANISM_DRAWDOWN_COOLDOWN_S=${ORGANISM_DRAWDOWN_COOLDOWN_S:-300}
+      - ORGANISM_DRAWDOWN_KILL_PCT=${ORGANISM_DRAWDOWN_KILL_PCT:-0.08}
+      - ORGANISM_MAX_DAILY_LOSS=${ORGANISM_MAX_DAILY_LOSS:-50}
+      - ORGANISM_MAX_NOTIONAL=${ORGANISM_MAX_NOTIONAL:-200}
+      - ORGANISM_DROP_ML_FROM_GATE=${ORGANISM_DROP_ML_FROM_GATE:-true}
+      # CORS / logging
+      - APP_CORS_ORIGINS=${APP_CORS_ORIGINS:-["https://localhost"]}
+      - CORS_ORIGINS=${CORS_ORIGINS:-["https://localhost"]}
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
       - PROMETHEUS_ENABLED=true
     

@@ -1,0 +1,55 @@
+{
+  "branch": "rc-1.5-curated",
+  "captured_at": "2026-05-03",
+  "git_head": "38d1b74aeca56ad8b1153e6b7abc735042827d3c",
+  "git_head_short": "38d1b74",
+  "live_engine_metrics": {
+    "_live_tick_inner_loc": 2738,
+    "_live_tick_inner_loc_pre_v12_w72": 2707,
+    "_live_tick_inner_loc_post_v12_w75_lint_fixes": 2738,
+    "pre_v8_baseline_loc": 2510,
+    "regression_delta": 228,
+    "note": "W72 added DD5-1 helper call + DD5-2 canonical routing + DD5-3 accumulator increment (+17 LOC). W75 added F821 fixes with explanatory comments (+14 LOC). LOC reduction via subroutine extraction is deferred to V13 multi-wave: extracting 200+ LOC from the live tick path in one wave is too risky — the function has zero direct behavioral test coverage and is the most critical hot path."
+  },
+  "pytest_baseline": {
+    "n_failed": 125,
+    "n_passed": 6910,
+    "n_total": 7035,
+    "source": "tests/ full suite, --timeout=15"
+  },
+  "strategy_expectancy": {
+    "csv_exists": true,
+    "csv_mtime": 1777834482.600263,
+    "csv_path": "organism_brain/trade_history.csv",
+    "last_25": {
+      "mean_pnl": 2.7512,
+      "n": 25,
+      "total_pnl": 68.78,
+      "win_rate": 0.4
+    },
+    "last_50": {
+      "mean_pnl": -0.4642,
+      "n": 50,
+      "total_pnl": -23.21,
+      "win_rate": 0.34
+    },
+    "max_drawdown": -985.93,
+    "mean_pnl": -1.2749,
+    "median_pnl": -0.935,
+    "n_losses": 328,
+    "n_trades": 498,
+    "n_wins": 168,
+    "sharpe_ratio": -1.0573,
+    "total_pnl": -634.9,
+    "win_rate": 0.3373
+  },
+  "wave_test_classifier": {
+    "behavioral_count": 41,
+    "files_scanned": 33,
+    "marker_only_count": 94,
+    "mixed_count": 17,
+    "pct_marker_only": 61.44,
+    "structural_count": 1,
+    "tests_total": 153
+  }
+}

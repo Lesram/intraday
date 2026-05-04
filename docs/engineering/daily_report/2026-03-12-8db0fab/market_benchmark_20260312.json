@@ -1,0 +1,51 @@
+{
+  "date": "2026-03-12",
+  "head_sha": "8db0fab",
+  "market_type": "BROAD_SELLOFF_WITH_DEFENSIVE_ROTATION",
+  "spy_change_pct": -1.52,
+  "qqq_change_pct": -1.72,
+  "iwm_change_pct": -2.15,
+
+  "universe_performance": [
+    { "symbol": "CRM",  "prev_close": 194.13, "close": 199.28, "change_pct": 2.65, "category": "winner_defensive" },
+    { "symbol": "PSQ",  "prev_close": 30.75,  "close": 31.29,  "change_pct": 1.76, "category": "winner_inverse" },
+    { "symbol": "SH",   "prev_close": 36.67,  "close": 37.25,  "change_pct": 1.58, "category": "winner_inverse" },
+    { "symbol": "WMT",  "prev_close": 123.49, "close": 125.33, "change_pct": 1.49, "category": "winner_defensive" },
+    { "symbol": "XOM",  "prev_close": 151.58, "close": 153.53, "change_pct": 1.29, "category": "winner_energy" },
+    { "symbol": "COST", "prev_close": 992.23, "close": 1003.32,"change_pct": 1.12, "category": "winner_defensive" },
+    { "symbol": "XLE",  "prev_close": 56.98,  "close": 57.51,  "change_pct": 0.93, "category": "winner_energy" },
+    { "symbol": "MSFT", "prev_close": 404.88, "close": 401.86, "change_pct": -0.75, "category": "moderate_loser" },
+    { "symbol": "CAT",  "prev_close": 707.59, "close": 700.69, "change_pct": -0.98, "category": "moderate_loser" },
+    { "symbol": "AMZN", "prev_close": 212.65, "close": 209.53, "change_pct": -1.47, "category": "loser" },
+    { "symbol": "SPY",  "prev_close": 676.33, "close": 666.06, "change_pct": -1.52, "category": "loser_index" },
+    { "symbol": "NVDA", "prev_close": 186.03, "close": 183.14, "change_pct": -1.55, "category": "loser_tech" },
+    { "symbol": "AVGO", "prev_close": 341.57, "close": 335.97, "change_pct": -1.64, "category": "loser_semi" },
+    { "symbol": "GOOGL","prev_close": 308.70, "close": 303.55, "change_pct": -1.67, "category": "loser_tech" },
+    { "symbol": "QQQ",  "prev_close": 607.69, "close": 597.26, "change_pct": -1.72, "category": "loser_index" },
+    { "symbol": "XLK",  "prev_close": 140.43, "close": 137.84, "change_pct": -1.84, "category": "loser_tech" },
+    { "symbol": "AAPL", "prev_close": 260.81, "close": 255.76, "change_pct": -1.94, "category": "loser_tech" },
+    { "symbol": "IWM",  "prev_close": 252.85, "close": 247.41, "change_pct": -2.15, "category": "loser_smallcap" },
+    { "symbol": "LLY",  "prev_close": 999.84, "close": 977.25, "change_pct": -2.26, "category": "loser_pharma" },
+    { "symbol": "META", "prev_close": 654.86, "close": 638.18, "change_pct": -2.55, "category": "loser_tech" },
+    { "symbol": "TSLA", "prev_close": 407.82, "close": 395.01, "change_pct": -3.14, "category": "big_loser" },
+    { "symbol": "AMD",  "prev_close": 204.83, "close": 197.74, "change_pct": -3.46, "category": "biggest_loser" }
+  ],
+
+  "summary": {
+    "winners": 7,
+    "losers": 15,
+    "best_performer": "CRM +2.65%",
+    "worst_performer": "AMD -3.46%",
+    "inverse_etf_performance": "SH +1.58%, PSQ +1.76% — both profitable, neither traded",
+    "energy_performance": "XLE +0.93%, XOM +1.29% — both positive",
+    "tech_performance": "Broadly -1.5% to -3.5%",
+    "defensive_performance": "CRM +2.65%, WMT +1.49%, COST +1.12%"
+  },
+
+  "organism_missed_opportunity_estimate": {
+    "if_long_SH_at_open": "+1.58%",
+    "if_long_PSQ_at_open": "+1.76%",
+    "if_long_CRM_at_open": "+2.65%",
+    "note": "These are full-day estimates. Actual intraday entry/exit would differ. The organism's scanner did not produce any of these as candidates."
+  }
+}

@@ -20,12 +20,16 @@ import logging
 from typing import Any
 from uuid import UUID, uuid4
 
-from sqlalchemy import and_, desc, func, select
+from sqlalchemy import and_, desc, func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.infra.schemas import AuditLog
 
 logger = logging.getLogger(__name__)
+
+
+_AUDIT_CHAIN_LOCK_CLASS = 0x41554454  # "AUDT"
+_AUDIT_CHAIN_LOCK_OBJECT = 0x48415348  # "HASH"
 
 
 class AuditAction(Enum):
@@ -160,13 +164,74 @@ class ComplianceAuditService:
         )
     """
 
+    # B3: Singleton instance for callers that cache the service
+    _instance: "ComplianceAuditService | None" = None
+
     def __init__(self, db_session: AsyncSession):
         self.db = db_session
         self._last_hash_cache: str | None = None
 
-    async def _get_last_hash(self) -> str | None:
+    def refresh_session(self, db_session: AsyncSession) -> None:
+        """B3: Update the DB session to avoid stale-session errors.
+
+        Call this when reusing a cached/singleton audit service with a
+        fresh request-scoped session.
+        """
+        old_ok = self.db is not None and (not hasattr(self.db, "is_active") or self.db.is_active)
+        self.db = db_session
+        self._last_hash_cache = None  # Invalidate hash cache on session swap
+        if not old_ok:
+            logger.warning("AuditService: refreshed stale/None session")
+        else:
+            logger.info("AuditService: session refreshed")
+
+    @classmethod
+    def reset(cls) -> None:
+        """B3: Clear the singleton instance so next call creates a fresh one."""
+        cls._instance = None
+
+    def _check_session_health(self) -> bool:
+        """B3: Return True if session looks usable, log warning otherwise."""
+        if self.db is None:
+            logger.warning("AuditService: db session is None — call refresh_session()")
+            return False
+        if hasattr(self.db, "is_active") and not self.db.is_active:
+            logger.warning("AuditService: db session is_active=False — stale session detected")
+            return False
+        return True
+
+    def _dialect_name(self) -> str | None:
+        """Return the bound database dialect when SQLAlchemy exposes it."""
+        get_bind = getattr(self.db, "get_bind", None)
+        if get_bind is None:
+            return None
+        try:
+            bind = get_bind()
+        except Exception:
+            return None
+        return getattr(getattr(bind, "dialect", None), "name", None)
+
+    async def _acquire_hash_chain_lock(self) -> None:
+        """Serialize PostgreSQL audit-chain writers within the transaction.
+
+        The hash for a new audit row depends on the most recent stored
+        hash.  Without a DB-level lock, concurrent writers can both read
+        the same previous hash and one of the two rows will break the
+        chain.  Non-PostgreSQL test sessions skip the lock.
+        """
+        if self._dialect_name() != "postgresql":
+            return
+        await self.db.execute(
+            text("SELECT pg_advisory_xact_lock(:class_id, :object_id)"),
+            {
+                "class_id": _AUDIT_CHAIN_LOCK_CLASS,
+                "object_id": _AUDIT_CHAIN_LOCK_OBJECT,
+            },
+        )
+
+    async def _get_last_hash(self, *, use_cache: bool = True) -> str | None:
         """Get the hash of the most recent audit record."""
-        if self._last_hash_cache:
+        if use_cache and self._last_hash_cache:
             return self._last_hash_cache
 
         result = await self.db.execute(
@@ -199,11 +264,16 @@ class ComplianceAuditService:
         Returns:
             The created AuditLog record
         """
+        # B3: Check session health before writing
+        if not self._check_session_health():
+            raise RuntimeError("AuditService: cannot log — DB session is stale or None")
+
         now = datetime.now(UTC)
         payload = payload or {}
 
-        # Get previous hash for chain
-        prev_hash = await self._get_last_hash()
+        # Get previous hash for chain while holding the writer lock.
+        await self._acquire_hash_chain_lock()
+        prev_hash = await self._get_last_hash(use_cache=False)
 
         # Compute hash for this record
         record_hash = _compute_hash(
@@ -429,6 +499,99 @@ class ComplianceAuditService:
             "message": "Chain integrity verified",
         }
 
+    async def get_chain_detail(
+        self,
+        start_time: datetime | None = None,
+        end_time: datetime | None = None,
+        limit: int = 1000,
+    ) -> dict[str, Any]:
+        """V12 W74 (EXT-4): per-row chain detail for independent verification.
+
+        External auditor flagged that the live ``audit_logs`` schema
+        only stores ``hash_chain`` (the row's computed hash), not
+        separate ``prev_hash``/``current_hash`` columns — so an
+        independent SQL audit cannot recompute the chain links
+        without re-running the hash function.
+
+        This method returns, per row:
+
+        - ``id``, ``ts``, ``actor``, ``action``
+        - ``prev_hash``: the previous record's ``hash_chain`` (or null
+          for the first row in the window)
+        - ``current_hash``: this record's ``hash_chain`` as stored
+        - ``expected_hash``: hash recomputed from ``prev_hash`` + the
+          row's content (the same recomputation the verify endpoint
+          uses)
+        - ``valid``: bool, ``current_hash == expected_hash``
+
+        With this output an external auditor can scan the rows
+        independently (e.g. via the API) without depending on the
+        application's ``verify`` aggregate result.
+        """
+        query = select(AuditLog).order_by(AuditLog.ts).limit(limit)
+        if start_time:
+            query = query.where(AuditLog.ts >= start_time)
+        if end_time:
+            query = query.where(AuditLog.ts <= end_time)
+
+        result = await self.db.execute(query)
+        records = result.scalars().all()
+
+        rows: list[dict[str, Any]] = []
+        prev_hash: str | None = None
+        all_valid = True
+        for i, r in enumerate(records):
+            if i == 0:
+                # First row in the window: cannot independently verify
+                # without scanning back further; treat as anchor.
+                rows.append({
+                    "id": str(r.id),
+                    "ts": r.ts.isoformat() if r.ts else None,
+                    "actor": r.actor,
+                    "action": r.action,
+                    "prev_hash": None,
+                    "current_hash": r.hash_chain,
+                    "expected_hash": None,
+                    "valid": True,
+                    "anchor": True,
+                })
+                prev_hash = r.hash_chain
+                continue
+            expected = _compute_hash(
+                previous_hash=prev_hash,
+                timestamp=r.ts,
+                action=r.action,
+                entity=r.entity,
+                entity_id=r.entity_id,
+                actor=r.actor,
+                payload=r.payload or {},
+            )
+            valid = (r.hash_chain == expected)
+            if not valid:
+                all_valid = False
+            rows.append({
+                "id": str(r.id),
+                "ts": r.ts.isoformat() if r.ts else None,
+                "actor": r.actor,
+                "action": r.action,
+                "prev_hash": prev_hash,
+                "current_hash": r.hash_chain,
+                "expected_hash": expected,
+                "valid": valid,
+                "anchor": False,
+            })
+            # Use stored hash for chain progression even when invalid —
+            # otherwise a single tampered row makes everything after look
+            # invalid too (cascading false positives).  Auditors want
+            # to localize the break, not amplify it.
+            prev_hash = r.hash_chain
+
+        return {
+            "rows": rows,
+            "row_count": len(rows),
+            "all_valid": all_valid,
+        }
+
     async def get_audit_trail(
         self,
         entity_type: AuditEntity | None = None,
@@ -574,13 +737,104 @@ class ComplianceAuditService:
         }
 
 
-# Global singleton (lazy init)
-_audit_service: ComplianceAuditService | None = None
-
-
 async def get_audit_service(db_session: AsyncSession) -> ComplianceAuditService:
-    """Get or create audit service instance."""
-    global _audit_service
-    if _audit_service is None:
-        _audit_service = ComplianceAuditService(db_session)
-    return _audit_service
+    """Create audit service instance with the provided session.
+
+    Always creates a fresh instance to avoid stale session references
+    (COMP-001 fix).
+    """
+    return ComplianceAuditService(db_session)
+
+
+# V8 BB-10 / Wave-30 (2026-05-03): fire-and-forget audit helper.
+#
+# V7 Track BB found that the `audit_logs` table was empty despite
+# 1,369 orders processed — `ComplianceAuditService.log()` was only
+# invoked by the read-only viewer route. Drawdown-kill, governance
+# halt, daily-loss halt, login/logout, config changes — none wrote
+# audit rows. The compliance trail did not exist.
+#
+# Wiring `log()` at every event site requires a DB session at call
+# time. Many event sites (live_engine.trigger_drawdown_kill,
+# governance.halt_trading) don't currently have a session handle —
+# they need one provided.
+#
+# This helper is the fire-and-forget interface: pass a sessionmaker
+# (engine has one), the audit fields, and let the helper own session
+# lifecycle. Exceptions are logged-and-swallowed so audit-log failure
+# never breaks the originating event.
+
+async def fire_audit_log(
+    sessionmaker: Any,
+    *,
+    action: AuditAction,
+    entity: AuditEntity,
+    entity_id: str,
+    actor: str,
+    payload: dict[str, Any] | None = None,
+) -> bool:
+    """Open a fresh session, write one audit row, close. Returns True
+    on success, False on any failure (logged-and-swallowed).
+    """
+    if sessionmaker is None:
+        logger.warning(
+            "fire_audit_log: no sessionmaker provided; audit row dropped "
+            "(action=%s entity=%s entity_id=%s)",
+            action.value, entity.value, entity_id,
+        )
+        return False
+    try:
+        async with sessionmaker() as session:
+            svc = ComplianceAuditService(session)
+            await svc.log(
+                action=action,
+                entity=entity,
+                entity_id=entity_id,
+                actor=actor,
+                payload=payload or {},
+            )
+            await session.commit()
+        return True
+    except Exception as e:
+        # Best-effort: never let audit failure propagate to the caller.
+        logger.warning(
+            "fire_audit_log failed: action=%s entity=%s entity_id=%s err=%s",
+            action.value, entity.value, entity_id, e,
+        )
+        return False
+
+
+def fire_audit_log_threadsafe(
+    sessionmaker: Any,
+    *,
+    action: AuditAction,
+    entity: AuditEntity,
+    entity_id: str,
+    actor: str,
+    payload: dict[str, Any] | None = None,
+) -> bool:
+    """Cross-thread variant of `fire_audit_log` for sync paths reached
+    via `asyncio.to_thread` (e.g. drawdown-kill, brain-save guards).
+
+    Uses the wave-17a dispatch_alert_from_thread pattern: schedules
+    the coroutine on the captured main loop. Returns True if scheduled,
+    False otherwise.
+    """
+    try:
+        import asyncio
+        from backend.infra.alerting import (
+            dispatch_alert_from_thread,
+        )
+        return dispatch_alert_from_thread(
+            lambda: fire_audit_log(
+                sessionmaker,
+                action=action,
+                entity=entity,
+                entity_id=entity_id,
+                actor=actor,
+                payload=payload,
+            )
+        )
+    except Exception as e:
+        logger.warning("fire_audit_log_threadsafe failed: %s", e)
+        return False

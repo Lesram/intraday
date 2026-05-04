@@ -11,7 +11,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.infra.db import get_db_session
-from backend.infra.security import AuthenticatedUser, get_authenticated_user
+from backend.infra.security import AuthenticatedUser, get_authenticated_user, require_admin
 from backend.models.risk import (
     EmergencyStop,
     RiskDashboardData,
@@ -261,7 +261,8 @@ async def delete_risk_limit(
 @router.post("/emergency-stop", response_model=EmergencyStop)
 async def trigger_emergency_stop(
     request: TriggerEmergencyStopRequest,
-    user: AuthenticatedUser = Depends(get_authenticated_user),
+    # V7 AA-M-5 / Wave-24 (2026-05-03): admin-only kill-switch.
+    user: AuthenticatedUser = Depends(require_admin),
     db: AsyncSession = Depends(get_db_session),
 ):
     """
@@ -288,6 +289,9 @@ async def trigger_emergency_stop(
             user_id=user_id, request=request, triggered_by=user_id
         )
 
+        # V10 YY-1 / Wave-52 (2026-05-03): the service-layer
+        # trigger_emergency_stop() already dispatched the operator alert;
+        # this is the post-success route-level confirmation log.
         logger.critical(
             f"EMERGENCY STOP triggered: user={user_id}, "
             f"strategies_stopped={emergency_stop.strategies_stopped}, "

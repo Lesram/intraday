@@ -13,7 +13,7 @@ Phase 7 - Market Data & Charting
 Created: October 16, 2025
 """
 
-from datetime import datetime
+from datetime import UTC, datetime
 import logging
 from uuid import uuid4
 
@@ -236,7 +236,7 @@ async def create_drawing(
             )
 
         # Create drawing
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         new_drawing = {
             'id': f"drawing_{uuid4().hex[:12]}",
             'symbol': drawing.symbol.upper(),
@@ -310,7 +310,7 @@ async def update_drawing(
         if updates.text is not None:
             drawing['text'] = updates.text
 
-        drawing['updated_at'] = datetime.utcnow()
+        drawing['updated_at'] = datetime.now(UTC)
 
         logger.info(f"Updated drawing {drawing_id}")
         return drawing

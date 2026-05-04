@@ -38,6 +38,49 @@ class RegimeLabel:
     UNKNOWN = "unknown"
 
 
+# V11 prep / Wave-60 (DD4-3 closure, 2026-05-03): canonical inverse-ETF
+# universe.  Single source of truth used by Kelly + AdaptiveExits +
+# AlphaScanner + cooldown logic.  Previously each consumer carried its
+# own definition (alpha_scanner.INVERSE_ETFS = {"SH", "PSQ", "DOG", "RWM"};
+# live_engine._INVERSE_ETFS_CHOP_SUPPRESSED = {"PSQ", "SH"}); now
+# unified.
+_INVERSE_ETFS = frozenset({"SH", "PSQ", "DOG", "RWM"})
+
+
+def is_inverse_etf(symbol: str) -> bool:
+    """Return True if `symbol` is a canonical inverse-direction ETF."""
+    return symbol.upper() in _INVERSE_ETFS
+
+
+def effective_regime_for_symbol(regime: str, symbol: str) -> str:
+    """V11 prep / Wave-60 (DD4-3 closure): single helper for the
+    inverse-ETF regime flip.
+
+    For inverse ETFs (SH, PSQ, DOG, RWM), buying the ticker is
+    economically equivalent to shorting the underlying — so a
+    `trending_down` market is favourable, and `trending_up` is
+    unfavourable.  The flip swaps these two regime labels;
+    chop / high_vol / low_vol / stress are passed through unchanged.
+
+    Used by:
+      - Kelly._regime_scale (sizing)
+      - AdaptiveExitEngine REGIME_STOP_ATR / REGIME_MAX_BARS / REGIME_TP_R / REGIME_TRAIL_ATR (exits)
+      - AlphaScanner._regime_alignment (entry score)
+      - regime-transition cooldown
+
+    Previously only AlphaScanner did the flip locally — the other
+    consumers saw the un-flipped market regime and produced
+    inconsistent semantics for SH/PSQ trades (V8 DD2-6 / V10 DD4-3).
+    """
+    if not is_inverse_etf(symbol):
+        return regime
+    if regime == RegimeLabel.TRENDING_UP:
+        return RegimeLabel.TRENDING_DOWN
+    if regime == RegimeLabel.TRENDING_DOWN:
+        return RegimeLabel.TRENDING_UP
+    return regime
+
+
 @dataclass
 class RegimeState:
     """Current detected regime with probability vector."""
@@ -99,7 +142,19 @@ class RegimeDetector:
         smoothing_alpha: float = 0.3,
         is_intraday: bool = False,
         bars_per_day: int = 1,
+        intraday_trend_sensitivity: float = 1.0,
+        now_fn: Any = None,
     ) -> None:
+        # V5 U-3 / Wave-17b (2026-05-03): inject a clock so replay
+        # sees the replay clock instead of wall clock. `now_fn` returns
+        # an aware datetime in UTC. Default is the canonical wall clock
+        # for live use; replay supplies a synthetic clock.
+        if now_fn is None:
+            def _default_now() -> datetime:
+                return datetime.now(UTC)
+            self._now_fn = _default_now
+        else:
+            self._now_fn = now_fn
         # Scale lookbacks for intraday bars to reduce noise.
         # 4x makes SMA_200 (~3.3hrs on 1-min) roughly analogous to a
         # multi-day moving average — still responsive but filters noise.
@@ -110,6 +165,7 @@ class RegimeDetector:
         self._alpha = smoothing_alpha
         self._is_intraday = is_intraday
         self._bars_per_day = bars_per_day
+        self._intraday_trend_sensitivity = intraday_trend_sensitivity
 
         # v4 (improve7): Scale trend threshold for intraday.
         # SMA slope over 10 intraday bars is much smaller than daily —
@@ -117,19 +173,44 @@ class RegimeDetector:
         # ever triggering on 1-min bars, keeping the system stuck in chop.
         # Divide by sqrt(bars_per_day) to make thresholds comparable.
         tf_scale = 1.0 / math.sqrt(bars_per_day) if is_intraday else 1.0
-        self._trend_threshold = trend_threshold * tf_scale if is_intraday else trend_threshold
+        # RC-1.5 shadow: optional intraday_trend_sensitivity multiplier.
+        # Default 1.0 preserves baseline behavior. Shadow detector in
+        # live_engine instantiates this with 0.50 to log what regime
+        # would fire under proposed RC-2 calibration. Empirical 50-run
+        # synthetic: factor=0.50 → 28% noise FPR, 78% TPR on mild trend.
+        intraday_factor = (
+            self._intraday_trend_sensitivity if is_intraday else 1.0
+        )
+        self._trend_threshold = (
+            trend_threshold * tf_scale * intraday_factor
+            if is_intraday else trend_threshold
+        )
 
         # Scale vol/atr thresholds for intraday — per-bar returns are
         # sqrt(bars_per_day) times smaller than daily returns.
         self._atr_high_thresh = 0.04 * tf_scale
         self._atr_low_thresh = 0.015 * tf_scale
         self._ret_vol_thresh = 0.03 * tf_scale
-        self._pct_above_thresh = 0.02 * tf_scale
+        self._pct_above_thresh = (
+            0.02 * tf_scale * intraday_factor if is_intraday else 0.02 * tf_scale
+        )
 
         # Running state
         self._history: list[str] = []
         self._smoothed_probs: dict[str, float] = {}
         self._last_state: RegimeState | None = None
+        # V8 DD2-3 / Wave-34 (2026-05-03): aggregate-level history for the
+        # market / cross-asset regime outputs.  The per-symbol detect()
+        # calls inside detect_market_regime save/restore `_history` to
+        # avoid cross-contamination, which means the actual emitted
+        # market regime never accumulates.  Track it separately here so
+        # `churn_rate` reflects the live aggregate sequence.
+        self._aggregate_history: list[str] = []
+        # V8 DD2-4 / Wave-34 (2026-05-03): hysteresis band on argmax to
+        # prevent regime flapping at threshold boundaries.  A new label
+        # only wins if it leads the previous primary by `_hysteresis_band`.
+        # 0.05 is conservative; lower would flap, higher would lag.
+        self._hysteresis_band = 0.05
 
     @property
     def current_regime(self) -> str:
@@ -146,7 +227,8 @@ class RegimeDetector:
 
         Expects columns: close, sma_50, atr_ratio (or similar).
         """
-        now = datetime.now(UTC)
+        # V5 U-3 / Wave-17b (2026-05-03): clock injection.
+        now = self._now_fn()
 
         if features_df.empty or len(features_df) < 10:
             return RegimeState(
@@ -157,32 +239,52 @@ class RegimeDetector:
 
         # Extract signals
         close = features_df["close"].iloc[-1] if "close" in features_df.columns else 0
-        sma_col = None
-        for c in ["sma_50", "sma_20", "SMA_50", "SMA_20"]:
-            if c in features_df.columns:
-                sma_col = c
-                break
 
-        sma = float(features_df[sma_col].iloc[-1]) if sma_col and not pd.isna(features_df[sma_col].iloc[-1]) else close
+        # SIG-006 fix: compute raw SMA from close prices directly.
+        # The features_df sma_50 column is normalized (sma/close ≈ 1.0)
+        # which is correct for ML but wrong for regime price-vs-SMA checks.
+        close_series = features_df["close"] if "close" in features_df.columns else pd.Series(dtype=float)
+        if len(close_series) >= self._sma_period:
+            sma = float(close_series.rolling(self._sma_period, min_periods=1).mean().iloc[-1])
+        else:
+            sma = float(close_series.mean()) if len(close_series) > 0 else float(close)
 
-        # Trend strength: slope of SMA
+        # Trend strength: slope of raw SMA
         trend_slope = 0.0
-        if sma_col and len(features_df) >= 5:
-            sma_series = features_df[sma_col].dropna().tail(10)
-            if len(sma_series) >= 2:
-                first = float(sma_series.iloc[0])
-                last = float(sma_series.iloc[-1])
+        if len(close_series) >= 5:
+            raw_sma_series = close_series.rolling(self._sma_period, min_periods=1).mean().dropna().tail(10)
+            if len(raw_sma_series) >= 2:
+                first = float(raw_sma_series.iloc[0])
+                last = float(raw_sma_series.iloc[-1])
                 if first > 0:
                     trend_slope = (last - first) / first
 
-        # Volatility
-        atr_ratio = 0.02  # default moderate
+        # Volatility.
+        # V7 DD-2 / Wave-24 (2026-05-03): the previous default
+        # `atr_ratio = 0.02` was 10× the intraday `atr_high_thresh`
+        # (≈ 0.04 / sqrt(390) ≈ 0.002). Any feature DataFrame missing
+        # ATR columns was misclassified as `high_vol`, raising entry
+        # gates and changing Kelly's regime_scale. Now: track whether
+        # we found a valid ATR; if not, return UNKNOWN regime instead
+        # of synthesizing a high-vol value. Callers downstream already
+        # handle UNKNOWN gracefully (entries blocked / neutral signal).
+        atr_ratio: float | None = None
         for c in ["atr_14", "atr_14_ratio", "ATR_ratio"]:
             if c in features_df.columns:
                 val = features_df[c].iloc[-1]
                 if not pd.isna(val):
                     atr_ratio = float(val)
                     break  # found a valid value — stop looking
+        if atr_ratio is None:
+            # No ATR available → refuse to grade volatility regime.
+            return RegimeState(
+                primary=RegimeLabel.UNKNOWN,
+                probabilities={RegimeLabel.UNKNOWN: 1.0},
+                confidence=0.0,
+                features_used={"reason": "atr_missing"},
+                churn_rate=0.0,
+                timestamp=self._now_fn().isoformat(),
+            )
 
         # Returns volatility
         returns_vol = 0.0
@@ -212,7 +314,24 @@ class RegimeDetector:
 
         # Smooth probabilities
         self._smooth_probabilities(probs)
-        primary = max(self._smoothed_probs, key=self._smoothed_probs.get)
+        # V8 DD2-4 / Wave-34 (2026-05-03): hysteresis band on argmax.  A
+        # one-bar slope flip at `_trend_threshold` previously flapped the
+        # primary label even after EMA smoothing.  Stay on the previous
+        # primary unless a new label leads it by `_hysteresis_band`.
+        new_argmax = max(self._smoothed_probs, key=self._smoothed_probs.get)
+        if (
+            self._last_state is not None
+            and self._last_state.primary != new_argmax
+            and self._last_state.primary in self._smoothed_probs
+        ):
+            last_prob = self._smoothed_probs.get(self._last_state.primary, 0.0)
+            new_prob = self._smoothed_probs[new_argmax]
+            if new_prob - last_prob < self._hysteresis_band:
+                primary = self._last_state.primary
+            else:
+                primary = new_argmax
+        else:
+            primary = new_argmax
         confidence = self._smoothed_probs.get(primary, 0.0)
 
         # Track churn
@@ -343,9 +462,15 @@ class RegimeDetector:
         """Restore regime detector state from brain persistence."""
         self._history = data.get("history", [])
         self._smoothed_probs = data.get("smoothed_probs", {})
-        # Optionally restore tuning params if they were persisted
+        # Restore all tuning params that were persisted
         if "sma_period" in data:
             self._sma_period = data["sma_period"]
+        if "vol_lookback" in data:
+            self._vol_lookback = data["vol_lookback"]
+        if "trend_threshold" in data:
+            self._trend_threshold = data["trend_threshold"]
+        if "churn_window" in data:
+            self._churn_window = data["churn_window"]
         if "smoothing_alpha" in data:
             self._alpha = data["smoothing_alpha"]
         logger.info(
@@ -370,46 +495,70 @@ class RegimeDetector:
             return RegimeState(
                 primary=RegimeLabel.UNKNOWN,
                 confidence=0.0,
-                timestamp=datetime.now(UTC).isoformat(),
+                timestamp=self._now_fn().isoformat(),
             )
 
         agg_probs: dict[str, float] = {}
         n = 0
-        # Save instance state — detect() mutates _smoothed_probs & _history
+        # Save instance state — detect() mutates _smoothed_probs, _history, _last_state
         saved_probs = dict(self._smoothed_probs)
         saved_history = list(self._history)
+        saved_last = self._last_state
         try:
             for sym, feat_df in per_symbol_features.items():
+                # Restore pristine state before each detect to prevent cross-contamination
+                self._smoothed_probs = dict(saved_probs)
+                self._history = list(saved_history)
                 state = self.detect(feat_df)
                 if state.probabilities:
                     for label, prob in state.probabilities.items():
                         agg_probs[label] = agg_probs.get(label, 0.0) + prob
                     n += 1
         finally:
-            # Restore instance state so market-level detection doesn't pollute
             self._smoothed_probs = saved_probs
             self._history = saved_history
+            self._last_state = saved_last
 
         if n == 0:
             return RegimeState(
                 primary=RegimeLabel.UNKNOWN,
                 confidence=0.0,
-                timestamp=datetime.now(UTC).isoformat(),
+                timestamp=self._now_fn().isoformat(),
             )
 
         # Average across symbols
         agg_probs = {k: v / n for k, v in agg_probs.items()}
         primary = max(agg_probs, key=agg_probs.get)  # type: ignore[arg-type]
+        # V8 DD2-3 / Wave-34 (2026-05-03): accumulate the aggregate primary
+        # in `_aggregate_history` so churn_rate reflects the actually-emitted
+        # market regime.  Per-symbol detect()s save/restore `_history`, so
+        # without a separate accumulator the market churn was hard-zeroed.
+        self._aggregate_history.append(primary)
+        if len(self._aggregate_history) > self._churn_window * 2:
+            self._aggregate_history = self._aggregate_history[-self._churn_window * 2:]
+        churn = self._compute_aggregate_churn()
         state = RegimeState(
             primary=primary,
             probabilities=agg_probs,
             confidence=agg_probs.get(primary, 0.0),
             features_used={"symbols_aggregated": n},
-            churn_rate=0.0,
-            timestamp=datetime.now(UTC).isoformat(),
+            churn_rate=churn,
+            timestamp=self._now_fn().isoformat(),
         )
         self._last_state = state
         return state
+
+    def _compute_aggregate_churn(self) -> float:
+        """V8 DD2-3 / Wave-34: churn over the aggregate-history window."""
+        if len(self._aggregate_history) < 2:
+            return 0.0
+        window = self._aggregate_history[-self._churn_window:]
+        if len(window) < 2:
+            return 0.0
+        transitions = sum(
+            1 for a, b in zip(window, window[1:]) if a != b
+        )
+        return transitions / (len(window) - 1)
 
     # ------------------------------------------------------------------
     # Phase 4.3: Cross-asset regime conditioning
@@ -447,17 +596,21 @@ class RegimeDetector:
         if not sector_features:
             return base
 
-        # Compute per-sector regime (save/restore state to avoid contamination)
+        # Compute per-sector regime (save/restore state before each detect)
         sector_regimes: list[RegimeState] = []
-        saved_probs = self._smoothed_probs.copy() if self._smoothed_probs is not None else None
+        saved_probs = dict(self._smoothed_probs) if self._smoothed_probs is not None else {}
         saved_history = list(self._history)
+        saved_last = self._last_state
         for etf, feat_df in sector_features.items():
             if feat_df is not None and len(feat_df) >= 10:
+                # Restore pristine state before each detect to prevent cross-contamination
+                self._smoothed_probs = dict(saved_probs)
+                self._history = list(saved_history)
                 sr = self.detect(feat_df)
                 sector_regimes.append(sr)
-        # Restore state so sector data doesn't leak into market-level detection
         self._smoothed_probs = saved_probs
         self._history = saved_history
+        self._last_state = saved_last
 
         if not sector_regimes:
             return base
@@ -509,6 +662,14 @@ class RegimeDetector:
 
         primary = max(conditioned, key=conditioned.get)  # type: ignore[arg-type]
 
+        # V8 DD2-3 / Wave-34 (2026-05-03): if the cross-asset conditioning
+        # changed the primary vs the unconditioned market regime, replace
+        # the last aggregate-history entry so churn reflects the truly-
+        # emitted regime (not the unconditioned one appended by
+        # detect_market_regime).
+        if self._aggregate_history and primary != self._aggregate_history[-1]:
+            self._aggregate_history[-1] = primary
+        churn = self._compute_aggregate_churn()
         state = RegimeState(
             primary=primary,
             probabilities=conditioned,
@@ -520,8 +681,8 @@ class RegimeDetector:
                 "breadth_down": round(breadth_down, 3),
                 "stress_pct": round(stress_pct, 3),
             },
-            churn_rate=base.churn_rate,
-            timestamp=datetime.now(UTC).isoformat(),
+            churn_rate=churn,
+            timestamp=self._now_fn().isoformat(),
         )
         self._last_state = state
         return state
@@ -533,9 +694,22 @@ class DriftDetector:
     Uses a simple Population Stability Index (PSI) approximation.
     """
 
-    def __init__(self, *, threshold: float = 0.10, n_bins: int = 10) -> None:
+    def __init__(
+        self,
+        *,
+        threshold: float = 0.10,
+        n_bins: int = 10,
+        now_fn: Any = None,
+    ) -> None:
         self._threshold = threshold
         self._n_bins = n_bins
+        # V6 Z3 obs / Wave-22 (2026-05-03): clock injection so the drift
+        # report's metadata timestamp respects replay's clock. Default
+        # is wall clock for live use.
+        if now_fn is None:
+            self._now_fn = lambda: datetime.now(UTC)
+        else:
+            self._now_fn = now_fn
 
     def check_drift(
         self,
@@ -543,7 +717,7 @@ class DriftDetector:
         current_df: pd.DataFrame,
     ) -> DriftReport:
         """Compare feature distributions between reference and current."""
-        now = datetime.now(UTC)
+        now = self._now_fn()
         feature_scores: dict[str, float] = {}
 
         numeric_cols = set(reference_df.select_dtypes(include=[np.number]).columns) & \

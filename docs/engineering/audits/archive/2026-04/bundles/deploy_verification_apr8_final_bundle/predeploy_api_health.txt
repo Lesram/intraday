@@ -1,0 +1,2 @@
+{"status":"ok","version":"1.0.0","timestamp":"2026-04-09T01:24:17.243520+00:00"}---
+{"status":"healthy","timestamp":"2026-04-09T01:24:17.250334","service":"algorithmic-trading-platform","uptime_seconds":150396.81649041176,"components":{"api":"healthy","database":"healthy","metrics":true}}

@@ -7,12 +7,29 @@ services:
       context: .
       dockerfile: Dockerfile
       target: runtime
+      # V12 W82 (post-audit cleanup): pass build provenance so
+      # /api/v1/health/deploy returns useful values.  Set in your
+      # shell before ``docker-compose build``:
+      #   export VCS_REF=$(git rev-parse HEAD)
+      #   export BUILD_DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+      # …or use the ``scripts/deploy/rebuild_paper.sh`` helper.
+      args:
+        VCS_REF: ${VCS_REF:-unknown}
+        BUILD_DATE: ${BUILD_DATE:-unknown}
+        VERSION: ${VERSION:-1.0.0}
     ports:
       - "8000:8000"
+    env_file:
+      - .env
     environment:
       # Application Settings - PAPER TRADING
-      - APP_ENVIRONMENT=paper
-      - APP_LOG_LEVEL=INFO
+      - APP_ENVIRONMENT=development
+      # Audit-L finding L-8 (2026-05-02): APP_LOG_LEVEL was a phantom
+      # — code reads LOG_LEVEL (per backend/config/base_settings.py:937).
+      # Use the canonical name; keep APP_LOG_LEVEL for any consumer
+      # explicitly looking for it.
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - APP_LOG_LEVEL=${LOG_LEVEL:-INFO}
       - DEBUG=false
 
       # CORS (frontend origins)
@@ -35,6 +52,18 @@ services:
       - ALPACA_DATA_URL=https://data.alpaca.markets/v2
       - ALPACA_STREAM_URL=wss://paper-api.alpaca.markets/stream
       - ALPACA_PAPER=true
+
+      # V11 CCC-2 / Wave-68 (2026-05-03): explicit risk-cap wiring.
+      # Pre-V11 paper compose did NOT wire these — code defaults are
+      # 0.05 / 0 / 0 (max_daily_loss + max_notional DISABLED), and a
+      # missing .env silently allowed unbounded loss windows.  Now:
+      # paper has explicit fallbacks matching the conservative
+      # paper-trading risk profile (kill at 5% drawdown; 5500 daily
+      # max-loss; 2000 max single-position notional).
+      - ORGANISM_DRAWDOWN_KILL_PCT=${ORGANISM_DRAWDOWN_KILL_PCT:-0.05}
+      - ORGANISM_DRAWDOWN_COOLDOWN_S=${ORGANISM_DRAWDOWN_COOLDOWN_S:-300}
+      - ORGANISM_MAX_DAILY_LOSS=${ORGANISM_MAX_DAILY_LOSS:-5500}
+      - ORGANISM_MAX_NOTIONAL=${ORGANISM_MAX_NOTIONAL:-2000}
 
       # Security Settings - PRODUCTION SECURE JWT
       - JWT_SECRET_KEY=${JWT_SECRET_KEY}
@@ -64,6 +93,7 @@ services:
     volumes:
       - ./logs:/app/logs
       - ./data:/app/data
+      - ./organism_brain:/app/organism_brain
     depends_on:
       postgres:
         condition: service_healthy
@@ -76,6 +106,34 @@ services:
       retries: 3
       start_period: 60s
     restart: unless-stopped
+    # V4 P-P1 (2026-05-02): match production.yml's log rotation. The
+    # paper compose previously had no `logging` block, so docker's
+    # default `json-file` driver buffered logs unboundedly — host has
+    # multiple 50MB rotated files plus a stale 126MB `app.log` from
+    # February. 100MB × 5 file ceiling matches production.
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "5"
+    # V7 AA-H-4 / Wave-24 (2026-05-03): container hardening.
+    # - cap_drop ALL + cap_add only required: minimum kernel surface.
+    # - security_opt no-new-privileges: blocks setuid escalation.
+    # - mem_limit + cpus: bound resource consumption (V7 EE-7 also).
+    # - user 10001:10001: drop the gid=0 root group membership the
+    #   audit found (uid was already 10001 but gid stayed 0).
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - DAC_OVERRIDE
+      - SETUID
+      - SETGID
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 4g
+    cpus: 2.0
+    user: "10001:10001"
     networks:
       - trading-network
 
@@ -83,8 +141,20 @@ services:
   redis:
     image: redis:7-alpine
     ports:
-      - "6379:6379"
-    command: redis-server --requirepass ${REDIS_PASSWORD:-changeme_redis} --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru --save 900 1
+      # V12 W89 (post-cleanup, COMP-409): bind host port to 127.0.0.1
+      # only.  Pre-W89 the publish was ``"6379:6379"`` (host 0.0.0.0),
+      # exposing Redis on all host interfaces.  Even with auth, that's
+      # not appropriate for paper-trading on a dev machine.  Container
+      # internal --bind stays 0.0.0.0 (V7 EE-3 / Wave-23e: required for
+      # cross-container traffic on the docker-compose network).
+      - "127.0.0.1:6379:6379"
+    # V7 EE-3 / Wave-23e (2026-05-03): bind 0.0.0.0 (was 127.0.0.1).
+    # 127.0.0.1 inside a container's network namespace refused all
+    # cross-container traffic, leaving the broker SLI permanently red.
+    # docker-compose's user-defined network is the security boundary;
+    # the container is not reachable from the host without explicit
+    # port mapping (we don't publish 6379), so 0.0.0.0 + auth is safe.
+    command: redis-server --bind 0.0.0.0 --requirepass ${REDIS_PASSWORD:-changeme_redis} --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru --save 900 1
     volumes:
       - redis_data:/data
     healthcheck:
@@ -93,6 +163,13 @@ services:
       timeout: 5s
       retries: 5
     restart: unless-stopped
+    # V7 EE-7 / Wave-24 (2026-05-03): match api log rotation so a runaway
+    # redis log doesn't fill the host disk.
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
     networks:
       - trading-network
 
@@ -132,6 +209,12 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    # V7 EE-7 / Wave-24 (2026-05-03): postgres log rotation.
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
     networks:
       - trading-network
 

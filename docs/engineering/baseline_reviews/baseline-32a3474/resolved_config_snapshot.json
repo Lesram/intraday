@@ -1,0 +1,65 @@
+{
+  "source": "resolved_config",
+  "container": "intra-api-1",
+  "container_env": {
+    "ORGANISM_DRAWDOWN_KILL_PCT": "0.20",
+    "ORGANISM_MAX_POSITIONS": "15",
+    "ORGANISM_TICK_INTERVAL_SECONDS": "10",
+    "ORGANISM_EXPLORATION_ENABLED": null,
+    "ORGANISM_ALPHA_TOP_N": null,
+    "ORGANISM_LIVE_TIMEFRAME": "1Min",
+    "APP_ENVIRONMENT": "development",
+    "ALPACA_PAPER": "true"
+  },
+  "dotenv": {
+    "ORGANISM_DRAWDOWN_KILL_PCT": "0.20",
+    "ORGANISM_MAX_POSITIONS": "15",
+    "ORGANISM_TICK_INTERVAL_SECONDS": "10",
+    "ORGANISM_EXPLORATION_ENABLED": null,
+    "ORGANISM_ALPHA_TOP_N": null
+  },
+  "resolved": {
+    "drawdown_kill_pct": 0.2,
+    "max_positions": 15,
+    "alpha_top_n": 5,
+    "tick_interval_seconds": 10,
+    "exploration_enabled": false,
+    "timeframe": "1Min",
+    "timeframe_source": "container_env",
+    "learning_mode_threshold_trades": 200,
+    "evolution_freeze_until_trades": 300,
+    "horizon_timeout_bars": 18,
+    "bar_boundary_entry_only": true,
+    "confidence_gate_baseline": 0.4,
+    "confidence_gate_defensive": 0.45,
+    "fitness_gate_production": 0.45,
+    "risk_budget_learning": 0.001,
+    "risk_budget_production": 0.0025,
+    "inverse_etfs": [
+      "DOG",
+      "PSQ",
+      "RWM",
+      "SH"
+    ],
+    "universe_size": 22,
+    "confidence_weights_learning": {
+      "breakout": 0.65,
+      "tension": 0.35,
+      "ml": 0.0
+    },
+    "confidence_weights_production": {
+      "ml": 0.5,
+      "breakout": 0.3,
+      "tension": 0.2
+    },
+    "stop_atr_table": {
+      "trending_up": 3.5,
+      "trending_down": 2.5,
+      "chop": 2.5,
+      "high_vol": 4.0,
+      "low_vol": 3.0,
+      "stress": 2.5,
+      "unknown": 3.0
+    }
+  }
+}

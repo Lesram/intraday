@@ -286,7 +286,8 @@ class AuditLogEntry(Base):
     entity_id = Column(String(100), nullable=False)  # order_id
 
     # Timing
-    timestamp = Column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
+    # K-9: tz-aware UTC (was datetime.utcnow, deprecated in Py 3.12+)
+    timestamp = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC))
 
     # Event details
     event_data = Column(JSONB, nullable=False)

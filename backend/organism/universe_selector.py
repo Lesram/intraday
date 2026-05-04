@@ -50,15 +50,16 @@ class SymbolFitness:
     rotations_observed: int = 0
 
     def to_dict(self) -> dict[str, Any]:
+        # Audit-I finding I-4 (2026-05-02): native-type casts for JSON safety.
         return {
-            "symbol": self.symbol,
-            "fitness": round(self.fitness, 4),
-            "total_trades": self.total_trades,
-            "win_rate": round(self.win_rate, 4),
-            "avg_pnl": round(self.avg_pnl, 2),
-            "avg_volume_quality": round(self.avg_volume_quality, 4),
-            "last_rotated_gen": self.last_rotated_gen,
-            "rotations_observed": self.rotations_observed,
+            "symbol": str(self.symbol),
+            "fitness": round(float(self.fitness), 4),
+            "total_trades": int(self.total_trades),
+            "win_rate": round(float(self.win_rate), 4),
+            "avg_pnl": round(float(self.avg_pnl), 2),
+            "avg_volume_quality": round(float(self.avg_volume_quality), 4),
+            "last_rotated_gen": int(self.last_rotated_gen),
+            "rotations_observed": int(self.rotations_observed),
         }
 
 
@@ -84,9 +85,11 @@ class DynamicUniverseSelector:
         seed_symbols: list[str],
         min_universe: int = MIN_UNIVERSE,
         max_universe: int = MAX_UNIVERSE,
+        protected_symbols: set[str] | None = None,
     ) -> None:
         self._min = min_universe
         self._max = max_universe
+        self._protected: set[str] = set(protected_symbols) if protected_symbols else set()
 
         # Initialise fitness table from seed
         self._fitness: dict[str, SymbolFitness] = {}
@@ -167,6 +170,8 @@ class DynamicUniverseSelector:
                 continue
             if sf.symbol in open_positions:
                 continue  # never drop a symbol with open position
+            if sf.symbol in self._protected:
+                continue  # never drop a protected symbol (e.g. inverse ETFs)
             if sf.total_trades < MIN_OBSERVATIONS:
                 continue  # not enough data to judge
             if sf.fitness < DEFAULT_FITNESS - 0.1:
@@ -278,6 +283,7 @@ class DynamicUniverseSelector:
         return {
             "active": self._active,
             "rotation_count": self._rotation_count,
+            "protected_symbols": sorted(self._protected),
             "fitness": {
                 sym: sf.to_dict() for sym, sf in self._fitness.items()
             },
@@ -285,11 +291,19 @@ class DynamicUniverseSelector:
 
     @classmethod
     def from_dict(
-        cls, d: dict[str, Any], seed_symbols: list[str] | None = None,
+        cls,
+        d: dict[str, Any],
+        seed_symbols: list[str] | None = None,
+        protected_symbols: set[str] | None = None,
     ) -> "DynamicUniverseSelector":
         """Restore from brain persistence."""
         active = d.get("active", seed_symbols or [])
-        selector = cls(seed_symbols=active)
+        # Restore protected symbols: prefer caller arg, fall back to persisted
+        if protected_symbols is None:
+            persisted = d.get("protected_symbols")
+            if persisted:
+                protected_symbols = set(persisted)
+        selector = cls(seed_symbols=active, protected_symbols=protected_symbols)
         selector._rotation_count = d.get("rotation_count", 0)
 
         for sym, sf_dict in d.get("fitness", {}).items():
@@ -304,5 +318,24 @@ class DynamicUniverseSelector:
         # Ensure active list is populated
         if not selector._active and seed_symbols:
             selector._active = list(seed_symbols)
+
+        # Merge missing protected symbols into active universe.
+        # Protection prevents future removal, but if the brain was saved
+        # before protection existed, the symbols may already be absent.
+        if selector._protected:
+            active_set = set(selector._active)
+            merged = []
+            for sym in sorted(selector._protected):
+                if sym not in active_set:
+                    selector._active.append(sym)
+                    merged.append(sym)
+                    # Ensure fitness entry exists so the symbol is tradeable
+                    if sym not in selector._fitness:
+                        selector._fitness[sym] = SymbolFitness(symbol=sym)
+            if merged:
+                logger.info(
+                    "Protected symbols merged into active universe on restore: %s",
+                    merged,
+                )
 
         return selector

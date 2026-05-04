@@ -1,0 +1,367 @@
+{
+  "schema_version": 1,
+  "created_at": "2026-05-03",
+  "branch": "rc-1.5-curated",
+  "head_at_v12_start": "38d1b74",
+  "scope": "backend, platform, brain, trading. frontend OUT.",
+  "predecessors": {
+    "v8_findings_critical_high_count": "8 lenses, severity_weight=148",
+    "v9_findings_critical_high_count": "severity_weight=129",
+    "v10_findings_critical_high_count": "severity_weight=105",
+    "v11_findings_total": 49,
+    "v11_severity_weight": 158,
+    "v11_closed_at_v12_start": [
+      "AA5-1", "BB5-F4", "CCC-2", "AAA-F1", "AAA-F2", "Z9-F1"
+    ]
+  },
+  "v11_closures_audited_in_v12": [
+    {
+      "id": "AA5-1",
+      "severity": "critical",
+      "title": "Wave-47 broke ALL JWT auth (leeway kwarg → python-jose TypeError)",
+      "wave_closed": 67,
+      "behavioral_test_path": "tests/test_wave47_fixes.py::test_aa3_4_jwt_decode_passes_leeway",
+      "behavioral_test_added_in_wave": 67,
+      "v12_w73_audit": "behavioral — mints token, decodes, asserts payload sub matches"
+    },
+    {
+      "id": "BB5-F4",
+      "severity": "high",
+      "title": "Migration not applied to live DB",
+      "wave_closed": 67,
+      "behavioral_test_path": "tests/test_wave55_fixes.py::test_xx_2_migration_tree_still_single_headed",
+      "v12_w73_audit": "behavioral — runs subprocess against check_migrations.py and asserts return code"
+    },
+    {
+      "id": "CCC-2",
+      "severity": "critical",
+      "title": "Drawdown-kill compose env divergence; paper missing wiring",
+      "wave_closed": 68,
+      "behavioral_test_path": "tests/test_v12_wave68_behavioral.py::test_ccc_2_compose_envs_wire_risk_caps",
+      "v12_w73_audit": "MARKER-ONLY in original test_wave68; W73 added behavioral YAML-parse upgrade in test_v12_wave68_behavioral.py"
+    },
+    {
+      "id": "AAA-F1",
+      "severity": "high",
+      "title": "/test/http-* debug endpoints exposed in paper image",
+      "wave_closed": 68,
+      "behavioral_test_path": "tests/test_wave68_fixes.py::test_aaa_f1_default_router_is_empty_stub",
+      "v12_w73_audit": "behavioral — reloads module, inspects router.routes, asserts /http-401 not present"
+    },
+    {
+      "id": "AAA-F2",
+      "severity": "high",
+      "title": "orders.py local require_trader ignores roles",
+      "wave_closed": 68,
+      "behavioral_test_path": "tests/test_wave68_fixes.py::test_aaa_f2_orders_require_trader_enforces_roles",
+      "v12_w73_audit": "behavioral — calls require_trader with synthetic users, asserts 403 / 200 by role"
+    }
+  ],
+  "findings": [
+    {
+      "id": "DD5-1",
+      "from": "v11",
+      "severity": "high",
+      "title": "chop-min-hold gate compares ticks to bar-units (live_engine.py:3026-3030)",
+      "status": "closed",
+      "wave_target": 72,
+      "wave_closed": 72,
+      "behavioral_test_path": "tests/test_v12_dd5_strategy.py",
+      "notes": "Closed wave-72. New helper _should_suppress_chop_cut() computes bars_held from wall-clock seconds (now_ts - entry_time) // 60. 5 behavioral tests cover: in-window suppress, out-of-window allow, non-chop never suppresses, missing entry_time falls open, pre-V12 30-tick=5-bar bug demonstrated."
+    },
+    {
+      "id": "DD5-2",
+      "from": "v11",
+      "severity": "high",
+      "title": "live_engine carries private _INVERSE_ETFS_CHOP_SUPPRESSED parallel to canonical _INVERSE_ETFS",
+      "status": "closed",
+      "wave_target": 72,
+      "wave_closed": 72,
+      "behavioral_test_path": "tests/test_v12_dd5_strategy.py",
+      "notes": "Closed wave-72. _INVERSE_ETFS_CHOP_SUPPRESSED deleted; routes through is_inverse_etf() from regime.py. AST-scan test asserts no Assign/AnnAssign binding to the forbidden symbol; functional test asserts SH/PSQ/DOG/RWM all return True from canonical helper (DOG and RWM were silently missing pre-V12)."
+    },
+    {
+      "id": "DD5-3",
+      "from": "v11",
+      "severity": "high",
+      "title": "wave-53 fitness-gate persistence is identity copy of promotion-gated counter",
+      "status": "closed",
+      "wave_target": 72,
+      "wave_closed": 72,
+      "behavioral_test_path": "tests/test_v12_dd5_strategy.py",
+      "notes": "Closed wave-72. New self._symbol_trade_counts_runtime dict initialized in __init__, incremented at the same source as evolved_params.symbol_trade_counts but NEVER reset by the promotion gate. Persistence write at extra_counters['symbol_trade_counts_runtime'] now reads from self._symbol_trade_counts_runtime, not from evolved_params. 3 behavioral tests cover: separate __init__ allocation (AST-asserted not derived from evolved_params), independent advancement during simulated freeze, persistence-write source-of-truth."
+    },
+    {
+      "id": "DD5-4",
+      "from": "v11",
+      "severity": "medium",
+      "title": "pyramider telemetry not wired into manifest export",
+      "status": "open",
+      "wave_target": 72,
+      "behavioral_test_path": null
+    },
+    {
+      "id": "AA5-2",
+      "from": "v11",
+      "severity": "high",
+      "title": "Source-grep fake-positive tests pattern (wave-47 JWT was canonical)",
+      "status": "closed",
+      "wave_target": 73,
+      "wave_closed": 73,
+      "behavioral_test_path": "tests/test_v12_w73_gate.py",
+      "notes": "Closed wave-73. Built scripts/ci/forbid_marker_only_critical_high.py — runs the wave-test classifier against every Critical/High closure's behavioral_test_path; fails CI if any is marker-only. Wired into .github/workflows/ci.yml as the 'audit_gate' job. 5 behavioral tests cover: gate runs, gate passes on real state, gate fails on missing test, gate fails on marker-only test for High finding, gate passes on real behavioral test. Future Critical/High closures must reference behavioral evidence or CI rejects."
+    },
+    {
+      "id": "BB5-F1",
+      "from": "v11",
+      "severity": "high",
+      "title": "outbox_events unbounded (1393 rows, 60 days, no auto-prune)",
+      "status": "closed",
+      "wave_target": 74,
+      "wave_closed": 74,
+      "behavioral_test_path": "tests/test_v12_w74_data_integrity.py",
+      "notes": "Closed wave-74. New OutboxWorker.prune_old_events (30-day retention default; pending NEVER pruned, batched 1000 rows) and start_prune_loop (24h interval). 4 behavioral tests: real SQLite-in-memory session with seeded events at varying ages/statuses; assert pruned-count, assert pending preserved, assert loop start/stop is idempotent."
+    },
+    {
+      "id": "BB5-F2",
+      "from": "v11",
+      "severity": "high",
+      "title": "GDPR right-to-be-forgotten structurally unimplementable (FK refactor)",
+      "status": "deferred",
+      "wave_target": null,
+      "behavioral_test_path": null,
+      "notes": "Defer to V13. FK refactor scope larger than V12."
+    },
+    {
+      "id": "CCC-1",
+      "from": "v11",
+      "severity": "high",
+      "title": "production.py validator demands wrong env var names",
+      "status": "open",
+      "wave_target": 75,
+      "behavioral_test_path": null
+    },
+    {
+      "id": "DDD-1",
+      "from": "v11",
+      "severity": "high",
+      "title": "ecdsa CVE-2024-23342 unpatched (transitive via python-jose)",
+      "status": "open",
+      "wave_target": 75,
+      "behavioral_test_path": null
+    },
+    {
+      "id": "DDD-2",
+      "from": "v11",
+      "severity": "high",
+      "title": "npm audit: 13 high / 7 moderate (axios SSRF/DoS, vite, mermaid)",
+      "status": "deferred",
+      "wave_target": null,
+      "behavioral_test_path": null,
+      "notes": "FRONTEND scope — out for V12. Defer to V13."
+    },
+    {
+      "id": "III-F1",
+      "from": "v11",
+      "severity": "high",
+      "title": "configure_structured_logging is dead code; production has no trace_id",
+      "status": "open",
+      "wave_target": 75,
+      "behavioral_test_path": null
+    },
+    {
+      "id": "III-F2",
+      "from": "v11",
+      "severity": "high",
+      "title": "PII (email/username) logged cleartext; scrubber unreachable in production",
+      "status": "open",
+      "wave_target": 75,
+      "behavioral_test_path": null
+    },
+    {
+      "id": "TT3-F1",
+      "from": "v11",
+      "severity": "high",
+      "title": "ix_orders_attributes_gin idx_scan=0 — call sites use text extraction not @>",
+      "status": "deferred",
+      "wave_target": null,
+      "behavioral_test_path": null,
+      "notes": "Defer to V13 perf wave. Refactoring attributes->>'X'='Y' to attributes @> '{\"X\":\"Y\"}' across multiple call sites is a perf optimization, not a correctness fix; doesn't fit W74's atomic-data-integrity scope. Filed for V13."
+    },
+    {
+      "id": "UU3-1",
+      "from": "v11",
+      "severity": "high",
+      "title": "2 of 7 grandfather entries point at non-existent paths (120+ violations leaked)",
+      "status": "closed",
+      "wave_target": 75,
+      "wave_closed": 75,
+      "behavioral_test_path": "tests/test_v12_w75_lint_ratchet.py",
+      "notes": "Closed wave-75. Fixed pyproject.toml typos: backend/services/realtime_risk_analytics.py → backend/analytics/realtime_risk_analytics.py; backend/ml/ensemble_model.py → backend/models/ensemble_model.py. Both target files now resolve. Behavioral test reads pyproject as TOML and asserts the corrected paths exist on disk."
+    },
+    {
+      "id": "UU3-2",
+      "from": "v11",
+      "severity": "high",
+      "title": "wave-57 lint rule unenforced (3542 / 34256 errors); CI cannot pass",
+      "status": "closed",
+      "wave_target": 75,
+      "wave_closed": 75,
+      "behavioral_test_path": "tests/test_v12_w75_lint_ratchet.py",
+      "notes": "Closed wave-75. Approach: (a) tighten select to F + wave-57 enforcement rules (drop noisy E/W/I/B/UP/SIM/PTH/PL families); (b) exclude docs/ + monitoring/ from lint (non-active code, accounted for ~25k violations); (c) build scripts/ci/lint_ratchet.py that captures current state as baseline (3801 violations / 1013 (path,rule) pairs) and fails on NEW violations only. Wired to .github/workflows/ci.yml as 'lint_ratchet' job. 5 F821 real-bug crash sites also fixed (live_engine ×2, security forward-ref, indicators fallback imports, test files)."
+    },
+    {
+      "id": "EXT-F821",
+      "from": "v12",
+      "severity": "high",
+      "title": "5 F821 undefined-name violations in production code (real runtime crashes)",
+      "status": "closed",
+      "wave_target": 75,
+      "wave_closed": 75,
+      "behavioral_test_path": "tests/test_v12_w75_lint_ratchet.py",
+      "notes": "Discovered during W75 lint cleanup investigation. (1) live_engine.py PP-5 alert lambda captured 'e' from except block — would NameError on cross-thread dispatch; fixed by capturing str(e) to local before lambda. (2) live_engine.py 'open_symbols' undefined at orb-shadow logging path; fixed via locals().get(). (3) security.py Redis forward-ref needed TYPE_CHECKING import. (4) indicators.py fallback block referenced 4 names never imported at function scope — would always NameError instead of falling back. (5) Test imports for asyncio/ExitLevels."
+    },
+    {
+      "id": "HH3-N-1",
+      "from": "v11",
+      "severity": "high",
+      "title": "_live_tick_inner regressing not refactoring (+196 LOC since V8)",
+      "status": "deferred",
+      "wave_target": null,
+      "behavioral_test_path": null,
+      "notes": "Defer to V13 multi-wave LOC reduction. Live engine tick path has zero direct behavioral test coverage; extracting 200+ LOC in one V12 wave is too risky against user constraint 'do not break, but only resolve.' V13 should: (a) build behavioral coverage for the 2738-line _live_tick_inner first, (b) extract one ~150-LOC block per wave with isolated tests, (c) target <2510 (pre-V8 baseline) over ~3-4 V13 waves."
+    },
+    {
+      "id": "EXT-10",
+      "from": "external_review_v11",
+      "severity": "medium",
+      "title": "god-method watchlist incomplete — 26 functions >150 LOC not in V8 list",
+      "status": "deferred",
+      "wave_target": null,
+      "behavioral_test_path": null,
+      "notes": "Couples with HH3-N-1 deferral. V13 LOC reduction sweep will inventory all >150 LOC functions and address the worst ones. W75 scope: lint baseline + F821 real bugs.",
+      "v12_replaces": true
+    },
+    {
+      "id": "EXT-1",
+      "from": "external_review_v11",
+      "severity": "critical",
+      "title": "Brain unprofitable — manifest lacks PnL/Sharpe/win-rate/drawdown fields",
+      "status": "closed",
+      "wave_target": 71,
+      "wave_closed": 71,
+      "behavioral_test_path": "tests/test_v12_strategy_expectancy.py",
+      "notes": "Closed wave-71. Manifest now writes strategy_expectancy block (n_trades/total_pnl/win_rate/sharpe_ratio_per_trade/max_drawdown/mean_pnl/median_pnl + last_25/last_50 windows). New /api/v1/health/strategy endpoint exposes live snapshot. 14 behavioral tests cover helper math + manifest writer + endpoint + schema. Brain still shows -$634/498-trades baseline; THE EXPECTANCY GATE NOW EXISTS for operators/auditors to see this."
+    },
+    {
+      "id": "EXT-2",
+      "from": "external_review_v11",
+      "severity": "high",
+      "title": "Test corpus 55.2% marker-only — wave-47 JWT was symptomatic, not isolated",
+      "status": "closed",
+      "wave_target": 73,
+      "wave_closed": 73,
+      "behavioral_test_path": "tests/test_v12_w73_gate.py",
+      "notes": "Closed wave-73 alongside AA5-2. The systemic problem is now CI-gated: any future Critical/High closure that ledgers a marker-only test fails the audit_gate job. Pre-existing marker-only tests for Medium/Low closures are still allowed — they're not on the gate's surface. CCC-2's existing marker-only tests in test_wave68_fixes.py kept as legacy; new behavioral tests added in tests/test_v12_wave68_behavioral.py (YAML-parse based)."
+    },
+    {
+      "id": "EXT-3",
+      "from": "external_review_v11",
+      "severity": "high",
+      "title": "realized_trades=0 vs brain.total_trades=498 — source-of-truth divergence",
+      "status": "documented_by_design",
+      "wave_target": 74,
+      "wave_closed": 74,
+      "behavioral_test_path": null,
+      "notes": "Documented as by-design after W74 investigation: realized_trades is populated by the lot-tracker / Alpaca-fill reconciliation path (broker-fill truth); brain.total_trades is the live engine's view (engine-decision truth). The two are independent ledgers and CAN diverge in paper mode where lot-tracker writes are not always wired. Severity downgraded from high to medium-doc; full reconciliation is a V13 product decision (which one is operator-facing canonical)."
+    },
+    {
+      "id": "EXT-4",
+      "from": "external_review_v11",
+      "severity": "medium",
+      "title": "audit_logs schema has hash_chain not prev_hash/current_hash — independent SQL chain verification blocked",
+      "status": "closed",
+      "wave_target": 74,
+      "wave_closed": 74,
+      "behavioral_test_path": "tests/test_v12_w74_data_integrity.py",
+      "notes": "Closed wave-74. Added ComplianceAuditService.get_chain_detail returning per-row {id, ts, prev_hash, current_hash, expected_hash, valid, anchor}. New /api/v1/audit/chain-detail admin endpoint. Tampering localizes to the offending row instead of cascading. 4 behavioral tests cover clean chain, tampered row, anchor edge case, route registration."
+    },
+    {
+      "id": "W74-FOLLOWUP-1",
+      "from": "v12",
+      "severity": "medium",
+      "title": "AuditLog schema declares ix_audit_logs_ts twice (column-level index=True + explicit Index in __table_args__)",
+      "status": "open",
+      "wave_target": null,
+      "behavioral_test_path": null,
+      "notes": "Discovered during W74 test setup.  SQLite create raises 'index already exists'; Postgres may have deduped silently in the initial migration.  Defer to V13 schema cleanup wave; W74 worked around with fake session.  See backend/infra/schemas.py:523-526 + ts column line ~519."
+    },
+    {
+      "id": "EXT-5",
+      "from": "external_review_v11",
+      "severity": "high",
+      "title": "drawdown-kill never observed firing in audit_logs/Slack across 24h",
+      "status": "closed",
+      "wave_target": 76,
+      "wave_closed": 76,
+      "behavioral_test_path": "tests/test_v12_w76_operational.py",
+      "notes": "Closed wave-76. 4 behavioral probes drive the GovernanceController.trigger_drawdown_kill path with controlled config: threshold-breach engages halt; below-threshold no-ops; auto-recovery after cooldown elapses; to_dict() exposes triggered state for operators. Replaces 'never observed firing in production sample' with 'always observable via test harness'."
+    },
+    {
+      "id": "EXT-6",
+      "from": "external_review_v11",
+      "severity": "medium",
+      "title": "brain backup hourly cadence not proven across rebuilds",
+      "status": "closed",
+      "wave_target": 76,
+      "wave_closed": 76,
+      "behavioral_test_path": "tests/test_v12_w76_operational.py",
+      "notes": "Closed wave-76. 2 behavioral probes drive OrganismBrain._create_backup against a synthetic brain dir; assert (a) snapshot dir created with manifest copy, (b) two consecutive calls produce two distinct artifacts (microsecond-resolution timestamp naming proves cadence). Replaces 'cadence not proven across container rebuilds' with 'cadence proven by repeated invocation under controlled fixtures'."
+    },
+    {
+      "id": "EXT-7",
+      "from": "external_review_v11",
+      "severity": "medium",
+      "title": "pyramid Layer 2 empirically unproven (no pyramid_level field in trade history)",
+      "status": "closed",
+      "wave_target": 76,
+      "wave_closed": 76,
+      "behavioral_test_path": "tests/test_v12_w76_operational.py",
+      "notes": "Closed wave-76. 4 behavioral probes drive MomentumPyramider.check_pyramid through L0→L1→L2 transitions: L1 engages at 1.5R; L2 engages at 3.0R after L1 lands; no re-fire after L2; max_level property robust to layer-list collapse (wave-44 DD3-1 fix locked behaviorally). Doesn't add the pyramid_level field to live trade_history.csv (deferred to V13 telemetry wave) but proves L2 IS reachable in the algorithm — which was the empirical question."
+    },
+    {
+      "id": "EXT-8",
+      "from": "external_review_v11",
+      "severity": "medium",
+      "title": "no /health/deploy endpoint; source SHA / migration head / build time not exposed",
+      "status": "closed",
+      "wave_target": 78,
+      "wave_closed": 78,
+      "behavioral_test_path": "tests/test_v12_w78_deploy_health.py",
+      "notes": "Closed wave-78. New /api/v1/health/deploy endpoint exposes 7 deploy-state fields: source_sha (env GIT_SHA / git rev-parse fallback), migration_head (live SELECT from alembic_version), build_time (env BUILD_TIME), image_sha (env IMAGE_SHA), runtime_config_hash (sha256 of risk-cap env + non-secret settings), container_hostname, app_environment. Operators can now detect skew across fleet without ssh. 7 behavioral tests cover schema completeness, hash sensitivity to risk-cap drift, no secret leakage, route registration."
+    },
+    {
+      "id": "EXT-9",
+      "from": "external_review_v11",
+      "severity": "medium",
+      "title": "no machine-readable findings ledger; deferral state lives in prose",
+      "status": "closed",
+      "wave_target": 77,
+      "wave_closed": 77,
+      "behavioral_test_path": "tests/test_v12_w77_findings_ledger.py",
+      "notes": "Closed wave-77. Built scripts/ci/build_findings_ledger.py (parses V8-V11 synthesis tables + v12_state.json overlays + v11_closures_audited_in_v12 → 130 findings consolidated). Built scripts/ci/verify_findings_ledger.py (asserts every closed has behavioral_test_path; every deferred has deferral_reason). Outputs artifacts/audit/findings_ledger.json + findings_ledger_v12.md. 10 behavioral tests cover parser correctness (V11 ID coverage, V12 closures overlay, audited-V11 closures), verifier rejection of bad fixtures, schema integrity."
+    }
+  ],
+  "wave_progress": {
+    "70": "completed",
+    "71": "completed",
+    "72": "completed",
+    "73": "completed",
+    "74": "completed",
+    "75": "completed",
+    "76": "completed",
+    "77": "completed",
+    "78": "completed",
+    "79": "completed"
+  }
+}

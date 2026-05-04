@@ -1,0 +1,58 @@
+{
+  "date": "2026-03-13",
+  "head_sha": "8db0fab",
+
+  "orders": {
+    "db_total": 348,
+    "db_filled": 344,
+    "db_cancelled": 4,
+    "db_rejected": 0,
+    "db_accepted_stale": 0,
+    "orders_today": 0,
+    "alpaca_orders_today": 0,
+    "db_alpaca_consistency": "CONSISTENT — both show 0 orders today"
+  },
+
+  "positions": {
+    "runtime_open": 0,
+    "alpaca_open": 0,
+    "db_open": 0,
+    "consistency": "CONSISTENT — all sources agree: 0 open positions"
+  },
+
+  "realized_trades_db": {
+    "row_count": 0,
+    "organism_trade_count": 158,
+    "gap": 158,
+    "gap_type": "DESIGN_GAP",
+    "explanation": "Organism close path writes to brain CSV, not DB realized_trades table. These are parallel disconnected systems. See db_analytics_gap.json from 2026-03-12 overnight forensic.",
+    "blocker": false,
+    "fix_priority": "LOW-MEDIUM — analytics gap, not correctness issue"
+  },
+
+  "equity_reconciliation": {
+    "runtime_equity": 111612.21,
+    "alpaca_equity": 111612.21,
+    "match": true,
+    "runtime_cash": 111612.21,
+    "alpaca_cash": 111612.21,
+    "cash_match": true,
+    "long_market_value": 0,
+    "short_market_value": 0
+  },
+
+  "pnl_reconciliation": {
+    "runtime_cumulative_pnl": -1008.77,
+    "starting_equity": 112620.98,
+    "current_equity": 111612.21,
+    "implied_pnl": -1008.77,
+    "match": true
+  },
+
+  "stale_order_check": {
+    "stale_accepted_orders": 0,
+    "verdict": "CLEAN — no stale orders"
+  },
+
+  "overall_integrity": "HEALTHY — all runtime/broker/DB sources are consistent. The only gap is the realized_trades design issue (known, documented, non-blocking)."
+}

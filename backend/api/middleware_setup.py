@@ -15,9 +15,24 @@ def register_middleware(app, settings) -> None:
 
     _setup_cors(app, settings)
     _setup_gzip(app)
+    _setup_security_headers(app)
     _setup_deduplication(app)
     _setup_rate_limiting(app)
     _setup_metrics_middleware(app)
+
+
+def _setup_security_headers(app) -> None:
+    """V7 AA-H-1 / Wave-24 (2026-05-03): wire SecurityHeadersMiddleware.
+    The middleware exists in `backend/infra/security_hardening.py:298`
+    but was never imported by middleware_setup. Result: no HSTS / CSP /
+    X-Frame / X-Content-Type-Options / Referrer-Policy on any response.
+    """
+    try:
+        from backend.infra.security_hardening import SecurityHeadersMiddleware
+        app.add_middleware(SecurityHeadersMiddleware)
+        logger.info("SecurityHeadersMiddleware registered (AA-H-1 fix)")
+    except Exception as e:
+        logger.warning(f"SecurityHeadersMiddleware not available: {e}")
 
 
 def _setup_cors(app, settings) -> None:

@@ -1,0 +1,18 @@
+commit eb90fa369e2739f77c7b1789aa47bd8b83184912
+Author:     Marsel Kamberaj <marselkei@Marsels-MacBook-Pro.local>
+AuthorDate: Thu Apr 23 22:55:29 2026 -0700
+Commit:     Marsel Kamberaj <marselkei@Marsels-MacBook-Pro.local>
+CommitDate: Thu Apr 23 22:55:29 2026 -0700
+
+    fix(compose): align docker-compose.yml drawdown-kill fallback with code default
+    
+    Previously docker-compose.yml used ORGANISM_DRAWDOWN_KILL_PCT fallback 0.03
+    and ORGANISM_DRAWDOWN_COOLDOWN_S fallback 300, diverging from the code
+    default (0.05, 3600) in backend/organism/governance.py. Aligns both
+    fallbacks with the code constants so a developer running docker-compose.yml
+    without .env gets the same behavior a code reader expects.
+    
+    Operational .env still wins at runtime (env_file in docker-compose.paper.yml);
+    this change only affects the fallback path when no env file is present.
+    
+    Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>

@@ -45,26 +45,38 @@ class PositionSize:
     regime_trade_count: int = 0                # trades in current regime
     expected_return_source: str = "heuristic"  # "ml", "calibrated_breakout", "heuristic"
     dollar_risk_cap_applied: bool = False
+    # M3-bug-fix: ORB/EOD candidates pass through cand_dict["entry_source_override"]
+    # to tag the trade as orb_sip / eod_momentum / orb_sip_inverse / eod_momentum_inverse.
+    # Without this field on PositionSize, the override silently fell through to
+    # the breakout-score-inference fallback, mis-tagging ORB/EOD trades as
+    # "alpha+breakout" or "breakout" in trade_history. Hidden bug found in M3-5
+    # audit when B3 (alpha disabled) still showed "alpha+breakout" tags.
+    entry_source_override: str = ""
 
     def to_dict(self) -> dict[str, Any]:
+        # Audit-I finding I-4 (2026-05-02): cast every numeric through
+        # native float() so np.float64/np.bool_ values from inference
+        # don't poison JSON serialization. The decision_telemetry.py
+        # equivalent was patched in commit a1713d7; this sister method
+        # carried the same un-cast pattern.
         return {
             "symbol": self.symbol,
-            "target_weight": round(self.target_weight, 4),
-            "shares": self.shares,
-            "notional": round(self.notional, 2),
-            "kelly_raw": round(self.kelly_raw, 4),
-            "kelly_half": round(self.kelly_half, 4),
-            "drawdown_scale": round(self.drawdown_scale, 4),
-            "vol_scale": round(self.vol_scale, 4),
-            "regime_scale": round(self.regime_scale, 4),
-            "direction": self.direction,
-            "confidence": round(self.confidence, 4),
-            "predicted_return": round(self.predicted_return, 6),
-            "breakout_score": round(self.breakout_score, 4),
-            "regime_scale_source": self.regime_scale_source,
-            "regime_trade_count": self.regime_trade_count,
-            "expected_return_source": self.expected_return_source,
-            "dollar_risk_cap_applied": self.dollar_risk_cap_applied,
+            "target_weight": round(float(self.target_weight), 4),
+            "shares": int(self.shares),
+            "notional": round(float(self.notional), 2),
+            "kelly_raw": round(float(self.kelly_raw), 4),
+            "kelly_half": round(float(self.kelly_half), 4),
+            "drawdown_scale": round(float(self.drawdown_scale), 4),
+            "vol_scale": round(float(self.vol_scale), 4),
+            "regime_scale": round(float(self.regime_scale), 4),
+            "direction": float(self.direction),
+            "confidence": round(float(self.confidence), 4),
+            "predicted_return": round(float(self.predicted_return), 6),
+            "breakout_score": round(float(self.breakout_score), 4),
+            "regime_scale_source": str(self.regime_scale_source),
+            "regime_trade_count": int(self.regime_trade_count),
+            "expected_return_source": str(self.expected_return_source),
+            "dollar_risk_cap_applied": bool(self.dollar_risk_cap_applied),
         }
 
 
@@ -157,7 +169,8 @@ class KellySizer:
     _RISK_BUDGET_PER_TRADE = 0.0025   # 0.25% of equity risked per trade (production)
     _RISK_BUDGET_PER_TRADE_LEARNING = 0.0010  # 0.10% of equity risked per trade (learning mode)
     _RISK_BUDGET_STOP_ATR = 1.5       # Assumed stop distance in ATR multiples
-    _RISK_BUDGET_TRADE_THRESHOLD = 200 # Use risk-budget floor below this trade count
+    # H4 FIX: Use shared threshold from trading_phase module
+    from backend.organism.trading_phase import LEARNING_MODE_TRADES as _RISK_BUDGET_TRADE_THRESHOLD
 
     def size_positions(
         self,
@@ -196,11 +209,22 @@ class KellySizer:
         # Production mode: full predicted_return * confidence ranking.
         _is_learning_mode = (trade_count is not None and trade_count < self._RISK_BUDGET_TRADE_THRESHOLD)
         if _is_learning_mode:
-            candidates = sorted(
-                candidates,
-                key=lambda c: c.get("breakout_score", 0.0) * 0.6 + c.get("confidence", 0.0) * 0.4,
-                reverse=True,
-            )
+            # Preserve upstream ranking_score when available (set by
+            # live_engine from alpha/breakout composite scores). Only
+            # fall back to local heuristic if ranking_score is absent.
+            _has_ranking = any(c.get("ranking_score") is not None for c in candidates)
+            if _has_ranking:
+                candidates = sorted(
+                    candidates,
+                    key=lambda c: c.get("ranking_score", 0.0),
+                    reverse=True,
+                )
+            else:
+                candidates = sorted(
+                    candidates,
+                    key=lambda c: c.get("breakout_score", 0.0) * 0.6 + c.get("confidence", 0.0) * 0.4,
+                    reverse=True,
+                )
         else:
             candidates = sorted(
                 candidates,
@@ -258,8 +282,39 @@ class KellySizer:
             # Directional returns based on signal
             dir_returns = returns * direction
 
-            # Compute atr_pct unconditionally (needed by risk-budget sizing)
-            atr_pct = float(np.std(returns, ddof=1)) if len(returns) > 1 else 0.01
+            # Compute ATR-derived risk measure for sizing.
+            # Prefer true ATR from OHLC (true_range_pct feature) when available;
+            # fall back to return volatility if OHLC columns are missing.
+            _atr_from_ohlc = False
+            if (
+                df is not None
+                and "high" in df.columns
+                and "low" in df.columns
+                and "close" in df.columns
+                and len(df) >= 20
+            ):
+                _high = df["high"].values[-20:]
+                _low = df["low"].values[-20:]
+                _close = df["close"].values[-20:]
+                _prev_close = np.concatenate(([_close[0]], _close[:-1]))
+                _true_ranges = np.maximum(
+                    _high - _low,
+                    np.maximum(
+                        np.abs(_high - _prev_close),
+                        np.abs(_low - _prev_close),
+                    ),
+                )
+                _avg_tr = float(np.mean(_true_ranges))
+                _last_close = float(_close[-1])
+                if _last_close > 0 and np.isfinite(_avg_tr) and _avg_tr > 0:
+                    atr_pct = _avg_tr / _last_close
+                    _atr_from_ohlc = True
+
+            if not _atr_from_ohlc:
+                # Fallback: return volatility (stddev of returns).
+                # This is NOT true ATR but provides a reasonable risk
+                # estimate when OHLC data is unavailable.
+                atr_pct = float(np.std(returns, ddof=1)) if len(returns) > 1 else 0.01
 
             # ── Learning mode vs Production sizing ──
             # improve9: In learning mode, Kelly is OFF. Predicted returns are
@@ -283,8 +338,14 @@ class KellySizer:
             # 3. Drawdown scaling (always active)
             drawdown_scale = self._drawdown_scale(current_drawdown)
 
-            # 5. Regime scaling (always active for safety)
-            regime_scale, _regime_scale_source, _regime_trade_count = self._regime_scale(current_regime)
+            # 5. Regime scaling (always active for safety).
+            # V11 prep / Wave-60 (DD4-3 closure): use the symbol-aware
+            # effective regime so SH/PSQ/DOG/RWM (inverse ETFs) get
+            # sized against the flipped regime label — matching the
+            # AlphaScanner score and the AdaptiveExits stop math.
+            from backend.organism.regime import effective_regime_for_symbol
+            _eff_regime = effective_regime_for_symbol(current_regime, symbol)
+            regime_scale, _regime_scale_source, _regime_trade_count = self._regime_scale(_eff_regime)
 
             if _is_learning:
                 # ── LEARNING MODE: Fixed ATR-dollar risk sizing ──
@@ -302,9 +363,38 @@ class KellySizer:
 
             else:
                 # ── PRODUCTION MODE: Full Kelly stack ──
-                # 1. Raw Kelly (try regime-stratified first, fallback to global)
+                # 1. Raw Kelly (try regime-stratified first, fallback to global).
+                # V7 DD-4 / Wave-24 (2026-05-03): the previous
+                # `regime_kelly` shortcut bypassed the spread-cost gate,
+                # ML-confidence floor, and breakout floor — once a
+                # regime accumulated ≥10 trades, ANY candidate sized
+                # from regime_kelly regardless of current edge. Now:
+                # only use regime_kelly when (a) the candidate has a
+                # positive predicted return, (b) confidence clears the
+                # production-mode threshold, AND (c) the unconditional
+                # Kelly path also computes a positive size. This makes
+                # regime_kelly an UPPER bound (when present) rather
+                # than a bypass — current-edge floors still apply.
+                _PROD_CONFIDENCE_FLOOR = 0.5
                 regime_kelly = self.get_regime_kelly(current_regime)
-                if regime_kelly is not None:
+                # V8 DD2-5 / Wave-34 (2026-05-03): the regime_eligible branch
+                # was bypassing wave-18's zero-vol refusal entirely (refer to
+                # the else branch _ATR_VAR_MIN check below).  When regime
+                # stats existed and a candidate cleared the production-mode
+                # gates, kelly_raw was sized from regime_kelly even on a bar
+                # with effectively no measured volatility.  Now: check
+                # zero-vol up-front; if it engages, fall through to the
+                # unconditional path which already refuses to size.
+                _horizon_bars = 15
+                _ATR_VAR_MIN = 1e-6
+                _atr_var_squared_pre = (atr_pct * math.sqrt(_horizon_bars)) ** 2
+                _regime_eligible = (
+                    regime_kelly is not None
+                    and predicted_return > 0
+                    and confidence >= _PROD_CONFIDENCE_FLOOR
+                    and _atr_var_squared_pre >= _ATR_VAR_MIN
+                )
+                if _regime_eligible:
                     kelly_raw = min(regime_kelly, 1.0)
                 else:
                     mean_r = float(np.mean(dir_returns))
@@ -315,10 +405,30 @@ class KellySizer:
                     else:
                         unconditional_kelly = min(mean_r / var_r, 1.0)
 
-                    _horizon_bars = 15
                     atr_pct_horizon = atr_pct * math.sqrt(_horizon_bars)
-                    atr_var = max(atr_pct_horizon ** 2, 1e-6)
-                    signal_kelly = min(predicted_return / atr_var, 1.0) if predicted_return > 0 else 0.0
+                    # V5 B-T-7 / Wave-18 (2026-05-03): the previous
+                    # `atr_var = max(atr_pct_horizon**2, 1e-6)` floor
+                    # let near-zero-vol bars saturate signal_kelly to
+                    # the per-position max (1.0) — `predicted_return /
+                    # 1e-6` is huge, then clamped to 1.0. Result: Kelly
+                    # commits the maximum allowed size on a bar with
+                    # essentially no measured volatility, exactly when
+                    # we have the LEAST signal. Refuse-to-size instead
+                    # by zeroing signal_kelly when the floor would
+                    # have engaged. We still keep the unconditional
+                    # Kelly path (mean/var of historical returns) for
+                    # the regime so the sizer isn't crippled — only
+                    # the no-vol shortcut is closed.
+                    _ATR_VAR_MIN = 1e-6
+                    atr_var_squared = atr_pct_horizon ** 2
+                    if atr_var_squared < _ATR_VAR_MIN:
+                        # Zero-volatility bar: refuse to size from this
+                        # signal; rely on unconditional Kelly only.
+                        signal_kelly = 0.0
+                    elif predicted_return > 0:
+                        signal_kelly = min(predicted_return / atr_var_squared, 1.0)
+                    else:
+                        signal_kelly = 0.0
                     kelly_raw = min(max(signal_kelly, unconditional_kelly), 1.0)
 
                 # 2. Half-Kelly
@@ -350,6 +460,26 @@ class KellySizer:
                     ml_floor_applied = True
 
                 if not edge_clears_cost and kelly_half < 0.005:
+                    # H3 INSTRUMENTATION: Log candidates rejected solely by
+                    # edge-over-cost gate for post-session analysis.
+                    _other_gates_would_pass = (
+                        confidence >= 0.25
+                        and breakout_score >= 0.0
+                        and _regime_has_edge
+                    )
+                    if _other_gates_would_pass:
+                        _logger.info(
+                            "EDGE_COST_REJECT: %s regime=%s conf=%.3f "
+                            "breakout=%.3f pred_ret=%.6f spread_cost=%.6f "
+                            "ratio=%.2f other_gates_pass=%s",
+                            symbol, current_regime, confidence,
+                            breakout_score, predicted_return,
+                            spread_cost_pct, (
+                                predicted_return / (spread_cost_pct * _COST_MULT)
+                                if spread_cost_pct * _COST_MULT > 0 else 0
+                            ),
+                            _other_gates_would_pass,
+                        )
                     kelly_half = 0.0
 
                 # 4. Volatility targeting
@@ -438,6 +568,24 @@ class KellySizer:
                     shares = _notional_capped_shares
                     _dollar_risk_cap_applied = True
 
+            # H1: Production-mode per-trade risk-budget cap.
+            # The learning-mode cap (0.10% equity, lines 488-502) only
+            # applies when _is_learning=True. In production mode, Kelly
+            # sizing is uncapped beyond per-position % limits. This
+            # leaves a real-money gap: no per-trade dollar-risk limit.
+            #
+            # Fix: apply _RISK_BUDGET_PER_TRADE (0.25% equity) as a
+            # hard cap on shares, using the same ATR-stop-distance
+            # formula as the learning-mode cap.
+            if not _is_learning and not _risk_budget_applied:
+                _prod_max_risk = portfolio_value * self._RISK_BUDGET_PER_TRADE
+                _prod_stop_dist = atr_pct * self._RISK_BUDGET_STOP_ATR * current_price
+                if _prod_stop_dist > 0:
+                    _prod_risk_shares = int(_prod_max_risk / _prod_stop_dist)
+                    if shares > _prod_risk_shares and _prod_risk_shares >= 1:
+                        shares = _prod_risk_shares
+                        _dollar_risk_cap_applied = True
+
             actual_notional = shares * current_price
             actual_weight = actual_notional / portfolio_value
 
@@ -461,6 +609,7 @@ class KellySizer:
                 regime_trade_count=_regime_trade_count,
                 expected_return_source=cand.get("expected_return_source", "heuristic"),
                 dollar_risk_cap_applied=_dollar_risk_cap_applied,
+                entry_source_override=cand.get("entry_source_override", ""),
             ))
 
         sizes.sort(key=lambda s: s.target_weight, reverse=True)

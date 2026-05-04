@@ -158,7 +158,10 @@ class FeatureEngineer:
         if config:
             self.config.update(config)
 
-        self.logger.info(
+        # V6 V-T-9 / Wave-22 (2026-05-03): per-feature-call INFO emissions
+        # (>132 lines/min observed) drowned out actual signal. Demoted to
+        # DEBUG; WARNING/ERROR remain visible in operator log streams.
+        self.logger.debug(
             "Feature engineer initialized",
             talib_available=TALIB_AVAILABLE,
             config=self.config,
@@ -347,7 +350,8 @@ class FeatureEngineer:
             processing_time = (pd.Timestamp.now() - start_time).total_seconds() * 1000
             performance_logger.log_latency("feature_engineering", processing_time)
 
-            self.logger.info(
+            # V6 V-T-9 / Wave-22 (2026-05-03): demoted to DEBUG.
+            self.logger.debug(
                 "Technical indicators computed",
                 rows_processed=len(result_df),
                 rows_dropped=dropped_rows,
@@ -907,7 +911,8 @@ class FeatureEngineer:
         feature_importance = correlations.drop([target_column], errors="ignore")
         feature_importance = feature_importance.dropna()
 
-        self.logger.info(
+        # V6 V-T-9 / Wave-22 (2026-05-03): demoted to DEBUG.
+        self.logger.debug(
             "Feature importance calculated",
             top_features=feature_importance.head(10).to_dict(),
         )
@@ -933,7 +938,8 @@ class FeatureEngineer:
         # Select top K features
         selected_features = list(importance.keys())[:top_k]
 
-        self.logger.info(
+        # V6 V-T-9 / Wave-22 (2026-05-03): demoted to DEBUG.
+        self.logger.debug(
             "Features selected",
             count=len(selected_features),
             top_5=selected_features[:5],

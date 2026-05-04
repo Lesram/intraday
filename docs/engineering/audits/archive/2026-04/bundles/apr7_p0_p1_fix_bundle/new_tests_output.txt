@@ -1,0 +1,23 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.12.12, pytest-9.0.2, pluggy-1.6.0 -- /Users/marselkei/VS/intra/venv/bin/python
+cachedir: .pytest_cache
+rootdir: /Users/marselkei/VS/intra
+configfile: pytest.ini
+plugins: anyio-4.12.1, timeout-2.4.0, asyncio-1.3.0
+timeout: 30.0s
+timeout method: signal
+timeout func_only: False
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... collected 9 items
+
+tests/test_apr7_p0_p1_fixes.py::test_walk_forward_gate_decays_best_sharpe_at_most_once_per_day PASSED [ 11%]
+tests/test_apr7_p0_p1_fixes.py::test_walk_forward_gate_passes_when_current_beats_baseline PASSED [ 22%]
+tests/test_apr7_p0_p1_fixes.py::test_walk_forward_gate_no_baseline_always_saves PASSED [ 33%]
+tests/test_apr7_p0_p1_fixes.py::test_live_tick_result_exit_callsites_bump_orders_submitted PASSED [ 44%]
+tests/test_apr7_p0_p1_fixes.py::test_update_watchdog_reads_authoritative_total_counter PASSED [ 55%]
+tests/test_apr7_p0_p1_fixes.py::test_update_watchdog_c1_stays_quiet_while_orders_flow PASSED [ 66%]
+tests/test_apr7_p0_p1_fixes.py::test_update_watchdog_c1_fires_critical_when_truly_idle PASSED [ 77%]
+tests/test_apr7_p0_p1_fixes.py::test_submit_entry_order_counters_increment PASSED [ 88%]
+tests/test_apr7_p0_p1_fixes.py::test_save_essential_state_does_not_reset_watchdog_tick PASSED [100%]
+
+============================== 9 passed in 1.15s ===============================
