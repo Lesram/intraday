@@ -19,9 +19,8 @@ Run with:
 from __future__ import annotations
 
 import json
-import subprocess
 from pathlib import Path
-
+import subprocess
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 LEDGER_JSON = REPO_ROOT / "artifacts" / "audit" / "findings_ledger.json"
@@ -215,8 +214,24 @@ def test_w77_ledger_every_record_has_required_fields():
         missing = required - set(f.keys())
         assert not missing, f"{f.get('id', '?')} missing fields: {missing}"
         assert f["status"] in {
-            "open", "closed", "deferred", "documented_by_design",
+            "open", "closed", "closed_unverified", "absorbed",
+            "deferred", "documented_by_design",
         }, f"{f['id']}: bad status {f['status']}"
+
+
+def test_w77_open_records_do_not_claim_v13_closed_triage():
+    data = json.loads(LEDGER_JSON.read_text())
+    contradictory = [
+        f["id"]
+        for f in data["findings"]
+        if f["status"] == "open"
+        and f.get("v13_triage_status")
+        in {"closed_in_unrecorded_wave", "absorbed_into_v13_lens"}
+    ]
+    assert not contradictory, (
+        "open ledger records cannot carry closed/absorbed V13 triage: "
+        f"{contradictory}"
+    )
 
 
 def test_w77_no_duplicate_ids_in_ledger():

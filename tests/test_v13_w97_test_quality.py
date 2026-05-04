@@ -22,9 +22,9 @@ from __future__ import annotations
 
 import json
 import os
+from pathlib import Path
 import subprocess
 import sys
-from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 CLASSIFIER = REPO_ROOT / "scripts" / "ci" / "classify_wave_tests.py"
@@ -67,8 +67,10 @@ def test_w97_baseline_committed():
     )
     payload = json.loads(BASELINE.read_text())
     assert "marker_only" in payload
+    assert "marker_tests" in payload
     assert "tests_total" in payload
     assert isinstance(payload["marker_only"], int)
+    assert isinstance(payload["marker_tests"], list)
     assert isinstance(payload["tests_total"], int)
     assert payload["tests_total"] > 0
 
@@ -109,6 +111,7 @@ def test_w97_ratchet_blocks_regression(tmp_path):
     src = RATCHET.read_text()
     assert "FAIL: marker-only count regressed" in src
     assert "if marker_only > bl_marker:" in src
+    assert "new marker-only tests introduced" in src
 
 
 def test_w97_mutation_harness_exists():

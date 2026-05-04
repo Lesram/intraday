@@ -200,6 +200,56 @@ def test_w95_data_integrity_compute_variance_pure():
     assert out["within_tolerance"] is False
 
 
+def test_w95_data_integrity_round_trip_ratio_pure():
+    """Fill-count brain totals are healthy when they are roughly 2x
+    realized round trips, even though direct brain-vs-realized variance
+    is large."""
+    import sys
+    sys.path.insert(0, str(REPO_ROOT))
+    from backend.api.routes.data_integrity_health import _round_trip_variance
+
+    out = _round_trip_variance(realized=50, brain=100)
+    assert out["expected_brain_total_trades_from_realized"] == 100
+    assert out["round_trip_variance_pct"] == 0.0
+    assert out["round_trip_within_tolerance"] is True
+
+
+def test_w95_data_integrity_classifies_empty_realized_as_critical():
+    """The live failure shape (brain/orders exist, realized/lots empty)
+    must be reported as critical accounting drift, not as expected
+    fill-vs-round-trip semantics."""
+    import sys
+    sys.path.insert(0, str(REPO_ROOT))
+    from backend.api.routes.data_integrity_health import _classify_accounting_status
+
+    out = _classify_accounting_status(
+        brain=498,
+        realized=0,
+        orders=1369,
+        position_lots=0,
+        tick_telemetry=0,
+    )
+    assert out["accounting_status"] == "critical"
+    assert "brain_has_trades_but_realized_trades_empty" in out["reasons"]
+    assert "orders_and_brain_trades_exist_but_position_lots_empty" in out["reasons"]
+
+
+def test_w95_data_integrity_classifies_clean_round_trip_as_ok():
+    import sys
+    sys.path.insert(0, str(REPO_ROOT))
+    from backend.api.routes.data_integrity_health import _classify_accounting_status
+
+    out = _classify_accounting_status(
+        brain=100,
+        realized=50,
+        orders=100,
+        position_lots=50,
+        tick_telemetry=500,
+    )
+    assert out["accounting_status"] == "ok"
+    assert out["reasons"] == []
+
+
 def test_w95_data_integrity_reads_current_manifest_shape(tmp_path):
     """Production manifest stores total_trades at top level."""
     import sys

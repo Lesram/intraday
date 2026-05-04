@@ -32,10 +32,10 @@ from __future__ import annotations
 
 import argparse
 import json
+from pathlib import Path
 import re
 import subprocess
 import sys
-from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 LEDGER = REPO_ROOT / "artifacts" / "audit" / "findings_ledger.json"
@@ -204,7 +204,7 @@ def main() -> int:
     print(f"\nTriage artifact written to {TRIAGE}")
 
     if args.apply:
-        # Update the ledger findings with v13_triage_status.
+        # Update the ledger findings with canonical V13 triage states.
         triage_by_id = {t["id"]: t for t in triaged}
         for f in findings:
             if f.get("status") != "open":
@@ -214,6 +214,29 @@ def main() -> int:
                 continue
             f["v13_triage_status"] = t["v13_status"]
             f["v13_lens"] = t["v13_lens"]
+            if t["v13_status"] == "closed_in_unrecorded_wave":
+                f["status"] = "closed_unverified"
+                f["deferral_reason"] = (
+                    "V13 triage found finding ID evidence in commits/tests, "
+                    "but the V12 ledger lacks a behavioral close record. "
+                    "Backfill close commit + behavioral_test_path before "
+                    "promoting to status=closed."
+                )
+            elif t["v13_status"] == "absorbed_into_v13_lens":
+                f["status"] = "absorbed"
+                f["deferral_reason"] = (
+                    "V13 triage mapped this finding into a broader V13 lens. "
+                    "Keep absorbed status until the lens-level closure points "
+                    "to exact behavioral evidence for this ID."
+                )
+            elif t["v13_status"] == "still_open":
+                f["status"] = "open"
+
+        by_status: dict[str, int] = {}
+        for f in findings:
+            status = f.get("status", "unknown")
+            by_status[status] = by_status.get(status, 0) + 1
+        ledger["by_status"] = by_status
         LEDGER.write_text(
             json.dumps(ledger, indent=2, sort_keys=True) + "\n"
         )
