@@ -52,7 +52,13 @@ except Exception:
 # Defense-in-depth — replay's tempdir wrapper is supposed to handle this,
 # but if a future change constructs the engine directly without the
 # wrapper, this assertion is the safety net.
-os.environ.setdefault("ORGANISM_REPLAY_MODE", "1")
+#
+# V12 W80 (post-audit cleanup): the V12 external auditor flagged the
+# original ``os.environ.setdefault("ORGANISM_REPLAY_MODE", "1")`` here
+# as global env pollution on import — any test that merely imports this
+# module would inherit replay-mode env, polluting unrelated test runs.
+# The flag is now set inside ``ReplayEngine.__init__`` (constructor-time)
+# instead of at module import.
 
 
 # ═════════════════════════════════════════════════════════════════════════
@@ -491,6 +497,14 @@ class ReplayEngine:
         lookback: int | None = None,
         delay_fill: bool = False,
     ) -> None:
+        # V12 W80 (post-audit cleanup): set the replay-mode env flag at
+        # constructor time, not at module import.  V12 external auditor
+        # flagged the import-time setdefault as global env pollution.
+        # Setting here ensures the flag is set whenever a real replay
+        # engine is built — and not when the module is merely imported
+        # (e.g. for type hints or constants in unrelated tests).
+        os.environ.setdefault("ORGANISM_REPLAY_MODE", "1")
+
         self.bars_by_symbol = bars_by_symbol
         self.initial_cash = initial_cash
         self.slippage_bps = slippage_bps

@@ -973,6 +973,28 @@ async def start_outbox_worker(sessionmaker) -> OutboxWorker:
     """
     worker = await create_outbox_worker(sessionmaker)
     await worker.start()
+    # V12 W80 (BB5-F1): also start the periodic prune loop.  The
+    # prune helper was added in W74 but never wired into the
+    # production startup path — the V12 external auditor caught
+    # this exactly: helper-plus-passing-test, one layer above the
+    # actual wiring gap, leaving the live outbox at 1398 rows.
+    # Retention default 30 days; interval 24h; both env-overrideable.
+    try:
+        max_age_days = int(os.environ.get(
+            "OUTBOX_RETENTION_DAYS", "30",
+        ))
+    except (ValueError, TypeError):
+        max_age_days = 30
+    try:
+        interval_seconds = float(os.environ.get(
+            "OUTBOX_PRUNE_INTERVAL_SECONDS", str(24 * 60 * 60),
+        ))
+    except (ValueError, TypeError):
+        interval_seconds = 24 * 60 * 60
+    await worker.start_prune_loop(
+        max_age_days=max_age_days,
+        interval_seconds=interval_seconds,
+    )
     return worker
 
 

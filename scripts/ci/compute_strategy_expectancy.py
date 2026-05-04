@@ -1,15 +1,17 @@
-"""V12 W70/W71: compute brain expectancy stats from trade_history.csv.
+"""V12 W70/W71/W80: compute brain expectancy stats from trade_history.csv.
 
-Output JSON to stdout (or --json out.json) with:
-- n_trades, n_wins, n_losses
-- total_pnl, mean_pnl, median_pnl
-- win_rate, sharpe_ratio (per-trade), max_drawdown
-- last_50 / last_25 windowed mean_pnl + win_rate
-- last_csv_mtime (so a stale read is observable)
+V12 W80 (post-audit cleanup): refactored to USE
+``backend.organism.strategy_expectancy.compute_from_pnls`` as the
+single source of truth.  Pre-W80 this CLI duplicated the math and
+returned a different schema (``sharpe_ratio`` + nested ``last_25`` /
+``last_50``) than the runtime module (``sharpe_ratio_per_trade`` +
+flat ``last_25_*`` / ``last_50_*``), which the V12 external auditor
+caught.
 
-This is the foundation for the strategy-expectancy gate (W71).  No
-external auditor would consider the platform "ready" without these
-numbers visible at runtime.
+Output schema is now identical to ``manifest["strategy_expectancy"]``
+and the ``GET /api/v1/health/strategy`` endpoint payload, plus three
+provenance fields the API doesn't carry (``csv_path``, ``csv_exists``,
+``csv_mtime``).
 
 Usage:
     python scripts/ci/compute_strategy_expectancy.py [--csv organism_brain/trade_history.csv]
@@ -19,106 +21,63 @@ from __future__ import annotations
 import argparse
 import csv
 import json
-import math
 import os
-import statistics
 import sys
 from pathlib import Path
 
+# Make ``backend`` importable when this script is invoked directly.
+_REPO_ROOT = Path(__file__).resolve().parents[2]
+if str(_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT))
 
-def _drawdown(cum: list[float]) -> float:
-    """Max peak-to-trough drawdown across a cumulative-PnL series."""
-    peak = cum[0] if cum else 0.0
-    worst = 0.0
-    for v in cum:
-        peak = max(peak, v)
-        worst = min(worst, v - peak)
-    return worst
+from backend.organism.strategy_expectancy import compute_from_pnls  # noqa: E402
 
 
 def compute(csv_path: Path) -> dict:
+    """Compute the canonical 13-field expectancy payload + provenance.
+
+    Returns the SAME schema as the runtime module / API endpoint, plus:
+    - ``csv_path``: absolute path read.
+    - ``csv_exists``: bool.
+    - ``csv_mtime``: float (seconds since epoch) or None.
+    - ``error``: present only when something went wrong.
+    """
     if not csv_path.exists():
-        return {
-            "n_trades": 0,
+        payload = compute_from_pnls([])
+        payload.update({
             "csv_path": str(csv_path),
             "csv_exists": False,
+            "csv_mtime": None,
             "error": "trade_history.csv not found",
-        }
+        })
+        return payload
+
     pnls: list[float] = []
     with csv_path.open() as fh:
         reader = csv.DictReader(fh)
         if "pnl" not in (reader.fieldnames or []):
-            return {
-                "n_trades": 0,
+            payload = compute_from_pnls([])
+            payload.update({
                 "csv_path": str(csv_path),
                 "csv_exists": True,
+                "csv_mtime": os.path.getmtime(csv_path),
                 "error": "no pnl column",
-                "fieldnames": reader.fieldnames,
-            }
+                "fieldnames": list(reader.fieldnames or []),
+            })
+            return payload
         for row in reader:
             try:
                 pnls.append(float(row["pnl"]))
             except (KeyError, ValueError, TypeError):
                 continue
 
-    n = len(pnls)
-    if n == 0:
-        return {
-            "n_trades": 0,
-            "csv_path": str(csv_path),
-            "csv_exists": True,
-            "total_pnl": 0.0,
-            "mean_pnl": 0.0,
-            "median_pnl": 0.0,
-            "win_rate": 0.0,
-            "sharpe_ratio": 0.0,
-            "max_drawdown": 0.0,
-            "n_wins": 0,
-            "n_losses": 0,
-        }
-
-    n_wins = sum(1 for p in pnls if p > 0)
-    n_losses = sum(1 for p in pnls if p < 0)
-    cum: list[float] = []
-    running = 0.0
-    for p in pnls:
-        running += p
-        cum.append(running)
-    total = running
-    mean = statistics.fmean(pnls)
-    median = statistics.median(pnls)
-    stdev = statistics.pstdev(pnls) if n >= 2 else 0.0
-    sharpe = (mean / stdev * math.sqrt(n)) if stdev > 0 else 0.0
-    mdd = _drawdown(cum)
-
-    def _window(k: int) -> dict:
-        if n < k:
-            return {"n": n, "mean_pnl": mean, "win_rate": n_wins / n if n else 0.0}
-        sub = pnls[-k:]
-        sub_wins = sum(1 for p in sub if p > 0)
-        return {
-            "n": k,
-            "mean_pnl": statistics.fmean(sub),
-            "win_rate": sub_wins / k,
-            "total_pnl": sum(sub),
-        }
-
-    return {
-        "n_trades": n,
-        "n_wins": n_wins,
-        "n_losses": n_losses,
-        "total_pnl": round(total, 4),
-        "mean_pnl": round(mean, 4),
-        "median_pnl": round(median, 4),
-        "win_rate": round(n_wins / n, 4),
-        "sharpe_ratio": round(sharpe, 4),
-        "max_drawdown": round(mdd, 4),
-        "last_50": _window(50),
-        "last_25": _window(25),
+    payload = compute_from_pnls(pnls)
+    payload.update({
         "csv_path": str(csv_path),
-        "csv_mtime": os.path.getmtime(csv_path),
         "csv_exists": True,
-    }
+        "csv_mtime": os.path.getmtime(csv_path),
+    })
+    return payload
 
 
 def main() -> int:

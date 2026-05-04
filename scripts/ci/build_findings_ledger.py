@@ -241,13 +241,31 @@ def write_ledger_md(ledger: dict, path: Path) -> None:
 
 
 def main() -> int:
+    import argparse
+    parser = argparse.ArgumentParser()
+    # V12 W80 (post-audit cleanup): explicit output flags so tests can
+    # redirect into a tmp dir.  Pre-W80 the builder always wrote into
+    # ``artifacts/audit/``, which meant ``test_v12_w77_findings_ledger.py``
+    # mutated tracked files every time it ran (auditor caught this).
+    parser.add_argument(
+        "--out-json", default=str(LEDGER_JSON),
+        help="JSON output path (default: artifacts/audit/findings_ledger.json)",
+    )
+    parser.add_argument(
+        "--out-md", default=str(LEDGER_MD),
+        help="Markdown output path (default: artifacts/audit/findings_ledger_v12.md)",
+    )
+    args = parser.parse_args()
+
+    out_json = Path(args.out_json)
+    out_md = Path(args.out_md)
+
     ledger = build_ledger()
-    LEDGER_JSON.parent.mkdir(parents=True, exist_ok=True)
-    LEDGER_JSON.write_text(json.dumps(ledger, indent=2, sort_keys=True) + "\n")
-    write_ledger_md(ledger, LEDGER_MD)
-    print(f"Wrote {LEDGER_JSON.relative_to(REPO_ROOT)} "
-          f"({ledger['n_findings']} findings)")
-    print(f"Wrote {LEDGER_MD.relative_to(REPO_ROOT)}")
+    out_json.parent.mkdir(parents=True, exist_ok=True)
+    out_json.write_text(json.dumps(ledger, indent=2, sort_keys=True) + "\n")
+    write_ledger_md(ledger, out_md)
+    print(f"Wrote {out_json} ({ledger['n_findings']} findings)")
+    print(f"Wrote {out_md}")
     print(f"By status: {ledger['by_status']}")
     return 0
 

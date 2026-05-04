@@ -181,6 +181,35 @@ async def test_bb5_f1_prune_loop_can_be_started_and_stopped(sqlite_outbox_sessio
     assert worker._prune_task is None
 
 
+@pytest.mark.asyncio
+async def test_bb5_f1_start_outbox_worker_wires_prune_loop(sqlite_outbox_session, monkeypatch):
+    """V12 W80 (post-audit cleanup): the public ``start_outbox_worker``
+    entrypoint must wire ``start_prune_loop()`` automatically — not
+    just the helper.  V12 W74 left the loop unwired, leaving the live
+    DB with 1398 unrupned rows (auditor's BB5-F1 'fix didn't fix' callout)."""
+    sessionmaker, _ = sqlite_outbox_session
+    import backend.infra.outbox_worker as obw
+
+    # Reset the module-level singleton so we get a clean construction.
+    monkeypatch.setattr(obw, "_outbox_worker", None, raising=False)
+    # Tiny interval so the test doesn't sleep 24h.
+    monkeypatch.setenv("OUTBOX_PRUNE_INTERVAL_SECONDS", "0.05")
+    monkeypatch.setenv("OUTBOX_RETENTION_DAYS", "30")
+
+    worker = await obw.start_outbox_worker(sessionmaker)
+    try:
+        assert worker._running is True
+        # The auditor's specific point: the prune loop MUST be running
+        # after start_outbox_worker() returns, not just available as
+        # a helper.
+        assert worker._prune_task is not None, (
+            "BB5-F1 regression: start_outbox_worker did not call "
+            "start_prune_loop. Live outbox would grow unbounded again."
+        )
+    finally:
+        await worker.stop()
+
+
 # ────────────────────────────────────────────────────────────────────
 # EXT-4 — Audit chain per-row detail endpoint.
 # ────────────────────────────────────────────────────────────────────

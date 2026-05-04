@@ -34,15 +34,26 @@ VERIFIER = REPO_ROOT / "scripts" / "ci" / "verify_findings_ledger.py"
 # Builder: parses real synthesis docs.
 # ────────────────────────────────────────────────────────────────────
 
-def test_w77_builder_runs_and_produces_ledger():
-    """The build script runs cleanly and writes both outputs."""
+def test_w77_builder_runs_and_produces_ledger(tmp_path: Path):
+    """The build script runs cleanly and writes both outputs.
+
+    V12 W80 (post-audit cleanup): redirect outputs to tmp_path so
+    running the test does NOT mutate tracked artifacts.  Pre-W80 the
+    builder always wrote into ``artifacts/audit/``, dirtying the repo
+    every time pytest ran (V12 external auditor caught this)."""
+    out_json = tmp_path / "findings_ledger.json"
+    out_md = tmp_path / "findings_ledger_v12.md"
     proc = subprocess.run(
-        [str(REPO_ROOT / "venv" / "bin" / "python"), str(BUILDER)],
+        [str(REPO_ROOT / "venv" / "bin" / "python"), str(BUILDER),
+         "--out-json", str(out_json), "--out-md", str(out_md)],
         capture_output=True, text=True, timeout=60, cwd=REPO_ROOT,
     )
     assert proc.returncode == 0, proc.stderr
-    assert LEDGER_JSON.is_file()
-    assert LEDGER_MD.is_file()
+    assert out_json.is_file()
+    assert out_md.is_file()
+    # The committed artifact should NOT have been touched by this test.
+    # (We don't compare mtimes — that would be flaky under fast CI;
+    # the implicit assertion is that we redirected the outputs.)
 
 
 def test_w77_builder_parses_v11_synthesis_findings():
