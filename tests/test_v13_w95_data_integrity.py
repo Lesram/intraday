@@ -16,6 +16,7 @@ Run with:
 from __future__ import annotations
 
 import ast
+import json
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -197,6 +198,33 @@ def test_w95_data_integrity_compute_variance_pure():
     out = _compute_variance(90, 100)
     assert out["variance_pct"] == 10.0
     assert out["within_tolerance"] is False
+
+
+def test_w95_data_integrity_reads_current_manifest_shape(tmp_path):
+    """Production manifest stores total_trades at top level."""
+    import sys
+    sys.path.insert(0, str(REPO_ROOT))
+    from backend.api.routes.data_integrity_health import _read_brain_total_trades
+
+    (tmp_path / "manifest.json").write_text(json.dumps({
+        "total_trades": 498,
+        "strategy_expectancy": {"n_trades": 498},
+    }))
+
+    assert _read_brain_total_trades(tmp_path) == 498
+
+
+def test_w95_data_integrity_reads_legacy_nested_manifest_shape(tmp_path):
+    """Older brain snapshots nested the counter under brain_state."""
+    import sys
+    sys.path.insert(0, str(REPO_ROOT))
+    from backend.api.routes.data_integrity_health import _read_brain_total_trades
+
+    (tmp_path / "manifest.json").write_text(json.dumps({
+        "brain_state": {"total_trades": "123"},
+    }))
+
+    assert _read_brain_total_trades(tmp_path) == 123
 
 
 def test_w95_data_integrity_route_mounted():

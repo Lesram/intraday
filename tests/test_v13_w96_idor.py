@@ -27,6 +27,7 @@ Run with:
 from __future__ import annotations
 
 import ast
+import asyncio
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -109,6 +110,42 @@ def test_w96_helper_works_with_orm_like_object():
 def test_w96_current_user_identity_resolves_username():
     user = SimpleNamespace(username="alice", sub="alice-jwt-sub")
     assert _current_user_identity(user) == "alice"
+
+
+def test_w96_db_backed_order_status_preserves_owner_for_idor():
+    """Regression for the real W96 miss: OrderService serialized DB
+    orders without user_id, so route-level ownership checks allowed
+    cross-user reads/cancels."""
+    from backend.services.order_service import OrderService
+
+    class Repo:
+        async def get_by_id(self, uuid):
+            return SimpleNamespace(
+                id=uuid,
+                client_order_id=None,
+                user_id="alice",
+                status="accepted",
+                symbol="SPY",
+                side="buy",
+                qty=1,
+                filled_qty=0,
+                avg_fill_price=None,
+                submitted_at=None,
+                updated_at=None,
+            )
+
+    async def run():
+        svc = OrderService(db_session=None, orders_repo=Repo())
+        return await svc.get_order_status(
+            "11111111-1111-1111-1111-111111111111"
+        )
+
+    order_status = asyncio.run(run())
+    assert order_status["user_id"] == "alice"
+
+    with pytest.raises(HTTPException) as exc:
+        assert_order_owner_or_404(order_status, _user("bob"))
+    assert exc.value.status_code == 404
 
 
 # ────────────────────────────────────────────────────────────────────

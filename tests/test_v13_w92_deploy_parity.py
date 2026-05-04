@@ -68,10 +68,21 @@ def test_w92_parity_compare_rejects_mismatch():
     assert parity.parity_compare("a" * 64, "b" * 64) is False
 
 
-def test_w92_hot_path_list_is_five_files():
-    """The W92 contract: exactly 5 hot-path files.  Adding a 6th must
-    be a deliberate change with framework-doc update."""
-    assert len(parity.HOT_PATH_FILES) == 5
+def test_w92_hot_path_list_covers_runtime_and_api_routes():
+    """Deploy drift hid route-level V13 closures, so parity must cover
+    both organism runtime files and audit-facing API route modules."""
+    required = {
+        "backend/organism/live_engine.py",
+        "backend/organism/brain_persistence.py",
+        "backend/infra/outbox_worker.py",
+        "backend/infra/security.py",
+        "backend/api/lifespan.py",
+        "backend/api/routes/orders.py",
+        "backend/api/routes/strategy_health.py",
+        "backend/api/routes/data_integrity_health.py",
+        "backend/api/routes_setup.py",
+    }
+    assert required.issubset(set(parity.HOT_PATH_FILES))
 
 
 def test_w92_hot_path_files_all_exist():
@@ -98,6 +109,50 @@ def test_w92_sandbox_self_test_exits_zero():
         f"sandbox self-test failed:\nstdout={proc.stdout}\nstderr={proc.stderr}"
     )
     assert "PASS" in proc.stdout
+
+
+def test_w92_deploy_probe_rejects_stale_container_sha(monkeypatch):
+    def fake_get(path, *, authenticated=False):
+        assert authenticated is True
+        return 200, {
+            "source_sha": "a" * 40,
+            "migration_head": "20260503_000003",
+        }, "{}"
+
+    monkeypatch.setattr(parity, "_http_get_json", fake_get)
+    monkeypatch.setattr(parity, "_host_git_sha", lambda: "b" * 40)
+
+    result = parity.probe_deploy_endpoint()
+    assert result.passed is False
+    assert "expected host HEAD" in result.detail
+
+
+def test_w92_deploy_probe_accepts_current_host_sha(monkeypatch):
+    sha = "c" * 40
+
+    def fake_get(path, *, authenticated=False):
+        assert authenticated is True
+        return 200, {
+            "source_sha": sha,
+            "migration_head": "20260503_000003",
+        }, "{}"
+
+    monkeypatch.setattr(parity, "_http_get_json", fake_get)
+    monkeypatch.setattr(parity, "_host_git_sha", lambda: sha)
+
+    result = parity.probe_deploy_endpoint()
+    assert result.passed is True
+
+
+def test_w92_auth_headers_requires_token_or_login(monkeypatch):
+    monkeypatch.delenv("V13_AUTH_TOKEN", raising=False)
+    monkeypatch.delenv("V13_AUTH_USERNAME", raising=False)
+    monkeypatch.delenv("V13_AUTH_PASSWORD", raising=False)
+    monkeypatch.setattr(parity, "_AUTH_HEADER_CACHE", None)
+
+    headers, err = parity._auth_headers()
+    assert headers is None
+    assert "missing auth" in err
 
 
 # ------------------------------------------------------------------ #

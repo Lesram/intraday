@@ -487,7 +487,17 @@ jobs:
   quality-summary:
     name: "📋 Quality Summary"
     runs-on: ubuntu-latest
-    needs: [lint, types, security, test, audit_gate]
+    needs:
+      - lint
+      - types
+      - security
+      - test
+      - audit_gate
+      - deploy_parity
+      - marker_only_ratchet
+      - mutation_smoke
+      - frontend_build
+      - strategy_floor
     if: always()
 
     steps:
@@ -506,6 +516,12 @@ jobs:
             const typeStatus = '${{ needs.types.result }}' === 'success' ? '✅' : '❌';
             const securityStatus = '${{ needs.security.result }}' === 'success' ? '✅' : '❌';
             const testStatus = '${{ needs.test.result }}' === 'success' ? '✅' : '❌';
+            const auditGateStatus = '${{ needs.audit_gate.result }}' === 'success' ? '✅' : '❌';
+            const deployParityStatus = '${{ needs.deploy_parity.result }}' === 'success' ? '✅' : '❌';
+            const markerRatchetStatus = '${{ needs.marker_only_ratchet.result }}' === 'success' ? '✅' : '❌';
+            const mutationSmokeStatus = '${{ needs.mutation_smoke.result }}' === 'success' ? '✅' : '❌';
+            const frontendBuildStatus = '${{ needs.frontend_build.result }}' === 'success' ? '✅' : '❌';
+            const strategyFloorStatus = '${{ needs.strategy_floor.result }}' === 'success' ? '✅' : '❌';
 
             // Extract coverage percentage if available
             let coverageText = 'N/A';
@@ -543,6 +559,12 @@ jobs:
             | **Type Check** | ${typeStatus} | MyPy strict type checking |
             | **Security Scan** | ${securityStatus} | Bandit + pip-audit |
             | **Tests & Coverage** | ${testStatus} | ${coverageStatus} ${coverageText} |
+            | **Audit Gate** | ${auditGateStatus} | V12/V13 marker-only Critical/High gate |
+            | **Deploy Parity** | ${deployParityStatus} | V13 deploy/runtime truth sandbox gate |
+            | **Marker Ratchet** | ${markerRatchetStatus} | V13 full-corpus marker-only ratchet |
+            | **Mutation Smoke** | ${mutationSmokeStatus} | V13 critical-path mutation smoke |
+            | **Frontend Build** | ${frontendBuildStatus} | V13 frontend production build + high/critical audit fence |
+            | **Strategy Floor** | ${strategyFloorStatus} | V13 strategy floor gate |
 
             ### 📊 Coverage Requirements
             - **Minimum Global**: ≥80% 🟢
@@ -556,7 +578,11 @@ jobs:
             - **Code Style**: Ruff formatting enforced
             - **Test Coverage**: Staged ratcheting system
 
-            ${testStatus === '❌' || lintStatus === '❌' || typeStatus === '❌' || securityStatus === '❌'
+            ${[
+              testStatus, lintStatus, typeStatus, securityStatus, auditGateStatus,
+              deployParityStatus, markerRatchetStatus, mutationSmokeStatus,
+              frontendBuildStatus, strategyFloorStatus
+            ].includes('❌')
               ? '⚠️ **Action Required**: Please fix failing checks before merge.'
               : '🎉 **All quality gates passed!** Ready for review.'}
             `;
@@ -576,13 +602,23 @@ jobs:
           echo "Security: ${{ needs.security.result }}"
           echo "Tests: ${{ needs.test.result }}"
           echo "Audit Gate (V12 W73): ${{ needs.audit_gate.result }}"
+          echo "Deploy Parity (V13 W92): ${{ needs.deploy_parity.result }}"
+          echo "Marker-Only Ratchet (V13 W97): ${{ needs.marker_only_ratchet.result }}"
+          echo "Mutation Smoke (V13 W97): ${{ needs.mutation_smoke.result }}"
+          echo "Frontend Build (V13 W98): ${{ needs.frontend_build.result }}"
+          echo "Strategy Floor (V13 W94): ${{ needs.strategy_floor.result }}"
           # V12 W81: Lint Ratchet folded into the main lint job above.
 
           if [[ "${{ needs.lint.result }}" != "success" ]] || \
              [[ "${{ needs.types.result }}" != "success" ]] || \
              [[ "${{ needs.security.result }}" != "success" ]] || \
              [[ "${{ needs.test.result }}" != "success" ]] || \
-             [[ "${{ needs.audit_gate.result }}" != "success" ]]; then
+             [[ "${{ needs.audit_gate.result }}" != "success" ]] || \
+             [[ "${{ needs.deploy_parity.result }}" != "success" ]] || \
+             [[ "${{ needs.marker_only_ratchet.result }}" != "success" ]] || \
+             [[ "${{ needs.mutation_smoke.result }}" != "success" ]] || \
+             [[ "${{ needs.frontend_build.result }}" != "success" ]] || \
+             [[ "${{ needs.strategy_floor.result }}" != "success" ]]; then
             echo "❌ One or more quality gates failed"
             exit 1
           else

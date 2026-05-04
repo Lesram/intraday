@@ -1382,10 +1382,12 @@ class OrderService:
                     order_uuid = uuid.UUID(order_id)
                     order = await self.orders_repo.get_by_id(order_uuid)
                     if order:
+                        owner = getattr(order, 'user_id', None)
                         # Convert database order object to API response format
                         return {
                             "order_id": str(order.id),
                             "client_order_id": getattr(order, 'client_order_id', None),
+                            "user_id": str(owner) if owner is not None else None,
                             "status": order.status,
                             "symbol": order.symbol,
                             "side": order.side,

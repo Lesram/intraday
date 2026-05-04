@@ -9,9 +9,8 @@ could query.  W95 ships:
 The endpoint reads:
 - ``realized_trades`` row count from Postgres (source of truth for
   realized PnL — audited rows).
-- ``manifest.json::brain_state.total_trades`` from the brain dir
-  (the organism's internal trade counter — increments at fill, not
-  at close, so will be ≥ realized_trades on average).
+- ``manifest.json::total_trades`` from the brain dir, with backward
+  compatibility for the older nested ``brain_state.total_trades`` shape.
 
 Response surfaces:
 - Both counts.
@@ -64,12 +63,20 @@ def _read_brain_total_trades(brain_dir: Path) -> int | None:
         m = json.loads(mpath.read_text())
     except (OSError, json.JSONDecodeError):
         return None
-    state = m.get("brain_state") or {}
-    val = state.get("total_trades")
-    try:
-        return int(val) if val is not None else None
-    except (TypeError, ValueError):
-        return None
+
+    candidates = [
+        m.get("total_trades"),
+        (m.get("brain_state") or {}).get("total_trades"),
+        (m.get("strategy_expectancy") or {}).get("n_trades"),
+    ]
+    for val in candidates:
+        if val is None:
+            continue
+        try:
+            return int(val)
+        except (TypeError, ValueError):
+            continue
+    return None
 
 
 async def _count_realized_trades(session: AsyncSession) -> int | None:
