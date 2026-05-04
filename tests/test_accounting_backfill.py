@@ -136,6 +136,46 @@ async def test_backfill_apply_creates_execution_lot_and_realized_trade(
 
 
 @pytest.mark.asyncio
+async def test_backfill_apply_counts_positive_fills_on_expired_orders(
+    accounting_sessionmaker,
+):
+    start = datetime(2026, 5, 1, tzinfo=UTC)
+    async with accounting_sessionmaker() as session:
+        session.add_all([
+            _order(
+                side="buy",
+                qty="10",
+                price="100",
+                status="expired",
+                submitted_at=start,
+            ),
+            _order(
+                side="sell",
+                qty="10",
+                price="101",
+                submitted_at=start + timedelta(minutes=1),
+            ),
+        ])
+        await session.commit()
+
+        report = await backfill.run_backfill(
+            session,
+            apply=True,
+            confirm=backfill.CONFIRM_TOKEN,
+        )
+
+        assert report.applied is True
+        executions = await _rows(session, Execution)
+        lots = await _rows(session, PositionLot)
+        realized = await _rows(session, RealizedTrade)
+        assert len(executions) == 2
+        assert len(lots) == 1
+        assert lots[0].status == "closed"
+        assert len(realized) == 1
+        assert realized[0].realized_pnl == Decimal("10.000000")
+
+
+@pytest.mark.asyncio
 async def test_backfill_dry_run_handles_short_round_trip(accounting_sessionmaker):
     start = datetime(2026, 4, 8, 13, 36, tzinfo=UTC)
     async with accounting_sessionmaker() as session:

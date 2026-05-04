@@ -28,10 +28,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.infra.db import init_db
 from backend.infra.schemas import Execution, Order, PositionLot, RealizedTrade
-from backend.integrations.alpaca_stream import (
-    _decimal_or_none,
-    apply_incremental_fill_accounting,
-)
+from backend.integrations.alpaca_stream import _decimal_or_none
 
 CONFIRM_TOKEN = "BACKFILL_FILL_ACCOUNTING"
 FILL_STATUSES = frozenset({"filled", "partially_filled", "expired"})
@@ -331,16 +328,37 @@ async def _open_short_lots(
     return list(result.scalars().all())
 
 
-async def apply_short_fill_accounting(
+async def _open_long_lots(
+    session: AsyncSession,
+    *,
+    user_id: str,
+    symbol: str,
+) -> list[PositionLot]:
+    stmt = (
+        select(PositionLot)
+        .join(Order, PositionLot.order_id == Order.id)
+        .where(
+            PositionLot.user_id == user_id,
+            PositionLot.symbol == symbol,
+            PositionLot.status == "open",
+            PositionLot.remaining_qty > 0,
+            Order.side == "buy",
+        )
+        .order_by(PositionLot.open_date.asc())
+        .with_for_update()
+    )
+    result = await session.execute(stmt)
+    return list(result.scalars().all())
+
+
+async def _pending_incremental_fill(
     session: AsyncSession,
     order: Order,
     *,
     previous_filled_qty: Any,
     cumulative_filled_qty: Any,
     avg_fill_price: Any,
-    fill_time: datetime | None = None,
-    venue: str = "alpaca_backfill",
-) -> dict[str, Any]:
+) -> tuple[Decimal, Decimal, Decimal] | dict[str, Any]:
     cumulative = _decimal_or_none(cumulative_filled_qty)
     previous = _decimal_or_none(previous_filled_qty) or Decimal("0")
     price = _decimal_or_none(avg_fill_price)
@@ -364,6 +382,133 @@ async def apply_short_fill_accounting(
     incremental = cumulative - effective_previous
     if incremental <= 0:
         return {"applied": False, "reason": "duplicate_or_stale_fill"}
+    return incremental, price, existing_execution_qty
+
+
+async def apply_long_fill_accounting(
+    session: AsyncSession,
+    order: Order,
+    *,
+    previous_filled_qty: Any,
+    cumulative_filled_qty: Any,
+    avg_fill_price: Any,
+    fill_time: datetime | None = None,
+    venue: str = "alpaca_backfill",
+) -> dict[str, Any]:
+    pending = await _pending_incremental_fill(
+        session,
+        order,
+        previous_filled_qty=previous_filled_qty,
+        cumulative_filled_qty=cumulative_filled_qty,
+        avg_fill_price=avg_fill_price,
+    )
+    if isinstance(pending, dict):
+        return pending
+    incremental, price, _existing_execution_qty = pending
+
+    fill_dt = fill_time or order.submitted_at or datetime.now()
+    execution = Execution(
+        order_id=order.id,
+        fill_qty=incremental,
+        fill_price=price,
+        ts=fill_dt,
+        venue=venue,
+    )
+    session.add(execution)
+
+    user_id = _order_user_id(order)
+    action = _accounting_action(order)
+    realized = []
+    if action == "open_long":
+        lot = PositionLot(
+            user_id=user_id,
+            symbol=order.symbol,
+            qty=incremental,
+            remaining_qty=incremental,
+            cost_basis=price,
+            order_id=order.id,
+            open_date=fill_dt,
+            status="open",
+        )
+        session.add(lot)
+    elif action == "close_long":
+        remaining_to_close = incremental
+        open_lots = await _open_long_lots(
+            session, user_id=user_id, symbol=order.symbol
+        )
+        total_available = sum(lot.remaining_qty for lot in open_lots)
+        if total_available < remaining_to_close:
+            raise ValueError(
+                f"Insufficient long lots for {user_id}/{order.symbol}: "
+                f"need {remaining_to_close}, available {total_available}"
+            )
+        for lot in open_lots:
+            if remaining_to_close <= 0:
+                break
+            qty_from_lot = min(lot.remaining_qty, remaining_to_close)
+            realized_pnl = qty_from_lot * (price - lot.cost_basis)
+            realized_pnl_percent = (
+                ((price - lot.cost_basis) / lot.cost_basis * 100)
+                if lot.cost_basis != 0
+                else Decimal("0")
+            )
+            rt = RealizedTrade(
+                user_id=user_id,
+                symbol=order.symbol,
+                qty=qty_from_lot,
+                open_price=lot.cost_basis,
+                close_price=price,
+                realized_pnl=realized_pnl,
+                realized_pnl_percent=realized_pnl_percent,
+                open_order_id=lot.order_id,
+                close_order_id=order.id,
+                lot_id=lot.id,
+                open_date=lot.open_date,
+                close_date=fill_dt,
+                attributes={},
+            )
+            session.add(rt)
+            realized.append(rt)
+            lot.remaining_qty -= qty_from_lot
+            if lot.remaining_qty == 0:
+                lot.status = "closed"
+            remaining_to_close -= qty_from_lot
+    else:
+        return {"applied": False, "reason": f"not_long_action:{action}"}
+
+    await session.flush()
+    return {
+        "applied": True,
+        "side": str(order.side).lower(),
+        "position_side": "long",
+        "action": action,
+        "incremental_qty": str(incremental),
+        "execution_id": str(execution.id),
+        "realized_count": len(realized),
+        "realized_pnl": str(sum(t.realized_pnl for t in realized)),
+    }
+
+
+async def apply_short_fill_accounting(
+    session: AsyncSession,
+    order: Order,
+    *,
+    previous_filled_qty: Any,
+    cumulative_filled_qty: Any,
+    avg_fill_price: Any,
+    fill_time: datetime | None = None,
+    venue: str = "alpaca_backfill",
+) -> dict[str, Any]:
+    pending = await _pending_incremental_fill(
+        session,
+        order,
+        previous_filled_qty=previous_filled_qty,
+        cumulative_filled_qty=cumulative_filled_qty,
+        avg_fill_price=avg_fill_price,
+    )
+    if isinstance(pending, dict):
+        return pending
+    incremental, price, _existing_execution_qty = pending
 
     fill_dt = fill_time or order.submitted_at or datetime.now()
     execution = Execution(
@@ -481,15 +626,13 @@ async def run_backfill(
                 fill_time=order.submitted_at,
             )
         else:
-            result = await apply_incremental_fill_accounting(
+            result = await apply_long_fill_accounting(
                 session,
                 order,
                 previous_filled_qty=already_executed,
                 cumulative_filled_qty=filled_qty,
                 avg_fill_price=order.avg_fill_price,
-                status=order.status,
                 fill_time=order.submitted_at,
-                venue="alpaca_backfill",
             )
         report.applied_results.append({
             k: v for k, v in result.items()
