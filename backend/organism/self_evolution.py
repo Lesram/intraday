@@ -782,11 +782,16 @@ class EvolutionEngine:
         confidence heuristic (> 0.6) for old trades that pre-date the
         entry_source field.
         """
-        src = getattr(t, "entry_source", "") or ""
-        if src:
-            return "breakout" in src
+        raw_src = getattr(t, "entry_source", "")
+        if isinstance(raw_src, str):
+            src = raw_src.strip().lower()
+            if src and src not in {"nan", "none", "null"}:
+                return "breakout" in src
         # Backward compat: old trades without entry_source
-        return t.confidence > 0.6
+        try:
+            return float(getattr(t, "confidence", 0.0) or 0.0) > 0.6
+        except (TypeError, ValueError):
+            return False
 
     def _evolve_breakout_weights(
         self,

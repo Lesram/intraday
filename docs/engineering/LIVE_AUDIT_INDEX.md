@@ -1,8 +1,8 @@
 # Live Audit Index
 
-Generated: 2026-05-04T17:59:05Z
+Generated: 2026-05-04T19:17:53Z
 PR: PR #4
-SHA: `4a4479e238`
+SHA: `955a53bc17`
 Branch: `codex/v13-root-fixes`
 Scope: **backend_logic**
 Change scope: `working-tree` (`HEAD+working-tree`)
@@ -11,10 +11,10 @@ Change scope: `working-tree` (`HEAD+working-tree`)
 
 | Category | Count | Files |
 |----------|-------|-------|
-| Backend | 1 | `backend/organism/live_engine.py` |
-| Organism | 1 | `backend/organism/live_engine.py` |
-| Tests | 1 | `tests/test_v12_w77_findings_ledger.py` |
-| Docs | 2 | `docs/engineering/LIVE_AUDIT_INDEX.md`, `docs/engineering/CI_ADVISORY_GATES.md` |
+| Backend | 1 | `backend/organism/self_evolution.py` |
+| Organism | 1 | `backend/organism/self_evolution.py` |
+| Tests | 1 | `tests/test_self_evolution.py` |
+| Docs | 0 | none |
 
 ## Live constants
 
