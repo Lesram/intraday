@@ -682,6 +682,7 @@ class OrganismLiveEngine:
         self._entry_timestamps: list[float] = []
         # Static fallback; overridden by _dynamic_max_entries_per_hour property
         self._MAX_ENTRIES_PER_HOUR = 3
+        self._entry_throttle_override_per_hour: int | None = None
         # Learning mode threshold: < 200 completed trades = learning (was 50)
         from backend.organism.trading_phase import LEARNING_MODE_TRADES
         self._LEARNING_MODE_TRADES = LEARNING_MODE_TRADES
@@ -850,6 +851,8 @@ class OrganismLiveEngine:
     @property
     def _dynamic_max_entries_per_hour(self) -> int:
         """Learning mode: 12/hr. Production: max(3, 6 - open_positions)."""
+        if self._entry_throttle_override_per_hour is not None:
+            return max(0, int(self._entry_throttle_override_per_hour))
         if self._is_learning_mode:
             return 12  # was 8 — more entries for faster data collection
         open_pos = len(self._exit_levels)

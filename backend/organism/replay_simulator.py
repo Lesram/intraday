@@ -582,8 +582,9 @@ class ReplayEngine:
         # Disable MarketScanner — don't hit real APIs during replay
         engine.market_scanner = None
 
-        # Relax entry throttle for learning (production default is 3)
-        engine._MAX_ENTRIES_PER_HOUR = self.max_entries_per_hour
+        # Replay must be able to exercise both loose and tight throttle
+        # settings even while the live engine is in learning mode.
+        engine._entry_throttle_override_per_hour = self.max_entries_per_hour
 
         result = ReplayResult()
         tick_count = 0
