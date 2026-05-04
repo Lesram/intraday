@@ -77,11 +77,13 @@ jobs:
           severity: ${{ github.event.inputs.severity || 'MEDIUM' }},HIGH,CRITICAL
           ignore-unfixed: true
 
-      - name: Upload Trivy scan results to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@v3
+      - name: Upload Trivy SARIF artifact
+        uses: actions/upload-artifact@v4
         if: always() && hashFiles('trivy-results.sarif') != ''
         with:
-          sarif_file: 'trivy-results.sarif'
+          name: trivy-dockerfile-sarif
+          path: trivy-results.sarif
+          retention-days: 30
 
       - name: Run Trivy for table output
         uses: aquasecurity/trivy-action@master
@@ -136,12 +138,13 @@ jobs:
           severity: ${{ github.event.inputs.severity || 'MEDIUM' }},HIGH,CRITICAL
           ignore-unfixed: true
 
-      - name: Upload Trivy scan results to GitHub Security tab
+      - name: Upload Trivy production SARIF artifact
         if: always() && steps.production-dockerfile.outputs.exists == 'true' && hashFiles('trivy-prod-results.sarif') != ''
-        uses: github/codeql-action/upload-sarif@v3
+        uses: actions/upload-artifact@v4
         with:
-          sarif_file: 'trivy-prod-results.sarif'
-          category: 'trivy-production'
+          name: trivy-production-sarif
+          path: trivy-prod-results.sarif
+          retention-days: 30
 
       - name: Run Trivy for table output (Production)
         if: steps.production-dockerfile.outputs.exists == 'true'
@@ -175,12 +178,13 @@ jobs:
           severity: 'MEDIUM,HIGH,CRITICAL'
           scanners: 'vuln,secret,misconfig'
 
-      - name: Upload filesystem scan results
-        uses: github/codeql-action/upload-sarif@v3
+      - name: Upload filesystem SARIF artifact
+        uses: actions/upload-artifact@v4
         if: always() && hashFiles('trivy-fs-results.sarif') != ''
         with:
-          sarif_file: 'trivy-fs-results.sarif'
-          category: 'trivy-filesystem'
+          name: trivy-filesystem-sarif
+          path: trivy-fs-results.sarif
+          retention-days: 30
 
       - name: Scan for secrets and misconfigurations
         uses: aquasecurity/trivy-action@master
@@ -231,4 +235,4 @@ jobs:
           echo "| Dockerfile | ${{ needs.trivy-scan-dockerfile.result == 'success' && '✅ Passed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Filesystem | ${{ needs.trivy-scan-fs.result == 'success' && '✅ Passed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "View detailed results in the [Security tab](../../security/code-scanning)." >> $GITHUB_STEP_SUMMARY
+          echo "View detailed SARIF outputs in the workflow artifacts." >> $GITHUB_STEP_SUMMARY
