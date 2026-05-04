@@ -3070,6 +3070,9 @@ class OrganismLiveEngine:
                             if isinstance(pyr_order_result, dict) and pyr_order_result.get("order_id"):
                                 self._pending_entry_order_ids[sym] = pyr_order_result["order_id"]
                             result.orders_submitted += 1
+                            _entry_ts = self._time_fn()
+                            self._entry_timestamps.append(_entry_ts)
+                            self._entry_timestamps_15m.append(_entry_ts)
 
                             # H5 FIX: Do NOT record pyramid layer here.
                             # Layer state, avg_entry, and exit-level anchors are
@@ -3998,7 +4001,29 @@ class OrganismLiveEngine:
                 cand_dicts = cand_dicts[: max(0, open_slots)]
                 # C2 (improve8): Max 2 new symbols per tick
                 cand_dicts = cand_dicts[:2]
-                # Also cap by burst remaining
+                # Cap by remaining hourly and burst capacity after any
+                # same-tick pyramid adds. The pre-loop throttle gate blocks
+                # future ticks, but without this per-batch cap multiple
+                # same-tick entries can slip through before their timestamps
+                # are visible to the next tick.
+                _entry_cap_ts = self._time_fn()
+                self._entry_timestamps = [
+                    t for t in self._entry_timestamps if _entry_cap_ts - t < 3600
+                ]
+                self._entry_timestamps_15m = [
+                    t for t in self._entry_timestamps_15m if _entry_cap_ts - t < 900
+                ]
+                _hourly_remaining = max(
+                    0,
+                    self._dynamic_max_entries_per_hour - len(self._entry_timestamps),
+                )
+                _burst_remaining = max(
+                    0,
+                    self._MAX_ENTRIES_15M - len(self._entry_timestamps_15m),
+                )
+                self._last_burst_remaining = _burst_remaining
+                cand_dicts = cand_dicts[:_hourly_remaining]
+                # Also cap by burst remaining.
                 cand_dicts = cand_dicts[:max(0, _burst_remaining)]
 
                 # 7b. MISSINGNESS GATE — block entries when feature data is
