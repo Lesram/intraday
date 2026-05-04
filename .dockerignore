@@ -1,0 +1,57 @@
+# Git / editor state
+.git
+.gitignore
+.DS_Store
+.claude
+.codex
+
+# Local Python environments and caches
+venv
+.venv
+__pycache__
+*.py[cod]
+.pytest_cache
+.mypy_cache
+.ruff_cache
+.hypothesis
+.coverage
+coverage.xml
+htmlcov
+
+# Node/frontend build artifacts
+node_modules
+frontend/node_modules
+frontend/dist
+
+# Secrets and local environment files. Compose injects env at runtime.
+.env
+.env.*
+!.env.example
+
+# Generated audit/test artifacts and local reports
+artifacts
+docs/engineering/audits/archive
+docs/engineering/daily_report
+docs/engineering/overnight_audit
+docs/engineering/overnight_forensic
+docs/engineering/paper_validation
+docs/engineering/postclose_comprehensive_audit
+docs/engineering/reviews
+
+# Runtime state mounted into the paper container, not baked into images
+logs
+data
+organism_brain
+organism_brain.*
+organism_brain.pre_*
+organism_brain_forensic_snapshot_*
+monitoring/memory_monitoring.json
+
+# Local databases and bulky archives
+*.db
+*.sqlite
+*.sqlite3
+*.zip
+*.tar
+*.tar.gz
+*.tgz
