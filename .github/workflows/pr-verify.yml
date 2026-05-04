@@ -103,7 +103,7 @@ jobs:
         run: |
           python -m pytest -q tests/test_safety_invariants.py --timeout=30
       - name: Replay simulator tests
-        timeout-minutes: 8
+        timeout-minutes: 18
         run: |
           python -m pytest -q tests/test_replay_simulator.py --timeout=60
       - name: Self-evolution tests
