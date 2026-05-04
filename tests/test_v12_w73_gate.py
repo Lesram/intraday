@@ -4,9 +4,9 @@ The gate (``scripts/ci/forbid_marker_only_critical_high.py``) is the
 heart of W73 — it prevents future Critical/High audit closures from
 shipping with marker-only tests, the wave-47 JWT failure pattern.
 
-These tests run the gate against fabricated v12_state.json fixtures
-to verify it correctly flags violations and passes when all closures
-have behavioral tests.
+These tests run the gate against fabricated findings_ledger.json and
+v12_state.json fixtures to verify it correctly flags violations and
+passes when all closures have behavioral tests.
 
 Run with:
     ./venv/bin/python -m pytest tests/test_v12_w73_gate.py -v
@@ -39,15 +39,83 @@ def test_gate_script_exists_and_runs():
 
 
 def test_gate_passes_on_real_state_file():
-    """Live invariant: the live v12_state.json + tests must pass the
+    """Live invariant: the live findings ledger + tests must pass the
     gate (W73 is itself supposed to satisfy the gate it just built)."""
     proc = subprocess.run(
         ["./venv/bin/python", str(GATE)],
         capture_output=True, text=True, timeout=30, cwd=REPO_ROOT,
     )
     assert proc.returncode == 0, (
-        f"V12 W73 gate failed against live state.json:\n{proc.stdout}\n{proc.stderr}"
+        f"V12 W73 gate failed against live findings ledger:\n{proc.stdout}\n{proc.stderr}"
     )
+
+
+def test_gate_prefers_findings_ledger_over_stale_v12_state(tmp_path: Path):
+    """V13 closures live in findings_ledger.json, so the gate must not
+    keep passing against an older v12_state.json when the ledger fails."""
+    (tmp_path / "tests").mkdir()
+    marker_only_src = textwrap.dedent('''
+        import inspect
+        def test_only_marker():
+            from os import path
+            src = inspect.getsource(path)
+            assert "join" in src
+    ''')
+    (tmp_path / "tests" / "test_marker_only_fixture.py").write_text(marker_only_src)
+    behavioral_src = textwrap.dedent('''
+        def test_real_call():
+            assert sorted([2, 1]) == [1, 2]
+    ''')
+    (tmp_path / "tests" / "test_behavioral_fixture.py").write_text(behavioral_src)
+
+    state_dir = tmp_path / "artifacts" / "audit" / "v12"
+    state_dir.mkdir(parents=True)
+    passing_state = {
+        "schema_version": 1,
+        "findings": [
+            {
+                "id": "OLD-OK",
+                "from": "v12",
+                "severity": "high",
+                "title": "legacy state that would pass",
+                "status": "closed",
+                "behavioral_test_path": "tests/test_behavioral_fixture.py::test_real_call",
+            }
+        ],
+        "v11_closures_audited_in_v12": [],
+    }
+    (state_dir / "v12_state.json").write_text(json.dumps(passing_state))
+
+    ledger_dir = tmp_path / "artifacts" / "audit"
+    ledger_dir.mkdir(parents=True, exist_ok=True)
+    failing_ledger = {
+        "schema_version": 1,
+        "n_findings": 1,
+        "findings": [
+            {
+                "id": "LEDGER-HIGH-FAKE",
+                "severity_at_first_appearance": "high",
+                "status": "closed",
+                "behavioral_test_path": "tests/test_marker_only_fixture.py::test_only_marker",
+            }
+        ],
+    }
+    (ledger_dir / "findings_ledger.json").write_text(json.dumps(failing_ledger))
+
+    (tmp_path / "scripts" / "ci").mkdir(parents=True)
+    classifier_src = (REPO_ROOT / "scripts" / "ci" / "classify_wave_tests.py").read_text()
+    gate_src = (REPO_ROOT / "scripts" / "ci" / "forbid_marker_only_critical_high.py").read_text()
+    (tmp_path / "scripts" / "ci" / "classify_wave_tests.py").write_text(classifier_src)
+    (tmp_path / "scripts" / "ci" / "forbid_marker_only_critical_high.py").write_text(gate_src)
+
+    proc = subprocess.run(
+        [str(REPO_ROOT / "venv" / "bin" / "python"),
+         "scripts/ci/forbid_marker_only_critical_high.py"],
+        capture_output=True, text=True, timeout=30, cwd=tmp_path,
+    )
+    assert proc.returncode == 1, proc.stdout
+    assert "LEDGER-HIGH-FAKE" in proc.stdout
+    assert "findings_ledger.json" in proc.stdout
 
 
 def test_gate_fails_when_critical_finding_lacks_test(tmp_path: Path):

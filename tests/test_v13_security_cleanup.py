@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+from types import SimpleNamespace
+
 import pytest
 from fastapi import HTTPException
 from fastapi.routing import APIRoute
+from fastapi.security import HTTPAuthorizationCredentials
 
 from backend.infra.security import AuthenticatedUser
 
@@ -81,3 +84,30 @@ def test_aa3_2_decode_token_rejects_refresh_token_as_access():
         decode_token(refresh_token)
 
     assert exc_info.value.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_aa3_1_logout_blacklists_access_token_behaviorally(monkeypatch):
+    """AA3-1: logout must revoke the token that authenticated the request."""
+    from backend.api.routes import auth
+    from backend.infra import security
+
+    security._memory_blacklist.clear()
+    monkeypatch.setattr(security, "_token_blacklist_redis", None)
+
+    token = security.create_access_token("logout-user", ["trader"])
+    request = SimpleNamespace(headers={"Authorization": f"Bearer {token}"})
+
+    response = await auth.logout(request)
+
+    assert response.ok is True
+
+    credentials = HTTPAuthorizationCredentials(
+        scheme="Bearer",
+        credentials=token,
+    )
+    with pytest.raises(HTTPException) as exc_info:
+        await security.get_current_user(SimpleNamespace(headers={}), credentials)
+
+    assert exc_info.value.status_code == 401
+    assert exc_info.value.detail == "token_revoked"

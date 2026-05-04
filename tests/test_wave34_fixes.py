@@ -19,6 +19,7 @@ Run with: ./venv/bin/python -m pytest tests/test_wave34_fixes.py -v
 from __future__ import annotations
 
 import inspect
+from types import SimpleNamespace
 
 import pandas as pd
 import pytest
@@ -168,6 +169,54 @@ def test_nn_high_1_telemetry_write_logs_at_warning_on_failure():
         "NN-HIGH-1 regression: telemetry write failures still logged at "
         "DEBUG (or other suppressed level). Operator should see WARN."
     )
+
+
+async def test_nn_high_1_telemetry_write_failure_warns_behaviorally(monkeypatch):
+    """Behavioral: a DB write failure increments the visible error counter
+    and emits the telemetry warning instead of disappearing silently."""
+    import backend.infra.db as db
+    from backend.organism import live_engine
+
+    class BrokenSessionContext:
+        async def __aenter__(self):
+            raise RuntimeError("telemetry db unavailable")
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+    warnings: list[tuple[str, tuple[object, ...]]] = []
+
+    def fake_warning(msg, *args, **kwargs):
+        warnings.append((msg, args))
+
+    filtering = SimpleNamespace(
+        entries_blocked_reason=None,
+        orders_submitted=0,
+        to_dict=lambda: {"rejections": {"risk": 1}},
+    )
+    snap = SimpleNamespace(
+        tick_number=42,
+        regime="neutral",
+        equity=100_000.0,
+        drawdown_pct=0.0,
+        open_positions=0,
+        filtering=filtering,
+        alpha_details=[],
+        exit_details=[],
+    )
+    engine = SimpleNamespace(
+        _sessionmaker=object(),
+        _telemetry=SimpleNamespace(latest=snap),
+    )
+
+    monkeypatch.setattr(db, "get_session_context", lambda: BrokenSessionContext())
+    monkeypatch.setattr(live_engine.logger, "warning", fake_warning)
+
+    await live_engine.OrganismLiveEngine._persist_telemetry_to_db(engine)
+
+    assert engine._telemetry_write_errors == 1
+    assert warnings
+    assert warnings[0][0].startswith("Telemetry DB write FAILED")
 
 
 # ─────────────────────────────────────────────────────────────────────

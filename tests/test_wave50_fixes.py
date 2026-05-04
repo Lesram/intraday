@@ -17,6 +17,9 @@ Run with: ./venv/bin/python -m pytest tests/test_wave50_fixes.py -v
 from __future__ import annotations
 
 import inspect
+from types import SimpleNamespace
+
+import pytest
 
 
 def test_aa4_2_lifespan_wires_token_blacklist():
@@ -31,6 +34,44 @@ def test_aa4_2_lifespan_wires_token_blacklist():
     assert "redis.asyncio" in src, (
         "AA4-2 regression: Redis client not constructed in lifespan."
     )
+
+
+@pytest.mark.asyncio
+async def test_aa4_2_lifespan_initializes_token_blacklist_backend(monkeypatch):
+    """Behavioral: startup must hand a live Redis client to the blacklist
+    initializer so logout revocations survive process restarts."""
+    import backend.infra.security as security
+    from backend.api import lifespan
+    import redis.asyncio as redis_async
+
+    initialized: list[object] = []
+
+    class FakeRedis:
+        async def ping(self):
+            return True
+
+    fake_client = FakeRedis()
+
+    async def fake_init_token_blacklist(client):
+        initialized.append(client)
+
+    monkeypatch.setattr(
+        redis_async,
+        "from_url",
+        lambda url, decode_responses=False: fake_client,
+    )
+    monkeypatch.setattr(
+        security,
+        "init_token_blacklist",
+        fake_init_token_blacklist,
+    )
+
+    app = SimpleNamespace(state=SimpleNamespace(database_url=None))
+
+    await lifespan.startup(app)
+
+    assert initialized == [fake_client]
+    assert app.state.redis is fake_client
 
 
 def test_aa4_3_settings_get_requires_admin():

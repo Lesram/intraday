@@ -76,15 +76,21 @@ def test_w99_still_open_count_bounded():
 
 
 def test_w99_ledger_has_triage_fields_after_apply():
-    """Post --apply, every open finding has a v13_triage_status field."""
+    """Post --apply, every unresolved finding has a triage status field."""
     ledger = json.loads(LEDGER.read_text())
-    open_findings = [
-        f for f in ledger["findings"] if f.get("status") == "open"
+    unresolved_findings = [
+        f for f in ledger["findings"]
+        if f.get("status") in {"open", "deferred", "closed_unverified"}
     ]
-    assert open_findings, "ledger should still have open findings to triage"
-    missing = [f for f in open_findings if "v13_triage_status" not in f]
+    assert unresolved_findings, (
+        "ledger should still have unresolved findings to triage"
+    )
+    missing = [
+        f for f in unresolved_findings
+        if not f.get("v13_triage_status")
+    ]
     assert not missing, (
-        f"{len(missing)} open finding(s) missing v13_triage_status: "
+        f"{len(missing)} unresolved finding(s) missing v13_triage_status: "
         f"{[f['id'] for f in missing[:5]]}"
     )
 

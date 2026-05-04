@@ -14,6 +14,8 @@ Run with: ./venv/bin/python -m pytest tests/test_wave43_fixes.py -v
 from __future__ import annotations
 
 import inspect
+from types import SimpleNamespace
+from unittest.mock import AsyncMock
 
 
 # ─────────────────────────────────────────────────────────────────────
@@ -38,15 +40,40 @@ def test_dd3_2_alpaca_stream_uses_incremental_qty():
     )
 
 
-def test_dd3_2_zero_or_negative_increment_skipped():
-    """If _incremental <= 0 (duplicate or stale event), the LotTracker
-    op must be skipped (debug log only)."""
-    from backend.integrations import alpaca_stream
-    src = inspect.getsource(alpaca_stream)
-    assert "if _incremental <= 0:" in src, (
-        "DD3-2 regression: zero/negative incremental check removed. "
-        "Duplicate Alpaca events would create duplicate lots."
+async def test_dd3_2_zero_or_negative_increment_skipped_behaviorally():
+    """Duplicate/stale cumulative fills must not create lots or executions."""
+    from backend.integrations.alpaca_stream import apply_incremental_fill_accounting
+
+    class ExistingQtyResult:
+        def scalar_one_or_none(self):
+            return 10
+
+    session = SimpleNamespace(
+        execute=AsyncMock(return_value=ExistingQtyResult()),
+        add=AsyncMock(),
+        flush=AsyncMock(),
     )
+    order = SimpleNamespace(
+        id="order-1",
+        symbol="AAPL",
+        side="buy",
+        submitted_at=None,
+        filled_at=None,
+    )
+
+    result = await apply_incremental_fill_accounting(
+        session,
+        order,
+        previous_filled_qty=10,
+        cumulative_filled_qty=10,
+        avg_fill_price=100,
+        status="partially_filled",
+    )
+
+    assert result["applied"] is False
+    assert result["reason"] == "duplicate_or_stale_fill"
+    session.add.assert_not_called()
+    session.flush.assert_not_called()
 
 
 # ─────────────────────────────────────────────────────────────────────

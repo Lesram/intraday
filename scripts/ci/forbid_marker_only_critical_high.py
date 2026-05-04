@@ -12,7 +12,9 @@ for any Critical or High severity audit finding.
 
 Logic:
 
-1. Load ``artifacts/audit/v12/v12_state.json`` (the findings ledger).
+1. Load ``artifacts/audit/findings_ledger.json`` (falling back to the
+   legacy ``artifacts/audit/v12/v12_state.json`` only when the ledger
+   has not been generated).
 2. Collect every closure of severity ``critical`` or ``high`` and its
    ``behavioral_test_path`` (file or file::test specifier).
 3. Run the wave-test classifier (``classify_wave_tests.py``) against
@@ -30,12 +32,12 @@ Usage:
 """
 from __future__ import annotations
 
-import ast
 import json
 import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
+LEDGER_FILE = REPO_ROOT / "artifacts" / "audit" / "findings_ledger.json"
 STATE_FILE = REPO_ROOT / "artifacts" / "audit" / "v12" / "v12_state.json"
 
 # Make the classifier importable.
@@ -47,12 +49,11 @@ def _classify_file(path: Path) -> dict[str, str]:
     """Return {test_func_name: classification} for a Python test file."""
     if not path.exists():
         return {}
-    src = path.read_text()
-    tree = ast.parse(src, filename=str(path))
     out: dict[str, str] = {}
-    for node in ast.walk(tree):
-        if isinstance(node, ast.FunctionDef) and node.name.startswith("test_"):
-            out[node.name] = cwt.classify_test(str(path), node).classification
+    for row in cwt.classify_file(path):
+        out[row.name] = row.classification
+        if "::" in row.name:
+            out.setdefault(row.name.rsplit("::", 1)[-1], row.classification)
     return out
 
 
@@ -83,11 +84,33 @@ def _check_path(test_path: str) -> tuple[str, str | None]:
     return (cls, None)
 
 
+def _load_audit_state() -> tuple[str, dict]:
+    """Load the canonical findings source for the gate.
+
+    V12 originally gated ``v12_state.json``.  V13 moved the cross-round
+    rollup into ``findings_ledger.json``; using the old state file would
+    silently skip newer closures.
+    """
+    if LEDGER_FILE.is_file():
+        return ("findings_ledger.json", json.loads(LEDGER_FILE.read_text()))
+    if STATE_FILE.is_file():
+        return ("v12_state.json", json.loads(STATE_FILE.read_text()))
+    raise FileNotFoundError(
+        f"neither {LEDGER_FILE.relative_to(REPO_ROOT)} nor "
+        f"{STATE_FILE.relative_to(REPO_ROOT)} exists"
+    )
+
+
+def _severity(finding: dict) -> str | None:
+    return finding.get("severity") or finding.get("severity_at_first_appearance")
+
+
 def main() -> int:
-    if not STATE_FILE.is_file():
-        print(f"ERROR: {STATE_FILE} not found")
+    try:
+        source_name, state = _load_audit_state()
+    except (OSError, json.JSONDecodeError) as exc:
+        print(f"ERROR: audit state not readable: {exc}")
         return 2
-    state = json.loads(STATE_FILE.read_text())
 
     # Gather all (id, severity, behavioral_test_path) tuples for
     # closed Critical/High findings.
@@ -95,18 +118,20 @@ def main() -> int:
     for f in state.get("findings", []):
         if f.get("status") != "closed":
             continue
-        if f.get("severity") not in {"critical", "high"}:
+        sev = _severity(f)
+        if sev not in {"critical", "high"}:
             continue
         audited.append((
-            f["id"], f["severity"],
+            f["id"], sev,
             f.get("behavioral_test_path"),
-            "v12_findings",
+            source_name,
         ))
     for f in state.get("v11_closures_audited_in_v12", []):
-        if f.get("severity") not in {"critical", "high"}:
+        sev = _severity(f)
+        if sev not in {"critical", "high"}:
             continue
         audited.append((
-            f["id"], f["severity"],
+            f["id"], sev,
             f.get("behavioral_test_path"),
             "v11_closures_audited_in_v12",
         ))
@@ -136,7 +161,10 @@ def main() -> int:
                 + (f" ({err})" if err else "")
             )
 
-    print(f"V12 W73 marker-only Critical/High gate — {len(audited)} findings audited")
+    print(
+        "V12 W73 marker-only Critical/High gate — "
+        f"{len(audited)} findings audited from {source_name}"
+    )
     print()
     if passes:
         print("PASSED:")

@@ -146,6 +146,47 @@ async def test_uu_2_failed_login_rollback_failure_logs_error(
     assert "rollback failed" in caplog.text
 
 
+async def test_uu2_a_successful_login_rollback_failure_logs_error(
+    monkeypatch, caplog,
+):
+    """Behavioral: successful-login audit rollback failure must be visible."""
+    from backend.api.routes import auth
+    import backend.services.audit_service as audit_service
+
+    class FakeUserRepository:
+        def __init__(self, db_session):
+            self.db_session = db_session
+
+        async def authenticate_user(self, username, password):
+            return SimpleNamespace(username=username, roles=["trader"])
+
+    class FailingAudit:
+        def __init__(self, db):
+            self.db = db
+
+        async def log(self, **kwargs):
+            raise RuntimeError("audit insert failed")
+
+    db = SimpleNamespace(
+        commit=AsyncMock(),
+        rollback=AsyncMock(side_effect=RuntimeError("rollback failed")),
+    )
+
+    monkeypatch.setattr(auth, "UserRepository", FakeUserRepository)
+    monkeypatch.setattr(audit_service, "ComplianceAuditService", FailingAudit)
+
+    caplog.set_level(logging.ERROR, logger="backend.api.routes.auth")
+    response = await auth.login(
+        auth.LoginRequest(username="ok@example.com", password="secret"),
+        db=db,
+    )
+
+    assert response.user_id == "ok@example.com"
+    assert response.access_token
+    assert "UU2-A: db.rollback()" in caplog.text
+    assert "rollback failed" in caplog.text
+
+
 # ─────────────────────────────────────────────────────────────────────
 # UU-3 — brain-save-blocked lock-release surfaces at WARNING
 # ─────────────────────────────────────────────────────────────────────
@@ -261,6 +302,39 @@ def test_pp_3_all_channels_failed_logs_critical():
         "PP-3 regression: last-resort CRITICAL log missing when all "
         "alert channels fail."
     )
+
+
+async def test_pp_3_critical_channel_failure_logs_last_resort(monkeypatch):
+    """Behavioral: all-channel CRITICAL failure must emit a critical log."""
+    from backend.infra import alerting
+
+    logged: list[tuple[str, tuple[object, ...]]] = []
+
+    def fake_critical(msg, *args, **kwargs):
+        logged.append((msg, args))
+
+    manager = alerting.AlertManager(
+        alerting.AlertConfig(
+            slack_webhook_url="https://example.invalid/slack",
+            pagerduty_routing_key="pager-key",
+            environment="production",
+        )
+    )
+    manager._send_slack = AsyncMock(return_value=False)
+    manager._send_pagerduty = AsyncMock(return_value=False)
+    monkeypatch.setattr(alerting.logger, "critical", fake_critical)
+
+    sent = await manager.send_alert(
+        alerting.AlertCategory.SYSTEM_ERROR,
+        alerting.AlertSeverity.CRITICAL,
+        "Critical safety halt",
+        "all channels are failing",
+        details={"reason": "test"},
+    )
+
+    assert sent is False
+    assert logged
+    assert logged[0][0].startswith("ALERT-DELIVERY-FAILED")
 
 
 # ─────────────────────────────────────────────────────────────────────

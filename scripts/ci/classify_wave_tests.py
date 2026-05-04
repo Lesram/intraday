@@ -265,7 +265,15 @@ def _classify_assertion(test: ast.expr, marker_vars: set[str]) -> str:
     return "behavioral"
 
 
-def classify_test(file: str, func: ast.FunctionDef) -> TestClassification:
+TestFunc = ast.FunctionDef | ast.AsyncFunctionDef
+
+
+def classify_test(
+    file: str,
+    func: TestFunc,
+    *,
+    qualified_name: str | None = None,
+) -> TestClassification:
     marker_vars = _collect_source_grep_vars(func)
     marker_count = 0
     behavioral_count = 0
@@ -308,7 +316,7 @@ def classify_test(file: str, func: ast.FunctionDef) -> TestClassification:
 
     return TestClassification(
         file=file,
-        name=func.name,
+        name=qualified_name or func.name,
         line=func.lineno,
         classification=cls,
         marker_assertions=marker_count,
@@ -321,9 +329,24 @@ def classify_file(path: Path) -> list[TestClassification]:
     src = path.read_text()
     tree = ast.parse(src, filename=str(path))
     out: list[TestClassification] = []
-    for node in ast.walk(tree):
-        if isinstance(node, ast.FunctionDef) and node.name.startswith("test_"):
-            out.append(classify_test(str(path), node))
+
+    def visit_body(body: list[ast.stmt], prefix: list[str]) -> None:
+        for node in body:
+            if isinstance(node, ast.ClassDef):
+                visit_body(node.body, [*prefix, node.name])
+                continue
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                if node.name.startswith("test_"):
+                    qual = "::".join([*prefix, node.name]) if prefix else node.name
+                    out.append(
+                        classify_test(
+                            str(path),
+                            node,
+                            qualified_name=qual,
+                        )
+                    )
+
+    visit_body(tree.body, [])
     return out
 
 
