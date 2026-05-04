@@ -1823,6 +1823,10 @@ FilteringSummary:
   - strategy_total_trades / strategy_cumulative_pnl / strategy_win_rate /
     strategy_sharpe_ratio_per_trade: reconciliation-artifact-filtered stats
     used by the promotion gate
+  - `/api/v1/health/strategy` top-level expectancy uses the same
+    strategy-only scope; when reconciliation rows are present it also
+    exposes `all_records_expectancy` and `excluded_reconciliation_artifacts`
+    so operators can reconcile headline strategy PnL against raw ledger PnL.
   - effective_max_entries_per_hour: int (12 in learning, max(3, 6-open_positions) in production)
   - effective_fitness_gate: float (0.0 in learning = no gate, 0.45 in production for 10+ trade symbols)
   - burst_cap_remaining: int (entries left in rolling 15-min window, max 4)
@@ -4334,7 +4338,7 @@ StalenessReasons (enum):
 | Alpha composite minimum | 0.15 | alpha_scanner | Minimum score to be a candidate |
 | Breakout composite minimum | 0.20 | breakout_scanner | Minimum breakout score |
 | Pure breakout entry threshold | 0.55 | live_engine | Breakout-only entries need high score |
-| Full production promotion gate | total_pnl ≥ 0, last_50_mean_pnl ≥ 0, last_50_win_rate ≥ 0.35, sharpe_per_trade ≥ 0 | trading_phase | Mature losing brains stay in production_guarded: strict entry gates remain, ML influence and Kelly remain disabled |
+| Full production promotion gate | strategy-only total_pnl ≥ 0, last_50_mean_pnl ≥ 0, last_50_win_rate ≥ 0.35, sharpe_per_trade ≥ 0 | trading_phase + `/api/v1/health/strategy` | Mature losing brains stay in production_guarded: strict entry gates remain, ML influence and Kelly remain disabled; reconciliation bookkeeping is exposed separately as all-record expectancy |
 | Symbol fitness gate | **0 (learning, no gate)** / 0.45 (production, 10+ trades) | live_engine | improve9 B1: unified canonical system. Learning = soft ranking only. Production = hard reject for established losers |
 | Liquidity gate | 10K avg vol/bar | live_engine | Block illiquid symbols (per-bar, not daily) |
 | ML confidence reversal | 0.60 (intraday) / 0.65 (daily) | live_engine | ML reversal exit — partial exit 30%/25% of position |

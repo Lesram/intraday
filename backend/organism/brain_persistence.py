@@ -67,6 +67,31 @@ ARCHIVE_PREFIX = "trade_history_archive_"
 LOCK_FILE = ".brain.lock"
 
 
+def _truthy_flag(value: Any) -> bool:
+    if isinstance(value, bool):
+        return value
+    if value is None:
+        return False
+    return str(value).strip().lower() in {"1", "true", "yes", "y"}
+
+
+def _is_reconciliation_artifact_trade(trade: Any) -> bool:
+    """Return True for bookkeeping rows that should not count as strategy PnL."""
+    if isinstance(trade, dict):
+        artifact_flag = trade.get("is_reconciliation_artifact")
+        exit_reason = str(trade.get("exit_reason", "")).strip()
+        entry_source = str(trade.get("entry_source", "")).strip()
+    else:
+        artifact_flag = getattr(trade, "is_reconciliation_artifact", None)
+        exit_reason = str(getattr(trade, "exit_reason", "")).strip()
+        entry_source = str(getattr(trade, "entry_source", "")).strip()
+    return (
+        _truthy_flag(artifact_flag)
+        or exit_reason == "reconciliation_adjustment"
+        or entry_source == "reconciliation_orphan"
+    )
+
+
 # ── Cross-platform file locking (Phase 3.1) ─────────────────────
 class _BrainLock:
     """Exclusive file lock — one writer at a time.
@@ -771,18 +796,11 @@ class OrganismBrain:
                 # missing (legacy rows), DERIVE it from exit_reason so that
                 # historical reconciliation_adjustment trades are correctly
                 # excluded from learning consumers post-restart.
-                _saved_artifact = td.get("is_reconciliation_artifact")
-                if _saved_artifact is None:
-                    # V4 R-F-1 (2026-05-02): legacy CSVs without the column
-                    # — derive the flag from BOTH triggers used at runtime
-                    # (live_engine._reconcile_fills sets _is_reconciliation
-                    # for either exit_reason or entry_source). Orphan-adopted
-                    # exits keep their normal exit_reason but must still be
-                    # excluded from learning.
-                    _saved_artifact = (
-                        td.get("exit_reason", "") == "reconciliation_adjustment"
-                        or td.get("entry_source", "") == "reconciliation_orphan"
-                    )
+                # V4 R-F-1 (2026-05-02): legacy CSVs without the column
+                # derive the flag from BOTH triggers used at runtime. Keep
+                # that derivation even if a stale flag is false so strategy
+                # accounting cannot re-include orphan/reconciliation rows.
+                _saved_artifact = _is_reconciliation_artifact_trade(td)
                 learner.trade_history.append(TradeRecord(
                     symbol=td.get("symbol", ""),
                     direction=td.get("direction", 0),
@@ -1355,11 +1373,26 @@ class OrganismBrain:
                 trades_src = learner.trade_history
             elif self.trade_history:
                 trades_src = self.trade_history
-            manifest["strategy_expectancy"] = _sx.compute_from_trades(trades_src)
+            all_trades_src = list(trades_src or [])
+            strategy_trades_src = [
+                t for t in all_trades_src
+                if not _is_reconciliation_artifact_trade(t)
+            ]
+            manifest["strategy_expectancy"] = _sx.compute_from_trades(
+                strategy_trades_src
+            )
+            manifest["all_records_expectancy"] = _sx.compute_from_trades(
+                all_trades_src
+            )
+            manifest["excluded_reconciliation_artifacts"] = (
+                len(all_trades_src) - len(strategy_trades_src)
+            )
             # Phase 2: persist bounded attribution so strategy health is
             # actionable, not just a headline PnL number.
             from backend.organism import strategy_attribution as _attr
-            manifest["strategy_attribution"] = _attr.compute_from_trades(trades_src)
+            manifest["strategy_attribution"] = _attr.compute_from_trades(
+                strategy_trades_src
+            )
             try:
                 from backend.organism.strategy_alerts import (
                     maybe_dispatch_low_win_rate_alert,
@@ -1578,7 +1611,7 @@ class OrganismBrain:
                 # (entry_source="reconciliation_orphan") with normal exit
                 # reasons would silently lose the flag and re-enter learning.
                 "is_reconciliation_artifact": bool(
-                    getattr(t, "is_reconciliation_artifact", False)
+                    _is_reconciliation_artifact_trade(t)
                 ),
                 "entry_source": getattr(t, "entry_source", ""),
                 "regime_at_entry": getattr(t, "regime_at_entry", ""),
