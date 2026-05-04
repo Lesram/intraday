@@ -1,8 +1,8 @@
 # Live Audit Index
 
-Generated: 2026-05-04T22:30:36Z
+Generated: 2026-05-04T22:53:10Z
 PR: PR #6
-SHA: `a3451ffd67`
+SHA: `ef0e46cde3`
 Branch: `codex/v13-phase2-expectancy`
 Scope: **backend_logic**
 Change scope: `task` (`HEAD`)
@@ -11,9 +11,9 @@ Change scope: `task` (`HEAD`)
 
 | Category | Count | Files |
 |----------|-------|-------|
-| Backend | 1 | `backend/organism/live_engine.py` |
-| Organism | 1 | `backend/organism/live_engine.py` |
-| Tests | 1 | `tests/test_phase2_guarded_promotion.py` |
+| Backend | 2 | `backend/api/routes/strategy_health.py`, `backend/organism/brain_persistence.py` |
+| Organism | 1 | `backend/organism/brain_persistence.py` |
+| Tests | 1 | `tests/test_v12_strategy_expectancy.py` |
 | Docs | 1 | `docs/architecture/mapss.md` |
 
 ## Live constants
