@@ -98,8 +98,13 @@ def _compute_from_csv(brain_dir: Path) -> dict[str, Any] | None:
     return _sx.compute_from_pnls(pnls)
 
 
+_ALLOWED_WINDOWS = {"last_25", "last_50"}
+
+
 @router.get("/strategy")
-async def strategy_health() -> dict[str, Any]:
+async def strategy_health(
+    window: str | None = None,
+) -> dict[str, Any]:
     """V12 W71: live strategy-expectancy snapshot.
 
     Returns the full expectancy payload (n_trades, total_pnl, win_rate,
@@ -107,10 +112,19 @@ async def strategy_health() -> dict[str, Any]:
     windows) plus provenance fields so operators can tell whether they
     are reading the manifest or a recomputation.
 
+    V13 W94: ``?window=last_50`` (or ``last_25``) projects the payload
+    down to just that window's fields plus the provenance fields.
+    Useful for dashboard panels that only care about the rolling slice.
+
     Status code is always 200 even if the brain is unprofitable — this
     is an *informational* endpoint, not a readiness gate.  Use the
     ``is_profitable`` boolean for at-a-glance assessment.
     """
+    if window is not None and window not in _ALLOWED_WINDOWS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"window must be one of {sorted(_ALLOWED_WINDOWS)}",
+        )
     brain_dir = _resolve_brain_dir()
 
     payload: dict[str, Any] = {
@@ -139,4 +153,20 @@ async def strategy_health() -> dict[str, Any]:
     csv_path = brain_dir / "trade_history.csv"
     if csv_path.is_file():
         payload["csv_mtime"] = os.path.getmtime(csv_path)
+
+    # V13 W94: windowed projection.
+    if window is not None:
+        prefix = f"{window}_"
+        slim: dict[str, Any] = {
+            "source": payload.get("source"),
+            "brain_dir": payload.get("brain_dir"),
+            "window": window,
+            "n_trades": payload.get("n_trades"),
+            "csv_mtime": payload.get("csv_mtime"),
+        }
+        for k, v in payload.items():
+            if k.startswith(prefix):
+                slim[k] = v
+        return slim
+
     return payload

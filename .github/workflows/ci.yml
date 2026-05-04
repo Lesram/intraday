@@ -196,6 +196,29 @@ jobs:
         run: |
           python scripts/ci/check_deploy_parity.py
 
+  strategy_floor:
+    name: "📉 V13 W94 Strategy Floor Gate (opt-in)"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Run strategy floor gate
+        # V13 W94 (Lens 3): when STRATEGY_FLOOR_TOTAL_PNL is set in the
+        # workflow env (typically only on release-branch jobs), the gate
+        # refuses merge if brain.total_pnl < floor.  Without the env it
+        # exits 0 with a notice — opt-in by design (choosing the floor
+        # is product policy, not audit work).
+        env:
+          STRATEGY_FLOOR_TOTAL_PNL: ${{ vars.STRATEGY_FLOOR_TOTAL_PNL }}
+        run: |
+          python scripts/ci/check_strategy_floor.py
+
   # V12 W81 (post-audit cleanup): the standalone lint_ratchet job was
   # consolidated into the main ``lint`` job above (which now runs the
   # ratchet as its real gate, with strict Ruff demoted to advisory).
