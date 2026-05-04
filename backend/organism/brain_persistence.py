@@ -519,23 +519,39 @@ class OrganismBrain:
             if old_dir.exists():
                 shutil.rmtree(old_dir, ignore_errors=True)
 
-            # Move current brain -> old, tmp -> brain
+            # Move current brain -> old, tmp -> brain. Preserve safety-history
+            # artifacts that are not regenerated inside tmp_dir.
+            preserved_names = {
+                ".tmp_save",
+                ".brain_old",
+                LOCK_FILE,
+                "backups",
+            }
+
+            def _preserve_during_swap(path: Path) -> bool:
+                return (
+                    path.name in preserved_names
+                    or path.name.startswith("corrupt_head_")
+                    or path.name.startswith(ARCHIVE_PREFIX)
+                )
+
             has_existing = any(
                 f for f in self.brain_dir.iterdir()
-                if f.name not in (".tmp_save", ".brain_old", LOCK_FILE)
+                if not _preserve_during_swap(f)
             )
             try:
                 if has_existing:
                     # Move current files to old_dir
                     old_dir.mkdir(parents=True, exist_ok=True)
                     for f in list(self.brain_dir.iterdir()):
-                        if f.name in (".tmp_save", ".brain_old", LOCK_FILE):
+                        if _preserve_during_swap(f):
                             continue
                         shutil.move(str(f), str(old_dir / f.name))
 
                 # Move new files from tmp to brain dir
                 for f in tmp_dir.iterdir():
                     shutil.move(str(f), str(self.brain_dir / f.name))
+                self.backup_dir.mkdir(parents=True, exist_ok=True)
             except Exception:
                 # Restore from old if anything went wrong
                 if old_dir.exists():
