@@ -41,7 +41,9 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
+  # Use a lowercase local tag.  `${{ github.repository }}` preserves
+  # owner casing (e.g. Lesram/intraday), which Docker rejects as a tag.
+  IMAGE_NAME: intra-security-scan
 
 jobs:
   trivy-scan-dockerfile:
@@ -89,17 +91,28 @@ jobs:
     permissions:
       contents: read
       security-events: write
-    if: hashFiles('Dockerfile.production') != ''
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Check for production Dockerfile
+        id: production-dockerfile
+        run: |
+          if [ -f Dockerfile.production ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "Dockerfile.production not present; skipping production image scan."
+          fi
+
       - name: Build Production Docker image for scanning
+        if: steps.production-dockerfile.outputs.exists == 'true'
         run: |
           docker build -t ${{ env.IMAGE_NAME }}:prod-scan -f Dockerfile.production .
 
       - name: Run Trivy vulnerability scanner
+        if: steps.production-dockerfile.outputs.exists == 'true'
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: '${{ env.IMAGE_NAME }}:prod-scan'
@@ -109,13 +122,14 @@ jobs:
           ignore-unfixed: true
 
       - name: Upload Trivy scan results to GitHub Security tab
+        if: always() && steps.production-dockerfile.outputs.exists == 'true'
         uses: github/codeql-action/upload-sarif@v3
-        if: always()
         with:
           sarif_file: 'trivy-prod-results.sarif'
           category: 'trivy-production'
 
       - name: Run Trivy for table output (Production)
+        if: steps.production-dockerfile.outputs.exists == 'true'
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: '${{ env.IMAGE_NAME }}:prod-scan'
