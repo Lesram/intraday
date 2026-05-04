@@ -64,7 +64,7 @@ def _check_order_rate_limit(user_id: str) -> None:
 def _compute_etag(data: Any) -> str:
     """Compute ETag from response data for cache validation (L-08)."""
     content = json.dumps(data, sort_keys=True, default=str)
-    return f'"{hashlib.md5(content.encode()).hexdigest()}"'
+    return f'"{hashlib.md5(content.encode(), usedforsecurity=False).hexdigest()}"'
 
 
 @router.get("/", response_model=list[dict[str, Any]])
@@ -1638,4 +1638,3 @@ async def close_position_from_order(
         import traceback
         traceback.print_exc()
         raise HTTPException(500, f"Failed to close position: {str(e)}")
-

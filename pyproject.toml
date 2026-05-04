@@ -235,8 +235,9 @@ show_error_codes = true
 show_column_numbers = true
 pretty = true
 
-# Configure paths for relative imports
-mypy_path = "."
+# Configure paths for relative imports. Do not set mypy_path="." here:
+# when CI checks both packages and tests, that makes package __init__ files
+# visible through two module names (for example backend and backend.__init__).
 namespace_packages = true
 explicit_package_bases = true
 

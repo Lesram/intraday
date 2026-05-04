@@ -848,7 +848,8 @@ class ModelRegistry:
             if training_data is not None:
                 import pandas as pd
                 data_hash = hashlib.md5(
-                    pd.util.hash_pandas_object(training_data).values
+                    pd.util.hash_pandas_object(training_data).values,
+                    usedforsecurity=False,
                 ).hexdigest()
             else:
                 data_hash = "no_training_data"
