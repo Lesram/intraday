@@ -4,6 +4,10 @@ on:
   pull_request:
     branches: [ main, master ]
 
+permissions:
+  contents: read
+  pull-requests: read
+
 jobs:
   detect:
     runs-on: ubuntu-latest
@@ -198,5 +202,9 @@ jobs:
       - uses: actions/checkout@v4
       - name: Secret scan
         run: |
-          if grep -R -nE 'APCA-API-(KEY|SECRET)-KEY|sk_live|BEGIN PRIVATE KEY' . --exclude-dir=.git; then
+          if grep -R -nE '(sk_live_[A-Za-z0-9_=-]{16,}|-----BEGIN PRIVATE KEY-----|-----BEGIN RSA PRIVATE KEY-----|-----BEGIN EC PRIVATE KEY-----|-----BEGIN OPENSSH PRIVATE KEY-----|APCA_[A-Z0-9]{20,})' . \
+              --exclude-dir=.git \
+              --exclude-dir=venv \
+              --exclude-dir=node_modules \
+              --exclude=pr-verify.yml; then
             echo 'Potential secret detected'; exit 1; fi

@@ -115,7 +115,7 @@ jobs:
 
       - name: Upload deep test results
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: deep-test-results
           path: |
