@@ -54,7 +54,11 @@ def _order(
     status: str = "filled",
     submitted_at: datetime | None = None,
     user_id: str = "audit-user",
+    position_intent: str | None = None,
 ) -> Order:
+    attrs = {"user_id": user_id}
+    if position_intent:
+        attrs["alpaca_response"] = repr({"position_intent": position_intent})
     return Order(
         id=uuid.uuid4(),
         user_id=user_id,
@@ -68,7 +72,7 @@ def _order(
         avg_fill_price=Decimal(price) if price is not None else None,
         status=status,
         submitted_at=submitted_at or datetime.now(UTC),
-        attributes={"user_id": user_id},
+        attributes=attrs,
     )
 
 
@@ -129,6 +133,140 @@ async def test_backfill_apply_creates_execution_lot_and_realized_trade(
         assert lots[0].remaining_qty == Decimal("6.000000")
         assert len(realized) == 1
         assert realized[0].realized_pnl == Decimal("20.000000")
+
+
+@pytest.mark.asyncio
+async def test_backfill_dry_run_handles_short_round_trip(accounting_sessionmaker):
+    start = datetime(2026, 4, 8, 13, 36, tzinfo=UTC)
+    async with accounting_sessionmaker() as session:
+        session.add_all([
+            _order(
+                side="sell",
+                symbol="XLE",
+                qty="37",
+                price="56.52",
+                submitted_at=start,
+                position_intent="sell_to_open",
+            ),
+            _order(
+                side="buy",
+                symbol="XLE",
+                qty="37",
+                price="58.06",
+                submitted_at=start + timedelta(hours=6),
+                position_intent="buy_to_close",
+            ),
+        ])
+        await session.commit()
+
+        report = await backfill.run_backfill(session)
+
+        assert report.errors == []
+        assert report.executions_to_create == 2
+        assert report.short_lots_to_create == 1
+        assert report.short_realized_trades_to_create == 1
+        assert report.open_short_lots_after == 0
+        assert report.realized_pnl == "-56.980000"
+        assert await _rows(session, Execution) == []
+
+
+@pytest.mark.asyncio
+async def test_backfill_apply_creates_short_lot_and_short_realized_trade(
+    accounting_sessionmaker,
+):
+    start = datetime(2026, 4, 8, 13, 36, tzinfo=UTC)
+    async with accounting_sessionmaker() as session:
+        session.add_all([
+            _order(
+                side="sell",
+                symbol="XLE",
+                qty="37",
+                price="56.52",
+                submitted_at=start,
+                position_intent="sell_to_open",
+            ),
+            _order(
+                side="buy",
+                symbol="XLE",
+                qty="37",
+                price="58.06",
+                submitted_at=start + timedelta(hours=6),
+                position_intent="buy_to_close",
+            ),
+        ])
+        await session.commit()
+
+        report = await backfill.run_backfill(
+            session,
+            apply=True,
+            confirm=backfill.CONFIRM_TOKEN,
+        )
+
+        assert report.applied is True
+        executions = await _rows(session, Execution)
+        lots = await _rows(session, PositionLot)
+        realized = await _rows(session, RealizedTrade)
+        assert len(executions) == 2
+        assert len(lots) == 1
+        assert lots[0].status == "closed"
+        assert lots[0].remaining_qty == Decimal("0.000000")
+        assert len(realized) == 1
+        assert realized[0].realized_pnl == Decimal("-56.980000")
+        assert realized[0].attributes == {"position_side": "short"}
+
+
+@pytest.mark.asyncio
+async def test_backfill_handles_mixed_xle_long_then_short_sequence(
+    accounting_sessionmaker,
+):
+    start = datetime(2026, 4, 8, 13, 29, tzinfo=UTC)
+    async with accounting_sessionmaker() as session:
+        session.add_all([
+            _order(side="buy", symbol="XLE", qty="58", price="56.459310", submitted_at=start),
+            _order(
+                side="sell",
+                symbol="XLE",
+                qty="21",
+                price="56.317619",
+                submitted_at=start + timedelta(minutes=4),
+                position_intent="sell_to_close",
+            ),
+            _order(
+                side="sell",
+                symbol="XLE",
+                qty="37",
+                price="56.32",
+                submitted_at=start + timedelta(minutes=7),
+                position_intent="sell_to_close",
+            ),
+            _order(
+                side="sell",
+                symbol="XLE",
+                qty="37",
+                price="56.52",
+                submitted_at=start + timedelta(minutes=8),
+                position_intent="sell_to_open",
+            ),
+            _order(
+                side="buy",
+                symbol="XLE",
+                qty="37",
+                price="58.06",
+                submitted_at=start + timedelta(hours=6),
+                position_intent="buy_to_close",
+            ),
+        ])
+        await session.commit()
+
+        report = await backfill.run_backfill(session)
+
+        assert report.errors == []
+        assert report.position_lots_to_create == 1
+        assert report.short_lots_to_create == 1
+        assert report.realized_trades_to_create == 2
+        assert report.short_realized_trades_to_create == 1
+        assert report.open_lots_after == 0
+        assert report.open_short_lots_after == 0
 
 
 @pytest.mark.asyncio
