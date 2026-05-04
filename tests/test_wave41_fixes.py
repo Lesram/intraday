@@ -15,7 +15,11 @@ Run with: ./venv/bin/python -m pytest tests/test_wave41_fixes.py -v
 from __future__ import annotations
 
 import inspect
+import logging
+from types import SimpleNamespace
+from unittest.mock import AsyncMock
 
+from fastapi import HTTPException
 import pytest
 
 
@@ -44,6 +48,40 @@ def test_uu_1_daily_max_loss_uses_canonical_dispatcher():
     )
 
 
+async def test_uu_1_daily_max_loss_dispatches_alert_behaviorally(monkeypatch):
+    """Daily max-loss breach must call the cross-thread alert dispatcher."""
+    from tests.test_multi_tick_state import (
+        _make_engine_with_mocks,
+        _stub_engine_for_tick,
+    )
+
+    captured: list[object] = []
+
+    def fake_dispatch(fn):
+        captured.append(fn)
+        return True
+
+    engine, mocks = _make_engine_with_mocks()
+    mocks["positions_service"].get_all_positions = AsyncMock(return_value={})
+    _stub_engine_for_tick(engine, {}, equity=98_500.0)
+    engine._daily_starting_equity = 100_000.0
+    engine._daily_loss_date = engine._now_fn().strftime("%Y-%m-%d")
+
+    monkeypatch.setattr("backend.organism.live_engine.MAX_DAILY_LOSS", 1_000.0)
+    monkeypatch.setattr(
+        "backend.infra.alerting.dispatch_alert_from_thread",
+        fake_dispatch,
+    )
+
+    result = await engine.live_tick()
+
+    assert captured, "daily max-loss breach did not dispatch an operator alert"
+    assert engine._daily_loss_halt is True
+    assert engine._entries_blocked is True
+    assert engine._last_entries_blocked_reason == "daily_max_loss"
+    assert result.orders_submitted == 0
+
+
 # ─────────────────────────────────────────────────────────────────────
 # UU-2 — auth audit-log rollback surfaces at ERROR
 # ─────────────────────────────────────────────────────────────────────
@@ -65,6 +103,47 @@ def test_uu_2_auth_rollback_logs_at_error():
     assert "except Exception:\n                    pass" not in window, (
         "UU-2 regression: bare except: pass on db.rollback() restored."
     )
+
+
+async def test_uu_2_failed_login_rollback_failure_logs_error(
+    monkeypatch, caplog,
+):
+    """Behavioral: failed-login audit rollback failure must be visible."""
+    from backend.api.routes import auth
+    import backend.services.audit_service as audit_service
+
+    class FakeUserRepository:
+        def __init__(self, db_session):
+            self.db_session = db_session
+
+        async def authenticate_user(self, username, password):
+            return None
+
+    class FailingAudit:
+        def __init__(self, db):
+            self.db = db
+
+        async def log(self, **kwargs):
+            raise RuntimeError("audit insert failed")
+
+    db = SimpleNamespace(
+        commit=AsyncMock(),
+        rollback=AsyncMock(side_effect=RuntimeError("rollback failed")),
+    )
+
+    monkeypatch.setattr(auth, "UserRepository", FakeUserRepository)
+    monkeypatch.setattr(audit_service, "ComplianceAuditService", FailingAudit)
+
+    caplog.set_level(logging.ERROR, logger="backend.api.routes.auth")
+    with pytest.raises(HTTPException) as exc:
+        await auth.login(
+            auth.LoginRequest(username="bad@example.com", password="wrong"),
+            db=db,
+        )
+
+    assert exc.value.status_code == 401
+    assert "UU-2: db.rollback()" in caplog.text
+    assert "rollback failed" in caplog.text
 
 
 # ─────────────────────────────────────────────────────────────────────
@@ -199,3 +278,36 @@ def test_pp_4_lifespan_requires_allow_no_db_in_dev():
         "PP-4 regression: ALLOW_NO_DB gate removed; paper trading "
         "would silently drop audit rows again on DB-down."
     )
+
+
+async def test_pp_4_startup_unreachable_db_fails_without_allow_no_db(
+    monkeypatch,
+):
+    """Behavioral: lazy DB connection failure must fail fast in paper-dev."""
+    from backend.api import lifespan
+    import backend.infra.db as infra_db
+
+    class FailingSession:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+        async def execute(self, stmt):
+            raise ConnectionError("db unreachable")
+
+    def fake_init_db(url):
+        return object(), lambda: FailingSession()
+
+    monkeypatch.setattr(infra_db, "init_db", fake_init_db)
+    monkeypatch.setenv("APP_ENVIRONMENT", "development")
+    monkeypatch.delenv("ALLOW_NO_DB", raising=False)
+
+    app = SimpleNamespace(state=SimpleNamespace(database_url="postgresql://db"))
+
+    with pytest.raises(RuntimeError) as exc:
+        await lifespan.startup(app)
+
+    assert "ALLOW_NO_DB!=1" in str(exc.value)
+    assert "db unreachable" in str(exc.value)
