@@ -7,26 +7,26 @@
   },
   "by_status": {
     "absorbed": 2,
-    "closed": 28,
-    "closed_unverified": 94,
+    "closed": 29,
+    "closed_unverified": 93,
     "deferred": 5,
     "documented_by_design": 1
   },
   "captured_at_branch_head": "2570c8ec8d591826296abef437cc48470e863d39",
   "findings": [
     {
-      "behavioral_test_path": null,
-      "deferral_reason": "V13 triage found finding ID evidence in commits/tests, but the V12 ledger lacks a behavioral close record. Backfill close commit + behavioral_test_path before promoting to status=closed.",
+      "behavioral_test_path": "tests/test_multi_tick_state.py::TestMultiTickState::test_pending_exit_breach_triggers_safety_net",
+      "deferral_reason": null,
       "first_appearance_version": "v8",
       "id": "DD2-1",
       "severity_at_first_appearance": "critical",
-      "status": "closed_unverified",
+      "status": "closed",
       "summary": "`_pending_exit` TTL bypasses hard stop_loss + max_loss for 30s (live trading safety)",
       "track": "DD2",
       "v12_audit": null,
       "v13_lens": null,
-      "v13_triage_status": "closed_in_unrecorded_wave",
-      "wave_closed": null,
+      "v13_triage_status": "closed_with_behavioral_test",
+      "wave_closed": 105,
       "wave_target_raw": "32"
     },
     {

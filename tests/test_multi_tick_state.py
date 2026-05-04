@@ -290,8 +290,8 @@ class TestMultiTickState:
         the position has breached max_loss (V8 DD2-1 / Wave-32: safety
         net always evaluates against broker price even during the
         cooldown window).  This test exercises the BLOCKED case (PnL
-        within max_loss bounds); the breach case is in
-        tests/test_wave32_fixes.py.
+        within max_loss bounds); the breach case is covered by
+        test_pending_exit_breach_triggers_safety_net.
         """
         engine, mocks = _make_engine_with_mocks()
         exit_submissions = []
@@ -341,6 +341,52 @@ class TestMultiTickState:
             f"V8 DD2-1: pending_exit should block routine exit when PnL "
             f"is within max_loss; tick 2 added {post_tick2} exit(s)."
         )
+
+    async def test_pending_exit_breach_triggers_safety_net(self):
+        """DD2-1: max-loss breach must fire even during _pending_exit."""
+        engine, mocks = _make_engine_with_mocks()
+        exit_submissions = []
+
+        async def track_exit(symbol, shares, reason="exit", direction=1.0, **kwargs):
+            exit_submissions.append({
+                "symbol": symbol,
+                "shares": shares,
+                "reason": reason,
+                "direction": direction,
+                "broker_positions": kwargs.get("broker_positions"),
+            })
+            return {"status": "accepted"}
+
+        engine._submit_exit_order = AsyncMock(side_effect=track_exit)
+        engine._pending_exit["AAPL"] = engine._tick_count
+        engine._exit_cooldown["AAPL"] = engine._tick_count
+        engine.exit_engine.max_loss_pct = 0.15
+
+        positions = {
+            "AAPL": {
+                "current_price": 80.0,
+                "avg_entry_price": 100.0,
+                "qty": 10,
+                "side": "long",
+            },
+        }
+        mocks["positions_service"].get_all_positions = AsyncMock(
+            return_value=positions
+        )
+        _stub_engine_for_tick(engine, {})
+
+        with patch("backend.organism.live_engine.LONG_ONLY", True):
+            result = await engine.live_tick()
+
+        assert exit_submissions == [{
+            "symbol": "AAPL",
+            "shares": 10,
+            "reason": "safety_net_pending_exit_breach",
+            "direction": 1.0,
+            "broker_positions": positions,
+        }]
+        assert result.orders_submitted == 1
+        assert engine._exit_cooldown["AAPL"] == engine._tick_count
 
     # ── 7. Movers filtered by volume ─────────────────────────────
 
