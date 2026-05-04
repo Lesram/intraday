@@ -608,10 +608,10 @@ async def test_reconcile_detects_closed_position(broker, brain_dir):
     engine._tick_count = 10  # Ensure past grace period
     await engine.live_tick()
 
-    # Check trade was recorded
-    if len(engine._all_trades) > 0:
-        trade = engine._all_trades[-1]
-        assert trade.symbol == "AAPL"
+    # Check the AAPL closure was recorded. Reconciliation can record more
+    # than one stale metadata adjustment in the same tick, so ordering is not
+    # the contract under test here.
+    assert any(trade.symbol == "AAPL" for trade in engine._all_trades)
 
 
 @pytest.mark.asyncio
