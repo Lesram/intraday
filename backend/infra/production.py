@@ -313,15 +313,26 @@ class ConfigValidator:
     - Resource limits
     """
 
-    REQUIRED_VARS = [
-        "DATABASE_URL",
-        "JWT_SECRET",
-    ]
+    REQUIRED_VARS = {
+        "DATABASE_URL": ("DATABASE_URL",),
+        # Runtime auth code reads SECURITY_JWT_SECRET, with JWT_SECRET_KEY
+        # retained as the compose/template alias and JWT_SECRET as legacy.
+        "SECURITY_JWT_SECRET": (
+            "SECURITY_JWT_SECRET",
+            "JWT_SECRET_KEY",
+            "JWT_SECRET",
+        ),
+    }
 
-    REQUIRED_PRODUCTION_VARS = [
-        "ALPACA_API_KEY",
-        "ALPACA_SECRET_KEY",
-    ]
+    REQUIRED_PRODUCTION_VARS = {
+        # Canonical Alpaca env names across the organism/broker runtime.
+        # The shorter names are compatibility aliases only.
+        "ALPACA_API_KEY_ID": ("ALPACA_API_KEY_ID", "ALPACA_API_KEY"),
+        "ALPACA_API_SECRET_KEY": (
+            "ALPACA_API_SECRET_KEY",
+            "ALPACA_SECRET_KEY",
+        ),
+    }
 
     def __init__(self, environment: str = "development"):
         self.environment = environment
@@ -338,13 +349,24 @@ class ConfigValidator:
 
         return self._errors
 
+    def _env_value(self, aliases: tuple[str, ...]) -> str:
+        """Return the first configured value for a canonical env setting."""
+        for name in aliases:
+            value = os.environ.get(name)
+            if value:
+                return value
+        return ""
+
     def _check_required_vars(self):
         """Check required environment variables."""
-        for var in self.REQUIRED_VARS:
-            if not os.environ.get(var):
+        for canonical, aliases in self.REQUIRED_VARS.items():
+            if not self._env_value(aliases):
                 self._errors.append(ConfigValidationError(
-                    key=var,
-                    message=f"Required environment variable {var} is not set",
+                    key=canonical,
+                    message=(
+                        f"Required environment variable {canonical} is not set "
+                        f"(accepted aliases: {', '.join(aliases)})"
+                    ),
                 ))
 
     def _check_production_vars(self):
@@ -352,28 +374,31 @@ class ConfigValidator:
         if self.environment != "production":
             return
 
-        for var in self.REQUIRED_PRODUCTION_VARS:
-            if not os.environ.get(var):
+        for canonical, aliases in self.REQUIRED_PRODUCTION_VARS.items():
+            if not self._env_value(aliases):
                 self._errors.append(ConfigValidationError(
-                    key=var,
-                    message=f"Required production variable {var} is not set",
+                    key=canonical,
+                    message=(
+                        f"Required production variable {canonical} is not set "
+                        f"(accepted aliases: {', '.join(aliases)})"
+                    ),
                 ))
 
     def _check_security_settings(self):
         """Validate security configuration."""
-        jwt_secret = os.environ.get("JWT_SECRET", "")
+        jwt_secret = self._env_value(self.REQUIRED_VARS["SECURITY_JWT_SECRET"])
 
         if jwt_secret and len(jwt_secret) < 32:
             self._errors.append(ConfigValidationError(
-                key="JWT_SECRET",
-                message="JWT_SECRET should be at least 32 characters",
+                key="SECURITY_JWT_SECRET",
+                message="SECURITY_JWT_SECRET should be at least 32 characters",
                 severity="warning",
             ))
 
         if self.environment == "production":
             if jwt_secret == "development-secret":
                 self._errors.append(ConfigValidationError(
-                    key="JWT_SECRET",
+                    key="SECURITY_JWT_SECRET",
                     message="Using development JWT secret in production",
                 ))
 

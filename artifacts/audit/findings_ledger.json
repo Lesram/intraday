@@ -7,8 +7,8 @@
   },
   "by_status": {
     "absorbed": 2,
-    "closed": 21,
-    "closed_unverified": 101,
+    "closed": 23,
+    "closed_unverified": 99,
     "deferred": 5,
     "documented_by_design": 1
   },
@@ -1561,18 +1561,18 @@
       "wave_target_raw": "75 (defer)"
     },
     {
-      "behavioral_test_path": null,
-      "deferral_reason": "V13 triage found finding ID evidence in commits/tests, but the V12 ledger lacks a behavioral close record. Backfill close commit + behavioral_test_path before promoting to status=closed.",
+      "behavioral_test_path": "tests/test_v13_high_cleanup.py::test_ccc_1_production_validator_accepts_runtime_env_names",
+      "deferral_reason": null,
       "first_appearance_version": "v11",
       "id": "CCC-1",
       "severity_at_first_appearance": "high",
-      "status": "closed_unverified",
+      "status": "closed",
       "summary": "production.py validator demands wrong env var names",
       "track": "CCC",
       "v12_audit": null,
       "v13_lens": null,
-      "v13_triage_status": "closed_in_unrecorded_wave",
-      "wave_closed": null,
+      "v13_triage_status": "closed_with_behavioral_test",
+      "wave_closed": 102,
       "wave_target_raw": "69"
     },
     {
@@ -1656,18 +1656,18 @@
       "wave_target_raw": "74 (CI ratchet)"
     },
     {
-      "behavioral_test_path": null,
-      "deferral_reason": "V13 triage found finding ID evidence in commits/tests, but the V12 ledger lacks a behavioral close record. Backfill close commit + behavioral_test_path before promoting to status=closed.",
+      "behavioral_test_path": "tests/test_v13_high_cleanup.py::test_iii_f1_configure_api_logging_calls_structured_runtime",
+      "deferral_reason": null,
       "first_appearance_version": "v11",
       "id": "III-F1",
       "severity_at_first_appearance": "high",
-      "status": "closed_unverified",
+      "status": "closed",
       "summary": "configure_structured_logging is dead code; production has no trace_id",
       "track": "III",
       "v12_audit": null,
       "v13_lens": null,
-      "v13_triage_status": "closed_in_unrecorded_wave",
-      "wave_closed": null,
+      "v13_triage_status": "closed_with_behavioral_test",
+      "wave_closed": 102,
       "wave_target_raw": "72"
     },
     {
