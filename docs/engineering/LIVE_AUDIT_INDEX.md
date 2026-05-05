@@ -1,8 +1,8 @@
 # Live Audit Index
 
-Generated: 2026-05-05T02:48:33Z
+Generated: 2026-05-05T03:12:50Z
 PR: PR #6
-SHA: `5fd85bfb67`
+SHA: `1455575bf1`
 Branch: `codex/v13-phase2-expectancy`
 Scope: **tooling/evidence_only**
 Change scope: `task` (`HEAD`)
@@ -13,8 +13,9 @@ Change scope: `task` (`HEAD`)
 |----------|-------|-------|
 | Backend | 0 | none |
 | Organism | 0 | none |
-| Tests | 1 | `tests/test_phase3_orb_shadow_outcome.py` |
-| Docs | 2 | `docs/engineering/PHASE3_ORB_SHADOW_OUTCOME_REPORT.md`, `docs/engineering/PHASE3_STRATEGY_RESEARCH_PLAN.md` |
+| Scripts | 1 | `scripts/phase3_trade_attribution.py` |
+| Tests | 1 | `tests/test_phase3_trade_attribution.py` |
+| Docs | 2 | `docs/engineering/PHASE3_STRATEGY_RESEARCH_PLAN.md`, `docs/engineering/PHASE3_TRADE_ATTRIBUTION_REPORT.md` |
 
 ## Live constants
 
@@ -49,4 +50,4 @@ Source: `resolved_config_snapshot.json`
 
 ## Open risks
 
-- No code changes in this PR — verify evidence artifacts are current
+- Evidence/tooling script changed only — no backend runtime or order-path behavior changed
