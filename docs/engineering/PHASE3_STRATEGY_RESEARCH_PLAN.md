@@ -87,6 +87,14 @@ Full run:
 5. ML target redesign: compare current one-bar target against trade-conditioned
    horizon targets and MFE/MAE-derived labels.
 
+## Completed Research Slices
+
+- Exp 5 chop stop ATR replay: do not promote. See
+  `docs/engineering/PHASE3_EXP5_REPLAY_REPORT.md`.
+- ORB shadow outcome simulation: keep ORB shadow-only; default and sensitivity
+  runs were small-sample negative. See
+  `docs/engineering/PHASE3_ORB_SHADOW_OUTCOME_REPORT.md`.
+
 ## Non-Goals
 
 - Do not promote ORB, stop widening, confidence gating, or ML reweighting live
