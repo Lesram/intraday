@@ -1,20 +1,20 @@
 # Live Audit Index
 
-Generated: 2026-05-04T22:53:10Z
+Generated: 2026-05-05T01:24:40Z
 PR: PR #6
-SHA: `ef0e46cde3`
+SHA: `7c469261e5`
 Branch: `codex/v13-phase2-expectancy`
-Scope: **backend_logic**
+Scope: **tooling/evidence_only**
 Change scope: `task` (`HEAD`)
 
 ## Changed files
 
 | Category | Count | Files |
 |----------|-------|-------|
-| Backend | 2 | `backend/api/routes/strategy_health.py`, `backend/organism/brain_persistence.py` |
-| Organism | 1 | `backend/organism/brain_persistence.py` |
-| Tests | 1 | `tests/test_v12_strategy_expectancy.py` |
-| Docs | 1 | `docs/architecture/mapss.md` |
+| Backend | 0 | none |
+| Organism | 0 | none |
+| Tests | 1 | `tests/test_phase3_exp5_replay_harness.py` |
+| Docs | 1 | `docs/engineering/PHASE3_STRATEGY_RESEARCH_PLAN.md` |
 
 ## Live constants
 
@@ -49,4 +49,4 @@ Source: `resolved_config_snapshot.json`
 
 ## Open risks
 
-- 1 organism file(s) changed — require replay verification
+- No code changes in this PR — verify evidence artifacts are current
