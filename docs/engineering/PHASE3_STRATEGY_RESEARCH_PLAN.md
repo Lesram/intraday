@@ -75,7 +75,7 @@ Full run:
 
 ## Next Research Lanes
 
-1. Fill-level replay or shadow instrumentation for the two cleanest
+1. Fresh runtime shadow telemetry or same-day bar capture for the two cleanest
    candidate filters: confidence `[0.45,0.55)` and `alpha+breakout|chop`.
 2. Alternative timeframe scout: replay the current decision stack on 5-minute
    bars for relative expectancy, not absolute PnL prediction.
@@ -98,6 +98,11 @@ Full run:
   is plausible but removes too much of the last-100 stream without further
   refinement. See
   `docs/engineering/PHASE3_CANDIDATE_FILTER_REPLAY_REPORT.md`.
+- Candidate-filter fill-path replay: no live promotion. The current cached bars
+  match only `106 / 352` fill-valid rows and `0` trades in the last-100,
+  last-50, and last-25 windows, so candidate filters need fresh shadow telemetry
+  before any gate can be considered. See
+  `docs/engineering/PHASE3_CANDIDATE_FILTER_FILL_REPLAY_REPORT.md`.
 
 ## Non-Goals
 
