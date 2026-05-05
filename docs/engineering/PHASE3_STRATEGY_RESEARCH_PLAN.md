@@ -75,9 +75,8 @@ Full run:
 
 ## Next Research Lanes
 
-1. Replay candidate filters from trade attribution: test `alpha+breakout|chop`
-   and separate confidence `[0.45,0.55)` / `[0.55,0.65)` gates with opportunity
-   cost, drawdown delta, exit mix, and trade-count reduction.
+1. Fill-level replay or shadow instrumentation for the two cleanest
+   candidate filters: confidence `[0.45,0.55)` and `alpha+breakout|chop`.
 2. Alternative timeframe scout: replay the current decision stack on 5-minute
    bars for relative expectancy, not absolute PnL prediction.
 3. ML target redesign: compare current one-bar target against trade-conditioned
@@ -94,6 +93,11 @@ Full run:
   confidence-inversion story is too blunt; recent drag clusters around
   `alpha+breakout|chop` and mid-confidence buckets. See
   `docs/engineering/PHASE3_TRADE_ATTRIBUTION_REPORT.md`.
+- Candidate-filter counterfactual replay: no live promotion. Confidence
+  `[0.45,0.55)` is the cleanest recent shadow candidate; `alpha+breakout|chop`
+  is plausible but removes too much of the last-100 stream without further
+  refinement. See
+  `docs/engineering/PHASE3_CANDIDATE_FILTER_REPLAY_REPORT.md`.
 
 ## Non-Goals
 
