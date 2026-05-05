@@ -1,8 +1,8 @@
 # Live Audit Index
 
-Generated: 2026-05-05T03:12:50Z
+Generated: 2026-05-05T03:52:40Z
 PR: PR #6
-SHA: `1455575bf1`
+SHA: `ea03c596b3`
 Branch: `codex/v13-phase2-expectancy`
 Scope: **tooling/evidence_only**
 Change scope: `task` (`HEAD`)
@@ -13,9 +13,9 @@ Change scope: `task` (`HEAD`)
 |----------|-------|-------|
 | Backend | 0 | none |
 | Organism | 0 | none |
-| Scripts | 1 | `scripts/phase3_trade_attribution.py` |
-| Tests | 1 | `tests/test_phase3_trade_attribution.py` |
-| Docs | 2 | `docs/engineering/PHASE3_STRATEGY_RESEARCH_PLAN.md`, `docs/engineering/PHASE3_TRADE_ATTRIBUTION_REPORT.md` |
+| Scripts | 1 | `scripts/ci/generate_audit_index.py` |
+| Tests | 1 | `tests/test_artifact_change_scope.py` |
+| Docs | 0 | none |
 
 ## Live constants
 
