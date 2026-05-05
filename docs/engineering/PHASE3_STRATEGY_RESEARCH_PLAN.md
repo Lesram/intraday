@@ -75,9 +75,9 @@ Full run:
 
 ## Next Research Lanes
 
-Phase 3's planned evidence lanes are now complete. The next roadmap step is
-Phase 4: shadow-only model/strategy advancement using the Phase 3 evidence
-pack, not live promotion.
+Phase 3's planned evidence lanes are now complete. Phase 4 has converted the
+strongest candidates into shadow-only model and telemetry analysis tools. See
+`docs/engineering/PHASE4_SHADOW_ADVANCEMENT_PLAN.md`.
 
 ## Completed Research Slices
 
