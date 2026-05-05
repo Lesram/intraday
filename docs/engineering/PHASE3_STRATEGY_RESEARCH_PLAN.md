@@ -26,9 +26,9 @@ truth:
 - ML influence: disabled
 - Kelly sizing: disabled in favor of fixed ATR-dollar risk
 
-The strongest drag buckets are stop-loss, pyramid-cut, failure-to-follow, and
-legacy/unknown attribution buckets. Phase 3 should attack these with controlled
-research, not by loosening live gates.
+The strongest drag buckets are stop-loss, pyramid-cut, failure-to-follow,
+legacy attribution rows, and current `alpha+breakout|chop` entries. Phase 3
+should attack these with controlled research, not by loosening live gates.
 
 ## First Slice: Exp 5 Replay Harness
 
@@ -75,16 +75,12 @@ Full run:
 
 ## Next Research Lanes
 
-1. ORB shadow outcome simulator: convert logged ORB shadow breakouts into
-   next-bar-open hypothetical trades with stop/EOD exits.
-2. Attribution cleanup: remove or backfill `nan` entry-source/regime rows from
-   active strategy analytics so future reports do not mix legacy unknowns with
-   current behavior.
-3. Confidence inversion: test whether high confidence remains a drag after the
-   Phase 2 strategy-only correction.
-4. Alternative timeframe scout: replay the current decision stack on 5-minute
+1. Replay candidate filters from trade attribution: test `alpha+breakout|chop`
+   and separate confidence `[0.45,0.55)` / `[0.55,0.65)` gates with opportunity
+   cost, drawdown delta, exit mix, and trade-count reduction.
+2. Alternative timeframe scout: replay the current decision stack on 5-minute
    bars for relative expectancy, not absolute PnL prediction.
-5. ML target redesign: compare current one-bar target against trade-conditioned
+3. ML target redesign: compare current one-bar target against trade-conditioned
    horizon targets and MFE/MAE-derived labels.
 
 ## Completed Research Slices
@@ -94,6 +90,10 @@ Full run:
 - ORB shadow outcome simulation: keep ORB shadow-only; default and sensitivity
   runs were small-sample negative. See
   `docs/engineering/PHASE3_ORB_SHADOW_OUTCOME_REPORT.md`.
+- Trade attribution and confidence cleanup: no live promotion. The broad
+  confidence-inversion story is too blunt; recent drag clusters around
+  `alpha+breakout|chop` and mid-confidence buckets. See
+  `docs/engineering/PHASE3_TRADE_ATTRIBUTION_REPORT.md`.
 
 ## Non-Goals
 
