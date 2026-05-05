@@ -1,21 +1,21 @@
 # Live Audit Index
 
-Generated: 2026-05-05T14:38:55Z
+Generated: 2026-05-05T20:43:08Z
 PR: PR #6
-SHA: `2cf520b9b6`
+SHA: `abc35ff7db`
 Branch: `codex/v13-phase2-expectancy`
-Scope: **backend_logic**
-Change scope: `task` (`HEAD`)
+Scope: **tooling/evidence_only**
+Change scope: `working-tree` (`HEAD+working-tree`)
 
 ## Changed files
 
 | Category | Count | Files |
 |----------|-------|-------|
-| Backend | 1 | `backend/organism/brain_persistence.py` |
-| Organism | 1 | `backend/organism/brain_persistence.py` |
-| Scripts | 0 | none |
-| Tests | 1 | `tests/test_phase5_shadow_telemetry_persistence.py` |
-| Docs | 1 | `docs/engineering/PHASE5_SHADOW_EVIDENCE_LOOP_REPORT.md` |
+| Backend | 0 | none |
+| Organism | 0 | none |
+| Scripts | 1 | `scripts/phase5_fetch_shadow_bars.py` |
+| Tests | 1 | `tests/test_phase5_fetch_shadow_bars.py` |
+| Docs | 2 | `docs/engineering/LIVE_AUDIT_INDEX.md`, `docs/engineering/PHASE5_SHADOW_EVIDENCE_LOOP_REPORT.md` |
 
 ## Live constants
 
@@ -50,4 +50,4 @@ Source: `resolved_config_snapshot.json`
 
 ## Open risks
 
-- 1 organism file(s) changed — require replay verification
+- Evidence/tooling script changed only — no backend runtime or order-path behavior changed

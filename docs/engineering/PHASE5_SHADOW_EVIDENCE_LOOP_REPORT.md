@@ -5,15 +5,15 @@ Branch: `codex/v13-phase2-expectancy`
 
 ## Verdict
 
-Phase 5 is deployed and collecting paper shadow evidence, but it is not yet
-complete enough for a trading decision.
+Phase 5 is deployed, collecting paper shadow evidence, and the post-close
+outcome join now works against event-time bars. The result is not a promotion:
+`alpha_breakout_chop` has enough joined outcomes and is negative across the
+1/5/10-bar windows. The smaller `conf_45_55` slice is mildly positive in this
+sample, but it has only `14` events, below the Phase 5 sample gate.
 
-Candidate-filter shadow telemetry is enabled in the paper API container and has
-started writing live observations. The first evidence slice has `4` valid
-events, all tagged `alpha_breakout_chop`. That proves the Phase 5 exposure
-capture path is active. It does not prove expectancy yet: no joined outcomes
-exist because the current historical bar fetch returned bars ending before the
-live telemetry timestamps.
+No candidate filter should be promoted to live behavior from this evidence.
+`alpha_breakout_chop` should be treated as rejected or needing a redesigned
+hypothesis. `conf_45_55` can keep collecting, but only as shadow evidence.
 
 ## Runtime State
 
@@ -31,14 +31,19 @@ Runtime checks:
 - Startup preflight: `16/18` checks passed, `0` critical failures, `2`
   warnings.
 - Strategy health endpoint is available behind auth.
-- Strategy-only state at check time: `502` trades, total PnL `-790.4508`,
-  win rate `0.3287`, Sharpe per trade `-1.3931`.
+- Strategy-only state at Phase 5 deploy check: `505` trades, total PnL
+  `-812.7209`, win rate `0.3267`, Sharpe per trade `-1.4319`.
+- Post-close runtime check: container SHA `abc35ff7d`, `/healthz` healthy,
+  telemetry enabled, active telemetry file at `62` rows.
 
 ## Tools Added
 
 - `scripts/phase5_fetch_shadow_bars.py`
   - Reads shadow telemetry symbols.
-  - Fetches Alpaca historical bars for those symbols.
+  - Fetches Alpaca historical bars for those symbols around the observed
+    telemetry timestamp window. The first version used a broad ascending
+    historical query and could truncate to stale early-history bars before
+    reaching the paper-session events.
   - Writes `artifacts/phase5_shadow_live_bars/bars.pkl`.
 - `scripts/phase5_shadow_outcome_join.py`
   - Joins telemetry events to subsequent bars.
@@ -55,7 +60,7 @@ Runtime checks:
 ```bash
 ./venv/bin/python scripts/phase5_fetch_shadow_bars.py --lookback 1000
 ./venv/bin/python scripts/phase5_shadow_outcome_join.py --cache-dir artifacts/phase5_shadow_live_bars --bar-file bars.pkl
-./venv/bin/python scripts/phase4_candidate_shadow_analysis.py
+./venv/bin/python scripts/phase4_candidate_shadow_analysis.py --out-dir artifacts/phase5_shadow_analysis
 ```
 
 Outputs:
@@ -64,69 +69,78 @@ Outputs:
 - `artifacts/phase5_shadow_outcome_join/summary_shadow_outcome_join.json`
 - `artifacts/phase5_shadow_outcome_join/shadow_event_outcomes.csv`
 - `artifacts/phase5_shadow_outcome_join/shadow_filter_horizon_summary.csv`
-- `artifacts/phase4_candidate_shadow_analysis/summary_candidate_shadow_analysis.json`
+- `artifacts/phase5_shadow_analysis/summary_candidate_shadow_analysis.json`
 
 ## Current Evidence
 
-Candidate telemetry analyzer:
+Post-close candidate telemetry analyzer:
 
 | Metric | Value |
 | --- | ---: |
-| Total rows | `4` |
-| Valid events | `4` |
-| Observed filter | `alpha_breakout_chop` |
-| Filter events | `4` |
+| Total rows | `62` |
+| Valid events | `62` |
+| Observed filters | `alpha_breakout_chop`, `conf_45_55` |
+| `alpha_breakout_chop` events | `56` |
+| `conf_45_55` events | `14` |
 | Events with outcome | `0` |
 | Recommendation | `collect_outcomes_before_promotion` |
 
-Outcome join:
+Post-close outcome join:
 
 | Metric | Value |
 | --- | ---: |
-| Valid events | `4` |
-| Joined outcomes | `0` |
-| Event status | `no_bar_at_or_after_event: 4` |
-| Recommendation | `collect_matching_bar_outcomes` |
+| Valid events | `62` |
+| Joined horizon rows | `186` |
+| Event status | `joined: 186` |
+| Recommendation | `insufficient_shadow_sample` |
+
+Filter/horizon evidence:
+
+| Filter | Horizon | Events | Outcomes | Mean directional bps | Win rate | Gate |
+| --- | ---: | ---: | ---: | ---: | ---: | --- |
+| `alpha_breakout_chop` | `1` | `56` | `56` | `-1.3378` | `0.3929` | sample + outcome pass, negative |
+| `alpha_breakout_chop` | `5` | `56` | `56` | `-3.4810` | `0.3393` | sample + outcome pass, negative |
+| `alpha_breakout_chop` | `10` | `56` | `56` | `-2.5868` | `0.3929` | sample + outcome pass, negative |
+| `conf_45_55` | `1` | `14` | `14` | `2.3161` | `0.5000` | sample fail |
+| `conf_45_55` | `5` | `14` | `14` | `7.0155` | `0.5000` | sample fail |
+| `conf_45_55` | `10` | `14` | `14` | `2.1171` | `0.5000` | sample fail |
 
 Live-bar fetch:
 
-- Observed symbols: `AMZN`, `CRM`, `QQQ`, `TSLA`.
-- Fetch succeeded, but returned bars ended before the live telemetry
-  timestamps. This is a data-availability blocker for outcome joining, not a
-  strategy result.
+- Observed symbols: `AAPL`, `AMD`, `AMZN`, `AVGO`, `CRM`, `IWM`, `PSQ`, `QQQ`,
+  `TSLA`, `XLK`.
+- Event-window query: `2026-05-05T13:39:44Z` through
+  `2026-05-05T20:33:06Z`.
+- Fetch succeeded and covered the telemetry timestamps; per-symbol bars ended
+  between `2026-05-05T20:27:00Z` and `2026-05-05T20:32:00Z`.
 
 ## Completion Criteria Still Open
 
-Phase 5 is not complete until all are true:
+Phase 5's post-close evidence pass is complete for today's captured session,
+but the broader shadow program is not complete for every candidate filter:
 
-- At least one full liquid paper session has run with telemetry enabled.
-- Each candidate filter has at least `30` live shadow events.
-- Each candidate filter has at least `20` joined outcome events.
-- Outcome joins cover subsequent bars for the telemetry timestamps.
-- A post-session report recommends one of:
-  - discard candidate,
-  - keep collecting,
-  - replay review,
-  - Phase 6 guarded promotion experiment.
+- `alpha_breakout_chop`: sample gate passed, outcome gate passed, evidence is
+  negative across all measured horizons. Do not promote; discard or redesign.
+- `conf_45_55`: outcome join works, but only `14` events exist. Keep collecting
+  in shadow if this hypothesis remains interesting.
+- A full future session can continue shadow collection, but it should not block
+  the conclusion that `alpha_breakout_chop` is not ready for replay review.
 
 ## Current Recommendation
 
-Keep the paper container running with telemetry enabled through the session.
-After market close, rerun the bar fetch and outcome join. If historical bars
-still lag the session, add a runtime stream-bar export; do not promote any
-candidate-filter gate from the current evidence.
+Do not promote any candidate filter. Treat `alpha_breakout_chop` as a rejected
+gate candidate for now. Keep `conf_45_55` shadow-only until it reaches at least
+`30` events and `20` joined outcomes, then rerun the same post-close join.
 
-## Follow-Up Automation
+## Follow-Up
 
-Run the post-close Phase 5 completion pass after the market session has had time
-to finish and historical bars have had time to settle:
+For any future shadow session:
 
 ```bash
 ./venv/bin/python scripts/phase5_fetch_shadow_bars.py --lookback 1000
 ./venv/bin/python scripts/phase5_shadow_outcome_join.py --cache-dir artifacts/phase5_shadow_live_bars --bar-file bars.pkl
-./venv/bin/python scripts/phase4_candidate_shadow_analysis.py
+./venv/bin/python scripts/phase4_candidate_shadow_analysis.py --out-dir artifacts/phase5_shadow_analysis
 ```
 
-Then regenerate this report with final event counts, outcome joins, and the next
-decision: keep collecting, discard, replay review, or Phase 6 guarded promotion
-experiment.
+The one-time post-close automation has served its purpose once this report,
+artifacts, and audit index are committed and pushed.
