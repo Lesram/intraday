@@ -41,6 +41,9 @@ from backend.organism.adaptive_exits import AdaptiveExitEngine
 from backend.organism.alpha_scanner import AlphaScanner
 from backend.organism.brain_persistence import OrganismBrain
 from backend.organism.breakout_scanner import BreakoutScanner
+from backend.organism.candidate_shadow_telemetry import (
+    CandidateShadowTelemetryRecorder,
+)
 from backend.organism.continuous_learner import ContinuousLearner, TradeRecord
 from backend.organism.governance import GovernanceController
 from backend.organism.kelly_sizer import KellySizer
@@ -290,6 +293,18 @@ MR_TOP_N = _env_int("ORGANISM_MR_TOP_N", 3)
 # ML's weight to breakout. Default ON since the audit's evidence is
 # unambiguous; flip OFF (=false) to revert if observable behavior degrades.
 DROP_ML_FROM_GATE = _env_bool("ORGANISM_DROP_ML_FROM_GATE", True)
+
+# Phase 3 candidate-filter shadow telemetry. Disabled by default and
+# observability-only: when enabled, records candidate slices that would be
+# blocked by the proposed confidence/regime filters without changing ranking,
+# sizing, or order submission.
+CANDIDATE_FILTER_SHADOW_TELEMETRY_ENABLED = _env_bool(
+    "ORGANISM_CANDIDATE_FILTER_SHADOW_TELEMETRY_ENABLED", False,
+)
+CANDIDATE_FILTER_SHADOW_TELEMETRY_PATH = _env_str(
+    "ORGANISM_CANDIDATE_FILTER_SHADOW_TELEMETRY_PATH",
+    "organism_brain/candidate_filter_shadow_telemetry.jsonl",
+)
 
 # ── Dynamic intraday adjustments ────────────────────────────────
 _IS_INTRADAY = LIVE_TIMEFRAME in ("1Min", "5Min", "15Min", "1Hour")
@@ -614,6 +629,14 @@ class OrganismLiveEngine:
 
         # ── Decision telemetry (in-memory ring buffer) ────────
         self._telemetry = DecisionTelemetryStore()
+        self._candidate_filter_shadow_events: int = 0
+        self._candidate_filter_shadow_recorder = (
+            CandidateShadowTelemetryRecorder(
+                CANDIDATE_FILTER_SHADOW_TELEMETRY_PATH
+            )
+            if CANDIDATE_FILTER_SHADOW_TELEMETRY_ENABLED
+            else None
+        )
 
         # ── Live state ──────────────────────────────────────────
         self._session_id = uuid.uuid4().hex[:8]  # unique per engine lifetime
@@ -4147,6 +4170,27 @@ class OrganismLiveEngine:
                 # Store gate-level rejection counts for telemetry
                 _rej_counts["missingness"] = _rej_missingness
                 self._last_gate_rejections = dict(_rej_counts)
+
+                # Phase 3 candidate-filter shadow telemetry. This records
+                # only proposed no-entry filter matches and is deliberately
+                # placed before Kelly sizing/order submission so it cannot
+                # influence the live path. Disabled unless explicitly enabled.
+                if self._candidate_filter_shadow_recorder is not None:
+                    try:
+                        _shadow_written = (
+                            self._candidate_filter_shadow_recorder.record_candidates(
+                                cand_dicts,
+                                regime=regime,
+                                tick=self._tick_count,
+                                timestamp=now_iso,
+                            )
+                        )
+                        self._candidate_filter_shadow_events += _shadow_written
+                    except Exception as _shadow_err:
+                        logger.warning(
+                            "Candidate filter shadow telemetry write failed: %s",
+                            _shadow_err,
+                        )
 
                 # Log signal activity
                 for cd in cand_dicts[:10]:

@@ -1,0 +1,144 @@
+"""Candidate-filter shadow telemetry helpers.
+
+Records candidate slices that Phase 3 wants to watch before any no-entry gate
+is promoted. This module is observability-only; it does not decide, size, or
+submit trades.
+"""
+
+from __future__ import annotations
+
+import json
+import math
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any, Iterable
+
+
+def _finite_float(raw: Any, default: float = 0.0) -> float:
+    try:
+        value = float(raw)
+    except (TypeError, ValueError):
+        return default
+    return value if math.isfinite(value) else default
+
+
+def infer_entry_source(candidate: dict[str, Any]) -> str:
+    override = str(candidate.get("entry_source_override") or "").strip()
+    if override:
+        return override
+    breakout_score = _finite_float(candidate.get("breakout_score"))
+    predicted_return = abs(_finite_float(candidate.get("predicted_return")))
+    if breakout_score >= 0.55 and predicted_return < 0.003:
+        return "breakout"
+    if breakout_score >= 0.4:
+        return "alpha+breakout"
+    return "alpha"
+
+
+def candidate_filter_tags(candidate: dict[str, Any], regime: str) -> list[str]:
+    confidence = _finite_float(candidate.get("confidence"))
+    entry_source = infer_entry_source(candidate)
+    tags: list[str] = []
+    if 0.45 <= confidence < 0.55:
+        tags.append("conf_45_55")
+    if entry_source == "alpha+breakout" and str(regime) == "chop":
+        tags.append("alpha_breakout_chop")
+    return tags
+
+
+@dataclass(frozen=True)
+class CandidateShadowEvent:
+    tick: int
+    timestamp: str
+    symbol: str
+    regime: str
+    direction: float
+    confidence: float
+    effective_confidence: float
+    breakout_score: float
+    predicted_return: float
+    ranking_score: float
+    entry_source: str
+    matched_filters: list[str]
+    live_pipeline_candidate: bool = True
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "tick": self.tick,
+            "timestamp": self.timestamp,
+            "symbol": self.symbol,
+            "regime": self.regime,
+            "direction": round(self.direction, 4),
+            "confidence": round(self.confidence, 4),
+            "effective_confidence": round(self.effective_confidence, 4),
+            "breakout_score": round(self.breakout_score, 4),
+            "predicted_return": round(self.predicted_return, 6),
+            "ranking_score": round(self.ranking_score, 6),
+            "entry_source": self.entry_source,
+            "matched_filters": list(self.matched_filters),
+            "live_pipeline_candidate": self.live_pipeline_candidate,
+        }
+
+
+def build_candidate_shadow_events(
+    candidates: Iterable[dict[str, Any]],
+    *,
+    regime: str,
+    tick: int,
+    timestamp: str,
+) -> list[CandidateShadowEvent]:
+    events: list[CandidateShadowEvent] = []
+    for candidate in candidates:
+        tags = candidate_filter_tags(candidate, regime)
+        if not tags:
+            continue
+        entry_source = infer_entry_source(candidate)
+        events.append(
+            CandidateShadowEvent(
+                tick=int(tick),
+                timestamp=str(timestamp),
+                symbol=str(candidate.get("symbol") or ""),
+                regime=str(regime),
+                direction=_finite_float(candidate.get("direction")),
+                confidence=_finite_float(candidate.get("confidence")),
+                effective_confidence=_finite_float(
+                    candidate.get("effective_confidence"),
+                    _finite_float(candidate.get("confidence")),
+                ),
+                breakout_score=_finite_float(candidate.get("breakout_score")),
+                predicted_return=_finite_float(candidate.get("predicted_return")),
+                ranking_score=_finite_float(candidate.get("ranking_score")),
+                entry_source=entry_source,
+                matched_filters=tags,
+            )
+        )
+    return events
+
+
+class CandidateShadowTelemetryRecorder:
+    """Append-only JSONL writer for Phase 3 candidate-filter shadow events."""
+
+    def __init__(self, path: str | Path) -> None:
+        self.path = Path(path)
+
+    def record_candidates(
+        self,
+        candidates: Iterable[dict[str, Any]],
+        *,
+        regime: str,
+        tick: int,
+        timestamp: str,
+    ) -> int:
+        events = build_candidate_shadow_events(
+            candidates,
+            regime=regime,
+            tick=tick,
+            timestamp=timestamp,
+        )
+        if not events:
+            return 0
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        with self.path.open("a") as fh:
+            for event in events:
+                fh.write(json.dumps(event.to_dict(), sort_keys=True) + "\n")
+        return len(events)

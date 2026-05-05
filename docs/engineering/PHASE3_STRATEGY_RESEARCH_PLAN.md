@@ -75,12 +75,9 @@ Full run:
 
 ## Next Research Lanes
 
-1. Fresh runtime shadow telemetry or same-day bar capture for the two cleanest
-   candidate filters: confidence `[0.45,0.55)` and `alpha+breakout|chop`.
-2. Alternative timeframe scout: replay the current decision stack on 5-minute
-   bars for relative expectancy, not absolute PnL prediction.
-3. ML target redesign: compare current one-bar target against trade-conditioned
-   horizon targets and MFE/MAE-derived labels.
+Phase 3's planned evidence lanes are now complete. The next roadmap step is
+Phase 4: shadow-only model/strategy advancement using the Phase 3 evidence
+pack, not live promotion.
 
 ## Completed Research Slices
 
@@ -103,6 +100,16 @@ Full run:
   last-50, and last-25 windows, so candidate filters need fresh shadow telemetry
   before any gate can be considered. See
   `docs/engineering/PHASE3_CANDIDATE_FILTER_FILL_REPLAY_REPORT.md`.
+- Alternative-timeframe scout: no live promotion. `5Min` improved expectancy
+  by only `$0.25/trade` versus the thin `1Min` baseline and still lost money.
+  See `docs/engineering/PHASE3_TIMEFRAME_SCOUT_REPORT.md`.
+- ML target redesign comparison: no live promotion. The current one-bar target
+  is very noisy; `close_return_h5` is a shadow-training candidate only. See
+  `docs/engineering/PHASE3_ML_TARGET_REDESIGN_REPORT.md`.
+- Candidate-filter shadow telemetry: available but disabled by default. It can
+  capture `confidence [0.45,0.55)` and `alpha+breakout|chop` candidates during
+  paper sessions without affecting ranking, sizing, or orders. See
+  `docs/engineering/PHASE3_CANDIDATE_SHADOW_TELEMETRY_REPORT.md`.
 
 ## Non-Goals
 

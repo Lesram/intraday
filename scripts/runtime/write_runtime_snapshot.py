@@ -45,6 +45,8 @@ def _build_defaults_snapshot() -> dict:
         )
         from backend.organism.live_engine import (
             ALPHA_TOP_N,
+            CANDIDATE_FILTER_SHADOW_TELEMETRY_ENABLED,
+            CANDIDATE_FILTER_SHADOW_TELEMETRY_PATH,
             EXPLORATION_ENABLED,
             LIVE_LOOKBACK,
             LIVE_TIMEFRAME,
@@ -83,6 +85,12 @@ def _build_defaults_snapshot() -> dict:
             "long_only": LONG_ONLY,
 
             "exploration_enabled": EXPLORATION_ENABLED,
+            "candidate_filter_shadow_telemetry_enabled": (
+                CANDIDATE_FILTER_SHADOW_TELEMETRY_ENABLED
+            ),
+            "candidate_filter_shadow_telemetry_path": (
+                CANDIDATE_FILTER_SHADOW_TELEMETRY_PATH
+            ),
             "streaming_enabled": USE_STREAMING,
             "retrain_interval": RETRAIN_INTERVAL,
 
@@ -136,6 +144,17 @@ def _build_defaults_snapshot() -> dict:
             "max_changes_per_day": int(os.getenv("ORGANISM_MAX_CHANGES_PER_DAY", "100")),
             "max_notional_per_trade": float(os.getenv("ORGANISM_MAX_NOTIONAL", "0")),
             "max_daily_loss": float(os.getenv("ORGANISM_MAX_DAILY_LOSS", "0")),
+            "candidate_filter_shadow_telemetry_enabled": (
+                os.getenv(
+                    "ORGANISM_CANDIDATE_FILTER_SHADOW_TELEMETRY_ENABLED",
+                    "false",
+                ).lower()
+                in ("1", "true", "yes")
+            ),
+            "candidate_filter_shadow_telemetry_path": os.getenv(
+                "ORGANISM_CANDIDATE_FILTER_SHADOW_TELEMETRY_PATH",
+                "organism_brain/candidate_filter_shadow_telemetry.jsonl",
+            ),
             "learning_mode_threshold_trades": 200,
             "evolution_freeze_until_trades": 300,
             "production_promotion_gate": {
@@ -176,6 +195,12 @@ def _build_resolved_config_snapshot() -> dict:
                 "ORGANISM_MAX_NOTIONAL": env_map.get("ORGANISM_MAX_NOTIONAL"),
                 "ORGANISM_TICK_INTERVAL_SECONDS": env_map.get("ORGANISM_TICK_INTERVAL_SECONDS"),
                 "ORGANISM_EXPLORATION_ENABLED": env_map.get("ORGANISM_EXPLORATION_ENABLED"),
+                "ORGANISM_CANDIDATE_FILTER_SHADOW_TELEMETRY_ENABLED": env_map.get(
+                    "ORGANISM_CANDIDATE_FILTER_SHADOW_TELEMETRY_ENABLED"
+                ),
+                "ORGANISM_CANDIDATE_FILTER_SHADOW_TELEMETRY_PATH": env_map.get(
+                    "ORGANISM_CANDIDATE_FILTER_SHADOW_TELEMETRY_PATH"
+                ),
                 "ORGANISM_ALPHA_TOP_N": env_map.get("ORGANISM_ALPHA_TOP_N"),
                 "ORGANISM_LIVE_TIMEFRAME": env_map.get("ORGANISM_LIVE_TIMEFRAME"),
                 "APP_ENVIRONMENT": env_map.get("APP_ENVIRONMENT"),
@@ -197,6 +222,12 @@ def _build_resolved_config_snapshot() -> dict:
             "ORGANISM_MAX_NOTIONAL": env_map.get("ORGANISM_MAX_NOTIONAL"),
             "ORGANISM_TICK_INTERVAL_SECONDS": env_map.get("ORGANISM_TICK_INTERVAL_SECONDS"),
             "ORGANISM_EXPLORATION_ENABLED": env_map.get("ORGANISM_EXPLORATION_ENABLED"),
+            "ORGANISM_CANDIDATE_FILTER_SHADOW_TELEMETRY_ENABLED": env_map.get(
+                "ORGANISM_CANDIDATE_FILTER_SHADOW_TELEMETRY_ENABLED"
+            ),
+            "ORGANISM_CANDIDATE_FILTER_SHADOW_TELEMETRY_PATH": env_map.get(
+                "ORGANISM_CANDIDATE_FILTER_SHADOW_TELEMETRY_PATH"
+            ),
             "ORGANISM_ALPHA_TOP_N": env_map.get("ORGANISM_ALPHA_TOP_N"),
         }
         resolved["dotenv"] = dotenv
@@ -249,6 +280,13 @@ def _build_resolved_config_snapshot() -> dict:
 
     timeframe_val, timeframe_source = _resolve_str("ORGANISM_LIVE_TIMEFRAME", "timeframe")
     resolution_sources["timeframe"] = timeframe_source
+    shadow_path_val, shadow_path_source = _resolve_str(
+        "ORGANISM_CANDIDATE_FILTER_SHADOW_TELEMETRY_PATH",
+        "candidate_filter_shadow_telemetry_path",
+    )
+    resolution_sources["candidate_filter_shadow_telemetry_path"] = (
+        shadow_path_source
+    )
 
     resolved["resolved"] = {
         "drawdown_kill_pct": _resolve_float(
@@ -276,6 +314,12 @@ def _build_resolved_config_snapshot() -> dict:
         "exploration_enabled": _resolve_bool(
             "ORGANISM_EXPLORATION_ENABLED", "exploration_enabled", "exploration_enabled",
         ),
+        "candidate_filter_shadow_telemetry_enabled": _resolve_bool(
+            "ORGANISM_CANDIDATE_FILTER_SHADOW_TELEMETRY_ENABLED",
+            "candidate_filter_shadow_telemetry_enabled",
+            "candidate_filter_shadow_telemetry_enabled",
+        ),
+        "candidate_filter_shadow_telemetry_path": shadow_path_val,
         "timeframe": timeframe_val,
         "timeframe_source": timeframe_source,
         "learning_mode_threshold_trades": defaults.get("learning_mode_threshold_trades"),
