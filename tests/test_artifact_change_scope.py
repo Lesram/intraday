@@ -139,3 +139,15 @@ def test_audit_index_classifies_ci_scripts_as_tooling_evidence():
     ])
 
     assert scope == "tooling/evidence_only"
+
+
+def test_audit_index_classifies_research_scripts_as_tooling_evidence():
+    audit_index = _load_audit_index()
+
+    scope = audit_index.classify_pr_scope([
+        "scripts/phase3_candidate_filter_replay.py",
+        "tests/test_phase3_candidate_filter_replay.py",
+        "docs/engineering/PHASE3_CANDIDATE_FILTER_REPLAY_REPORT.md",
+    ])
+
+    assert scope == "tooling/evidence_only"
