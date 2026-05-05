@@ -65,6 +65,7 @@ MAX_BACKUPS = 5
 MAX_TRADE_ROWS = 10_000          # Phase 3.2: keep latest N trades in active CSV
 ARCHIVE_PREFIX = "trade_history_archive_"
 LOCK_FILE = ".brain.lock"
+CANDIDATE_FILTER_SHADOW_TELEMETRY_FILE = "candidate_filter_shadow_telemetry.jsonl"
 
 
 def _truthy_flag(value: Any) -> bool:
@@ -230,7 +231,7 @@ class OrganismBrain:
         """
         if not self.exists:
             logger.info("No previous brain found at %s — starting fresh", self.brain_dir)
-            print(f"  🧠 No previous brain found — starting fresh")
+            print("  🧠 No previous brain found — starting fresh")
             self._loaded = False
             return False
 
@@ -551,6 +552,7 @@ class OrganismBrain:
                 ".brain_old",
                 LOCK_FILE,
                 "backups",
+                CANDIDATE_FILTER_SHADOW_TELEMETRY_FILE,
             }
 
             def _preserve_during_swap(path: Path) -> bool:
@@ -2266,7 +2268,7 @@ class OrganismBrain:
         saved = manifest.get("saved_at", "unknown")
         trained = manifest.get("ml_is_trained", False)
 
-        print(f"  🧠 Brain Status:")
+        print("  🧠 Brain Status:")
         print(f"     Generation:     {gen}")
         print(f"     Total Runs:     {runs}")
         print(f"     Total Trades:   {trades}")

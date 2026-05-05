@@ -44,6 +44,11 @@ Runtime checks:
   - Joins telemetry events to subsequent bars.
   - Reports 1/5/10-bar directional outcomes by filter.
   - Refuses live promotion; passing gates only permits replay review.
+- `backend/organism/brain_persistence.py`
+  - Preserves the active `candidate_filter_shadow_telemetry.jsonl` file across
+    full brain-save directory swaps. Without this, Phase 5 rows survived only in
+    backup snapshots and the active capture file disappeared after a save/restart
+    cycle.
 
 ## Evidence Commands
 
@@ -110,3 +115,18 @@ Keep the paper container running with telemetry enabled through the session.
 After market close, rerun the bar fetch and outcome join. If historical bars
 still lag the session, add a runtime stream-bar export; do not promote any
 candidate-filter gate from the current evidence.
+
+## Follow-Up Automation
+
+Run the post-close Phase 5 completion pass after the market session has had time
+to finish and historical bars have had time to settle:
+
+```bash
+./venv/bin/python scripts/phase5_fetch_shadow_bars.py --lookback 1000
+./venv/bin/python scripts/phase5_shadow_outcome_join.py --cache-dir artifacts/phase5_shadow_live_bars --bar-file bars.pkl
+./venv/bin/python scripts/phase4_candidate_shadow_analysis.py
+```
+
+Then regenerate this report with final event counts, outcome joins, and the next
+decision: keep collecting, discard, replay review, or Phase 6 guarded promotion
+experiment.
