@@ -73,3 +73,8 @@ Phase 4 is complete as a shadow evidence layer, not as a live-profit change.
 The five-bar model remains a research candidate, but it failed the balanced
 accuracy gate and must not be promoted. Candidate-filter analysis is ready, but
 there are currently no shadow telemetry rows to analyze.
+
+## Phase 5 Follow-Up
+
+Phase 5 has started the paper shadow evidence loop. See
+`docs/engineering/PHASE5_SHADOW_EVIDENCE_LOOP_REPORT.md`.

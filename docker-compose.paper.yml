@@ -74,6 +74,11 @@ services:
       # Trading Settings
       - USE_MOCK_DATA=false
       - USE_MOCK_BROKER=false
+      # Phase 5 shadow evidence loop: disabled by default and
+      # telemetry-only when enabled. This lets operators turn on candidate
+      # filter shadow capture for paper sessions without editing .env.
+      - ORGANISM_CANDIDATE_FILTER_SHADOW_TELEMETRY_ENABLED=${ORGANISM_CANDIDATE_FILTER_SHADOW_TELEMETRY_ENABLED:-false}
+      - ORGANISM_CANDIDATE_FILTER_SHADOW_TELEMETRY_PATH=${ORGANISM_CANDIDATE_FILTER_SHADOW_TELEMETRY_PATH:-organism_brain/candidate_filter_shadow_telemetry.jsonl}
 
       # Observability Settings
       - OTEL_SERVICE_NAME=algotrading-api-paper
