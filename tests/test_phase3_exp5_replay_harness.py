@@ -9,15 +9,40 @@ from __future__ import annotations
 import pytest
 
 
-def test_phase3_exp5_parse_variants_rejects_empty_or_nonpositive():
-    from scripts.backtest_exp5_stop_atr import parse_variants
+def test_phase3_exp5_parse_variants_and_symbols_validate_input():
+    from scripts.backtest_exp5_stop_atr import parse_symbols, parse_variants
 
     assert parse_variants("2.5, 3.0,3.5") == [2.5, 3.0, 3.5]
+    assert parse_symbols("aapl, MSFT") == ["AAPL", "MSFT"]
+    assert parse_symbols(None) is None
 
     with pytest.raises(ValueError):
         parse_variants("")
     with pytest.raises(ValueError):
         parse_variants("2.5,0")
+    with pytest.raises(ValueError):
+        parse_symbols(" , ")
+
+
+def test_phase3_exp5_select_cached_bars_filters_and_limits_rows():
+    import pandas as pd
+
+    from scripts.backtest_exp5_stop_atr import select_cached_bars
+
+    bars = {
+        "AAPL": pd.DataFrame({"close": [1, 2, 3]}),
+        "MSFT": pd.DataFrame({"close": [4, 5, 6]}),
+    }
+
+    selected = select_cached_bars(bars, symbols=["MSFT"], bar_limit=2)
+
+    assert list(selected) == ["MSFT"]
+    assert selected["MSFT"]["close"].tolist() == [5, 6]
+
+    with pytest.raises(ValueError):
+        select_cached_bars(bars, symbols=["NVDA"])
+    with pytest.raises(ValueError):
+        select_cached_bars(bars, bar_limit=0)
 
 
 def test_phase3_exp5_seed_copy_uses_dynamic_trade_count(tmp_path):
@@ -96,6 +121,9 @@ def test_phase3_exp5_comparison_enforces_shadow_promotion_gate():
 
     variants = {v["label"]: v for v in comparison["variants"]}
     assert variants["atr2_5"]["passes_exp5_gate"] is False
+    assert variants["atr2_5"]["brain_trades"] == 10
+    assert variants["atr2_5"]["broker_sells"] == 0
+    assert variants["atr2_5"]["trade_count_source"] == "brain_history"
     assert variants["atr3_0"]["passes_exp5_gate"] is True
     assert variants["atr3_5"]["passes_exp5_gate"] is False
     assert comparison["recommendation"] == "shadow_candidate"
@@ -120,6 +148,8 @@ async def test_phase3_exp5_run_one_restores_exit_table_after_failure(tmp_path):
             seed_source=source,
             out_dir=tmp_path / "out",
             max_ticks=1,
+            symbols=None,
+            bar_limit=None,
         )
 
     assert AdaptiveExitEngine.REGIME_STOP_ATR == original

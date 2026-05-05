@@ -14,10 +14,12 @@ import argparse
 import asyncio
 import csv
 import json
+import logging
 import pickle
 import shutil
 import sys
 import time
+import warnings
 from collections import Counter
 from pathlib import Path
 from typing import Any
@@ -57,6 +59,32 @@ def parse_variants(raw: str) -> list[float]:
     return variants
 
 
+def parse_symbols(raw: str | None) -> list[str] | None:
+    if raw is None:
+        return None
+    symbols = [part.strip().upper() for part in raw.split(",") if part.strip()]
+    if not symbols:
+        raise ValueError("symbol filter cannot be empty")
+    return symbols
+
+
+def configure_replay_logging(*, verbose: bool) -> None:
+    if verbose:
+        return
+    warnings.filterwarnings(
+        "ignore",
+        message="divide by zero encountered in log10",
+        category=RuntimeWarning,
+    )
+    for name in (
+        "backend.organism.orb_scanner",
+        "backend.organism.live_engine",
+        "backend.organism.governance",
+        "backend.organism.replay_simulator",
+    ):
+        logging.getLogger(name).setLevel(logging.ERROR)
+
+
 def count_trade_history_rows(brain_dir: Path) -> int:
     path = brain_dir / "trade_history.csv"
     if not path.is_file():
@@ -90,6 +118,27 @@ def load_cached_bars(cache_dir: Path) -> dict[str, Any]:
     if not isinstance(bars, dict) or not bars:
         raise ValueError(f"cached bars are empty or invalid: {bars_path}")
     return bars
+
+
+def select_cached_bars(
+    bars: dict[str, Any],
+    *,
+    symbols: list[str] | None = None,
+    bar_limit: int | None = None,
+) -> dict[str, Any]:
+    selected_symbols = symbols or list(bars.keys())
+    missing = [symbol for symbol in selected_symbols if symbol not in bars]
+    if missing:
+        raise ValueError(f"symbols missing from cached bars: {missing}")
+    selected = {symbol: bars[symbol] for symbol in selected_symbols}
+    if bar_limit is None:
+        return selected
+    if bar_limit <= 0:
+        raise ValueError("bar limit must be positive")
+    limited: dict[str, Any] = {}
+    for symbol, frame in selected.items():
+        limited[symbol] = frame.tail(bar_limit) if hasattr(frame, "tail") else frame
+    return limited
 
 
 def read_new_trade_rows(brain_dir: Path, seed_count: int) -> list[dict[str, str]]:
@@ -178,6 +227,15 @@ def build_comparison(metrics: list[dict[str, Any]]) -> dict[str, Any]:
             "label": item.get("label"),
             "chop_stop_atr": item.get("chop_stop_atr"),
             "trades": _variant_trade_count(item),
+            "brain_trades": int(
+                item.get("trades_in_brain_history_during_replay") or 0
+            ),
+            "broker_sells": int(item.get("trades_in_broker_log") or 0),
+            "trade_count_source": (
+                "brain_history"
+                if item.get("trades_in_brain_history_during_replay")
+                else "broker_log"
+            ),
             "total_pnl_broker": float(item.get("total_pnl_broker", 0.0)),
             "expectancy_per_trade": expectancy,
             "delta_expectancy_per_trade": delta_expectancy,
@@ -216,6 +274,8 @@ async def run_one(
     seed_source: Path,
     out_dir: Path,
     max_ticks: int | None = None,
+    symbols: list[str] | None = None,
+    bar_limit: int | None = None,
 ) -> dict:
     """Monkeypatch chop stop ATR, run replay, save metrics."""
     # Patch the table BEFORE importing replay/live engine
@@ -233,8 +293,20 @@ async def run_one(
 
         out_dir.mkdir(parents=True, exist_ok=True)
         seed_dir, seed_count = prepare_seed_dir(seed_source, out_dir, label)
-        bars = load_cached_bars(cache_dir)
-        print(f"[exp5/{label}] Loaded {len(bars)} symbols from cached bars")
+        bars = select_cached_bars(
+            load_cached_bars(cache_dir),
+            symbols=symbols,
+            bar_limit=bar_limit,
+        )
+        sample_rows = next(iter(bars.values()))
+        try:
+            row_count = len(sample_rows)
+        except TypeError:
+            row_count = None
+        print(
+            f"[exp5/{label}] Loaded {len(bars)} symbols from cached bars"
+            + (f" ({row_count} rows on first symbol)" if row_count else "")
+        )
 
         from backend.organism.replay_simulator import ReplayEngine
 
@@ -269,6 +341,9 @@ async def run_one(
             "label": label,
             "chop_stop_atr": chop_stop_atr,
             "ticks": result.ticks,
+            "symbols": list(bars.keys()),
+            "bar_limit": bar_limit,
+            "max_ticks": max_ticks,
             "seed_trade_count": seed_count,
             "trades_in_broker_log": len(result.trades),
             "trades_in_brain_history_during_replay": len(new_during_replay),
@@ -313,12 +388,32 @@ async def amain() -> None:
     parser.add_argument("--seed-dir", type=Path, default=default_seed_dir())
     parser.add_argument("--out-dir", type=Path, default=DEFAULT_OUT_DIR)
     parser.add_argument("--summary-out", type=Path, default=None)
+    parser.add_argument(
+        "--symbols",
+        default=None,
+        help="Optional comma-separated cached-symbol subset for scout runs",
+    )
+    parser.add_argument(
+        "--bar-limit",
+        type=int,
+        default=None,
+        help="Optional trailing bar count per symbol for bounded scout runs",
+    )
+    parser.add_argument(
+        "--verbose",
+        action="store_true",
+        help="Show full replay warnings/log output instead of quiet research mode",
+    )
     args = parser.parse_args()
 
+    configure_replay_logging(verbose=args.verbose)
     variants = parse_variants(args.variants)
+    symbols = parse_symbols(args.symbols)
     print(f"[exp5] cache_dir={args.cache_dir}")
     print(f"[exp5] seed_dir={args.seed_dir}")
     print(f"[exp5] out_dir={args.out_dir}")
+    print(f"[exp5] symbols={symbols or 'all'}")
+    print(f"[exp5] bar_limit={args.bar_limit or 'all'}")
 
     all_metrics = []
     for atr in variants:
@@ -330,6 +425,8 @@ async def amain() -> None:
             seed_source=args.seed_dir,
             out_dir=args.out_dir,
             max_ticks=args.max_ticks,
+            symbols=symbols,
+            bar_limit=args.bar_limit,
         )
         all_metrics.append(m)
 

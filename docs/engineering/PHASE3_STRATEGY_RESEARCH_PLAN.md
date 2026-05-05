@@ -46,11 +46,25 @@ Implementation status:
 - The first variant is treated as baseline.
 - Output includes per-variant metrics and `summary_exp5.json`.
 - Recommendation values are `do_not_promote_from_replay` or `shadow_candidate`.
+- Scout controls are available via `--symbols`, `--bar-limit`, and
+  `--max-ticks`; these are explicitly not promotion-grade evidence.
+- Replay logs are quiet by default so repeated live-engine warnings do not
+  turn research runs into terminal I/O benchmarks. Use `--verbose` when
+  debugging the replay/live-engine path itself.
+- Current evidence report: `docs/engineering/PHASE3_EXP5_REPLAY_REPORT.md`.
+- Current result: do not promote from replay; all measured ATR variants were
+  identical in the active-symbol scout.
 
 Example smoke run:
 
 ```bash
 ./venv/bin/python scripts/backtest_exp5_stop_atr.py --variants 2.5,3.0 --max-ticks 50
+```
+
+Bounded scout run:
+
+```bash
+./venv/bin/python scripts/backtest_exp5_stop_atr.py --variants 2.5,3.0,3.5 --bar-limit 500
 ```
 
 Full run:
