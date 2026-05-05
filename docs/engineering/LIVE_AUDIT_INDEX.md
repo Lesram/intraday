@@ -1,8 +1,8 @@
 # Live Audit Index
 
-Generated: 2026-05-05T02:30:25Z
+Generated: 2026-05-05T02:48:33Z
 PR: PR #6
-SHA: `5bf7db38c7`
+SHA: `5fd85bfb67`
 Branch: `codex/v13-phase2-expectancy`
 Scope: **tooling/evidence_only**
 Change scope: `task` (`HEAD`)
@@ -13,8 +13,8 @@ Change scope: `task` (`HEAD`)
 |----------|-------|-------|
 | Backend | 0 | none |
 | Organism | 0 | none |
-| Tests | 1 | `tests/test_phase3_exp5_replay_harness.py` |
-| Docs | 2 | `docs/engineering/PHASE3_EXP5_REPLAY_REPORT.md`, `docs/engineering/PHASE3_STRATEGY_RESEARCH_PLAN.md` |
+| Tests | 1 | `tests/test_phase3_orb_shadow_outcome.py` |
+| Docs | 2 | `docs/engineering/PHASE3_ORB_SHADOW_OUTCOME_REPORT.md`, `docs/engineering/PHASE3_STRATEGY_RESEARCH_PLAN.md` |
 
 ## Live constants
 
