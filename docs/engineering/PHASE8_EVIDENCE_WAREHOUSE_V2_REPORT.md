@@ -61,10 +61,10 @@ Latest P8.2 read-only extract loaded:
 
 | Table | Rows |
 |-------|------|
-| `db_orders` | `1464` |
-| `db_executions` | `1548` |
-| `db_realized_trades` | `972` |
-| `realized_trade_accounting` | `972` |
+| `db_orders` | `1466` |
+| `db_executions` | `1551` |
+| `db_realized_trades` | `973` |
+| `realized_trade_accounting` | `973` |
 | `filter_outcome_summary` | `3` |
 | `symbol_evidence_summary` | `31` |
 | `replay_candidate_export` | `1` |
@@ -87,9 +87,9 @@ Accounting join summary:
 | Missing open orders | `0` |
 | Missing close orders | `0` |
 | Order/execution quantity delta rows | `0` |
-| Winning realized rows | `350` |
+| Winning realized rows | `351` |
 | Losing realized rows | `616` |
-| Average realized return bps | `-2.6089` |
+| Average realized return bps | `-2.5591` |
 
 Research summary verdicts:
 
@@ -112,7 +112,7 @@ Replay candidate export:
 
 | Candidate | Type | Evidence | Required next step |
 |-----------|------|----------|--------------------|
-| `AMD` | `symbol` | `joined=48`, `realized_rows=37`, `forward_bps=0.8986`, `positive_rate=0.5625`, `realized_pnl=22.9207` | `replay_before_any_live_change` |
+| `AMD` | `symbol` | `joined=48`, `realized_rows=38`, `forward_bps=0.8986`, `positive_rate=0.5625`, `realized_pnl=24.8107` | `replay_before_any_live_change` |
 
 `QQQ` was not exported despite positive average forward bps and positive
 realized PnL because its forward positive rate was only `0.40`; P8.4 requires
@@ -129,12 +129,19 @@ Command validated locally:
 ./venv/bin/python scripts/ci/run_phase8_postclose_evidence.py --include-db --require-db
 ```
 
-Result: PASS with `events=89`, `accounting=972`, `replay_candidates=1`.
+Result: PASS with `events=90`, `accounting=973`, `replay_candidates=1`.
 
 The GitHub `paper-postclose-audit` workflow now runs
 `scripts/ci/run_phase8_postclose_evidence.py` in artifact mode. Local paper
 post-close automation should run the same wrapper with `--include-db
 --require-db` so it fails when live DB evidence is missing.
+
+The wrapper also generates a replay plan from `replay_candidates.json`:
+
+- `artifacts/phase8_replay_plan/replay_plan.json`
+- `artifacts/phase8_replay_plan/PHASE8_REPLAY_PLAN.md`
+
+Current replay plan candidate: `AMD`.
 
 ## Acceptance
 
@@ -148,13 +155,14 @@ post-close automation should run the same wrapper with `--include-db
 | Filter and symbol research summaries are populated | PASS |
 | Post-close report and replay-candidate export generated | PASS |
 | Track C wrapper validates no-promotion guardrails | PASS |
+| Replay plan generated from replay candidates | PASS |
 | Promotion remains unauthorized | PASS |
-| Focused tests | PASS: `tests/test_phase8_evidence_warehouse.py`, `tests/test_phase8_postclose_runner.py` |
+| Focused tests | PASS: `tests/test_phase8_evidence_warehouse.py`, `tests/test_phase8_postclose_runner.py`, `tests/test_phase8_replay_plan.py` |
 
 ## Next Slice
 
 Next Track C / Track B work:
 
-1. Install/schedule the local post-close wrapper after the paper book is safe.
-2. Generate replay harness inputs from `replay_candidates.json`.
-3. Run AMD replay before considering any strategy-logic change.
+1. Run AMD replay commands from `artifacts/phase8_replay_plan/PHASE8_REPLAY_PLAN.md`.
+2. Review replay artifacts and define pass/fail thresholds.
+3. Consider strategy-logic changes only after replay evidence is positive.

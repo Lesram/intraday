@@ -1,8 +1,8 @@
 # Live Audit Index
 
-Generated: 2026-05-06T17:22:40Z
+Generated: 2026-05-06T17:30:10Z
 PR: PR #6
-SHA: `707914861e`
+SHA: `439333392f`
 Branch: `codex/v13-phase2-expectancy`
 Scope: **tooling/evidence_only**
 Change scope: `working-tree` (`HEAD+working-tree`)
@@ -13,8 +13,8 @@ Change scope: `working-tree` (`HEAD+working-tree`)
 |----------|-------|-------|
 | Backend | 0 | none |
 | Organism | 0 | none |
-| Scripts | 1 | `scripts/ci/run_phase8_postclose_evidence.py` |
-| Tests | 1 | `tests/test_phase8_postclose_runner.py` |
+| Scripts | 2 | `scripts/ci/run_phase8_postclose_evidence.py`, `scripts/phase8_replay_plan.py` |
+| Tests | 1 | `tests/test_phase8_replay_plan.py` |
 | Docs | 2 | `docs/engineering/PHASE8_EVIDENCE_WAREHOUSE_V2_PLAN.md`, `docs/engineering/PHASE8_EVIDENCE_WAREHOUSE_V2_REPORT.md` |
 
 ## Live constants

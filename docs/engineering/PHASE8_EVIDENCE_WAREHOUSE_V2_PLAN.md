@@ -63,6 +63,8 @@ Track C starts the automation path:
 
 - `scripts/ci/run_phase8_postclose_evidence.py` wraps the warehouse build and
   fails if promotion guardrails are violated.
+- `scripts/phase8_replay_plan.py` converts `replay_candidates.json` into
+  replay commands and a human replay plan.
 - GitHub `paper-postclose-audit` runs the wrapper in CI artifact mode.
 - Local paper post-close runs should use `--include-db --require-db` to require
   live paper DB evidence.
@@ -117,7 +119,6 @@ Default outputs:
 
 ## Next Slices
 
-1. Add local scheduled execution for `run_phase8_postclose_evidence.py
-   --include-db --require-db`.
-2. Add replay harness input generation for `replay_candidates.json`.
-3. Begin Track B strategy research on replay-only AMD evidence.
+1. Run the generated AMD replay plan and review artifacts.
+2. Add stricter replay pass/fail thresholds for any future candidate.
+3. Begin Track B strategy research only after AMD replay evidence is positive.

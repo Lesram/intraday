@@ -54,6 +54,7 @@ def write_run_summary(
     summary: dict[str, Any],
     errors: list[str],
     command: list[str],
+    replay_plan_path: Path,
 ) -> None:
     payload = {
         "generated_at": datetime.now(UTC).isoformat(),
@@ -63,6 +64,7 @@ def write_run_summary(
         "warehouse_summary": str(out_dir / "warehouse_summary.json"),
         "postclose_report": str(out_dir / "PHASE8_POST_CLOSE_RESEARCH_REPORT.md"),
         "replay_candidates": str(out_dir / "replay_candidates.json"),
+        "replay_plan": str(replay_plan_path),
         "counts": summary.get("counts", {}),
         "research": (summary.get("db_extract") or {}).get("research_summaries", {}),
     }
@@ -74,6 +76,11 @@ def write_run_summary(
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--out-dir", type=Path, default=DEFAULT_OUT_DIR)
+    parser.add_argument(
+        "--replay-out-dir",
+        type=Path,
+        default=ROOT / "artifacts" / "phase8_replay_plan",
+    )
     parser.add_argument("--include-db", action="store_true")
     parser.add_argument("--require-db", action="store_true")
     return parser.parse_args()
@@ -94,7 +101,27 @@ def main() -> int:
     summary_path = args.out_dir / "warehouse_summary.json"
     summary = json.loads(summary_path.read_text())
     errors = validate_postclose_summary(summary, require_db=args.require_db)
-    write_run_summary(args.out_dir, summary=summary, errors=errors, command=command)
+    replay_plan_path = args.replay_out_dir / "replay_plan.json"
+    if not errors:
+        subprocess.run(
+            [
+                sys.executable,
+                str(ROOT / "scripts" / "phase8_replay_plan.py"),
+                "--candidates",
+                str(args.out_dir / "replay_candidates.json"),
+                "--out-dir",
+                str(args.replay_out_dir),
+            ],
+            cwd=ROOT,
+            check=True,
+        )
+    write_run_summary(
+        args.out_dir,
+        summary=summary,
+        errors=errors,
+        command=command,
+        replay_plan_path=replay_plan_path,
+    )
 
     if errors:
         print("Phase 8 post-close evidence: FAIL")
