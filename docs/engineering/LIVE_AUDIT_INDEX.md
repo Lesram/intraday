@@ -1,8 +1,8 @@
 # Live Audit Index
 
-Generated: 2026-05-06T15:34:33Z
+Generated: 2026-05-06T15:51:40Z
 PR: PR #6
-SHA: `859482ee70`
+SHA: `839df31db2`
 Branch: `codex/v13-phase2-expectancy`
 Scope: **backend_logic**
 Change scope: `task` (`HEAD`)
@@ -11,10 +11,10 @@ Change scope: `task` (`HEAD`)
 
 | Category | Count | Files |
 |----------|-------|-------|
-| Backend | 1 | `backend/organism/routes.py` |
-| Organism | 1 | `backend/organism/routes.py` |
-| Scripts | 1 | `scripts/ci/phase7_integration_checkpoint.py` |
-| Tests | 2 | `tests/test_phase7_integration_checkpoint_redaction.py`, `tests/test_phase7_organism_status_serialization.py` |
+| Backend | 1 | `backend/integrations/alpaca_stream.py` |
+| Organism | 0 | none |
+| Scripts | 0 | none |
+| Tests | 1 | `tests/unit/test_alpaca_stream_comprehensive.py` |
 | Docs | 1 | `docs/engineering/PHASE7_OBSERVABILITY_REPORT.md` |
 
 ## Live constants
@@ -50,4 +50,4 @@ Source: `resolved_config_snapshot.json`
 
 ## Open risks
 
-- 1 organism file(s) changed — require replay verification
+- 1 backend runtime file(s) changed — require targeted verification
