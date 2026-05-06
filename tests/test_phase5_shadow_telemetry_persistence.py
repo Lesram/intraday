@@ -7,6 +7,7 @@ from types import SimpleNamespace
 from backend.organism.brain_persistence import (
     CANDIDATE_FILTER_SHADOW_TELEMETRY_FILE,
     OrganismBrain,
+    STRATEGY_EVIDENCE_TELEMETRY_FILE,
 )
 
 
@@ -67,3 +68,28 @@ def test_full_brain_save_preserves_phase5_shadow_telemetry_file(tmp_path):
     )
 
     assert telemetry.read_text() == '{"symbol":"AAPL","matched_filters":["conf_45_55"]}\n'
+
+
+def test_full_brain_save_preserves_phase6_strategy_evidence_file(tmp_path):
+    brain = OrganismBrain(brain_dir=tmp_path / "brain")
+    brain.save(
+        signal_gen=_signal_gen(),
+        learner=_learner(),
+        equity_curve=[100000.0],
+        all_trades=[],
+        epoch_metrics=[],
+        force=True,
+    )
+    telemetry = brain.brain_dir / STRATEGY_EVIDENCE_TELEMETRY_FILE
+    telemetry.write_text('{"symbol":"MSFT","matched_filters":[]}\n')
+
+    brain.save(
+        signal_gen=_signal_gen(),
+        learner=_learner(),
+        equity_curve=[100000.0, 100001.0],
+        all_trades=[],
+        epoch_metrics=[],
+        force=True,
+    )
+
+    assert telemetry.read_text() == '{"symbol":"MSFT","matched_filters":[]}\n'

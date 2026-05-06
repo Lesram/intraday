@@ -66,6 +66,7 @@ MAX_TRADE_ROWS = 10_000          # Phase 3.2: keep latest N trades in active CSV
 ARCHIVE_PREFIX = "trade_history_archive_"
 LOCK_FILE = ".brain.lock"
 CANDIDATE_FILTER_SHADOW_TELEMETRY_FILE = "candidate_filter_shadow_telemetry.jsonl"
+STRATEGY_EVIDENCE_TELEMETRY_FILE = "strategy_evidence_events.jsonl"
 
 
 def _truthy_flag(value: Any) -> bool:
@@ -553,6 +554,7 @@ class OrganismBrain:
                 LOCK_FILE,
                 "backups",
                 CANDIDATE_FILTER_SHADOW_TELEMETRY_FILE,
+                STRATEGY_EVIDENCE_TELEMETRY_FILE,
             }
 
             def _preserve_during_swap(path: Path) -> bool:

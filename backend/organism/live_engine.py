@@ -305,6 +305,13 @@ CANDIDATE_FILTER_SHADOW_TELEMETRY_PATH = _env_str(
     "ORGANISM_CANDIDATE_FILTER_SHADOW_TELEMETRY_PATH",
     "organism_brain/candidate_filter_shadow_telemetry.jsonl",
 )
+STRATEGY_EVIDENCE_TELEMETRY_ENABLED = _env_bool(
+    "ORGANISM_STRATEGY_EVIDENCE_TELEMETRY_ENABLED", False,
+)
+STRATEGY_EVIDENCE_TELEMETRY_PATH = _env_str(
+    "ORGANISM_STRATEGY_EVIDENCE_TELEMETRY_PATH",
+    "organism_brain/strategy_evidence_events.jsonl",
+)
 
 # ── Dynamic intraday adjustments ────────────────────────────────
 _IS_INTRADAY = LIVE_TIMEFRAME in ("1Min", "5Min", "15Min", "1Hour")
@@ -635,6 +642,15 @@ class OrganismLiveEngine:
                 CANDIDATE_FILTER_SHADOW_TELEMETRY_PATH
             )
             if CANDIDATE_FILTER_SHADOW_TELEMETRY_ENABLED
+            else None
+        )
+        self._strategy_evidence_events: int = 0
+        self._strategy_evidence_recorder = (
+            CandidateShadowTelemetryRecorder(
+                STRATEGY_EVIDENCE_TELEMETRY_PATH,
+                record_all_candidates=True,
+            )
+            if STRATEGY_EVIDENCE_TELEMETRY_ENABLED
             else None
         )
 
@@ -4190,6 +4206,27 @@ class OrganismLiveEngine:
                         logger.warning(
                             "Candidate filter shadow telemetry write failed: %s",
                             _shadow_err,
+                        )
+
+                # Phase 6 strategy evidence warehouse feed. Records every
+                # surviving pre-sizing candidate, including candidates with no
+                # current shadow-filter tag. Observability-only and intentionally
+                # before Kelly sizing/order submission.
+                if self._strategy_evidence_recorder is not None:
+                    try:
+                        _evidence_written = (
+                            self._strategy_evidence_recorder.record_candidates(
+                                cand_dicts,
+                                regime=regime,
+                                tick=self._tick_count,
+                                timestamp=now_iso,
+                            )
+                        )
+                        self._strategy_evidence_events += _evidence_written
+                    except Exception as _evidence_err:
+                        logger.warning(
+                            "Strategy evidence telemetry write failed: %s",
+                            _evidence_err,
                         )
 
                 # Log signal activity

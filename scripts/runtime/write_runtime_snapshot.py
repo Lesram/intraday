@@ -58,6 +58,8 @@ def _build_defaults_snapshot() -> dict:
             MIN_BARS,
             PREDICTION_HORIZON,
             RETRAIN_INTERVAL,
+            STRATEGY_EVIDENCE_TELEMETRY_ENABLED,
+            STRATEGY_EVIDENCE_TELEMETRY_PATH,
             USE_STREAMING,
         )
 
@@ -90,6 +92,12 @@ def _build_defaults_snapshot() -> dict:
             ),
             "candidate_filter_shadow_telemetry_path": (
                 CANDIDATE_FILTER_SHADOW_TELEMETRY_PATH
+            ),
+            "strategy_evidence_telemetry_enabled": (
+                STRATEGY_EVIDENCE_TELEMETRY_ENABLED
+            ),
+            "strategy_evidence_telemetry_path": (
+                STRATEGY_EVIDENCE_TELEMETRY_PATH
             ),
             "streaming_enabled": USE_STREAMING,
             "retrain_interval": RETRAIN_INTERVAL,
@@ -154,6 +162,17 @@ def _build_defaults_snapshot() -> dict:
             "candidate_filter_shadow_telemetry_path": os.getenv(
                 "ORGANISM_CANDIDATE_FILTER_SHADOW_TELEMETRY_PATH",
                 "organism_brain/candidate_filter_shadow_telemetry.jsonl",
+            ),
+            "strategy_evidence_telemetry_enabled": (
+                os.getenv(
+                    "ORGANISM_STRATEGY_EVIDENCE_TELEMETRY_ENABLED",
+                    "false",
+                ).lower()
+                in ("1", "true", "yes")
+            ),
+            "strategy_evidence_telemetry_path": os.getenv(
+                "ORGANISM_STRATEGY_EVIDENCE_TELEMETRY_PATH",
+                "organism_brain/strategy_evidence_events.jsonl",
             ),
             "learning_mode_threshold_trades": 200,
             "evolution_freeze_until_trades": 300,
@@ -287,6 +306,13 @@ def _build_resolved_config_snapshot() -> dict:
     resolution_sources["candidate_filter_shadow_telemetry_path"] = (
         shadow_path_source
     )
+    evidence_path_val, evidence_path_source = _resolve_str(
+        "ORGANISM_STRATEGY_EVIDENCE_TELEMETRY_PATH",
+        "strategy_evidence_telemetry_path",
+    )
+    resolution_sources["strategy_evidence_telemetry_path"] = (
+        evidence_path_source
+    )
 
     resolved["resolved"] = {
         "drawdown_kill_pct": _resolve_float(
@@ -320,6 +346,12 @@ def _build_resolved_config_snapshot() -> dict:
             "candidate_filter_shadow_telemetry_enabled",
         ),
         "candidate_filter_shadow_telemetry_path": shadow_path_val,
+        "strategy_evidence_telemetry_enabled": _resolve_bool(
+            "ORGANISM_STRATEGY_EVIDENCE_TELEMETRY_ENABLED",
+            "strategy_evidence_telemetry_enabled",
+            "strategy_evidence_telemetry_enabled",
+        ),
+        "strategy_evidence_telemetry_path": evidence_path_val,
         "timeframe": timeframe_val,
         "timeframe_source": timeframe_source,
         "learning_mode_threshold_trades": defaults.get("learning_mode_threshold_trades"),

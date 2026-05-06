@@ -66,6 +66,35 @@ def test_build_candidate_shadow_events_records_only_matching_candidates():
     assert events[0].to_dict()["confidence"] == 0.5
 
 
+def test_build_candidate_shadow_events_can_record_all_candidates_for_phase6():
+    events = build_candidate_shadow_events(
+        [
+            {
+                "symbol": "AAPL",
+                "direction": 1,
+                "confidence": 0.50,
+                "breakout_score": 0.45,
+                "predicted_return": 0.004,
+            },
+            {
+                "symbol": "MSFT",
+                "direction": 1,
+                "confidence": 0.70,
+                "breakout_score": 0.10,
+                "predicted_return": 0.004,
+            },
+        ],
+        regime="chop",
+        tick=42,
+        timestamp="2026-05-04T14:00:00Z",
+        record_all_candidates=True,
+    )
+
+    assert [event.symbol for event in events] == ["AAPL", "MSFT"]
+    assert events[0].matched_filters == ["conf_45_55", "alpha_breakout_chop"]
+    assert events[1].matched_filters == []
+
+
 def test_candidate_shadow_recorder_writes_jsonl(tmp_path: Path):
     path = tmp_path / "shadow" / "candidate_filter_shadow_telemetry.jsonl"
     recorder = CandidateShadowTelemetryRecorder(path)
@@ -98,6 +127,31 @@ def test_candidate_shadow_recorder_writes_jsonl(tmp_path: Path):
     assert rows[0]["matched_filters"] == ["conf_45_55", "alpha_breakout_chop"]
 
 
+def test_phase6_strategy_evidence_recorder_writes_untagged_candidates(tmp_path: Path):
+    path = tmp_path / "strategy_evidence_events.jsonl"
+    recorder = CandidateShadowTelemetryRecorder(path, record_all_candidates=True)
+
+    written = recorder.record_candidates(
+        [
+            {
+                "symbol": "MSFT",
+                "direction": 1,
+                "confidence": 0.80,
+                "breakout_score": 0.10,
+                "predicted_return": 0.004,
+            },
+        ],
+        regime="chop",
+        tick=1,
+        timestamp="2026-05-04T14:00:00Z",
+    )
+
+    assert written == 1
+    rows = [json.loads(line) for line in path.read_text().splitlines()]
+    assert rows[0]["symbol"] == "MSFT"
+    assert rows[0]["matched_filters"] == []
+
+
 def test_live_engine_shadow_telemetry_is_disabled_by_default_and_pre_sizing():
     src = (
         Path(__file__).parent.parent / "backend" / "organism" / "live_engine.py"
@@ -107,6 +161,8 @@ def test_live_engine_shadow_telemetry_is_disabled_by_default_and_pre_sizing():
         'ORGANISM_CANDIDATE_FILTER_SHADOW_TELEMETRY_ENABLED", False'
         in src
     )
+    assert 'ORGANISM_STRATEGY_EVIDENCE_TELEMETRY_ENABLED", False' in src
+    assert "record_all_candidates=True" in src
     block_start = src.find(
         "This records\n"
         "                # only proposed no-entry filter matches"
@@ -134,4 +190,9 @@ def test_runtime_snapshot_includes_shadow_telemetry_switches():
     assert (
         snapshot["candidate_filter_shadow_telemetry_path"]
         == "organism_brain/candidate_filter_shadow_telemetry.jsonl"
+    )
+    assert snapshot["strategy_evidence_telemetry_enabled"] is False
+    assert (
+        snapshot["strategy_evidence_telemetry_path"]
+        == "organism_brain/strategy_evidence_events.jsonl"
     )

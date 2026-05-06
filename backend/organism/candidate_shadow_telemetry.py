@@ -86,11 +86,12 @@ def build_candidate_shadow_events(
     regime: str,
     tick: int,
     timestamp: str,
+    record_all_candidates: bool = False,
 ) -> list[CandidateShadowEvent]:
     events: list[CandidateShadowEvent] = []
     for candidate in candidates:
         tags = candidate_filter_tags(candidate, regime)
-        if not tags:
+        if not tags and not record_all_candidates:
             continue
         entry_source = infer_entry_source(candidate)
         events.append(
@@ -116,10 +117,16 @@ def build_candidate_shadow_events(
 
 
 class CandidateShadowTelemetryRecorder:
-    """Append-only JSONL writer for Phase 3 candidate-filter shadow events."""
+    """Append-only JSONL writer for candidate shadow evidence events."""
 
-    def __init__(self, path: str | Path) -> None:
+    def __init__(
+        self,
+        path: str | Path,
+        *,
+        record_all_candidates: bool = False,
+    ) -> None:
         self.path = Path(path)
+        self.record_all_candidates = record_all_candidates
 
     def record_candidates(
         self,
@@ -134,6 +141,7 @@ class CandidateShadowTelemetryRecorder:
             regime=regime,
             tick=tick,
             timestamp=timestamp,
+            record_all_candidates=self.record_all_candidates,
         )
         if not events:
             return 0
