@@ -4,7 +4,9 @@ import sqlite3
 
 from scripts.phase8_evidence_warehouse import (
     WarehouseInputs,
+    build_filter_outcome_summary,
     build_realized_trade_accounting,
+    build_symbol_evidence_summary,
     build_warehouse,
     normalize_event,
     normalize_order,
@@ -160,6 +162,61 @@ def test_phase8_builds_realized_trade_accounting_join() -> None:
     assert accounting[0]["missing_close_order"] == 0
 
 
+def test_phase8_builds_filter_and_symbol_research_summaries() -> None:
+    outcomes = [
+        {
+            "symbol": "AMD",
+            "status": "joined",
+            "matched_filters": "all_candidates,alpha_breakout_chop",
+            "directional_return_bps": 4.0,
+            "raw_return_bps": 4.0,
+            "confidence": 0.61,
+            "horizon_bars": 5,
+        },
+        {
+            "symbol": "AMD",
+            "status": "joined",
+            "matched_filters": "all_candidates,alpha_breakout_chop",
+            "directional_return_bps": -1.0,
+            "raw_return_bps": -1.0,
+            "confidence": 0.59,
+            "horizon_bars": 10,
+        },
+        {
+            "symbol": "NVDA",
+            "status": "joined",
+            "matched_filters": "all_candidates",
+            "directional_return_bps": 3.0,
+            "raw_return_bps": 3.0,
+            "confidence": 0.58,
+            "horizon_bars": 5,
+        },
+    ]
+    accounting = [
+        {
+            "symbol": "AMD",
+            "realized_pnl": -2.0,
+            "realized_return_bps": -10.0,
+            "missing_open_order": 0,
+            "missing_close_order": 0,
+        }
+    ]
+
+    filters = build_filter_outcome_summary(outcomes)
+    symbols = build_symbol_evidence_summary(outcomes, accounting)
+
+    alpha = next(row for row in filters if row["filter_tag"] == "alpha_breakout_chop")
+    amd = next(row for row in symbols if row["symbol"] == "AMD")
+    nvda = next(row for row in symbols if row["symbol"] == "NVDA")
+
+    assert alpha["joined_outcomes"] == 2
+    assert alpha["promotion_authorized"] == 0
+    assert alpha["recommendation"] == "collect_more_evidence"
+    assert amd["avg_forward_directional_bps"] == 1.5
+    assert amd["verdict"] == "conflicting_forward_positive_realized_negative"
+    assert nvda["verdict"] == "forward_only_needs_realized_trades"
+
+
 def test_phase8_builds_idempotent_sqlite_warehouse(tmp_path) -> None:
     strategy = tmp_path / "strategy.jsonl"
     candidate = tmp_path / "candidate.jsonl"
@@ -259,6 +316,8 @@ def test_phase8_builds_idempotent_sqlite_warehouse(tmp_path) -> None:
     assert second["trade_history"]["total_pnl"] == 2.0
     assert second["counts"]["db_orders"] == 0
     assert second["counts"]["realized_trade_accounting"] == 0
+    assert second["counts"]["filter_outcome_summary"] == 2
+    assert second["counts"]["symbol_evidence_summary"] == 1
     assert second["db_extract"]["enabled"] is False
     assert second["promotion_authorized"] is False
 
@@ -270,6 +329,12 @@ def test_phase8_builds_idempotent_sqlite_warehouse(tmp_path) -> None:
         accounting_count = conn.execute(
             "SELECT count(*) FROM realized_trade_accounting"
         ).fetchone()[0]
+        filter_count = conn.execute(
+            "SELECT count(*) FROM filter_outcome_summary"
+        ).fetchone()[0]
+        symbol_count = conn.execute(
+            "SELECT count(*) FROM symbol_evidence_summary"
+        ).fetchone()[0]
     finally:
         conn.close()
 
@@ -277,5 +342,7 @@ def test_phase8_builds_idempotent_sqlite_warehouse(tmp_path) -> None:
     assert outcome_count == 1
     assert trade_count == 1
     assert accounting_count == 0
+    assert filter_count == 2
+    assert symbol_count == 1
     assert (out_dir / "warehouse_summary.json").exists()
     assert (out_dir / "PHASE8_EVIDENCE_WAREHOUSE_REPORT.md").exists()

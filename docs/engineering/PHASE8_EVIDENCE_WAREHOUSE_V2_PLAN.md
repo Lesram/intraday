@@ -44,6 +44,14 @@ P8.2 adds an accounting view derived from those DB extracts:
 This is still research-only. It creates evidence tables and reports; it does
 not change paper/live trading decisions.
 
+P8.3 adds first-pass research summaries:
+
+- `filter_outcome_summary` groups joined forward returns by filter tag.
+- `symbol_evidence_summary` compares forward-return evidence with realized
+  accounting by symbol.
+- Every recommendation remains no-promotion; passing rows are only replay
+  candidates.
+
 ## Warehouse Tables
 
 | Table | Purpose |
@@ -55,6 +63,8 @@ not change paper/live trading decisions.
 | `db_executions` | Read-only execution/fill extract from paper Postgres. |
 | `db_realized_trades` | Read-only realized-trade accounting extract from paper Postgres. |
 | `realized_trade_accounting` | Derived realized-lot to order/execution accounting join. |
+| `filter_outcome_summary` | Joined forward-return summary by candidate/filter tag. |
+| `symbol_evidence_summary` | Forward-return versus realized-accounting summary by symbol. |
 | `warehouse_manifest` | Build metadata, counts, input paths, SHA, and no-promotion assertion. |
 
 ## Execution
@@ -83,13 +93,14 @@ Default outputs:
 - DB extract is opt-in, SELECT/WITH-only, and preserves default offline behavior.
 - Realized-trade accounting joins expose missing links and order/execution
   quantity deltas.
+- Research summaries can nominate replay candidates, but never authorize live
+  promotion.
 - The report states `promotion_authorized=false`.
 - Focused tests pass.
 
 ## Next Slices
 
-1. Add realized-vs-forward-return comparison.
-2. Add post-close decision rules with minimum sample gates.
-3. Add replay candidate export for ideas that pass evidence gates.
-4. Add a Track C daily automation that builds the warehouse after close and
+1. Add post-close decision report with minimum sample gates.
+2. Add replay candidate export for ideas that pass evidence gates.
+3. Add a Track C daily automation that builds the warehouse after close and
    refuses live promotion until replay and review pass.

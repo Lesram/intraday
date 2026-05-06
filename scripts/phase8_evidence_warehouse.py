@@ -26,6 +26,9 @@ DEFAULT_CANDIDATE_TELEMETRY = ROOT / "organism_brain" / "candidate_filter_shadow
 DEFAULT_PHASE6_OUTCOMES = ROOT / "artifacts" / "phase6_strategy_evidence" / "strategy_evidence_outcomes.csv"
 DEFAULT_TRADE_HISTORY = ROOT / "organism_brain" / "trade_history.csv"
 DEFAULT_OUT_DIR = ROOT / "artifacts" / "phase8_evidence_warehouse"
+MIN_FILTER_OUTCOMES_FOR_RESEARCH = 30
+MIN_POSITIVE_RATE_FOR_RESEARCH = 0.52
+MIN_AVG_DIRECTIONAL_BPS_FOR_RESEARCH = 2.0
 
 
 @dataclass(frozen=True)
@@ -74,6 +77,16 @@ def _tags_json(raw: Any) -> str:
     else:
         tags = []
     return json.dumps(tags, sort_keys=True)
+
+
+def _split_tags(raw: Any) -> list[str]:
+    if isinstance(raw, list):
+        tags = [str(item).strip() for item in raw if str(item).strip()]
+    elif isinstance(raw, str) and raw.strip():
+        tags = [part.strip() for part in raw.split(",") if part.strip()]
+    else:
+        tags = []
+    return tags or ["untagged"]
 
 
 def _stable_hash(parts: list[Any]) -> str:
@@ -428,6 +441,150 @@ def build_realized_trade_accounting(
     return rows
 
 
+def _avg(values: list[float]) -> float | None:
+    return round(sum(values) / len(values), 4) if values else None
+
+
+def _positive_rate(values: list[float]) -> float | None:
+    return round(sum(1 for value in values if value > 0) / len(values), 4) if values else None
+
+
+def _filter_recommendation(outcome_count: int, avg_bps: float | None, positive_rate: float | None) -> str:
+    if outcome_count < MIN_FILTER_OUTCOMES_FOR_RESEARCH:
+        return "collect_more_evidence"
+    if avg_bps is None or positive_rate is None:
+        return "insufficient_joined_outcomes"
+    if (
+        avg_bps >= MIN_AVG_DIRECTIONAL_BPS_FOR_RESEARCH
+        and positive_rate >= MIN_POSITIVE_RATE_FOR_RESEARCH
+    ):
+        return "research_candidate_pending_replay"
+    if avg_bps <= -MIN_AVG_DIRECTIONAL_BPS_FOR_RESEARCH and positive_rate <= 0.48:
+        return "reject_negative_expectancy"
+    return "inconclusive_continue_shadow"
+
+
+def build_filter_outcome_summary(outcomes: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    grouped: dict[str, list[dict[str, Any]]] = {}
+    for row in outcomes:
+        if row.get("status") != "joined":
+            continue
+        for tag in _split_tags(row.get("matched_filters")):
+            grouped.setdefault(tag, []).append(row)
+
+    summaries: list[dict[str, Any]] = []
+    for tag, rows in sorted(grouped.items()):
+        directional = [
+            value
+            for value in (_finite_float(row.get("directional_return_bps")) for row in rows)
+            if value is not None
+        ]
+        raw_returns = [
+            value
+            for value in (_finite_float(row.get("raw_return_bps")) for row in rows)
+            if value is not None
+        ]
+        confidences = [
+            value
+            for value in (_finite_float(row.get("confidence")) for row in rows)
+            if value is not None
+        ]
+        horizons = [
+            value
+            for value in (_int_or_none(row.get("horizon_bars")) for row in rows)
+            if value is not None
+        ]
+        avg_bps = _avg(directional)
+        positive_rate = _positive_rate(directional)
+        recommendation = _filter_recommendation(len(rows), avg_bps, positive_rate)
+        summaries.append({
+            "filter_tag": tag,
+            "joined_outcomes": len(rows),
+            "avg_directional_return_bps": avg_bps,
+            "positive_directional_rate": positive_rate,
+            "avg_raw_return_bps": _avg(raw_returns),
+            "avg_confidence": _avg(confidences),
+            "min_horizon_bars": min(horizons) if horizons else None,
+            "max_horizon_bars": max(horizons) if horizons else None,
+            "recommendation": recommendation,
+            "promotion_authorized": 0,
+        })
+    return summaries
+
+
+def _symbol_verdict(
+    forward_avg_bps: float | None,
+    realized_total_pnl: float | None,
+    realized_rows: int,
+) -> str:
+    if realized_rows == 0:
+        return "forward_only_needs_realized_trades"
+    if forward_avg_bps is None:
+        return "realized_only_missing_forward_outcomes"
+    if forward_avg_bps > 0 and (realized_total_pnl or 0.0) > 0:
+        return "aligned_positive_needs_replay"
+    if forward_avg_bps > 0 and (realized_total_pnl or 0.0) <= 0:
+        return "conflicting_forward_positive_realized_negative"
+    if forward_avg_bps <= 0 and (realized_total_pnl or 0.0) <= 0:
+        return "aligned_negative_expectancy"
+    return "conflicting_forward_negative_realized_positive"
+
+
+def build_symbol_evidence_summary(
+    outcomes: list[dict[str, Any]],
+    accounting_rows: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    outcomes_by_symbol: dict[str, list[dict[str, Any]]] = {}
+    for row in outcomes:
+        if row.get("status") == "joined":
+            outcomes_by_symbol.setdefault(str(row.get("symbol") or "").upper(), []).append(row)
+    accounting_by_symbol: dict[str, list[dict[str, Any]]] = {}
+    for row in accounting_rows:
+        accounting_by_symbol.setdefault(str(row.get("symbol") or "").upper(), []).append(row)
+
+    symbols = sorted(set(outcomes_by_symbol) | set(accounting_by_symbol))
+    summaries: list[dict[str, Any]] = []
+    for symbol in symbols:
+        outcome_rows = outcomes_by_symbol.get(symbol, [])
+        realized_rows = accounting_by_symbol.get(symbol, [])
+        forward_values = [
+            value
+            for value in (
+                _finite_float(row.get("directional_return_bps")) for row in outcome_rows
+            )
+            if value is not None
+        ]
+        realized_values = [
+            value
+            for value in (_finite_float(row.get("realized_pnl")) for row in realized_rows)
+            if value is not None
+        ]
+        realized_return_values = [
+            value
+            for value in (_finite_float(row.get("realized_return_bps")) for row in realized_rows)
+            if value is not None
+        ]
+        forward_avg = _avg(forward_values)
+        realized_total = round(sum(realized_values), 4) if realized_values else 0.0
+        summaries.append({
+            "symbol": symbol,
+            "joined_outcomes": len(outcome_rows),
+            "avg_forward_directional_bps": forward_avg,
+            "positive_forward_rate": _positive_rate(forward_values),
+            "realized_rows": len(realized_rows),
+            "realized_total_pnl": realized_total,
+            "avg_realized_return_bps": _avg(realized_return_values),
+            "missing_order_links": sum(
+                int(row.get("missing_open_order") or 0)
+                + int(row.get("missing_close_order") or 0)
+                for row in realized_rows
+            ),
+            "verdict": _symbol_verdict(forward_avg, realized_total, len(realized_rows)),
+            "promotion_authorized": 0,
+        })
+    return summaries
+
+
 def connect(db_path: Path) -> sqlite3.Connection:
     db_path.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(db_path)
@@ -603,6 +760,36 @@ def create_schema(conn: sqlite3.Connection) -> None:
         CREATE INDEX IF NOT EXISTS idx_realized_trade_accounting_orders
             ON realized_trade_accounting(open_order_id, close_order_id);
 
+        CREATE TABLE IF NOT EXISTS filter_outcome_summary (
+            filter_tag TEXT PRIMARY KEY,
+            joined_outcomes INTEGER,
+            avg_directional_return_bps REAL,
+            positive_directional_rate REAL,
+            avg_raw_return_bps REAL,
+            avg_confidence REAL,
+            min_horizon_bars INTEGER,
+            max_horizon_bars INTEGER,
+            recommendation TEXT,
+            promotion_authorized INTEGER
+        );
+        CREATE INDEX IF NOT EXISTS idx_filter_outcome_summary_recommendation
+            ON filter_outcome_summary(recommendation);
+
+        CREATE TABLE IF NOT EXISTS symbol_evidence_summary (
+            symbol TEXT PRIMARY KEY,
+            joined_outcomes INTEGER,
+            avg_forward_directional_bps REAL,
+            positive_forward_rate REAL,
+            realized_rows INTEGER,
+            realized_total_pnl REAL,
+            avg_realized_return_bps REAL,
+            missing_order_links INTEGER,
+            verdict TEXT,
+            promotion_authorized INTEGER
+        );
+        CREATE INDEX IF NOT EXISTS idx_symbol_evidence_summary_verdict
+            ON symbol_evidence_summary(verdict);
+
         CREATE TABLE IF NOT EXISTS warehouse_manifest (
             key TEXT PRIMARY KEY,
             value TEXT NOT NULL
@@ -648,6 +835,8 @@ def build_summary(
     executions: list[dict[str, Any]],
     realized_trades: list[dict[str, Any]],
     accounting_rows: list[dict[str, Any]],
+    filter_summaries: list[dict[str, Any]],
+    symbol_summaries: list[dict[str, Any]],
     invalid_jsonl_rows: dict[str, int],
 ) -> dict[str, Any]:
     joined = [row for row in outcomes if row["status"] == "joined"]
@@ -677,6 +866,14 @@ def build_summary(
         if abs(_finite_float(row.get("open_exec_qty_delta"), 0.0) or 0.0) > 0.000001
         or abs(_finite_float(row.get("close_exec_qty_delta"), 0.0) or 0.0) > 0.000001
     ]
+    filter_recommendations: dict[str, int] = {}
+    for row in filter_summaries:
+        recommendation = str(row.get("recommendation") or "unknown")
+        filter_recommendations[recommendation] = filter_recommendations.get(recommendation, 0) + 1
+    symbol_verdicts: dict[str, int] = {}
+    for row in symbol_summaries:
+        verdict = str(row.get("verdict") or "unknown")
+        symbol_verdicts[verdict] = symbol_verdicts.get(verdict, 0) + 1
     return {
         "scope": "phase8_strategy_evidence_warehouse_v2_no_live_behavior_change",
         "generated_at": datetime.now(UTC).isoformat(),
@@ -718,6 +915,11 @@ def build_summary(
                     else None
                 ),
             },
+            "research_summaries": {
+                "filter_recommendations": dict(sorted(filter_recommendations.items())),
+                "symbol_verdicts": dict(sorted(symbol_verdicts.items())),
+                "promotion_authorized_rows": 0,
+            },
         },
         "counts": {
             "events": len(events),
@@ -731,6 +933,8 @@ def build_summary(
             "db_executions": len(executions),
             "db_realized_trades": len(realized_trades),
             "realized_trade_accounting": len(accounting_rows),
+            "filter_outcome_summary": len(filter_summaries),
+            "symbol_evidence_summary": len(symbol_summaries),
             "invalid_jsonl_rows": invalid_jsonl_rows,
         },
         "trade_history": {
@@ -747,6 +951,7 @@ def render_report(summary: dict[str, Any]) -> str:
     trade = summary["trade_history"]
     db_extract = summary["db_extract"]
     accounting = db_extract["accounting_join"]
+    research = db_extract["research_summaries"]
     return "\n".join([
         "# Phase 8 Evidence Warehouse V2 Report",
         "",
@@ -772,6 +977,8 @@ def render_report(summary: dict[str, Any]) -> str:
         f"- DB executions: `{counts['db_executions']}`",
         f"- DB realized trades: `{counts['db_realized_trades']}`",
         f"- Realized-trade accounting rows: `{counts['realized_trade_accounting']}`",
+        f"- Filter outcome summaries: `{counts['filter_outcome_summary']}`",
+        f"- Symbol evidence summaries: `{counts['symbol_evidence_summary']}`",
         f"- Invalid JSONL rows: `{counts['invalid_jsonl_rows']}`",
         "",
         "## DB Extract",
@@ -784,6 +991,9 @@ def render_report(summary: dict[str, Any]) -> str:
         "- Accounting order/execution quantity deltas: "
         f"`{accounting['order_execution_qty_delta_rows']}`",
         f"- Accounting average realized return bps: `{accounting['avg_realized_return_bps']}`",
+        f"- Filter recommendations: `{research['filter_recommendations']}`",
+        f"- Symbol verdicts: `{research['symbol_verdicts']}`",
+        f"- Promotion authorized rows: `{research['promotion_authorized_rows']}`",
         "",
         "## Trading Reality",
         "",
@@ -854,6 +1064,8 @@ def build_warehouse(inputs: WarehouseInputs) -> dict[str, Any]:
         )
     ]
     accounting_rows = build_realized_trade_accounting(realized_trades, orders, executions)
+    filter_summaries = build_filter_outcome_summary(outcomes)
+    symbol_summaries = build_symbol_evidence_summary(outcomes, accounting_rows)
 
     db_path = inputs.out_dir / inputs.db_name
     conn = connect(db_path)
@@ -870,6 +1082,16 @@ def build_warehouse(inputs: WarehouseInputs) -> dict[str, Any]:
             "realized_trade_accounting",
             accounting_rows,
         )
+        inserted_filter_summaries = _upsert_rows(
+            conn,
+            "filter_outcome_summary",
+            filter_summaries,
+        )
+        inserted_symbol_summaries = _upsert_rows(
+            conn,
+            "symbol_evidence_summary",
+            symbol_summaries,
+        )
         summary = build_summary(
             inputs=inputs,
             db_path=db_path,
@@ -880,6 +1102,8 @@ def build_warehouse(inputs: WarehouseInputs) -> dict[str, Any]:
             executions=executions,
             realized_trades=realized_trades,
             accounting_rows=accounting_rows,
+            filter_summaries=filter_summaries,
+            symbol_summaries=symbol_summaries,
             invalid_jsonl_rows={
                 "strategy_evidence": strategy_invalid,
                 "candidate_filter_shadow": candidate_invalid,
@@ -893,6 +1117,8 @@ def build_warehouse(inputs: WarehouseInputs) -> dict[str, Any]:
             "db_executions": inserted_executions,
             "db_realized_trades": inserted_realized_trades,
             "realized_trade_accounting": inserted_accounting_rows,
+            "filter_outcome_summary": inserted_filter_summaries,
+            "symbol_evidence_summary": inserted_symbol_summaries,
         }
         write_manifest(conn, summary)
         conn.commit()
@@ -952,6 +1178,8 @@ def main() -> int:
         f"db_orders={summary['counts']['db_orders']} "
         f"db_realized_trades={summary['counts']['db_realized_trades']} "
         f"accounting={summary['counts']['realized_trade_accounting']} "
+        f"filters={summary['counts']['filter_outcome_summary']} "
+        f"symbols={summary['counts']['symbol_evidence_summary']} "
         f"db={inputs.out_dir / inputs.db_name}"
     )
     return 0
