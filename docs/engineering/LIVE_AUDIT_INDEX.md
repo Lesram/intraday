@@ -1,21 +1,21 @@
 # Live Audit Index
 
-Generated: 2026-05-06T15:09:17Z
+Generated: 2026-05-06T15:34:33Z
 PR: PR #6
-SHA: `6187b81219`
+SHA: `859482ee70`
 Branch: `codex/v13-phase2-expectancy`
-Scope: **tooling/evidence_only**
+Scope: **backend_logic**
 Change scope: `task` (`HEAD`)
 
 ## Changed files
 
 | Category | Count | Files |
 |----------|-------|-------|
-| Backend | 0 | none |
-| Organism | 0 | none |
-| Scripts | 1 | `scripts/ci/phase7_security_sanity.py` |
-| Tests | 0 | none |
-| Docs | 1 | `docs/engineering/PHASE7_SECURITY_SANITY_REPORT.md` |
+| Backend | 1 | `backend/organism/routes.py` |
+| Organism | 1 | `backend/organism/routes.py` |
+| Scripts | 1 | `scripts/ci/phase7_integration_checkpoint.py` |
+| Tests | 2 | `tests/test_phase7_integration_checkpoint_redaction.py`, `tests/test_phase7_organism_status_serialization.py` |
+| Docs | 1 | `docs/engineering/PHASE7_OBSERVABILITY_REPORT.md` |
 
 ## Live constants
 
@@ -50,4 +50,4 @@ Source: `resolved_config_snapshot.json`
 
 ## Open risks
 
-- Evidence/tooling script changed only — no backend runtime or order-path behavior changed
+- 1 organism file(s) changed — require replay verification
