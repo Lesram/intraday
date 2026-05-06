@@ -318,7 +318,6 @@ def collect_http() -> dict[str, Any]:
 def collect_db() -> dict[str, Any]:
     queries = {
         "migration_head": "SELECT version_num FROM alembic_version;",
-        "latest_migration_file": "",
         "audit_log_columns": """
 SELECT string_agg(column_name, ',' ORDER BY ordinal_position)
 FROM information_schema.columns
@@ -332,11 +331,9 @@ FROM outbox;
         "throwaway_users": """
 SELECT count(*) FROM users
 WHERE email LIKE 'audit_%@example.com' OR email LIKE 'v11_%@example.com';
-""",
+        """,
     }
-    latest_files = sorted((ROOT / "backend" / "migrations" / "versions").glob("*.py"))
-    latest = latest_files[-1].name if latest_files else ""
-    out: dict[str, Any] = {"latest_migration_file": latest}
+    out: dict[str, Any] = {}
     for name, sql in queries.items():
         if not sql:
             continue
@@ -400,6 +397,10 @@ def collect_command_gates() -> dict[str, Any]:
         "runtime_snapshot": _run(
             [sys.executable, "scripts/runtime/write_runtime_snapshot.py"],
             timeout=60,
+        ),
+        "migration_smoke": _run(
+            [sys.executable, "scripts/ci/check_migrations.py"],
+            timeout=30,
         ),
     }
 
@@ -492,12 +493,11 @@ def build_checks(data: dict[str, Any]) -> list[Check]:
         )
     )
     migration = db["migration_head"]
-    latest = db["latest_migration_file"]
     checks.append(
         Check(
             "db_migration_head_readable",
             "PASS" if migration["returncode"] == 0 and migration["stdout"] else "FAIL",
-            f"db={migration['stdout']} latest_file={latest}",
+            f"db={migration['stdout']}",
             "high",
         )
     )
