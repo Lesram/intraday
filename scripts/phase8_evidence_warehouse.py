@@ -305,6 +305,129 @@ def normalize_realized_trade(row: dict[str, str]) -> dict[str, Any]:
     }
 
 
+def _safe_bps(numerator: float | None, denominator: float | None) -> float | None:
+    if numerator is None or denominator is None or denominator == 0:
+        return None
+    return round(10000.0 * numerator / denominator, 4)
+
+
+def _execution_stats_by_order(
+    executions: list[dict[str, Any]],
+) -> dict[str, dict[str, float | None]]:
+    grouped: dict[str, dict[str, float]] = {}
+    for row in executions:
+        order_id = str(row.get("order_id") or "")
+        qty = _finite_float(row.get("fill_qty"), 0.0) or 0.0
+        price = _finite_float(row.get("fill_price"), 0.0) or 0.0
+        stats = grouped.setdefault(order_id, {"qty": 0.0, "notional": 0.0})
+        stats["qty"] += qty
+        stats["notional"] += qty * price
+    return {
+        order_id: {
+            "exec_qty": round(stats["qty"], 8),
+            "exec_vwap": (
+                round(stats["notional"] / stats["qty"], 8)
+                if stats["qty"]
+                else None
+            ),
+        }
+        for order_id, stats in grouped.items()
+    }
+
+
+def _order_qty_delta(
+    order: dict[str, Any] | None,
+    stats: dict[str, float | None] | None,
+) -> float | None:
+    if not order or not stats:
+        return None
+    filled_qty = _finite_float(order.get("filled_qty"))
+    exec_qty = _finite_float(stats.get("exec_qty"))
+    if filled_qty is None or exec_qty is None:
+        return None
+    return round(filled_qty - exec_qty, 8)
+
+
+def build_realized_trade_accounting(
+    realized_trades: list[dict[str, Any]],
+    orders: list[dict[str, Any]],
+    executions: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    orders_by_id = {str(row.get("order_id") or ""): row for row in orders}
+    executions_by_order = _execution_stats_by_order(executions)
+    rows: list[dict[str, Any]] = []
+    for trade in realized_trades:
+        open_order = orders_by_id.get(str(trade.get("open_order_id") or ""))
+        close_order = orders_by_id.get(str(trade.get("close_order_id") or ""))
+        open_exec = executions_by_order.get(str(trade.get("open_order_id") or ""))
+        close_exec = executions_by_order.get(str(trade.get("close_order_id") or ""))
+        open_side = str(open_order.get("side") or "") if open_order else ""
+        direction = -1.0 if open_side.lower() == "sell" else 1.0
+        open_price = _finite_float(trade.get("open_price"))
+        close_price = _finite_float(trade.get("close_price"))
+        qty = _finite_float(trade.get("qty"))
+        realized_move = (
+            direction * (close_price - open_price)
+            if open_price is not None and close_price is not None
+            else None
+        )
+        open_order_avg = _finite_float(open_order.get("avg_fill_price")) if open_order else None
+        close_order_avg = _finite_float(close_order.get("avg_fill_price")) if close_order else None
+        row = {
+            "realized_trade_id": str(trade.get("realized_trade_id") or ""),
+            "symbol": str(trade.get("symbol") or "").upper(),
+            "qty": qty,
+            "open_order_id": str(trade.get("open_order_id") or ""),
+            "close_order_id": str(trade.get("close_order_id") or ""),
+            "open_side": open_side,
+            "close_side": str(close_order.get("side") or "") if close_order else "",
+            "open_order_status": str(open_order.get("status") or "") if open_order else "",
+            "close_order_status": str(close_order.get("status") or "") if close_order else "",
+            "open_filled_qty": _finite_float(open_order.get("filled_qty")) if open_order else None,
+            "close_filled_qty": (
+                _finite_float(close_order.get("filled_qty")) if close_order else None
+            ),
+            "open_avg_fill_price": open_order_avg,
+            "close_avg_fill_price": close_order_avg,
+            "open_exec_qty": _finite_float(open_exec.get("exec_qty")) if open_exec else None,
+            "close_exec_qty": _finite_float(close_exec.get("exec_qty")) if close_exec else None,
+            "open_exec_vwap": _finite_float(open_exec.get("exec_vwap")) if open_exec else None,
+            "close_exec_vwap": _finite_float(close_exec.get("exec_vwap")) if close_exec else None,
+            "open_price": open_price,
+            "close_price": close_price,
+            "realized_pnl": _finite_float(trade.get("realized_pnl")),
+            "realized_return_bps": _safe_bps(realized_move, open_price),
+            "gross_notional": (
+                round(abs(qty) * (open_price + close_price), 4)
+                if qty is not None and open_price is not None and close_price is not None
+                else None
+            ),
+            "open_price_vs_order_bps": _safe_bps(
+                (
+                    None
+                    if open_price is None or open_order_avg is None
+                    else open_price - open_order_avg
+                ),
+                open_order_avg,
+            ),
+            "close_price_vs_order_bps": _safe_bps(
+                (
+                    None
+                    if close_price is None or close_order_avg is None
+                    else close_price - close_order_avg
+                ),
+                close_order_avg,
+            ),
+            "missing_open_order": 0 if open_order else 1,
+            "missing_close_order": 0 if close_order else 1,
+            "open_exec_qty_delta": _order_qty_delta(open_order, open_exec),
+            "close_exec_qty_delta": _order_qty_delta(close_order, close_exec),
+            "raw_json": json.dumps(trade, sort_keys=True, default=str),
+        }
+        rows.append(row)
+    return rows
+
+
 def connect(db_path: Path) -> sqlite3.Connection:
     db_path.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(db_path)
@@ -444,6 +567,42 @@ def create_schema(conn: sqlite3.Connection) -> None:
         CREATE INDEX IF NOT EXISTS idx_db_realized_trades_close_order
             ON db_realized_trades(close_order_id);
 
+        CREATE TABLE IF NOT EXISTS realized_trade_accounting (
+            realized_trade_id TEXT PRIMARY KEY,
+            symbol TEXT,
+            qty REAL,
+            open_order_id TEXT,
+            close_order_id TEXT,
+            open_side TEXT,
+            close_side TEXT,
+            open_order_status TEXT,
+            close_order_status TEXT,
+            open_filled_qty REAL,
+            close_filled_qty REAL,
+            open_avg_fill_price REAL,
+            close_avg_fill_price REAL,
+            open_exec_qty REAL,
+            close_exec_qty REAL,
+            open_exec_vwap REAL,
+            close_exec_vwap REAL,
+            open_price REAL,
+            close_price REAL,
+            realized_pnl REAL,
+            realized_return_bps REAL,
+            gross_notional REAL,
+            open_price_vs_order_bps REAL,
+            close_price_vs_order_bps REAL,
+            missing_open_order INTEGER,
+            missing_close_order INTEGER,
+            open_exec_qty_delta REAL,
+            close_exec_qty_delta REAL,
+            raw_json TEXT
+        );
+        CREATE INDEX IF NOT EXISTS idx_realized_trade_accounting_symbol
+            ON realized_trade_accounting(symbol);
+        CREATE INDEX IF NOT EXISTS idx_realized_trade_accounting_orders
+            ON realized_trade_accounting(open_order_id, close_order_id);
+
         CREATE TABLE IF NOT EXISTS warehouse_manifest (
             key TEXT PRIMARY KEY,
             value TEXT NOT NULL
@@ -488,6 +647,7 @@ def build_summary(
     orders: list[dict[str, Any]],
     executions: list[dict[str, Any]],
     realized_trades: list[dict[str, Any]],
+    accounting_rows: list[dict[str, Any]],
     invalid_jsonl_rows: dict[str, int],
 ) -> dict[str, Any]:
     joined = [row for row in outcomes if row["status"] == "joined"]
@@ -506,6 +666,17 @@ def build_summary(
     realized_total_pnl = (
         round(sum(float(value) for value in realized_values), 4) if realized_values else 0.0
     )
+    realized_return_values = [
+        row["realized_return_bps"]
+        for row in accounting_rows
+        if row.get("realized_return_bps") is not None
+    ]
+    order_exec_delta_rows = [
+        row
+        for row in accounting_rows
+        if abs(_finite_float(row.get("open_exec_qty_delta"), 0.0) or 0.0) > 0.000001
+        or abs(_finite_float(row.get("close_exec_qty_delta"), 0.0) or 0.0) > 0.000001
+    ]
     return {
         "scope": "phase8_strategy_evidence_warehouse_v2_no_live_behavior_change",
         "generated_at": datetime.now(UTC).isoformat(),
@@ -524,6 +695,29 @@ def build_summary(
             "postgres_db": inputs.postgres_db if inputs.include_db else "",
             "order_status_counts": dict(sorted(status_counts.items())),
             "realized_total_pnl": realized_total_pnl,
+            "accounting_join": {
+                "rows": len(accounting_rows),
+                "missing_open_orders": sum(
+                    int(row["missing_open_order"]) for row in accounting_rows
+                ),
+                "missing_close_orders": sum(
+                    int(row["missing_close_order"]) for row in accounting_rows
+                ),
+                "order_execution_qty_delta_rows": len(order_exec_delta_rows),
+                "winning_rows": sum(
+                    1 for row in accounting_rows
+                    if (row.get("realized_pnl") is not None and row["realized_pnl"] > 0)
+                ),
+                "losing_rows": sum(
+                    1 for row in accounting_rows
+                    if (row.get("realized_pnl") is not None and row["realized_pnl"] < 0)
+                ),
+                "avg_realized_return_bps": (
+                    round(sum(realized_return_values) / len(realized_return_values), 4)
+                    if realized_return_values
+                    else None
+                ),
+            },
         },
         "counts": {
             "events": len(events),
@@ -536,6 +730,7 @@ def build_summary(
             "db_orders": len(orders),
             "db_executions": len(executions),
             "db_realized_trades": len(realized_trades),
+            "realized_trade_accounting": len(accounting_rows),
             "invalid_jsonl_rows": invalid_jsonl_rows,
         },
         "trade_history": {
@@ -551,6 +746,7 @@ def render_report(summary: dict[str, Any]) -> str:
     counts = summary["counts"]
     trade = summary["trade_history"]
     db_extract = summary["db_extract"]
+    accounting = db_extract["accounting_join"]
     return "\n".join([
         "# Phase 8 Evidence Warehouse V2 Report",
         "",
@@ -575,6 +771,7 @@ def render_report(summary: dict[str, Any]) -> str:
         f"- DB orders: `{counts['db_orders']}`",
         f"- DB executions: `{counts['db_executions']}`",
         f"- DB realized trades: `{counts['db_realized_trades']}`",
+        f"- Realized-trade accounting rows: `{counts['realized_trade_accounting']}`",
         f"- Invalid JSONL rows: `{counts['invalid_jsonl_rows']}`",
         "",
         "## DB Extract",
@@ -582,6 +779,11 @@ def render_report(summary: dict[str, Any]) -> str:
         f"- Enabled: `{db_extract['enabled']}`",
         f"- Order status counts: `{db_extract['order_status_counts']}`",
         f"- Realized-trades total PnL loaded from DB: `{db_extract['realized_total_pnl']}`",
+        f"- Accounting missing open orders: `{accounting['missing_open_orders']}`",
+        f"- Accounting missing close orders: `{accounting['missing_close_orders']}`",
+        "- Accounting order/execution quantity deltas: "
+        f"`{accounting['order_execution_qty_delta_rows']}`",
+        f"- Accounting average realized return bps: `{accounting['avg_realized_return_bps']}`",
         "",
         "## Trading Reality",
         "",
@@ -651,6 +853,7 @@ def build_warehouse(inputs: WarehouseInputs) -> dict[str, Any]:
             """,
         )
     ]
+    accounting_rows = build_realized_trade_accounting(realized_trades, orders, executions)
 
     db_path = inputs.out_dir / inputs.db_name
     conn = connect(db_path)
@@ -662,6 +865,11 @@ def build_warehouse(inputs: WarehouseInputs) -> dict[str, Any]:
         inserted_orders = _upsert_rows(conn, "db_orders", orders)
         inserted_executions = _upsert_rows(conn, "db_executions", executions)
         inserted_realized_trades = _upsert_rows(conn, "db_realized_trades", realized_trades)
+        inserted_accounting_rows = _upsert_rows(
+            conn,
+            "realized_trade_accounting",
+            accounting_rows,
+        )
         summary = build_summary(
             inputs=inputs,
             db_path=db_path,
@@ -671,6 +879,7 @@ def build_warehouse(inputs: WarehouseInputs) -> dict[str, Any]:
             orders=orders,
             executions=executions,
             realized_trades=realized_trades,
+            accounting_rows=accounting_rows,
             invalid_jsonl_rows={
                 "strategy_evidence": strategy_invalid,
                 "candidate_filter_shadow": candidate_invalid,
@@ -683,6 +892,7 @@ def build_warehouse(inputs: WarehouseInputs) -> dict[str, Any]:
             "db_orders": inserted_orders,
             "db_executions": inserted_executions,
             "db_realized_trades": inserted_realized_trades,
+            "realized_trade_accounting": inserted_accounting_rows,
         }
         write_manifest(conn, summary)
         conn.commit()
@@ -741,6 +951,7 @@ def main() -> int:
         f"trades={summary['counts']['trades']} "
         f"db_orders={summary['counts']['db_orders']} "
         f"db_realized_trades={summary['counts']['db_realized_trades']} "
+        f"accounting={summary['counts']['realized_trade_accounting']} "
         f"db={inputs.out_dir / inputs.db_name}"
     )
     return 0

@@ -34,6 +34,16 @@ the paper DB:
 The DB extract is opt-in with `--include-db`. Default runs remain offline and
 do not require Docker or Postgres.
 
+P8.2 adds an accounting view derived from those DB extracts:
+
+- Link each realized-trade lot to its open and close orders.
+- Link each open/close order to execution quantity and VWAP.
+- Surface missing order links, order/execution quantity deltas, realized
+  return bps, and price-vs-order-fill bps.
+
+This is still research-only. It creates evidence tables and reports; it does
+not change paper/live trading decisions.
+
 ## Warehouse Tables
 
 | Table | Purpose |
@@ -44,6 +54,7 @@ do not require Docker or Postgres.
 | `db_orders` | Read-only order ledger extract from paper Postgres. |
 | `db_executions` | Read-only execution/fill extract from paper Postgres. |
 | `db_realized_trades` | Read-only realized-trade accounting extract from paper Postgres. |
+| `realized_trade_accounting` | Derived realized-lot to order/execution accounting join. |
 | `warehouse_manifest` | Build metadata, counts, input paths, SHA, and no-promotion assertion. |
 
 ## Execution
@@ -70,14 +81,15 @@ Default outputs:
 - Event IDs are stable for the same input event.
 - Outcome rows link to event rows when timestamp, symbol, and event line match.
 - DB extract is opt-in, SELECT/WITH-only, and preserves default offline behavior.
+- Realized-trade accounting joins expose missing links and order/execution
+  quantity deltas.
 - The report states `promotion_authorized=false`.
 - Focused tests pass.
 
 ## Next Slices
 
-1. Add broker/local fill identity joins and cost/slippage fields.
-2. Add realized-vs-forward-return comparison.
-3. Add post-close decision rules with minimum sample gates.
-4. Add replay candidate export for ideas that pass evidence gates.
-5. Add a Track C daily automation that builds the warehouse after close and
+1. Add realized-vs-forward-return comparison.
+2. Add post-close decision rules with minimum sample gates.
+3. Add replay candidate export for ideas that pass evidence gates.
+4. Add a Track C daily automation that builds the warehouse after close and
    refuses live promotion until replay and review pass.

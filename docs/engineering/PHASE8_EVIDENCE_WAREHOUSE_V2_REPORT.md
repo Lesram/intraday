@@ -6,11 +6,12 @@ Initial run SHA: `9459691c7d4e0d2b184ea5a269e19fd961a02b18`
 
 ## Verdict
 
-P8.0 and P8.1 are complete as the first Track B evidence slices. The platform
-now has an idempotent SQLite evidence warehouse builder that loads Phase 5
-candidate shadow telemetry, Phase 6 strategy evidence telemetry, Phase 6
-outcome joins, organism brain trade history, and optional read-only paper DB
-orders/executions/realized trades into queryable tables.
+P8.0, P8.1, and P8.2 are complete as the first Track B evidence slices. The
+platform now has an idempotent SQLite evidence warehouse builder that loads
+Phase 5 candidate shadow telemetry, Phase 6 strategy evidence telemetry, Phase
+6 outcome joins, organism brain trade history, optional read-only paper DB
+orders/executions/realized trades, and a derived realized-lot accounting join
+into queryable tables.
 
 This is evidence-only. It does not change live ranking, sizing, gates, order
 submission, exits, or promotion state.
@@ -56,13 +57,14 @@ Loaded brain trade-history PnL: `-657.7249`.
 
 ## P8.1 DB Extract Build
 
-Latest P8.1 read-only extract loaded:
+Latest P8.2 read-only extract loaded:
 
 | Table | Rows |
 |-------|------|
-| `db_orders` | `1461` |
-| `db_executions` | `1543` |
+| `db_orders` | `1462` |
+| `db_executions` | `1544` |
 | `db_realized_trades` | `971` |
+| `realized_trade_accounting` | `971` |
 
 Order status counts:
 
@@ -71,9 +73,20 @@ Order status counts:
 | `cancelled` | `5` |
 | `expired` | `1` |
 | `failed` | `4` |
-| `filled` | `1451` |
+| `filled` | `1452` |
 
 Loaded DB realized-trades PnL: `-944.2431`.
+
+Accounting join summary:
+
+| Metric | Value |
+|--------|-------|
+| Missing open orders | `0` |
+| Missing close orders | `0` |
+| Order/execution quantity delta rows | `0` |
+| Winning realized rows | `349` |
+| Losing realized rows | `616` |
+| Average realized return bps | `-2.6272` |
 
 The DB extract is opt-in with `--include-db`, uses only SELECT/WITH queries,
 and leaves default no-DB artifact builds unchanged.
@@ -86,15 +99,15 @@ and leaves default no-DB artifact builds unchanged.
 | Idempotent SQLite upsert | PASS |
 | Outcome rows link to events | PASS |
 | DB extract is opt-in and read-only | PASS |
+| Realized-lot accounting join is populated | PASS |
 | Promotion remains unauthorized | PASS |
 | Focused tests | PASS: `tests/test_phase8_evidence_warehouse.py` |
 
 ## Next Slice
 
-P8.2 should turn the loaded evidence into accounting-aware research views:
+P8.3 should compare forward-return evidence to realized accounting:
 
-1. Add broker/local fill identity joins.
-2. Add explicit cost/slippage fields.
-3. Compare realized PnL, brain trade PnL, and forward-return evidence.
-4. Produce a post-close decision report that separates evidence strength from
+1. Compare realized PnL, brain trade PnL, and forward-return evidence.
+2. Group outcomes by candidate/filter tags and realized trade context.
+3. Produce a post-close decision report that separates evidence strength from
    live-promotion eligibility.

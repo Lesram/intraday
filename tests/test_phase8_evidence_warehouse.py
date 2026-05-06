@@ -4,6 +4,7 @@ import sqlite3
 
 from scripts.phase8_evidence_warehouse import (
     WarehouseInputs,
+    build_realized_trade_accounting,
     build_warehouse,
     normalize_event,
     normalize_order,
@@ -87,6 +88,76 @@ def test_phase8_normalizes_db_order_and_realized_trade_rows() -> None:
     assert realized["symbol"] == "NVDA"
     assert realized["realized_pnl"] == 5.25
     assert realized["close_order_id"] == "close-1"
+
+
+def test_phase8_builds_realized_trade_accounting_join() -> None:
+    orders = [
+        normalize_order(
+            {
+                "id": "open-1",
+                "symbol": "amd",
+                "side": "buy",
+                "qty": "2",
+                "status": "filled",
+                "filled_qty": "2",
+                "avg_fill_price": "100",
+            }
+        ),
+        normalize_order(
+            {
+                "id": "close-1",
+                "symbol": "amd",
+                "side": "sell",
+                "qty": "2",
+                "status": "filled",
+                "filled_qty": "2",
+                "avg_fill_price": "101",
+            }
+        ),
+    ]
+    executions = [
+        {
+            "execution_id": "exec-open-1",
+            "order_id": "open-1",
+            "fill_qty": 1.0,
+            "fill_price": 99.5,
+        },
+        {
+            "execution_id": "exec-open-2",
+            "order_id": "open-1",
+            "fill_qty": 1.0,
+            "fill_price": 100.5,
+        },
+        {
+            "execution_id": "exec-close-1",
+            "order_id": "close-1",
+            "fill_qty": 2.0,
+            "fill_price": 101.0,
+        },
+    ]
+    realized = [
+        {
+            "realized_trade_id": "trade-1",
+            "symbol": "AMD",
+            "qty": 2.0,
+            "open_price": 100.0,
+            "close_price": 101.0,
+            "realized_pnl": 2.0,
+            "open_order_id": "open-1",
+            "close_order_id": "close-1",
+        }
+    ]
+
+    accounting = build_realized_trade_accounting(realized, orders, executions)
+
+    assert accounting[0]["realized_trade_id"] == "trade-1"
+    assert accounting[0]["open_exec_vwap"] == 100.0
+    assert accounting[0]["close_exec_vwap"] == 101.0
+    assert accounting[0]["realized_return_bps"] == 100.0
+    assert accounting[0]["open_exec_qty_delta"] == 0.0
+    assert accounting[0]["close_exec_qty_delta"] == 0.0
+    assert accounting[0]["missing_open_order"] == 0
+    assert accounting[0]["missing_close_order"] == 0
 
 
 def test_phase8_builds_idempotent_sqlite_warehouse(tmp_path) -> None:
@@ -187,6 +258,7 @@ def test_phase8_builds_idempotent_sqlite_warehouse(tmp_path) -> None:
     assert second["counts"]["linked_outcomes"] == 1
     assert second["trade_history"]["total_pnl"] == 2.0
     assert second["counts"]["db_orders"] == 0
+    assert second["counts"]["realized_trade_accounting"] == 0
     assert second["db_extract"]["enabled"] is False
     assert second["promotion_authorized"] is False
 
@@ -195,11 +267,15 @@ def test_phase8_builds_idempotent_sqlite_warehouse(tmp_path) -> None:
         event_count = conn.execute("SELECT count(*) FROM evidence_events").fetchone()[0]
         outcome_count = conn.execute("SELECT count(*) FROM evidence_outcomes").fetchone()[0]
         trade_count = conn.execute("SELECT count(*) FROM trade_history").fetchone()[0]
+        accounting_count = conn.execute(
+            "SELECT count(*) FROM realized_trade_accounting"
+        ).fetchone()[0]
     finally:
         conn.close()
 
     assert event_count == 2
     assert outcome_count == 1
     assert trade_count == 1
+    assert accounting_count == 0
     assert (out_dir / "warehouse_summary.json").exists()
     assert (out_dir / "PHASE8_EVIDENCE_WAREHOUSE_REPORT.md").exists()
