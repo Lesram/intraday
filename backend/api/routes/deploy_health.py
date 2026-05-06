@@ -29,9 +29,10 @@ import socket
 import subprocess
 from typing import Any
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
 from backend.config import get_settings
+from backend.infra.security import AuthenticatedUser, require_admin
 
 
 router = APIRouter(prefix="/health", tags=["Health"])
@@ -115,7 +116,9 @@ def _runtime_config_hash() -> str:
 
 
 @router.get("/deploy")
-async def deploy_health() -> dict[str, Any]:
+async def deploy_health(
+    _current_user: AuthenticatedUser = Depends(require_admin),
+) -> dict[str, Any]:
     """V12 W78 (EXT-8): deploy state — source SHA + migration head +
     build time + runtime config hash + image SHA + container hostname.
 

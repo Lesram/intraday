@@ -32,7 +32,11 @@ from backend.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
-router = APIRouter(prefix="/organism", tags=["Living Organism"])
+router = APIRouter(
+    prefix="/organism",
+    tags=["Living Organism"],
+    dependencies=[Depends(require_admin)],
+)
 
 
 # ── Response models ──────────────────────────────────────────────────

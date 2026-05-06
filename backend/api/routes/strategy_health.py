@@ -30,10 +30,11 @@ import os
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
 from backend.organism import strategy_expectancy as _sx
 from backend.organism import strategy_attribution as _attr
+from backend.infra.security import AuthenticatedUser, require_trader
 
 
 router = APIRouter(prefix="/health", tags=["Health"])
@@ -168,6 +169,7 @@ _ALLOWED_DETAILS = {"attribution"}
 async def strategy_health(
     window: str | None = None,
     detail: str | None = None,
+    _current_user: AuthenticatedUser = Depends(require_trader),
 ) -> dict[str, Any]:
     """V12 W71: live strategy-expectancy snapshot.
 

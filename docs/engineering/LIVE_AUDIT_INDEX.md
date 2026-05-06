@@ -1,21 +1,21 @@
 # Live Audit Index
 
-Generated: 2026-05-06T14:49:18Z
+Generated: 2026-05-06T15:05:32Z
 PR: PR #6
-SHA: `ae7ec2aeea`
+SHA: `c322693472`
 Branch: `codex/v13-phase2-expectancy`
-Scope: **tooling/evidence_only**
-Change scope: `task` (`HEAD`)
+Scope: **backend_logic**
+Change scope: `working-tree` (`HEAD+working-tree`)
 
 ## Changed files
 
 | Category | Count | Files |
 |----------|-------|-------|
-| Backend | 0 | none |
-| Organism | 0 | none |
-| Scripts | 1 | `scripts/db/phase7_data_integrity_remediation.py` |
-| Tests | 1 | `tests/test_phase7_data_integrity_remediation.py` |
-| Docs | 2 | `docs/engineering/LIVE_AUDIT_INDEX.md`, `docs/engineering/PHASE7_DATA_INTEGRITY_REPORT.md` |
+| Backend | 5 | `backend/api/routes/data_integrity_health.py`, `backend/api/routes/deploy_health.py`, `backend/api/routes/orders.py`, `backend/api/routes/strategy_health.py`, `backend/organism/routes.py` |
+| Organism | 1 | `backend/organism/routes.py` |
+| Scripts | 1 | `scripts/ci/phase7_security_sanity.py` |
+| Tests | 1 | `tests/test_phase7_security_sanity.py` |
+| Docs | 2 | `docs/engineering/LIVE_AUDIT_INDEX.md`, `docs/engineering/PHASE7_SECURITY_SANITY_REPORT.md` |
 
 ## Live constants
 
@@ -50,4 +50,4 @@ Source: `resolved_config_snapshot.json`
 
 ## Open risks
 
-- Evidence/tooling script changed only — no backend runtime or order-path behavior changed
+- 1 organism file(s) changed — require replay verification

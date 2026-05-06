@@ -31,9 +31,11 @@ import os
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from backend.infra.security import AuthenticatedUser, require_admin
 
 router = APIRouter(prefix="/health", tags=["Health"])
 
@@ -187,7 +189,10 @@ def _classify_accounting_status(
 
 
 @router.get("/data-integrity")
-async def data_integrity(request: Request) -> dict[str, Any]:
+async def data_integrity(
+    request: Request,
+    _current_user: AuthenticatedUser = Depends(require_admin),
+) -> dict[str, Any]:
     """V13 W95: realized_trades vs brain.total_trades reconciliation.
 
     Surfaces the V12 EXT-3 divergence with a programmatic answer.
