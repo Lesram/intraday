@@ -24,6 +24,16 @@ from backend.organism.replay_simulator import (
 )
 
 
+def test_replay_engine_constructor_does_not_pollute_replay_mode(monkeypatch):
+    """Constructing a replay object must not leak replay mode to later tests."""
+    monkeypatch.delenv("ORGANISM_REPLAY_MODE", raising=False)
+    bars = make_features_dict(["AAPL"], n=600, seed=42)
+
+    ReplayEngine(bars_by_symbol=bars, initial_cash=100_000)
+
+    assert "ORGANISM_REPLAY_MODE" not in os.environ
+
+
 # ═════════════════════════════════════════════════════════════════════════
 #  SimulatedBroker tests
 # ═════════════════════════════════════════════════════════════════════════

@@ -57,8 +57,9 @@ except Exception:
 # original ``os.environ.setdefault("ORGANISM_REPLAY_MODE", "1")`` here
 # as global env pollution on import — any test that merely imports this
 # module would inherit replay-mode env, polluting unrelated test runs.
-# The flag is now set inside ``ReplayEngine.__init__`` (constructor-time)
-# instead of at module import.
+# The flag is now set only while ``ReplayEngine.run`` constructs the
+# live engine, then restored immediately. Constructor-time pollution still
+# leaks into unrelated scheduler tests that share the same Python process.
 
 
 # ═════════════════════════════════════════════════════════════════════════
@@ -498,14 +499,6 @@ class ReplayEngine:
         lookback: int | None = None,
         delay_fill: bool = False,
     ) -> None:
-        # V12 W80 (post-audit cleanup): set the replay-mode env flag at
-        # constructor time, not at module import.  V12 external auditor
-        # flagged the import-time setdefault as global env pollution.
-        # Setting here ensures the flag is set whenever a real replay
-        # engine is built — and not when the module is merely imported
-        # (e.g. for type hints or constants in unrelated tests).
-        os.environ.setdefault("ORGANISM_REPLAY_MODE", "1")
-
         self.bars_by_symbol = bars_by_symbol
         self.initial_cash = initial_cash
         self.slippage_bps = slippage_bps
@@ -536,14 +529,22 @@ class ReplayEngine:
 
         brain_dir = self.brain_dir or tempfile.mkdtemp(prefix="replay_brain_")
 
-        engine = OrganismLiveEngine(
-            data_client=bar_provider,
-            order_service=broker,
-            positions_service=broker,
-            brain_dir=brain_dir,
-            universe=self.universe,
-            timeframe=self.timeframe,
-        )
+        _previous_replay_mode = os.environ.get("ORGANISM_REPLAY_MODE")
+        os.environ["ORGANISM_REPLAY_MODE"] = "1"
+        try:
+            engine = OrganismLiveEngine(
+                data_client=bar_provider,
+                order_service=broker,
+                positions_service=broker,
+                brain_dir=brain_dir,
+                universe=self.universe,
+                timeframe=self.timeframe,
+            )
+        finally:
+            if _previous_replay_mode is None:
+                os.environ.pop("ORGANISM_REPLAY_MODE", None)
+            else:
+                os.environ["ORGANISM_REPLAY_MODE"] = _previous_replay_mode
         await engine.initialize()
 
         # Override clock to use bar time instead of wall time.

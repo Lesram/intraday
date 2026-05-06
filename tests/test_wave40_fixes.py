@@ -15,8 +15,27 @@ Run with: ./venv/bin/python -m pytest tests/test_wave40_fixes.py -v
 from __future__ import annotations
 
 import inspect
+from types import SimpleNamespace
 
-import pytest
+
+def _entry_blocker_engine(
+    *,
+    halted: bool = False,
+    entries_blocked: bool = False,
+    tick: int = 10,
+    warmup: int = 5,
+    stale: bool = False,
+):
+    from backend.organism.live_engine import OrganismLiveEngine
+
+    engine = OrganismLiveEngine.__new__(OrganismLiveEngine)
+    engine.governance = SimpleNamespace(is_trading_halted=halted)
+    engine._entries_blocked = entries_blocked
+    engine._last_entries_blocked_reason = ""
+    engine._tick_count = tick
+    engine._WARMUP_TICKS = warmup
+    engine._data_stale = stale
+    return engine
 
 
 def test_wave40_stage_helper_method_exists():
@@ -25,6 +44,10 @@ def test_wave40_stage_helper_method_exists():
     assert hasattr(OrganismLiveEngine, "_stage_check_entry_blockers"), (
         "Wave-40 regression: _stage_check_entry_blockers helper "
         "removed. Stages 1/1.1/1.2 went back to inline code."
+    )
+    assert hasattr(OrganismLiveEngine, "_evaluate_entry_blocker_gate"), (
+        "P7.2 regression: _evaluate_entry_blocker_gate decision boundary "
+        "removed. Gate behavior is no longer directly testable."
     )
 
 
@@ -39,44 +62,94 @@ def test_wave40_stage_helper_called_from_tick_inner():
     )
 
 
-def test_wave40_stage_helper_evaluates_governance_halt():
-    """Stage 1 governance halt branch must be present in the helper."""
-    from backend.organism.live_engine import OrganismLiveEngine
-    src = inspect.getsource(OrganismLiveEngine._stage_check_entry_blockers)
-    assert "governance_halt" in src, (
-        "Wave-40 regression: stage 1 governance halt branch missing "
-        "from helper."
-    )
-    assert "is_trading_halted" in src, (
-        "Wave-40 regression: stage 1 doesn't consult "
-        "governance.is_trading_halted."
-    )
+def test_wave40_entry_blocker_gate_allows_clear_state():
+    """No halt, no warmup, and fresh data leaves entries unblocked."""
+    engine = _entry_blocker_engine()
+
+    gate = engine._evaluate_entry_blocker_gate()
+
+    assert gate.blocked is False
+    assert gate.reason == ""
+    assert engine._entries_blocked is False
+    assert engine._last_entries_blocked_reason == ""
 
 
-def test_wave40_stage_helper_evaluates_warmup_and_stale():
-    """Stages 1.1 and 1.2 must short-circuit after governance halt."""
-    from backend.organism.live_engine import OrganismLiveEngine
-    src = inspect.getsource(OrganismLiveEngine._stage_check_entry_blockers)
-    assert "warmup" in src and "_WARMUP_TICKS" in src, (
-        "Wave-40 regression: stage 1.1 warmup gate missing."
-    )
-    assert "stale_data" in src and "_data_stale" in src, (
-        "Wave-40 regression: stage 1.2 stale-data gate missing."
-    )
+def test_wave40_entry_blocker_gate_governance_precedes_warmup_and_stale():
+    """Operator halt wins even when warmup and stale-data are also true."""
+    engine = _entry_blocker_engine(halted=True, tick=1, warmup=5, stale=True)
+
+    gate = engine._evaluate_entry_blocker_gate()
+
+    assert gate.blocked is True
+    assert gate.reason == "governance_halt"
+    assert gate.activity_type == "governance"
+    assert "blocking new entries" in gate.activity_message
+    assert "exits still active" in gate.error_message
 
 
-def test_wave40_short_circuit_ordering_preserved():
-    """The 3 stages must check `self._entries_blocked` before evaluating
-    so a higher-precedence reason isn't overwritten by a lower one."""
-    from backend.organism.live_engine import OrganismLiveEngine
-    src = inspect.getsource(OrganismLiveEngine._stage_check_entry_blockers)
-    # stages 1.1 and 1.2 both must have `not self._entries_blocked` guards.
-    n = src.count("not self._entries_blocked")
-    assert n >= 2, (
-        f"Wave-40 regression: only {n} short-circuit guards in helper "
-        "(expected >=2 for stages 1.1 and 1.2). Lower-precedence "
-        "reasons may overwrite governance_halt or warmup."
+def test_wave40_entry_blocker_gate_warmup_precedes_stale():
+    """Warmup wins over stale-data when governance is not halted."""
+    engine = _entry_blocker_engine(tick=5, warmup=5, stale=True)
+
+    gate = engine._evaluate_entry_blocker_gate()
+
+    assert gate.blocked is True
+    assert gate.reason == "warmup"
+    assert gate.activity_type == "skip"
+    assert "tick 5/5" in gate.activity_message
+    assert gate.error_message == ""
+
+
+def test_wave40_entry_blocker_gate_stale_after_warmup():
+    """Stale-data blocks entries only after warmup has cleared."""
+    engine = _entry_blocker_engine(tick=6, warmup=5, stale=True)
+
+    gate = engine._evaluate_entry_blocker_gate()
+
+    assert gate.blocked is True
+    assert gate.reason == "stale_data"
+    assert gate.activity_type == "skip"
+    assert "Stale data" in gate.activity_message
+    assert gate.error_message == ""
+
+
+def test_wave40_stage_helper_applies_governance_gate_to_tick_result():
+    """The stage helper still mutates tick result state for a hard halt."""
+    from backend.organism.live_engine import LiveTickResult
+
+    engine = _entry_blocker_engine(halted=True)
+    result = LiveTickResult()
+
+    engine._stage_check_entry_blockers(result, "2026-05-05T16:00:00Z")
+
+    assert engine._entries_blocked is True
+    assert engine._last_entries_blocked_reason == "governance_halt"
+    assert result.errors == ["Trading halted by governance — exits still active"]
+    assert len(result.activity) == 1
+    assert result.activity[0].event_type == "governance"
+    assert "blocking new entries" in result.activity[0].message
+    assert result.activity[0].timestamp == "2026-05-05T16:00:00Z"
+
+
+def test_wave40_stage_helper_noops_for_prior_block_without_halt():
+    """Prior entry blocks are preserved unless governance halt overrides."""
+    from backend.organism.live_engine import LiveTickResult
+
+    engine = _entry_blocker_engine(
+        entries_blocked=True,
+        tick=1,
+        warmup=5,
+        stale=True,
     )
+    engine._last_entries_blocked_reason = "daily_max_loss"
+    result = LiveTickResult()
+
+    engine._stage_check_entry_blockers(result, "2026-05-05T16:00:00Z")
+
+    assert engine._entries_blocked is True
+    assert engine._last_entries_blocked_reason == "daily_max_loss"
+    assert result.errors == []
+    assert result.activity == []
 
 
 def test_wave40_inline_governance_check_removed():

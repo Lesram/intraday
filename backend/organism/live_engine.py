@@ -322,6 +322,16 @@ if _IS_INTRADAY and RETRAIN_INTERVAL == 60:
 
 
 @dataclass
+class SafetyGateResult:
+    """Decision object for a hard pass/block safety gate."""
+    blocked: bool
+    reason: str = ""
+    activity_type: str = ""
+    activity_message: str = ""
+    error_message: str = ""
+
+
+@dataclass
 class ActivityEvent:
     """One activity event for the frontend activity feed."""
     event_type: str       # "signal", "order", "exit", "scanner", "retrain", "regime", "skip"
@@ -1881,60 +1891,63 @@ class OrganismLiveEngine:
             if self._tick_count - tick < self._PENDING_EXIT_TICKS
         }
 
+    def _evaluate_entry_blocker_gate(self) -> SafetyGateResult:
+        """Evaluate early entry blockers without mutating tick state."""
+        if self.governance.is_trading_halted:
+            return SafetyGateResult(
+                blocked=True,
+                reason="governance_halt",
+                activity_type="governance",
+                activity_message=(
+                    "Trading halted — blocking new entries, exits still running"
+                ),
+                error_message="Trading halted by governance — exits still active",
+            )
+        if self._entries_blocked:
+            return SafetyGateResult(blocked=False)
+        if self._tick_count <= self._WARMUP_TICKS:
+            return SafetyGateResult(
+                blocked=True,
+                reason="warmup",
+                activity_type="skip",
+                activity_message=(
+                    f"Warmup: tick {self._tick_count}/{self._WARMUP_TICKS} "
+                    "— entries blocked"
+                ),
+            )
+        if self._data_stale:
+            return SafetyGateResult(
+                blocked=True,
+                reason="stale_data",
+                activity_type="skip",
+                activity_message="Stale data — blocking entries (exits still active)",
+            )
+        return SafetyGateResult(blocked=False)
+
     # V8 HH R-1 / Wave-40 (2026-05-03): stages 1 + 1.1 + 1.2 extracted
-    # together — they're the three earliest entry-blocker checks and
-    # share `self._entries_blocked` (uplifted from local in wave-39).
-    # Each stage is short-circuit ordered: governance halt > warmup >
-    # stale data. Activity events go to `result`.
+    # together. P7.2 adds a SafetyGateResult decision boundary so the
+    # pass/block decision is testable separately from LiveTickResult effects.
     def _stage_check_entry_blockers(
         self, result: "LiveTickResult", now_iso: str,
     ) -> None:
-        """Stages 1 / 1.1 / 1.2 — set self._entries_blocked + reason.
+        """Stages 1 / 1.1 / 1.2 — apply the early entry blocker gate."""
+        gate = self._evaluate_entry_blocker_gate()
+        if not gate.blocked:
+            return
 
-        Order matters: governance halt is checked first (operator
-        override); warmup second (system not stable); stale data third
-        (data plane unhealthy). Each gate adds a `result.activity`
-        event so downstream observers see the reason.
-        """
-        # 1. GOVERNANCE CHECK — when halted, exits still process; entries blocked.
-        if self.governance.is_trading_halted:
-            self._entries_blocked = True
-            self._last_entries_blocked_reason = "governance_halt"
-            result.errors.append(
-                "Trading halted by governance — exits still active"
-            )
-            result.activity.append(ActivityEvent(
-                event_type="governance",
-                message=(
-                    "Trading halted — blocking new entries, exits still running"
-                ),
-                timestamp=now_iso,
-            ))
-
-        # 1.1 WARMUP GATE — let features stabilize before entering.
-        if not self._entries_blocked and self._tick_count <= self._WARMUP_TICKS:
-            self._entries_blocked = True
-            self._last_entries_blocked_reason = "warmup"
+        self._entries_blocked = True
+        self._last_entries_blocked_reason = gate.reason
+        if gate.reason == "warmup":
             logger.info(
                 "Warmup period: %d/%d ticks — blocking entries",
                 self._tick_count, self._WARMUP_TICKS,
             )
+        if gate.error_message:
+            result.errors.append(gate.error_message)
+        if gate.activity_message:
             result.activity.append(ActivityEvent(
-                event_type="skip",
-                message=(
-                    f"Warmup: tick {self._tick_count}/{self._WARMUP_TICKS} "
-                    "— entries blocked"
-                ),
-                timestamp=now_iso,
-            ))
-
-        # 1.2 STALE DATA GATE — block entries when data > 2 min stale.
-        if not self._entries_blocked and self._data_stale:
-            self._entries_blocked = True
-            self._last_entries_blocked_reason = "stale_data"
-            result.activity.append(ActivityEvent(
-                event_type="skip",
-                message="Stale data — blocking entries (exits still active)",
+                event_type=gate.activity_type,
+                message=gate.activity_message,
                 timestamp=now_iso,
             ))
 
