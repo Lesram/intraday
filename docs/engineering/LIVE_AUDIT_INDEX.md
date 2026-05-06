@@ -1,8 +1,8 @@
 # Live Audit Index
 
-Generated: 2026-05-06T04:02:37Z
+Generated: 2026-05-06T04:15:15Z
 PR: PR #6
-SHA: `937fc9aaca`
+SHA: `099e854d96`
 Branch: `codex/v13-phase2-expectancy`
 Scope: **tooling/evidence_only**
 Change scope: `task` (`HEAD`)
@@ -13,9 +13,9 @@ Change scope: `task` (`HEAD`)
 |----------|-------|-------|
 | Backend | 0 | none |
 | Organism | 0 | none |
-| Scripts | 1 | `scripts/ci/phase7_integration_checkpoint.py` |
+| Scripts | 1 | `scripts/ci/phase7_baseline_snapshot.py` |
 | Tests | 0 | none |
-| Docs | 0 | none |
+| Docs | 1 | `docs/engineering/PHASE7_BASELINE_SNAPSHOT_REPORT.md` |
 
 ## Live constants
 
