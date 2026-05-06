@@ -6,6 +6,7 @@ from scripts.phase8_evidence_warehouse import (
     WarehouseInputs,
     build_filter_outcome_summary,
     build_realized_trade_accounting,
+    build_replay_candidates,
     build_symbol_evidence_summary,
     build_warehouse,
     normalize_event,
@@ -217,6 +218,50 @@ def test_phase8_builds_filter_and_symbol_research_summaries() -> None:
     assert nvda["verdict"] == "forward_only_needs_realized_trades"
 
 
+def test_phase8_exports_replay_candidates_without_promotion() -> None:
+    filters = [
+        {
+            "filter_tag": "candidate_filter",
+            "recommendation": "research_candidate_pending_replay",
+            "joined_outcomes": 40,
+            "avg_directional_return_bps": 3.0,
+            "positive_directional_rate": 0.55,
+        }
+    ]
+    symbols = [
+        {
+            "symbol": "AMD",
+            "verdict": "aligned_positive_needs_replay",
+            "joined_outcomes": 12,
+            "realized_rows": 15,
+            "avg_forward_directional_bps": 1.2,
+            "positive_forward_rate": 0.6,
+            "realized_total_pnl": 10.5,
+            "avg_realized_return_bps": 2.1,
+        },
+        {
+            "symbol": "PSQ",
+            "verdict": "aligned_negative_expectancy",
+            "joined_outcomes": 50,
+            "realized_rows": 20,
+            "avg_forward_directional_bps": -1.0,
+            "realized_total_pnl": -5.0,
+        },
+    ]
+
+    candidates = build_replay_candidates(filters, symbols)
+
+    assert [candidate["candidate_id"] for candidate in candidates] == [
+        "filter:candidate_filter",
+        "symbol:AMD",
+    ]
+    assert all(candidate["promotion_authorized"] == 0 for candidate in candidates)
+    assert all(
+        candidate["required_next_step"] == "replay_before_any_live_change"
+        for candidate in candidates
+    )
+
+
 def test_phase8_builds_idempotent_sqlite_warehouse(tmp_path) -> None:
     strategy = tmp_path / "strategy.jsonl"
     candidate = tmp_path / "candidate.jsonl"
@@ -318,6 +363,7 @@ def test_phase8_builds_idempotent_sqlite_warehouse(tmp_path) -> None:
     assert second["counts"]["realized_trade_accounting"] == 0
     assert second["counts"]["filter_outcome_summary"] == 2
     assert second["counts"]["symbol_evidence_summary"] == 1
+    assert second["counts"]["replay_candidate_export"] == 0
     assert second["db_extract"]["enabled"] is False
     assert second["promotion_authorized"] is False
 
@@ -335,6 +381,9 @@ def test_phase8_builds_idempotent_sqlite_warehouse(tmp_path) -> None:
         symbol_count = conn.execute(
             "SELECT count(*) FROM symbol_evidence_summary"
         ).fetchone()[0]
+        replay_count = conn.execute(
+            "SELECT count(*) FROM replay_candidate_export"
+        ).fetchone()[0]
     finally:
         conn.close()
 
@@ -344,5 +393,8 @@ def test_phase8_builds_idempotent_sqlite_warehouse(tmp_path) -> None:
     assert accounting_count == 0
     assert filter_count == 2
     assert symbol_count == 1
+    assert replay_count == 0
     assert (out_dir / "warehouse_summary.json").exists()
     assert (out_dir / "PHASE8_EVIDENCE_WAREHOUSE_REPORT.md").exists()
+    assert (out_dir / "replay_candidates.json").exists()
+    assert (out_dir / "PHASE8_POST_CLOSE_RESEARCH_REPORT.md").exists()

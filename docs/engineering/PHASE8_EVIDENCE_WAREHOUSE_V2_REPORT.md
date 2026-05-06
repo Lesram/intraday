@@ -67,6 +67,7 @@ Latest P8.2 read-only extract loaded:
 | `realized_trade_accounting` | `971` |
 | `filter_outcome_summary` | `3` |
 | `symbol_evidence_summary` | `31` |
+| `replay_candidate_export` | `1` |
 
 Order status counts:
 
@@ -96,6 +97,7 @@ Research summary verdicts:
 |---------|----------|
 | Filter recommendations | `inconclusive_continue_shadow=2`, `reject_negative_expectancy=1` |
 | Symbol verdicts | `aligned_negative_expectancy=3`, `aligned_positive_needs_replay=2`, `conflicting_forward_negative_realized_positive=3`, `conflicting_forward_positive_realized_negative=2`, `realized_only_missing_forward_outcomes=21` |
+| Replay candidates | `1` |
 | Promotion authorized rows | `0` |
 
 Top filter signals:
@@ -105,6 +107,16 @@ Top filter signals:
 | `all_candidates` | `186` | `-1.8157` | `0.3763` | `inconclusive_continue_shadow` |
 | `alpha_breakout_chop` | `168` | `-2.4686` | `0.3750` | `reject_negative_expectancy` |
 | `conf_45_55` | `42` | `3.8163` | `0.5000` | `inconclusive_continue_shadow` |
+
+Replay candidate export:
+
+| Candidate | Type | Evidence | Required next step |
+|-----------|------|----------|--------------------|
+| `AMD` | `symbol` | `joined=48`, `realized_rows=37`, `forward_bps=0.8986`, `positive_rate=0.5625`, `realized_pnl=22.9207` | `replay_before_any_live_change` |
+
+`QQQ` was not exported despite positive average forward bps and positive
+realized PnL because its forward positive rate was only `0.40`; P8.4 requires
+at least `0.50` for symbol replay candidates.
 
 The DB extract is opt-in with `--include-db`, uses only SELECT/WITH queries,
 and leaves default no-DB artifact builds unchanged.
@@ -119,15 +131,14 @@ and leaves default no-DB artifact builds unchanged.
 | DB extract is opt-in and read-only | PASS |
 | Realized-lot accounting join is populated | PASS |
 | Filter and symbol research summaries are populated | PASS |
+| Post-close report and replay-candidate export generated | PASS |
 | Promotion remains unauthorized | PASS |
 | Focused tests | PASS: `tests/test_phase8_evidence_warehouse.py` |
 
 ## Next Slice
 
-P8.4 should produce a post-close decision report:
+Track C should automate this evidence loop:
 
-1. Materialize a markdown/JSON post-close research verdict from the summaries.
-2. Export replay candidates only when evidence gates pass.
-3. Keep live-promotion eligibility separate from research interest.
-4. Produce a post-close decision report that separates evidence strength from
-   live-promotion eligibility.
+1. Build the warehouse after close.
+2. Refresh the post-close research report and replay-candidate export.
+3. Refuse live promotion until replay artifacts and review pass.

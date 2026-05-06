@@ -52,6 +52,13 @@ P8.3 adds first-pass research summaries:
 - Every recommendation remains no-promotion; passing rows are only replay
   candidates.
 
+P8.4 materializes post-close decision artifacts:
+
+- `replay_candidate_export` stores filter/symbol ideas that are replay-worthy.
+- `replay_candidates.json` is the machine-readable replay queue.
+- `PHASE8_POST_CLOSE_RESEARCH_REPORT.md` is the human post-close verdict.
+- Every candidate requires replay before any live/paper behavior change.
+
 ## Warehouse Tables
 
 | Table | Purpose |
@@ -65,6 +72,7 @@ P8.3 adds first-pass research summaries:
 | `realized_trade_accounting` | Derived realized-lot to order/execution accounting join. |
 | `filter_outcome_summary` | Joined forward-return summary by candidate/filter tag. |
 | `symbol_evidence_summary` | Forward-return versus realized-accounting summary by symbol. |
+| `replay_candidate_export` | Replay-only research candidate queue with promotion disabled. |
 | `warehouse_manifest` | Build metadata, counts, input paths, SHA, and no-promotion assertion. |
 
 ## Execution
@@ -95,12 +103,13 @@ Default outputs:
   quantity deltas.
 - Research summaries can nominate replay candidates, but never authorize live
   promotion.
+- Post-close artifacts separate research candidates from promotion eligibility.
 - The report states `promotion_authorized=false`.
 - Focused tests pass.
 
 ## Next Slices
 
-1. Add post-close decision report with minimum sample gates.
-2. Add replay candidate export for ideas that pass evidence gates.
-3. Add a Track C daily automation that builds the warehouse after close and
+1. Add a Track C daily automation that builds the warehouse after close and
    refuses live promotion until replay and review pass.
+2. Add replay harness input generation for `replay_candidates.json`.
+3. Begin Track B strategy research on replay-only AMD/QQQ-style symbol evidence.

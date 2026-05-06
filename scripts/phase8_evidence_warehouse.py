@@ -29,6 +29,10 @@ DEFAULT_OUT_DIR = ROOT / "artifacts" / "phase8_evidence_warehouse"
 MIN_FILTER_OUTCOMES_FOR_RESEARCH = 30
 MIN_POSITIVE_RATE_FOR_RESEARCH = 0.52
 MIN_AVG_DIRECTIONAL_BPS_FOR_RESEARCH = 2.0
+MIN_SYMBOL_OUTCOMES_FOR_REPLAY = 10
+MIN_SYMBOL_REALIZED_ROWS_FOR_REPLAY = 10
+MIN_SYMBOL_AVG_FORWARD_BPS_FOR_REPLAY = 0.5
+MIN_SYMBOL_POSITIVE_FORWARD_RATE_FOR_REPLAY = 0.5
 
 
 @dataclass(frozen=True)
@@ -585,6 +589,70 @@ def build_symbol_evidence_summary(
     return summaries
 
 
+def build_replay_candidates(
+    filter_summaries: list[dict[str, Any]],
+    symbol_summaries: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    candidates: list[dict[str, Any]] = []
+    for row in filter_summaries:
+        if row.get("recommendation") != "research_candidate_pending_replay":
+            continue
+        candidate = {
+            "candidate_id": f"filter:{row['filter_tag']}",
+            "candidate_type": "filter",
+            "symbol": "",
+            "filter_tag": row["filter_tag"],
+            "reason": "filter_forward_returns_pass_research_gate",
+            "joined_outcomes": row.get("joined_outcomes"),
+            "realized_rows": None,
+            "avg_forward_directional_bps": row.get("avg_directional_return_bps"),
+            "positive_directional_rate": row.get("positive_directional_rate"),
+            "realized_total_pnl": None,
+            "avg_realized_return_bps": None,
+            "required_next_step": "replay_before_any_live_change",
+            "promotion_authorized": 0,
+        }
+        candidate["raw_json"] = json.dumps(candidate, sort_keys=True, default=str)
+        candidates.append(candidate)
+
+    for row in symbol_summaries:
+        if row.get("verdict") != "aligned_positive_needs_replay":
+            continue
+        joined = _int_or_none(row.get("joined_outcomes")) or 0
+        realized_rows = _int_or_none(row.get("realized_rows")) or 0
+        avg_forward = _finite_float(row.get("avg_forward_directional_bps"))
+        positive_rate = _finite_float(row.get("positive_forward_rate"))
+        realized_pnl = _finite_float(row.get("realized_total_pnl"), 0.0) or 0.0
+        if joined < MIN_SYMBOL_OUTCOMES_FOR_REPLAY:
+            continue
+        if realized_rows < MIN_SYMBOL_REALIZED_ROWS_FOR_REPLAY:
+            continue
+        if avg_forward is None or avg_forward < MIN_SYMBOL_AVG_FORWARD_BPS_FOR_REPLAY:
+            continue
+        if positive_rate is None or positive_rate < MIN_SYMBOL_POSITIVE_FORWARD_RATE_FOR_REPLAY:
+            continue
+        if realized_pnl <= 0:
+            continue
+        candidate = {
+            "candidate_id": f"symbol:{row['symbol']}",
+            "candidate_type": "symbol",
+            "symbol": row["symbol"],
+            "filter_tag": "",
+            "reason": "forward_and_realized_symbol_evidence_aligned_positive",
+            "joined_outcomes": joined,
+            "realized_rows": realized_rows,
+            "avg_forward_directional_bps": avg_forward,
+            "positive_directional_rate": positive_rate,
+            "realized_total_pnl": realized_pnl,
+            "avg_realized_return_bps": row.get("avg_realized_return_bps"),
+            "required_next_step": "replay_before_any_live_change",
+            "promotion_authorized": 0,
+        }
+        candidate["raw_json"] = json.dumps(candidate, sort_keys=True, default=str)
+        candidates.append(candidate)
+    return sorted(candidates, key=lambda item: (item["candidate_type"], item["candidate_id"]))
+
+
 def connect(db_path: Path) -> sqlite3.Connection:
     db_path.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(db_path)
@@ -790,6 +858,25 @@ def create_schema(conn: sqlite3.Connection) -> None:
         CREATE INDEX IF NOT EXISTS idx_symbol_evidence_summary_verdict
             ON symbol_evidence_summary(verdict);
 
+        CREATE TABLE IF NOT EXISTS replay_candidate_export (
+            candidate_id TEXT PRIMARY KEY,
+            candidate_type TEXT,
+            symbol TEXT,
+            filter_tag TEXT,
+            reason TEXT,
+            joined_outcomes INTEGER,
+            realized_rows INTEGER,
+            avg_forward_directional_bps REAL,
+            positive_directional_rate REAL,
+            realized_total_pnl REAL,
+            avg_realized_return_bps REAL,
+            required_next_step TEXT,
+            promotion_authorized INTEGER,
+            raw_json TEXT
+        );
+        CREATE INDEX IF NOT EXISTS idx_replay_candidate_export_type
+            ON replay_candidate_export(candidate_type);
+
         CREATE TABLE IF NOT EXISTS warehouse_manifest (
             key TEXT PRIMARY KEY,
             value TEXT NOT NULL
@@ -837,6 +924,7 @@ def build_summary(
     accounting_rows: list[dict[str, Any]],
     filter_summaries: list[dict[str, Any]],
     symbol_summaries: list[dict[str, Any]],
+    replay_candidates: list[dict[str, Any]],
     invalid_jsonl_rows: dict[str, int],
 ) -> dict[str, Any]:
     joined = [row for row in outcomes if row["status"] == "joined"]
@@ -918,7 +1006,12 @@ def build_summary(
             "research_summaries": {
                 "filter_recommendations": dict(sorted(filter_recommendations.items())),
                 "symbol_verdicts": dict(sorted(symbol_verdicts.items())),
+                "replay_candidate_count": len(replay_candidates),
                 "promotion_authorized_rows": 0,
+            },
+            "research_outputs": {
+                "post_close_verdict": "no_live_promotion_replay_required",
+                "replay_candidates": replay_candidates,
             },
         },
         "counts": {
@@ -935,6 +1028,7 @@ def build_summary(
             "realized_trade_accounting": len(accounting_rows),
             "filter_outcome_summary": len(filter_summaries),
             "symbol_evidence_summary": len(symbol_summaries),
+            "replay_candidate_export": len(replay_candidates),
             "invalid_jsonl_rows": invalid_jsonl_rows,
         },
         "trade_history": {
@@ -979,6 +1073,7 @@ def render_report(summary: dict[str, Any]) -> str:
         f"- Realized-trade accounting rows: `{counts['realized_trade_accounting']}`",
         f"- Filter outcome summaries: `{counts['filter_outcome_summary']}`",
         f"- Symbol evidence summaries: `{counts['symbol_evidence_summary']}`",
+        f"- Replay candidate exports: `{counts['replay_candidate_export']}`",
         f"- Invalid JSONL rows: `{counts['invalid_jsonl_rows']}`",
         "",
         "## DB Extract",
@@ -993,6 +1088,7 @@ def render_report(summary: dict[str, Any]) -> str:
         f"- Accounting average realized return bps: `{accounting['avg_realized_return_bps']}`",
         f"- Filter recommendations: `{research['filter_recommendations']}`",
         f"- Symbol verdicts: `{research['symbol_verdicts']}`",
+        f"- Replay candidate count: `{research['replay_candidate_count']}`",
         f"- Promotion authorized rows: `{research['promotion_authorized_rows']}`",
         "",
         "## Trading Reality",
@@ -1008,6 +1104,55 @@ def render_report(summary: dict[str, Any]) -> str:
         "- Report: `PHASE8_EVIDENCE_WAREHOUSE_REPORT.md`",
         "",
     ])
+
+
+def render_post_close_report(summary: dict[str, Any]) -> str:
+    research_outputs = summary["db_extract"]["research_outputs"]
+    candidates = research_outputs["replay_candidates"]
+    lines = [
+        "# Phase 8 Post-Close Research Decision Report",
+        "",
+        f"Generated: {summary['generated_at']}",
+        f"Branch: `{summary['branch']}`",
+        f"SHA: `{summary['sha']}`",
+        "",
+        "## Verdict",
+        "",
+        f"- Post-close verdict: `{research_outputs['post_close_verdict']}`",
+        "- Live promotion authorized: `false`",
+        "- Required next step for every candidate: `replay_before_any_live_change`",
+        "",
+        "## Replay Candidates",
+        "",
+    ]
+    if not candidates:
+        lines.append("- None.")
+    else:
+        lines.extend([
+            "| Candidate | Type | Evidence | Required next step |",
+            "|-----------|------|----------|--------------------|",
+        ])
+        for candidate in candidates:
+            label = candidate["symbol"] or candidate["filter_tag"]
+            evidence = (
+                f"joined={candidate['joined_outcomes']}; "
+                f"realized_rows={candidate['realized_rows']}; "
+                f"forward_bps={candidate['avg_forward_directional_bps']}; "
+                f"realized_pnl={candidate['realized_total_pnl']}"
+            )
+            lines.append(
+                f"| `{label}` | `{candidate['candidate_type']}` | "
+                f"`{evidence}` | `{candidate['required_next_step']}` |"
+            )
+    lines.extend([
+        "",
+        "## Guardrail",
+        "",
+        "This report can nominate replay work only. It does not authorize ranking, "
+        "sizing, entry, exit, gate, or promotion changes in live/paper behavior.",
+        "",
+    ])
+    return "\n".join(lines)
 
 
 def build_warehouse(inputs: WarehouseInputs) -> dict[str, Any]:
@@ -1066,6 +1211,7 @@ def build_warehouse(inputs: WarehouseInputs) -> dict[str, Any]:
     accounting_rows = build_realized_trade_accounting(realized_trades, orders, executions)
     filter_summaries = build_filter_outcome_summary(outcomes)
     symbol_summaries = build_symbol_evidence_summary(outcomes, accounting_rows)
+    replay_candidates = build_replay_candidates(filter_summaries, symbol_summaries)
 
     db_path = inputs.out_dir / inputs.db_name
     conn = connect(db_path)
@@ -1092,6 +1238,11 @@ def build_warehouse(inputs: WarehouseInputs) -> dict[str, Any]:
             "symbol_evidence_summary",
             symbol_summaries,
         )
+        inserted_replay_candidates = _upsert_rows(
+            conn,
+            "replay_candidate_export",
+            replay_candidates,
+        )
         summary = build_summary(
             inputs=inputs,
             db_path=db_path,
@@ -1104,6 +1255,7 @@ def build_warehouse(inputs: WarehouseInputs) -> dict[str, Any]:
             accounting_rows=accounting_rows,
             filter_summaries=filter_summaries,
             symbol_summaries=symbol_summaries,
+            replay_candidates=replay_candidates,
             invalid_jsonl_rows={
                 "strategy_evidence": strategy_invalid,
                 "candidate_filter_shadow": candidate_invalid,
@@ -1119,6 +1271,7 @@ def build_warehouse(inputs: WarehouseInputs) -> dict[str, Any]:
             "realized_trade_accounting": inserted_accounting_rows,
             "filter_outcome_summary": inserted_filter_summaries,
             "symbol_evidence_summary": inserted_symbol_summaries,
+            "replay_candidate_export": inserted_replay_candidates,
         }
         write_manifest(conn, summary)
         conn.commit()
@@ -1134,6 +1287,17 @@ def write_outputs(inputs: WarehouseInputs, summary: dict[str, Any]) -> None:
     )
     (inputs.out_dir / "PHASE8_EVIDENCE_WAREHOUSE_REPORT.md").write_text(
         render_report(summary)
+    )
+    (inputs.out_dir / "replay_candidates.json").write_text(
+        json.dumps(
+            summary["db_extract"]["research_outputs"]["replay_candidates"],
+            indent=2,
+            sort_keys=True,
+        )
+        + "\n"
+    )
+    (inputs.out_dir / "PHASE8_POST_CLOSE_RESEARCH_REPORT.md").write_text(
+        render_post_close_report(summary)
     )
 
 
@@ -1180,6 +1344,7 @@ def main() -> int:
         f"accounting={summary['counts']['realized_trade_accounting']} "
         f"filters={summary['counts']['filter_outcome_summary']} "
         f"symbols={summary['counts']['symbol_evidence_summary']} "
+        f"replay_candidates={summary['counts']['replay_candidate_export']} "
         f"db={inputs.out_dir / inputs.db_name}"
     )
     return 0

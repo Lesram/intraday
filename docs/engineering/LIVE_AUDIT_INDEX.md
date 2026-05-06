@@ -1,8 +1,8 @@
 # Live Audit Index
 
-Generated: 2026-05-06T17:08:29Z
+Generated: 2026-05-06T17:15:56Z
 PR: PR #6
-SHA: `7eebd02e4b`
+SHA: `9d10d2a18d`
 Branch: `codex/v13-phase2-expectancy`
 Scope: **tooling/evidence_only**
 Change scope: `working-tree` (`HEAD+working-tree`)
