@@ -2,6 +2,86 @@ from scripts.ci import phase7_integration_checkpoint as checkpoint
 from scripts.ci.phase7_integration_checkpoint import _redact_sensitive_output
 
 
+def test_phase7_checkpoint_uses_local_paper_default_auth(monkeypatch) -> None:
+    monkeypatch.setattr(checkpoint, "_AUTH_HEADERS_CACHE", None)
+    monkeypatch.delenv("PHASE7_AUTH_TOKEN", raising=False)
+    monkeypatch.delenv("V13_AUTH_TOKEN", raising=False)
+    monkeypatch.delenv("PHASE7_AUTH_USERNAME", raising=False)
+    monkeypatch.delenv("V13_AUTH_USERNAME", raising=False)
+    monkeypatch.delenv("INTRA_API_USER", raising=False)
+    monkeypatch.delenv("PHASE7_AUTH_PASSWORD", raising=False)
+    monkeypatch.delenv("V13_AUTH_PASSWORD", raising=False)
+    monkeypatch.delenv("INTRA_API_PASSWORD", raising=False)
+    monkeypatch.setattr(checkpoint, "API_BASE", "http://localhost:8000")
+
+    captured: dict[str, object] = {}
+
+    def fake_post(path: str, payload: dict[str, object]):
+        captured["path"] = path
+        captured["payload"] = payload
+        return 200, {"access_token": "paper-token"}, "{}"
+
+    monkeypatch.setattr(checkpoint, "_http_post_json", fake_post)
+
+    headers, error = checkpoint._auth_payload()
+
+    assert error is None
+    assert headers == {"Authorization": "Bearer paper-token"}
+    assert captured == {
+        "path": "/api/v1/auth/login",
+        "payload": {"username": "admin@example.com", "password": "admin123"},
+    }
+
+
+def test_phase7_checkpoint_does_not_default_auth_for_nonlocal_api(monkeypatch) -> None:
+    monkeypatch.setattr(checkpoint, "_AUTH_HEADERS_CACHE", None)
+    monkeypatch.delenv("PHASE7_AUTH_TOKEN", raising=False)
+    monkeypatch.delenv("V13_AUTH_TOKEN", raising=False)
+    monkeypatch.delenv("PHASE7_AUTH_USERNAME", raising=False)
+    monkeypatch.delenv("V13_AUTH_USERNAME", raising=False)
+    monkeypatch.delenv("INTRA_API_USER", raising=False)
+    monkeypatch.delenv("PHASE7_AUTH_PASSWORD", raising=False)
+    monkeypatch.delenv("V13_AUTH_PASSWORD", raising=False)
+    monkeypatch.delenv("INTRA_API_PASSWORD", raising=False)
+    monkeypatch.setattr(checkpoint, "API_BASE", "https://paper.example.com")
+
+    headers, error = checkpoint._auth_payload()
+
+    assert headers == {}
+    assert error == "auth env not set"
+
+
+def test_phase7_checkpoint_reuses_auth_header_within_run(monkeypatch) -> None:
+    monkeypatch.setattr(checkpoint, "_AUTH_HEADERS_CACHE", None)
+    monkeypatch.delenv("PHASE7_AUTH_TOKEN", raising=False)
+    monkeypatch.delenv("V13_AUTH_TOKEN", raising=False)
+    monkeypatch.delenv("PHASE7_AUTH_USERNAME", raising=False)
+    monkeypatch.delenv("V13_AUTH_USERNAME", raising=False)
+    monkeypatch.delenv("INTRA_API_USER", raising=False)
+    monkeypatch.delenv("PHASE7_AUTH_PASSWORD", raising=False)
+    monkeypatch.delenv("V13_AUTH_PASSWORD", raising=False)
+    monkeypatch.delenv("INTRA_API_PASSWORD", raising=False)
+    monkeypatch.setattr(checkpoint, "API_BASE", "http://localhost:8000")
+
+    calls = 0
+
+    def fake_post(path: str, payload: dict[str, object]):
+        nonlocal calls
+        calls += 1
+        return 200, {"access_token": f"paper-token-{calls}"}, "{}"
+
+    monkeypatch.setattr(checkpoint, "_http_post_json", fake_post)
+
+    headers_1, error_1 = checkpoint._auth_payload()
+    headers_2, error_2 = checkpoint._auth_payload()
+
+    assert error_1 is None
+    assert error_2 is None
+    assert headers_1 == {"Authorization": "Bearer paper-token-1"}
+    assert headers_2 == headers_1
+    assert calls == 1
+
+
 def test_phase7_checkpoint_redacts_compose_env_values() -> None:
     raw = """
     environment:

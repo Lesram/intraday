@@ -1,21 +1,21 @@
 # Live Audit Index
 
-Generated: 2026-05-06T15:51:40Z
+Generated: 2026-05-06T16:15:56Z
 PR: PR #6
-SHA: `839df31db2`
+SHA: `ddfc3fba37`
 Branch: `codex/v13-phase2-expectancy`
-Scope: **backend_logic**
-Change scope: `task` (`HEAD`)
+Scope: **tooling/evidence_only**
+Change scope: `working-tree` (`HEAD+working-tree`)
 
 ## Changed files
 
 | Category | Count | Files |
 |----------|-------|-------|
-| Backend | 1 | `backend/integrations/alpaca_stream.py` |
+| Backend | 0 | none |
 | Organism | 0 | none |
-| Scripts | 0 | none |
-| Tests | 1 | `tests/unit/test_alpaca_stream_comprehensive.py` |
-| Docs | 1 | `docs/engineering/PHASE7_OBSERVABILITY_REPORT.md` |
+| Scripts | 1 | `scripts/ci/phase7_integration_checkpoint.py` |
+| Tests | 1 | `tests/test_phase7_integration_checkpoint_redaction.py` |
+| Docs | 5 | `docs/architecture/mapss.md`, `docs/engineering/LIVE_AUDIT_INDEX.md`, `docs/engineering/PHASE7_ARCHITECTURE_BASELINE.md`, `docs/engineering/PHASE7_CLOSE_REPORT.md`, `docs/engineering/PHASE7_DOCS_DRIFT_REPORT.md` |
 
 ## Live constants
 
@@ -50,4 +50,4 @@ Source: `resolved_config_snapshot.json`
 
 ## Open risks
 
-- 1 backend runtime file(s) changed — require targeted verification
+- Evidence/tooling script changed only — no backend runtime or order-path behavior changed

@@ -17,6 +17,8 @@ Auth for protected API probes is optional and read from environment only:
   V13_AUTH_TOKEN
   V13_AUTH_USERNAME / V13_AUTH_PASSWORD
   INTRA_API_USER / INTRA_API_PASSWORD
+For the default localhost paper runtime only, the checkpoint falls back to the
+same dev-paper admin credentials used by ``phase7_security_sanity.py``.
 """
 from __future__ import annotations
 
@@ -78,6 +80,7 @@ SENSITIVE_OUTPUT_KEYS = (
     "GRAFANA_ADMIN_PASSWORD",
     "PHASE7_AUTH_TOKEN",
     "PHASE7_AUTH_PASSWORD",
+    "PHASE7_LOCAL_DEFAULT_AUTH_PASSWORD",
     "V13_AUTH_TOKEN",
     "V13_AUTH_PASSWORD",
     "INTRA_API_PASSWORD",
@@ -88,6 +91,8 @@ _SENSITIVE_ASSIGNMENT_RE = re.compile(
     + "|".join(re.escape(key) for key in SENSITIVE_OUTPUT_KEYS)
     + r")(?:\s*[:=]\s*))([^\",\n\r]+)"
 )
+
+_AUTH_HEADERS_CACHE: tuple[dict[str, str], str | None] | None = None
 
 
 def _redact_sensitive_output(text: str) -> str:
@@ -206,10 +211,29 @@ def _jsonl_count(path: Path) -> int:
         return 0
 
 
+def _local_paper_default_auth() -> tuple[str | None, str | None]:
+    """Return dev-paper credentials only for the localhost paper API target."""
+    if not (
+        API_BASE.startswith("http://localhost:")
+        or API_BASE.startswith("http://127.0.0.1:")
+        or API_BASE.startswith("http://[::1]:")
+    ):
+        return None, None
+    return (
+        os.getenv("PHASE7_LOCAL_DEFAULT_AUTH_USERNAME", "admin@example.com"),
+        os.getenv("PHASE7_LOCAL_DEFAULT_AUTH_PASSWORD", "admin123"),
+    )
+
+
 def _auth_payload() -> tuple[dict[str, str], str | None]:
+    global _AUTH_HEADERS_CACHE
+    if _AUTH_HEADERS_CACHE is not None:
+        return _AUTH_HEADERS_CACHE
+
     token = os.getenv("PHASE7_AUTH_TOKEN") or os.getenv("V13_AUTH_TOKEN")
     if token:
-        return {"Authorization": f"Bearer {token}"}, None
+        _AUTH_HEADERS_CACHE = ({"Authorization": f"Bearer {token}"}, None)
+        return _AUTH_HEADERS_CACHE
 
     username = (
         os.getenv("PHASE7_AUTH_USERNAME")
@@ -222,18 +246,26 @@ def _auth_payload() -> tuple[dict[str, str], str | None]:
         or os.getenv("INTRA_API_PASSWORD")
     )
     if not username or not password:
-        return {}, "auth env not set"
+        default_username, default_password = _local_paper_default_auth()
+        username = username or default_username
+        password = password or default_password
+    if not username or not password:
+        _AUTH_HEADERS_CACHE = ({}, "auth env not set")
+        return _AUTH_HEADERS_CACHE
 
     status, payload, raw = _http_post_json(
         "/api/v1/auth/login",
         {"username": username, "password": password},
     )
     if status != 200 or not isinstance(payload, dict):
-        return {}, f"login failed status={status} body={raw[:120]}"
+        _AUTH_HEADERS_CACHE = ({}, f"login failed status={status} body={raw[:120]}")
+        return _AUTH_HEADERS_CACHE
     access_token = payload.get("access_token")
     if not access_token:
-        return {}, "login response missing access_token"
-    return {"Authorization": f"Bearer {access_token}"}, None
+        _AUTH_HEADERS_CACHE = ({}, "login response missing access_token")
+        return _AUTH_HEADERS_CACHE
+    _AUTH_HEADERS_CACHE = ({"Authorization": f"Bearer {access_token}"}, None)
+    return _AUTH_HEADERS_CACHE
 
 
 def _http_post_json(path: str, payload: dict[str, Any]) -> tuple[int, dict[str, Any] | None, str]:

@@ -4,6 +4,23 @@ Generated: 2026-05-06 UTC
 Branch: `codex/v13-phase2-expectancy`
 Baseline HEAD while inspected: `b18478b26e14a046e14cf12bc82ded49ab0db4ca`
 
+## Post-P7 Status Addendum
+
+This document is a baseline artifact from the start of Phase 7. It is no longer
+the current operating truth. The Track A close truth is in
+`docs/engineering/PHASE7_CLOSE_REPORT.md` and the generated live audit index.
+
+Current reconciled state as of 2026-05-06:
+
+- Host and paper container SHA:
+  `ddfc3fba3765ad7bd169dd4512e73ea668518388`.
+- Authenticated Phase 7 integration checkpoint: `19 pass, 0 warn, 0 fail`.
+- Phase 5 telemetry rows: `66`.
+- Phase 6 strategy-evidence rows: `17`.
+- `_live_tick_inner`: `2691` LOC after the telemetry extraction slice.
+- Current paper positions are broker-matched but not flat: `AMD:4`, `NVDA:9`.
+- Strategy health remains negative and no strategy promotion is justified.
+
 ## Verdict
 
 The paper runtime is mechanically understandable, but the live organism engine

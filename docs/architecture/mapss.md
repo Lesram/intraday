@@ -4,6 +4,28 @@
 
 ---
 
+## CURRENT PAPER RUNTIME NOTE (2026-05-06)
+
+This file is the long-form architecture map. For the latest deploy truth, use
+`docs/engineering/PHASE7_CLOSE_REPORT.md`, `docs/engineering/LIVE_AUDIT_INDEX.md`,
+and the generated artifact pack first.
+
+Current Phase 7 Track A close state:
+
+- Branch: `codex/v13-phase2-expectancy`.
+- Paper API container: `intra-api-1`.
+- Paper DB container: `trading_platform_db_paper`.
+- Redis container: `intra-redis-1`.
+- Runtime SHA checked: `ddfc3fba3765ad7bd169dd4512e73ea668518388`.
+- Build time checked: `2026-05-06T15:52:14Z`.
+- Migration head: `20260503_000003`.
+- Phase 5 and Phase 6 telemetry are enabled in shadow/advisory mode.
+- Current strategy health is negative: PnL `-793.3359`, win rate `0.3327`,
+  Sharpe `-1.3959`; no strategy promotion is justified by this map.
+- Data integrity is improved but still warning: `realized=945`, `brain=527`.
+
+---
+
 ## TABLE OF CONTENTS
 
 ### Layer 1: Architecture Overview
@@ -150,11 +172,11 @@ G. [ORM Models & Configuration](#g-orm-models--configuration)
 │                                                                                  │
 │  ┌──────────────────────────┐    ┌──────────────────────────────────────────┐    │
 │  │   PostgreSQL 16          │    │   Redis 7                                │    │
-│  │   Docker (intra-db-1)    │    │   Docker (intra-redis-1)                │    │
+│  │   Docker (paper DB)      │    │   Docker (intra-redis-1)                │    │
 │  │   Port 5432 (localhost)  │    │   Port 6379 (localhost)                 │    │
 │  │   DB: algotrading        │    │   256MB maxmemory                       │    │
 │  │   User: trading          │    │   allkeys-lru eviction                  │    │
-│  │   25 tables              │    │   AOF persistence                       │    │
+│  │   27 tables              │    │   AOF persistence                       │    │
 │  └──────────────────────────┘    └──────────────────────────────────────────┘    │
 │                                                                                  │
 │  ┌──────────────────────────────────────────────────────────────────────────┐    │
