@@ -11,11 +11,13 @@ authenticated deploy-health and data-integrity endpoints are reachable, exposes
 container build metadata, kill-switch envs, open-position state, order status
 mix, outbox age, strategy health, and migration/runtime hashes in one report.
 
-This slice also found two real observability bugs. First, the checkpoint queried
+This slice also found three real observability bugs. First, the checkpoint queried
 `outbox` even though the live table is `outbox_events`; the failure was captured
 as raw command output but was not elevated into a check. Second, live logs showed
 `GET /api/v1/organism/status` throwing `PydanticSerializationError` on a nested
-`numpy.bool` value. Both are now fixed and covered by focused regression tests.
+`numpy.bool` value. Third, after the paper rebuild, broker positions were flat
+while the local `positions` table still showed AMD and GOOGL open after filled
+exit orders. These are now fixed and covered by focused regression tests.
 
 Trading behavior is unchanged. This is an operator/read-path hardening slice:
 the system is easier to inspect, and endpoint serialization is less brittle, but
@@ -27,8 +29,10 @@ no candidate filter or strategy revision was promoted.
 |---------|--------|----------------|
 | `scripts/ci/phase7_integration_checkpoint.py` | Uses `outbox_events`, adds authenticated deploy/data-integrity probes, kill-switch visibility, position/order/outbox DB checks, and an operator snapshot section. | Prevents a bad table query from hiding in raw output and gives the operator one coherent runtime readout. |
 | `backend/organism/routes.py` | Converts nested NumPy scalars/arrays, Decimals, datetimes, and non-finite floats into JSON-safe values for `/organism/status` and `/organism/runs`. | Fixes a live 500 on `/api/v1/organism/status` caused by `numpy.bool` in runtime state. |
+| `backend/integrations/alpaca_stream.py` | Refreshes the local positions table from broker truth after terminal filled trade updates. The sync is non-fatal if broker/DB refresh fails. | Prevents dashboards/checkpoints from showing stale local exposure after exits while Alpaca is already flat. |
 | `tests/test_phase7_integration_checkpoint_redaction.py` | Adds checkpoint behavior tests for the real outbox table and operator snapshot text. | Keeps the checkpoint from regressing back to decorative evidence. |
 | `tests/test_phase7_organism_status_serialization.py` | Adds endpoint serialization regressions with nested NumPy runtime state. | Reproduces the live failure mode without needing the container. |
+| `tests/unit/test_alpaca_stream_comprehensive.py` | Adds a filled-trade-update regression proving terminal fills request a local position sync. | Locks the stale-position fix to the actual trade-update path. |
 
 ## Live Evidence Before Commit
 
@@ -71,6 +75,23 @@ implicitly serialize NumPy scalars in that nested structure. The route now
 sanitizes nested runtime values before assigning `live_engine`, `governance`,
 `policy_weights`, `promotion`, and `/organism/runs` state.
 
+## Stale Local Position Bug Found
+
+After the first P7.6 deploy, Alpaca reported `broker_position_count=0`, but the
+local DB still showed:
+
+```text
+AMD:3.000000@408.150000
+GOOGL:5.000000@396.856000
+```
+
+The filled exit orders were present in `orders`, but `positions` only refreshed
+from Alpaca during startup or explicit portfolio sync entrypoints. Trade-update
+processing updated order/accounting state, then left the dashboard/checkpoint
+position table stale. `AlpacaStreamClient._process_trade_update` now triggers a
+non-fatal `PortfolioSyncService.sync_full_portfolio("system:alpaca_stream")`
+after broker-confirmed `filled` updates.
+
 ## Alert Reality Check
 
 Code-present is not the same thing as production-proven.
@@ -96,10 +117,12 @@ Focused tests run locally:
 ./venv/bin/python -m pytest -q \
   tests/test_phase7_organism_status_serialization.py \
   tests/test_phase7_integration_checkpoint_redaction.py \
+  tests/unit/test_alpaca_stream_comprehensive.py::TestAlpacaStreamProcessTradeUpdateComplete::test_filled_trade_update_syncs_local_positions \
   --timeout=30
 ```
 
-Result: `6 passed`.
+Focused result: endpoint/checkpoint tests `6 passed`; filled-trade-update sync
+regression `1 passed`.
 
 ## Phase Position
 

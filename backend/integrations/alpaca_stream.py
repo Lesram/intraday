@@ -958,6 +958,13 @@ class AlpacaStreamClient:
                             order.id, _rb_err,
                         )
 
+                if internal_status == "filled":
+                    await self._sync_positions_after_terminal_fill(
+                        order_id=str(order.id),
+                        broker_order_id=broker_order_id,
+                        symbol=str(order.symbol),
+                    )
+
                 # REMEDIATION: Track terminal order statuses for early pending-entry cleanup.
                 # V4 H-1 / Wave-16d (2026-05-02): record BOTH the broker
                 # `order_data["id"]` AND the internal DB UUID
@@ -1033,6 +1040,46 @@ class AlpacaStreamClient:
                         update=update,
                         error=str(e),
                         error_type=type(e).__name__)
+
+    async def _sync_positions_after_terminal_fill(
+        self,
+        *,
+        order_id: str,
+        broker_order_id: str,
+        symbol: str,
+    ) -> None:
+        """Refresh local positions after a broker-confirmed terminal fill."""
+        try:
+            from backend.services.portfolio_sync_service import get_portfolio_sync_service
+
+            sync_service = get_portfolio_sync_service()
+            result = await sync_service.sync_full_portfolio("system:alpaca_stream")
+            if result.get("success"):
+                positions = result.get("positions") or []
+                logger.info(
+                    "P7.6: local positions synced after filled trade update",
+                    order_id=order_id,
+                    broker_order_id=broker_order_id,
+                    symbol=symbol,
+                    position_count=len(positions),
+                )
+            else:
+                logger.warning(
+                    "P7.6: post-fill local position sync returned failure",
+                    order_id=order_id,
+                    broker_order_id=broker_order_id,
+                    symbol=symbol,
+                    error=result.get("error"),
+                )
+        except Exception as exc:
+            logger.warning(
+                "P7.6: post-fill local position sync failed for order %s "
+                "(broker=%s, symbol=%s): %s",
+                order_id,
+                broker_order_id,
+                symbol,
+                exc,
+            )
 
     def is_order_terminal(self, order_id: str) -> bool:
         """Check if an order reached terminal state (rejected/cancelled/expired).
