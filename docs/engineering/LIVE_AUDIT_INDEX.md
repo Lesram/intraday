@@ -1,8 +1,8 @@
 # Live Audit Index
 
-Generated: 2026-05-06T06:41:14Z
+Generated: 2026-05-06T07:44:00Z
 PR: PR #6
-SHA: `73c0ce30ac`
+SHA: `90a7c3242f`
 Branch: `codex/v13-phase2-expectancy`
 Scope: **tooling/evidence_only**
 Change scope: `working-tree` (`HEAD+working-tree`)
@@ -13,8 +13,8 @@ Change scope: `working-tree` (`HEAD+working-tree`)
 |----------|-------|-------|
 | Backend | 0 | none |
 | Organism | 0 | none |
-| Scripts | 0 | none |
-| Tests | 0 | none |
+| Scripts | 1 | `scripts/deploy/rebuild_paper.sh` |
+| Tests | 1 | `tests/test_v12_w82_dockerfile_env.py` |
 | Docs | 1 | `docs/engineering/PHASE7_REPRODUCIBILITY_REPORT.md` |
 
 ## Live constants
@@ -50,4 +50,4 @@ Source: `resolved_config_snapshot.json`
 
 ## Open risks
 
-- No code changes in this PR — verify evidence artifacts are current
+- Evidence/tooling script changed only — no backend runtime or order-path behavior changed

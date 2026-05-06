@@ -33,7 +33,8 @@ container remains healthy on the current pushed commit.
 | Dev requirements | `requirements-dev.txt`: 33 unique entries, 37 floating lines, 4 duplicate package declarations. | Not reproducible. |
 | CI install path | CI and PR workflows install `requirements.txt`; Docker installs `requirements.lock`. | CI/runtime dependency drift risk. |
 | Compose config | `docker compose -f docker-compose.paper.yml config --quiet` passes. Full config resolves local secrets, so it must not be pasted into reports unredacted. | Valid but sensitive. |
-| Live container provenance | `GIT_SHA=73c0ce30ac8e0cbbefa00b6793989b092eb6bb5a`, `IMAGE_SHA` same, `BUILD_TIME=unknown`. | Source SHA good; build time missing on current manual deploy. |
+| Live container provenance | Original P7.5 read found `BUILD_TIME=unknown`; the May 6 pre-market rebuild path now stamps `GIT_SHA`, `IMAGE_SHA`, and `BUILD_TIME` from `scripts/deploy/rebuild_paper.sh`. | Resolved for paper deploys that use the helper. |
+| Paper telemetry deploy default | A plain helper rebuild now exports Phase 5 and Phase 6 telemetry switches to `true` unless explicitly overridden. | Prevents evidence collection from being silently disabled during Phase 7. |
 
 ## Fresh Rebuild Evidence
 
@@ -95,7 +96,7 @@ args were set before invoking `docker build`.
 | High | Vulnerable exact runtime lock | Reproducibility is currently preserving stale vulnerable versions. | Run a dedicated dependency-remediation PR: regenerate lock, run security scan, full organism/replay suites, artifact pack, and container rebuild. |
 | Medium | Floating base image tag | `python:3.12-slim` can move across Python patch/base OS changes. | Pin base image by digest or record accepted digest in a checked report with an explicit update cadence. |
 | Medium | Floating apt packages | Debian packages can change between rebuilds even when Python deps are locked. | Consider snapshot-based apt sources or accept as best-effort with a documented rebuild cadence. |
-| Medium | Missing `BUILD_TIME` in current live container | Current manual rebuild set SHA but not build time. | Prefer `scripts/deploy/rebuild_paper.sh` or always export both `VCS_REF` and `BUILD_DATE`. |
+| Low | Manual rebuilds can omit deploy provenance | Running raw compose/docker commands can still omit `VCS_REF`, `BUILD_DATE`, or telemetry envs. | Prefer `scripts/deploy/rebuild_paper.sh`; it stamps provenance and keeps Phase 7 evidence telemetry enabled by default. |
 | Medium | Compose config resolves secrets | `docker compose config` expands local secrets. | Treat generated compose config as sensitive; only record redacted summaries in artifacts. |
 | Low | Dev requirements are floating and duplicated | Developer and CI tool versions can drift. | Split runtime/dev locks or generate a dev lock after runtime lock remediation. |
 
