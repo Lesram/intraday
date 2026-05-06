@@ -25,6 +25,7 @@ import csv
 import hashlib
 import json
 import os
+import re
 import subprocess
 import sys
 import urllib.error
@@ -60,6 +61,41 @@ HOT_PATH_FILES = (
     "docker-compose.paper.yml",
 )
 
+SENSITIVE_OUTPUT_KEYS = (
+    "ALPACA_API_KEY_ID",
+    "ALPACA_API_SECRET_KEY",
+    "ALPACA_API_KEY",
+    "ALPACA_SECRET_KEY",
+    "APCA_API_KEY_ID",
+    "APCA_API_SECRET_KEY",
+    "JWT_SECRET",
+    "JWT_SECRET_KEY",
+    "SECURITY_JWT_SECRET",
+    "REDIS_PASSWORD",
+    "REDIS_URL",
+    "POSTGRES_PASSWORD",
+    "DATABASE_URL",
+    "GRAFANA_ADMIN_PASSWORD",
+    "PHASE7_AUTH_TOKEN",
+    "PHASE7_AUTH_PASSWORD",
+    "V13_AUTH_TOKEN",
+    "V13_AUTH_PASSWORD",
+    "INTRA_API_PASSWORD",
+)
+
+_SENSITIVE_ASSIGNMENT_RE = re.compile(
+    r"(?m)^(\s*\"?(?:"
+    + "|".join(re.escape(key) for key in SENSITIVE_OUTPUT_KEYS)
+    + r")(?:\s*[:=]\s*))([^\",\n\r]+)"
+)
+
+
+def _redact_sensitive_output(text: str) -> str:
+    """Redact secret-bearing env/config values before writing artifacts."""
+    if not text:
+        return text
+    return _SENSITIVE_ASSIGNMENT_RE.sub(r"\1<REDACTED>", text)
+
 
 @dataclass
 class Check:
@@ -81,8 +117,8 @@ def _run(cmd: list[str], *, timeout: int = 15) -> dict[str, Any]:
         )
         return {
             "returncode": proc.returncode,
-            "stdout": proc.stdout.strip(),
-            "stderr": proc.stderr.strip(),
+            "stdout": _redact_sensitive_output(proc.stdout.strip()),
+            "stderr": _redact_sensitive_output(proc.stderr.strip()),
         }
     except Exception as exc:  # noqa: BLE001
         return {"returncode": 999, "stdout": "", "stderr": str(exc)}

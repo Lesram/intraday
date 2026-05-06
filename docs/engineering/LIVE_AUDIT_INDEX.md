@@ -1,11 +1,11 @@
 # Live Audit Index
 
-Generated: 2026-05-06T04:15:15Z
+Generated: 2026-05-06T04:44:09Z
 PR: PR #6
-SHA: `099e854d96`
+SHA: `b18478b26e`
 Branch: `codex/v13-phase2-expectancy`
 Scope: **tooling/evidence_only**
-Change scope: `task` (`HEAD`)
+Change scope: `working-tree` (`HEAD+working-tree`)
 
 ## Changed files
 
@@ -13,9 +13,9 @@ Change scope: `task` (`HEAD`)
 |----------|-------|-------|
 | Backend | 0 | none |
 | Organism | 0 | none |
-| Scripts | 1 | `scripts/ci/phase7_baseline_snapshot.py` |
-| Tests | 0 | none |
-| Docs | 1 | `docs/engineering/PHASE7_BASELINE_SNAPSHOT_REPORT.md` |
+| Scripts | 1 | `scripts/ci/phase7_integration_checkpoint.py` |
+| Tests | 1 | `tests/test_phase7_integration_checkpoint_redaction.py` |
+| Docs | 5 | `docs/engineering/LIVE_AUDIT_INDEX.md`, `docs/engineering/audits/archive/2026-04/bundles/deploy_verification_deploy2_33d6138_bundle/predeploy_env_snapshot.txt`, `docs/engineering/audits/archive/2026-04/bundles/master_platform_strategy_summit_bundle/container_inspect.json`, `docs/engineering/PHASE7_ARCHITECTURE_BASELINE.md`, `docs/engineering/PHASE7_TEST_TRUST_REPORT.md` |
 
 ## Live constants
 
