@@ -1,8 +1,8 @@
 # Live Audit Index
 
-Generated: 2026-05-06T07:53:52Z
+Generated: 2026-05-06T14:40:51Z
 PR: PR #6
-SHA: `f102972dd7`
+SHA: `3d2fa805f3`
 Branch: `codex/v13-phase2-expectancy`
 Scope: **tooling/evidence_only**
 Change scope: `working-tree` (`HEAD+working-tree`)
@@ -13,8 +13,8 @@ Change scope: `working-tree` (`HEAD+working-tree`)
 |----------|-------|-------|
 | Backend | 0 | none |
 | Organism | 0 | none |
-| Scripts | 0 | none |
-| Tests | 0 | none |
+| Scripts | 1 | `scripts/db/phase7_data_integrity_remediation.py` |
+| Tests | 1 | `tests/test_phase7_data_integrity_remediation.py` |
 | Docs | 1 | `docs/engineering/PHASE7_DATA_INTEGRITY_REPORT.md` |
 
 ## Live constants
@@ -50,4 +50,4 @@ Source: `resolved_config_snapshot.json`
 
 ## Open risks
 
-- No code changes in this PR — verify evidence artifacts are current
+- Evidence/tooling script changed only — no backend runtime or order-path behavior changed
