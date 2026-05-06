@@ -1,21 +1,21 @@
 # Live Audit Index
 
-Generated: 2026-05-05T20:43:08Z
+Generated: 2026-05-06T01:36:46Z
 PR: PR #6
-SHA: `abc35ff7db`
+SHA: `070d41d7f6`
 Branch: `codex/v13-phase2-expectancy`
-Scope: **tooling/evidence_only**
-Change scope: `working-tree` (`HEAD+working-tree`)
+Scope: **backend_logic**
+Change scope: `task` (`HEAD`)
 
 ## Changed files
 
 | Category | Count | Files |
 |----------|-------|-------|
-| Backend | 0 | none |
-| Organism | 0 | none |
-| Scripts | 1 | `scripts/phase5_fetch_shadow_bars.py` |
-| Tests | 1 | `tests/test_phase5_fetch_shadow_bars.py` |
-| Docs | 2 | `docs/engineering/LIVE_AUDIT_INDEX.md`, `docs/engineering/PHASE5_SHADOW_EVIDENCE_LOOP_REPORT.md` |
+| Backend | 3 | `backend/organism/brain_persistence.py`, `backend/organism/candidate_shadow_telemetry.py`, `backend/organism/live_engine.py` |
+| Organism | 3 | `backend/organism/brain_persistence.py`, `backend/organism/candidate_shadow_telemetry.py`, `backend/organism/live_engine.py` |
+| Scripts | 2 | `scripts/phase6_strategy_evidence_warehouse.py`, `scripts/runtime/write_runtime_snapshot.py` |
+| Tests | 4 | `tests/test_phase3_candidate_shadow_telemetry.py`, `tests/test_phase5_shadow_outcome_join.py`, `tests/test_phase5_shadow_telemetry_persistence.py`, `tests/test_phase6_strategy_evidence_warehouse.py` |
+| Docs | 1 | `docs/engineering/PHASE6_STRATEGY_EVIDENCE_WAREHOUSE_PLAN.md` |
 
 ## Live constants
 
@@ -50,4 +50,4 @@ Source: `resolved_config_snapshot.json`
 
 ## Open risks
 
-- Evidence/tooling script changed only — no backend runtime or order-path behavior changed
+- 3 organism file(s) changed — require replay verification
