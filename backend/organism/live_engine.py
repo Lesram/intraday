@@ -2067,6 +2067,68 @@ class OrganismLiveEngine:
                 hhmm,
             )
 
+    async def _stage_check_stream_health(
+        self, result: LiveTickResult, now_iso: str,
+    ) -> None:
+        """Stage 0 — recover stale streaming data on the existing cadence."""
+        if (
+            self._streaming_provider is None
+            or self._tick_count % 30 != 0
+        ):
+            return
+        try:
+            recovered = await self._streaming_provider.check_and_recover_stale_stream()
+            if recovered:
+                result.activity.append(ActivityEvent(
+                    event_type="stream",
+                    message="Stale data detected — stream reconnect attempted",
+                    timestamp=now_iso,
+                ))
+        except Exception as e:
+            logger.debug("Stream staleness check error (non-fatal): %s", e)
+
+    def _stage_update_data_staleness(self) -> None:
+        """Stage 0.5 — refresh aggregate and per-symbol data-stale state."""
+        _was_stale = self._data_stale
+        if self._streaming_provider is None:
+            return
+        try:
+            last_update = getattr(self._streaming_provider, "last_update_time", None)
+            if last_update is not None:
+                staleness_s = self._time_fn() - last_update
+                self._data_stale = staleness_s > self._DATA_STALE_THRESHOLD_S
+                if self._data_stale and not _was_stale:
+                    logger.warning(
+                        "Data stream stale: %.0fs since last update "
+                        "(threshold=%.0fs) — blocking entries",
+                        staleness_s, self._DATA_STALE_THRESHOLD_S,
+                    )
+                elif not self._data_stale and _was_stale:
+                    logger.info("Data stream fresh again — entries unblocked")
+            else:
+                self._data_stale = False
+            # V9 PP-6: per-symbol staleness check.
+            if hasattr(self._streaming_provider, "stale_symbols"):
+                stale_syms = self._streaming_provider.stale_symbols(
+                    threshold_s=self._DATA_STALE_THRESHOLD_S,
+                    now=self._time_fn(),
+                )
+                if stale_syms:
+                    # Trigger _data_stale even if aggregate looked fresh.
+                    self._data_stale = True
+                    if not _was_stale:
+                        logger.warning(
+                            "PP-6: %d symbol(s) stale beyond threshold "
+                            "(aggregate looked fresh): %s",
+                            len(stale_syms),
+                            [(s, round(a, 1)) for s, a in stale_syms[:5]],
+                        )
+        except Exception as _stale_err:
+            # V9 UU pattern: surface, don't pass.
+            logger.debug(
+                "Stale-data check error (non-fatal): %s", _stale_err,
+            )
+
     async def _live_tick_inner(self) -> LiveTickResult:
         """Inner tick logic — always called under _tick_lock."""
         # V6 X-2 / Wave-20b (2026-05-03): use injected clock so tick
@@ -2096,64 +2158,14 @@ class OrganismLiveEngine:
 
             # 0. STREAM HEALTH — detect and recover stale WebSocket data.
             # Run every 30 ticks (~5 min) to avoid hammering reconnect.
-            if (
-                self._streaming_provider is not None
-                and self._tick_count % 30 == 0
-            ):
-                try:
-                    recovered = await self._streaming_provider.check_and_recover_stale_stream()
-                    if recovered:
-                        result.activity.append(ActivityEvent(
-                            event_type="stream",
-                            message="Stale data detected — stream reconnect attempted",
-                            timestamp=now_iso,
-                        ))
-                except Exception as e:
-                    logger.debug("Stream staleness check error (non-fatal): %s", e)
+            await self._stage_check_stream_health(result, now_iso)
 
             # 0.5 STALE DATA GATE — check streaming provider freshness.
             # V9 PP-6 / Wave-45 (2026-05-03): also check PER-SYMBOL
             # staleness via stale_symbols(). The aggregate
             # last_update_time hid stalls on active symbols when
             # background symbols kept ticking.
-            _was_stale = self._data_stale
-            if self._streaming_provider is not None:
-                try:
-                    last_update = getattr(self._streaming_provider, "last_update_time", None)
-                    if last_update is not None:
-                        staleness_s = self._time_fn() - last_update
-                        self._data_stale = staleness_s > self._DATA_STALE_THRESHOLD_S
-                        if self._data_stale and not _was_stale:
-                            logger.warning(
-                                "Data stream stale: %.0fs since last update "
-                                "(threshold=%.0fs) — blocking entries",
-                                staleness_s, self._DATA_STALE_THRESHOLD_S,
-                            )
-                        elif not self._data_stale and _was_stale:
-                            logger.info("Data stream fresh again — entries unblocked")
-                    else:
-                        self._data_stale = False
-                    # V9 PP-6: per-symbol staleness check.
-                    if hasattr(self._streaming_provider, "stale_symbols"):
-                        stale_syms = self._streaming_provider.stale_symbols(
-                            threshold_s=self._DATA_STALE_THRESHOLD_S,
-                            now=self._time_fn(),
-                        )
-                        if stale_syms:
-                            # Trigger _data_stale even if aggregate looked fresh.
-                            self._data_stale = True
-                            if not _was_stale:
-                                logger.warning(
-                                    "PP-6: %d symbol(s) stale beyond threshold "
-                                    "(aggregate looked fresh): %s",
-                                    len(stale_syms),
-                                    [(s, round(a, 1)) for s, a in stale_syms[:5]],
-                                )
-                except Exception as _stale_err:
-                    # V9 UU pattern: surface, don't pass.
-                    logger.debug(
-                        "Stale-data check error (non-fatal): %s", _stale_err,
-                    )
+            self._stage_update_data_staleness()
 
             # V8 HH R-1 / Wave-40 (2026-05-03): stages 1 + 1.1 + 1.2 extracted.
             self._stage_check_entry_blockers(result, now_iso)

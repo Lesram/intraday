@@ -18,6 +18,11 @@ governance halt, warmup, and stale-data entry blocks. This is a capital-impactin
 gate, so the work converted Wave 40 marker/source tests into direct behavioral
 checks before expanding the gate run.
 
+The third slice isolated the pre-entry data-plane stages: stale stream recovery
+and aggregate/per-symbol data staleness updates. This stays before candidate
+generation and order intent, but it is still safety-relevant because stale data
+feeds the entry blocker gate.
+
 ## Extracted Helpers
 
 | Helper | Responsibility | Live behavior |
@@ -28,12 +33,14 @@ checks before expanding the gate run.
 | `_apply_intraday_seasonality_filter` | Applies the pre-existing late-session intraday allocation reduction in place. | Same sizing adjustment as before; now isolated and tested. |
 | `SafetyGateResult` | Decision object for hard pass/block safety gates. | Data carrier only; no side effects. |
 | `_evaluate_entry_blocker_gate` | Evaluates governance halt, warmup, and stale-data entry blockers without mutating tick state. | Same ordering as before: governance halt > prior block preservation > warmup > stale data. |
+| `_stage_check_stream_health` | Runs the existing every-30-tick streaming recovery check. | Same cadence; recovered streams still append operator activity. |
+| `_stage_update_data_staleness` | Refreshes aggregate staleness and PP-6 per-symbol staleness. | Same `_data_stale` semantics; per-symbol stalls still block entries even when aggregate data is fresh. |
 
 ## Complexity Delta
 
 | Measurement | Before P7.2 | After P7.2 |
 |-------------|-------------|------------|
-| `_live_tick_inner` LOC | 2802 at P7.0 baseline | 2741 |
+| `_live_tick_inner` LOC | 2802 at P7.0 baseline | 2691 |
 | W100 ceiling | 2750 | PASS |
 | Strategy behavior changed | No | No |
 
@@ -43,6 +50,8 @@ Safety-gate helper sizes after the second slice:
 |--------|-----|
 | `_evaluate_entry_blocker_gate` | 32 |
 | `_stage_check_entry_blockers` | 23 |
+| `_stage_check_stream_health` | 19 |
+| `_stage_update_data_staleness` | 41 |
 
 ## Behavioral Tests Added
 
@@ -62,6 +71,13 @@ Safety-gate helper sizes after the second slice:
 - Stale data blocks entries only after warmup has cleared.
 - Stage helper applies governance halt to `LiveTickResult` errors/activity.
 - Prior entry blocks remain preserved unless governance halt overrides.
+- Stream health recovery appends the same operator activity event on the 30-tick
+  cadence.
+- Stream health skips recovery checks between cadence ticks.
+- Aggregate stale timestamps set `_data_stale`.
+- Fresh aggregate timestamps clear prior `_data_stale`.
+- PP-6 per-symbol stale symbols still set `_data_stale` even when aggregate data
+  is fresh.
 
 ## Additional Test Hygiene Cleanup
 
@@ -79,12 +95,14 @@ Focused checks:
 - `pytest -q tests/test_phase3_candidate_shadow_telemetry.py --timeout=30`
 - `pytest -q tests/test_v13_w100_live_tick_coverage.py --timeout=30`
 - `pytest -q tests/test_wave40_fixes.py --timeout=30`
+- `pytest -q tests/test_wave45_fixes.py --timeout=30`
 - `pytest -q tests/test_replay_simulator.py::test_replay_engine_constructor_does_not_pollute_replay_mode --timeout=30`
 
 Required organism checks:
 
 - `pytest -q tests/test_v13_w100_live_tick_coverage.py tests/test_organism_live_engine.py tests/test_organism_engine_scenarios.py tests/test_multi_tick_state.py tests/test_safety_invariants.py tests/test_replay_simulator.py tests/test_self_evolution.py --timeout=30`
   - Result after replay env fix: 148 passed, 3 warnings.
+  - Result after stream/staleness extraction: 148 passed, 3 warnings.
 
 Repo gates:
 

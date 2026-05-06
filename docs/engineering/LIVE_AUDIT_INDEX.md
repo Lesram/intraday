@@ -1,8 +1,8 @@
 # Live Audit Index
 
-Generated: 2026-05-06T05:45:07Z
+Generated: 2026-05-06T06:12:59Z
 PR: PR #6
-SHA: `2539975d49`
+SHA: `7af9a11aa3`
 Branch: `codex/v13-phase2-expectancy`
 Scope: **backend_logic**
 Change scope: `working-tree` (`HEAD+working-tree`)
@@ -11,10 +11,10 @@ Change scope: `working-tree` (`HEAD+working-tree`)
 
 | Category | Count | Files |
 |----------|-------|-------|
-| Backend | 2 | `backend/organism/live_engine.py`, `backend/organism/replay_simulator.py` |
-| Organism | 2 | `backend/organism/live_engine.py`, `backend/organism/replay_simulator.py` |
+| Backend | 1 | `backend/organism/live_engine.py` |
+| Organism | 1 | `backend/organism/live_engine.py` |
 | Scripts | 0 | none |
-| Tests | 2 | `tests/test_replay_simulator.py`, `tests/test_wave40_fixes.py` |
+| Tests | 1 | `tests/test_wave45_fixes.py` |
 | Docs | 1 | `docs/engineering/PHASE7_LIVE_ENGINE_EXTRACTION_REPORT.md` |
 
 ## Live constants
@@ -50,4 +50,4 @@ Source: `resolved_config_snapshot.json`
 
 ## Open risks
 
-- 2 organism file(s) changed — require replay verification
+- 1 organism file(s) changed — require replay verification
