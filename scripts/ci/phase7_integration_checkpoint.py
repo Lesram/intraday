@@ -319,6 +319,13 @@ def collect_container() -> dict[str, Any]:
             "ORGANISM_STRATEGY_EVIDENCE_TELEMETRY_PATH"
         ),
         "exploration_enabled": env_map.get("ORGANISM_EXPLORATION_ENABLED"),
+        "build_time": env_map.get("BUILD_TIME"),
+        "image_sha": env_map.get("IMAGE_SHA"),
+        "kill_switches": {
+            "ORGANISM_DRAWDOWN_KILL_PCT": env_map.get("ORGANISM_DRAWDOWN_KILL_PCT"),
+            "ORGANISM_MAX_DAILY_LOSS": env_map.get("ORGANISM_MAX_DAILY_LOSS"),
+            "ORGANISM_MAX_NOTIONAL": env_map.get("ORGANISM_MAX_NOTIONAL"),
+        },
     }
 
 
@@ -330,6 +337,14 @@ def collect_http() -> dict[str, Any]:
     )
     audit_status, audit_payload, audit_raw = _http_get_json(
         "/api/v1/audit/chain-detail",
+        authenticated=True,
+    )
+    deploy_status, deploy_payload, deploy_raw = _http_get_json(
+        "/api/v1/health/deploy",
+        authenticated=True,
+    )
+    integrity_status, integrity_payload, integrity_raw = _http_get_json(
+        "/api/v1/health/data-integrity",
         authenticated=True,
     )
     return {
@@ -348,6 +363,16 @@ def collect_http() -> dict[str, Any]:
             "payload": audit_payload,
             "raw": audit_raw[:500],
         },
+        "deploy_health": {
+            "status": deploy_status,
+            "payload": deploy_payload,
+            "raw": deploy_raw[:500],
+        },
+        "data_integrity": {
+            "status": integrity_status,
+            "payload": integrity_payload,
+            "raw": integrity_raw[:500],
+        },
     }
 
 
@@ -362,7 +387,21 @@ WHERE table_schema = 'public' AND table_name = 'audit_logs';
         "realized_trades_count": "SELECT count(*) FROM realized_trades;",
         "outbox_summary": """
 SELECT count(*)::text || '|' || COALESCE(MIN(created_at)::text, '') || '|' || COALESCE(MAX(created_at)::text, '')
-FROM outbox;
+FROM outbox_events;
+""",
+        "open_positions": "SELECT count(*) FROM positions WHERE qty <> 0;",
+        "positions_by_symbol": """
+SELECT COALESCE(string_agg(symbol || ':' || qty::text, ',' ORDER BY symbol), '')
+FROM positions
+WHERE qty <> 0;
+""",
+        "orders_by_status": """
+SELECT COALESCE(string_agg(status || ':' || n::text, ',' ORDER BY status), '')
+FROM (
+    SELECT status, count(*) AS n
+    FROM orders
+    GROUP BY status
+) s;
 """,
         "throwaway_users": """
 SELECT count(*) FROM users
@@ -500,6 +539,44 @@ def build_checks(data: dict[str, Any]) -> list[Check]:
             "high",
         )
     )
+    deploy_payload = http["deploy_health"]["payload"] or {}
+    checks.append(
+        Check(
+            "deploy_health_authenticated",
+            "PASS" if http["deploy_health"]["status"] == 200 else "WARN",
+            (
+                f"status={http['deploy_health']['status']} "
+                f"source_sha={deploy_payload.get('source_sha')} "
+                f"migration_head={deploy_payload.get('migration_head')} "
+                f"build_time={deploy_payload.get('build_time')}"
+            ),
+            "high",
+        )
+    )
+    integrity_payload = http["data_integrity"]["payload"] or {}
+    checks.append(
+        Check(
+            "data_integrity_authenticated",
+            "PASS" if http["data_integrity"]["status"] == 200 else "WARN",
+            (
+                f"status={http['data_integrity']['status']} "
+                f"accounting_status={integrity_payload.get('accounting_status')} "
+                f"realized={integrity_payload.get('realized_trades')} "
+                f"brain={integrity_payload.get('brain_total_trades')}"
+            ),
+            "medium",
+        )
+    )
+    kill_switches = container.get("kill_switches") or {}
+    missing_kill = [k for k, v in kill_switches.items() if not v]
+    checks.append(
+        Check(
+            "kill_switch_env_present",
+            "PASS" if not missing_kill else "FAIL",
+            json.dumps(kill_switches, sort_keys=True),
+            "high",
+        )
+    )
     checks.append(
         Check(
             "phase5_telemetry_enabled",
@@ -535,6 +612,25 @@ def build_checks(data: dict[str, Any]) -> list[Check]:
             "PASS" if migration["returncode"] == 0 and migration["stdout"] else "FAIL",
             f"db={migration['stdout']}",
             "high",
+        )
+    )
+    checks.append(
+        Check(
+            "open_positions_readable",
+            "PASS" if db["open_positions"]["returncode"] == 0 else "FAIL",
+            (
+                f"count={db['open_positions']['stdout']} "
+                f"positions={db['positions_by_symbol']['stdout']}"
+            ),
+            "medium",
+        )
+    )
+    checks.append(
+        Check(
+            "outbox_events_readable",
+            "PASS" if db["outbox_summary"]["returncode"] == 0 else "FAIL",
+            db["outbox_summary"]["stdout"] or db["outbox_summary"]["stderr"],
+            "medium",
         )
     )
     audit_payload = http["audit_chain_detail"]["payload"] or {}
@@ -573,6 +669,10 @@ def build_report(data: dict[str, Any], checks: list[Check]) -> str:
     warned = [c for c in checks if c.status == "WARN"]
     policy_actions = data["brain_and_evidence"].get("phase6_policy_actions") or []
     strategy = (data["http"]["strategy_health"].get("payload") or {})
+    deploy = (data["http"]["deploy_health"].get("payload") or {})
+    integrity = (data["http"]["data_integrity"].get("payload") or {})
+    db = data["db"]
+    container = data["container"]
     generated_at = data["generated_at"]
     verdict = "PASS" if not failed else "FAIL"
 
@@ -628,6 +728,21 @@ def build_report(data: dict[str, Any], checks: list[Check]) -> str:
             f"- `sharpe_ratio_per_trade`: {strategy.get('sharpe_ratio_per_trade')}",
             f"- `is_profitable`: {strategy.get('is_profitable')}",
             f"- `source`: {strategy.get('source')}",
+            "",
+            "## Operator View Snapshot",
+            "",
+            f"- Container SHA: `{data['container'].get('git_sha')}`",
+            f"- Deploy endpoint SHA: `{deploy.get('source_sha')}`",
+            f"- Build time: `{deploy.get('build_time') or container.get('build_time')}`",
+            f"- Migration head: `{deploy.get('migration_head') or data['db']['migration_head']['stdout']}`",
+            f"- Runtime config hash: `{deploy.get('runtime_config_hash')}`",
+            f"- Kill switches: `{json.dumps(container.get('kill_switches') or {}, sort_keys=True)}`",
+            f"- Open positions: `{db['open_positions']['stdout']}` ({db['positions_by_symbol']['stdout'] or 'none'})",
+            f"- Orders by status: `{db['orders_by_status']['stdout']}`",
+            f"- Outbox events count/min/max: `{db['outbox_summary']['stdout']}`",
+            f"- Data integrity status: `{integrity.get('accounting_status')}`; "
+            f"realized=`{integrity.get('realized_trades')}`, "
+            f"brain=`{integrity.get('brain_total_trades')}`",
             "",
             "## Phase 6 Evidence Snapshot",
             "",
