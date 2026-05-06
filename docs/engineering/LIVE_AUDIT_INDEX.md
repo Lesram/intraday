@@ -1,21 +1,21 @@
 # Live Audit Index
 
-Generated: 2026-05-06T06:12:59Z
+Generated: 2026-05-06T06:41:14Z
 PR: PR #6
-SHA: `7af9a11aa3`
+SHA: `73c0ce30ac`
 Branch: `codex/v13-phase2-expectancy`
-Scope: **backend_logic**
+Scope: **tooling/evidence_only**
 Change scope: `working-tree` (`HEAD+working-tree`)
 
 ## Changed files
 
 | Category | Count | Files |
 |----------|-------|-------|
-| Backend | 1 | `backend/organism/live_engine.py` |
-| Organism | 1 | `backend/organism/live_engine.py` |
+| Backend | 0 | none |
+| Organism | 0 | none |
 | Scripts | 0 | none |
-| Tests | 1 | `tests/test_wave45_fixes.py` |
-| Docs | 1 | `docs/engineering/PHASE7_LIVE_ENGINE_EXTRACTION_REPORT.md` |
+| Tests | 0 | none |
+| Docs | 1 | `docs/engineering/PHASE7_REPRODUCIBILITY_REPORT.md` |
 
 ## Live constants
 
@@ -50,4 +50,4 @@ Source: `resolved_config_snapshot.json`
 
 ## Open risks
 
-- 1 organism file(s) changed — require replay verification
+- No code changes in this PR — verify evidence artifacts are current
