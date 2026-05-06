@@ -87,10 +87,10 @@ def _request(
     )
     try:
         with urllib.request.urlopen(req, timeout=timeout) as resp:
-            preview = resp.read(500).decode(errors="replace")
+            preview = resp.read(1_000_000).decode(errors="replace")
             return HttpResult(status=int(resp.status), body_preview=preview)
     except urllib.error.HTTPError as exc:
-        preview = exc.read(500).decode(errors="replace")
+        preview = exc.read(1_000_000).decode(errors="replace")
         return HttpResult(status=int(exc.code), body_preview=preview)
 
 

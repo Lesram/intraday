@@ -57,7 +57,7 @@ Local verification before deploy:
 - `scripts/ci/lint_ratchet.py`: PASS, current `3748`, baseline `3801`.
 - `scripts/ci/generate_artifacts.py full`: PASS, `8 passed, 0 failed`.
 
-Post-deploy live validation must be run with:
+Post-deploy live validation was run against the rebuilt paper container:
 
 ```bash
 ./venv/bin/python scripts/ci/phase7_security_sanity.py \
@@ -65,8 +65,21 @@ Post-deploy live validation must be run with:
   --output artifacts/phase7/security_sanity.json
 ```
 
-Expected result: every probe passes, with default `user` tokens rejected from
-operator surfaces and admin logout still revoking the token.
+Result: PASS, `19 passed, 0 failed`.
+
+Deployed evidence:
+
+- Container `GIT_SHA`: `498844afa84ff2305410c630cbd3992dcc17d3c5`.
+- Admin login, `/me`, settings, strategy health, deploy health, data-integrity,
+  and orders all returned `200`.
+- Admin logout returned `200`; the same token returned `401 token_revoked`
+  afterward.
+- Default `user` token could call `/api/v1/auth/me` but was rejected from
+  `/api/v1/health/strategy`, `/api/v1/health/deploy`,
+  `/api/v1/health/data-integrity`, `/api/v1/orders/`, order cancel, and
+  `/api/v1/organism/brain`.
+- Public `/api/v1/settings/organism` returned `401`.
+- Debug/test endpoints returned `404`.
 
 ## Remaining Risks
 
