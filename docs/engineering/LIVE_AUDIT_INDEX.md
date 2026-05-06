@@ -1,11 +1,11 @@
 # Live Audit Index
 
-Generated: 2026-05-06T16:35:33Z
+Generated: 2026-05-06T16:49:29Z
 PR: PR #6
-SHA: `9459691c7d`
+SHA: `0985cd5a35`
 Branch: `codex/v13-phase2-expectancy`
 Scope: **tooling/evidence_only**
-Change scope: `working-tree` (`HEAD+working-tree`)
+Change scope: `task` (`HEAD`)
 
 ## Changed files
 
@@ -15,7 +15,7 @@ Change scope: `working-tree` (`HEAD+working-tree`)
 | Organism | 0 | none |
 | Scripts | 1 | `scripts/phase8_evidence_warehouse.py` |
 | Tests | 1 | `tests/test_phase8_evidence_warehouse.py` |
-| Docs | 2 | `docs/engineering/PHASE8_EVIDENCE_WAREHOUSE_V2_PLAN.md`, `docs/engineering/PHASE8_EVIDENCE_WAREHOUSE_V2_REPORT.md` |
+| Docs | 3 | `docs/engineering/LIVE_AUDIT_INDEX.md`, `docs/engineering/PHASE8_EVIDENCE_WAREHOUSE_V2_PLAN.md`, `docs/engineering/PHASE8_EVIDENCE_WAREHOUSE_V2_REPORT.md` |
 
 ## Live constants
 

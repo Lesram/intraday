@@ -36,6 +36,10 @@ class WarehouseInputs:
     trade_history: Path
     out_dir: Path
     db_name: str = "strategy_evidence.sqlite"
+    include_db: bool = False
+    db_container: str = "trading_platform_db_paper"
+    db_user: str = "trading"
+    postgres_db: str = "algotrading"
 
 
 def _git(*args: str) -> str:
@@ -103,6 +107,36 @@ def read_csv_rows(path: Path) -> list[dict[str, str]]:
         return []
     with path.open(newline="") as fh:
         return list(csv.DictReader(fh))
+
+
+def read_psql_csv(inputs: WarehouseInputs, query: str) -> list[dict[str, str]]:
+    """Run a read-only psql extract through docker and parse CSV output."""
+    if not inputs.include_db:
+        return []
+    query_head = query.strip().upper()
+    if not (query_head.startswith("SELECT") or query_head.startswith("WITH")):
+        raise ValueError("Phase 8 DB extracts must be read-only SELECT/WITH queries")
+    output = subprocess.check_output(
+        [
+            "docker",
+            "exec",
+            inputs.db_container,
+            "psql",
+            "-U",
+            inputs.db_user,
+            "-d",
+            inputs.postgres_db,
+            "--csv",
+            "--set",
+            "ON_ERROR_STOP=1",
+            "-c",
+            query,
+        ],
+        text=True,
+    )
+    if not output.strip():
+        return []
+    return list(csv.DictReader(output.splitlines()))
 
 
 def normalize_event(source: str, event: dict[str, Any]) -> dict[str, Any]:
@@ -218,6 +252,59 @@ def normalize_trade(row: dict[str, str], row_number: int) -> dict[str, Any]:
     }
 
 
+def normalize_order(row: dict[str, str]) -> dict[str, Any]:
+    return {
+        "order_id": str(row.get("id") or ""),
+        "client_idempotency_key": str(row.get("client_idempotency_key") or ""),
+        "symbol": str(row.get("symbol") or "").upper(),
+        "side": str(row.get("side") or ""),
+        "qty": _finite_float(row.get("qty")),
+        "order_type": str(row.get("order_type") or ""),
+        "status": str(row.get("status") or ""),
+        "submitted_at": str(row.get("submitted_at") or ""),
+        "created_at": str(row.get("created_at") or ""),
+        "updated_at": str(row.get("updated_at") or ""),
+        "broker_order_id": str(row.get("broker_order_id") or ""),
+        "filled_qty": _finite_float(row.get("filled_qty")),
+        "avg_fill_price": _finite_float(row.get("avg_fill_price")),
+        "limit_price": _finite_float(row.get("limit_price")),
+        "stop_price": _finite_float(row.get("stop_price")),
+        "raw_json": json.dumps(row, sort_keys=True, default=str),
+    }
+
+
+def normalize_execution(row: dict[str, str]) -> dict[str, Any]:
+    return {
+        "execution_id": str(row.get("id") or ""),
+        "order_id": str(row.get("order_id") or ""),
+        "fill_qty": _finite_float(row.get("fill_qty")),
+        "fill_price": _finite_float(row.get("fill_price")),
+        "ts": str(row.get("ts") or ""),
+        "venue": str(row.get("venue") or ""),
+        "created_at": str(row.get("created_at") or ""),
+        "raw_json": json.dumps(row, sort_keys=True, default=str),
+    }
+
+
+def normalize_realized_trade(row: dict[str, str]) -> dict[str, Any]:
+    return {
+        "realized_trade_id": str(row.get("id") or ""),
+        "symbol": str(row.get("symbol") or "").upper(),
+        "qty": _finite_float(row.get("qty")),
+        "open_price": _finite_float(row.get("open_price")),
+        "close_price": _finite_float(row.get("close_price")),
+        "realized_pnl": _finite_float(row.get("realized_pnl")),
+        "realized_pnl_percent": _finite_float(row.get("realized_pnl_percent")),
+        "open_order_id": str(row.get("open_order_id") or ""),
+        "close_order_id": str(row.get("close_order_id") or ""),
+        "lot_id": str(row.get("lot_id") or ""),
+        "open_date": str(row.get("open_date") or ""),
+        "close_date": str(row.get("close_date") or ""),
+        "created_at": str(row.get("created_at") or ""),
+        "raw_json": json.dumps(row, sort_keys=True, default=str),
+    }
+
+
 def connect(db_path: Path) -> sqlite3.Connection:
     db_path.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(db_path)
@@ -300,6 +387,63 @@ def create_schema(conn: sqlite3.Connection) -> None:
         CREATE INDEX IF NOT EXISTS idx_trade_history_symbol
             ON trade_history(symbol);
 
+        CREATE TABLE IF NOT EXISTS db_orders (
+            order_id TEXT PRIMARY KEY,
+            client_idempotency_key TEXT,
+            symbol TEXT,
+            side TEXT,
+            qty REAL,
+            order_type TEXT,
+            status TEXT,
+            submitted_at TEXT,
+            created_at TEXT,
+            updated_at TEXT,
+            broker_order_id TEXT,
+            filled_qty REAL,
+            avg_fill_price REAL,
+            limit_price REAL,
+            stop_price REAL,
+            raw_json TEXT
+        );
+        CREATE INDEX IF NOT EXISTS idx_db_orders_symbol_status
+            ON db_orders(symbol, status);
+        CREATE INDEX IF NOT EXISTS idx_db_orders_broker_order_id
+            ON db_orders(broker_order_id);
+
+        CREATE TABLE IF NOT EXISTS db_executions (
+            execution_id TEXT PRIMARY KEY,
+            order_id TEXT,
+            fill_qty REAL,
+            fill_price REAL,
+            ts TEXT,
+            venue TEXT,
+            created_at TEXT,
+            raw_json TEXT
+        );
+        CREATE INDEX IF NOT EXISTS idx_db_executions_order_id
+            ON db_executions(order_id);
+
+        CREATE TABLE IF NOT EXISTS db_realized_trades (
+            realized_trade_id TEXT PRIMARY KEY,
+            symbol TEXT,
+            qty REAL,
+            open_price REAL,
+            close_price REAL,
+            realized_pnl REAL,
+            realized_pnl_percent REAL,
+            open_order_id TEXT,
+            close_order_id TEXT,
+            lot_id TEXT,
+            open_date TEXT,
+            close_date TEXT,
+            created_at TEXT,
+            raw_json TEXT
+        );
+        CREATE INDEX IF NOT EXISTS idx_db_realized_trades_symbol
+            ON db_realized_trades(symbol);
+        CREATE INDEX IF NOT EXISTS idx_db_realized_trades_close_order
+            ON db_realized_trades(close_order_id);
+
         CREATE TABLE IF NOT EXISTS warehouse_manifest (
             key TEXT PRIMARY KEY,
             value TEXT NOT NULL
@@ -313,7 +457,8 @@ def _upsert_rows(conn: sqlite3.Connection, table: str, rows: list[dict[str, Any]
         return 0
     columns = list(rows[0].keys())
     placeholders = ", ".join("?" for _ in columns)
-    update_columns = [col for col in columns if not col.endswith("_id")]
+    primary_key = columns[0]
+    update_columns = [col for col in columns if col != primary_key]
     updates = ", ".join(f"{col}=excluded.{col}" for col in update_columns)
     sql = (
         f"INSERT INTO {table} ({', '.join(columns)}) VALUES ({placeholders}) "
@@ -340,6 +485,9 @@ def build_summary(
     events: list[dict[str, Any]],
     outcomes: list[dict[str, Any]],
     trades: list[dict[str, Any]],
+    orders: list[dict[str, Any]],
+    executions: list[dict[str, Any]],
+    realized_trades: list[dict[str, Any]],
     invalid_jsonl_rows: dict[str, int],
 ) -> dict[str, Any]:
     joined = [row for row in outcomes if row["status"] == "joined"]
@@ -348,6 +496,16 @@ def build_summary(
     candidate_events = [row for row in events if row["source"] == "candidate_filter_shadow"]
     pnl_values = [row["pnl"] for row in trades if row["pnl"] is not None]
     total_pnl = round(sum(float(value) for value in pnl_values), 4) if pnl_values else 0.0
+    status_counts: dict[str, int] = {}
+    for row in orders:
+        status = str(row.get("status") or "unknown")
+        status_counts[status] = status_counts.get(status, 0) + 1
+    realized_values = [
+        row["realized_pnl"] for row in realized_trades if row["realized_pnl"] is not None
+    ]
+    realized_total_pnl = (
+        round(sum(float(value) for value in realized_values), 4) if realized_values else 0.0
+    )
     return {
         "scope": "phase8_strategy_evidence_warehouse_v2_no_live_behavior_change",
         "generated_at": datetime.now(UTC).isoformat(),
@@ -360,6 +518,13 @@ def build_summary(
             "phase6_outcomes": str(inputs.phase6_outcomes),
             "trade_history": str(inputs.trade_history),
         },
+        "db_extract": {
+            "enabled": inputs.include_db,
+            "container": inputs.db_container if inputs.include_db else "",
+            "postgres_db": inputs.postgres_db if inputs.include_db else "",
+            "order_status_counts": dict(sorted(status_counts.items())),
+            "realized_total_pnl": realized_total_pnl,
+        },
         "counts": {
             "events": len(events),
             "strategy_events": len(strategy_events),
@@ -368,6 +533,9 @@ def build_summary(
             "joined_outcomes": len(joined),
             "linked_outcomes": len(linked),
             "trades": len(trades),
+            "db_orders": len(orders),
+            "db_executions": len(executions),
+            "db_realized_trades": len(realized_trades),
             "invalid_jsonl_rows": invalid_jsonl_rows,
         },
         "trade_history": {
@@ -382,6 +550,7 @@ def build_summary(
 def render_report(summary: dict[str, Any]) -> str:
     counts = summary["counts"]
     trade = summary["trade_history"]
+    db_extract = summary["db_extract"]
     return "\n".join([
         "# Phase 8 Evidence Warehouse V2 Report",
         "",
@@ -403,7 +572,16 @@ def render_report(summary: dict[str, Any]) -> str:
         f"- Joined outcomes: `{counts['joined_outcomes']}`",
         f"- Linked outcomes: `{counts['linked_outcomes']}`",
         f"- Trade-history rows: `{counts['trades']}`",
+        f"- DB orders: `{counts['db_orders']}`",
+        f"- DB executions: `{counts['db_executions']}`",
+        f"- DB realized trades: `{counts['db_realized_trades']}`",
         f"- Invalid JSONL rows: `{counts['invalid_jsonl_rows']}`",
+        "",
+        "## DB Extract",
+        "",
+        f"- Enabled: `{db_extract['enabled']}`",
+        f"- Order status counts: `{db_extract['order_status_counts']}`",
+        f"- Realized-trades total PnL loaded from DB: `{db_extract['realized_total_pnl']}`",
         "",
         "## Trading Reality",
         "",
@@ -436,6 +614,43 @@ def build_warehouse(inputs: WarehouseInputs) -> dict[str, Any]:
         normalize_trade(row, row_number)
         for row_number, row in enumerate(read_csv_rows(inputs.trade_history), start=1)
     ]
+    orders = [
+        normalize_order(row)
+        for row in read_psql_csv(
+            inputs,
+            """
+            SELECT id, client_idempotency_key, symbol, side, qty, order_type,
+                   status, submitted_at, created_at, updated_at, broker_order_id,
+                   filled_qty, avg_fill_price, limit_price, stop_price
+            FROM orders
+            ORDER BY created_at, id;
+            """,
+        )
+    ]
+    executions = [
+        normalize_execution(row)
+        for row in read_psql_csv(
+            inputs,
+            """
+            SELECT id, order_id, fill_qty, fill_price, ts, venue, created_at
+            FROM executions
+            ORDER BY ts, id;
+            """,
+        )
+    ]
+    realized_trades = [
+        normalize_realized_trade(row)
+        for row in read_psql_csv(
+            inputs,
+            """
+            SELECT id, symbol, qty, open_price, close_price, realized_pnl,
+                   realized_pnl_percent, open_order_id, close_order_id, lot_id,
+                   open_date, close_date, created_at
+            FROM realized_trades
+            ORDER BY created_at, id;
+            """,
+        )
+    ]
 
     db_path = inputs.out_dir / inputs.db_name
     conn = connect(db_path)
@@ -444,12 +659,18 @@ def build_warehouse(inputs: WarehouseInputs) -> dict[str, Any]:
         inserted_events = _upsert_rows(conn, "evidence_events", events)
         inserted_outcomes = _upsert_rows(conn, "evidence_outcomes", outcomes)
         inserted_trades = _upsert_rows(conn, "trade_history", trades)
+        inserted_orders = _upsert_rows(conn, "db_orders", orders)
+        inserted_executions = _upsert_rows(conn, "db_executions", executions)
+        inserted_realized_trades = _upsert_rows(conn, "db_realized_trades", realized_trades)
         summary = build_summary(
             inputs=inputs,
             db_path=db_path,
             events=events,
             outcomes=outcomes,
             trades=trades,
+            orders=orders,
+            executions=executions,
+            realized_trades=realized_trades,
             invalid_jsonl_rows={
                 "strategy_evidence": strategy_invalid,
                 "candidate_filter_shadow": candidate_invalid,
@@ -459,6 +680,9 @@ def build_warehouse(inputs: WarehouseInputs) -> dict[str, Any]:
             "events": inserted_events,
             "outcomes": inserted_outcomes,
             "trades": inserted_trades,
+            "db_orders": inserted_orders,
+            "db_executions": inserted_executions,
+            "db_realized_trades": inserted_realized_trades,
         }
         write_manifest(conn, summary)
         conn.commit()
@@ -485,6 +709,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--trade-history", type=Path, default=DEFAULT_TRADE_HISTORY)
     parser.add_argument("--out-dir", type=Path, default=DEFAULT_OUT_DIR)
     parser.add_argument("--db-name", default="strategy_evidence.sqlite")
+    parser.add_argument("--include-db", action="store_true")
+    parser.add_argument("--db-container", default="trading_platform_db_paper")
+    parser.add_argument("--db-user", default="trading")
+    parser.add_argument("--postgres-db", default="algotrading")
     parser.add_argument("--no-report", action="store_true")
     return parser.parse_args()
 
@@ -498,6 +726,10 @@ def main() -> int:
         trade_history=args.trade_history,
         out_dir=args.out_dir,
         db_name=args.db_name,
+        include_db=args.include_db,
+        db_container=args.db_container,
+        db_user=args.db_user,
+        postgres_db=args.postgres_db,
     )
     summary = build_warehouse(inputs)
     if not args.no_report:
@@ -507,6 +739,8 @@ def main() -> int:
         f"events={summary['counts']['events']} "
         f"outcomes={summary['counts']['outcomes']} "
         f"trades={summary['counts']['trades']} "
+        f"db_orders={summary['counts']['db_orders']} "
+        f"db_realized_trades={summary['counts']['db_realized_trades']} "
         f"db={inputs.out_dir / inputs.db_name}"
     )
     return 0

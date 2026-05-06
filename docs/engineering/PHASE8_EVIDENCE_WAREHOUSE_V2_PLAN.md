@@ -24,6 +24,16 @@ P8.0 adds an offline warehouse builder:
 This does not touch the live engine, broker, order path, ranking, sizing,
 safety gates, exits, or promotion state.
 
+P8.1 extends the same warehouse with optional read-only Postgres extracts from
+the paper DB:
+
+- DB orders.
+- DB executions/fills.
+- DB realized trades.
+
+The DB extract is opt-in with `--include-db`. Default runs remain offline and
+do not require Docker or Postgres.
+
 ## Warehouse Tables
 
 | Table | Purpose |
@@ -31,12 +41,21 @@ safety gates, exits, or promotion state.
 | `evidence_events` | One normalized row per live/shadow candidate event, with stable event IDs. |
 | `evidence_outcomes` | Forward-return rows linked back to events where possible. |
 | `trade_history` | Brain trade-history rows loaded for expectancy context. |
+| `db_orders` | Read-only order ledger extract from paper Postgres. |
+| `db_executions` | Read-only execution/fill extract from paper Postgres. |
+| `db_realized_trades` | Read-only realized-trade accounting extract from paper Postgres. |
 | `warehouse_manifest` | Build metadata, counts, input paths, SHA, and no-promotion assertion. |
 
 ## Execution
 
 ```bash
 ./venv/bin/python scripts/phase8_evidence_warehouse.py
+```
+
+Read-only DB extract:
+
+```bash
+./venv/bin/python scripts/phase8_evidence_warehouse.py --include-db
 ```
 
 Default outputs:
@@ -50,13 +69,14 @@ Default outputs:
 - The builder is idempotent: rerunning it does not duplicate rows.
 - Event IDs are stable for the same input event.
 - Outcome rows link to event rows when timestamp, symbol, and event line match.
+- DB extract is opt-in, SELECT/WITH-only, and preserves default offline behavior.
 - The report states `promotion_authorized=false`.
 - Focused tests pass.
 
 ## Next Slices
 
-1. Add DB/broker order and fill extracts into the same warehouse.
-2. Add cost/slippage fields and realized-vs-forward-return comparison.
+1. Add broker/local fill identity joins and cost/slippage fields.
+2. Add realized-vs-forward-return comparison.
 3. Add post-close decision rules with minimum sample gates.
 4. Add replay candidate export for ideas that pass evidence gates.
 5. Add a Track C daily automation that builds the warehouse after close and

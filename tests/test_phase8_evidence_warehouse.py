@@ -6,6 +6,8 @@ from scripts.phase8_evidence_warehouse import (
     WarehouseInputs,
     build_warehouse,
     normalize_event,
+    normalize_order,
+    normalize_realized_trade,
     write_outputs,
 )
 
@@ -39,6 +41,52 @@ def test_phase8_event_id_is_stable_for_same_event() -> None:
     assert first["event_id"] == second["event_id"]
     assert first["symbol"] == "AMD"
     assert json.loads(first["matched_filters_json"]) == ["alpha_breakout_chop"]
+
+
+def test_phase8_normalizes_db_order_and_realized_trade_rows() -> None:
+    order = normalize_order(
+        {
+            "id": "order-1",
+            "client_idempotency_key": "key-1",
+            "symbol": "amd",
+            "side": "buy",
+            "qty": "2",
+            "order_type": "market",
+            "status": "filled",
+            "submitted_at": "2026-05-06 14:30:00+00",
+            "created_at": "2026-05-06 14:30:00+00",
+            "updated_at": "2026-05-06 14:31:00+00",
+            "broker_order_id": "broker-1",
+            "filled_qty": "2",
+            "avg_fill_price": "100.25",
+            "limit_price": "",
+            "stop_price": "",
+        }
+    )
+    realized = normalize_realized_trade(
+        {
+            "id": "trade-1",
+            "symbol": "nvda",
+            "qty": "1.5",
+            "open_price": "900.0",
+            "close_price": "903.5",
+            "realized_pnl": "5.25",
+            "realized_pnl_percent": "0.00389",
+            "open_order_id": "open-1",
+            "close_order_id": "close-1",
+            "lot_id": "lot-1",
+            "open_date": "2026-05-06 14:30:00+00",
+            "close_date": "2026-05-06 14:35:00+00",
+            "created_at": "2026-05-06 14:35:01+00",
+        }
+    )
+
+    assert order["symbol"] == "AMD"
+    assert order["qty"] == 2.0
+    assert order["avg_fill_price"] == 100.25
+    assert realized["symbol"] == "NVDA"
+    assert realized["realized_pnl"] == 5.25
+    assert realized["close_order_id"] == "close-1"
 
 
 def test_phase8_builds_idempotent_sqlite_warehouse(tmp_path) -> None:
@@ -138,6 +186,8 @@ def test_phase8_builds_idempotent_sqlite_warehouse(tmp_path) -> None:
     assert first["counts"]["events"] == 2
     assert second["counts"]["linked_outcomes"] == 1
     assert second["trade_history"]["total_pnl"] == 2.0
+    assert second["counts"]["db_orders"] == 0
+    assert second["db_extract"]["enabled"] is False
     assert second["promotion_authorized"] is False
 
     conn = sqlite3.connect(out_dir / "strategy_evidence.sqlite")
