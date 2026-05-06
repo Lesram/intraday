@@ -1,21 +1,21 @@
 # Live Audit Index
 
-Generated: 2026-05-06T01:36:46Z
+Generated: 2026-05-06T03:56:25Z
 PR: PR #6
-SHA: `070d41d7f6`
+SHA: `57d9a2d5c6`
 Branch: `codex/v13-phase2-expectancy`
-Scope: **backend_logic**
+Scope: **tooling/evidence_only**
 Change scope: `task` (`HEAD`)
 
 ## Changed files
 
 | Category | Count | Files |
 |----------|-------|-------|
-| Backend | 3 | `backend/organism/brain_persistence.py`, `backend/organism/candidate_shadow_telemetry.py`, `backend/organism/live_engine.py` |
-| Organism | 3 | `backend/organism/brain_persistence.py`, `backend/organism/candidate_shadow_telemetry.py`, `backend/organism/live_engine.py` |
-| Scripts | 2 | `scripts/phase6_strategy_evidence_warehouse.py`, `scripts/runtime/write_runtime_snapshot.py` |
-| Tests | 4 | `tests/test_phase3_candidate_shadow_telemetry.py`, `tests/test_phase5_shadow_outcome_join.py`, `tests/test_phase5_shadow_telemetry_persistence.py`, `tests/test_phase6_strategy_evidence_warehouse.py` |
-| Docs | 1 | `docs/engineering/PHASE6_STRATEGY_EVIDENCE_WAREHOUSE_PLAN.md` |
+| Backend | 0 | none |
+| Organism | 0 | none |
+| Scripts | 1 | `scripts/ci/phase7_integration_checkpoint.py` |
+| Tests | 0 | none |
+| Docs | 0 | none |
 
 ## Live constants
 
@@ -50,4 +50,4 @@ Source: `resolved_config_snapshot.json`
 
 ## Open risks
 
-- 3 organism file(s) changed — require replay verification
+- Evidence/tooling script changed only — no backend runtime or order-path behavior changed
