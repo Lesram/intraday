@@ -1,11 +1,11 @@
 # Live Audit Index
 
-Generated: 2026-05-06T14:40:51Z
+Generated: 2026-05-06T14:49:18Z
 PR: PR #6
-SHA: `3d2fa805f3`
+SHA: `ae7ec2aeea`
 Branch: `codex/v13-phase2-expectancy`
 Scope: **tooling/evidence_only**
-Change scope: `working-tree` (`HEAD+working-tree`)
+Change scope: `task` (`HEAD`)
 
 ## Changed files
 
@@ -15,7 +15,7 @@ Change scope: `working-tree` (`HEAD+working-tree`)
 | Organism | 0 | none |
 | Scripts | 1 | `scripts/db/phase7_data_integrity_remediation.py` |
 | Tests | 1 | `tests/test_phase7_data_integrity_remediation.py` |
-| Docs | 1 | `docs/engineering/PHASE7_DATA_INTEGRITY_REPORT.md` |
+| Docs | 2 | `docs/engineering/LIVE_AUDIT_INDEX.md`, `docs/engineering/PHASE7_DATA_INTEGRITY_REPORT.md` |
 
 ## Live constants
 
