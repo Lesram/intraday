@@ -1,21 +1,21 @@
 # Live Audit Index
 
-Generated: 2026-05-06T04:50:58Z
+Generated: 2026-05-06T05:20:10Z
 PR: PR #6
-SHA: `2ecef60baa`
+SHA: `0e2581a674`
 Branch: `codex/v13-phase2-expectancy`
-Scope: **tooling/evidence_only**
-Change scope: `range` (`b18478b26e14a046e14cf12bc82ded49ab0db4ca..HEAD`)
+Scope: **backend_logic**
+Change scope: `working-tree` (`HEAD+working-tree`)
 
 ## Changed files
 
 | Category | Count | Files |
 |----------|-------|-------|
-| Backend | 0 | none |
-| Organism | 0 | none |
-| Scripts | 1 | `scripts/ci/phase7_integration_checkpoint.py` |
-| Tests | 1 | `tests/test_phase7_integration_checkpoint_redaction.py` |
-| Docs | 5 | `docs/engineering/LIVE_AUDIT_INDEX.md`, `docs/engineering/PHASE7_ARCHITECTURE_BASELINE.md`, `docs/engineering/PHASE7_TEST_TRUST_REPORT.md`, `docs/engineering/audits/archive/2026-04/bundles/deploy_verification_deploy2_33d6138_bundle/predeploy_env_snapshot.txt`, `docs/engineering/audits/archive/2026-04/bundles/master_platform_strategy_summit_bundle/container_inspect.json` |
+| Backend | 1 | `backend/organism/live_engine.py` |
+| Organism | 1 | `backend/organism/live_engine.py` |
+| Scripts | 0 | none |
+| Tests | 1 | `tests/test_phase3_candidate_shadow_telemetry.py` |
+| Docs | 1 | `docs/engineering/PHASE7_LIVE_ENGINE_EXTRACTION_REPORT.md` |
 
 ## Live constants
 
@@ -50,4 +50,4 @@ Source: `resolved_config_snapshot.json`
 
 ## Open risks
 
-- Evidence/tooling script changed only — no backend runtime or order-path behavior changed
+- 1 organism file(s) changed — require replay verification

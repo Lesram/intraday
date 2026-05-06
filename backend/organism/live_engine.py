@@ -1951,6 +1951,109 @@ class OrganismLiveEngine:
         except Exception:
             pass
 
+    def _record_candidate_evidence(
+        self,
+        cand_dicts: list[dict[str, Any]],
+        *,
+        regime: str,
+        now_iso: str,
+    ) -> None:
+        """Record pre-sizing candidate evidence without affecting live decisions."""
+        # Phase 3 candidate-filter shadow telemetry. This records
+        # only proposed no-entry filter matches and is deliberately
+        # placed before Kelly sizing/order submission so it cannot
+        # influence the live path. Disabled unless explicitly enabled.
+        if self._candidate_filter_shadow_recorder is not None:
+            try:
+                _shadow_written = (
+                    self._candidate_filter_shadow_recorder.record_candidates(
+                        cand_dicts,
+                        regime=regime,
+                        tick=self._tick_count,
+                        timestamp=now_iso,
+                    )
+                )
+                self._candidate_filter_shadow_events += _shadow_written
+            except Exception as _shadow_err:
+                logger.warning(
+                    "Candidate filter shadow telemetry write failed: %s",
+                    _shadow_err,
+                )
+
+        # Phase 6 strategy evidence warehouse feed. Records every
+        # surviving pre-sizing candidate, including candidates with no
+        # current shadow-filter tag. Observability-only and intentionally
+        # before Kelly sizing/order submission.
+        if self._strategy_evidence_recorder is not None:
+            try:
+                _evidence_written = (
+                    self._strategy_evidence_recorder.record_candidates(
+                        cand_dicts,
+                        regime=regime,
+                        tick=self._tick_count,
+                        timestamp=now_iso,
+                    )
+                )
+                self._strategy_evidence_events += _evidence_written
+            except Exception as _evidence_err:
+                logger.warning(
+                    "Strategy evidence telemetry write failed: %s",
+                    _evidence_err,
+                )
+
+    def _record_signal_activity(
+        self,
+        result: LiveTickResult,
+        cand_dicts: list[dict[str, Any]],
+        *,
+        now_iso: str,
+    ) -> None:
+        """Append signal activity events for dashboard/operator visibility."""
+        for cd in cand_dicts[:10]:
+            side = "BUY" if cd["direction"] > 0 else "SELL"
+            result.activity.append(ActivityEvent(
+                event_type="signal",
+                symbol=cd["symbol"],
+                message=(
+                    f"{side} signal: {cd['symbol']} "
+                    f"(confidence={cd['confidence']:.2f}, "
+                    f"breakout={cd['breakout_score']:.2f})"
+                ),
+                details=cd,
+                timestamp=now_iso,
+            ))
+
+    def _record_sizer_rejections(self) -> None:
+        """Copy sizer-level rejection counts into tick gate telemetry."""
+        _sizer_rejects = getattr(self.kelly_sizer, "_exploration_rejects", [])
+        self._last_gate_rejections["cost_gate"] = sum(
+            1 for r in _sizer_rejects if r.get("reason") == "weight_too_small"
+        )
+        self._last_gate_rejections["min_notional"] = sum(
+            1 for r in _sizer_rejects if r.get("reason") == "below_min_notional"
+        )
+
+    def _apply_intraday_seasonality_filter(self, sizes: list[Any]) -> None:
+        """Reduce late-session allocations in-place for intraday trading."""
+        if not self._is_intraday or not sizes:
+            return
+        _now = self._now_fn()
+        try:
+            import zoneinfo
+            now_et = _now.astimezone(zoneinfo.ZoneInfo("America/New_York"))
+        except Exception:
+            now_et = _now
+        hhmm = now_et.hour * 100 + now_et.minute
+        if 1545 <= hhmm <= 1600:
+            for sz in sizes:
+                sz.shares = max(1, int(sz.shares * 0.6))
+                sz.notional = sz.notional * 0.6
+                sz.target_weight = sz.target_weight * 0.6
+            logger.info(
+                "Seasonality filter: reduced allocation 40%% (time=%d)",
+                hhmm,
+            )
+
     async def _live_tick_inner(self) -> LiveTickResult:
         """Inner tick logic — always called under _tick_lock."""
         # V6 X-2 / Wave-20b (2026-05-03): use injected clock so tick
@@ -4187,58 +4290,17 @@ class OrganismLiveEngine:
                 _rej_counts["missingness"] = _rej_missingness
                 self._last_gate_rejections = dict(_rej_counts)
 
-                # Phase 3 candidate-filter shadow telemetry. This records
-                # only proposed no-entry filter matches and is deliberately
-                # placed before Kelly sizing/order submission so it cannot
-                # influence the live path. Disabled unless explicitly enabled.
-                if self._candidate_filter_shadow_recorder is not None:
-                    try:
-                        _shadow_written = (
-                            self._candidate_filter_shadow_recorder.record_candidates(
-                                cand_dicts,
-                                regime=regime,
-                                tick=self._tick_count,
-                                timestamp=now_iso,
-                            )
-                        )
-                        self._candidate_filter_shadow_events += _shadow_written
-                    except Exception as _shadow_err:
-                        logger.warning(
-                            "Candidate filter shadow telemetry write failed: %s",
-                            _shadow_err,
-                        )
+                self._record_candidate_evidence(
+                    cand_dicts,
+                    regime=regime,
+                    now_iso=now_iso,
+                )
 
-                # Phase 6 strategy evidence warehouse feed. Records every
-                # surviving pre-sizing candidate, including candidates with no
-                # current shadow-filter tag. Observability-only and intentionally
-                # before Kelly sizing/order submission.
-                if self._strategy_evidence_recorder is not None:
-                    try:
-                        _evidence_written = (
-                            self._strategy_evidence_recorder.record_candidates(
-                                cand_dicts,
-                                regime=regime,
-                                tick=self._tick_count,
-                                timestamp=now_iso,
-                            )
-                        )
-                        self._strategy_evidence_events += _evidence_written
-                    except Exception as _evidence_err:
-                        logger.warning(
-                            "Strategy evidence telemetry write failed: %s",
-                            _evidence_err,
-                        )
-
-                # Log signal activity
-                for cd in cand_dicts[:10]:
-                    result.activity.append(ActivityEvent(
-                        event_type="signal",
-                        symbol=cd["symbol"],
-                        message=f"{'BUY' if cd['direction'] > 0 else 'SELL'} signal: {cd['symbol']} "
-                                f"(confidence={cd['confidence']:.2f}, breakout={cd['breakout_score']:.2f})",
-                        details=cd,
-                        timestamp=now_iso,
-                    ))
+                self._record_signal_activity(
+                    result,
+                    cand_dicts,
+                    now_iso=now_iso,
+                )
 
                 # 8. SIZE POSITIONS (Kelly)
                 drawdown = (
@@ -4263,31 +4325,11 @@ class OrganismLiveEngine:
                 self._last_kelly_sizes = sizes
 
                 # Wire sizer-level rejections into gate telemetry
-                _sizer_rejects = getattr(self.kelly_sizer, "_exploration_rejects", [])
-                _rej_cost_gate = sum(1 for r in _sizer_rejects if r.get("reason") == "weight_too_small")
-                _rej_min_notional = sum(1 for r in _sizer_rejects if r.get("reason") == "below_min_notional")
-                self._last_gate_rejections["cost_gate"] = _rej_cost_gate
-                self._last_gate_rejections["min_notional"] = _rej_min_notional
+                self._record_sizer_rejections()
 
                 # 8b. INTRADAY SEASONALITY FILTER — reduce allocation
                 # during first/last 15 min (highest volatility, worst fills)
-                if self._is_intraday and sizes:
-                    _now = self._now_fn()
-                    try:
-                        import zoneinfo
-                        now_et = _now.astimezone(zoneinfo.ZoneInfo("America/New_York"))
-                    except Exception:
-                        now_et = _now
-                    hhmm = now_et.hour * 100 + now_et.minute
-                    if 1545 <= hhmm <= 1600:
-                        for sz in sizes:
-                            sz.shares = max(1, int(sz.shares * 0.6))
-                            sz.notional = sz.notional * 0.6
-                            sz.target_weight = sz.target_weight * 0.6
-                        logger.info(
-                            "Seasonality filter: reduced allocation 40%% (time=%d)",
-                            hhmm,
-                        )
+                self._apply_intraday_seasonality_filter(sizes)
 
                 # 9. SUBMIT ENTRY ORDERS
                 # Re-check positions right before ordering to catch partial

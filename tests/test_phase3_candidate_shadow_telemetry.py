@@ -2,8 +2,12 @@
 
 from __future__ import annotations
 
+from copy import deepcopy
+from dataclasses import dataclass
+from datetime import UTC, datetime
 import json
 from pathlib import Path
+from typing import Any
 
 from backend.organism.candidate_shadow_telemetry import (
     CandidateShadowTelemetryRecorder,
@@ -11,6 +15,50 @@ from backend.organism.candidate_shadow_telemetry import (
     candidate_filter_tags,
     infer_entry_source,
 )
+
+
+class _FakeCandidateRecorder:
+    def __init__(
+        self,
+        *,
+        written: int = 0,
+        error: Exception | None = None,
+    ) -> None:
+        self.written = written
+        self.error = error
+        self.calls: list[dict[str, Any]] = []
+
+    def record_candidates(
+        self,
+        candidates,
+        *,
+        regime: str,
+        tick: int,
+        timestamp: str,
+    ) -> int:
+        self.calls.append(
+            {
+                "candidates": candidates,
+                "regime": regime,
+                "tick": tick,
+                "timestamp": timestamp,
+            }
+        )
+        if self.error is not None:
+            raise self.error
+        return self.written
+
+
+def _bare_live_engine():
+    from backend.organism.live_engine import OrganismLiveEngine
+
+    engine = OrganismLiveEngine.__new__(OrganismLiveEngine)
+    engine._tick_count = 42
+    engine._candidate_filter_shadow_events = 10
+    engine._strategy_evidence_events = 20
+    engine._candidate_filter_shadow_recorder = None
+    engine._strategy_evidence_recorder = None
+    return engine
 
 
 def test_candidate_filter_tags_match_phase3_filters():
@@ -152,6 +200,174 @@ def test_phase6_strategy_evidence_recorder_writes_untagged_candidates(tmp_path: 
     assert rows[0]["matched_filters"] == []
 
 
+def test_live_engine_candidate_evidence_fanout_records_without_mutating_candidates():
+    engine = _bare_live_engine()
+    shadow = _FakeCandidateRecorder(written=1)
+    evidence = _FakeCandidateRecorder(written=2)
+    engine._candidate_filter_shadow_recorder = shadow
+    engine._strategy_evidence_recorder = evidence
+    candidates = [
+        {
+            "symbol": "AAPL",
+            "direction": 1,
+            "confidence": 0.50,
+            "breakout_score": 0.45,
+            "predicted_return": 0.004,
+        },
+        {
+            "symbol": "MSFT",
+            "direction": 1,
+            "confidence": 0.80,
+            "breakout_score": 0.10,
+            "predicted_return": 0.004,
+        },
+    ]
+    before = deepcopy(candidates)
+
+    engine._record_candidate_evidence(
+        candidates,
+        regime="chop",
+        now_iso="2026-05-04T14:00:00Z",
+    )
+
+    assert candidates == before
+    assert shadow.calls == [
+        {
+            "candidates": candidates,
+            "regime": "chop",
+            "tick": 42,
+            "timestamp": "2026-05-04T14:00:00Z",
+        }
+    ]
+    assert evidence.calls == shadow.calls
+    assert engine._candidate_filter_shadow_events == 11
+    assert engine._strategy_evidence_events == 22
+
+
+def test_live_engine_candidate_evidence_fanout_is_noop_when_disabled():
+    engine = _bare_live_engine()
+    candidates = [{"symbol": "AAPL", "confidence": 0.5}]
+    before = deepcopy(candidates)
+
+    engine._record_candidate_evidence(
+        candidates,
+        regime="trend",
+        now_iso="2026-05-04T14:00:00Z",
+    )
+
+    assert candidates == before
+    assert engine._candidate_filter_shadow_events == 10
+    assert engine._strategy_evidence_events == 20
+
+
+def test_live_engine_candidate_evidence_fanout_failures_do_not_block_other_recorders(caplog):
+    engine = _bare_live_engine()
+    shadow = _FakeCandidateRecorder(error=RuntimeError("shadow boom"))
+    evidence = _FakeCandidateRecorder(written=3)
+    engine._candidate_filter_shadow_recorder = shadow
+    engine._strategy_evidence_recorder = evidence
+    candidates = [{"symbol": "AAPL", "confidence": 0.5}]
+    before = deepcopy(candidates)
+
+    with caplog.at_level("WARNING"):
+        engine._record_candidate_evidence(
+            candidates,
+            regime="chop",
+            now_iso="2026-05-04T14:00:00Z",
+        )
+
+    assert candidates == before
+    assert len(shadow.calls) == 1
+    assert len(evidence.calls) == 1
+    assert engine._candidate_filter_shadow_events == 10
+    assert engine._strategy_evidence_events == 23
+    assert "Candidate filter shadow telemetry write failed" in caplog.text
+
+
+def test_live_engine_signal_activity_helper_records_first_ten_candidates():
+    from backend.organism.live_engine import LiveTickResult
+
+    engine = _bare_live_engine()
+    result = LiveTickResult(timestamp="2026-05-04T14:00:00Z")
+    candidates = [
+        {
+            "symbol": f"S{i}",
+            "direction": 1 if i % 2 == 0 else -1,
+            "confidence": 0.5,
+            "breakout_score": 0.4,
+        }
+        for i in range(12)
+    ]
+
+    engine._record_signal_activity(
+        result,
+        candidates,
+        now_iso="2026-05-04T14:00:00Z",
+    )
+
+    assert len(result.activity) == 10
+    assert result.activity[0].symbol == "S0"
+    assert result.activity[0].message == (
+        "BUY signal: S0 (confidence=0.50, breakout=0.40)"
+    )
+    assert result.activity[1].message == (
+        "SELL signal: S1 (confidence=0.50, breakout=0.40)"
+    )
+    assert result.activity[-1].symbol == "S9"
+
+
+def test_live_engine_sizer_rejection_helper_updates_gate_counts():
+    engine = _bare_live_engine()
+    engine._last_gate_rejections = {"missingness": 1}
+
+    class _FakeSizer:
+        _exploration_rejects = [
+            {"reason": "weight_too_small"},
+            {"reason": "below_min_notional"},
+            {"reason": "below_min_notional"},
+            {"reason": "other"},
+        ]
+
+    engine.kelly_sizer = _FakeSizer()
+
+    engine._record_sizer_rejections()
+
+    assert engine._last_gate_rejections == {
+        "missingness": 1,
+        "cost_gate": 1,
+        "min_notional": 2,
+    }
+
+
+@dataclass
+class _FakeSize:
+    shares: int
+    notional: float
+    target_weight: float
+
+
+def test_live_engine_intraday_seasonality_helper_reduces_late_session_sizes():
+    engine = _bare_live_engine()
+    engine._is_intraday = True
+    engine._now_fn = lambda: datetime(2026, 5, 4, 19, 50, tzinfo=UTC)
+    sizes = [_FakeSize(shares=10, notional=1000.0, target_weight=0.05)]
+
+    engine._apply_intraday_seasonality_filter(sizes)
+
+    assert sizes == [_FakeSize(shares=6, notional=600.0, target_weight=0.03)]
+
+
+def test_live_engine_intraday_seasonality_helper_noops_outside_late_session():
+    engine = _bare_live_engine()
+    engine._is_intraday = True
+    engine._now_fn = lambda: datetime(2026, 5, 4, 18, 0, tzinfo=UTC)
+    sizes = [_FakeSize(shares=10, notional=1000.0, target_weight=0.05)]
+
+    engine._apply_intraday_seasonality_filter(sizes)
+
+    assert sizes == [_FakeSize(shares=10, notional=1000.0, target_weight=0.05)]
+
+
 def test_live_engine_shadow_telemetry_is_disabled_by_default_and_pre_sizing():
     src = (
         Path(__file__).parent.parent / "backend" / "organism" / "live_engine.py"
@@ -163,14 +379,12 @@ def test_live_engine_shadow_telemetry_is_disabled_by_default_and_pre_sizing():
     )
     assert 'ORGANISM_STRATEGY_EVIDENCE_TELEMETRY_ENABLED", False' in src
     assert "record_all_candidates=True" in src
-    block_start = src.find(
-        "This records\n"
-        "                # only proposed no-entry filter matches"
-    )
-    assert block_start >= 0
-    sizing_start = src.find("# 8. SIZE POSITIONS", block_start)
-    block = src[block_start:sizing_start]
-    assert "record_candidates(" in block
+    helper_start = src.find("def _record_candidate_evidence(")
+    live_tick_start = src.find("async def _live_tick_inner(", helper_start)
+    assert helper_start >= 0
+    assert live_tick_start > helper_start
+    block = src[helper_start:live_tick_start]
+    assert block.count("record_candidates(") == 2
     forbidden = [
         "cand_dicts.append",
         "_submit_entry_order",
@@ -179,6 +393,9 @@ def test_live_engine_shadow_telemetry_is_disabled_by_default_and_pre_sizing():
     ]
     for token in forbidden:
         assert token not in block
+    call_start = src.find("self._record_candidate_evidence(", live_tick_start)
+    sizing_start = src.find("# 8. SIZE POSITIONS", live_tick_start)
+    assert live_tick_start < call_start < sizing_start
 
 
 def test_runtime_snapshot_includes_shadow_telemetry_switches():
