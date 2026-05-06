@@ -59,6 +59,14 @@ P8.4 materializes post-close decision artifacts:
 - `PHASE8_POST_CLOSE_RESEARCH_REPORT.md` is the human post-close verdict.
 - Every candidate requires replay before any live/paper behavior change.
 
+Track C starts the automation path:
+
+- `scripts/ci/run_phase8_postclose_evidence.py` wraps the warehouse build and
+  fails if promotion guardrails are violated.
+- GitHub `paper-postclose-audit` runs the wrapper in CI artifact mode.
+- Local paper post-close runs should use `--include-db --require-db` to require
+  live paper DB evidence.
+
 ## Warehouse Tables
 
 | Table | Purpose |
@@ -109,7 +117,7 @@ Default outputs:
 
 ## Next Slices
 
-1. Add a Track C daily automation that builds the warehouse after close and
-   refuses live promotion until replay and review pass.
+1. Add local scheduled execution for `run_phase8_postclose_evidence.py
+   --include-db --require-db`.
 2. Add replay harness input generation for `replay_candidates.json`.
-3. Begin Track B strategy research on replay-only AMD/QQQ-style symbol evidence.
+3. Begin Track B strategy research on replay-only AMD evidence.

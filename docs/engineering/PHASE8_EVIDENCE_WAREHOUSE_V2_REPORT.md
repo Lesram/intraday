@@ -61,10 +61,10 @@ Latest P8.2 read-only extract loaded:
 
 | Table | Rows |
 |-------|------|
-| `db_orders` | `1463` |
-| `db_executions` | `1547` |
-| `db_realized_trades` | `971` |
-| `realized_trade_accounting` | `971` |
+| `db_orders` | `1464` |
+| `db_executions` | `1548` |
+| `db_realized_trades` | `972` |
+| `realized_trade_accounting` | `972` |
 | `filter_outcome_summary` | `3` |
 | `symbol_evidence_summary` | `31` |
 | `replay_candidate_export` | `1` |
@@ -87,9 +87,9 @@ Accounting join summary:
 | Missing open orders | `0` |
 | Missing close orders | `0` |
 | Order/execution quantity delta rows | `0` |
-| Winning realized rows | `349` |
+| Winning realized rows | `350` |
 | Losing realized rows | `616` |
-| Average realized return bps | `-2.6272` |
+| Average realized return bps | `-2.6089` |
 
 Research summary verdicts:
 
@@ -121,6 +121,21 @@ at least `0.50` for symbol replay candidates.
 The DB extract is opt-in with `--include-db`, uses only SELECT/WITH queries,
 and leaves default no-DB artifact builds unchanged.
 
+## Track C Automation Entry
+
+Command validated locally:
+
+```bash
+./venv/bin/python scripts/ci/run_phase8_postclose_evidence.py --include-db --require-db
+```
+
+Result: PASS with `events=89`, `accounting=972`, `replay_candidates=1`.
+
+The GitHub `paper-postclose-audit` workflow now runs
+`scripts/ci/run_phase8_postclose_evidence.py` in artifact mode. Local paper
+post-close automation should run the same wrapper with `--include-db
+--require-db` so it fails when live DB evidence is missing.
+
 ## Acceptance
 
 | Criterion | Status |
@@ -132,13 +147,14 @@ and leaves default no-DB artifact builds unchanged.
 | Realized-lot accounting join is populated | PASS |
 | Filter and symbol research summaries are populated | PASS |
 | Post-close report and replay-candidate export generated | PASS |
+| Track C wrapper validates no-promotion guardrails | PASS |
 | Promotion remains unauthorized | PASS |
-| Focused tests | PASS: `tests/test_phase8_evidence_warehouse.py` |
+| Focused tests | PASS: `tests/test_phase8_evidence_warehouse.py`, `tests/test_phase8_postclose_runner.py` |
 
 ## Next Slice
 
-Track C should automate this evidence loop:
+Next Track C / Track B work:
 
-1. Build the warehouse after close.
-2. Refresh the post-close research report and replay-candidate export.
-3. Refuse live promotion until replay artifacts and review pass.
+1. Install/schedule the local post-close wrapper after the paper book is safe.
+2. Generate replay harness inputs from `replay_candidates.json`.
+3. Run AMD replay before considering any strategy-logic change.
