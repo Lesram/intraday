@@ -16,13 +16,14 @@ Current Phase 7 Track A close state:
 - Paper API container: `intra-api-1`.
 - Paper DB container: `trading_platform_db_paper`.
 - Redis container: `intra-redis-1`.
-- Runtime SHA checked: `ddfc3fba3765ad7bd169dd4512e73ea668518388`.
-- Build time checked: `2026-05-06T15:52:14Z`.
+- Runtime SHA checked: `3fb3dd506e9e375205505cd11e126fe28bc355d4`.
+- Build time checked: `2026-05-06T16:16:32Z`.
 - Migration head: `20260503_000003`.
 - Phase 5 and Phase 6 telemetry are enabled in shadow/advisory mode.
 - Current strategy health is negative: PnL `-793.3359`, win rate `0.3327`,
   Sharpe `-1.3959`; no strategy promotion is justified by this map.
-- Data integrity is improved but still warning: `realized=945`, `brain=527`.
+- Last post-deploy validation snapshot had `PSQ:60` open and data-integrity
+  warning `realized=954`, `brain=527`; intraday counts can move.
 
 ---
 

@@ -1,8 +1,8 @@
 # Live Audit Index
 
-Generated: 2026-05-06T16:15:56Z
+Generated: 2026-05-06T16:24:31Z
 PR: PR #6
-SHA: `ddfc3fba37`
+SHA: `3fb3dd506e`
 Branch: `codex/v13-phase2-expectancy`
 Scope: **tooling/evidence_only**
 Change scope: `working-tree` (`HEAD+working-tree`)
@@ -13,8 +13,8 @@ Change scope: `working-tree` (`HEAD+working-tree`)
 |----------|-------|-------|
 | Backend | 0 | none |
 | Organism | 0 | none |
-| Scripts | 1 | `scripts/ci/phase7_integration_checkpoint.py` |
-| Tests | 1 | `tests/test_phase7_integration_checkpoint_redaction.py` |
+| Scripts | 0 | none |
+| Tests | 0 | none |
 | Docs | 5 | `docs/architecture/mapss.md`, `docs/engineering/LIVE_AUDIT_INDEX.md`, `docs/engineering/PHASE7_ARCHITECTURE_BASELINE.md`, `docs/engineering/PHASE7_CLOSE_REPORT.md`, `docs/engineering/PHASE7_DOCS_DRIFT_REPORT.md` |
 
 ## Live constants
@@ -50,4 +50,4 @@ Source: `resolved_config_snapshot.json`
 
 ## Open risks
 
-- Evidence/tooling script changed only — no backend runtime or order-path behavior changed
+- No code changes in this PR — verify evidence artifacts are current

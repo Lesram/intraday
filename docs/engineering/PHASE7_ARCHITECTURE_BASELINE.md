@@ -12,13 +12,14 @@ the current operating truth. The Track A close truth is in
 
 Current reconciled state as of 2026-05-06:
 
-- Host and paper container SHA:
-  `ddfc3fba3765ad7bd169dd4512e73ea668518388`.
+- Host and paper container SHA after close deploy:
+  `3fb3dd506e9e375205505cd11e126fe28bc355d4`.
 - Authenticated Phase 7 integration checkpoint: `19 pass, 0 warn, 0 fail`.
 - Phase 5 telemetry rows: `66`.
-- Phase 6 strategy-evidence rows: `17`.
+- Phase 6 strategy-evidence rows: `18`.
 - `_live_tick_inner`: `2691` LOC after the telemetry extraction slice.
-- Current paper positions are broker-matched but not flat: `AMD:4`, `NVDA:9`.
+- Current paper positions at validation were broker-refreshed but not flat:
+  `PSQ:60`.
 - Strategy health remains negative and no strategy promotion is justified.
 
 ## Verdict

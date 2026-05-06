@@ -2,7 +2,8 @@
 
 Generated: 2026-05-06 UTC
 Branch: `codex/v13-phase2-expectancy`
-Close SHA at report time: `ddfc3fba3765ad7bd169dd4512e73ea668518388`
+Close SHA deployed: `3fb3dd506e9e375205505cd11e126fe28bc355d4`
+Post-deploy validation snapshot: 2026-05-06T16:18Z
 
 ## Executive Verdict
 
@@ -17,8 +18,9 @@ shadow mode.
 The current paper runtime is coherent. The running container matches branch
 HEAD, hot-path byte parity passes, migration head is current, audit-chain
 integrity validates, security sanity passes, and Phase 5/Phase 6 telemetry is
-enabled. No candidate filter, ranking rule, sizing rule, exit rule, or
-promotion path was changed for profit-seeking behavior.
+enabled. Intraday counts and open exposure can move after this snapshot because
+the paper engine is active. No candidate filter, ranking rule, sizing rule,
+exit rule, or promotion path was changed for profit-seeking behavior.
 
 The strategy itself remains negative. Current strategy health reports `520`
 strategy trades, total PnL `-793.3359`, win rate `0.3327`, Sharpe `-1.3959`,
@@ -29,17 +31,17 @@ build stronger evidence and research loops before promoting anything.
 
 | Surface | Status | Evidence |
 |---------|--------|----------|
-| Host/container parity | PASS | Host HEAD and container `GIT_SHA` both `ddfc3fba3765ad7bd169dd4512e73ea668518388`. |
-| Container build | PASS | `BUILD_TIME=2026-05-06T15:52:14Z`; `IMAGE_SHA=ddfc3fba3765ad7bd169dd4512e73ea668518388`. |
+| Host/container parity | PASS | Host HEAD and container `GIT_SHA` both `3fb3dd506e9e375205505cd11e126fe28bc355d4`. |
+| Container build | PASS | `BUILD_TIME=2026-05-06T16:16:32Z`; `IMAGE_SHA=3fb3dd506e9e375205505cd11e126fe28bc355d4`. |
 | Health | PASS | `/healthz` 200. |
 | Integration checkpoint | PASS | `19 pass, 0 warn, 0 fail` with authenticated probes. |
 | Security sanity | PASS | `19 pass, 0 fail`; user role blocked from operator/trading surfaces. |
 | Migration | PASS | DB head `20260503_000003`. |
-| Open exposure | PASS | Local positions: `AMD:4`, `NVDA:9`; position sync fixed to refresh after terminal fills. |
+| Open exposure | PASS | Local positions at validation: `PSQ:60`; position sync fixed to refresh after terminal fills. |
 | Strategy health | FAIL as profitability signal | PnL `-793.3359`, win rate `0.3327`, Sharpe `-1.3959`, not profitable. |
-| Data integrity | WARNING | Data-integrity endpoint is reachable but reports `realized=945`, `brain=527`. |
+| Data integrity | WARNING | Data-integrity endpoint is reachable but reports `realized=954`, `brain=527`. |
 | Phase 5 telemetry | PASS | Enabled; `66` candidate-filter shadow rows. |
-| Phase 6 telemetry | PASS | Enabled; `17` strategy-evidence rows. |
+| Phase 6 telemetry | PASS | Enabled; `18` strategy-evidence rows. |
 | Evidence policy | HOLD | Current action remains `insufficient_shadow_sample`; no live promotion. |
 
 ## Phase 7 Work Completed
@@ -104,4 +106,3 @@ Phase 7 can close as Track A foundation work, but not as a claim that the
 platform is finished. The right next move is not another broad audit cycle; it
 is a disciplined Track B buildout that turns the shadow data into decision-grade
 research evidence while Track C keeps the paper runtime honest.
-

@@ -2,7 +2,8 @@
 
 Generated: 2026-05-06 UTC
 Branch: `codex/v13-phase2-expectancy`
-Current runtime SHA checked: `ddfc3fba3765ad7bd169dd4512e73ea668518388`
+Runtime SHA checked after deploy: `3fb3dd506e9e375205505cd11e126fe28bc355d4`
+Post-deploy validation snapshot: 2026-05-06T16:18Z
 
 ## Verdict
 
@@ -25,21 +26,22 @@ timestamp match the live container.
 ## Current Runtime Truth
 
 Evidence source: authenticated `scripts/ci/phase7_integration_checkpoint.py`
-and live read-only DB/container probes on 2026-05-06.
+and live read-only DB/container probes on 2026-05-06. Intraday rows and
+positions can move after this snapshot while the paper engine is active.
 
 | Signal | Current value |
 |--------|---------------|
 | Branch | `codex/v13-phase2-expectancy` |
-| Host HEAD | `ddfc3fba3765ad7bd169dd4512e73ea668518388` |
-| Container `GIT_SHA` | `ddfc3fba3765ad7bd169dd4512e73ea668518388` |
-| Container build time | `2026-05-06T15:52:14Z` |
+| Host HEAD | `3fb3dd506e9e375205505cd11e126fe28bc355d4` |
+| Container `GIT_SHA` | `3fb3dd506e9e375205505cd11e126fe28bc355d4` |
+| Container build time | `2026-05-06T16:16:32Z` |
 | Migration head | `20260503_000003` |
 | Phase 5 telemetry | enabled; `66` JSONL rows |
-| Phase 6 telemetry | enabled; `17` JSONL rows |
+| Phase 6 telemetry | enabled; `18` JSONL rows |
 | Strategy health | `520` strategy trades, PnL `-793.3359`, win rate `0.3327`, Sharpe `-1.3959`, not profitable |
 | Evidence verdict | `insufficient_shadow_sample`; no promotion justified |
-| Open positions | `AMD:4`, `NVDA:9` locally, broker-matched after P7.6 sync fix |
-| Data integrity | endpoint reachable but warning: `realized=945`, `brain=527` |
+| Open positions | `PSQ:60` locally at validation, refreshed after P7.6 sync fix |
+| Data integrity | endpoint reachable but warning: `realized=954`, `brain=527` |
 | Architecture | `_live_tick_inner=2691` LOC; 50 backend functions over 150 LOC |
 | Test trust | 54 wave-style files, 369 wave-style tests, 119 marker-only, 41 mixed |
 
@@ -62,8 +64,8 @@ and live read-only DB/container probes on 2026-05-06.
   It has landed; `_live_tick_inner` is now `2691` LOC.
 - `PHASE7_ARCHITECTURE_BASELINE.md` reports Phase 6 strategy-evidence rows as
   `0`. The current runtime has `17`.
-- `PHASE7_ARCHITECTURE_BASELINE.md` reports zero open positions. The current
-  paper runtime has two broker-matched positions.
+- `PHASE7_ARCHITECTURE_BASELINE.md` reports zero open positions. The
+  post-deploy validation snapshot has one broker-refreshed local position.
 - `PHASE7_REPRODUCIBILITY_REPORT.md` states a reviewed SHA from the P7.5 slice,
   not final Track A.
 - `docs/architecture/mapss.md` named PostgreSQL as `intra-db-1`; the paper DB
@@ -75,4 +77,3 @@ Every phase close must include a single current-runtime table with SHA, build
 time, migration head, telemetry counts, strategy health, data-integrity status,
 open exposure, test trust, and deploy parity. Mid-phase reports should stay in
 place, but they should be read as evidence snapshots.
-
