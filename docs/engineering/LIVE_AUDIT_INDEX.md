@@ -1,21 +1,21 @@
 # Live Audit Index
 
-Generated: 2026-05-06T17:30:10Z
+Generated: 2026-05-07T01:09:35Z
 PR: PR #6
-SHA: `439333392f`
+SHA: `01c6e52a40`
 Branch: `codex/v13-phase2-expectancy`
-Scope: **tooling/evidence_only**
+Scope: **backend_logic**
 Change scope: `working-tree` (`HEAD+working-tree`)
 
 ## Changed files
 
 | Category | Count | Files |
 |----------|-------|-------|
-| Backend | 0 | none |
+| Backend | 1 | `backend/api/routes/data_integrity_health.py` |
 | Organism | 0 | none |
-| Scripts | 2 | `scripts/ci/run_phase8_postclose_evidence.py`, `scripts/phase8_replay_plan.py` |
-| Tests | 1 | `tests/test_phase8_replay_plan.py` |
-| Docs | 2 | `docs/engineering/PHASE8_EVIDENCE_WAREHOUSE_V2_PLAN.md`, `docs/engineering/PHASE8_EVIDENCE_WAREHOUSE_V2_REPORT.md` |
+| Scripts | 0 | none |
+| Tests | 1 | `tests/test_v13_w95_data_integrity.py` |
+| Docs | 1 | `docs/engineering/LIVE_AUDIT_INDEX.md` |
 
 ## Live constants
 
@@ -50,4 +50,4 @@ Source: `resolved_config_snapshot.json`
 
 ## Open risks
 
-- Evidence/tooling script changed only — no backend runtime or order-path behavior changed
+- 1 backend runtime file(s) changed — require targeted verification
