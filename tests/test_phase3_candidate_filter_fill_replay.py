@@ -11,6 +11,7 @@ import pandas as pd
 
 from scripts.phase3_candidate_filter_fill_replay import (
     FillReplayConfig,
+    _selected_scenarios,
     default_scenarios,
     evaluate_trade_path,
     load_cached_bars,
@@ -202,6 +203,18 @@ def test_run_fill_replay_blocks_sparse_candidate_promotion():
     )
     assert candidate["matched_trades"] == 4
     assert candidate["recommendation"] == "insufficient_fill_sample_need_shadow_telemetry"
+
+
+def test_fill_replay_supports_new_shadow_filter_scenarios():
+    selected = _selected_scenarios(
+        "candidate_alpha_breakout_chop_or_trending_down,"
+        "candidate_inverse_etf_alpha_breakout_trending_down"
+    )
+
+    assert [scenario.name for scenario in selected] == [
+        "candidate_alpha_breakout_chop_or_trending_down",
+        "candidate_inverse_etf_alpha_breakout_trending_down",
+    ]
 
 
 def test_load_fill_trades_and_write_outputs(tmp_path: Path):

@@ -29,6 +29,7 @@ from scripts.phase3_trade_attribution import (
     load_strategy_trades,
     summarise,
 )
+from backend.organism.regime import is_inverse_etf
 
 DEFAULT_OUT_DIR = ROOT / "artifacts" / "phase3_candidate_filter_replay"
 
@@ -66,15 +67,62 @@ def confidence_between(record: TradeRecord, low: float, high: float) -> bool:
     return low <= record.confidence < high
 
 
+def is_alpha_breakout(record: TradeRecord) -> bool:
+    return record.entry_source == "alpha+breakout"
+
+
+def is_alpha_breakout_in_regime(record: TradeRecord, *regimes: str) -> bool:
+    return is_alpha_breakout(record) and record.regime_at_entry in set(regimes)
+
+
+def is_inverse_alpha_breakout(record: TradeRecord) -> bool:
+    return is_alpha_breakout(record) and is_inverse_etf(record.symbol)
+
+
 def default_scenarios() -> list[FilterScenario]:
     return [
         FilterScenario(
             name="skip_alpha_breakout_chop",
             description="Skip alpha+breakout entries when regime_at_entry is chop.",
-            predicate=lambda r: (
-                r.entry_source == "alpha+breakout"
-                and r.regime_at_entry == "chop"
+            predicate=lambda r: is_alpha_breakout_in_regime(r, "chop"),
+        ),
+        FilterScenario(
+            name="skip_alpha_breakout_trending_down",
+            description=(
+                "Skip alpha+breakout entries when regime_at_entry is trending_down."
             ),
+            predicate=lambda r: is_alpha_breakout_in_regime(r, "trending_down"),
+        ),
+        FilterScenario(
+            name="skip_alpha_breakout_chop_or_trending_down",
+            description=(
+                "Skip alpha+breakout entries in chop or trending_down regimes."
+            ),
+            predicate=lambda r: is_alpha_breakout_in_regime(
+                r, "chop", "trending_down"
+            ),
+        ),
+        FilterScenario(
+            name="skip_inverse_etf_alpha_breakout",
+            description="Skip inverse-ETF alpha+breakout entries.",
+            predicate=is_inverse_alpha_breakout,
+        ),
+        FilterScenario(
+            name="skip_inverse_etf_alpha_breakout_trending_down",
+            description=(
+                "Skip inverse-ETF alpha+breakout entries when regime_at_entry is "
+                "trending_down."
+            ),
+            predicate=lambda r: is_inverse_alpha_breakout(r)
+            and r.regime_at_entry == "trending_down",
+        ),
+        FilterScenario(
+            name="skip_inverse_etf_alpha_breakout_chop_or_trending_down",
+            description=(
+                "Skip inverse-ETF alpha+breakout entries in chop or trending_down."
+            ),
+            predicate=lambda r: is_inverse_alpha_breakout(r)
+            and r.regime_at_entry in {"chop", "trending_down"},
         ),
         FilterScenario(
             name="skip_conf_45_55",

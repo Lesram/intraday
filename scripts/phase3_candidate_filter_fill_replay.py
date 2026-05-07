@@ -24,6 +24,7 @@ import pandas as pd
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
+from backend.organism.regime import is_inverse_etf
 from scripts.phase3_trade_attribution import is_reconciliation_artifact
 
 DEFAULT_TRADE_HISTORY = ROOT / "organism_brain" / "trade_history.csv"
@@ -339,6 +340,25 @@ def load_cached_bars(
     }
 
 
+def _confidence_between(record: FillTradeRecord, low: float, high: float) -> bool:
+    return low <= record.confidence < high
+
+
+def _is_alpha_breakout(record: FillTradeRecord) -> bool:
+    return record.entry_source == "alpha+breakout"
+
+
+def _is_alpha_breakout_in_regime(
+    record: FillTradeRecord,
+    *regimes: str,
+) -> bool:
+    return _is_alpha_breakout(record) and record.regime_at_entry in set(regimes)
+
+
+def _is_inverse_alpha_breakout(record: FillTradeRecord) -> bool:
+    return _is_alpha_breakout(record) and is_inverse_etf(record.symbol)
+
+
 def default_scenarios() -> list[FilterScenario]:
     return [
         FilterScenario(
@@ -350,17 +370,89 @@ def default_scenarios() -> list[FilterScenario]:
         FilterScenario(
             name="candidate_conf_45_55",
             description="Confidence band [0.45,0.55).",
-            predicate=lambda record: 0.45 <= record.confidence < 0.55,
+            predicate=lambda record: _confidence_between(record, 0.45, 0.55),
+        ),
+        FilterScenario(
+            name="candidate_conf_55_65",
+            description="Confidence band [0.55,0.65).",
+            predicate=lambda record: _confidence_between(record, 0.55, 0.65),
+        ),
+        FilterScenario(
+            name="candidate_conf_45_65",
+            description="Combined mid-confidence band [0.45,0.65).",
+            predicate=lambda record: _confidence_between(record, 0.45, 0.65),
         ),
         FilterScenario(
             name="candidate_alpha_breakout_chop",
             description="alpha+breakout entries when regime_at_entry is chop.",
+            predicate=lambda record: _is_alpha_breakout_in_regime(record, "chop"),
+        ),
+        FilterScenario(
+            name="candidate_alpha_breakout_trending_down",
+            description=(
+                "alpha+breakout entries when regime_at_entry is trending_down."
+            ),
+            predicate=lambda record: _is_alpha_breakout_in_regime(
+                record, "trending_down"
+            ),
+        ),
+        FilterScenario(
+            name="candidate_alpha_breakout_chop_or_trending_down",
+            description="alpha+breakout entries in chop or trending_down regimes.",
+            predicate=lambda record: _is_alpha_breakout_in_regime(
+                record, "chop", "trending_down"
+            ),
+        ),
+        FilterScenario(
+            name="candidate_inverse_etf_alpha_breakout",
+            description="inverse-ETF alpha+breakout entries.",
+            predicate=_is_inverse_alpha_breakout,
+        ),
+        FilterScenario(
+            name="candidate_inverse_etf_alpha_breakout_trending_down",
+            description=(
+                "inverse-ETF alpha+breakout entries when regime_at_entry is "
+                "trending_down."
+            ),
             predicate=lambda record: (
-                record.entry_source == "alpha+breakout"
-                and record.regime_at_entry == "chop"
+                _is_inverse_alpha_breakout(record)
+                and record.regime_at_entry == "trending_down"
+            ),
+        ),
+        FilterScenario(
+            name="candidate_inverse_etf_alpha_breakout_chop_or_trending_down",
+            description=(
+                "inverse-ETF alpha+breakout entries in chop or trending_down."
+            ),
+            predicate=lambda record: (
+                _is_inverse_alpha_breakout(record)
+                and record.regime_at_entry in {"chop", "trending_down"}
             ),
         ),
     ]
+
+
+def scenario_by_name() -> dict[str, FilterScenario]:
+    return {scenario.name: scenario for scenario in default_scenarios()}
+
+
+def _selected_scenarios(raw: str | None) -> list[FilterScenario]:
+    scenarios = scenario_by_name()
+    if raw is None or raw.strip().lower() in {"", "default", "all"}:
+        return list(scenarios.values())
+    selected: list[FilterScenario] = []
+    missing: list[str] = []
+    for name in [part.strip() for part in raw.split(",") if part.strip()]:
+        scenario = scenarios.get(name)
+        if scenario is None:
+            missing.append(name)
+        else:
+            selected.append(scenario)
+    if missing:
+        raise ValueError(f"unknown scenario name(s): {', '.join(missing)}")
+    if not selected:
+        raise ValueError("at least one scenario must be selected")
+    return selected
 
 
 def _window_records(
@@ -748,6 +840,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Specific cached bar pickle under --cache-dir; repeatable. Defaults to bars*.pkl.",
     )
     parser.add_argument("--out-dir", type=Path, default=DEFAULT_OUT_DIR)
+    parser.add_argument("--scenarios", default=None)
     parser.add_argument("--max-edge-gap-minutes", type=float, default=2.0)
     parser.add_argument("--price-tolerance-bps", type=float, default=5.0)
     parser.add_argument("--min-match-rate", type=float, default=0.50)
@@ -769,6 +862,7 @@ def main(argv: list[str] | None = None) -> int:
         bars,
         bar_metadata,
         config=config,
+        scenarios=_selected_scenarios(args.scenarios),
     )
     outputs = write_outputs(summary, args.out_dir)
     print(json.dumps(outputs, indent=2, sort_keys=True))

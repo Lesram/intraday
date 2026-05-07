@@ -73,12 +73,26 @@ def test_candidate_filter_tags_match_phase3_filters():
     assert candidate_filter_tags(candidate, "chop") == [
         "conf_45_55",
         "alpha_breakout_chop",
+        "alpha_breakout_chop_or_trending_down",
     ]
     assert candidate_filter_tags({**candidate, "confidence": 0.60}, "chop") == [
+        "conf_55_65",
         "alpha_breakout_chop",
+        "alpha_breakout_chop_or_trending_down",
     ]
     assert candidate_filter_tags({**candidate, "confidence": 0.50}, "trend") == [
         "conf_45_55",
+    ]
+    assert candidate_filter_tags(
+        {**candidate, "symbol": "PSQ", "confidence": 0.60},
+        "trending_down",
+    ) == [
+        "conf_55_65",
+        "alpha_breakout_trending_down",
+        "alpha_breakout_chop_or_trending_down",
+        "inverse_etf_alpha_breakout",
+        "inverse_etf_alpha_breakout_trending_down",
+        "inverse_etf_alpha_breakout_chop_or_trending_down",
     ]
 
 
@@ -110,7 +124,11 @@ def test_build_candidate_shadow_events_records_only_matching_candidates():
     assert len(events) == 1
     assert events[0].symbol == "AAPL"
     assert events[0].live_pipeline_candidate is True
-    assert events[0].matched_filters == ["conf_45_55", "alpha_breakout_chop"]
+    assert events[0].matched_filters == [
+        "conf_45_55",
+        "alpha_breakout_chop",
+        "alpha_breakout_chop_or_trending_down",
+    ]
     assert events[0].to_dict()["confidence"] == 0.5
 
 
@@ -139,7 +157,11 @@ def test_build_candidate_shadow_events_can_record_all_candidates_for_phase6():
     )
 
     assert [event.symbol for event in events] == ["AAPL", "MSFT"]
-    assert events[0].matched_filters == ["conf_45_55", "alpha_breakout_chop"]
+    assert events[0].matched_filters == [
+        "conf_45_55",
+        "alpha_breakout_chop",
+        "alpha_breakout_chop_or_trending_down",
+    ]
     assert events[1].matched_filters == []
 
 
@@ -172,7 +194,11 @@ def test_candidate_shadow_recorder_writes_jsonl(tmp_path: Path):
     assert written == 1
     rows = [json.loads(line) for line in path.read_text().splitlines()]
     assert rows[0]["symbol"] == "AAPL"
-    assert rows[0]["matched_filters"] == ["conf_45_55", "alpha_breakout_chop"]
+    assert rows[0]["matched_filters"] == [
+        "conf_45_55",
+        "alpha_breakout_chop",
+        "alpha_breakout_chop_or_trending_down",
+    ]
 
 
 def test_phase6_strategy_evidence_recorder_writes_untagged_candidates(tmp_path: Path):

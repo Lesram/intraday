@@ -113,6 +113,54 @@ def test_counterfactual_accounts_for_opportunity_cost():
     assert result["net_pnl_delta"] == 2.0
 
 
+def test_inverse_etf_trending_down_filter_is_available():
+    scenario = next(
+        s for s in default_scenarios()
+        if s.name == "skip_inverse_etf_alpha_breakout_trending_down"
+    )
+    records = [
+        *[
+            _record(
+                -1.5,
+                symbol="PSQ",
+                entry_source="alpha+breakout",
+                regime_at_entry="trending_down",
+            )
+            for _ in range(10)
+        ],
+        _record(
+            4.0,
+            symbol="SH",
+            entry_source="alpha+breakout",
+            regime_at_entry="chop",
+            exit_reason="take_profit",
+        ),
+        _record(
+            2.0,
+            symbol="MSFT",
+            entry_source="alpha+breakout",
+            regime_at_entry="trending_down",
+            exit_reason="take_profit",
+        ),
+    ]
+
+    result = evaluate_scenario(
+        records,
+        scenario,
+        window="last_50",
+        config=ReplayConfig(
+            min_recent_skipped_trades=10,
+            min_net_pnl_delta=5.0,
+            max_trade_reduction_for_shadow=0.90,
+        ),
+    )
+
+    assert result["skipped"]["n_trades"] == 10
+    assert result["skipped_total_pnl"] == -15.0
+    assert result["net_pnl_delta"] == 15.0
+    assert result["recommendation"] == "shadow_candidate_from_trade_history_counterfactual"
+
+
 def test_insufficient_sample_blocks_promotion_language():
     scenario = next(s for s in default_scenarios() if s.name == "skip_avgo")
     records = [

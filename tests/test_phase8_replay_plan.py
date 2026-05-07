@@ -31,6 +31,39 @@ def test_phase8_replay_plan_generates_symbol_commands(tmp_path) -> None:
     assert "phase4_shadow_target_model.py --symbols AMD" in plan["plan_items"][0]["commands"][1]
 
 
+def test_phase8_replay_plan_generates_filter_commands(tmp_path) -> None:
+    plan = build_replay_plan(
+        [
+            {
+                "candidate_id": "filter:alpha_breakout_chop_or_trending_down",
+                "candidate_type": "filter",
+                "filter_tag": "alpha_breakout_chop_or_trending_down",
+                "reason": "filter_forward_returns_pass_research_gate",
+                "joined_outcomes": 48,
+                "positive_directional_rate": 0.5625,
+                "avg_forward_directional_bps": 2.8986,
+                "promotion_authorized": 0,
+                "required_next_step": "replay_before_any_live_change",
+            }
+        ],
+        tmp_path / "out",
+    )
+
+    commands = plan["plan_items"][0]["commands"]
+    assert commands == [
+        (
+            "./venv/bin/python scripts/phase3_candidate_filter_replay.py "
+            "--scenarios skip_alpha_breakout_chop_or_trending_down "
+            f"--out-dir {tmp_path / 'out' / 'filter_alpha_breakout_chop_or_trending_down' / 'counterfactual'}"
+        ),
+        (
+            "./venv/bin/python scripts/phase3_candidate_filter_fill_replay.py "
+            "--scenarios candidate_alpha_breakout_chop_or_trending_down "
+            f"--out-dir {tmp_path / 'out' / 'filter_alpha_breakout_chop_or_trending_down' / 'fill_path'}"
+        ),
+    ]
+
+
 def test_phase8_replay_plan_skips_promoted_or_unreviewed_candidates(tmp_path) -> None:
     plan = build_replay_plan(
         [

@@ -13,6 +13,11 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterable
 
+from backend.organism.regime import is_inverse_etf
+
+
+ALPHA_BREAKOUT_WATCH_REGIMES = frozenset({"chop", "trending_down"})
+
 
 def _finite_float(raw: Any, default: float = 0.0) -> float:
     try:
@@ -36,13 +41,28 @@ def infer_entry_source(candidate: dict[str, Any]) -> str:
 
 
 def candidate_filter_tags(candidate: dict[str, Any], regime: str) -> list[str]:
+    symbol = str(candidate.get("symbol") or "").upper()
+    regime_label = str(regime)
     confidence = _finite_float(candidate.get("confidence"))
     entry_source = infer_entry_source(candidate)
     tags: list[str] = []
     if 0.45 <= confidence < 0.55:
         tags.append("conf_45_55")
-    if entry_source == "alpha+breakout" and str(regime) == "chop":
-        tags.append("alpha_breakout_chop")
+    if 0.55 <= confidence < 0.65:
+        tags.append("conf_55_65")
+    if entry_source == "alpha+breakout":
+        if regime_label == "chop":
+            tags.append("alpha_breakout_chop")
+        if regime_label == "trending_down":
+            tags.append("alpha_breakout_trending_down")
+        if regime_label in ALPHA_BREAKOUT_WATCH_REGIMES:
+            tags.append("alpha_breakout_chop_or_trending_down")
+        if is_inverse_etf(symbol):
+            tags.append("inverse_etf_alpha_breakout")
+            if regime_label == "trending_down":
+                tags.append("inverse_etf_alpha_breakout_trending_down")
+            if regime_label in ALPHA_BREAKOUT_WATCH_REGIMES:
+                tags.append("inverse_etf_alpha_breakout_chop_or_trending_down")
     return tags
 
 

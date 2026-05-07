@@ -17,6 +17,17 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_CANDIDATES = ROOT / "artifacts" / "phase8_evidence_warehouse" / "replay_candidates.json"
 DEFAULT_OUT_DIR = ROOT / "artifacts" / "phase8_replay_plan"
+FILTER_REPLAY_SCENARIO_TAGS = frozenset({
+    "alpha_breakout_chop",
+    "alpha_breakout_trending_down",
+    "alpha_breakout_chop_or_trending_down",
+    "conf_45_55",
+    "conf_55_65",
+    "conf_45_65",
+    "inverse_etf_alpha_breakout",
+    "inverse_etf_alpha_breakout_trending_down",
+    "inverse_etf_alpha_breakout_chop_or_trending_down",
+})
 
 
 def _git(*args: str) -> str:
@@ -49,6 +60,28 @@ def _symbol_commands(symbol: str, out_dir: Path) -> list[str]:
     ]
 
 
+def _safe_dir_name(value: str) -> str:
+    return "".join(ch if ch.isalnum() or ch in {"_", "-"} else "_" for ch in value)
+
+
+def _filter_commands(filter_tag: str, out_dir: Path) -> list[str]:
+    if filter_tag not in FILTER_REPLAY_SCENARIO_TAGS:
+        return []
+    filter_dir = out_dir / f"filter_{_safe_dir_name(filter_tag)}"
+    return [
+        (
+            "./venv/bin/python scripts/phase3_candidate_filter_replay.py "
+            f"--scenarios skip_{filter_tag} "
+            f"--out-dir {filter_dir / 'counterfactual'}"
+        ),
+        (
+            "./venv/bin/python scripts/phase3_candidate_filter_fill_replay.py "
+            f"--scenarios candidate_{filter_tag} "
+            f"--out-dir {filter_dir / 'fill_path'}"
+        ),
+    ]
+
+
 def build_replay_plan(candidates: list[dict[str, Any]], out_dir: Path) -> dict[str, Any]:
     plan_items: list[dict[str, Any]] = []
     for candidate in candidates:
@@ -59,7 +92,12 @@ def build_replay_plan(candidates: list[dict[str, Any]], out_dir: Path) -> dict[s
         candidate_type = str(candidate.get("candidate_type") or "")
         symbol = str(candidate.get("symbol") or "").upper()
         filter_tag = str(candidate.get("filter_tag") or "")
-        commands = _symbol_commands(symbol, out_dir) if candidate_type == "symbol" and symbol else []
+        if candidate_type == "symbol" and symbol:
+            commands = _symbol_commands(symbol, out_dir)
+        elif candidate_type == "filter" and filter_tag:
+            commands = _filter_commands(filter_tag, out_dir)
+        else:
+            commands = []
         plan_items.append({
             "candidate_id": candidate.get("candidate_id"),
             "candidate_type": candidate_type,
