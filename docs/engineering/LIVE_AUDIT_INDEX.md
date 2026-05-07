@@ -1,8 +1,8 @@
 # Live Audit Index
 
-Generated: 2026-05-07T01:09:35Z
+Generated: 2026-05-07T01:20:11Z
 PR: PR #6
-SHA: `01c6e52a40`
+SHA: `2fa5eb35ff`
 Branch: `codex/v13-phase2-expectancy`
 Scope: **backend_logic**
 Change scope: `working-tree` (`HEAD+working-tree`)
@@ -11,11 +11,11 @@ Change scope: `working-tree` (`HEAD+working-tree`)
 
 | Category | Count | Files |
 |----------|-------|-------|
-| Backend | 1 | `backend/api/routes/data_integrity_health.py` |
+| Backend | 1 | `backend/api/routes/scanner.py` |
 | Organism | 0 | none |
 | Scripts | 0 | none |
-| Tests | 1 | `tests/test_v13_w95_data_integrity.py` |
-| Docs | 1 | `docs/engineering/LIVE_AUDIT_INDEX.md` |
+| Tests | 0 | none |
+| Docs | 0 | none |
 
 ## Live constants
 

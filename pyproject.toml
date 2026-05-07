@@ -97,6 +97,40 @@ target-version = "py311"
 line-length = 100
 indent-width = 4
 
+# Exclude patterns
+exclude = [
+    ".bzr",
+    ".direnv",
+    ".eggs",
+    ".git",
+    ".git-rewrite",
+    ".hg",
+    ".mypy_cache",
+    ".nox",
+    ".pants.d",
+    ".pytype",
+    ".ruff_cache",
+    ".svn",
+    ".tox",
+    ".venv",
+    "__pypackages__",
+    "_build",
+    "buck-out",
+    "build",
+    "dist",
+    "node_modules",
+    "venv",
+    "alembic/versions/*.py",  # Database migration files
+    "scripts/generated/",     # Generated scripts
+    # V12 W75 (UU3-2): exclude documentation snapshots and monitoring
+    # dashboards from lint.  These are non-active code (audit bundles
+    # and Grafana JSON wrappers) that account for ~25k of the pre-V12
+    # 34k errors.
+    "docs/",
+    "monitoring/",
+]
+
+[tool.ruff.lint]
 # Enable specific rule categories.
 # V10 UU2-B / Wave-57 (2026-05-03): added S110/S112/BLE001/G004/TRY401/LOG007
 # to catch the V9 UU error-handling cargo-cult patterns.  Backlog of 158
@@ -138,39 +172,6 @@ ignore = [
     "TRY003",   # Avoid specifying long messages outside exception class
     "PERF203",  # try-except in loop (sometimes necessary)
     "UP007",    # Use X | Y for type unions (keep compatibility)
-]
-
-# Exclude patterns
-exclude = [
-    ".bzr",
-    ".direnv",
-    ".eggs",
-    ".git",
-    ".git-rewrite",
-    ".hg",
-    ".mypy_cache",
-    ".nox",
-    ".pants.d",
-    ".pytype",
-    ".ruff_cache",
-    ".svn",
-    ".tox",
-    ".venv",
-    "__pypackages__",
-    "_build",
-    "buck-out",
-    "build",
-    "dist",
-    "node_modules",
-    "venv",
-    "alembic/versions/*.py",  # Database migration files
-    "scripts/generated/",     # Generated scripts
-    # V12 W75 (UU3-2): exclude documentation snapshots and monitoring
-    # dashboards from lint.  These are non-active code (audit bundles
-    # and Grafana JSON wrappers) that account for ~25k of the pre-V12
-    # 34k errors.
-    "docs/",
-    "monitoring/",
 ]
 
 [tool.ruff.format]
