@@ -43,6 +43,7 @@ from backend.organism.brain_persistence import OrganismBrain
 from backend.organism.breakout_scanner import BreakoutScanner
 from backend.organism.candidate_shadow_telemetry import (
     CandidateShadowTelemetryRecorder,
+    infer_entry_source,
 )
 from backend.organism.continuous_learner import ContinuousLearner, TradeRecord
 from backend.organism.governance import GovernanceController
@@ -305,6 +306,10 @@ CANDIDATE_FILTER_SHADOW_TELEMETRY_PATH = _env_str(
     "ORGANISM_CANDIDATE_FILTER_SHADOW_TELEMETRY_PATH",
     "organism_brain/candidate_filter_shadow_telemetry.jsonl",
 )
+ALPHA_BREAKOUT_BAD_REGIME_FILTER_ENABLED = _env_bool(
+    "ORGANISM_ALPHA_BREAKOUT_BAD_REGIME_FILTER_ENABLED", True,
+)
+ALPHA_BREAKOUT_BAD_REGIME_FILTERS = frozenset({"chop", "trending_down"})
 STRATEGY_EVIDENCE_TELEMETRY_ENABLED = _env_bool(
     "ORGANISM_STRATEGY_EVIDENCE_TELEMETRY_ENABLED", False,
 )
@@ -1076,6 +1081,46 @@ class OrganismLiveEngine:
             return False, "circuit_breaker"
         return True, ""
 
+    def _alpha_breakout_defensive_filter_reason(
+        self,
+        candidate: dict[str, Any],
+        regime: str,
+    ) -> str:
+        """Return non-empty reason when evidence says this slice should not fire."""
+        if (
+            not ALPHA_BREAKOUT_BAD_REGIME_FILTER_ENABLED
+            or str(regime) not in ALPHA_BREAKOUT_BAD_REGIME_FILTERS
+            or infer_entry_source(candidate) != "alpha+breakout"
+        ):
+            return ""
+        return f"alpha_breakout_{regime}_blocked_by_evidence"
+
+    def _record_defensive_filtered_candidate(
+        self,
+        candidate: dict[str, Any],
+        regime: str,
+        rejected: list[dict[str, Any]],
+    ) -> bool:
+        reason = self._alpha_breakout_defensive_filter_reason(candidate, regime)
+        if not reason:
+            return False
+        rejected.append({
+            **candidate,
+            "live_pipeline_candidate": False,
+            "defensive_filter_reason": reason,
+        })
+        logger.info(
+            "Defensive alpha+breakout filter blocked %s regime=%s "
+            "confidence=%.3f eff_conf=%.3f breakout=%.3f reason=%s",
+            candidate.get("symbol"),
+            regime,
+            float(candidate.get("confidence") or 0.0),
+            float(candidate.get("effective_confidence") or 0.0),
+            float(candidate.get("breakout_score") or 0.0),
+            reason,
+        )
+        return True
+
     # ═════════════════════════════════════════════════════════════
     #  INITIALIZATION / SHUTDOWN
     # ═════════════════════════════════════════════════════════════
@@ -1089,8 +1134,8 @@ class OrganismLiveEngine:
 
         if brain_loaded:
             # Restore ML models
-            ml_ok = self.brain.apply_to_signal_generator(self.signal_gen)
-            lr_ok = self.brain.apply_to_learner(self.learner)
+            self.brain.apply_to_signal_generator(self.signal_gen)
+            self.brain.apply_to_learner(self.learner)
 
             # Restore evolved params (Phase 1.1 — own file)
             # Hardening: only restore bookkeeping fields (symbol_fitness,
@@ -3498,6 +3543,7 @@ class OrganismLiveEngine:
                 }
 
                 cand_dicts = []
+                _defensive_filtered_cand_dicts: list[dict[str, Any]] = []
                 # M3-4: When DISABLE_ALPHA_BREAKOUT, skip the alpha+breakout
                 # candidate-build phase entirely. Slots and ranking competition
                 # belong solely to ORB/EOD. Diagnostic mode for evaluating the
@@ -3707,7 +3753,7 @@ class OrganismLiveEngine:
                             c.symbol, _eff_conf, _is_heuristic, regime,
                         )
                         continue
-                    cand_dicts.append({
+                    _cand_dict = {
                         "symbol": c.symbol,
                         "direction": c.direction,
                         "predicted_return": (
@@ -3728,7 +3774,13 @@ class OrganismLiveEngine:
                         "confidence_bt_only": _conf_bt_only,
                         "confidence_ml_component": _conf_ml_component,
                         "gate_pass_bt_only": _would_pass_bt_only,
-                    })
+                    }
+                    if self._record_defensive_filtered_candidate(
+                        _cand_dict, regime, _defensive_filtered_cand_dicts,
+                    ):
+                        _rej_counts["confidence_gate"] += 1
+                        continue
+                    cand_dicts.append(_cand_dict)
                     _planned_entries.add(c.symbol)
 
                 # Pure breakout signals not in alpha candidates (capped at 2)
@@ -3806,7 +3858,7 @@ class OrganismLiveEngine:
                         and abs(ml_sig.predicted_return) > 1e-6
                     ):
                         _bo_ret_source = "calibrated_breakout"
-                    cand_dicts.append({
+                    _cand_dict = {
                         "symbol": bs.symbol,
                         "direction": 1.0,
                         "predicted_return": pred_ret,
@@ -3815,7 +3867,13 @@ class OrganismLiveEngine:
                         "breakout_score": bs.composite_score,
                         "expected_return_source": _bo_ret_source,
                         "ranking_score": bs.composite_score * _bo_conf,
-                    })
+                    }
+                    if self._record_defensive_filtered_candidate(
+                        _cand_dict, regime, _defensive_filtered_cand_dicts,
+                    ):
+                        _rej_counts["confidence_gate"] += 1
+                        continue
+                    cand_dicts.append(_cand_dict)
                     _planned_entries.add(bs.symbol)
                     _breakout_added += 1
 
@@ -4316,7 +4374,7 @@ class OrganismLiveEngine:
                 self._last_gate_rejections = dict(_rej_counts)
 
                 self._record_candidate_evidence(
-                    cand_dicts,
+                    cand_dicts + _defensive_filtered_cand_dicts,
                     regime=regime,
                     now_iso=now_iso,
                 )

@@ -1,0 +1,28 @@
+{
+  "date": "2026-05-08",
+  "deployed_sha": "bff4e20",
+  "total_trades": 12,
+  "realized_pnl": -23.79,
+  "win_rate": 0.1667,
+  "avg_win": 2.43,
+  "avg_loss": -2.87,
+  "payoff_ratio": 0.8485,
+  "stop_loss_share_of_total_loss": 0.0684,
+  "FTF_share_of_total_loss": 0.1614,
+  "trailing_share_of_total_profit": 0.0,
+  "horizon_timeout_share_of_total_profit": 0.0,
+  "exploration_execution_count": 0,
+  "operational_checks": {
+    "exploration_count_zero": true,
+    "bundle_files_complete": true,
+    "no_stale_runtime": true
+  },
+  "operational_notes": [
+    "legacy_trades_excluded=142"
+  ],
+  "paper_validation_pass": true,
+  "strategy_quality_pass": false,
+  "strategy_quality_fail_reasons": [
+    "payoff_ratio=0.8485"
+  ]
+}

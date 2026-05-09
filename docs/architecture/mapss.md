@@ -775,7 +775,7 @@ ENTRY SCANNING PIPELINE
   │   ├── Combines ML + 6 other factors (see §18)
   │   └── Returns top-5 AlphaCandidates with composite >= 0.15 (improve9 B2: raised from 3 to reduce concentration)
   │
-  ├── [7d] FILTER CANDIDATES (11 gates):
+  ├── [7d] FILTER CANDIDATES (12 gates):
   │   │
   │   │  For each AlphaCandidate:
   │   ├── Gate 1: Already have position? → REJECT
@@ -792,11 +792,14 @@ ENTRY SCANNING PIPELINE
   │   │   └── Banned if: (a) 2+ consecutive losses AND 0 wins today, OR
   │   │       (b) daily P&L ≤ -max($25, 0.10% equity), OR (c) 2+ stop-loss exits in 30 min
   │   ├── Gate 10: Missingness gate (last-row NaN/Inf > 25%)? → REJECT
-  │   └── Gate 11: Confidence gate (improve7):
-  │       └── MIN_MAIN_CONF = 0.45 in chop/high_vol/trending_down, 0.40 otherwise
-  │           Below threshold → LOGGED only (improve9 A7: exploration queue removed)
+  │   ├── Gate 11: Confidence gate (improve7):
+  │   │   └── MIN_MAIN_CONF = 0.45 in chop/high_vol/trending_down, 0.40 otherwise
+  │   │       Below threshold → LOGGED only (improve9 A7: exploration queue removed)
+  │   └── Gate 12: Alpha+breakout bad-regime defensive filter (2026-05-08):
+  │       └── alpha+breakout candidates in chop/trending_down → REJECT when
+  │           ORGANISM_ALPHA_BREAKOUT_BAD_REGIME_FILTER_ENABLED=true (default)
   │
-  │   IF passes all 11 gates:
+  │   IF passes all 12 gates:
   │   ├── Compute blended confidence (additive, mode-dependent):
   │   │   ML-ISOLATED MODE (learning or production_guarded):
   │   │   confidence = 0.65 × breakout_score
@@ -4397,6 +4400,7 @@ StalenessReasons (enum):
 | Failure-to-follow delay | chop: max(H×4/5, 5) = **12 bars**; other: max(H//2, 3) = **7** for H=15 | adaptive_exits | Chop gets longer delay (improve7) |
 | Failure-to-follow R thresholds | regime-dependent (0.10R–0.25R) | adaptive_exits | trending_up/low_vol/high_vol=disabled; chop=0.15R (**losers-only exit, winners get stop tightened**); stress=0.10R; others=0.25R |
 | Confidence entry gate | 0.40 (0.45 in chop/high_vol/trending_down) | live_engine | Below-threshold candidates logged only (improve9 A7: exploration removed) |
+| Alpha+breakout bad-regime filter | enabled by default | live_engine | Blocks alpha+breakout entries in chop/trending_down; records blocked candidates with `live_pipeline_candidate=false` for evidence |
 | Symbol circuit breaker | (a) 2+ consec losses + 0 wins, (b) PnL ≤ -max($25, 0.10% eq), (c) 2+ SL in 30min | live_engine | Ban symbol for session (improve8 enhanced) |
 | Regime evolution freeze | 200+ total trades AND 30+ per regime | kelly_sizer | Evolved regime scales locked until statistically stable (improve7) |
 | Full evolution freeze | **300+ total trades** | live_engine | improve9 B5: ALL self-evolution frozen until 300 clean trades. Only ML retraining runs. |

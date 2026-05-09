@@ -81,9 +81,10 @@ class CandidateShadowEvent:
     entry_source: str
     matched_filters: list[str]
     live_pipeline_candidate: bool = True
+    defensive_filter_reason: str = ""
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        row = {
             "tick": self.tick,
             "timestamp": self.timestamp,
             "symbol": self.symbol,
@@ -98,6 +99,9 @@ class CandidateShadowEvent:
             "matched_filters": list(self.matched_filters),
             "live_pipeline_candidate": self.live_pipeline_candidate,
         }
+        if self.defensive_filter_reason:
+            row["defensive_filter_reason"] = self.defensive_filter_reason
+        return row
 
 
 def build_candidate_shadow_events(
@@ -131,6 +135,12 @@ def build_candidate_shadow_events(
                 ranking_score=_finite_float(candidate.get("ranking_score")),
                 entry_source=entry_source,
                 matched_filters=tags,
+                live_pipeline_candidate=bool(
+                    candidate.get("live_pipeline_candidate", True)
+                ),
+                defensive_filter_reason=str(
+                    candidate.get("defensive_filter_reason") or ""
+                ),
             )
         )
     return events

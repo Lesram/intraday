@@ -45,6 +45,7 @@ def _build_defaults_snapshot() -> dict:
         )
         from backend.organism.live_engine import (
             ALPHA_TOP_N,
+            ALPHA_BREAKOUT_BAD_REGIME_FILTER_ENABLED,
             CANDIDATE_FILTER_SHADOW_TELEMETRY_ENABLED,
             CANDIDATE_FILTER_SHADOW_TELEMETRY_PATH,
             EXPLORATION_ENABLED,
@@ -87,6 +88,9 @@ def _build_defaults_snapshot() -> dict:
             "long_only": LONG_ONLY,
 
             "exploration_enabled": EXPLORATION_ENABLED,
+            "alpha_breakout_bad_regime_filter_enabled": (
+                ALPHA_BREAKOUT_BAD_REGIME_FILTER_ENABLED
+            ),
             "candidate_filter_shadow_telemetry_enabled": (
                 CANDIDATE_FILTER_SHADOW_TELEMETRY_ENABLED
             ),
@@ -140,7 +144,7 @@ def _build_defaults_snapshot() -> dict:
             },
         }
 
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         return {
             "source": "env_fallback",
             "error": str(e),
@@ -152,6 +156,13 @@ def _build_defaults_snapshot() -> dict:
             "max_changes_per_day": int(os.getenv("ORGANISM_MAX_CHANGES_PER_DAY", "100")),
             "max_notional_per_trade": float(os.getenv("ORGANISM_MAX_NOTIONAL", "0")),
             "max_daily_loss": float(os.getenv("ORGANISM_MAX_DAILY_LOSS", "0")),
+            "alpha_breakout_bad_regime_filter_enabled": (
+                os.getenv(
+                    "ORGANISM_ALPHA_BREAKOUT_BAD_REGIME_FILTER_ENABLED",
+                    "true",
+                ).lower()
+                in ("1", "true", "yes")
+            ),
             "candidate_filter_shadow_telemetry_enabled": (
                 os.getenv(
                     "ORGANISM_CANDIDATE_FILTER_SHADOW_TELEMETRY_ENABLED",
@@ -214,6 +225,9 @@ def _build_resolved_config_snapshot() -> dict:
                 "ORGANISM_MAX_NOTIONAL": env_map.get("ORGANISM_MAX_NOTIONAL"),
                 "ORGANISM_TICK_INTERVAL_SECONDS": env_map.get("ORGANISM_TICK_INTERVAL_SECONDS"),
                 "ORGANISM_EXPLORATION_ENABLED": env_map.get("ORGANISM_EXPLORATION_ENABLED"),
+                "ORGANISM_ALPHA_BREAKOUT_BAD_REGIME_FILTER_ENABLED": env_map.get(
+                    "ORGANISM_ALPHA_BREAKOUT_BAD_REGIME_FILTER_ENABLED"
+                ),
                 "ORGANISM_CANDIDATE_FILTER_SHADOW_TELEMETRY_ENABLED": env_map.get(
                     "ORGANISM_CANDIDATE_FILTER_SHADOW_TELEMETRY_ENABLED"
                 ),
@@ -241,6 +255,9 @@ def _build_resolved_config_snapshot() -> dict:
             "ORGANISM_MAX_NOTIONAL": env_map.get("ORGANISM_MAX_NOTIONAL"),
             "ORGANISM_TICK_INTERVAL_SECONDS": env_map.get("ORGANISM_TICK_INTERVAL_SECONDS"),
             "ORGANISM_EXPLORATION_ENABLED": env_map.get("ORGANISM_EXPLORATION_ENABLED"),
+            "ORGANISM_ALPHA_BREAKOUT_BAD_REGIME_FILTER_ENABLED": env_map.get(
+                "ORGANISM_ALPHA_BREAKOUT_BAD_REGIME_FILTER_ENABLED"
+            ),
             "ORGANISM_CANDIDATE_FILTER_SHADOW_TELEMETRY_ENABLED": env_map.get(
                 "ORGANISM_CANDIDATE_FILTER_SHADOW_TELEMETRY_ENABLED"
             ),
@@ -339,6 +356,11 @@ def _build_resolved_config_snapshot() -> dict:
         ),
         "exploration_enabled": _resolve_bool(
             "ORGANISM_EXPLORATION_ENABLED", "exploration_enabled", "exploration_enabled",
+        ),
+        "alpha_breakout_bad_regime_filter_enabled": _resolve_bool(
+            "ORGANISM_ALPHA_BREAKOUT_BAD_REGIME_FILTER_ENABLED",
+            "alpha_breakout_bad_regime_filter_enabled",
+            "alpha_breakout_bad_regime_filter_enabled",
         ),
         "candidate_filter_shadow_telemetry_enabled": _resolve_bool(
             "ORGANISM_CANDIDATE_FILTER_SHADOW_TELEMETRY_ENABLED",
@@ -542,7 +564,7 @@ def _build_live_process_snapshot() -> dict:
                 text=True, stderr=subprocess.DEVNULL, timeout=5,
             ).strip()
             result["container_started_at"] = started
-        except Exception:
+        except Exception:  # noqa: BLE001, S110
             pass
 
     # --- 3. Derive live runtime values from process state ---
@@ -651,7 +673,7 @@ def _find_api_container() -> str:
         for line in out.splitlines():
             if "api" in line:
                 return line
-    except Exception:
+    except Exception:  # noqa: BLE001, S110
         pass
     return ""
 
@@ -662,7 +684,7 @@ def _docker_exec(container: str, cmd: str) -> str:
             ["docker", "exec", container, "sh", "-c", cmd],
             text=True, stderr=subprocess.DEVNULL, timeout=10,
         ).strip()
-    except Exception:
+    except Exception:  # noqa: BLE001
         return ""
 
 
@@ -685,7 +707,7 @@ def _curl_organism_status() -> dict | None:
                 data = json.loads(out)
                 if "detail" not in data:  # not an error response
                     return data
-        except Exception:
+        except Exception:  # noqa: BLE001, S112
             continue
     return None
 
@@ -718,7 +740,7 @@ def _get_auth_token(base: str) -> str:
         with urllib.request.urlopen(req, timeout=5) as resp:
             data = json.loads(resp.read())
             return data.get("access_token", "")
-    except Exception:
+    except Exception:  # noqa: BLE001
         return ""
 
 

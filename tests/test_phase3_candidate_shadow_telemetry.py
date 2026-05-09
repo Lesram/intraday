@@ -132,6 +132,38 @@ def test_build_candidate_shadow_events_records_only_matching_candidates():
     assert events[0].to_dict()["confidence"] == 0.5
 
 
+def test_build_candidate_shadow_events_preserves_defensive_filter_metadata():
+    events = build_candidate_shadow_events(
+        [
+            {
+                "symbol": "AAPL",
+                "direction": 1,
+                "confidence": 0.60,
+                "effective_confidence": 0.58,
+                "breakout_score": 0.45,
+                "predicted_return": 0.004,
+                "ranking_score": 0.2,
+                "live_pipeline_candidate": False,
+                "defensive_filter_reason": "alpha_breakout_chop_blocked_by_evidence",
+            },
+        ],
+        regime="chop",
+        tick=42,
+        timestamp="2026-05-04T14:00:00Z",
+    )
+
+    assert len(events) == 1
+    assert events[0].live_pipeline_candidate is False
+    assert events[0].defensive_filter_reason == (
+        "alpha_breakout_chop_blocked_by_evidence"
+    )
+    row = events[0].to_dict()
+    assert row["live_pipeline_candidate"] is False
+    assert row["defensive_filter_reason"] == (
+        "alpha_breakout_chop_blocked_by_evidence"
+    )
+
+
 def test_build_candidate_shadow_events_can_record_all_candidates_for_phase6():
     events = build_candidate_shadow_events(
         [
@@ -286,6 +318,41 @@ def test_live_engine_candidate_evidence_fanout_is_noop_when_disabled():
     assert engine._strategy_evidence_events == 20
 
 
+def test_live_engine_defensive_filter_blocks_alpha_breakout_bad_regimes():
+    engine = _bare_live_engine()
+    candidate = {
+        "symbol": "AAPL",
+        "direction": 1,
+        "confidence": 0.60,
+        "effective_confidence": 0.58,
+        "breakout_score": 0.45,
+        "predicted_return": 0.004,
+    }
+    rejected: list[dict[str, Any]] = []
+
+    assert engine._record_defensive_filtered_candidate(
+        candidate,
+        "chop",
+        rejected,
+    )
+    assert rejected[0]["live_pipeline_candidate"] is False
+    assert rejected[0]["defensive_filter_reason"] == (
+        "alpha_breakout_chop_blocked_by_evidence"
+    )
+    assert engine._alpha_breakout_defensive_filter_reason(
+        candidate,
+        "trending_down",
+    ) == "alpha_breakout_trending_down_blocked_by_evidence"
+    assert engine._alpha_breakout_defensive_filter_reason(
+        candidate,
+        "trending_up",
+    ) == ""
+    assert engine._alpha_breakout_defensive_filter_reason(
+        {**candidate, "breakout_score": 0.10},
+        "chop",
+    ) == ""
+
+
 def test_live_engine_candidate_evidence_fanout_failures_do_not_block_other_recorders(caplog):
     engine = _bare_live_engine()
     shadow = _FakeCandidateRecorder(error=RuntimeError("shadow boom"))
@@ -429,6 +496,7 @@ def test_runtime_snapshot_includes_shadow_telemetry_switches():
 
     snapshot = _build_defaults_snapshot()
 
+    assert snapshot["alpha_breakout_bad_regime_filter_enabled"] is True
     assert snapshot["candidate_filter_shadow_telemetry_enabled"] is False
     assert (
         snapshot["candidate_filter_shadow_telemetry_path"]
