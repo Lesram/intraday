@@ -51,6 +51,7 @@ from backend.organism.kelly_sizer import KellySizer
 from backend.organism.ml_features import compute_ml_features, FEATURE_COLUMNS
 from backend.organism.multi_timeframe import add_multi_timeframe_features
 from backend.organism.ml_signal import MLSignalGenerator
+from backend.organism.schema.candidate_signal import infer_strategy_id
 from backend.organism.pyramider import (
     MomentumPyramider,
     PyramidPosition,
@@ -1750,6 +1751,10 @@ class OrganismLiveEngine:
                     actual_return=actual_return,
                     confidence=float(en_attrs.get("confidence", 0.0)),
                     is_reconciliation_artifact=_is_recon,
+                    strategy_id=infer_strategy_id(
+                        en_attrs.get("entry_source", ""),
+                        en_attrs.get("strategy_id", ""),
+                    ),
                     closed_at="",
                 ))
 
@@ -4615,6 +4620,10 @@ class OrganismLiveEngine:
                                     _entry_source = "breakout"
                                 elif sz.breakout_score >= 0.4:
                                     _entry_source = "alpha+breakout"
+                            _strategy_id = infer_strategy_id(
+                                _entry_source,
+                                getattr(sz, "strategy_id", ""),
+                            )
                             self._entry_metadata[sz.symbol] = {
                                 "entry_price": price,
                                 "entry_tick": self._tick_count,
@@ -4624,6 +4633,7 @@ class OrganismLiveEngine:
                                 "predicted_return": predicted_return,
                                 "confidence": sz.confidence,
                                 "entry_source": _entry_source,
+                                "strategy_id": _strategy_id,
                                 "regime_at_entry": regime,
                             }
 
@@ -5155,6 +5165,7 @@ class OrganismLiveEngine:
                             "direction": getattr(lvl, "direction", 1.0),
                             "predicted_return": 0.01,
                             "confidence": 0.5,
+                            "strategy_id": "alpha_baseline",
                         }
 
             # INV-2: _tick_count must be positive after first tick
@@ -6021,6 +6032,10 @@ class OrganismLiveEngine:
                 # artifacts. Filtered by all 5+ learning consumers below.
                 is_reconciliation_artifact=_is_reconciliation,
                 entry_source=meta.get("entry_source", ""),
+                strategy_id=meta.get(
+                    "strategy_id",
+                    infer_strategy_id(meta.get("entry_source", "")),
+                ),
                 regime_at_entry=_regime_at_entry,
                 regime_at_exit=_regime_at_exit,
                 mfe=round(_mfe, 2),
@@ -6214,6 +6229,7 @@ class OrganismLiveEngine:
                 "predicted_return": 0.01,
                 "confidence": 0.5,
                 "entry_source": "reconciliation_orphan",
+                "strategy_id": "reconciliation_artifact",
             }
 
             # Try to create exit levels for proper management
@@ -6473,6 +6489,7 @@ class OrganismLiveEngine:
                     "predicted_return": 0.02,
                     "confidence": 0.5,
                     "entry_source": "reconciliation_orphan",
+                    "strategy_id": "reconciliation_artifact",
                 }
 
                 logger.info(

@@ -1,8 +1,8 @@
 # Live Audit Index
 
-Generated: 2026-05-09T00:34:15Z
+Generated: 2026-05-09T21:20:24Z
 PR: PR #6
-SHA: `bff4e20949`
+SHA: `db8675ebd6`
 Branch: `codex/v13-phase2-expectancy`
 Scope: **backend_logic**
 Change scope: `task` (`HEAD`)
@@ -11,11 +11,11 @@ Change scope: `task` (`HEAD`)
 
 | Category | Count | Files |
 |----------|-------|-------|
-| Backend | 1 | `backend/organism/candidate_shadow_telemetry.py` |
-| Organism | 1 | `backend/organism/candidate_shadow_telemetry.py` |
-| Scripts | 3 | `scripts/phase3_candidate_filter_fill_replay.py`, `scripts/phase3_candidate_filter_replay.py`, `scripts/phase8_replay_plan.py` |
-| Tests | 4 | `tests/test_phase3_candidate_filter_fill_replay.py`, `tests/test_phase3_candidate_filter_replay.py`, `tests/test_phase3_candidate_shadow_telemetry.py`, `tests/test_phase8_replay_plan.py` |
-| Docs | 1 | `docs/engineering/LIVE_AUDIT_INDEX.md` |
+| Backend | 2 | `backend/organism/candidate_shadow_telemetry.py`, `backend/organism/live_engine.py` |
+| Organism | 2 | `backend/organism/candidate_shadow_telemetry.py`, `backend/organism/live_engine.py` |
+| Scripts | 1 | `scripts/runtime/write_runtime_snapshot.py` |
+| Tests | 2 | `tests/test_organism_engine_scenarios.py`, `tests/test_phase3_candidate_shadow_telemetry.py` |
+| Docs | 10 | `docs/architecture/mapss.md`, `docs/engineering/LIVE_AUDIT_INDEX.md`, `docs/engineering/paper_validation/2026-05-08-bff4e20/daily_entry_breakdown.json`, `docs/engineering/paper_validation/2026-05-08-bff4e20/daily_exit_breakdown.json`, `docs/engineering/paper_validation/2026-05-08-bff4e20/daily_kpi_summary.json`, `docs/engineering/paper_validation/2026-05-08-bff4e20/daily_model_quality.json`, `docs/engineering/paper_validation/2026-05-08-bff4e20/daily_runtime_snapshot.json`, `docs/engineering/paper_validation/2026-05-08-bff4e20/daily_signal_quality.json`, `docs/engineering/paper_validation/2026-05-08-bff4e20/daily_trade_log.json`, `docs/engineering/paper_validation/2026-05-08-bff4e20/daily_trading_report.md` |
 
 ## Live constants
 
@@ -50,4 +50,4 @@ Source: `resolved_config_snapshot.json`
 
 ## Open risks
 
-- 1 organism file(s) changed — require replay verification
+- 2 organism file(s) changed — require replay verification

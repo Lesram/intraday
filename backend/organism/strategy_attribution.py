@@ -13,9 +13,12 @@ import statistics
 from collections import defaultdict
 from typing import Any, Iterable
 
+from backend.organism.schema.candidate_signal import infer_strategy_id
+
 
 _WINDOWS: tuple[int, ...] = (25, 50, 100)
 _SEGMENT_FIELDS: tuple[str, ...] = (
+    "strategy_id",
     "exit_reason",
     "entry_source",
     "regime_at_entry",
@@ -76,10 +79,14 @@ def _normalise_trades(trades: Iterable[Any]) -> list[dict[str, Any]]:
         if not math.isfinite(pnl):
             continue
         confidence = _finite_float(_get(trade, "confidence", 0.0), default=0.0)
+        entry_source = _get(trade, "entry_source", "")
         rows.append({
             "pnl": pnl,
+            "strategy_id": _label(
+                infer_strategy_id(entry_source, _get(trade, "strategy_id", "")),
+            ),
             "exit_reason": _exit_family(_get(trade, "exit_reason", "")),
-            "entry_source": _label(_get(trade, "entry_source", "")),
+            "entry_source": _label(entry_source),
             "regime_at_entry": _label(_get(trade, "regime_at_entry", "")),
             "confidence": confidence,
             "confidence_bucket": _confidence_bucket(confidence),

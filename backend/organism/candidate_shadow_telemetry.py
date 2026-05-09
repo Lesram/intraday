@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Any, Iterable
 
 from backend.organism.regime import is_inverse_etf
+from backend.organism.schema.candidate_signal import infer_strategy_id
 
 
 ALPHA_BREAKOUT_WATCH_REGIMES = frozenset({"chop", "trending_down"})
@@ -79,6 +80,7 @@ class CandidateShadowEvent:
     predicted_return: float
     ranking_score: float
     entry_source: str
+    strategy_id: str
     matched_filters: list[str]
     live_pipeline_candidate: bool = True
     defensive_filter_reason: str = ""
@@ -96,6 +98,7 @@ class CandidateShadowEvent:
             "predicted_return": round(self.predicted_return, 6),
             "ranking_score": round(self.ranking_score, 6),
             "entry_source": self.entry_source,
+            "strategy_id": self.strategy_id,
             "matched_filters": list(self.matched_filters),
             "live_pipeline_candidate": self.live_pipeline_candidate,
         }
@@ -134,6 +137,10 @@ def build_candidate_shadow_events(
                 predicted_return=_finite_float(candidate.get("predicted_return")),
                 ranking_score=_finite_float(candidate.get("ranking_score")),
                 entry_source=entry_source,
+                strategy_id=infer_strategy_id(
+                    entry_source,
+                    candidate.get("strategy_id", ""),
+                ),
                 matched_filters=tags,
                 live_pipeline_candidate=bool(
                     candidate.get("live_pipeline_candidate", True)

@@ -52,6 +52,7 @@ class PositionSize:
     # "alpha+breakout" or "breakout" in trade_history. Hidden bug found in M3-5
     # audit when B3 (alpha disabled) still showed "alpha+breakout" tags.
     entry_source_override: str = ""
+    strategy_id: str = ""
 
     def to_dict(self) -> dict[str, Any]:
         # Audit-I finding I-4 (2026-05-02): cast every numeric through
@@ -77,6 +78,7 @@ class PositionSize:
             "regime_trade_count": int(self.regime_trade_count),
             "expected_return_source": str(self.expected_return_source),
             "dollar_risk_cap_applied": bool(self.dollar_risk_cap_applied),
+            "strategy_id": str(self.strategy_id),
         }
 
 
@@ -148,7 +150,7 @@ class KellySizer:
                 if bid and ask and bid > 0 and ask > 0:
                     mid = (bid + ask) / 2.0
                     base_spread = (ask - bid) / mid
-            except Exception:
+            except Exception:  # noqa: BLE001, S110 - quote providers fail heterogeneously; keep fallback.
                 pass  # keep default
 
         # 2. Time-of-day multiplier
@@ -622,6 +624,7 @@ class KellySizer:
                 expected_return_source=cand.get("expected_return_source", "heuristic"),
                 dollar_risk_cap_applied=_dollar_risk_cap_applied,
                 entry_source_override=cand.get("entry_source_override", ""),
+                strategy_id=cand.get("strategy_id", ""),
             ))
 
         sizes.sort(key=lambda s: s.target_weight, reverse=True)

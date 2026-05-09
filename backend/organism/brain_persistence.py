@@ -56,6 +56,8 @@ import joblib
 import numpy as np
 import pandas as pd
 
+from backend.organism.schema.candidate_signal import infer_strategy_id
+
 logger = logging.getLogger(__name__)
 
 # ── Brain format version — bump if we change what we persist ─────
@@ -821,6 +823,10 @@ class OrganismBrain:
                     is_exploration=td.get("is_exploration", False),
                     is_reconciliation_artifact=bool(_saved_artifact),
                     entry_source=td.get("entry_source", ""),
+                    strategy_id=td.get(
+                        "strategy_id",
+                        infer_strategy_id(td.get("entry_source", "")),
+                    ),
                     regime_at_entry=td.get("regime_at_entry", ""),
                     regime_at_exit=td.get("regime_at_exit", ""),
                     mfe=td.get("mfe", 0.0),
@@ -1618,6 +1624,11 @@ class OrganismBrain:
                     _is_reconciliation_artifact_trade(t)
                 ),
                 "entry_source": getattr(t, "entry_source", ""),
+                "strategy_id": getattr(
+                    t,
+                    "strategy_id",
+                    infer_strategy_id(getattr(t, "entry_source", "")),
+                ),
                 "regime_at_entry": getattr(t, "regime_at_entry", ""),
                 "regime_at_exit": getattr(t, "regime_at_exit", ""),
                 "mfe": round(getattr(t, "mfe", 0.0), 4),
@@ -2238,6 +2249,10 @@ class OrganismBrain:
                         )
                     ),
                     entry_source=td.get("entry_source", ""),
+                    strategy_id=td.get(
+                        "strategy_id",
+                        infer_strategy_id(td.get("entry_source", "")),
+                    ),
                     regime_at_entry=td.get("regime_at_entry", ""),
                     regime_at_exit=td.get("regime_at_exit", ""),
                     mfe=td.get("mfe", 0.0),
