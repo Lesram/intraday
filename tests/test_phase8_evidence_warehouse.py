@@ -7,6 +7,7 @@ from scripts.phase8_evidence_warehouse import (
     build_filter_outcome_summary,
     build_realized_trade_accounting,
     build_replay_candidates,
+    build_strategy_league_summary,
     build_symbol_evidence_summary,
     build_warehouse,
     normalize_event,
@@ -44,7 +45,24 @@ def test_phase8_event_id_is_stable_for_same_event() -> None:
 
     assert first["event_id"] == second["event_id"]
     assert first["symbol"] == "AMD"
+    assert first["strategy_id"] == "alpha_baseline"
     assert json.loads(first["matched_filters_json"]) == ["alpha_breakout_chop"]
+
+
+def test_phase8_normalizes_explicit_strategy_id() -> None:
+    event = normalize_event(
+        "strategy_evidence",
+        {
+            "_line_number": 1,
+            "timestamp": "2026-05-06T19:30:00+00:00",
+            "symbol": "qqq",
+            "entry_source": "eod_momentum",
+            "strategy_id": "etf_intraday_momentum",
+        },
+    )
+
+    assert event["symbol"] == "QQQ"
+    assert event["strategy_id"] == "etf_intraday_momentum"
 
 
 def test_phase8_normalizes_db_order_and_realized_trade_rows() -> None:
@@ -262,6 +280,39 @@ def test_phase8_exports_replay_candidates_without_promotion() -> None:
     )
 
 
+def test_phase8_builds_strategy_league_from_trade_history() -> None:
+    rows = build_strategy_league_summary([
+        {
+            "strategy_id": "etf_intraday_momentum",
+            "symbol": "QQQ",
+            "closed_at": "2026-05-06T20:00:00+00:00",
+            "pnl": 2.0,
+            "actual_return": 0.001,
+            "is_reconciliation_artifact": False,
+        },
+        {
+            "entry_source": "alpha+breakout",
+            "symbol": "AMD",
+            "closed_at": "2026-05-06T20:10:00+00:00",
+            "pnl": -1.0,
+            "actual_return": -0.0005,
+            "is_reconciliation_artifact": False,
+        },
+        {
+            "strategy_id": "reconciliation_artifact",
+            "symbol": "MSFT",
+            "closed_at": "2026-05-06T20:20:00+00:00",
+            "pnl": 99.0,
+            "is_reconciliation_artifact": True,
+        },
+    ])
+
+    by_strategy = {row["strategy_id"]: row for row in rows}
+    assert by_strategy["etf_intraday_momentum"]["total_pnl"] == 2.0
+    assert by_strategy["alpha_baseline"]["total_pnl"] == -1.0
+    assert "reconciliation_artifact" not in by_strategy
+
+
 def test_phase8_builds_idempotent_sqlite_warehouse(tmp_path) -> None:
     strategy = tmp_path / "strategy.jsonl"
     candidate = tmp_path / "candidate.jsonl"
@@ -363,6 +414,7 @@ def test_phase8_builds_idempotent_sqlite_warehouse(tmp_path) -> None:
     assert second["counts"]["realized_trade_accounting"] == 0
     assert second["counts"]["filter_outcome_summary"] == 2
     assert second["counts"]["symbol_evidence_summary"] == 1
+    assert second["counts"]["strategy_league"] == 1
     assert second["counts"]["replay_candidate_export"] == 0
     assert second["db_extract"]["enabled"] is False
     assert second["promotion_authorized"] is False
@@ -384,6 +436,15 @@ def test_phase8_builds_idempotent_sqlite_warehouse(tmp_path) -> None:
         replay_count = conn.execute(
             "SELECT count(*) FROM replay_candidate_export"
         ).fetchone()[0]
+        event_strategy = conn.execute(
+            "SELECT strategy_id FROM evidence_events WHERE symbol='AMD'"
+        ).fetchone()[0]
+        trade_strategy = conn.execute(
+            "SELECT strategy_id FROM trade_history WHERE symbol='AMD'"
+        ).fetchone()[0]
+        league_count = conn.execute(
+            "SELECT count(*) FROM strategy_league"
+        ).fetchone()[0]
     finally:
         conn.close()
 
@@ -393,8 +454,12 @@ def test_phase8_builds_idempotent_sqlite_warehouse(tmp_path) -> None:
     assert accounting_count == 0
     assert filter_count == 2
     assert symbol_count == 1
+    assert league_count == 1
     assert replay_count == 0
+    assert event_strategy == "alpha_baseline"
+    assert trade_strategy == "alpha_baseline"
     assert (out_dir / "warehouse_summary.json").exists()
     assert (out_dir / "PHASE8_EVIDENCE_WAREHOUSE_REPORT.md").exists()
     assert (out_dir / "replay_candidates.json").exists()
+    assert (out_dir / "strategy_league.json").exists()
     assert (out_dir / "PHASE8_POST_CLOSE_RESEARCH_REPORT.md").exists()

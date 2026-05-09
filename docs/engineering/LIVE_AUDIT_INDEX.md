@@ -1,8 +1,8 @@
 # Live Audit Index
 
-Generated: 2026-05-09T21:20:24Z
+Generated: 2026-05-09T21:29:38Z
 PR: PR #6
-SHA: `db8675ebd6`
+SHA: `2fd9a67b86`
 Branch: `codex/v13-phase2-expectancy`
 Scope: **backend_logic**
 Change scope: `task` (`HEAD`)
@@ -11,11 +11,11 @@ Change scope: `task` (`HEAD`)
 
 | Category | Count | Files |
 |----------|-------|-------|
-| Backend | 2 | `backend/organism/candidate_shadow_telemetry.py`, `backend/organism/live_engine.py` |
-| Organism | 2 | `backend/organism/candidate_shadow_telemetry.py`, `backend/organism/live_engine.py` |
-| Scripts | 1 | `scripts/runtime/write_runtime_snapshot.py` |
-| Tests | 2 | `tests/test_organism_engine_scenarios.py`, `tests/test_phase3_candidate_shadow_telemetry.py` |
-| Docs | 10 | `docs/architecture/mapss.md`, `docs/engineering/LIVE_AUDIT_INDEX.md`, `docs/engineering/paper_validation/2026-05-08-bff4e20/daily_entry_breakdown.json`, `docs/engineering/paper_validation/2026-05-08-bff4e20/daily_exit_breakdown.json`, `docs/engineering/paper_validation/2026-05-08-bff4e20/daily_kpi_summary.json`, `docs/engineering/paper_validation/2026-05-08-bff4e20/daily_model_quality.json`, `docs/engineering/paper_validation/2026-05-08-bff4e20/daily_runtime_snapshot.json`, `docs/engineering/paper_validation/2026-05-08-bff4e20/daily_signal_quality.json`, `docs/engineering/paper_validation/2026-05-08-bff4e20/daily_trade_log.json`, `docs/engineering/paper_validation/2026-05-08-bff4e20/daily_trading_report.md` |
+| Backend | 14 | `backend/organism/brain_persistence.py`, `backend/organism/candidate_shadow_telemetry.py`, `backend/organism/continuous_learner.py`, `backend/organism/evidence/__init__.py`, `backend/organism/evidence/benchmark_report.py`, `backend/organism/evidence/null_models.py`, `backend/organism/evidence/strategy_league.py`, `backend/organism/kelly_sizer.py`, `backend/organism/live_engine.py`, `backend/organism/schema/__init__.py` |
+| Organism | 14 | `backend/organism/brain_persistence.py`, `backend/organism/candidate_shadow_telemetry.py`, `backend/organism/continuous_learner.py`, `backend/organism/evidence/__init__.py`, `backend/organism/evidence/benchmark_report.py`, `backend/organism/evidence/null_models.py`, `backend/organism/evidence/strategy_league.py`, `backend/organism/kelly_sizer.py`, `backend/organism/live_engine.py`, `backend/organism/schema/__init__.py` |
+| Scripts | 0 | none |
+| Tests | 1 | `tests/test_phase9_strategy_governance.py` |
+| Docs | 4 | `docs/engineering/DEEP_RESEARCH_STRATEGY_ACTION_PLAN_2026-05-09.md`, `docs/engineering/LIVE_AUDIT_INDEX.md`, `docs/engineering/STRATEGY_AUTOPSY_2026-05-09.md`, `docs/engineering/STRATEGY_REBUILD_MASTER_ROADMAP_2026-05-09.md` |
 
 ## Live constants
 
@@ -50,4 +50,4 @@ Source: `resolved_config_snapshot.json`
 
 ## Open risks
 
-- 2 organism file(s) changed — require replay verification
+- 14 organism file(s) changed — require replay verification

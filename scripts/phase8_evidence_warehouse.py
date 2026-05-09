@@ -15,12 +15,19 @@ import json
 import math
 import sqlite3
 import subprocess
+import sys
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from backend.organism.evidence.strategy_league import build_strategy_league
+from backend.organism.schema.candidate_signal import infer_strategy_id
+
 DEFAULT_STRATEGY_TELEMETRY = ROOT / "organism_brain" / "strategy_evidence_events.jsonl"
 DEFAULT_CANDIDATE_TELEMETRY = ROOT / "organism_brain" / "candidate_filter_shadow_telemetry.jsonl"
 DEFAULT_PHASE6_OUTCOMES = ROOT / "artifacts" / "phase6_strategy_evidence" / "strategy_evidence_outcomes.csv"
@@ -160,6 +167,8 @@ def normalize_event(source: str, event: dict[str, Any]) -> dict[str, Any]:
     line_number = _int_or_none(event.get("_line_number"))
     timestamp = str(event.get("timestamp") or "")
     symbol = str(event.get("symbol") or "").upper()
+    entry_source = str(event.get("entry_source") or "")
+    strategy_id = infer_strategy_id(entry_source, event.get("strategy_id"))
     event_id = _stable_hash([
         "event",
         source,
@@ -167,7 +176,7 @@ def normalize_event(source: str, event: dict[str, Any]) -> dict[str, Any]:
         timestamp,
         symbol,
         event.get("tick"),
-        event.get("entry_source"),
+        entry_source,
         event.get("confidence"),
         event.get("ranking_score"),
     ])
@@ -185,7 +194,8 @@ def normalize_event(source: str, event: dict[str, Any]) -> dict[str, Any]:
         "breakout_score": _finite_float(event.get("breakout_score")),
         "predicted_return": _finite_float(event.get("predicted_return")),
         "ranking_score": _finite_float(event.get("ranking_score")),
-        "entry_source": str(event.get("entry_source") or ""),
+        "entry_source": entry_source,
+        "strategy_id": strategy_id,
         "matched_filters_json": _tags_json(event.get("matched_filters")),
         "live_pipeline_candidate": 1 if event.get("live_pipeline_candidate", True) else 0,
         "raw_json": json.dumps(
@@ -237,6 +247,8 @@ def normalize_outcome(row: dict[str, str], event_lookup: dict[tuple[str, str, in
 def normalize_trade(row: dict[str, str], row_number: int) -> dict[str, Any]:
     symbol = str(row.get("symbol") or "").upper()
     closed_at = str(row.get("closed_at") or "")
+    entry_source = str(row.get("entry_source") or "")
+    strategy_id = infer_strategy_id(entry_source, row.get("strategy_id"))
     trade_id = _stable_hash([
         "trade",
         row_number,
@@ -246,7 +258,7 @@ def normalize_trade(row: dict[str, str], row_number: int) -> dict[str, Any]:
         row.get("shares"),
         row.get("pnl"),
         closed_at,
-        row.get("entry_source"),
+        entry_source,
     ])
     return {
         "trade_id": trade_id,
@@ -261,9 +273,13 @@ def normalize_trade(row: dict[str, str], row_number: int) -> dict[str, Any]:
         "confidence": _finite_float(row.get("confidence")),
         "is_exploration": str(row.get("is_exploration") or "").lower() == "true",
         "is_reconciliation_artifact": str(row.get("is_reconciliation_artifact") or "").lower() == "true",
-        "entry_source": str(row.get("entry_source") or ""),
+        "entry_source": entry_source,
+        "strategy_id": strategy_id,
         "regime_at_entry": str(row.get("regime_at_entry") or ""),
         "regime_at_exit": str(row.get("regime_at_exit") or ""),
+        "actual_return": _finite_float(row.get("actual_return")),
+        "mfe": _finite_float(row.get("mfe")),
+        "mae": _finite_float(row.get("mae")),
         "closed_at": closed_at,
         "raw_json": json.dumps(row, sort_keys=True),
     }
@@ -653,6 +669,33 @@ def build_replay_candidates(
     return sorted(candidates, key=lambda item: (item["candidate_type"], item["candidate_id"]))
 
 
+def build_strategy_league_summary(trades: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    league_inputs: list[dict[str, Any]] = []
+    for trade in trades:
+        if trade.get("is_reconciliation_artifact"):
+            continue
+        closed_at = str(trade.get("closed_at") or "")
+        session = closed_at[:10] if len(closed_at) >= 10 else ""
+        actual_return = _finite_float(trade.get("actual_return"), 0.0) or 0.0
+        league_inputs.append({
+            "strategy_id": trade.get("strategy_id") or "alpha_baseline",
+            "symbol": trade.get("symbol") or "",
+            "session": session,
+            "pnl": trade.get("pnl") or 0.0,
+            "realized_bps": actual_return * 10000.0,
+            "r_multiple": 0.0,
+            "mfe": trade.get("mfe") or 0.0,
+            "mae": trade.get("mae") or 0.0,
+        })
+    rows = build_strategy_league(league_inputs)
+    out: list[dict[str, Any]] = []
+    for row in rows:
+        materialized = dict(row)
+        materialized["raw_json"] = json.dumps(row, sort_keys=True, default=str)
+        out.append(materialized)
+    return out
+
+
 def connect(db_path: Path) -> sqlite3.Connection:
     db_path.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(db_path)
@@ -678,6 +721,7 @@ def create_schema(conn: sqlite3.Connection) -> None:
             predicted_return REAL,
             ranking_score REAL,
             entry_source TEXT,
+            strategy_id TEXT,
             matched_filters_json TEXT,
             live_pipeline_candidate INTEGER,
             raw_json TEXT
@@ -727,13 +771,36 @@ def create_schema(conn: sqlite3.Connection) -> None:
             is_exploration INTEGER,
             is_reconciliation_artifact INTEGER,
             entry_source TEXT,
+            strategy_id TEXT,
             regime_at_entry TEXT,
             regime_at_exit TEXT,
+            actual_return REAL,
+            mfe REAL,
+            mae REAL,
             closed_at TEXT,
             raw_json TEXT
         );
         CREATE INDEX IF NOT EXISTS idx_trade_history_symbol
             ON trade_history(symbol);
+
+        CREATE TABLE IF NOT EXISTS strategy_league (
+            strategy_id TEXT PRIMARY KEY,
+            n INTEGER,
+            total_pnl REAL,
+            profit_factor TEXT,
+            win_rate REAL,
+            avg_r REAL,
+            avg_realized_bps REAL,
+            avg_alpha_over_symbol_hold_bps REAL,
+            avg_alpha_over_random_bps REAL,
+            avg_alpha_over_delay_bps REAL,
+            positive_symbol_alpha_rate REAL,
+            max_drawdown REAL,
+            max_symbol_concentration REAL,
+            max_session_concentration REAL,
+            verdict TEXT,
+            raw_json TEXT
+        );
 
         CREATE TABLE IF NOT EXISTS db_orders (
             order_id TEXT PRIMARY KEY,
@@ -883,6 +950,24 @@ def create_schema(conn: sqlite3.Connection) -> None:
         );
         """
     )
+    _ensure_column(conn, "evidence_events", "strategy_id", "TEXT")
+    _ensure_column(conn, "trade_history", "strategy_id", "TEXT")
+    _ensure_column(conn, "trade_history", "actual_return", "REAL")
+    _ensure_column(conn, "trade_history", "mfe", "REAL")
+    _ensure_column(conn, "trade_history", "mae", "REAL")
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_trade_history_strategy "
+        "ON trade_history(strategy_id)"
+    )
+
+
+def _ensure_column(conn: sqlite3.Connection, table: str, column: str, ddl_type: str) -> None:
+    existing = {
+        str(row[1])
+        for row in conn.execute(f"PRAGMA table_info({table})").fetchall()
+    }
+    if column not in existing:
+        conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {ddl_type}")
 
 
 def _upsert_rows(conn: sqlite3.Connection, table: str, rows: list[dict[str, Any]]) -> int:
@@ -925,6 +1010,7 @@ def build_summary(
     filter_summaries: list[dict[str, Any]],
     symbol_summaries: list[dict[str, Any]],
     replay_candidates: list[dict[str, Any]],
+    strategy_league: list[dict[str, Any]],
     invalid_jsonl_rows: dict[str, int],
 ) -> dict[str, Any]:
     joined = [row for row in outcomes if row["status"] == "joined"]
@@ -1012,6 +1098,7 @@ def build_summary(
             "research_outputs": {
                 "post_close_verdict": "no_live_promotion_replay_required",
                 "replay_candidates": replay_candidates,
+                "strategy_league": strategy_league,
             },
         },
         "counts": {
@@ -1028,6 +1115,7 @@ def build_summary(
             "realized_trade_accounting": len(accounting_rows),
             "filter_outcome_summary": len(filter_summaries),
             "symbol_evidence_summary": len(symbol_summaries),
+            "strategy_league": len(strategy_league),
             "replay_candidate_export": len(replay_candidates),
             "invalid_jsonl_rows": invalid_jsonl_rows,
         },
@@ -1073,6 +1161,7 @@ def render_report(summary: dict[str, Any]) -> str:
         f"- Realized-trade accounting rows: `{counts['realized_trade_accounting']}`",
         f"- Filter outcome summaries: `{counts['filter_outcome_summary']}`",
         f"- Symbol evidence summaries: `{counts['symbol_evidence_summary']}`",
+        f"- Strategy league rows: `{counts['strategy_league']}`",
         f"- Replay candidate exports: `{counts['replay_candidate_export']}`",
         f"- Invalid JSONL rows: `{counts['invalid_jsonl_rows']}`",
         "",
@@ -1109,6 +1198,7 @@ def render_report(summary: dict[str, Any]) -> str:
 def render_post_close_report(summary: dict[str, Any]) -> str:
     research_outputs = summary["db_extract"]["research_outputs"]
     candidates = research_outputs["replay_candidates"]
+    strategy_league = research_outputs.get("strategy_league", [])
     lines = [
         "# Phase 8 Post-Close Research Decision Report",
         "",
@@ -1143,6 +1233,24 @@ def render_post_close_report(summary: dict[str, Any]) -> str:
             lines.append(
                 f"| `{label}` | `{candidate['candidate_type']}` | "
                 f"`{evidence}` | `{candidate['required_next_step']}` |"
+            )
+    lines.extend([
+        "",
+        "## Strategy League",
+        "",
+    ])
+    if not strategy_league:
+        lines.append("- None.")
+    else:
+        lines.extend([
+            "| Strategy | N | PnL | PF | Win rate | Verdict |",
+            "|----------|---:|----:|----:|---------:|---------|",
+        ])
+        for row in strategy_league:
+            lines.append(
+                f"| `{row['strategy_id']}` | `{row['n']}` | "
+                f"`{row['total_pnl']}` | `{row['profit_factor']}` | "
+                f"`{row['win_rate']}` | `{row['verdict']}` |"
             )
     lines.extend([
         "",
@@ -1212,6 +1320,7 @@ def build_warehouse(inputs: WarehouseInputs) -> dict[str, Any]:
     filter_summaries = build_filter_outcome_summary(outcomes)
     symbol_summaries = build_symbol_evidence_summary(outcomes, accounting_rows)
     replay_candidates = build_replay_candidates(filter_summaries, symbol_summaries)
+    strategy_league = build_strategy_league_summary(trades)
 
     db_path = inputs.out_dir / inputs.db_name
     conn = connect(db_path)
@@ -1238,6 +1347,11 @@ def build_warehouse(inputs: WarehouseInputs) -> dict[str, Any]:
             "symbol_evidence_summary",
             symbol_summaries,
         )
+        inserted_strategy_league = _upsert_rows(
+            conn,
+            "strategy_league",
+            strategy_league,
+        )
         inserted_replay_candidates = _upsert_rows(
             conn,
             "replay_candidate_export",
@@ -1256,6 +1370,7 @@ def build_warehouse(inputs: WarehouseInputs) -> dict[str, Any]:
             filter_summaries=filter_summaries,
             symbol_summaries=symbol_summaries,
             replay_candidates=replay_candidates,
+            strategy_league=strategy_league,
             invalid_jsonl_rows={
                 "strategy_evidence": strategy_invalid,
                 "candidate_filter_shadow": candidate_invalid,
@@ -1271,6 +1386,7 @@ def build_warehouse(inputs: WarehouseInputs) -> dict[str, Any]:
             "realized_trade_accounting": inserted_accounting_rows,
             "filter_outcome_summary": inserted_filter_summaries,
             "symbol_evidence_summary": inserted_symbol_summaries,
+            "strategy_league": inserted_strategy_league,
             "replay_candidate_export": inserted_replay_candidates,
         }
         write_manifest(conn, summary)
@@ -1291,6 +1407,14 @@ def write_outputs(inputs: WarehouseInputs, summary: dict[str, Any]) -> None:
     (inputs.out_dir / "replay_candidates.json").write_text(
         json.dumps(
             summary["db_extract"]["research_outputs"]["replay_candidates"],
+            indent=2,
+            sort_keys=True,
+        )
+        + "\n"
+    )
+    (inputs.out_dir / "strategy_league.json").write_text(
+        json.dumps(
+            summary["db_extract"]["research_outputs"]["strategy_league"],
             indent=2,
             sort_keys=True,
         )
