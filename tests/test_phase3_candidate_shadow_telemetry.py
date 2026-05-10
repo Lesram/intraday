@@ -187,6 +187,30 @@ def test_build_candidate_shadow_events_preserves_defensive_filter_metadata():
     )
 
 
+def test_build_candidate_shadow_events_parses_persisted_boolean_strings():
+    events = build_candidate_shadow_events(
+        [
+            {
+                "symbol": "AAPL",
+                "direction": 1,
+                "confidence": 0.60,
+                "effective_confidence": 0.58,
+                "breakout_score": 0.45,
+                "predicted_return": 0.004,
+                "ranking_score": 0.2,
+                "live_pipeline_candidate": "false",
+            },
+        ],
+        regime="chop",
+        tick=42,
+        timestamp="2026-05-04T14:00:00Z",
+    )
+
+    assert len(events) == 1
+    assert events[0].live_pipeline_candidate is False
+    assert events[0].to_dict()["live_pipeline_candidate"] is False
+
+
 def test_build_candidate_shadow_events_can_record_all_candidates_for_phase6():
     events = build_candidate_shadow_events(
         [

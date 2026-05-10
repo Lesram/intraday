@@ -89,6 +89,7 @@ def build_strategy_league(
     min_positive_alpha_rate: float = 0.52,
     max_symbol_concentration: float = 0.30,
     max_session_concentration: float = 0.25,
+    require_positive_avg_r: bool = True,
 ) -> list[dict[str, Any]]:
     normalized = [
         row if isinstance(row, StrategyLeagueRow) else row_from_mapping(row)
@@ -146,6 +147,7 @@ def build_strategy_league(
             min_positive_alpha_rate=min_positive_alpha_rate,
             max_symbol_concentration=max_symbol_concentration,
             max_session_concentration=max_session_concentration,
+            require_positive_avg_r=require_positive_avg_r,
         )
         out.append({
             "strategy_id": strategy_id,
@@ -204,18 +206,24 @@ def _verdict(
     min_positive_alpha_rate: float,
     max_symbol_concentration: float,
     max_session_concentration: float,
+    require_positive_avg_r: bool,
 ) -> str:
     if n < min_replay_samples:
         return "collect_more"
-    if pf < min_profit_factor or avg_r <= 0:
+    if pf < min_profit_factor:
         return "reject"
-    if not symbol_alphas or _avg(symbol_alphas) is None or _avg(symbol_alphas) <= 0:
+    if require_positive_avg_r and avg_r <= 0:
+        return "reject"
+    symbol_alpha_avg = _avg(symbol_alphas)
+    if not symbol_alphas or symbol_alpha_avg is None or symbol_alpha_avg <= 0:
         return "reject"
     if pos_symbol_alpha_rate < min_positive_alpha_rate:
         return "reject"
-    if random_alphas and (_avg(random_alphas) is None or _avg(random_alphas) <= 0):
+    random_alpha_avg = _avg(random_alphas)
+    if random_alphas and (random_alpha_avg is None or random_alpha_avg <= 0):
         return "reject"
-    if delay_alphas and (_avg(delay_alphas) is None or _avg(delay_alphas) <= 0):
+    delay_alpha_avg = _avg(delay_alphas)
+    if delay_alphas and (delay_alpha_avg is None or delay_alpha_avg <= 0):
         return "reject"
     if (
         symbol_concentration > max_symbol_concentration

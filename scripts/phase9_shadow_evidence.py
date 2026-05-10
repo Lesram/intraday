@@ -159,8 +159,10 @@ def _benchmark_return(
 
 
 def _cost_bps(event: dict[str, Any], default_cost_bps: float) -> float:
-    features = event.get("features") if isinstance(event.get("features"), dict) else {}
-    sip = features.get("stocks_in_play") if isinstance(features.get("stocks_in_play"), dict) else {}
+    features_raw = event.get("features")
+    features = features_raw if isinstance(features_raw, dict) else {}
+    sip_raw = features.get("stocks_in_play")
+    sip = sip_raw if isinstance(sip_raw, dict) else {}
     spread = _finite_float(sip.get("spread_bps"), 0.0)
     return spread if spread > 0 else default_cost_bps
 
@@ -307,7 +309,10 @@ def build_phase9_shadow_evidence(
         }
         for row in joined
     ]
-    league = build_strategy_league(league_inputs)
+    # Phase 9 shadow candidates do not yet have stop-defined R multiples.
+    # Replay nomination is therefore based on after-cost benchmark/null alpha;
+    # micro-paper or live promotion still happens later and must require R.
+    league = build_strategy_league(league_inputs, require_positive_avg_r=False)
     replay_candidates = [
         {
             "candidate_id": f"strategy:{row['strategy_id']}",

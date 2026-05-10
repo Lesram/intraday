@@ -35,6 +35,30 @@ def test_candidate_signal_normalizes_and_round_trips() -> None:
     assert restored.features["volume_z"] == 2.1
 
 
+def test_candidate_signal_parses_persisted_boolean_strings() -> None:
+    from backend.organism.schema import CandidateSignal
+
+    payload = {
+        "signal_id": "sig-1",
+        "strategy_id": "etf_intraday_momentum",
+        "engine_version": "mim.v1",
+        "symbol": "QQQ",
+        "side": "long",
+        "timeframe": "1Min",
+        "created_at": "2026-05-09T20:00:00+00:00",
+        "intended_horizon_bars": 30,
+        "regime": "high_vol",
+        "evidence_tier": 2,
+        "shadow_only": "false",
+        "risk_budget_bps": 5.0,
+    }
+
+    restored = CandidateSignal.from_dict(payload)
+
+    assert restored.shadow_only is False
+    assert restored.to_dict()["shadow_only"] is False
+
+
 def test_candidate_signal_rejects_bad_strategy_id() -> None:
     from backend.organism.schema import CandidateSignal
 
@@ -175,6 +199,30 @@ def test_strategy_league_verdicts_reject_and_replay_eligible() -> None:
 
     assert league["etf_intraday_momentum"]["verdict"] == "replay_eligible"
     assert league["orb_sip_v2"]["verdict"] == "reject"
+
+
+def test_strategy_league_can_relax_avg_r_for_shadow_replay_nomination() -> None:
+    from backend.organism.evidence.strategy_league import build_strategy_league
+
+    shadow_rows = [
+        {
+            "strategy_id": "etf_intraday_momentum",
+            "symbol": f"ETF{i % 5}",
+            "session": f"2026-05-{i % 10 + 1:02d}",
+            "pnl": 2.0 if i % 4 else -0.25,
+            "r_multiple": 0.0,
+            "alpha_over_symbol_hold_bps": 4.0,
+            "alpha_over_random_bps": 3.0,
+            "alpha_over_delay_1_bps": 2.0,
+        }
+        for i in range(40)
+    ]
+
+    default = build_strategy_league(shadow_rows)
+    shadow = build_strategy_league(shadow_rows, require_positive_avg_r=False)
+
+    assert default[0]["verdict"] == "reject"
+    assert shadow[0]["verdict"] == "replay_eligible"
 
 
 def test_strategy_attribution_segments_legacy_rows_by_alpha_baseline() -> None:

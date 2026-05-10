@@ -1,22 +1,22 @@
 # Live Audit Index
 
-Generated: 2026-05-10T21:47:17Z
+Generated: 2026-05-10T22:27:42Z
 PR: PR #6
-SHA: `c2713939a1`
+SHA: `e8a49e6b48`
 Branch: `codex/v13-phase2-expectancy`
-Scope: **tooling/evidence_only**
+Scope: **backend_logic**
 Change scope: `working-tree` (`HEAD+working-tree`)
 
 ## Changed files
 
 | Category | Count | Files |
 |----------|-------|-------|
-| Backend | 0 | none |
-| Organism | 0 | none |
-| Scripts | 3 | `scripts/ci/check_wave_markers.py`, `scripts/ci/generate_audit_index.py`, `scripts/runtime/write_runtime_snapshot.py` |
-| CI | 2 | `.github/pull_request_template.md`, `.github/workflows/pr-verify.yml` |
-| Tests | 3 | `tests/test_artifact_change_scope.py`, `tests/test_runtime_snapshot_auth.py`, `tests/test_v12_w81_ci_cleanup.py` |
-| Docs | 2 | `docs/engineering/LIVE_AUDIT_INDEX.md`, `docs/engineering/PRE9D_IMPLEMENTATION_AUDIT_2026-05-10.md` |
+| Backend | 4 | `backend/organism/candidate_shadow_telemetry.py`, `backend/organism/evidence/strategy_league.py`, `backend/organism/schema/__init__.py`, `backend/organism/schema/candidate_signal.py` |
+| Organism | 4 | `backend/organism/candidate_shadow_telemetry.py`, `backend/organism/evidence/strategy_league.py`, `backend/organism/schema/__init__.py`, `backend/organism/schema/candidate_signal.py` |
+| Scripts | 1 | `scripts/phase9_shadow_evidence.py` |
+| CI | 0 | none |
+| Tests | 2 | `tests/test_phase3_candidate_shadow_telemetry.py`, `tests/test_phase9_strategy_governance.py` |
+| Docs | 1 | `docs/engineering/PRE9D_DEEP_AUDIT_2026-05-10.md` |
 
 ## Live constants
 
@@ -54,4 +54,4 @@ Source: `resolved_config_snapshot.json`
 
 ## Open risks
 
-- Evidence/tooling script changed only — no backend runtime or order-path behavior changed
+- 4 organism file(s) changed — require replay verification

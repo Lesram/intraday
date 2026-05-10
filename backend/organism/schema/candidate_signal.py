@@ -11,7 +11,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, cast
 
 
 _STRATEGY_ID_RE = re.compile(r"^[a-z][a-z0-9_]{1,63}$")
@@ -54,6 +54,22 @@ def _parse_dt(value: datetime | str | None) -> datetime:
     return dt.astimezone(UTC)
 
 
+def parse_bool(value: Any, *, default: bool = True) -> bool:
+    """Parse persisted boolean-ish values without treating "false" as truthy."""
+    if isinstance(value, bool):
+        return value
+    if value is None:
+        return default
+    if isinstance(value, int | float):
+        return bool(value)
+    text = str(value).strip().lower()
+    if text in {"1", "true", "t", "yes", "y", "on"}:
+        return True
+    if text in {"0", "false", "f", "no", "n", "off"}:
+        return False
+    return default
+
+
 @dataclass(frozen=True)
 class CandidateSignal:
     """One strategy-born candidate before portfolio ranking and sizing."""
@@ -64,7 +80,7 @@ class CandidateSignal:
     symbol: str
     side: str
     timeframe: str
-    created_at: datetime | str
+    created_at: datetime | str | None
     intended_horizon_bars: int
     regime: str
     evidence_tier: int
@@ -117,12 +133,21 @@ class CandidateSignal:
         object.__setattr__(self, "created_at", created_at)
         object.__setattr__(self, "intended_horizon_bars", int(self.intended_horizon_bars))
         object.__setattr__(self, "evidence_tier", int(self.evidence_tier))
+        object.__setattr__(self, "shadow_only", parse_bool(self.shadow_only, default=True))
         object.__setattr__(self, "risk_budget_bps", float(self.risk_budget_bps))
         object.__setattr__(self, "features", dict(self.features))
 
     @property
     def direction(self) -> float:
         return 1.0 if self.side == "long" else -1.0
+
+    @property
+    def created_at_datetime(self) -> datetime:
+        return cast(datetime, self.created_at)
+
+    @property
+    def created_at_iso(self) -> str:
+        return self.created_at_datetime.isoformat()
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -133,7 +158,7 @@ class CandidateSignal:
             "side": self.side,
             "direction": self.direction,
             "timeframe": self.timeframe,
-            "created_at": self.created_at.isoformat(),
+            "created_at": self.created_at_iso,
             "intended_horizon_bars": self.intended_horizon_bars,
             "regime": self.regime,
             "evidence_tier": self.evidence_tier,
@@ -159,7 +184,7 @@ class CandidateSignal:
             intended_horizon_bars=payload["intended_horizon_bars"],
             regime=payload.get("regime", "unknown"),
             evidence_tier=payload.get("evidence_tier", 0),
-            shadow_only=bool(payload.get("shadow_only", True)),
+            shadow_only=parse_bool(payload.get("shadow_only"), default=True),
             expected_edge_bps=payload.get("expected_edge_bps"),
             confidence=payload.get("confidence"),
             stop_price=payload.get("stop_price"),
