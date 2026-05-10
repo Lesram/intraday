@@ -1,21 +1,21 @@
 # Live Audit Index
 
-Generated: 2026-05-10T02:04:13Z
+Generated: 2026-05-10T02:21:54Z
 PR: PR #6
-SHA: `05a56ca8c7`
+SHA: `648b39d2d3`
 Branch: `codex/v13-phase2-expectancy`
-Scope: **tooling/evidence_only**
-Change scope: `task` (`HEAD`)
+Scope: **backend_logic**
+Change scope: `working-tree` (`HEAD+working-tree`)
 
 ## Changed files
 
 | Category | Count | Files |
 |----------|-------|-------|
-| Backend | 0 | none |
-| Organism | 0 | none |
-| Scripts | 1 | `scripts/phase8_evidence_warehouse.py` |
-| Tests | 1 | `tests/test_phase8_evidence_warehouse.py` |
-| Docs | 1 | `docs/engineering/LIVE_AUDIT_INDEX.md` |
+| Backend | 8 | `backend/organism/engines/__init__.py`, `backend/organism/engines/eod_reversal_shadow.py`, `backend/organism/engines/orb_sip_v2.py`, `backend/organism/engines/residual_mean_reversion.py`, `backend/organism/features/__init__.py`, `backend/organism/features/microstructure_schema.py`, `backend/organism/universe/__init__.py`, `backend/organism/universe/stocks_in_play.py` |
+| Organism | 8 | `backend/organism/engines/__init__.py`, `backend/organism/engines/eod_reversal_shadow.py`, `backend/organism/engines/orb_sip_v2.py`, `backend/organism/engines/residual_mean_reversion.py`, `backend/organism/features/__init__.py`, `backend/organism/features/microstructure_schema.py`, `backend/organism/universe/__init__.py`, `backend/organism/universe/stocks_in_play.py` |
+| Scripts | 0 | none |
+| Tests | 1 | `tests/test_phase9_research_engines.py` |
+| Docs | 2 | `docs/engineering/LIVE_AUDIT_INDEX.md`, `docs/engineering/STRATEGY_REBUILD_MASTER_ROADMAP_2026-05-09.md` |
 
 ## Live constants
 
@@ -50,4 +50,4 @@ Source: `resolved_config_snapshot.json`
 
 ## Open risks
 
-- Evidence/tooling script changed only — no backend runtime or order-path behavior changed
+- 8 organism file(s) changed — require replay verification

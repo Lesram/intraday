@@ -4,6 +4,15 @@ Date: 2026-05-09
 Branch: `codex/v13-phase2-expectancy`
 Status: active execution roadmap
 
+## Implementation Status
+
+As of the Phase 9B implementation slice, the roadmap is no longer only a plan.
+
+- Phase 9A evidence foundation is implemented: `CandidateSignal`, strategy governance, benchmark/null helpers, strategy league reporting, and `strategy_id` persistence through the current evidence warehouse.
+- Phase 9B shadow research surfaces are implemented as isolated, side-effect-free modules: `etf_intraday_momentum`, `gamma_vol_proxy`, `stocks_in_play`, `orb_sip_v2`, `residual_mean_reversion`, `eod_reversal_shadow`, and `microstructure_schema`.
+- These engines emit candidate evidence contracts only. They are not wired into live ranking, sizing, order submission, or promotion.
+- Phase 9C is still pending: forward shadow capture, outcome joins, benchmark/null comparison, replay eligibility, and any micro-paper promotion decision.
+
 ## North Star
 
 Intra should become a strategy-governed intraday research and trading platform, not a single blended signal blender. Every candidate must be born from a specific strategy, measured against benchmarks and null models, and promoted only when it proves after-cost edge.
