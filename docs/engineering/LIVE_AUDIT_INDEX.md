@@ -1,21 +1,21 @@
 # Live Audit Index
 
-Generated: 2026-05-10T17:25:59Z
+Generated: 2026-05-10T17:31:00Z
 PR: PR #6
-SHA: `8e3ba92dfc`
+SHA: `3715dce70d`
 Branch: `codex/v13-phase2-expectancy`
-Scope: **backend_logic**
+Scope: **empty**
 Change scope: `working-tree` (`HEAD+working-tree`)
 
 ## Changed files
 
 | Category | Count | Files |
 |----------|-------|-------|
-| Backend | 2 | `backend/organism/candidate_shadow_telemetry.py`, `backend/organism/live_engine.py` |
-| Organism | 2 | `backend/organism/candidate_shadow_telemetry.py`, `backend/organism/live_engine.py` |
-| Scripts | 4 | `scripts/ci/generate_audit_index.py`, `scripts/deploy/rebuild_paper.sh`, `scripts/runtime/write_runtime_snapshot.py`, `scripts/phase9_shadow_evidence.py` |
-| Tests | 3 | `tests/test_phase3_candidate_shadow_telemetry.py`, `tests/test_phase5_shadow_outcome_join.py`, `tests/test_phase9_shadow_evidence.py` |
-| Docs | 2 | `docs/engineering/LIVE_AUDIT_INDEX.md`, `docs/engineering/STRATEGY_REBUILD_MASTER_ROADMAP_2026-05-09.md` |
+| Backend | 0 | none |
+| Organism | 0 | none |
+| Scripts | 0 | none |
+| Tests | 0 | none |
+| Docs | 0 | none |
 
 ## Live constants
 
@@ -34,7 +34,7 @@ Source: `resolved_config_snapshot.json`
   "bar_boundary_entry_only": true,
   "candidate_filter_shadow_telemetry_enabled": true,
   "strategy_evidence_telemetry_enabled": true,
-  "phase9_shadow_engines_enabled": false
+  "phase9_shadow_engines_enabled": true
 }
 ```
 
@@ -53,4 +53,4 @@ Source: `resolved_config_snapshot.json`
 
 ## Open risks
 
-- 2 organism file(s) changed — require replay verification
+- No code changes in this PR — verify evidence artifacts are current
