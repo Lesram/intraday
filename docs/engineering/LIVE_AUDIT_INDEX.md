@@ -1,21 +1,21 @@
 # Live Audit Index
 
-Generated: 2026-05-09T21:29:38Z
+Generated: 2026-05-10T02:04:13Z
 PR: PR #6
-SHA: `2fd9a67b86`
+SHA: `05a56ca8c7`
 Branch: `codex/v13-phase2-expectancy`
-Scope: **backend_logic**
+Scope: **tooling/evidence_only**
 Change scope: `task` (`HEAD`)
 
 ## Changed files
 
 | Category | Count | Files |
 |----------|-------|-------|
-| Backend | 14 | `backend/organism/brain_persistence.py`, `backend/organism/candidate_shadow_telemetry.py`, `backend/organism/continuous_learner.py`, `backend/organism/evidence/__init__.py`, `backend/organism/evidence/benchmark_report.py`, `backend/organism/evidence/null_models.py`, `backend/organism/evidence/strategy_league.py`, `backend/organism/kelly_sizer.py`, `backend/organism/live_engine.py`, `backend/organism/schema/__init__.py` |
-| Organism | 14 | `backend/organism/brain_persistence.py`, `backend/organism/candidate_shadow_telemetry.py`, `backend/organism/continuous_learner.py`, `backend/organism/evidence/__init__.py`, `backend/organism/evidence/benchmark_report.py`, `backend/organism/evidence/null_models.py`, `backend/organism/evidence/strategy_league.py`, `backend/organism/kelly_sizer.py`, `backend/organism/live_engine.py`, `backend/organism/schema/__init__.py` |
-| Scripts | 0 | none |
-| Tests | 1 | `tests/test_phase9_strategy_governance.py` |
-| Docs | 4 | `docs/engineering/DEEP_RESEARCH_STRATEGY_ACTION_PLAN_2026-05-09.md`, `docs/engineering/LIVE_AUDIT_INDEX.md`, `docs/engineering/STRATEGY_AUTOPSY_2026-05-09.md`, `docs/engineering/STRATEGY_REBUILD_MASTER_ROADMAP_2026-05-09.md` |
+| Backend | 0 | none |
+| Organism | 0 | none |
+| Scripts | 1 | `scripts/phase8_evidence_warehouse.py` |
+| Tests | 1 | `tests/test_phase8_evidence_warehouse.py` |
+| Docs | 1 | `docs/engineering/LIVE_AUDIT_INDEX.md` |
 
 ## Live constants
 
@@ -50,4 +50,4 @@ Source: `resolved_config_snapshot.json`
 
 ## Open risks
 
-- 14 organism file(s) changed — require replay verification
+- Evidence/tooling script changed only — no backend runtime or order-path behavior changed
