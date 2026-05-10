@@ -128,3 +128,7 @@ def test_paper_compose_wires_phase5_shadow_telemetry_env():
         "${ORGANISM_STRATEGY_EVIDENCE_TELEMETRY_ENABLED:-false}"
     ) in src
     assert "ORGANISM_STRATEGY_EVIDENCE_TELEMETRY_PATH=" in src
+    assert (
+        "ORGANISM_PHASE9_SHADOW_ENGINES_ENABLED="
+        "${ORGANISM_PHASE9_SHADOW_ENGINES_ENABLED:-false}"
+    ) in src

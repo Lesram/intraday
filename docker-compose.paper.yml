@@ -83,6 +83,9 @@ services:
       # pre-sizing candidate for post-close research. Shadow/advisory only.
       - ORGANISM_STRATEGY_EVIDENCE_TELEMETRY_ENABLED=${ORGANISM_STRATEGY_EVIDENCE_TELEMETRY_ENABLED:-false}
       - ORGANISM_STRATEGY_EVIDENCE_TELEMETRY_PATH=${ORGANISM_STRATEGY_EVIDENCE_TELEMETRY_PATH:-organism_brain/strategy_evidence_events.jsonl}
+      # Phase 9 strategy-engine shadow capture: emits CandidateSignal evidence
+      # only. It never touches ranking, sizing, gates, orders, or promotion.
+      - ORGANISM_PHASE9_SHADOW_ENGINES_ENABLED=${ORGANISM_PHASE9_SHADOW_ENGINES_ENABLED:-false}
 
       # Observability Settings
       - OTEL_SERVICE_NAME=algotrading-api-paper

@@ -71,6 +71,12 @@ from backend.organism.decision_telemetry import (
     SymbolAlphaDetail,
     SymbolBreakoutDetail,
 )
+from backend.organism.engines import (
+    EODReversalShadowEngine,
+    ETFIntradayMomentumEngine,
+    ORBSIPV2Engine,
+    ResidualMeanReversionEngine,
+)
 from backend.organism.self_evolution import (
     EvolutionEngine,
     EvolvedParams,
@@ -318,6 +324,9 @@ STRATEGY_EVIDENCE_TELEMETRY_PATH = _env_str(
     "ORGANISM_STRATEGY_EVIDENCE_TELEMETRY_PATH",
     "organism_brain/strategy_evidence_events.jsonl",
 )
+PHASE9_SHADOW_ENGINES_ENABLED = _env_bool(
+    "ORGANISM_PHASE9_SHADOW_ENGINES_ENABLED", False,
+)
 
 # ── Dynamic intraday adjustments ────────────────────────────────
 _IS_INTRADAY = LIVE_TIMEFRAME in ("1Min", "5Min", "15Min", "1Hour")
@@ -432,6 +441,19 @@ def _should_suppress_chop_cut(
     bars_held = max(0, int((now_ts - entry_time) // bar_seconds))
     suppress = (regime == "chop") and (bars_held < chop_min_hold_bars)
     return suppress, bars_held
+
+
+def _market_return_bps(frame: pd.DataFrame | None) -> float:
+    if frame is None or len(frame) < 2 or "close" not in frame.columns:
+        return 0.0
+    try:
+        first = float(frame["close"].iloc[0])
+        latest = float(frame["close"].iloc[-1])
+    except (TypeError, ValueError):
+        return 0.0
+    if first <= 0:
+        return 0.0
+    return (latest - first) / first * 10000.0
 
 
 class OrganismLiveEngine:
@@ -669,6 +691,18 @@ class OrganismLiveEngine:
             if STRATEGY_EVIDENCE_TELEMETRY_ENABLED
             else None
         )
+        self._phase9_shadow_engines = (
+            [
+                ETFIntradayMomentumEngine(),
+                ORBSIPV2Engine(),
+                ResidualMeanReversionEngine(),
+                EODReversalShadowEngine(),
+            ]
+            if PHASE9_SHADOW_ENGINES_ENABLED
+            else []
+        )
+        self._phase9_shadow_signal_events: int = 0
+        self._phase9_last_shadow_bar: str = ""
 
         # ── Live state ──────────────────────────────────────────
         self._session_id = uuid.uuid4().hex[:8]  # unique per engine lifetime
@@ -2064,6 +2098,46 @@ class OrganismLiveEngine:
                     _evidence_err,
                 )
 
+    def _record_phase9_shadow_signals(
+        self,
+        features_by_symbol: dict[str, pd.DataFrame],
+        *,
+        regime: str,
+        now_iso: str,
+    ) -> None:
+        """Record Phase 9 strategy-engine shadow signals once per bar."""
+        if not self._phase9_shadow_engines or self._strategy_evidence_recorder is None:
+            return
+        current_bar = self._now_fn().strftime("%Y-%m-%d %H:%M")
+        if current_bar == self._phase9_last_shadow_bar:
+            return
+        self._phase9_last_shadow_bar = current_bar
+        context = {
+            "features_by_symbol": features_by_symbol,
+            "now": self._now_fn(),
+            "regime": str(regime),
+            "market_return_bps": _market_return_bps(features_by_symbol.get("SPY")),
+        }
+        signals = []
+        for engine in self._phase9_shadow_engines:
+            try:
+                signals.extend(engine.generate_signals(context))
+            except Exception as exc:
+                logger.debug("Phase 9 shadow engine %s failed: %s", engine, exc)
+        if not signals:
+            return
+        try:
+            written = self._strategy_evidence_recorder.record_signals(
+                signals,
+                tick=self._tick_count,
+                timestamp=now_iso,
+            )
+            self._strategy_evidence_events += written
+            self._phase9_shadow_signal_events += written
+            logger.info("Phase 9 shadow recorded %d strategy signals", written)
+        except Exception as exc:
+            logger.warning("Phase 9 shadow signal telemetry write failed: %s", exc)
+
     def _record_signal_activity(
         self,
         result: LiveTickResult,
@@ -2530,6 +2604,10 @@ class OrganismLiveEngine:
                             )
                 except Exception as _mr_err:
                     logger.debug("MR shadow scan err: %s", _mr_err)
+
+                self._record_phase9_shadow_signals(
+                    features_by_symbol, regime=regime, now_iso=now_iso,
+                )
 
             # 4. GET CURRENT POSITIONS from broker
             current_positions = await self._positions_service.get_all_positions()

@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Any, Iterable
 
 from backend.organism.regime import is_inverse_etf
-from backend.organism.schema.candidate_signal import infer_strategy_id
+from backend.organism.schema.candidate_signal import CandidateSignal, infer_strategy_id
 
 
 ALPHA_BREAKOUT_WATCH_REGIMES = frozenset({"chop", "trending_down"})
@@ -26,6 +26,75 @@ def _finite_float(raw: Any, default: float = 0.0) -> float:
     except (TypeError, ValueError):
         return default
     return value if math.isfinite(value) else default
+
+
+def _split_tags(raw: Any) -> list[str]:
+    if isinstance(raw, list):
+        return [str(item) for item in raw if str(item)]
+    if isinstance(raw, str) and raw.strip():
+        return [part.strip() for part in raw.split(",") if part.strip()]
+    return []
+
+
+def _merge_tags(*groups: Iterable[str]) -> list[str]:
+    tags: list[str] = []
+    seen: set[str] = set()
+    for group in groups:
+        for raw in group:
+            tag = str(raw).strip()
+            if not tag or tag in seen:
+                continue
+            seen.add(tag)
+            tags.append(tag)
+    return tags
+
+
+def _signal_tags(signal: CandidateSignal) -> list[str]:
+    variant = str(signal.features.get("variant") or "").strip()
+    tags = ["phase9_shadow", f"strategy:{signal.strategy_id}"]
+    if variant:
+        tags.append(f"variant:{variant}")
+    return tags
+
+
+def _signal_to_event(
+    signal: CandidateSignal,
+    *,
+    tick: int,
+    timestamp: str,
+) -> dict[str, Any]:
+    confidence = _finite_float(signal.confidence)
+    expected_edge_bps = _finite_float(signal.expected_edge_bps)
+    return {
+        "tick": int(tick),
+        "timestamp": str(timestamp),
+        "symbol": signal.symbol,
+        "regime": signal.regime,
+        "direction": signal.direction,
+        "side": signal.side,
+        "confidence": confidence,
+        "effective_confidence": confidence,
+        "breakout_score": _finite_float(signal.features.get("breakout_score")),
+        "predicted_return": expected_edge_bps / 10000.0 if expected_edge_bps else 0.0,
+        "ranking_score": _finite_float(signal.confidence),
+        "entry_source": signal.strategy_id,
+        "strategy_id": signal.strategy_id,
+        "matched_filters": _signal_tags(signal),
+        "live_pipeline_candidate": False,
+        "defensive_filter_reason": "phase9_shadow_only_no_order_path",
+        "signal_id": signal.signal_id,
+        "engine_version": signal.engine_version,
+        "timeframe": signal.timeframe,
+        "created_at": signal.created_at.isoformat(),
+        "intended_horizon_bars": signal.intended_horizon_bars,
+        "evidence_tier": signal.evidence_tier,
+        "shadow_only": signal.shadow_only,
+        "expected_edge_bps": signal.expected_edge_bps,
+        "risk_budget_bps": signal.risk_budget_bps,
+        "stop_price": signal.stop_price,
+        "target_price": signal.target_price,
+        "features": dict(signal.features),
+    }
 
 
 def infer_entry_source(candidate: dict[str, Any]) -> str:
@@ -117,7 +186,10 @@ def build_candidate_shadow_events(
 ) -> list[CandidateShadowEvent]:
     events: list[CandidateShadowEvent] = []
     for candidate in candidates:
-        tags = candidate_filter_tags(candidate, regime)
+        tags = _merge_tags(
+            candidate_filter_tags(candidate, regime),
+            _split_tags(candidate.get("matched_filters")),
+        )
         if not tags and not record_all_candidates:
             continue
         entry_source = infer_entry_source(candidate)
@@ -187,3 +259,19 @@ class CandidateShadowTelemetryRecorder:
             for event in events:
                 fh.write(json.dumps(event.to_dict(), sort_keys=True) + "\n")
         return len(events)
+
+    def record_signals(
+        self,
+        signals: Iterable[CandidateSignal],
+        *,
+        tick: int,
+        timestamp: str,
+    ) -> int:
+        rows = [_signal_to_event(signal, tick=tick, timestamp=timestamp) for signal in signals]
+        if not rows:
+            return 0
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        with self.path.open("a") as fh:
+            for row in rows:
+                fh.write(json.dumps(row, sort_keys=True, default=str) + "\n")
+        return len(rows)

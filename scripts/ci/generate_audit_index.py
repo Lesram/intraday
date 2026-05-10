@@ -107,6 +107,15 @@ def main() -> None:
             "drawdown_kill_pct": src.get("drawdown_kill_pct"),
             "exploration_enabled": src.get("exploration_enabled"),
             "bar_boundary_entry_only": src.get("bar_boundary_entry_only"),
+            "candidate_filter_shadow_telemetry_enabled": src.get(
+                "candidate_filter_shadow_telemetry_enabled"
+            ),
+            "strategy_evidence_telemetry_enabled": src.get(
+                "strategy_evidence_telemetry_enabled"
+            ),
+            "phase9_shadow_engines_enabled": src.get(
+                "phase9_shadow_engines_enabled"
+            ),
         }
         snapshot_label = snapshot_path.name
     else:

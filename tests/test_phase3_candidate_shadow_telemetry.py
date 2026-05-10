@@ -9,6 +9,8 @@ import json
 from pathlib import Path
 from typing import Any
 
+import pandas as pd
+
 from backend.organism.candidate_shadow_telemetry import (
     CandidateShadowTelemetryRecorder,
     build_candidate_shadow_events,
@@ -48,6 +50,24 @@ class _FakeCandidateRecorder:
             raise self.error
         return self.written
 
+    def record_signals(
+        self,
+        signals,
+        *,
+        tick: int,
+        timestamp: str,
+    ) -> int:
+        self.calls.append(
+            {
+                "signals": list(signals),
+                "tick": tick,
+                "timestamp": timestamp,
+            }
+        )
+        if self.error is not None:
+            raise self.error
+        return self.written
+
 
 def _bare_live_engine():
     from backend.organism.live_engine import OrganismLiveEngine
@@ -58,6 +78,9 @@ def _bare_live_engine():
     engine._strategy_evidence_events = 20
     engine._candidate_filter_shadow_recorder = None
     engine._strategy_evidence_recorder = None
+    engine._phase9_shadow_engines = []
+    engine._phase9_shadow_signal_events = 0
+    engine._phase9_last_shadow_bar = ""
     return engine
 
 
@@ -258,6 +281,46 @@ def test_phase6_strategy_evidence_recorder_writes_untagged_candidates(tmp_path: 
     assert rows[0]["matched_filters"] == []
 
 
+def test_phase9_signal_recorder_writes_candidate_signal_contract(tmp_path: Path):
+    from backend.organism.schema import CandidateSignal
+
+    path = tmp_path / "strategy_evidence_events.jsonl"
+    recorder = CandidateShadowTelemetryRecorder(path, record_all_candidates=True)
+    signal = CandidateSignal(
+        signal_id="sig-1",
+        strategy_id="etf_intraday_momentum",
+        engine_version="etf_intraday_momentum.v1",
+        symbol="qqq",
+        side="long",
+        timeframe="1Min",
+        created_at="2026-05-08T19:25:00Z",
+        intended_horizon_bars=30,
+        regime="high_vol",
+        evidence_tier=0,
+        shadow_only=True,
+        expected_edge_bps=4.0,
+        confidence=0.62,
+        risk_budget_bps=0.0,
+        features={"variant": "mim_a"},
+    )
+
+    assert recorder.record_signals([signal], tick=7, timestamp="2026-05-08T19:25:00Z") == 1
+    row = json.loads(path.read_text().splitlines()[0])
+
+    assert row["signal_id"] == "sig-1"
+    assert row["strategy_id"] == "etf_intraday_momentum"
+    assert row["created_at"] == "2026-05-08T19:25:00+00:00"
+    assert row["expected_edge_bps"] == 4.0
+    assert row["live_pipeline_candidate"] is False
+    assert row["shadow_only"] is True
+    assert row["risk_budget_bps"] == 0.0
+    assert row["matched_filters"] == [
+        "phase9_shadow",
+        "strategy:etf_intraday_momentum",
+        "variant:mim_a",
+    ]
+
+
 def test_live_engine_candidate_evidence_fanout_records_without_mutating_candidates():
     engine = _bare_live_engine()
     shadow = _FakeCandidateRecorder(written=1)
@@ -300,6 +363,55 @@ def test_live_engine_candidate_evidence_fanout_records_without_mutating_candidat
     assert evidence.calls == shadow.calls
     assert engine._candidate_filter_shadow_events == 11
     assert engine._strategy_evidence_events == 22
+
+
+def test_live_engine_phase9_shadow_signals_record_once_per_bar():
+    from backend.organism.schema import CandidateSignal
+
+    class _FakePhase9Engine:
+        def generate_signals(self, context):
+            assert "features_by_symbol" in context
+            return [
+                CandidateSignal(
+                    signal_id="sig-1",
+                    strategy_id="etf_intraday_momentum",
+                    engine_version="v1",
+                    symbol="QQQ",
+                    side="long",
+                    timeframe="1Min",
+                    created_at="2026-05-08T19:25:00Z",
+                    intended_horizon_bars=30,
+                    regime=context["regime"],
+                    evidence_tier=0,
+                    shadow_only=True,
+                    confidence=0.6,
+                    risk_budget_bps=0.0,
+                    features={},
+                )
+            ]
+
+    engine = _bare_live_engine()
+    recorder = _FakeCandidateRecorder(written=1)
+    engine._strategy_evidence_recorder = recorder
+    engine._phase9_shadow_engines = [_FakePhase9Engine()]
+    engine._now_fn = lambda: datetime(2026, 5, 8, 19, 25, tzinfo=UTC)
+    frame = pd.DataFrame({"close": [100.0, 101.0]})
+
+    engine._record_phase9_shadow_signals(
+        {"SPY": frame, "QQQ": frame},
+        regime="high_vol",
+        now_iso="2026-05-08T19:25:00Z",
+    )
+    engine._record_phase9_shadow_signals(
+        {"SPY": frame, "QQQ": frame},
+        regime="high_vol",
+        now_iso="2026-05-08T19:25:10Z",
+    )
+
+    assert len(recorder.calls) == 1
+    assert recorder.calls[0]["tick"] == 42
+    assert engine._strategy_evidence_events == 21
+    assert engine._phase9_shadow_signal_events == 1
 
 
 def test_live_engine_candidate_evidence_fanout_is_noop_when_disabled():
@@ -507,3 +619,4 @@ def test_runtime_snapshot_includes_shadow_telemetry_switches():
         snapshot["strategy_evidence_telemetry_path"]
         == "organism_brain/strategy_evidence_events.jsonl"
     )
+    assert snapshot["phase9_shadow_engines_enabled"] is False

@@ -1,8 +1,8 @@
 # Live Audit Index
 
-Generated: 2026-05-10T02:21:54Z
+Generated: 2026-05-10T17:25:59Z
 PR: PR #6
-SHA: `648b39d2d3`
+SHA: `8e3ba92dfc`
 Branch: `codex/v13-phase2-expectancy`
 Scope: **backend_logic**
 Change scope: `working-tree` (`HEAD+working-tree`)
@@ -11,10 +11,10 @@ Change scope: `working-tree` (`HEAD+working-tree`)
 
 | Category | Count | Files |
 |----------|-------|-------|
-| Backend | 8 | `backend/organism/engines/__init__.py`, `backend/organism/engines/eod_reversal_shadow.py`, `backend/organism/engines/orb_sip_v2.py`, `backend/organism/engines/residual_mean_reversion.py`, `backend/organism/features/__init__.py`, `backend/organism/features/microstructure_schema.py`, `backend/organism/universe/__init__.py`, `backend/organism/universe/stocks_in_play.py` |
-| Organism | 8 | `backend/organism/engines/__init__.py`, `backend/organism/engines/eod_reversal_shadow.py`, `backend/organism/engines/orb_sip_v2.py`, `backend/organism/engines/residual_mean_reversion.py`, `backend/organism/features/__init__.py`, `backend/organism/features/microstructure_schema.py`, `backend/organism/universe/__init__.py`, `backend/organism/universe/stocks_in_play.py` |
-| Scripts | 0 | none |
-| Tests | 1 | `tests/test_phase9_research_engines.py` |
+| Backend | 2 | `backend/organism/candidate_shadow_telemetry.py`, `backend/organism/live_engine.py` |
+| Organism | 2 | `backend/organism/candidate_shadow_telemetry.py`, `backend/organism/live_engine.py` |
+| Scripts | 4 | `scripts/ci/generate_audit_index.py`, `scripts/deploy/rebuild_paper.sh`, `scripts/runtime/write_runtime_snapshot.py`, `scripts/phase9_shadow_evidence.py` |
+| Tests | 3 | `tests/test_phase3_candidate_shadow_telemetry.py`, `tests/test_phase5_shadow_outcome_join.py`, `tests/test_phase9_shadow_evidence.py` |
 | Docs | 2 | `docs/engineering/LIVE_AUDIT_INDEX.md`, `docs/engineering/STRATEGY_REBUILD_MASTER_ROADMAP_2026-05-09.md` |
 
 ## Live constants
@@ -31,7 +31,10 @@ Source: `resolved_config_snapshot.json`
   "horizon_timeout_bars": 18,
   "drawdown_kill_pct": 0.2,
   "exploration_enabled": false,
-  "bar_boundary_entry_only": true
+  "bar_boundary_entry_only": true,
+  "candidate_filter_shadow_telemetry_enabled": true,
+  "strategy_evidence_telemetry_enabled": true,
+  "phase9_shadow_engines_enabled": false
 }
 ```
 
@@ -50,4 +53,4 @@ Source: `resolved_config_snapshot.json`
 
 ## Open risks
 
-- 8 organism file(s) changed — require replay verification
+- 2 organism file(s) changed — require replay verification

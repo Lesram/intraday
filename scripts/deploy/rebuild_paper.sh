@@ -26,6 +26,7 @@ export VERSION="${VERSION:-1.0.0}"
 # Phase 7 operating default unless the caller explicitly overrides it.
 export ORGANISM_CANDIDATE_FILTER_SHADOW_TELEMETRY_ENABLED="${ORGANISM_CANDIDATE_FILTER_SHADOW_TELEMETRY_ENABLED:-true}"
 export ORGANISM_STRATEGY_EVIDENCE_TELEMETRY_ENABLED="${ORGANISM_STRATEGY_EVIDENCE_TELEMETRY_ENABLED:-true}"
+export ORGANISM_PHASE9_SHADOW_ENGINES_ENABLED="${ORGANISM_PHASE9_SHADOW_ENGINES_ENABLED:-true}"
 
 echo "─────────────────────────────────────────────────────────"
 echo "V12 W82 paper rebuild"
@@ -34,6 +35,7 @@ echo "  BUILD_DATE = $BUILD_DATE"
 echo "  VERSION    = $VERSION"
 echo "  PHASE5_TELEMETRY = $ORGANISM_CANDIDATE_FILTER_SHADOW_TELEMETRY_ENABLED"
 echo "  PHASE6_TELEMETRY = $ORGANISM_STRATEGY_EVIDENCE_TELEMETRY_ENABLED"
+echo "  PHASE9_SHADOW_ENGINES = $ORGANISM_PHASE9_SHADOW_ENGINES_ENABLED"
 echo "─────────────────────────────────────────────────────────"
 
 docker-compose -f docker-compose.paper.yml build api
@@ -70,6 +72,7 @@ docker exec intra-api-1 sh -c 'echo "  GIT_SHA=$GIT_SHA"; echo "  BUILD_TIME=$BU
 
 echo "Container telemetry switches?"
 docker exec intra-api-1 sh -c 'echo "  ORGANISM_CANDIDATE_FILTER_SHADOW_TELEMETRY_ENABLED=$ORGANISM_CANDIDATE_FILTER_SHADOW_TELEMETRY_ENABLED"; echo "  ORGANISM_STRATEGY_EVIDENCE_TELEMETRY_ENABLED=$ORGANISM_STRATEGY_EVIDENCE_TELEMETRY_ENABLED"'
+docker exec intra-api-1 sh -c 'echo "  ORGANISM_PHASE9_SHADOW_ENGINES_ENABLED=$ORGANISM_PHASE9_SHADOW_ENGINES_ENABLED"'
 
 echo "─────────────────────────────────────────────────────────"
 echo "Rebuild complete.  V12 W82 deploy endpoint now active."

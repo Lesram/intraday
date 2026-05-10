@@ -58,6 +58,7 @@ def _build_defaults_snapshot() -> dict:
             MAX_OPEN_POSITIONS,
             MIN_BARS,
             PREDICTION_HORIZON,
+            PHASE9_SHADOW_ENGINES_ENABLED,
             RETRAIN_INTERVAL,
             STRATEGY_EVIDENCE_TELEMETRY_ENABLED,
             STRATEGY_EVIDENCE_TELEMETRY_PATH,
@@ -103,6 +104,7 @@ def _build_defaults_snapshot() -> dict:
             "strategy_evidence_telemetry_path": (
                 STRATEGY_EVIDENCE_TELEMETRY_PATH
             ),
+            "phase9_shadow_engines_enabled": PHASE9_SHADOW_ENGINES_ENABLED,
             "streaming_enabled": USE_STREAMING,
             "retrain_interval": RETRAIN_INTERVAL,
 
@@ -185,6 +187,13 @@ def _build_defaults_snapshot() -> dict:
                 "ORGANISM_STRATEGY_EVIDENCE_TELEMETRY_PATH",
                 "organism_brain/strategy_evidence_events.jsonl",
             ),
+            "phase9_shadow_engines_enabled": (
+                os.getenv(
+                    "ORGANISM_PHASE9_SHADOW_ENGINES_ENABLED",
+                    "false",
+                ).lower()
+                in ("1", "true", "yes")
+            ),
             "learning_mode_threshold_trades": 200,
             "evolution_freeze_until_trades": 300,
             "production_promotion_gate": {
@@ -234,6 +243,15 @@ def _build_resolved_config_snapshot() -> dict:
                 "ORGANISM_CANDIDATE_FILTER_SHADOW_TELEMETRY_PATH": env_map.get(
                     "ORGANISM_CANDIDATE_FILTER_SHADOW_TELEMETRY_PATH"
                 ),
+                "ORGANISM_STRATEGY_EVIDENCE_TELEMETRY_ENABLED": env_map.get(
+                    "ORGANISM_STRATEGY_EVIDENCE_TELEMETRY_ENABLED"
+                ),
+                "ORGANISM_STRATEGY_EVIDENCE_TELEMETRY_PATH": env_map.get(
+                    "ORGANISM_STRATEGY_EVIDENCE_TELEMETRY_PATH"
+                ),
+                "ORGANISM_PHASE9_SHADOW_ENGINES_ENABLED": env_map.get(
+                    "ORGANISM_PHASE9_SHADOW_ENGINES_ENABLED"
+                ),
                 "ORGANISM_ALPHA_TOP_N": env_map.get("ORGANISM_ALPHA_TOP_N"),
                 "ORGANISM_LIVE_TIMEFRAME": env_map.get("ORGANISM_LIVE_TIMEFRAME"),
                 "APP_ENVIRONMENT": env_map.get("APP_ENVIRONMENT"),
@@ -263,6 +281,15 @@ def _build_resolved_config_snapshot() -> dict:
             ),
             "ORGANISM_CANDIDATE_FILTER_SHADOW_TELEMETRY_PATH": env_map.get(
                 "ORGANISM_CANDIDATE_FILTER_SHADOW_TELEMETRY_PATH"
+            ),
+            "ORGANISM_STRATEGY_EVIDENCE_TELEMETRY_ENABLED": env_map.get(
+                "ORGANISM_STRATEGY_EVIDENCE_TELEMETRY_ENABLED"
+            ),
+            "ORGANISM_STRATEGY_EVIDENCE_TELEMETRY_PATH": env_map.get(
+                "ORGANISM_STRATEGY_EVIDENCE_TELEMETRY_PATH"
+            ),
+            "ORGANISM_PHASE9_SHADOW_ENGINES_ENABLED": env_map.get(
+                "ORGANISM_PHASE9_SHADOW_ENGINES_ENABLED"
             ),
             "ORGANISM_ALPHA_TOP_N": env_map.get("ORGANISM_ALPHA_TOP_N"),
         }
@@ -374,6 +401,11 @@ def _build_resolved_config_snapshot() -> dict:
             "strategy_evidence_telemetry_enabled",
         ),
         "strategy_evidence_telemetry_path": evidence_path_val,
+        "phase9_shadow_engines_enabled": _resolve_bool(
+            "ORGANISM_PHASE9_SHADOW_ENGINES_ENABLED",
+            "phase9_shadow_engines_enabled",
+            "phase9_shadow_engines_enabled",
+        ),
         "timeframe": timeframe_val,
         "timeframe_source": timeframe_source,
         "learning_mode_threshold_trades": defaults.get("learning_mode_threshold_trades"),
@@ -555,6 +587,9 @@ def _build_live_process_snapshot() -> dict:
                 "ORGANISM_MAX_DAILY_LOSS": env_map.get("ORGANISM_MAX_DAILY_LOSS"),
                 "ORGANISM_MAX_NOTIONAL": env_map.get("ORGANISM_MAX_NOTIONAL"),
                 "ORGANISM_TICK_INTERVAL_SECONDS": env_map.get("ORGANISM_TICK_INTERVAL_SECONDS"),
+                "ORGANISM_PHASE9_SHADOW_ENGINES_ENABLED": env_map.get(
+                    "ORGANISM_PHASE9_SHADOW_ENGINES_ENABLED"
+                ),
             }
 
         # Get container start time
