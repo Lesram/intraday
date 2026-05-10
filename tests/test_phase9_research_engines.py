@@ -67,7 +67,11 @@ def test_orb_sip_v2_emits_long_shadow_signal_after_vwap_breakout() -> None:
     from backend.organism.engines.orb_sip_v2 import ORBSIPV2Engine
 
     bars = _session_bars(symbol_move=0.08, volume=200_000)
-    bars.loc[bars.index[-5]:, "volume"] = 400_000
+    now = "2026-05-08T14:05:00+00:00"
+    now_ts = pd.Timestamp(now)
+    ts = pd.to_datetime(bars["timestamp"], utc=True)
+    known_idx = bars.index[ts <= now_ts]
+    bars.loc[known_idx[-5:], "volume"] = 400_000
     engine = ORBSIPV2Engine()
     signals = engine.generate_signals({
         "features_by_symbol": {"AMD": bars},
@@ -81,7 +85,7 @@ def test_orb_sip_v2_emits_long_shadow_signal_after_vwap_breakout() -> None:
         },
         "sector_returns_bps": {"Technology": 80.0},
         "market_return_bps": 15.0,
-        "now": "2026-05-08T14:05:00+00:00",
+        "now": now,
         "regime": "event_vol",
     })
 
@@ -92,6 +96,37 @@ def test_orb_sip_v2_emits_long_shadow_signal_after_vwap_breakout() -> None:
     assert signals[0].features["live_enabled"] is False
 
 
+def test_orb_sip_v2_ignores_future_breakout_bars_after_now() -> None:
+    from backend.organism.engines.orb_sip_v2 import ORBSIPV2Engine
+
+    now = "2026-05-08T14:05:00+00:00"
+    now_ts = pd.Timestamp(now)
+    bars = _session_bars(symbol_move=0.0, volume=200_000)
+    ts = pd.to_datetime(bars["timestamp"], utc=True)
+    future = ts > now_ts
+    bars.loc[future, ["open", "high", "low", "close"]] = 130.0
+    bars.loc[future, "volume"] = 600_000
+    engine = ORBSIPV2Engine()
+
+    signals = engine.generate_signals({
+        "features_by_symbol": {"AMD": bars},
+        "metadata_by_symbol": {
+            "AMD": {
+                "avg_volume_14d": 10_000_000,
+                "avg_first_window_volume": 60_000,
+                "spread_bps": 3.0,
+                "earnings_or_news_score": 0.8,
+            },
+        },
+        "sector_returns_bps": {"Technology": 80.0},
+        "market_return_bps": 15.0,
+        "now": now,
+        "regime": "event_vol",
+    })
+
+    assert signals == []
+
+
 def test_residual_mean_reversion_emits_only_in_chop_for_residual_laggard() -> None:
     from backend.organism.engines.residual_mean_reversion import ResidualMeanReversionEngine
 
@@ -100,7 +135,9 @@ def test_residual_mean_reversion_emits_only_in_chop_for_residual_laggard() -> No
     qqq = _session_bars(symbol_move=0.012, base=400.0, volume=200_000)
     xlk = _session_bars(symbol_move=0.011, base=250.0, volume=200_000)
     amd = _session_bars(symbol_move=0.011, base=120.0, volume=200_000)
-    amd.loc[amd.index[-1], "close"] = float(amd["close"].iloc[-1]) * 0.98
+    ts = pd.to_datetime(amd["timestamp"], utc=True)
+    known_idx = amd.index[ts <= pd.Timestamp(now)]
+    amd.loc[known_idx[-1], "close"] = float(amd.loc[known_idx[-1], "close"]) * 0.98
     engine = ResidualMeanReversionEngine(universe=("AMD",))
 
     assert engine.generate_signals({
@@ -122,6 +159,28 @@ def test_residual_mean_reversion_emits_only_in_chop_for_residual_laggard() -> No
     assert signals[0].features["residual_z"] < 0
 
 
+def test_residual_mean_reversion_ignores_future_residual_shock() -> None:
+    from backend.organism.engines.residual_mean_reversion import ResidualMeanReversionEngine
+
+    now = "2026-05-08T17:00:00+00:00"
+    spy = _session_bars(symbol_move=0.01, base=500.0, volume=200_000)
+    qqq = _session_bars(symbol_move=0.012, base=400.0, volume=200_000)
+    xlk = _session_bars(symbol_move=0.011, base=250.0, volume=200_000)
+    amd = _session_bars(symbol_move=0.011, base=120.0, volume=200_000)
+    ts = pd.to_datetime(amd["timestamp"], utc=True)
+    future = ts > pd.Timestamp(now)
+    amd.loc[future, "close"] = amd.loc[future, "close"].astype(float) * 0.95
+    engine = ResidualMeanReversionEngine(universe=("AMD",))
+
+    signals = engine.generate_signals({
+        "features_by_symbol": {"AMD": amd, "SPY": spy, "QQQ": qqq, "XLK": xlk},
+        "now": now,
+        "regime": "chop",
+    })
+
+    assert signals == []
+
+
 def test_eod_reversal_emits_long_shadow_for_late_day_loser_reversal() -> None:
     from backend.organism.engines.eod_reversal_shadow import EODReversalShadowEngine
 
@@ -141,6 +200,27 @@ def test_eod_reversal_emits_long_shadow_for_late_day_loser_reversal() -> None:
     assert signals[0].side == "long"
     assert signals[0].shadow_only is True
     assert signals[0].features["live_enabled"] is False
+
+
+def test_eod_reversal_ignores_future_reversal_bars_after_now() -> None:
+    from backend.organism.engines.eod_reversal_shadow import EODReversalShadowEngine
+
+    now = "2026-05-08T19:35:00+00:00"
+    bars = _session_bars(symbol_move=-0.04, base=100.0, volume=80_000, periods=420)
+    ts = pd.to_datetime(bars["timestamp"], utc=True)
+    future = ts > pd.Timestamp(now)
+    bars.loc[future, "volume"] = 250_000
+    future_idx = bars.index[future]
+    bars.loc[future_idx[-1], "close"] = float(bars.loc[future_idx[-2], "close"]) + 0.35
+    engine = EODReversalShadowEngine(universe=("AAPL",))
+
+    signals = engine.generate_signals({
+        "features_by_symbol": {"AAPL": bars},
+        "now": now,
+        "regime": "chop",
+    })
+
+    assert signals == []
 
 
 def test_microstructure_schema_validates_top_of_book_contract() -> None:

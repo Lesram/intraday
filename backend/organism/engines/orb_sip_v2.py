@@ -117,7 +117,7 @@ class ORBSIPV2Engine:
         if ts.tzinfo is None:
             ts = ts.tz_localize("UTC")
         et = ts.tz_convert("America/New_York").time()
-        return self.config.entry_start_et <= et <= self.config.entry_end_et
+        return bool(self.config.entry_start_et <= et <= self.config.entry_end_et)
 
 
 def _orb_setup(
@@ -173,12 +173,14 @@ def _prepare_bars(bars: pd.DataFrame | None) -> pd.DataFrame | None:
 
 
 def _session_bars(df: pd.DataFrame, now: Any) -> pd.DataFrame:
-    ts_et = pd.to_datetime(df["_ts"], utc=True).dt.tz_convert("America/New_York")
+    ts_utc = pd.to_datetime(df["_ts"], utc=True)
+    ts_et = ts_utc.dt.tz_convert("America/New_York")
     now_ts = pd.Timestamp(now)
     if now_ts.tzinfo is None:
         now_ts = now_ts.tz_localize("UTC")
     session_date = now_ts.tz_convert("America/New_York").date()
-    return df[ts_et.dt.date == session_date].reset_index(drop=True)
+    mask = (ts_et.dt.date == session_date) & (ts_utc <= now_ts)
+    return df[mask].reset_index(drop=True)
 
 
 def _vwap(session: pd.DataFrame) -> float:

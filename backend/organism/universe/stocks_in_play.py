@@ -197,12 +197,14 @@ def _prepare_bars(bars: pd.DataFrame | None) -> pd.DataFrame | None:
 
 
 def _session_bars(df: pd.DataFrame, now: Any) -> pd.DataFrame:
-    ts_et = pd.to_datetime(df["_ts"], utc=True).dt.tz_convert("America/New_York")
+    ts_utc = pd.to_datetime(df["_ts"], utc=True)
+    ts_et = ts_utc.dt.tz_convert("America/New_York")
     now_ts = pd.Timestamp(now)
     if now_ts.tzinfo is None:
         now_ts = now_ts.tz_localize("UTC")
     session_date = now_ts.tz_convert("America/New_York").date()
-    return df[ts_et.dt.date == session_date].reset_index(drop=True)
+    mask = (ts_et.dt.date == session_date) & (ts_utc <= now_ts)
+    return df[mask].reset_index(drop=True)
 
 
 def _previous_close(df: pd.DataFrame, session: pd.DataFrame) -> float | None:

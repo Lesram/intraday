@@ -64,7 +64,7 @@ class ResidualMeanReversionEngine:
         for symbol in symbols:
             if symbol in self.config.exclude_symbols:
                 continue
-            residual = _residual_state(symbol, features_by_symbol, self.config.lookback_bars)
+            residual = _residual_state(symbol, features_by_symbol, self.config.lookback_bars, now)
             if residual is None:
                 continue
             residual_z = residual["residual_z"]
@@ -111,13 +111,14 @@ def _residual_state(
     symbol: str,
     features_by_symbol: dict[str, pd.DataFrame],
     lookback_bars: int,
+    now: Any,
 ) -> dict[str, Any] | None:
-    stock_returns = _returns(features_by_symbol.get(symbol), lookback_bars)
-    spy_returns = _returns(features_by_symbol.get("SPY"), lookback_bars)
-    qqq_returns = _returns(features_by_symbol.get("QQQ"), lookback_bars)
+    stock_returns = _returns(features_by_symbol.get(symbol), lookback_bars, now)
+    spy_returns = _returns(features_by_symbol.get("SPY"), lookback_bars, now)
+    qqq_returns = _returns(features_by_symbol.get("QQQ"), lookback_bars, now)
     sector = get_sector(symbol)
     sector_etf = SECTOR_ETF_MAP.get(sector, "SPY")
-    sector_returns = _returns(features_by_symbol.get(sector_etf), lookback_bars)
+    sector_returns = _returns(features_by_symbol.get(sector_etf), lookback_bars, now)
     if stock_returns is None or spy_returns is None or qqq_returns is None:
         return None
     sector_series_source = sector_returns if sector_returns is not None else spy_returns
@@ -153,7 +154,11 @@ def _residual_state(
     }
 
 
-def _returns(bars: pd.DataFrame | None, lookback_bars: int) -> pd.Series | None:
+def _returns(
+    bars: pd.DataFrame | None,
+    lookback_bars: int,
+    now: Any,
+) -> pd.Series | None:
     if bars is None or len(bars) < 5 or "close" not in bars.columns:
         return None
     df = bars.copy()
@@ -167,6 +172,10 @@ def _returns(bars: pd.DataFrame | None, lookback_bars: int) -> pd.Series | None:
         df = df.assign(_ts=ts.values).sort_values("_ts")
     else:
         return None
+    now_ts = pd.Timestamp(now)
+    if now_ts.tzinfo is None:
+        now_ts = now_ts.tz_localize("UTC")
+    df = df[pd.to_datetime(df["_ts"], utc=True) <= now_ts]
     series = df.set_index("_ts")["close"].astype(float).pct_change().dropna().tail(lookback_bars)
     return series if len(series) >= min(30, lookback_bars) else None
 

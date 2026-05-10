@@ -58,6 +58,9 @@ class GammaVolProxy:
         prepared = _prepare_bars(bars)
         if prepared is None or len(prepared) < 70:
             return None
+        known = _known_bars(prepared, now)
+        if len(known) < 70:
+            return None
         session = _session_bars(prepared, now)
         if len(session) < 70:
             return None
@@ -69,20 +72,20 @@ class GammaVolProxy:
             return None
 
         current_vol = float(returns.tail(30).std(ddof=0) or 0.0)
-        hist_returns = prepared["close"].astype(float).pct_change().dropna().tail(self.lookback_bars)
+        hist_returns = known["close"].astype(float).pct_change().dropna().tail(self.lookback_bars)
         hist_vol = hist_returns.rolling(30).std(ddof=0).dropna()
         realized_vol_z = _zscore(current_vol, hist_vol.tolist())
 
         current_volume = float(volume.tail(30).mean()) if len(volume) >= 30 else 0.0
         hist_volume = (
-            prepared["volume"].astype(float).rolling(30).mean().dropna().tail(self.lookback_bars)
-            if "volume" in prepared.columns
+            known["volume"].astype(float).rolling(30).mean().dropna().tail(self.lookback_bars)
+            if "volume" in known.columns
             else pd.Series(dtype=float)
         )
         volume_z = _zscore(current_volume, hist_volume.tolist())
 
         first_open = float(session["open"].iloc[0])
-        prev_close = _previous_close(prepared, session)
+        prev_close = _previous_close(known, session)
         first_hour_close = float(session["close"].iloc[min(len(session) - 1, 59)])
         latest_close = float(session["close"].iloc[-1])
         if first_open <= 0 or prev_close is None or prev_close <= 0:
@@ -142,16 +145,28 @@ def _prepare_bars(bars: pd.DataFrame | None) -> pd.DataFrame | None:
     return df.reset_index(drop=True)
 
 
+def _known_bars(df: pd.DataFrame, now: Any | None = None) -> pd.DataFrame:
+    if now is None:
+        return df
+    now_ts = pd.Timestamp(now)
+    if now_ts.tzinfo is None:
+        now_ts = now_ts.tz_localize("UTC")
+    ts_utc = pd.to_datetime(df["_ts"], utc=True)
+    return df[ts_utc <= now_ts].reset_index(drop=True)
+
+
 def _session_bars(df: pd.DataFrame, now: Any | None = None) -> pd.DataFrame:
-    ts_et = pd.to_datetime(df["_ts"], utc=True).dt.tz_convert("America/New_York")
+    ts_utc = pd.to_datetime(df["_ts"], utc=True)
+    ts_et = ts_utc.dt.tz_convert("America/New_York")
     if now is None:
         session_date = ts_et.iloc[-1].date()
+        mask = ts_et.dt.date == session_date
     else:
         now_ts = pd.Timestamp(now)
         if now_ts.tzinfo is None:
             now_ts = now_ts.tz_localize("UTC")
         session_date = now_ts.tz_convert("America/New_York").date()
-    mask = ts_et.dt.date == session_date
+        mask = (ts_et.dt.date == session_date) & (ts_utc <= now_ts)
     return df[mask].reset_index(drop=True)
 
 

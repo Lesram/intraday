@@ -443,9 +443,25 @@ def _should_suppress_chop_cut(
     return suppress, bars_held
 
 
-def _market_return_bps(frame: pd.DataFrame | None) -> float:
+def _market_return_bps(frame: pd.DataFrame | None, now: Any | None = None) -> float:
     if frame is None or len(frame) < 2 or "close" not in frame.columns:
         return 0.0
+    if now is not None and "timestamp" in frame.columns:
+        now_ts = pd.Timestamp(now)
+        if now_ts.tzinfo is None:
+            now_ts = now_ts.tz_localize("UTC")
+        ts = pd.to_datetime(frame["timestamp"], utc=True, errors="coerce")
+        frame = frame[ts <= now_ts]
+        if len(frame) < 2:
+            return 0.0
+    elif now is not None and frame.index.dtype.kind == "M":
+        now_ts = pd.Timestamp(now)
+        if now_ts.tzinfo is None:
+            now_ts = now_ts.tz_localize("UTC")
+        ts = pd.to_datetime(pd.Series(frame.index), utc=True, errors="coerce")
+        frame = frame[(ts <= now_ts).to_numpy()]
+        if len(frame) < 2:
+            return 0.0
     try:
         first = float(frame["close"].iloc[0])
         latest = float(frame["close"].iloc[-1])
@@ -2108,15 +2124,16 @@ class OrganismLiveEngine:
         """Record Phase 9 strategy-engine shadow signals once per bar."""
         if not self._phase9_shadow_engines or self._strategy_evidence_recorder is None:
             return
-        current_bar = self._now_fn().strftime("%Y-%m-%d %H:%M")
+        shadow_now = self._now_fn()
+        current_bar = shadow_now.strftime("%Y-%m-%d %H:%M")
         if current_bar == self._phase9_last_shadow_bar:
             return
         self._phase9_last_shadow_bar = current_bar
         context = {
             "features_by_symbol": features_by_symbol,
-            "now": self._now_fn(),
+            "now": shadow_now,
             "regime": str(regime),
-            "market_return_bps": _market_return_bps(features_by_symbol.get("SPY")),
+            "market_return_bps": _market_return_bps(features_by_symbol.get("SPY"), shadow_now),
         }
         signals = []
         for engine in self._phase9_shadow_engines:

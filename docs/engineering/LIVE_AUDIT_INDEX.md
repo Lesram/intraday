@@ -1,8 +1,8 @@
 # Live Audit Index
 
-Generated: 2026-05-10T22:27:42Z
+Generated: 2026-05-10T23:36:32Z
 PR: PR #6
-SHA: `e8a49e6b48`
+SHA: `36c2452120`
 Branch: `codex/v13-phase2-expectancy`
 Scope: **backend_logic**
 Change scope: `working-tree` (`HEAD+working-tree`)
@@ -11,12 +11,12 @@ Change scope: `working-tree` (`HEAD+working-tree`)
 
 | Category | Count | Files |
 |----------|-------|-------|
-| Backend | 4 | `backend/organism/candidate_shadow_telemetry.py`, `backend/organism/evidence/strategy_league.py`, `backend/organism/schema/__init__.py`, `backend/organism/schema/candidate_signal.py` |
-| Organism | 4 | `backend/organism/candidate_shadow_telemetry.py`, `backend/organism/evidence/strategy_league.py`, `backend/organism/schema/__init__.py`, `backend/organism/schema/candidate_signal.py` |
-| Scripts | 1 | `scripts/phase9_shadow_evidence.py` |
+| Backend | 7 | `backend/organism/engines/eod_reversal_shadow.py`, `backend/organism/engines/etf_intraday_momentum.py`, `backend/organism/engines/gamma_vol_proxy.py`, `backend/organism/engines/orb_sip_v2.py`, `backend/organism/engines/residual_mean_reversion.py`, `backend/organism/live_engine.py`, `backend/organism/universe/stocks_in_play.py` |
+| Organism | 7 | `backend/organism/engines/eod_reversal_shadow.py`, `backend/organism/engines/etf_intraday_momentum.py`, `backend/organism/engines/gamma_vol_proxy.py`, `backend/organism/engines/orb_sip_v2.py`, `backend/organism/engines/residual_mean_reversion.py`, `backend/organism/live_engine.py`, `backend/organism/universe/stocks_in_play.py` |
+| Scripts | 0 | none |
 | CI | 0 | none |
-| Tests | 2 | `tests/test_phase3_candidate_shadow_telemetry.py`, `tests/test_phase9_strategy_governance.py` |
-| Docs | 1 | `docs/engineering/PRE9D_DEEP_AUDIT_2026-05-10.md` |
+| Tests | 2 | `tests/test_phase9_etf_intraday_momentum.py`, `tests/test_phase9_research_engines.py` |
+| Docs | 1 | `docs/engineering/PRE9D_DEEP_DEEP_AUDIT_2026-05-10.md` |
 
 ## Live constants
 
@@ -54,4 +54,4 @@ Source: `resolved_config_snapshot.json`
 
 ## Open risks
 
-- 4 organism file(s) changed — require replay verification
+- 7 organism file(s) changed — require replay verification
