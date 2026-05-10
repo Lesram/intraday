@@ -44,7 +44,7 @@ def classify_pr_scope(changed: list[str]) -> str:
         for p in changed
     )
     has_evidence_tooling = any(
-        p.startswith(("scripts/", "artifacts/"))
+        p.startswith(("scripts/", "artifacts/", ".github/"))
         for p in changed
     )
 
@@ -82,6 +82,7 @@ def main() -> None:
     organism_changed = [p for p in all_changed if p.startswith("backend/organism/")]
     docs_changed = [p for p in all_changed if p.startswith("docs/")]
     scripts_changed = [p for p in all_changed if p.startswith("scripts/")]
+    ci_changed = [p for p in all_changed if p.startswith(".github/")]
 
     # PR scope classification
     scope = classify_pr_scope(all_changed)
@@ -193,6 +194,7 @@ def main() -> None:
         f"| Backend | {len(backend_changed)} | {', '.join(f'`{p}`' for p in backend_changed[:10]) or 'none'} |",
         f"| Organism | {len(organism_changed)} | {', '.join(f'`{p}`' for p in organism_changed[:10]) or 'none'} |",
         f"| Scripts | {len(scripts_changed)} | {', '.join(f'`{p}`' for p in scripts_changed[:10]) or 'none'} |",
+        f"| CI | {len(ci_changed)} | {', '.join(f'`{p}`' for p in ci_changed[:10]) or 'none'} |",
         f"| Tests | {len(tests_changed)} | {', '.join(f'`{p}`' for p in tests_changed[:10]) or 'none'} |",
         f"| Docs | {len(docs_changed)} | {', '.join(f'`{p}`' for p in docs_changed[:10]) or 'none'} |",
         "",

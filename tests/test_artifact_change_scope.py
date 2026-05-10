@@ -133,6 +133,7 @@ def test_audit_index_classifies_ci_scripts_as_tooling_evidence():
     audit_index = _load_audit_index()
 
     scope = audit_index.classify_pr_scope([
+        ".github/workflows/pr-verify.yml",
         "scripts/ci/change_scope.py",
         "scripts/ci/generate_artifacts.py",
         "tests/test_artifact_change_scope.py",

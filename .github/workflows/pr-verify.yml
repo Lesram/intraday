@@ -54,11 +54,9 @@ jobs:
       # 5. Any cited grep must be runnable; timeout/error is always failed.
       - name: Wave-PR marker enforcement
         if: github.event.pull_request.head.ref != github.event.pull_request.base.ref
-        # This long-lived audit branch carries many historical audit-wave
-        # commits that predate the modern marker contract. Keep the checker
-        # visible, but do not let stale history block unrelated cleanup PRs;
-        # ledger-based Critical/High behavioral gates remain hard gates in CI.
-        continue-on-error: true
+        # Long-lived audit branches are clamped by the checker to the V12+
+        # baseline when that baseline exists, so this can remain a hard gate
+        # without stale pre-V12 commit-message history blocking the PR.
         run: |
           set -e
           BASE_SHA="${{ github.event.pull_request.base.sha }}"

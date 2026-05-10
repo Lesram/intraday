@@ -1,10 +1,10 @@
 # Live Audit Index
 
-Generated: 2026-05-10T17:31:00Z
+Generated: 2026-05-10T21:47:17Z
 PR: PR #6
-SHA: `3715dce70d`
+SHA: `c2713939a1`
 Branch: `codex/v13-phase2-expectancy`
-Scope: **empty**
+Scope: **tooling/evidence_only**
 Change scope: `working-tree` (`HEAD+working-tree`)
 
 ## Changed files
@@ -13,9 +13,10 @@ Change scope: `working-tree` (`HEAD+working-tree`)
 |----------|-------|-------|
 | Backend | 0 | none |
 | Organism | 0 | none |
-| Scripts | 0 | none |
-| Tests | 0 | none |
-| Docs | 0 | none |
+| Scripts | 3 | `scripts/ci/check_wave_markers.py`, `scripts/ci/generate_audit_index.py`, `scripts/runtime/write_runtime_snapshot.py` |
+| CI | 2 | `.github/pull_request_template.md`, `.github/workflows/pr-verify.yml` |
+| Tests | 3 | `tests/test_artifact_change_scope.py`, `tests/test_runtime_snapshot_auth.py`, `tests/test_v12_w81_ci_cleanup.py` |
+| Docs | 2 | `docs/engineering/LIVE_AUDIT_INDEX.md`, `docs/engineering/PRE9D_IMPLEMENTATION_AUDIT_2026-05-10.md` |
 
 ## Live constants
 
@@ -53,4 +54,4 @@ Source: `resolved_config_snapshot.json`
 
 ## Open risks
 
-- No code changes in this PR — verify evidence artifacts are current
+- Evidence/tooling script changed only — no backend runtime or order-path behavior changed

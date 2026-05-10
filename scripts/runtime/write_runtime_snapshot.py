@@ -578,6 +578,9 @@ def _build_live_process_snapshot() -> dict:
         if env_text:
             env_map = _parse_env_text(env_text)
             result["process_env"] = {
+                "GIT_SHA": env_map.get("GIT_SHA"),
+                "BUILD_TIME": env_map.get("BUILD_TIME"),
+                "IMAGE_SHA": env_map.get("IMAGE_SHA"),
                 "APP_ENVIRONMENT": env_map.get("APP_ENVIRONMENT"),
                 "ALPACA_PAPER": env_map.get("ALPACA_PAPER"),
                 "ORGANISM_DRAWDOWN_KILL_PCT": env_map.get("ORGANISM_DRAWDOWN_KILL_PCT"),
@@ -587,6 +590,12 @@ def _build_live_process_snapshot() -> dict:
                 "ORGANISM_MAX_DAILY_LOSS": env_map.get("ORGANISM_MAX_DAILY_LOSS"),
                 "ORGANISM_MAX_NOTIONAL": env_map.get("ORGANISM_MAX_NOTIONAL"),
                 "ORGANISM_TICK_INTERVAL_SECONDS": env_map.get("ORGANISM_TICK_INTERVAL_SECONDS"),
+                "ORGANISM_CANDIDATE_FILTER_SHADOW_TELEMETRY_ENABLED": env_map.get(
+                    "ORGANISM_CANDIDATE_FILTER_SHADOW_TELEMETRY_ENABLED"
+                ),
+                "ORGANISM_STRATEGY_EVIDENCE_TELEMETRY_ENABLED": env_map.get(
+                    "ORGANISM_STRATEGY_EVIDENCE_TELEMETRY_ENABLED"
+                ),
                 "ORGANISM_PHASE9_SHADOW_ENGINES_ENABLED": env_map.get(
                     "ORGANISM_PHASE9_SHADOW_ENGINES_ENABLED"
                 ),

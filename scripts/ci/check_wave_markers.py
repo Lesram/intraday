@@ -32,6 +32,9 @@ import subprocess
 import sys
 
 
+V12_BASELINE_REF = "38d1b74"
+
+
 # V9 W4-3 / Wave-48 (2026-05-03): widen suffix charset to include `-` so
 # hyphenated wave-id forms (e.g. `audit-wave99-w3g1-test`) are recognized
 # as wave commits and held to the wave-rule contract.  The old regex
@@ -111,6 +114,34 @@ def commits_in_range(base: str, head: str) -> list[tuple[str, str]]:
     return out
 
 
+def _is_ancestor(maybe_ancestor: str, ref: str) -> bool:
+    return subprocess.run(
+        ["git", "merge-base", "--is-ancestor", maybe_ancestor, ref],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        check=False,
+    ).returncode == 0
+
+
+def effective_base_ref(base: str, head: str, *, all_history: bool = False) -> str:
+    """Return the commit range base this checker should actually inspect.
+
+    This branch carries pre-V12 audit-wave commits whose commit messages do not
+    satisfy the modern marker contract.  The V13 framework names the supported
+    governance check as "V12+ commit range", so default CLI runs should skip the
+    legacy history when the V12 baseline exists on the branch.  Explicit
+    `--all-history` keeps the old behavior available for forensic audits.
+    """
+    if all_history:
+        return base
+    override = os.environ.get("WAVE_MARKER_BASE")
+    if override:
+        return override
+    if _is_ancestor(V12_BASELINE_REF, head) and not _is_ancestor(V12_BASELINE_REF, base):
+        return V12_BASELINE_REF
+    return base
+
+
 def parse_wave_commit(body: str) -> dict | None:
     """Extract the wave PR contract from a commit body.
 
@@ -168,7 +199,7 @@ def _re_run_grep(cmd_str: str, repo_root: str) -> tuple[int, str]:
         out = e.output.decode("utf-8", errors="replace") if e.output else ""
     except subprocess.TimeoutExpired:
         return -1, "[timeout]"
-    except Exception as e:
+    except OSError as e:
         return -1, f"[error: {e}]"
     return _count_lines(out), out
 
@@ -206,37 +237,34 @@ def _diff_test_count(base: str, head: str) -> int:
     # V9 W4-1: scan for aliased fixture decorators across files in the
     # diff.  Best-effort — if the AST parse fails or git show fails we
     # silently fall back to the marker count.
-    try:
-        names_status = _run(
-            ["git", "diff", "--name-only", f"{base}..{head}"]
-        )
-        for path in names_status.splitlines():
-            if not path.strip().endswith(".py"):
-                continue
-            content = _run(["git", "show", f"{head}:{path}"])
-            if not content:
-                continue
-            import ast as _ast
-            try:
-                tree = _ast.parse(content)
-            except SyntaxError:
-                continue
-            aliases: set[str] = set()
-            for node in _ast.walk(tree):
-                if isinstance(node, _ast.ImportFrom) and node.module == "pytest":
-                    for alias in node.names:
-                        if alias.name == "fixture":
-                            aliases.add(alias.asname or "fixture")
-            if not aliases:
-                continue
-            # Count newly-added decorator lines using these aliases.
-            for line in full_diff.splitlines():
-                if line.startswith("+") and not line.startswith("+++"):
-                    s = line[1:].lstrip()
-                    if any(s.startswith(f"@{a}") for a in aliases):
-                        added += 1
-    except Exception:
-        pass
+    names_status = _run(
+        ["git", "diff", "--name-only", f"{base}..{head}"]
+    )
+    for path in names_status.splitlines():
+        if not path.strip().endswith(".py"):
+            continue
+        content = _run(["git", "show", f"{head}:{path}"])
+        if not content:
+            continue
+        import ast as _ast
+        try:
+            tree = _ast.parse(content)
+        except SyntaxError:
+            continue
+        aliases: set[str] = set()
+        for node in _ast.walk(tree):
+            if isinstance(node, _ast.ImportFrom) and node.module == "pytest":
+                for alias in node.names:
+                    if alias.name == "fixture":
+                        aliases.add(alias.asname or "fixture")
+        if not aliases:
+            continue
+        # Count newly-added decorator lines using these aliases.
+        for line in full_diff.splitlines():
+            if line.startswith("+") and not line.startswith("+++"):
+                s = line[1:].lstrip()
+                if any(s.startswith(f"@{a}") for a in aliases):
+                    added += 1
 
     return added - removed
 
@@ -302,7 +330,7 @@ def check_wave_compliance(
         print(f"\n=== {sha[:8]} {first_line} ===")
 
         if not ctx["ids"]:
-            print(f"  [FAIL] no finding-IDs cited in commit body")
+            print("  [FAIL] no finding-IDs cited in commit body")
             fails += 1
         else:
             print(f"  [ok] finding-IDs: {', '.join(ctx['ids'])}")
@@ -403,10 +431,25 @@ def main() -> int:
         "--repo-root", default=".",
         help="Repo root for grep re-run (default: cwd).",
     )
+    parser.add_argument(
+        "--all-history",
+        action="store_true",
+        help=(
+            "Inspect the raw --base..--head range instead of clamping long-lived "
+            f"audit branches to the V12+ baseline ({V12_BASELINE_REF})."
+        ),
+    )
     args = parser.parse_args()
 
+    base = effective_base_ref(args.base, args.head, all_history=args.all_history)
+    if base != args.base:
+        print(
+            f"[info] clamped wave-marker range from {args.base}..{args.head} "
+            f"to {base}..{args.head} (use --all-history to inspect legacy waves)"
+        )
+
     fails = check_wave_compliance(
-        args.base,
+        base,
         args.head,
         enforce_grep_zero=args.strict,
         enforce_test_delta=args.strict,
