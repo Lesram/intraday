@@ -23,6 +23,7 @@ Run with:
 # wave: V13-W94
 from __future__ import annotations
 
+import asyncio
 import json
 import os
 import subprocess
@@ -284,21 +285,42 @@ def test_w94_gate_floor_arg_overrides_env(tmp_path):
 def test_w94_endpoint_window_query_param_validated():
     """Bad window value yields 400 — guard against silent typos that
     would return the full payload instead of the slice the caller asked for."""
-    src = (
-        REPO_ROOT / "backend" / "api" / "routes" / "strategy_health.py"
-    ).read_text()
-    assert "_ALLOWED_WINDOWS" in src
-    assert "last_25" in src and "last_50" in src
-    assert "status_code=400" in src
+    from fastapi import HTTPException
+
+    from backend.api.routes.strategy_health import strategy_health
+
+    with pytest.raises(HTTPException) as exc:
+        asyncio.run(strategy_health(window="last_10", _current_user=object()))
+    assert exc.value.status_code == 400
+    assert "last_25" in str(exc.value.detail)
+    assert "last_50" in str(exc.value.detail)
 
 
-def test_w94_endpoint_window_projects_to_slice():
+def test_w94_endpoint_window_projects_to_slice(tmp_path, monkeypatch):
     """The endpoint slim payload must include only window-prefixed
-    fields + provenance.  This is a structural test on the route
-    function — full HTTP integration is exercised by the existing
-    test_v12_strategy_expectancy suite."""
-    src = (
-        REPO_ROOT / "backend" / "api" / "routes" / "strategy_health.py"
-    ).read_text()
-    assert 'prefix = f"{window}_"' in src
-    assert '"window": window' in src
+    fields + provenance."""
+    from backend.api.routes.strategy_health import strategy_health
+
+    brain = tmp_path / "organism_brain"
+    brain.mkdir()
+    (brain / "manifest.json").write_text(json.dumps({
+        "strategy_expectancy": {
+            "n_trades": 75,
+            "total_pnl": -123.45,
+            "win_rate": 0.41,
+            "last_25_win_rate": 0.52,
+            "last_25_mean_pnl": 1.25,
+            "last_50_win_rate": 0.44,
+        },
+    }))
+    monkeypatch.setenv("ORGANISM_BRAIN_DIR", str(brain))
+
+    payload = asyncio.run(strategy_health(window="last_25", _current_user=object()))
+
+    assert payload["window"] == "last_25"
+    assert payload["n_trades"] == 75
+    assert payload["strategy_scope"] == "strategy_only"
+    assert payload["last_25_win_rate"] == 0.52
+    assert payload["last_25_mean_pnl"] == 1.25
+    assert "last_50_win_rate" not in payload
+    assert "total_pnl" not in payload

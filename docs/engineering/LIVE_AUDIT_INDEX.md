@@ -1,11 +1,11 @@
 # Live Audit Index
 
-Generated: 2026-05-11T01:53:08Z
-PR: n/a
-SHA: `b276cd0835`
+Generated: 2026-05-11T05:50:25Z
+PR: PR #8
+SHA: `284fd53809`
 Branch: `codex/phase9d-portfolio-construction`
 Scope: **backend_logic**
-Change scope: `working-tree` (`HEAD+working-tree`)
+Change scope: `task` (`HEAD`)
 
 ## Changed files
 
@@ -16,7 +16,7 @@ Change scope: `working-tree` (`HEAD+working-tree`)
 | Scripts | 1 | `scripts/phase9d_portfolio_construction.py` |
 | CI | 0 | none |
 | Tests | 1 | `tests/test_phase9d_portfolio_construction.py` |
-| Docs | 4 | `docs/architecture/mapss.md`, `docs/engineering/LIVE_AUDIT_INDEX.md`, `docs/engineering/STRATEGY_REBUILD_MASTER_ROADMAP_2026-05-09.md`, `docs/engineering/PHASE9D_PORTFOLIO_CONSTRUCTION_IMPLEMENTATION.md` |
+| Docs | 4 | `docs/architecture/mapss.md`, `docs/engineering/LIVE_AUDIT_INDEX.md`, `docs/engineering/PHASE9D_PORTFOLIO_CONSTRUCTION_IMPLEMENTATION.md`, `docs/engineering/STRATEGY_REBUILD_MASTER_ROADMAP_2026-05-09.md` |
 
 ## Live constants
 

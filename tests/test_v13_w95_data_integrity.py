@@ -15,7 +15,9 @@ Run with:
 # wave: V13-W95
 from __future__ import annotations
 
+import asyncio
 import ast
+from datetime import UTC, datetime
 import json
 from pathlib import Path
 
@@ -113,6 +115,11 @@ def test_w95_gdpr_forget_user_audit_pseudonymize_default():
     """The service's default is to PSEUDONYMIZE audit_logs rows, not
     delete them — compliance-retention is separate from GDPR right-to-
     be-forgotten."""
+    from backend.services.gdpr_forget_user import discover_scrub_targets
+
+    targets = discover_scrub_targets()
+    assert "audit_logs" not in targets
+
     src = GDPR_PATH.read_text()
     assert "pseudonymize_audit: bool = True" in src
     assert "_AUDIT_LOG_TABLES = (\"audit_logs\",)" in src
@@ -146,18 +153,90 @@ def test_w95_outbox_prune_metrics_declared():
     be None (e.g. if prometheus_client is unavailable in this env),
     but the names must exist so the call sites compile."""
     from backend.infra import outbox_worker
+    worker = outbox_worker.OutboxWorker(lambda: None)
+    assert isinstance(worker, outbox_worker.OutboxWorker)
     assert hasattr(outbox_worker, "OUTBOX_PRUNED_TOTAL")
     assert hasattr(outbox_worker, "OUTBOX_PRUNE_LAST_RUN_TS")
 
 
-def test_w95_outbox_prune_emits_metrics():
+def test_w95_outbox_prune_emits_metrics(monkeypatch):
     """`prune_old_events` should call `.inc()` and `.set()` on the
-    metrics when total_pruned > 0.  We grep the source for the
-    canonical call sites — direct unit exercise would require a
-    full async session+DB fixture."""
-    src = OUTBOX_PATH.read_text()
-    assert "OUTBOX_PRUNED_TOTAL.inc(total_pruned)" in src
-    assert "OUTBOX_PRUNE_LAST_RUN_TS.set(time.time())" in src
+    metrics when total_pruned > 0."""
+    from backend.infra import outbox_worker
+
+    class _Counter:
+        def __init__(self):
+            self.values: list[int] = []
+
+        def inc(self, value: int) -> None:
+            self.values.append(value)
+
+    class _Gauge:
+        def __init__(self):
+            self.values: list[float] = []
+
+        def set(self, value: float) -> None:
+            self.values.append(value)
+
+    class _Result:
+        def __init__(self, rows=None, rowcount=0):
+            self._rows = rows or []
+            self.rowcount = rowcount
+
+        def all(self):
+            return list(self._rows)
+
+    class _Session:
+        def __init__(self, factory):
+            self._factory = factory
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+        async def execute(self, stmt):
+            kind = type(stmt).__name__
+            if kind == "Select":
+                self._factory.select_calls += 1
+                if self._factory.select_calls == 1:
+                    return _Result(rows=[("evt-1",), ("evt-2",)])
+                return _Result(rows=[])
+            if kind == "Delete":
+                self._factory.delete_calls += 1
+                return _Result(rowcount=2)
+            raise AssertionError(f"unexpected statement type: {kind}")
+
+        async def commit(self):
+            self._factory.commits += 1
+
+    class _SessionFactory:
+        def __init__(self):
+            self.select_calls = 0
+            self.delete_calls = 0
+            self.commits = 0
+
+        def __call__(self):
+            return _Session(self)
+
+    counter = _Counter()
+    gauge = _Gauge()
+    monkeypatch.setattr(outbox_worker, "OUTBOX_PRUNED_TOTAL", counter)
+    monkeypatch.setattr(outbox_worker, "OUTBOX_PRUNE_LAST_RUN_TS", gauge)
+    sessions = _SessionFactory()
+    worker = outbox_worker.OutboxWorker(sessions)
+
+    pruned = asyncio.run(worker.prune_old_events(
+        max_age_days=30,
+        now=datetime(2026, 5, 11, tzinfo=UTC),
+    ))
+
+    assert pruned == 2
+    assert sessions.delete_calls == 1
+    assert sessions.commits == 1
+    assert counter.values == [2]
+    assert len(gauge.values) == 1
 
 
 # ────────────────────────────────────────────────────────────────────
@@ -324,9 +403,12 @@ def test_w95_data_integrity_reads_legacy_nested_manifest_shape(tmp_path):
 
 
 def test_w95_data_integrity_route_mounted():
-    """Confirm the data-integrity router is wired into routes_setup."""
-    setup_src = (REPO_ROOT / "backend" / "api" / "routes_setup.py").read_text()
-    assert "data_integrity_health_router" in setup_src
-    assert (
-        "protected.include_router(data_integrity_health_router" in setup_src
-    )
+    """Confirm the data-integrity router is wired into the FastAPI app."""
+    from fastapi import FastAPI
+
+    from backend.api.routes_setup import register_routes
+
+    app = FastAPI()
+    register_routes(app)
+    paths = {getattr(route, "path", "") for route in app.routes}
+    assert "/api/v1/health/data-integrity" in paths

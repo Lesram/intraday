@@ -266,15 +266,18 @@ def test_w100_equity_gates_max_daily_loss_branch_present():
 
 
 def test_w100_equity_gates_drawdown_kill_invocation():
-    """The drawdown-kill invocation site must include both the
-    governance call AND the trigger condition.  trigger_drawdown_kill
-    is invoked from runner.py (engine-level), not _live_tick_inner
-    directly — but the path is part of the equity-gate sub-block."""
-    runner_src = (
-        REPO_ROOT / "backend" / "organism" / "runner.py"
-    ).read_text()
-    assert "self.governance.trigger_drawdown_kill(drawdown)" in runner_src
-    assert "drawdown_kill_triggered" in runner_src
+    """Runner-level drawdown kill must halt governance and report the action."""
+    from backend.organism.governance import GovernanceController
+    from backend.organism.runner import OrganismRunner
+
+    gov = GovernanceController()
+    gov._drawdown_limit = 0.05
+    runner = OrganismRunner(governance=gov)
+
+    result = runner.post_execution_hook(live_metrics={"drawdown": 0.08})
+
+    assert result["actions"] == ["drawdown_kill_triggered"]
+    assert gov.snapshot().trading_halted is True
 
 
 # ────────────────────────────────────────────────────────────────────
