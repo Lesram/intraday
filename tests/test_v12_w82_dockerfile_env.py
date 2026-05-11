@@ -15,7 +15,9 @@ Run with:
 """
 from __future__ import annotations
 
+import os
 import re
+import subprocess
 from pathlib import Path
 
 
@@ -130,16 +132,75 @@ def test_w82_rebuild_helper_captures_git_sha():
     assert "date -u" in src
 
 
-def test_w82_rebuild_helper_preserves_phase7_telemetry_defaults():
-    """A plain paper rebuild must not silently disable advisory evidence
-    collection during Phase 7."""
-    src = REBUILD_SCRIPT.read_text()
-    assert (
-        'ORGANISM_CANDIDATE_FILTER_SHADOW_TELEMETRY_ENABLED:-true'
-        in src
+def _write_executable(path: Path, body: str) -> None:
+    path.write_text(body)
+    path.chmod(0o755)
+
+
+def test_w82_rebuild_helper_preserves_phase7_telemetry_defaults(
+    tmp_path: Path,
+    monkeypatch,
+):
+    """Run the helper against fake docker/curl tools and verify defaults."""
+    fake_bin = tmp_path / "bin"
+    fake_bin.mkdir()
+    calls = tmp_path / "calls.log"
+    monkeypatch.setenv("FAKE_REBUILD_LOG", str(calls))
+    monkeypatch.delenv("ORGANISM_CANDIDATE_FILTER_SHADOW_TELEMETRY_ENABLED", raising=False)
+    monkeypatch.delenv("ORGANISM_STRATEGY_EVIDENCE_TELEMETRY_ENABLED", raising=False)
+    monkeypatch.delenv("ORGANISM_PHASE9_SHADOW_ENGINES_ENABLED", raising=False)
+    monkeypatch.setenv("PATH", f"{fake_bin}:{os.environ['PATH']}")
+
+    _write_executable(
+        fake_bin / "git",
+        """#!/usr/bin/env bash
+if [[ "$1 $2" == "rev-parse HEAD" ]]; then
+  echo "abc123"
+  exit 0
+fi
+exit 1
+""",
     )
-    assert 'ORGANISM_STRATEGY_EVIDENCE_TELEMETRY_ENABLED:-true' in src
-    assert "Container telemetry switches?" in src
+    _write_executable(
+        fake_bin / "docker-compose",
+        """#!/usr/bin/env bash
+echo "docker-compose $*" >> "$FAKE_REBUILD_LOG"
+exit 0
+""",
+    )
+    _write_executable(
+        fake_bin / "curl",
+        """#!/usr/bin/env bash
+if [[ "$*" == *"/api/v1/health/deploy"* ]]; then
+  printf "401"
+  exit 0
+fi
+exit 0
+""",
+    )
+    _write_executable(
+        fake_bin / "docker",
+        """#!/usr/bin/env bash
+echo "docker $*" >> "$FAKE_REBUILD_LOG"
+exit 0
+""",
+    )
+
+    result = subprocess.run(
+        [str(REBUILD_SCRIPT)],
+        cwd=REPO_ROOT,
+        text=True,
+        capture_output=True,
+        check=True,
+        timeout=20,
+    )
+
+    assert "PHASE5_TELEMETRY = true" in result.stdout
+    assert "PHASE6_TELEMETRY = true" in result.stdout
+    assert "PHASE9_SHADOW_ENGINES = true" in result.stdout
+    log = calls.read_text()
+    assert "docker-compose -f docker-compose.paper.yml build api" in log
+    assert "docker-compose -f docker-compose.paper.yml up -d api" in log
 
 
 # ────────────────────────────────────────────────────────────────────

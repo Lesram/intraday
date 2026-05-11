@@ -255,3 +255,98 @@ def test_strategy_attribution_segments_legacy_rows_by_alpha_baseline() -> None:
         segment["value"] == "etf_intraday_momentum"
         for segment in strategy_segments
     )
+
+
+def test_live_entry_order_uses_strategy_governor_as_hard_gate() -> None:
+    import asyncio
+    from datetime import UTC, datetime
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock
+
+    import pytest
+
+    from backend.organism.live_engine import OrganismLiveEngine
+
+    engine = OrganismLiveEngine.__new__(OrganismLiveEngine)
+    engine._tick_count = 7
+    engine._session_id = "test"
+    engine._streaming_provider = None
+    engine._ENTRY_SLIPPAGE_CAP = 0.001
+    engine._total_orders_submitted = 0
+    engine._last_regime = "chop"
+    engine._now_fn = lambda: datetime(2026, 5, 10, 14, 0, tzinfo=UTC)
+    order_service = SimpleNamespace(submit_symbol_order=AsyncMock())
+    engine._order_service = order_service
+
+    with pytest.raises(RuntimeError, match="unknown_strategy_id"):
+        asyncio.run(
+            engine._submit_entry_order(
+                "SPY",
+                1,
+                strategy_id="mystery_edge",
+                entry_source="mystery_edge",
+            )
+        )
+
+    order_service.submit_symbol_order.assert_not_awaited()
+    assert engine._total_orders_submitted == 0
+
+
+def test_live_entry_order_persists_strategy_identity_on_allowed_submit() -> None:
+    import asyncio
+    from datetime import UTC, datetime
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock
+
+    from backend.organism.live_engine import OrganismLiveEngine
+
+    engine = OrganismLiveEngine.__new__(OrganismLiveEngine)
+    engine._tick_count = 8
+    engine._session_id = "test"
+    engine._streaming_provider = None
+    engine._ENTRY_SLIPPAGE_CAP = 0.001
+    engine._total_orders_submitted = 0
+    engine._last_regime = "chop"
+    engine._now_fn = lambda: datetime(2026, 5, 10, 14, 0, tzinfo=UTC)
+    order_service = SimpleNamespace(
+        submit_symbol_order=AsyncMock(return_value={"order_id": "ord-1"})
+    )
+    engine._order_service = order_service
+
+    result = asyncio.run(
+        engine._submit_entry_order(
+            "SPY",
+            1,
+            strategy_id="alpha_baseline",
+            entry_source="alpha+breakout",
+        )
+    )
+
+    assert result["order_id"] == "ord-1"
+    call = order_service.submit_symbol_order.await_args.kwargs
+    assert call["attributes"]["strategy_id"] == "alpha_baseline"
+    assert call["attributes"]["entry_source"] == "alpha+breakout"
+    assert engine._total_orders_submitted == 1
+
+
+def test_trim_feature_frames_asof_removes_future_rows() -> None:
+    import pandas as pd
+
+    from backend.organism.live_engine import trim_feature_frames_asof
+
+    frame = pd.DataFrame({
+        "timestamp": [
+            "2026-05-10T14:00:00Z",
+            "2026-05-10T14:01:00Z",
+            "2026-05-10T14:02:00Z",
+        ],
+        "close": [100.0, 101.0, 999.0],
+    })
+
+    trimmed = trim_feature_frames_asof(
+        {"SPY": frame},
+        "2026-05-10T14:01:00Z",
+    )
+
+    assert trimmed["SPY"]["close"].tolist() == [100.0, 101.0]
+    assert frame["close"].tolist() == [100.0, 101.0, 999.0]

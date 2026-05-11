@@ -987,6 +987,69 @@ def _upsert_rows(conn: sqlite3.Connection, table: str, rows: list[dict[str, Any]
     return len(rows)
 
 
+GENERATED_TABLES: tuple[str, ...] = (
+    "evidence_events",
+    "evidence_outcomes",
+    "trade_history",
+    "strategy_league",
+    "db_orders",
+    "db_executions",
+    "db_realized_trades",
+    "realized_trade_accounting",
+    "filter_outcome_summary",
+    "symbol_evidence_summary",
+    "replay_candidate_export",
+    "warehouse_manifest",
+)
+
+
+def clear_generated_tables(conn: sqlite3.Connection) -> None:
+    """Make each warehouse build replace prior generated rows exactly."""
+    for table in GENERATED_TABLES:
+        conn.execute(f"DELETE FROM {table}")
+
+
+def generated_table_counts(conn: sqlite3.Connection) -> dict[str, int]:
+    """Return row counts for tables whose rows are owned by one build."""
+    return {
+        table: int(conn.execute(f"SELECT count(*) FROM {table}").fetchone()[0])
+        for table in GENERATED_TABLES
+    }
+
+
+SUMMARY_TO_SQLITE_COUNTS: dict[str, str] = {
+    "events": "evidence_events",
+    "outcomes": "evidence_outcomes",
+    "trades": "trade_history",
+    "db_orders": "db_orders",
+    "db_executions": "db_executions",
+    "db_realized_trades": "db_realized_trades",
+    "realized_trade_accounting": "realized_trade_accounting",
+    "filter_outcome_summary": "filter_outcome_summary",
+    "symbol_evidence_summary": "symbol_evidence_summary",
+    "strategy_league": "strategy_league",
+    "replay_candidate_export": "replay_candidate_export",
+}
+
+
+def reconcile_summary_counts(
+    summary: dict[str, Any],
+    sqlite_counts: dict[str, int],
+) -> dict[str, dict[str, int]]:
+    """Return mismatches between summary counts and SQLite table counts."""
+    mismatches: dict[str, dict[str, int]] = {}
+    summary_counts = summary.get("counts", {})
+    for summary_key, table in SUMMARY_TO_SQLITE_COUNTS.items():
+        expected = int(summary_counts.get(summary_key, 0))
+        actual = int(sqlite_counts.get(table, 0))
+        if expected != actual:
+            mismatches[summary_key] = {
+                "summary": expected,
+                "sqlite": actual,
+            }
+    return mismatches
+
+
 def write_manifest(conn: sqlite3.Connection, summary: dict[str, Any]) -> None:
     rows = [(key, json.dumps(value, sort_keys=True, default=str)) for key, value in summary.items()]
     conn.executemany(
@@ -1326,6 +1389,7 @@ def build_warehouse(inputs: WarehouseInputs) -> dict[str, Any]:
     conn = connect(db_path)
     try:
         create_schema(conn)
+        clear_generated_tables(conn)
         inserted_events = _upsert_rows(conn, "evidence_events", events)
         inserted_outcomes = _upsert_rows(conn, "evidence_outcomes", outcomes)
         inserted_trades = _upsert_rows(conn, "trade_history", trades)
@@ -1389,6 +1453,18 @@ def build_warehouse(inputs: WarehouseInputs) -> dict[str, Any]:
             "strategy_league": inserted_strategy_league,
             "replay_candidate_export": inserted_replay_candidates,
         }
+        sqlite_counts = generated_table_counts(conn)
+        mismatches = reconcile_summary_counts(summary, sqlite_counts)
+        summary["sqlite_counts"] = sqlite_counts
+        summary["count_reconciliation"] = {
+            "ok": not mismatches,
+            "mismatches": mismatches,
+        }
+        if mismatches:
+            raise RuntimeError(
+                "Phase 8 warehouse count reconciliation failed: "
+                + json.dumps(mismatches, sort_keys=True)
+            )
         write_manifest(conn, summary)
         conn.commit()
     finally:

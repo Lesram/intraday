@@ -22,36 +22,20 @@ Auth: protected (mounted under /api/v1).
 """
 from __future__ import annotations
 
-import hashlib
-import json
 import os
 import socket
-import subprocess
 from typing import Any
 
 from fastapi import APIRouter, Depends
 
-from backend.config import get_settings
+from backend.infra.runtime_identity import resolve_git_sha, runtime_config_hash
 from backend.infra.security import AuthenticatedUser, require_admin
 
 
 router = APIRouter(prefix="/health", tags=["Health"])
 
-
-def _resolve_git_sha() -> str:
-    """Prefer env GIT_SHA (set at container build); fall back to
-    ``git rev-parse HEAD`` if a checkout is reachable.  Returns
-    ``"unknown"`` if neither resolves."""
-    env_sha = os.environ.get("GIT_SHA") or os.environ.get("VCS_SHA")
-    if env_sha:
-        return env_sha
-    try:
-        return subprocess.check_output(
-            ["git", "rev-parse", "HEAD"],
-            stderr=subprocess.DEVNULL, text=True,
-        ).strip()
-    except (subprocess.CalledProcessError, OSError, FileNotFoundError):
-        return "unknown"
+_resolve_git_sha = resolve_git_sha
+_runtime_config_hash = runtime_config_hash
 
 
 def _resolve_migration_head() -> str:
@@ -95,26 +79,6 @@ def _resolve_migration_head() -> str:
         return "unknown"
 
 
-def _runtime_config_hash() -> str:
-    """Hash a stable subset of the resolved settings so the deploy
-    endpoint reflects "config changed" without leaking secrets.
-
-    Uses keys that affect operational behavior but aren't credentials.
-    """
-    s = get_settings()
-    keys = (
-        "BUILD_VERSION", "APP_ENVIRONMENT", "TRADING_EXECUTION_MODE",
-        "USE_MOCK_BROKER",
-    )
-    payload = {k: str(getattr(s, k, None)) for k in keys}
-    # Risk caps from env (these directly drive trading behavior).
-    for env in ("ORGANISM_DRAWDOWN_KILL_PCT", "ORGANISM_MAX_DAILY_LOSS",
-                "ORGANISM_MAX_NOTIONAL"):
-        payload[env] = os.environ.get(env, "")
-    blob = json.dumps(payload, sort_keys=True)
-    return hashlib.sha256(blob.encode()).hexdigest()[:16]
-
-
 @router.get("/deploy")
 async def deploy_health(
     _current_user: AuthenticatedUser = Depends(require_admin),
@@ -126,11 +90,11 @@ async def deploy_health(
     fleet members to detect skew.
     """
     return {
-        "source_sha": _resolve_git_sha(),
+        "source_sha": resolve_git_sha(),
         "migration_head": _resolve_migration_head(),
         "build_time": os.environ.get("BUILD_TIME", "unknown"),
         "image_sha": os.environ.get("IMAGE_SHA", "unknown"),
-        "runtime_config_hash": _runtime_config_hash(),
+        "runtime_config_hash": runtime_config_hash(),
         "container_hostname": socket.gethostname(),
         "app_environment": os.environ.get("APP_ENVIRONMENT", "unknown"),
     }

@@ -416,6 +416,7 @@ def test_phase8_builds_idempotent_sqlite_warehouse(tmp_path) -> None:
     assert second["counts"]["symbol_evidence_summary"] == 1
     assert second["counts"]["strategy_league"] == 1
     assert second["counts"]["replay_candidate_export"] == 0
+    assert second["count_reconciliation"]["ok"] is True
     assert second["db_extract"]["enabled"] is False
     assert second["promotion_authorized"] is False
 
@@ -463,3 +464,117 @@ def test_phase8_builds_idempotent_sqlite_warehouse(tmp_path) -> None:
     assert (out_dir / "replay_candidates.json").exists()
     assert (out_dir / "strategy_league.json").exists()
     assert (out_dir / "PHASE8_POST_CLOSE_RESEARCH_REPORT.md").exists()
+
+
+def test_phase8_rebuild_replaces_stale_sqlite_rows_when_inputs_shrink(tmp_path):
+    out_dir = tmp_path / "warehouse"
+    strategy = tmp_path / "strategy.jsonl"
+    candidate = tmp_path / "candidate.jsonl"
+    outcomes = tmp_path / "outcomes.csv"
+    trades = tmp_path / "trades.csv"
+    _write_jsonl(
+        strategy,
+        [
+            {
+                "timestamp": "2026-05-06T14:30:00+00:00",
+                "symbol": "AMD",
+                "tick": 1,
+                "entry_source": "alpha",
+            },
+            {
+                "timestamp": "2026-05-06T14:31:00+00:00",
+                "symbol": "MSFT",
+                "tick": 2,
+                "entry_source": "alpha",
+            },
+        ],
+    )
+    _write_jsonl(candidate, [])
+    _write_csv(
+        outcomes,
+        [
+            {
+                "event_line": "",
+                "event_timestamp": "2026-05-06T14:30:00+00:00",
+                "symbol": "AMD",
+                "regime": "chop",
+                "direction": "1",
+                "confidence": "0.6",
+                "matched_filters": "",
+                "horizon_bars": "5",
+                "status": "joined",
+                "bar_gap_seconds": "0",
+                "entry_bar_timestamp": "2026-05-06T14:30:00+00:00",
+                "future_bar_timestamp": "2026-05-06T14:35:00+00:00",
+                "entry_close": "100",
+                "future_close": "101",
+                "raw_return_bps": "100",
+                "directional_return_bps": "100",
+            }
+        ],
+    )
+    _write_csv(
+        trades,
+        [
+            {
+                "symbol": "AMD",
+                "direction": "1.0",
+                "entry_price": "100",
+                "exit_price": "101",
+                "shares": "2",
+                "pnl": "2.0",
+                "exit_reason": "test",
+                "confidence": "0.61",
+                "is_exploration": "False",
+                "is_reconciliation_artifact": "False",
+                "entry_source": "alpha",
+                "regime_at_entry": "chop",
+                "regime_at_exit": "chop",
+                "closed_at": "2026-05-06T14:40:00+00:00",
+            }
+        ],
+    )
+    inputs = WarehouseInputs(
+        strategy_telemetry=strategy,
+        candidate_telemetry=candidate,
+        phase6_outcomes=outcomes,
+        trade_history=trades,
+        out_dir=out_dir,
+    )
+
+    first = build_warehouse(inputs)
+    assert first["counts"]["events"] == 2
+    assert first["counts"]["outcomes"] == 1
+
+    _write_jsonl(
+        strategy,
+        [
+            {
+                "timestamp": "2026-05-06T14:30:00+00:00",
+                "symbol": "AMD",
+                "tick": 1,
+                "entry_source": "alpha",
+            }
+        ],
+    )
+    outcomes.write_text(
+        "event_line,event_timestamp,symbol,regime,direction,confidence,"
+        "matched_filters,horizon_bars,status,bar_gap_seconds,"
+        "entry_bar_timestamp,future_bar_timestamp,entry_close,future_close,"
+        "raw_return_bps,directional_return_bps\n"
+    )
+
+    second = build_warehouse(inputs)
+
+    conn = sqlite3.connect(out_dir / "strategy_evidence.sqlite")
+    try:
+        event_count = conn.execute("SELECT count(*) FROM evidence_events").fetchone()[0]
+        outcome_count = conn.execute("SELECT count(*) FROM evidence_outcomes").fetchone()[0]
+    finally:
+        conn.close()
+
+    assert second["counts"]["events"] == 1
+    assert second["counts"]["outcomes"] == 0
+    assert second["count_reconciliation"]["ok"] is True
+    assert event_count == second["counts"]["events"]
+    assert outcome_count == second["counts"]["outcomes"]

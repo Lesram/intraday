@@ -8,6 +8,7 @@ submit trades.
 from __future__ import annotations
 
 import json
+import hashlib
 import math
 from dataclasses import dataclass
 from pathlib import Path
@@ -15,6 +16,7 @@ from typing import Any, Iterable
 
 from backend.organism.regime import is_inverse_etf
 from backend.organism.schema.candidate_signal import CandidateSignal, infer_strategy_id, parse_bool
+from backend.infra.runtime_identity import runtime_identity_snapshot
 
 
 ALPHA_BREAKOUT_WATCH_REGIMES = frozenset({"chop", "trending_down"})
@@ -62,6 +64,7 @@ def _signal_to_event(
     *,
     tick: int,
     timestamp: str,
+    runtime_identity: dict[str, str],
 ) -> dict[str, Any]:
     confidence = _finite_float(signal.confidence)
     expected_edge_bps = _finite_float(signal.expected_edge_bps)
@@ -94,6 +97,10 @@ def _signal_to_event(
         "stop_price": signal.stop_price,
         "target_price": signal.target_price,
         "features": dict(signal.features),
+        "git_sha": runtime_identity.get("git_sha", "unknown"),
+        "runtime_config_hash": runtime_identity.get("runtime_config_hash", "unknown"),
+        "image_sha": runtime_identity.get("image_sha", "unknown"),
+        "build_time": runtime_identity.get("build_time", "unknown"),
     }
 
 
@@ -150,6 +157,16 @@ class CandidateShadowEvent:
     ranking_score: float
     entry_source: str
     strategy_id: str
+    signal_id: str
+    engine_version: str
+    timeframe: str
+    created_at: str
+    evidence_tier: int
+    shadow_only: bool
+    git_sha: str
+    runtime_config_hash: str
+    image_sha: str
+    build_time: str
     matched_filters: list[str]
     live_pipeline_candidate: bool = True
     defensive_filter_reason: str = ""
@@ -168,6 +185,16 @@ class CandidateShadowEvent:
             "ranking_score": round(self.ranking_score, 6),
             "entry_source": self.entry_source,
             "strategy_id": self.strategy_id,
+            "signal_id": self.signal_id,
+            "engine_version": self.engine_version,
+            "timeframe": self.timeframe,
+            "created_at": self.created_at,
+            "evidence_tier": int(self.evidence_tier),
+            "shadow_only": bool(self.shadow_only),
+            "git_sha": self.git_sha,
+            "runtime_config_hash": self.runtime_config_hash,
+            "image_sha": self.image_sha,
+            "build_time": self.build_time,
             "matched_filters": list(self.matched_filters),
             "live_pipeline_candidate": self.live_pipeline_candidate,
         }
@@ -183,8 +210,10 @@ def build_candidate_shadow_events(
     tick: int,
     timestamp: str,
     record_all_candidates: bool = False,
+    runtime_identity: dict[str, str] | None = None,
 ) -> list[CandidateShadowEvent]:
     events: list[CandidateShadowEvent] = []
+    identity = runtime_identity or runtime_identity_snapshot()
     for candidate in candidates:
         tags = _merge_tags(
             candidate_filter_tags(candidate, regime),
@@ -193,6 +222,14 @@ def build_candidate_shadow_events(
         if not tags and not record_all_candidates:
             continue
         entry_source = infer_entry_source(candidate)
+        strategy_id = infer_strategy_id(
+            entry_source,
+            candidate.get("strategy_id", ""),
+        )
+        live_pipeline_candidate = parse_bool(
+            candidate.get("live_pipeline_candidate"),
+            default=True,
+        )
         events.append(
             CandidateShadowEvent(
                 tick=int(tick),
@@ -209,21 +246,58 @@ def build_candidate_shadow_events(
                 predicted_return=_finite_float(candidate.get("predicted_return")),
                 ranking_score=_finite_float(candidate.get("ranking_score")),
                 entry_source=entry_source,
-                strategy_id=infer_strategy_id(
-                    entry_source,
-                    candidate.get("strategy_id", ""),
+                strategy_id=strategy_id,
+                signal_id=str(
+                    candidate.get("signal_id")
+                    or _legacy_signal_id(candidate, strategy_id, tick, timestamp)
                 ),
+                engine_version=str(
+                    candidate.get("engine_version")
+                    or f"{strategy_id}.legacy_v1"
+                ),
+                timeframe=str(candidate.get("timeframe") or "1Min"),
+                created_at=str(candidate.get("created_at") or timestamp),
+                evidence_tier=int(_finite_float(candidate.get("evidence_tier"), 0.0)),
+                shadow_only=parse_bool(
+                    candidate.get("shadow_only"),
+                    default=not live_pipeline_candidate,
+                ),
+                git_sha=str(identity.get("git_sha", "unknown")),
+                runtime_config_hash=str(identity.get("runtime_config_hash", "unknown")),
+                image_sha=str(identity.get("image_sha", "unknown")),
+                build_time=str(identity.get("build_time", "unknown")),
                 matched_filters=tags,
-                live_pipeline_candidate=parse_bool(
-                    candidate.get("live_pipeline_candidate"),
-                    default=True,
-                ),
+                live_pipeline_candidate=live_pipeline_candidate,
                 defensive_filter_reason=str(
                     candidate.get("defensive_filter_reason") or ""
                 ),
             )
         )
     return events
+
+
+def _legacy_signal_id(
+    candidate: dict[str, Any],
+    strategy_id: str,
+    tick: int,
+    timestamp: str,
+) -> str:
+    symbol = str(candidate.get("symbol") or "").upper()
+    entry_source = infer_entry_source(candidate)
+    digest = hashlib.sha1(  # noqa: S324 - deterministic telemetry id, not security.
+        json.dumps(
+            {
+                "tick": int(tick),
+                "timestamp": str(timestamp),
+                "symbol": symbol,
+                "strategy_id": strategy_id,
+                "entry_source": entry_source,
+                "direction": _finite_float(candidate.get("direction")),
+            },
+            sort_keys=True,
+        ).encode()
+    ).hexdigest()[:16]
+    return f"legacy-{strategy_id}-{symbol}-{digest}"
 
 
 class CandidateShadowTelemetryRecorder:
@@ -234,9 +308,11 @@ class CandidateShadowTelemetryRecorder:
         path: str | Path,
         *,
         record_all_candidates: bool = False,
+        runtime_identity: dict[str, str] | None = None,
     ) -> None:
         self.path = Path(path)
         self.record_all_candidates = record_all_candidates
+        self.runtime_identity = runtime_identity or runtime_identity_snapshot()
 
     def record_candidates(
         self,
@@ -252,6 +328,7 @@ class CandidateShadowTelemetryRecorder:
             tick=tick,
             timestamp=timestamp,
             record_all_candidates=self.record_all_candidates,
+            runtime_identity=self.runtime_identity,
         )
         if not events:
             return 0
@@ -268,7 +345,15 @@ class CandidateShadowTelemetryRecorder:
         tick: int,
         timestamp: str,
     ) -> int:
-        rows = [_signal_to_event(signal, tick=tick, timestamp=timestamp) for signal in signals]
+        rows = [
+            _signal_to_event(
+                signal,
+                tick=tick,
+                timestamp=timestamp,
+                runtime_identity=self.runtime_identity,
+            )
+            for signal in signals
+        ]
         if not rows:
             return 0
         self.path.parent.mkdir(parents=True, exist_ok=True)

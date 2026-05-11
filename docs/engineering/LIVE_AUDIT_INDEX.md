@@ -1,22 +1,22 @@
 # Live Audit Index
 
-Generated: 2026-05-11T00:23:15Z
-PR: PR #6
-SHA: `d7062debbd`
-Branch: `codex/v13-phase2-expectancy`
+Generated: 2026-05-11T01:22:26Z
+PR: n/a
+SHA: `27381ff6fc`
+Branch: `codex/platform-truth-audit-fixes`
 Scope: **backend_logic**
-Change scope: `working-tree` (`HEAD+working-tree`)
+Change scope: `task` (`HEAD`)
 
 ## Changed files
 
 | Category | Count | Files |
 |----------|-------|-------|
-| Backend | 3 | `backend/organism/eod_scanner.py`, `backend/organism/mean_reversion_scanner.py`, `backend/organism/orb_scanner.py` |
-| Organism | 3 | `backend/organism/eod_scanner.py`, `backend/organism/mean_reversion_scanner.py`, `backend/organism/orb_scanner.py` |
-| Scripts | 0 | none |
+| Backend | 5 | `backend/api/routes/deploy_health.py`, `backend/infra/runtime_identity.py`, `backend/organism/candidate_shadow_telemetry.py`, `backend/organism/live_engine.py`, `backend/organism/routes.py` |
+| Organism | 3 | `backend/organism/candidate_shadow_telemetry.py`, `backend/organism/live_engine.py`, `backend/organism/routes.py` |
+| Scripts | 2 | `scripts/ci/platform_truth_observer.py`, `scripts/phase8_evidence_warehouse.py` |
 | CI | 0 | none |
-| Tests | 3 | `tests/test_eod_scanner.py`, `tests/test_mean_reversion_scanner.py`, `tests/test_orb_scanner.py` |
-| Docs | 2 | `docs/engineering/LIVE_AUDIT_INDEX.md`, `docs/engineering/PRE9D_LEGACY_SCANNER_CAUSAL_AUDIT_2026-05-10.md` |
+| Tests | 6 | `tests/test_organism_maintenance_routes.py`, `tests/test_phase3_candidate_shadow_telemetry.py`, `tests/test_phase8_evidence_warehouse.py`, `tests/test_phase9_strategy_governance.py`, `tests/test_platform_truth_observer.py`, `tests/test_v12_w82_dockerfile_env.py` |
+| Docs | 3 | `docs/architecture/mapss.md`, `docs/engineering/LIVE_AUDIT_INDEX.md`, `docs/engineering/PLATFORM_TRUTH_AUDIT_FIX_REPORT_2026-05-10.md` |
 
 ## Live constants
 

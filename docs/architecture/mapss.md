@@ -978,6 +978,10 @@ KELLY SIZING PIPELINE
   │   │   ├── Portfolio cap: running total cannot exceed 95%
   │   │   ├── Minimum weight: 0.05%
   │   │   │   └── Rejects captured in _exploration_rejects (reason="weight_too_small")
+  │   │   ├── StrategyGovernor hard gate before OrderService entry submit:
+  │   │   │   ├── Unknown strategy_id blocks live orders
+  │   │   │   ├── Shadow-only / live-disabled strategies block live orders
+  │   │   │   └── Alpha baseline remains the only current live-enabled policy
   │   │   ├── Minimum notional: $500 intraday / $2,000 daily
   │   │   │   └── Rejects captured in _exploration_rejects (reason="below_min_notional")
   │   │   └── Minimum shares: 1
@@ -3169,7 +3173,8 @@ Alert Rules:
 - `POST /freeze` / `POST /unfreeze` — adaptation control
 - `POST /halt` / `POST /resume` — trading control
 - `POST /promote` / `POST /rollback` — model promotion
-- `POST /close-shorts` — buy-to-cover all shorts
+- `POST /close-shorts` — emergency legacy-short cover; dry-run by default,
+  live cover requires `dry_run=false&confirm=CLOSE_SHORTS`
 - `POST /cleanup-orders` — expire stuck orders
 - `POST /diagnostics/run` — manual diagnostic run
 - `POST /compute-attribution` — manual attribution
@@ -4365,6 +4370,7 @@ StalenessReasons (enum):
 | Breakout composite minimum | 0.20 | breakout_scanner | Minimum breakout score |
 | Pure breakout entry threshold | 0.55 | live_engine | Breakout-only entries need high score |
 | Full production promotion gate | strategy-only total_pnl ≥ 0, last_50_mean_pnl ≥ 0, last_50_win_rate ≥ 0.35, sharpe_per_trade ≥ 0 | trading_phase + `/api/v1/health/strategy` | Mature losing brains stay in production_guarded: strict entry gates remain, ML influence and Kelly remain disabled; reconciliation bookkeeping is exposed separately as all-record expectancy |
+| Strategy live-order gate | `StrategyGovernor.authorize_signal(..., live_intent=True)` must allow before OrderService entry submission | live_engine + strategy_governor | Blocks unknown, shadow-only, live-disabled, insufficient-evidence strategy IDs before any entry order can reach the broker path |
 | Symbol fitness gate | **0 (learning, no gate)** / 0.45 (production, 10+ trades) | live_engine | improve9 B1: unified canonical system. Learning = soft ranking only. Production = hard reject for established losers |
 | Liquidity gate | 10K avg vol/bar | live_engine | Block illiquid symbols (per-bar, not daily) |
 | ML confidence reversal | 0.60 (intraday) / 0.65 (daily) | live_engine | ML reversal exit — partial exit 30%/25% of position |
@@ -4473,7 +4479,7 @@ StalenessReasons (enum):
 
 | Module | Purpose |
 |---|---|
-| `live_engine.py` | Core tick loop, telemetry, trade reconstruction |
+| `live_engine.py` | Core tick loop, causal as-of feature boundary, StrategyGovernor entry authorization, telemetry, trade reconstruction |
 | `adaptive_exits.py` | ATR-based exits, 15% base safety net (8% via for_timeframe), failure-to-follow (momentum-confirmed, regime R thresholds, delay=H//2, disabled for trending_up/low_vol/high_vol), loser time-stop (fallback=120), wall-clock bar-boundary gating, regime-adaptive |
 | `alpha_scanner.py` | 7-factor alpha scoring + Stocks-in-Play overlay + inverse ETF regime flip, top-5 candidates (improve9 B2/B3/B4) |
 | `attribution.py` | Per-strategy reward signals from DB fills |
