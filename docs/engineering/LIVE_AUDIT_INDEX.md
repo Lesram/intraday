@@ -1,8 +1,8 @@
 # Live Audit Index
 
-Generated: 2026-05-10T23:36:32Z
+Generated: 2026-05-11T00:23:15Z
 PR: PR #6
-SHA: `36c2452120`
+SHA: `d7062debbd`
 Branch: `codex/v13-phase2-expectancy`
 Scope: **backend_logic**
 Change scope: `working-tree` (`HEAD+working-tree`)
@@ -11,12 +11,12 @@ Change scope: `working-tree` (`HEAD+working-tree`)
 
 | Category | Count | Files |
 |----------|-------|-------|
-| Backend | 7 | `backend/organism/engines/eod_reversal_shadow.py`, `backend/organism/engines/etf_intraday_momentum.py`, `backend/organism/engines/gamma_vol_proxy.py`, `backend/organism/engines/orb_sip_v2.py`, `backend/organism/engines/residual_mean_reversion.py`, `backend/organism/live_engine.py`, `backend/organism/universe/stocks_in_play.py` |
-| Organism | 7 | `backend/organism/engines/eod_reversal_shadow.py`, `backend/organism/engines/etf_intraday_momentum.py`, `backend/organism/engines/gamma_vol_proxy.py`, `backend/organism/engines/orb_sip_v2.py`, `backend/organism/engines/residual_mean_reversion.py`, `backend/organism/live_engine.py`, `backend/organism/universe/stocks_in_play.py` |
+| Backend | 3 | `backend/organism/eod_scanner.py`, `backend/organism/mean_reversion_scanner.py`, `backend/organism/orb_scanner.py` |
+| Organism | 3 | `backend/organism/eod_scanner.py`, `backend/organism/mean_reversion_scanner.py`, `backend/organism/orb_scanner.py` |
 | Scripts | 0 | none |
 | CI | 0 | none |
-| Tests | 2 | `tests/test_phase9_etf_intraday_momentum.py`, `tests/test_phase9_research_engines.py` |
-| Docs | 1 | `docs/engineering/PRE9D_DEEP_DEEP_AUDIT_2026-05-10.md` |
+| Tests | 3 | `tests/test_eod_scanner.py`, `tests/test_mean_reversion_scanner.py`, `tests/test_orb_scanner.py` |
+| Docs | 2 | `docs/engineering/LIVE_AUDIT_INDEX.md`, `docs/engineering/PRE9D_LEGACY_SCANNER_CAUSAL_AUDIT_2026-05-10.md` |
 
 ## Live constants
 
@@ -54,4 +54,4 @@ Source: `resolved_config_snapshot.json`
 
 ## Open risks
 
-- 7 organism file(s) changed — require replay verification
+- 3 organism file(s) changed — require replay verification

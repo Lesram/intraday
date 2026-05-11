@@ -176,6 +176,28 @@ class MeanReversionScanner:
             return False
         return delta_seconds < self.cooldown_minutes * 60
 
+    @staticmethod
+    def _known_bars(df: pd.DataFrame, now_ts: pd.Timestamp) -> pd.DataFrame:
+        """Return only bars observable at ``now_ts`` for causal shadow scans."""
+        if df is None or len(df) == 0:
+            return df
+        if now_ts.tzinfo is None:
+            now_ts = now_ts.tz_localize("UTC")
+        else:
+            now_ts = now_ts.tz_convert("UTC")
+        try:
+            if "timestamp" in df.columns:
+                ts_raw = pd.to_datetime(df["timestamp"], errors="coerce", utc=True)
+                mask = ts_raw <= now_ts
+                return df.loc[mask.values].reset_index(drop=True)
+            if df.index.dtype.kind == "M":
+                idx_ts = pd.to_datetime(pd.Series(df.index), errors="coerce", utc=True)
+                mask = idx_ts <= now_ts
+                return df.loc[mask.values].reset_index(drop=True)
+        except (AttributeError, KeyError, TypeError, ValueError):
+            return df
+        return df
+
     # ── Math helpers ───────────────────────────────────────────────
 
     @staticmethod
@@ -292,14 +314,15 @@ class MeanReversionScanner:
         for symbol, df in features_by_symbol.items():
             if self._is_in_cooldown(symbol, ts):
                 continue
-            if df is None or len(df) < self.min_vwap_bars:
+            known_df = self._known_bars(df, ts)
+            if known_df is None or len(known_df) < self.min_vwap_bars:
                 continue
 
-            ts_et = self._extract_ts_et(df)
+            ts_et = self._extract_ts_et(known_df)
             if ts_et is None:
                 continue
 
-            vwap_data = self._compute_session_vwap(df, ts_et)
+            vwap_data = self._compute_session_vwap(known_df, ts_et)
             if vwap_data is None:
                 continue
             vwap, n_bars, session_high, session_low = vwap_data
@@ -307,13 +330,13 @@ class MeanReversionScanner:
                 continue
 
             try:
-                current_price = float(df["close"].iloc[-1])
+                current_price = float(known_df["close"].iloc[-1])
             except Exception:
                 continue
             if not np.isfinite(current_price) or current_price < self.min_price:
                 continue
 
-            atr = self._extract_atr(df, current_price)
+            atr = self._extract_atr(known_df, current_price)
             if atr <= 0:
                 continue
 

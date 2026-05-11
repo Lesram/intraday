@@ -6,7 +6,6 @@ from datetime import time as dtime
 
 import numpy as np
 import pandas as pd
-import pytest
 
 
 # ── Fixtures ─────────────────────────────────────────────────────
@@ -18,7 +17,7 @@ def _make_mr_df(
     displacement_pct: float = 0.0,
     atr_pct: float = 0.5,  # ATR as percent of close (= production form: f["atr_14"] = atr/close)
     session_date: str = "2026-04-29",
-    start_et: str = "10:00:00",
+    start_et: str = "09:31:00",
 ) -> pd.DataFrame:
     """Build a 1-min OHLCV+atr_14 df with controlled VWAP displacement.
 
@@ -108,6 +107,29 @@ def test_no_signal_when_displacement_below_threshold():
     # 0.3% displacement against ATR=0.5 (=0.5% of 100) ⇒ ~0.6 ATR distance
     df = _make_mr_df(displacement_pct=0.3, atr_pct=0.5)
     cands = s.scan({"TEST": df}, _now_utc("10:30:00"))
+    assert cands == []
+
+
+def test_ignores_future_displacement_after_now():
+    """A future displacement in a full-session frame must not fire now."""
+    from backend.organism.mean_reversion_scanner import MeanReversionScanner
+
+    df = _make_mr_df(
+        bars=80,
+        base_price=100.0,
+        displacement_pct=0.0,
+        atr_pct=0.5,
+        start_et="10:00:00",
+    )
+    # The fixture's final bar is 11:19 ET. Make it a large oversold future bar.
+    df.loc[df.index[-1], "open"] = 100.0
+    df.loc[df.index[-1], "high"] = 100.1
+    df.loc[df.index[-1], "low"] = 97.8
+    df.loc[df.index[-1], "close"] = 98.0
+
+    scanner = MeanReversionScanner(min_displacement_atr=1.5, long_only=True)
+    cands = scanner.scan({"TEST": df}, _now_utc("10:30:00"))
+
     assert cands == []
 
 
@@ -359,6 +381,8 @@ def test_module_imports_cleanly():
         DEFAULT_MIN_STOP_BPS,
         DEFAULT_LONG_ONLY,
     )
+    assert MeanReversionScanner is not None
+    assert MeanReversionCandidate is not None
     assert DEFAULT_MIN_DISPLACEMENT_ATR > 0
     assert 0 < DEFAULT_TARGET_RETRACEMENT < 1
     assert DEFAULT_STOP_EXTENSION_ATR > 0

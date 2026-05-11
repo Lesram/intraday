@@ -144,7 +144,6 @@ def test_relative_volume_high():
     s = ORBScanner()
     # 100 historical bars at 1000 vol each = 5000 per 5-bar rolling sum
     # today's 5-bar sum = 5000 * 5 = 25000 → RV ≈ 5x
-    rng = np.random.default_rng(0)
     historical = [{"close": 100, "high": 100, "low": 100, "open": 100, "volume": 1000.0} for _ in range(100)]
     df = pd.DataFrame(historical)
 
@@ -211,7 +210,6 @@ def test_paper_relative_volume_neutral_with_timestamps():
 
     df = _make_timestamped_first5_df(days=14, daily_first5_volume=100_000)
     s = ORBScanner(rv_lookback_days=14)
-    today_vol = float(df.loc[df.index[:5], "volume"].sum())  # any 5 first-5 bars
     rv = s._paper_relative_volume(df, today_first_5min_volume=100_000)
     assert rv is not None
     assert 0.95 < rv < 1.05, f"Expected RV ~1.0 on flat data, got {rv}"
@@ -362,6 +360,37 @@ def test_breakout_triggered_when_above_orb_high():
     )
 
 
+def test_scan_ignores_future_breakout_bars_after_now():
+    """Full-session replay frames must not let future bars trigger ORB now."""
+    from backend.organism.orb_scanner import ORBScanner
+
+    df = _make_orb_df(
+        orb_high=104.5,
+        orb_low=99.0,
+        orb_open=100.0,
+        orb_close=104.0,
+        base_volume=100_000,
+        orb_volume_multiplier=3.0,
+    )
+    future_ts = pd.Timestamp("2026-04-24 09:40:00", tz="America/New_York")
+    df.loc[len(df)] = {
+        "timestamp": future_ts.tz_convert("UTC"),
+        "open": 104.0,
+        "high": 106.2,
+        "low": 103.8,
+        "close": 106.0,
+        "volume": 250_000.0,
+    }
+
+    scanner = ORBScanner(min_rv_ratio=0.0, top_n=1)
+    now_utc = pd.Timestamp("2026-04-24 13:35:00", tz="UTC")
+    cands = scanner.scan({"TEST": df}, now_utc)
+
+    assert len(cands) == 1
+    assert cands[0].current_price == pytest.approx(104.0)
+    assert not cands[0].breakout_triggered
+
+
 # ── Daily reset ──────────────────────────────────────────────
 
 
@@ -423,5 +452,7 @@ def test_scanner_imports_cleanly():
         ORBScanner, ORBCandidate,
         DEFAULT_OPENING_MINUTES, DEFAULT_TOP_N,
     )
+    assert ORBScanner is not None
+    assert ORBCandidate is not None
     assert DEFAULT_OPENING_MINUTES == 5
     assert DEFAULT_TOP_N == 10
