@@ -35,6 +35,9 @@ jobs:
       - name: Generate audit index
         run: python scripts/ci/generate_audit_index.py
 
+      - name: Generate Phase 8 evidence warehouse and replay queue
+        run: python scripts/ci/run_phase8_postclose_evidence.py
+
       - name: Check KPI thresholds and open issue if breached
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

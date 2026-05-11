@@ -17,10 +17,12 @@ Provides visibility and control endpoints for the living organism:
 from __future__ import annotations
 
 import asyncio
+import math
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from typing import Any
 
+import numpy as np
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 from sqlalchemy import select, text
@@ -32,7 +34,11 @@ from backend.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
-router = APIRouter(prefix="/organism", tags=["Living Organism"])
+router = APIRouter(
+    prefix="/organism",
+    tags=["Living Organism"],
+    dependencies=[Depends(require_admin)],
+)
 
 
 # ── Response models ──────────────────────────────────────────────────
@@ -101,6 +107,29 @@ def _get_runner(request: Request):
     return getattr(request.app.state, "organism_runner", None)
 
 
+def _json_safe(value: Any) -> Any:
+    """Convert runtime status values into FastAPI/Pydantic-safe JSON types."""
+    if isinstance(value, dict):
+        return {str(k): _json_safe(v) for k, v in value.items()}
+    if isinstance(value, (list, tuple, set)):
+        return [_json_safe(v) for v in value]
+    if isinstance(value, np.bool_):
+        return bool(value)
+    if isinstance(value, np.integer):
+        return int(value)
+    if isinstance(value, np.floating):
+        value = float(value)
+    if isinstance(value, float):
+        return value if math.isfinite(value) else None
+    if isinstance(value, np.ndarray):
+        return _json_safe(value.tolist())
+    if isinstance(value, Decimal):
+        return float(value)
+    if isinstance(value, datetime):
+        return value.isoformat()
+    return value
+
+
 # ── Endpoints ────────────────────────────────────────────────────────
 
 @router.get("/status", response_model=OrganismStatusResponse)
@@ -133,21 +162,21 @@ async def get_organism_status(request: Request):
         _tick_count = int(getattr(runner, "_tick_count", 0))
 
     status = OrganismStatusResponse(
-        governance=gov.to_dict(),
-        policy_weights=policy.get_weights() if policy else {},
+        governance=_json_safe(gov.to_dict()),
+        policy_weights=_json_safe(policy.get_weights()) if policy else {},
         tick_count=_tick_count,
     )
 
     if runner:
-        status.regime = {"last_regime": runner._last_regime}
+        status.regime = _json_safe({"last_regime": runner._last_regime})
 
     if promotion and promotion._state:
-        status.promotion = promotion._state.to_dict()
+        status.promotion = _json_safe(promotion._state.to_dict())
 
     # Phase 3.4: Include live engine + scheduler status
     scheduler = getattr(request.app.state, "organism_scheduler", None)
     if scheduler:
-        status.live_engine = scheduler.state()
+        status.live_engine = _json_safe(scheduler.state())
 
     return status
 
@@ -191,7 +220,7 @@ async def get_organism_runs(request: Request, limit: int = Query(default=50, ge=
     if not scheduler:
         return OrganismRunsResponse(enabled=True, running=False, runs=[])
 
-    state = scheduler.state()
+    state = _json_safe(scheduler.state())
     runs = state.get("tick_history") or []
     if limit and len(runs) > limit:
         runs = runs[-limit:]

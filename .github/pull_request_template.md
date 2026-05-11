@@ -21,9 +21,10 @@
 V6 W / V7 W2 — AUDIT-WAVE PR CHECKLIST
 
 If your commit message starts with `fix(audit-wave...)`, the following
-checklist is REQUIRED. CI does not yet enforce these checks
-(scripts/ci/check_wave_markers.py is a future ticket); enforcement is
-human-review-mediated until then.
+checklist is REQUIRED. CI enforces the non-decorative subset via
+scripts/ci/check_wave_markers.py: finding IDs are required, cited grep
+commands must be runnable, and V12+ audit-wave ranges are hard-gated.
+The grep/count/test-delta fields remain useful reviewer evidence.
 
 The pattern that produced V-T-1, V-T-2, X-4, X-8, U-RF4 across
 multiple rounds is incomplete same-class scans on prior fixes.

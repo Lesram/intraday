@@ -21,8 +21,8 @@ After 5 sessions of shadow data, decide whether to promote to live entry path.
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass, field
-from datetime import time as dtime, timezone
+from dataclasses import dataclass
+from datetime import time as dtime
 from typing import Any, Optional
 
 import numpy as np
@@ -157,6 +157,32 @@ class ORBScanner:
         if hasattr(et, "time"):
             return et.time()
         return dtime(0, 0)
+
+    @staticmethod
+    def _known_bars(df: pd.DataFrame, now_ts: pd.Timestamp) -> pd.DataFrame:
+        """Return only bars observable at ``now_ts``.
+
+        Replay/shadow callers may pass a full-session frame. The scanner must
+        not let later bars influence ORB cache, RV, ATR, or breakout status.
+        """
+        if df is None or len(df) == 0:
+            return df
+        if now_ts.tzinfo is None:
+            now_ts = now_ts.tz_localize("UTC")
+        else:
+            now_ts = now_ts.tz_convert("UTC")
+        try:
+            if "timestamp" in df.columns:
+                ts_raw = pd.to_datetime(df["timestamp"], errors="coerce", utc=True)
+                mask = ts_raw <= now_ts
+                return df.loc[mask.values].reset_index(drop=True)
+            if df.index.dtype.kind == "M":
+                idx_ts = pd.to_datetime(pd.Series(df.index), errors="coerce", utc=True)
+                mask = idx_ts <= now_ts
+                return df.loc[mask.values].reset_index(drop=True)
+        except (AttributeError, KeyError, TypeError, ValueError):
+            return df
+        return df
 
     def _get_today_first5_bars(
         self,
@@ -408,6 +434,8 @@ class ORBScanner:
         """
         # Determine session date
         ts = pd.Timestamp(now_dt) if not isinstance(now_dt, pd.Timestamp) else now_dt
+        if ts.tzinfo is None:
+            ts = ts.tz_localize("UTC")
         if session_date is None:
             session_date = ts.strftime("%Y-%m-%d")
 
@@ -429,6 +457,7 @@ class ORBScanner:
         # Phase 1: if just past the 9:35 decision point, compute ORB ranges
         # for symbols that don't have them cached yet.
         for symbol, df in features_by_symbol.items():
+            known_df = self._known_bars(df, ts)
             if symbol in self._orb_cache:
                 # Audit-E finding 5 (2026-05-01): validate cached ORB is
                 # from current session. The cache entry's orb_session_date
@@ -449,23 +478,23 @@ class ORBScanner:
                     del self._orb_cache[symbol]
                 else:
                     continue  # cache valid for current session
-            if df is None or len(df) < self.opening_minutes:
+            if known_df is None or len(known_df) < self.opening_minutes:
                 continue
 
             atr = atr_by_symbol.get(symbol, 0.0)
-            if atr <= 0 and "atr_14" in df.columns:
+            if atr <= 0 and "atr_14" in known_df.columns:
                 try:
-                    atr_v = float(df["atr_14"].iloc[-1])
-                    last_close = float(df["close"].iloc[-1])
+                    atr_v = float(known_df["atr_14"].iloc[-1])
+                    last_close = float(known_df["close"].iloc[-1])
                     atr = atr_v * last_close if atr_v < 1.0 else atr_v
                 except Exception:
                     atr = 0.0
 
-            orb = self._compute_orb_range(symbol, df, atr)
+            orb = self._compute_orb_range(symbol, known_df, atr)
             if orb is None:
                 continue
 
-            rv_ratio = self._compute_relative_volume(df, orb["orb_volume"])
+            rv_ratio = self._compute_relative_volume(known_df, orb["orb_volume"])
             orb["rv_ratio"] = rv_ratio
             self._orb_cache[symbol] = orb
 
@@ -482,10 +511,11 @@ class ORBScanner:
             if symbol in self._fired_today:
                 continue  # already fired this session
             df = features_by_symbol.get(symbol)
-            if df is None or len(df) < 1 or "close" not in df.columns:
+            known_df = self._known_bars(df, ts)
+            if known_df is None or len(known_df) < 1 or "close" not in known_df.columns:
                 continue
             try:
-                current_price = float(df["close"].iloc[-1])
+                current_price = float(known_df["close"].iloc[-1])
             except Exception:
                 continue
 

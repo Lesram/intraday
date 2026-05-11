@@ -4,6 +4,29 @@
 
 ---
 
+## CURRENT PAPER RUNTIME NOTE (2026-05-06)
+
+This file is the long-form architecture map. For the latest deploy truth, use
+`docs/engineering/PHASE7_CLOSE_REPORT.md`, `docs/engineering/LIVE_AUDIT_INDEX.md`,
+and the generated artifact pack first.
+
+Current Phase 7 Track A close state:
+
+- Branch: `codex/v13-phase2-expectancy`.
+- Paper API container: `intra-api-1`.
+- Paper DB container: `trading_platform_db_paper`.
+- Redis container: `intra-redis-1`.
+- Runtime SHA checked: `3fb3dd506e9e375205505cd11e126fe28bc355d4`.
+- Build time checked: `2026-05-06T16:16:32Z`.
+- Migration head: `20260503_000003`.
+- Phase 5 and Phase 6 telemetry are enabled in shadow/advisory mode.
+- Current strategy health is negative: PnL `-793.3359`, win rate `0.3327`,
+  Sharpe `-1.3959`; no strategy promotion is justified by this map.
+- Last post-deploy validation snapshot had `PSQ:60` open and data-integrity
+  warning `realized=954`, `brain=527`; intraday counts can move.
+
+---
+
 ## TABLE OF CONTENTS
 
 ### Layer 1: Architecture Overview
@@ -150,11 +173,11 @@ G. [ORM Models & Configuration](#g-orm-models--configuration)
 │                                                                                  │
 │  ┌──────────────────────────┐    ┌──────────────────────────────────────────┐    │
 │  │   PostgreSQL 16          │    │   Redis 7                                │    │
-│  │   Docker (intra-db-1)    │    │   Docker (intra-redis-1)                │    │
+│  │   Docker (paper DB)      │    │   Docker (intra-redis-1)                │    │
 │  │   Port 5432 (localhost)  │    │   Port 6379 (localhost)                 │    │
 │  │   DB: algotrading        │    │   256MB maxmemory                       │    │
 │  │   User: trading          │    │   allkeys-lru eviction                  │    │
-│  │   25 tables              │    │   AOF persistence                       │    │
+│  │   27 tables              │    │   AOF persistence                       │    │
 │  └──────────────────────────┘    └──────────────────────────────────────────┘    │
 │                                                                                  │
 │  ┌──────────────────────────────────────────────────────────────────────────┐    │
@@ -752,7 +775,7 @@ ENTRY SCANNING PIPELINE
   │   ├── Combines ML + 6 other factors (see §18)
   │   └── Returns top-5 AlphaCandidates with composite >= 0.15 (improve9 B2: raised from 3 to reduce concentration)
   │
-  ├── [7d] FILTER CANDIDATES (11 gates):
+  ├── [7d] FILTER CANDIDATES (12 gates):
   │   │
   │   │  For each AlphaCandidate:
   │   ├── Gate 1: Already have position? → REJECT
@@ -769,16 +792,20 @@ ENTRY SCANNING PIPELINE
   │   │   └── Banned if: (a) 2+ consecutive losses AND 0 wins today, OR
   │   │       (b) daily P&L ≤ -max($25, 0.10% equity), OR (c) 2+ stop-loss exits in 30 min
   │   ├── Gate 10: Missingness gate (last-row NaN/Inf > 25%)? → REJECT
-  │   └── Gate 11: Confidence gate (improve7):
-  │       └── MIN_MAIN_CONF = 0.45 in chop/high_vol/trending_down, 0.40 otherwise
-  │           Below threshold → LOGGED only (improve9 A7: exploration queue removed)
+  │   ├── Gate 11: Confidence gate (improve7):
+  │   │   └── MIN_MAIN_CONF = 0.45 in chop/high_vol/trending_down, 0.40 otherwise
+  │   │       Below threshold → LOGGED only (improve9 A7: exploration queue removed)
+  │   └── Gate 12: Alpha+breakout bad-regime defensive filter (2026-05-08):
+  │       └── alpha+breakout candidates in chop/trending_down → REJECT when
+  │           ORGANISM_ALPHA_BREAKOUT_BAD_REGIME_FILTER_ENABLED=true (default)
   │
-  │   IF passes all 11 gates:
+  │   IF passes all 12 gates:
   │   ├── Compute blended confidence (additive, mode-dependent):
-  │   │   LEARNING MODE (improve9 A2):
+  │   │   ML-ISOLATED MODE (learning or production_guarded):
   │   │   confidence = 0.65 × breakout_score
   │   │              + 0.35 × min(tension, 1.0)
-  │   │   (ML weight = 0% — untrained ML is anti-predictive)
+  │   │   (ML weight = 0%; guarded mode uses this until realized expectancy
+  │   │    clears the production promotion floors)
   │   │
   │   │   PRODUCTION MODE:
   │   │   confidence = 0.50 × ML_confidence
@@ -798,12 +825,13 @@ ENTRY SCANNING PIPELINE
   │   │   ├── Liquidity gate (shared with alpha path)
   │   │   ├── Confidence threshold gate (shared with alpha path)
   │   │   ├── Sector gate allows
-  │   │   └── ML direction not negative (don't fight ML)
+  │   │   └── ML direction not negative, only when ML influence is enabled
   │   │   (NOTE: skips missingness gate; uses baseline confidence only, not defensive tier)
   │   ├── Forced direction = +1.0 (always long)
   │   └── predicted_return:
-  │       ├── ML present: max(ml_return, 0.003)  (0.3% min floor)
-  │       └── ML absent:  0.005 + 0.015 × breakout_score  (0.5%–2.0% range)
+  │       ├── Full production + ML present: pass through ML return if direction agrees
+  │       └── ML-isolated / ML absent: 0.005 + 0.015 × breakout_score
+  │           (0.5%–2.0% range)
   │
   └── [7f] SORT + TRUNCATE
       ├── Sort by breakout_score × confidence (descending)
@@ -913,7 +941,7 @@ KELLY SIZING PIPELINE
   │   │
   │   │   ══ MODE SPLIT (improve9 A1) ══════════════════════════════════
   │   │
-  │   │   LEARNING MODE (< 200 trades): FIXED ATR-DOLLAR RISK ONLY
+  │   │   FIXED-RISK MODE (learning <200 trades OR production_guarded):
   │   │   ├── No Kelly, no confidence scaling, no breakout bonus
   │   │   ├── risk_rate = 0.10% equity (_RISK_BUDGET_PER_TRADE_LEARNING)
   │   │   ├── stop_distance = atr_pct × _RISK_BUDGET_STOP_ATR
@@ -921,7 +949,10 @@ KELLY SIZING PIPELINE
   │   │   ├── target_weight *= drawdown_scale × regime_scale
   │   │   └── Deterministic sizing: no noise from uncalibrated ML/returns
   │   │
-  │   │   PRODUCTION MODE (>= 200 trades): FULL KELLY STACK
+  │   │   FULL PRODUCTION MODE: FULL KELLY STACK
+  │   │   ├── Requires >=300 strategy trades AND passing promotion floors:
+  │   │   │   total_pnl >= 0, last_50_mean_pnl >= 0,
+  │   │   │   last_50_win_rate >= 0.35, sharpe_per_trade >= 0
   │   ├── STEP 6: Confidence Scaling (production only)
   │   │   ├── scale = 0.3 + confidence × 1.2 → range [0.3, 1.5]
   │   │   └── IF ML untrained: capped at 0.9
@@ -1305,11 +1336,11 @@ COMPOSITE = 0.25 × ml_score
 | Volume | 0.10 | `0.5 × vol_surge + 0.5 × vol_price_div` | [0, 1] |
 | Regime | 0.05 | Regime-direction alignment table (symbol-aware for inverse ETFs) | [0.2, 1.0] |
 
-**Learning mode weights** (improve9 A2: ML = 0 when untrained):
+**ML-isolated weights** (learning mode and production_guarded: ML = 0):
 
 | Factor | Weight | Notes |
 |---|---|---|
-| ML Score | **0.00** | Anti-predictive when untrained — shadow only |
+| ML Score | **0.00** | Shadow only until promotion floors pass |
 | Breakout | **0.40** | Primary signal |
 | Institutional | 0.15 | Same |
 | Momentum | **0.20** | Boosted to compensate ML=0 |
@@ -1317,12 +1348,12 @@ COMPOSITE = 0.25 × ml_score
 | Volume | 0.10 | Same |
 | Regime | 0.05 | Same |
 
-Dynamic ML weight (production): if avg_conf < 0.10, ml_weight drops to 0.05; excess redistributed 60% breakout / 40% momentum.
+Dynamic ML weight (full production only): if avg_conf < 0.10, ml_weight drops to 0.05; excess redistributed 60% breakout / 40% momentum.
 
 ### Modifiers
 
-- **ML Hold penalty (trained)**: direction == 0 → composite × 0.30 (70% penalty)
-- **ML Hold penalty (untrained)**: direction == 0 → derive direction from momentum (ret_5d > 0.005 or breakout_readiness > 0.6 → long; ret_5d < -0.005 → short), composite × 0.70 (mild 30% penalty). `ml_is_trained` flag passed from live_engine.
+- **ML Hold penalty (full production, trained)**: direction == 0 → composite × 0.30 (70% penalty)
+- **ML-isolated direction derivation**: learning or production_guarded derives direction from momentum (ret_5d > 0.005 or breakout_readiness > 0.6 → long; ret_5d < -0.005 → short), composite × 0.70 (mild 30% penalty). In this mode `ml_signal` is not carried into the candidate.
 - **Symbol fitness** (improve9 B1): composite × (0.8 + fitness × 0.4) → range [0.84×, 1.18×]. Was [0.6, 1.45] — too wide for bootstrap data.
 - **Stocks in Play boost** (improve9 B3): `_stocks_in_play_score()` uses vol_sma_ratio and gap_pct. Boost range [1.0×, 1.25×]. Relative volume >1.5x starts boosting (3x = max), gap >0.5% starts boosting (2% = max). 60% rvol + 40% gap weighting.
 - **NaN guard**: each factor individually checked; NaN → default (0.0 or 0.5)
@@ -1812,6 +1843,16 @@ FilteringSummary:
     "equity_zero" | "drawdown_kill" | "spy_ma_filter" | "opening_block" |
     "regime_sitout" | "throttle" | "stale_data"
   - learning_mode: bool (True when < 200 completed trades)
+  - trading_phase: "learning" | "production_frozen" | "production_guarded" | "production"
+  - guarded_mode / ml_isolation_mode / fixed_risk_sizing: bool flags from trading_phase
+  - promotion_blockers: list of realized-expectancy floors blocking full production
+  - strategy_total_trades / strategy_cumulative_pnl / strategy_win_rate /
+    strategy_sharpe_ratio_per_trade: reconciliation-artifact-filtered stats
+    used by the promotion gate
+  - `/api/v1/health/strategy` top-level expectancy uses the same
+    strategy-only scope; when reconciliation rows are present it also
+    exposes `all_records_expectancy` and `excluded_reconciliation_artifacts`
+    so operators can reconcile headline strategy PnL against raw ledger PnL.
   - effective_max_entries_per_hour: int (12 in learning, max(3, 6-open_positions) in production)
   - effective_fitness_gate: float (0.0 in learning = no gate, 0.45 in production for 10+ trade symbols)
   - burst_cap_remaining: int (entries left in rolling 15-min window, max 4)
@@ -4323,6 +4364,7 @@ StalenessReasons (enum):
 | Alpha composite minimum | 0.15 | alpha_scanner | Minimum score to be a candidate |
 | Breakout composite minimum | 0.20 | breakout_scanner | Minimum breakout score |
 | Pure breakout entry threshold | 0.55 | live_engine | Breakout-only entries need high score |
+| Full production promotion gate | strategy-only total_pnl ≥ 0, last_50_mean_pnl ≥ 0, last_50_win_rate ≥ 0.35, sharpe_per_trade ≥ 0 | trading_phase + `/api/v1/health/strategy` | Mature losing brains stay in production_guarded: strict entry gates remain, ML influence and Kelly remain disabled; reconciliation bookkeeping is exposed separately as all-record expectancy |
 | Symbol fitness gate | **0 (learning, no gate)** / 0.45 (production, 10+ trades) | live_engine | improve9 B1: unified canonical system. Learning = soft ranking only. Production = hard reject for established losers |
 | Liquidity gate | 10K avg vol/bar | live_engine | Block illiquid symbols (per-bar, not daily) |
 | ML confidence reversal | 0.60 (intraday) / 0.65 (daily) | live_engine | ML reversal exit — partial exit 30%/25% of position |
@@ -4333,7 +4375,7 @@ StalenessReasons (enum):
 | Kelly ML floor | 0.04×conf (trained) / 0.02×conf (untrained) | kelly_sizer | Minimum sizing when ML confident + edge clears cost |
 | Kelly breakout floor | 0.003×score (requires kelly<0.005, score>=0.55) | kelly_sizer | Minimum sizing on strong breakout + edge clears cost |
 | Kelly confidence cap (untrained) | 0.9 | kelly_sizer | Confidence scaling ceiling when ML untrained (was 0.6 — prevented cold-start sizing) |
-| Kelly risk-budget floor | **0.10% equity** / atr_stop (learning), 0.25% / (atr × 1.5) × conf_floor_scale (production) | kelly_sizer | improve9 A1: Learning = fixed ATR-dollar risk only (no Kelly). Production = pre-Kelly floor with confidence scaling |
+| Kelly risk-budget floor | **0.10% equity** / atr_stop (learning or production_guarded), 0.25% / (atr × 1.5) × conf_floor_scale (full production) | kelly_sizer | improve9 A1 + Phase 2: fixed ATR-dollar risk while ML/Kelly are not promoted. Full production = pre-Kelly floor with confidence scaling |
 | Kelly raw cap | 1.0 (100%) | kelly_sizer | Prevents oversized raw Kelly fractions |
 | Kelly min notional | $500 intraday / $2,000 daily | kelly_sizer | Minimum position size (set by live_engine per timeframe) |
 | Kelly max per position | 8% intraday / 10% daily | kelly_sizer | Position concentration limit (set by live_engine per timeframe) |
@@ -4358,6 +4400,7 @@ StalenessReasons (enum):
 | Failure-to-follow delay | chop: max(H×4/5, 5) = **12 bars**; other: max(H//2, 3) = **7** for H=15 | adaptive_exits | Chop gets longer delay (improve7) |
 | Failure-to-follow R thresholds | regime-dependent (0.10R–0.25R) | adaptive_exits | trending_up/low_vol/high_vol=disabled; chop=0.15R (**losers-only exit, winners get stop tightened**); stress=0.10R; others=0.25R |
 | Confidence entry gate | 0.40 (0.45 in chop/high_vol/trending_down) | live_engine | Below-threshold candidates logged only (improve9 A7: exploration removed) |
+| Alpha+breakout bad-regime filter | enabled by default | live_engine | Blocks alpha+breakout entries in chop/trending_down; records blocked candidates with `live_pipeline_candidate=false` for evidence |
 | Symbol circuit breaker | (a) 2+ consec losses + 0 wins, (b) PnL ≤ -max($25, 0.10% eq), (c) 2+ SL in 30min | live_engine | Ban symbol for session (improve8 enhanced) |
 | Regime evolution freeze | 200+ total trades AND 30+ per regime | kelly_sizer | Evolved regime scales locked until statistically stable (improve7) |
 | Full evolution freeze | **300+ total trades** | live_engine | improve9 B5: ALL self-evolution frozen until 300 clean trades. Only ML retraining runs. |

@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import numpy as np
 import pandas as pd
-import pytest
 from datetime import time as dtime
 
 
@@ -93,6 +92,35 @@ def test_eod_no_signal_below_threshold():
     assert cands == []
 
 
+def test_eod_ignores_future_rally_after_now():
+    """A full-day frame with a later rally must not trigger at 15:30 ET."""
+    from backend.organism.eod_scanner import EODMomentumScanner
+
+    rows = []
+    day_start = pd.Timestamp("2026-04-25 09:30:00", tz="America/New_York")
+    for i in range(390):
+        ts = day_start + pd.Timedelta(minutes=i)
+        if i <= 360:  # through 15:30 ET, only a small non-signal drift
+            close = 100.0 + (0.10 * i / 360.0)
+        else:  # future bars rally hard, but are not known at 15:30
+            close = 100.10 + (1.00 * (i - 360) / 29.0)
+        rows.append({
+            "timestamp": ts.tz_convert("UTC"),
+            "open": 100.0 if i == 0 else rows[-1]["close"],
+            "high": close * 1.0005,
+            "low": close * 0.9995,
+            "close": close,
+            "volume": 100_000.0,
+            "atr_14": 0.5,
+        })
+    df = pd.DataFrame(rows)
+
+    scanner = EODMomentumScanner(min_day_return_pct=0.30)
+    now_utc = pd.Timestamp("2026-04-25 19:30:00", tz="UTC")
+
+    assert scanner.scan({"TEST": df}, now_utc) == []
+
+
 def test_eod_top_n_filtering():
     from backend.organism.eod_scanner import EODMomentumScanner
     s = EODMomentumScanner(top_n=2, min_day_return_pct=0.20)
@@ -134,5 +162,7 @@ def test_eod_imports_cleanly():
         EODMomentumScanner, EODCandidate,
         DEFAULT_DECISION_HOUR_ET, DEFAULT_MIN_DAY_RETURN_PCT,
     )
+    assert EODMomentumScanner is not None
+    assert EODCandidate is not None
     assert DEFAULT_DECISION_HOUR_ET == 15
     assert DEFAULT_MIN_DAY_RETURN_PCT == 0.30

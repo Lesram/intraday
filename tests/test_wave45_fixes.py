@@ -14,6 +14,36 @@ Run with: ./venv/bin/python -m pytest tests/test_wave45_fixes.py -v
 from __future__ import annotations
 
 import inspect
+from types import SimpleNamespace
+from unittest.mock import AsyncMock
+
+import pytest
+
+
+def _stream_health_engine(*, tick: int = 30, provider=None):
+    from backend.organism.live_engine import OrganismLiveEngine
+
+    engine = OrganismLiveEngine.__new__(OrganismLiveEngine)
+    engine._streaming_provider = provider
+    engine._tick_count = tick
+    return engine
+
+
+def _staleness_engine(
+    *,
+    provider,
+    data_stale: bool = False,
+    now: float = 250.0,
+    threshold: float = 120.0,
+):
+    from backend.organism.live_engine import OrganismLiveEngine
+
+    engine = OrganismLiveEngine.__new__(OrganismLiveEngine)
+    engine._streaming_provider = provider
+    engine._data_stale = data_stale
+    engine._DATA_STALE_THRESHOLD_S = threshold
+    engine._time_fn = lambda: now
+    return engine
 
 
 def test_pp_5_scanner_tracks_consecutive_failures():
@@ -72,11 +102,96 @@ def test_pp_6_stale_symbols_returns_per_symbol_age():
 
 
 def test_pp_6_live_engine_consults_per_symbol_stale():
-    """_live_tick_inner must call streaming_provider.stale_symbols."""
+    """The extracted staleness stage must call provider.stale_symbols."""
     from backend.organism.live_engine import OrganismLiveEngine
-    src = inspect.getsource(OrganismLiveEngine._live_tick_inner)
+    assert hasattr(OrganismLiveEngine, "_stage_update_data_staleness"), (
+        "P7.2 regression: stream staleness stage helper removed."
+    )
+    src = inspect.getsource(OrganismLiveEngine._stage_update_data_staleness)
     assert "PP-6" in src, "PP-6 marker missing"
     assert "stale_symbols" in src, (
-        "PP-6 regression: _live_tick_inner no longer calls "
+        "PP-6 regression: staleness stage no longer calls "
         "streaming_provider.stale_symbols."
     )
+
+
+@pytest.mark.asyncio
+async def test_p7_stream_health_recovery_appends_activity_event():
+    """Every 30 ticks, a recovered stale stream surfaces operator activity."""
+    from backend.organism.live_engine import LiveTickResult
+
+    provider = SimpleNamespace(
+        check_and_recover_stale_stream=AsyncMock(return_value=True),
+    )
+    engine = _stream_health_engine(tick=30, provider=provider)
+    result = LiveTickResult()
+
+    await engine._stage_check_stream_health(result, "2026-05-06T05:00:00Z")
+
+    provider.check_and_recover_stale_stream.assert_awaited_once()
+    assert len(result.activity) == 1
+    assert result.activity[0].event_type == "stream"
+    assert "reconnect attempted" in result.activity[0].message
+    assert result.activity[0].timestamp == "2026-05-06T05:00:00Z"
+
+
+@pytest.mark.asyncio
+async def test_p7_stream_health_skips_between_probe_ticks():
+    """Stream recovery check keeps the existing every-30-tick cadence."""
+    from backend.organism.live_engine import LiveTickResult
+
+    provider = SimpleNamespace(
+        check_and_recover_stale_stream=AsyncMock(return_value=True),
+    )
+    engine = _stream_health_engine(tick=29, provider=provider)
+    result = LiveTickResult()
+
+    await engine._stage_check_stream_health(result, "2026-05-06T05:00:00Z")
+
+    provider.check_and_recover_stale_stream.assert_not_awaited()
+    assert result.activity == []
+
+
+def test_p7_staleness_stage_marks_aggregate_stale():
+    """Aggregate provider staleness flips the live entry data flag on."""
+    provider = SimpleNamespace(last_update_time=100.0)
+    engine = _staleness_engine(provider=provider, now=250.0, threshold=120.0)
+
+    engine._stage_update_data_staleness()
+
+    assert engine._data_stale is True
+
+
+def test_p7_staleness_stage_clears_when_stream_recovers():
+    """A fresh aggregate timestamp clears a prior stale-data state."""
+    provider = SimpleNamespace(last_update_time=240.0)
+    engine = _staleness_engine(
+        provider=provider,
+        data_stale=True,
+        now=250.0,
+        threshold=120.0,
+    )
+
+    engine._stage_update_data_staleness()
+
+    assert engine._data_stale is False
+
+
+def test_p7_staleness_stage_marks_per_symbol_stale_when_aggregate_fresh():
+    """PP-6: per-symbol stalls still block entries behind fresh aggregate data."""
+    calls = []
+
+    def stale_symbols(*, threshold_s, now):
+        calls.append((threshold_s, now))
+        return [("AAA", 150.0)]
+
+    provider = SimpleNamespace(
+        last_update_time=240.0,
+        stale_symbols=stale_symbols,
+    )
+    engine = _staleness_engine(provider=provider, now=250.0, threshold=120.0)
+
+    engine._stage_update_data_staleness()
+
+    assert engine._data_stale is True
+    assert calls == [(120.0, 250.0)]

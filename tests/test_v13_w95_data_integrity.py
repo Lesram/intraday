@@ -170,6 +170,7 @@ def test_w95_data_integrity_route_module_exists():
     src = DI_HEALTH_PATH.read_text()
     assert '@router.get("/data-integrity")' in src
     assert "_compute_variance" in src
+    assert "_realized_trade_summary" in src
 
 
 def test_w95_data_integrity_compute_variance_pure():
@@ -248,6 +249,48 @@ def test_w95_data_integrity_classifies_clean_round_trip_as_ok():
         executions=100,
         position_lots=50,
         tick_telemetry=500,
+    )
+    assert out["accounting_status"] == "ok"
+    assert out["reasons"] == []
+
+
+def test_w95_data_integrity_scope_detects_historical_db_superset():
+    import sys
+    sys.path.insert(0, str(REPO_ROOT))
+    from backend.api.routes.data_integrity_health import _classify_scope_status
+
+    out = _classify_scope_status(
+        brain_history={
+            "rows": 537,
+            "first_closed_at": "2026-03-30T18:37:23+00:00",
+        },
+        realized_summary={
+            "distinct_close_orders": 719,
+            "first_close_date": "2026-03-03T20:01:24+00:00",
+        },
+    )
+    assert out["scope_status"] == "not_comparable_db_superset"
+    assert "db_history_starts_before_brain_history" in out["scope_notes"]
+    assert "db_close_orders_exceed_brain_history_rows" in out["scope_notes"]
+
+
+def test_w95_data_integrity_db_superset_is_not_accounting_warning():
+    """A populated historical DB ledger can be a superset of the current
+    brain history. That is a scope note, not proof of broken accounting."""
+    import sys
+    sys.path.insert(0, str(REPO_ROOT))
+    from backend.api.routes.data_integrity_health import _classify_accounting_status
+
+    out = _classify_accounting_status(
+        brain=537,
+        realized=993,
+        orders=1479,
+        executions=1551,
+        position_lots=805,
+        tick_telemetry=10000,
+        scope_status="not_comparable_db_superset",
+        realized_close_orders=719,
+        brain_history_rows=537,
     )
     assert out["accounting_status"] == "ok"
     assert out["reasons"] == []

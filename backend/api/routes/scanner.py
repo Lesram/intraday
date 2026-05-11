@@ -199,8 +199,8 @@ async def get_real_market_data(symbol: str) -> dict[str, Any] | None:
             'prev_close': prev_close,
         }
 
-    except Exception as e:
-        logger.error(f"Error fetching market data for {symbol}: {e}")
+    except Exception:  # noqa: BLE001 - external market-data clients raise broad SDK errors.
+        logger.exception("Error fetching market data for %s", symbol)
         return None
 
 
@@ -298,10 +298,10 @@ async def calculate_indicators_for_symbol(symbol: str, bars_data: list = None) -
                     "pandas_ta indicators skipped for %s: %s", symbol, e,
                 )
         else:
-            logger.error(f"Error calculating indicators for {symbol}: {e}")
+            logger.exception("Error calculating indicators for %s", symbol)
         return None
-    except Exception as e:
-        logger.error(f"Error calculating indicators for {symbol}: {e}")
+    except Exception:  # noqa: BLE001 - indicator providers can raise broad SDK errors.
+        logger.exception("Error calculating indicators for %s", symbol)
         return None
 
 # ============================================================================
@@ -498,11 +498,11 @@ async def scan_market(
     try:
         # Use internal scan function (shared with WebSocket)
         return await scan_market_internal(filters)
-    except Exception as e:
-        logger.error(f"Scan failed: {e}")
+    except Exception:  # noqa: BLE001 - scanner internals are translated to API 500.
+        logger.exception("Scan failed")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Scan failed: {str(e)}"
+            detail="Scan failed"
         )
 
 @router.get("/presets", response_model=list[ScanPreset])
@@ -643,7 +643,7 @@ class ScannerConnectionManager:
         """Accept new connection"""
         await websocket.accept()
         self.active_connections[client_id] = websocket
-        logger.info(f"Scanner WebSocket connected: {client_id}")
+        logger.info("Scanner WebSocket connected: %s", client_id)
 
     def disconnect(self, client_id: str):
         """Remove connection"""
@@ -652,15 +652,15 @@ class ScannerConnectionManager:
         if client_id in self.scan_tasks:
             self.scan_tasks[client_id].cancel()
             del self.scan_tasks[client_id]
-        logger.info(f"Scanner WebSocket disconnected: {client_id}")
+        logger.info("Scanner WebSocket disconnected: %s", client_id)
 
     async def send_scan_results(self, client_id: str, results: ScanResponse):
         """Send scan results to specific client"""
         if client_id in self.active_connections:
             try:
                 await self.active_connections[client_id].send_json(results.model_dump())
-            except Exception as e:
-                logger.error(f"Failed to send scan results to {client_id}: {e}")
+            except Exception:  # noqa: BLE001 - websocket send failures vary by server/client.
+                logger.exception("Failed to send scan results to %s", client_id)
                 self.disconnect(client_id)
 
     async def start_scanning(self, client_id: str, filters: ScanFilters, interval: int = 10):
@@ -677,8 +677,8 @@ class ScannerConnectionManager:
                 await asyncio.sleep(interval)
             except asyncio.CancelledError:
                 break
-            except Exception as e:
-                logger.error(f"Error in scanning loop for {client_id}: {e}")
+            except Exception:  # noqa: BLE001 - keep scanner loop alive after one bad cycle.
+                logger.exception("Error in scanning loop for %s", client_id)
                 await asyncio.sleep(interval)
 
 # Global connection manager
@@ -694,7 +694,7 @@ async def scan_market_internal(filters: ScanFilters) -> ScanResponse:
     quote_manager = get_quote_manager()
     quotes_dict = await quote_manager.get_quotes(SCANNABLE_SYMBOLS)
 
-    logger.info(f"Fetched {len(quotes_dict)} quotes for scanning")
+    logger.info("Fetched %s quotes for scanning", len(quotes_dict))
 
     # Scan symbols that have quotes
     for symbol in SCANNABLE_SYMBOLS:
@@ -732,8 +732,8 @@ async def scan_market_internal(filters: ScanFilters) -> ScanResponse:
                     score=score,
                     signals=signals
                 ))
-        except Exception as e:
-            logger.error(f"Error scanning {symbol}: {e}")
+        except Exception:  # noqa: BLE001 - skip one bad symbol without failing the scan.
+            logger.exception("Error scanning %s", symbol)
             continue
 
     # Sort by score (highest first)
@@ -806,7 +806,7 @@ async def scanner_websocket(
         claims = decode_token(token)
         user_id = claims.get("sub", "anonymous")
         client_id = f"scanner_{user_id}_{id(websocket)}"
-    except Exception:
+    except Exception:  # noqa: BLE001 - any token decode failure closes the socket.
         await websocket.close(code=4003, reason="Invalid or expired token")
         return
 
@@ -888,8 +888,8 @@ async def scanner_websocket(
 
     except WebSocketDisconnect:
         scanner_manager.disconnect(client_id)
-    except Exception as e:
-        logger.error(f"WebSocket error for {client_id}: {e}")
+    except Exception:  # noqa: BLE001 - defensive cleanup for unexpected websocket failures.
+        logger.exception("WebSocket error for %s", client_id)
         scanner_manager.disconnect(client_id)
 
 
@@ -964,11 +964,11 @@ async def export_scan_results_csv(
                 "Content-Disposition": f"attachment; filename=scan_results_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
             }
         )
-    except Exception as e:
-        logger.error(f"CSV export failed: {e}")
+    except Exception:  # noqa: BLE001 - translate scanner/export failures to API 500.
+        logger.exception("CSV export failed")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Export failed: {str(e)}"
+            detail="Export failed"
         )
 
 @router.post("/export/json")
@@ -1000,11 +1000,11 @@ async def export_scan_results_json(
                 "Content-Disposition": f"attachment; filename=scan_results_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
             }
         )
-    except Exception as e:
-        logger.error(f"JSON export failed: {e}")
+    except Exception:  # noqa: BLE001 - translate scanner/export failures to API 500.
+        logger.exception("JSON export failed")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Export failed: {str(e)}"
+            detail="Export failed"
         )
 
 
@@ -1013,14 +1013,11 @@ async def export_scan_results_json(
 # ============================================================================
 
 # In-memory storage for custom presets (per user)
-# WARNING: Data is lost on restart. Must be migrated to database for production.
-import warnings as _scanner_warnings
-_scanner_warnings.warn(
+CUSTOM_PRESETS_STORAGE_WARNING = (
     "Scanner custom_presets uses in-memory storage — data will be lost on restart. "
-    "Wire to database before production deployment.",
-    RuntimeWarning,
-    stacklevel=1,
+    "Wire to database before production deployment."
 )
+logger.warning(CUSTOM_PRESETS_STORAGE_WARNING)
 user_custom_presets: dict[str, list[dict[str, Any]]] = {}
 
 class CustomPreset(BaseModel):
@@ -1072,7 +1069,7 @@ async def create_custom_preset(
 
     user_custom_presets[user_id].append(preset.dict())
 
-    logger.info(f"Created custom preset '{preset.name}' for user {user_id}")
+    logger.info("Created custom preset %r for user %s", preset.name, user_id)
     return preset
 
 @router.put("/presets/custom/{preset_id}", response_model=CustomPreset)
@@ -1107,7 +1104,7 @@ async def update_custom_preset(
             preset.id = preset_id
             preset.created_at = p.get('created_at')
             presets[i] = preset.dict()
-            logger.info(f"Updated custom preset '{preset.name}' for user {user_id}")
+            logger.info("Updated custom preset %r for user %s", preset.name, user_id)
             return preset
 
     raise HTTPException(
@@ -1144,12 +1141,10 @@ async def delete_custom_preset(
         if p.get('id') == preset_id:
             deleted_name = p.get('name')
             del presets[i]
-            logger.info(f"Deleted custom preset '{deleted_name}' for user {user_id}")
+            logger.info("Deleted custom preset %r for user %s", deleted_name, user_id)
             return {"message": f"Preset '{deleted_name}' deleted successfully"}
 
     raise HTTPException(
         status_code=status.HTTP_404_NOT_FOUND,
         detail="Preset not found"
     )
-
-

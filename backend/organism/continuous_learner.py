@@ -14,14 +14,13 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
 from typing import Any
 
 import numpy as np
 import pandas as pd
 
 from backend.organism.ml_features import FEATURE_COLUMNS
-from backend.organism.ml_signal import MLSignalGenerator, MLSignal, ModelMetrics
+from backend.organism.ml_signal import MLSignalGenerator, ModelMetrics
 
 logger = logging.getLogger(__name__)
 
@@ -192,6 +191,7 @@ class TradeRecord:
 
     # v4 (improve7): causal provenance fields for forensic analysis
     entry_source: str = ""         # "alpha", "breakout", "exploration"
+    strategy_id: str = ""          # Phase 9A: first-class strategy identity
     regime_at_entry: str = ""      # regime label at position open
     regime_at_exit: str = ""       # regime label at position close
     mfe: float = 0.0              # max favorable excursion ($)
@@ -510,7 +510,7 @@ class ContinuousLearner:
                         old_m.accuracy, new_metrics.accuracy,
                         old_m.direction_accuracy, new_metrics.direction_accuracy,
                     )
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - model libraries raise mixed exception types here.
                 logger.warning(
                     "S17 same-holdout eval failed, falling back to historical: %s", e,
                 )

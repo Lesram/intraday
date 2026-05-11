@@ -25,7 +25,7 @@ from change_scope import get_change_set  # noqa: E402
 def sh(cmd: list[str]) -> str:
     try:
         return subprocess.check_output(cmd, text=True, cwd=str(ROOT), stderr=subprocess.STDOUT).strip()
-    except Exception:
+    except (OSError, subprocess.SubprocessError):
         return ""
 
 
@@ -44,7 +44,7 @@ def classify_pr_scope(changed: list[str]) -> str:
         for p in changed
     )
     has_evidence_tooling = any(
-        p.startswith(("scripts/ci/", "artifacts/"))
+        p.startswith(("scripts/", "artifacts/", ".github/"))
         for p in changed
     )
 
@@ -81,6 +81,8 @@ def main() -> None:
     tests_changed = [p for p in all_changed if p.startswith("tests/")]
     organism_changed = [p for p in all_changed if p.startswith("backend/organism/")]
     docs_changed = [p for p in all_changed if p.startswith("docs/")]
+    scripts_changed = [p for p in all_changed if p.startswith("scripts/")]
+    ci_changed = [p for p in all_changed if p.startswith(".github/")]
 
     # PR scope classification
     scope = classify_pr_scope(all_changed)
@@ -88,7 +90,6 @@ def main() -> None:
     # Load runtime snapshots
     defaults_path = ROOT / "artifacts" / "runtime_defaults_snapshot.json"
     resolved_path = ROOT / "artifacts" / "resolved_config_snapshot.json"
-    live_path = ROOT / "artifacts" / "live_process_runtime_snapshot.json"
     legacy_path = ROOT / "artifacts" / "runtime_config_snapshot.json"
 
     # Prefer resolved config snapshot for display
@@ -107,6 +108,15 @@ def main() -> None:
             "drawdown_kill_pct": src.get("drawdown_kill_pct"),
             "exploration_enabled": src.get("exploration_enabled"),
             "bar_boundary_entry_only": src.get("bar_boundary_entry_only"),
+            "candidate_filter_shadow_telemetry_enabled": src.get(
+                "candidate_filter_shadow_telemetry_enabled"
+            ),
+            "strategy_evidence_telemetry_enabled": src.get(
+                "strategy_evidence_telemetry_enabled"
+            ),
+            "phase9_shadow_engines_enabled": src.get(
+                "phase9_shadow_engines_enabled"
+            ),
         }
         snapshot_label = snapshot_path.name
     else:
@@ -154,7 +164,12 @@ def main() -> None:
         risks.append("No trading report found — paper trading results not documented")
     # Always include at least one structural risk
     if not risks:
-        risks.append("No code changes in this PR — verify evidence artifacts are current")
+        if scripts_changed:
+            risks.append(
+                "Evidence/tooling script changed only — no backend runtime or order-path behavior changed"
+            )
+        else:
+            risks.append("No code changes in this PR — verify evidence artifacts are current")
 
     # Warnings for missing data
     warnings: list[str] = []
@@ -178,6 +193,8 @@ def main() -> None:
         "|----------|-------|-------|",
         f"| Backend | {len(backend_changed)} | {', '.join(f'`{p}`' for p in backend_changed[:10]) or 'none'} |",
         f"| Organism | {len(organism_changed)} | {', '.join(f'`{p}`' for p in organism_changed[:10]) or 'none'} |",
+        f"| Scripts | {len(scripts_changed)} | {', '.join(f'`{p}`' for p in scripts_changed[:10]) or 'none'} |",
+        f"| CI | {len(ci_changed)} | {', '.join(f'`{p}`' for p in ci_changed[:10]) or 'none'} |",
         f"| Tests | {len(tests_changed)} | {', '.join(f'`{p}`' for p in tests_changed[:10]) or 'none'} |",
         f"| Docs | {len(docs_changed)} | {', '.join(f'`{p}`' for p in docs_changed[:10]) or 'none'} |",
         "",
@@ -191,16 +208,16 @@ def main() -> None:
         "",
         "## Snapshot files",
         "",
-        f"- Defaults: `artifacts/runtime_defaults_snapshot.json`",
-        f"- Resolved config: `artifacts/resolved_config_snapshot.json`",
-        f"- Live process: `artifacts/live_process_runtime_snapshot.json`",
+        "- Defaults: `artifacts/runtime_defaults_snapshot.json`",
+        "- Resolved config: `artifacts/resolved_config_snapshot.json`",
+        "- Live process: `artifacts/live_process_runtime_snapshot.json`",
         "",
         "## Reference paths",
         "",
         f"- Latest improve doc: `{latest_improve}`",
         f"- Latest trading report: `{latest_report or 'MISSING — required before merge'}`",
         f"- Grep assertions: `artifacts/grep_assertions.json` (status: **{grep_status}**)",
-        f"- Semantic invariants: `tests/test_semantic_invariants.py`",
+        "- Semantic invariants: `tests/test_semantic_invariants.py`",
         "",
         "## Open risks",
         "",

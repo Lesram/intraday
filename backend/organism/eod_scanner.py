@@ -133,6 +133,28 @@ class EODMomentumScanner:
         logger.info("EOD scanner reset for session %s", session_date)
 
     @staticmethod
+    def _known_bars(df: pd.DataFrame, now_ts: pd.Timestamp) -> pd.DataFrame:
+        """Return only bars observable at ``now_ts`` for causal shadow scans."""
+        if df is None or len(df) == 0:
+            return df
+        if now_ts.tzinfo is None:
+            now_ts = now_ts.tz_localize("UTC")
+        else:
+            now_ts = now_ts.tz_convert("UTC")
+        try:
+            if "timestamp" in df.columns:
+                ts_raw = pd.to_datetime(df["timestamp"], errors="coerce", utc=True)
+                mask = ts_raw <= now_ts
+                return df.loc[mask.values].reset_index(drop=True)
+            if df.index.dtype.kind == "M":
+                idx_ts = pd.to_datetime(pd.Series(df.index), errors="coerce", utc=True)
+                mask = idx_ts <= now_ts
+                return df.loc[mask.values].reset_index(drop=True)
+        except (AttributeError, KeyError, TypeError, ValueError):
+            return df
+        return df
+
+    @staticmethod
     def _compute_day_return(df: pd.DataFrame, ts_et: pd.Series) -> Optional[tuple[float, float, float]]:
         """Return (open_price, current_price, day_return_pct) using today's
         first bar's open and the most-recent close.
@@ -198,6 +220,8 @@ class EODMomentumScanner:
         Caller decides whether to enter (live) or just log (shadow).
         """
         ts = pd.Timestamp(now_dt) if not isinstance(now_dt, pd.Timestamp) else now_dt
+        if ts.tzinfo is None:
+            ts = ts.tz_localize("UTC")
         if session_date is None:
             session_date = ts.strftime("%Y-%m-%d")
 
@@ -213,14 +237,15 @@ class EODMomentumScanner:
         for symbol, df in features_by_symbol.items():
             if symbol in self._fired_today:
                 continue
-            if df is None or len(df) < 30:
+            known_df = self._known_bars(df, ts)
+            if known_df is None or len(known_df) < 30:
                 continue
 
             # Need timestamps to identify today's open
-            if "timestamp" in df.columns:
-                ts_raw = pd.to_datetime(df["timestamp"], errors="coerce", utc=True)
-            elif df.index.dtype.kind == "M":
-                ts_raw = pd.to_datetime(pd.Series(df.index), utc=True)
+            if "timestamp" in known_df.columns:
+                ts_raw = pd.to_datetime(known_df["timestamp"], errors="coerce", utc=True)
+            elif known_df.index.dtype.kind == "M":
+                ts_raw = pd.to_datetime(pd.Series(known_df.index), utc=True)
             else:
                 continue
 
@@ -232,7 +257,7 @@ class EODMomentumScanner:
             except Exception:
                 continue
 
-            day_data = self._compute_day_return(df, ts_et)
+            day_data = self._compute_day_return(known_df, ts_et)
             if day_data is None:
                 continue
             open_price, current_price, day_return = day_data
@@ -245,7 +270,7 @@ class EODMomentumScanner:
                 continue
 
             direction = 1.0 if day_return > 0 else -1.0
-            atr = self._extract_atr(df, current_price)
+            atr = self._extract_atr(known_df, current_price)
 
             # ATR-based stop, anchored such that it's ~1×ATR adverse.
             # Audit-A finding 9 (2026-05-01): replaced the absolute $0.10

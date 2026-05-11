@@ -138,3 +138,52 @@ def test_runtime_snapshot_truth_status_detects_drift():
 
     assert status["status"] == "drift"
     assert status["mismatches"][0]["key"] == "drawdown_kill_pct"
+
+
+def test_live_process_snapshot_includes_deploy_and_shadow_envs():
+    """Live process snapshot should preserve deploy provenance and shadow toggles."""
+    import importlib
+
+    import scripts.runtime.write_runtime_snapshot as snap_mod
+    importlib.reload(snap_mod)
+
+    env_text = "\n".join([
+        "GIT_SHA=abc123",
+        "BUILD_TIME=2026-05-10T17:31:34Z",
+        "IMAGE_SHA=abc123",
+        "APP_ENVIRONMENT=development",
+        "ALPACA_PAPER=true",
+        "ORGANISM_DRAWDOWN_KILL_PCT=0.20",
+        "ORGANISM_DRAWDOWN_COOLDOWN_S=300",
+        "ORGANISM_MAX_CHANGES_PER_DAY=500",
+        "ORGANISM_MAX_POSITIONS=8",
+        "ORGANISM_MAX_DAILY_LOSS=5500",
+        "ORGANISM_MAX_NOTIONAL=2000",
+        "ORGANISM_TICK_INTERVAL_SECONDS=10",
+        "ORGANISM_CANDIDATE_FILTER_SHADOW_TELEMETRY_ENABLED=true",
+        "ORGANISM_STRATEGY_EVIDENCE_TELEMETRY_ENABLED=true",
+        "ORGANISM_PHASE9_SHADOW_ENGINES_ENABLED=true",
+    ])
+
+    def fake_docker_exec(_container: str, cmd: str) -> str:
+        if cmd.startswith("cat "):
+            return "{}"
+        if cmd == "env":
+            return env_text
+        return ""
+
+    with (
+        patch.object(snap_mod, "_find_api_container", return_value="intra-api-1"),
+        patch.object(snap_mod, "_curl_organism_status", return_value={}),
+        patch.object(snap_mod, "_docker_exec", side_effect=fake_docker_exec),
+        patch("subprocess.check_output", return_value="2026-05-10T17:33:09Z"),
+    ):
+        snapshot = snap_mod._build_live_process_snapshot()
+
+    env = snapshot["process_env"]
+    assert env["GIT_SHA"] == "abc123"
+    assert env["BUILD_TIME"] == "2026-05-10T17:31:34Z"
+    assert env["IMAGE_SHA"] == "abc123"
+    assert env["ORGANISM_CANDIDATE_FILTER_SHADOW_TELEMETRY_ENABLED"] == "true"
+    assert env["ORGANISM_STRATEGY_EVIDENCE_TELEMETRY_ENABLED"] == "true"
+    assert env["ORGANISM_PHASE9_SHADOW_ENGINES_ENABLED"] == "true"

@@ -8,7 +8,6 @@ import json
 import time
 from collections import defaultdict
 from datetime import datetime
-from decimal import Decimal
 from typing import Any
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Request, Response, status
@@ -19,6 +18,7 @@ from backend.infra.db import get_db_session
 from backend.infra.outbox import OutboxRepo
 from backend.infra.repositories.orders import OrdersRepo
 from backend.infra.security import get_current_user
+from backend.infra.security import require_trader as require_trader_dependency
 from backend.risk.types import OrderSpec, Side
 from backend.services.order_service import OrderService
 from backend.utils.logger import (
@@ -74,9 +74,9 @@ async def get_orders(
     limit: int = 100,
     offset: int = 0,
     db: AsyncSession = Depends(get_db_session),
-    user=Depends(get_current_user)
+    user=Depends(require_trader_dependency)
 ) -> list[dict[str, Any]]:
-    """Get list of orders for the current user."""
+    """Get list of orders for the current trader/admin user."""
     try:
         from sqlalchemy import or_, select
 

@@ -52,6 +52,7 @@ class PositionSize:
     # "alpha+breakout" or "breakout" in trade_history. Hidden bug found in M3-5
     # audit when B3 (alpha disabled) still showed "alpha+breakout" tags.
     entry_source_override: str = ""
+    strategy_id: str = ""
 
     def to_dict(self) -> dict[str, Any]:
         # Audit-I finding I-4 (2026-05-02): cast every numeric through
@@ -77,6 +78,7 @@ class PositionSize:
             "regime_trade_count": int(self.regime_trade_count),
             "expected_return_source": str(self.expected_return_source),
             "dollar_risk_cap_applied": bool(self.dollar_risk_cap_applied),
+            "strategy_id": str(self.strategy_id),
         }
 
 
@@ -148,7 +150,7 @@ class KellySizer:
                 if bid and ask and bid > 0 and ask > 0:
                     mid = (bid + ask) / 2.0
                     base_spread = (ask - bid) / mid
-            except Exception:
+            except Exception:  # noqa: BLE001, S110 - quote providers fail heterogeneously; keep fallback.
                 pass  # keep default
 
         # 2. Time-of-day multiplier
@@ -182,6 +184,7 @@ class KellySizer:
         ml_is_trained: bool = True,
         quote_provider: Callable[[str], dict[str, Any]] | None = None,
         trade_count: int | None = None,
+        fixed_risk_mode: bool | None = None,
     ) -> list[PositionSize]:
         """Size positions for a list of alpha candidates.
 
@@ -204,10 +207,21 @@ class KellySizer:
 
         # Sort candidates by conviction (highest first) so best entries
         # get allocation priority before portfolio cap is consumed.
-        # Learning mode: predicted_return is heuristic noise — sort by
-        # breakout quality + confidence instead of predicted_return * confidence.
+        _count_based_fixed_risk = (
+            trade_count is not None
+            and trade_count < self._RISK_BUDGET_TRADE_THRESHOLD
+        )
+        _fixed_risk_mode = (
+            bool(fixed_risk_mode)
+            if fixed_risk_mode is not None
+            else _count_based_fixed_risk
+        )
+
+        # Learning/guarded fixed-risk mode: predicted_return may be
+        # heuristic noise, so sort by breakout quality + confidence instead
+        # of predicted_return * confidence.
         # Production mode: full predicted_return * confidence ranking.
-        _is_learning_mode = (trade_count is not None and trade_count < self._RISK_BUDGET_TRADE_THRESHOLD)
+        _is_learning_mode = _fixed_risk_mode
         if _is_learning_mode:
             # Preserve upstream ranking_score when available (set by
             # live_engine from alpha/breakout composite scores). Only
@@ -316,12 +330,12 @@ class KellySizer:
                 # estimate when OHLC data is unavailable.
                 atr_pct = float(np.std(returns, ddof=1)) if len(returns) > 1 else 0.01
 
-            # ── Learning mode vs Production sizing ──
-            # improve9: In learning mode, Kelly is OFF. Predicted returns are
-            # 22x overstated and ML is uncalibrated — feeding these into Kelly
-            # produces noise-driven leverage, not edge-driven sizing.
-            # Instead: fixed ATR-dollar risk sizing only.
-            _is_learning = (trade_count is not None and trade_count < self._RISK_BUDGET_TRADE_THRESHOLD)
+            # ── Fixed-risk vs Production sizing ──
+            # improve9 / Phase 2: in learning or guarded production, Kelly is
+            # OFF. Predicted returns may be heuristic or uncalibrated —
+            # feeding these into Kelly produces noise-driven leverage, not
+            # edge-driven sizing. Instead: fixed ATR-dollar risk sizing only.
+            _is_learning = _fixed_risk_mode
             ml_floor_applied = False
             _risk_budget_applied = False
             _dollar_risk_cap_applied = False
@@ -610,6 +624,7 @@ class KellySizer:
                 expected_return_source=cand.get("expected_return_source", "heuristic"),
                 dollar_risk_cap_applied=_dollar_risk_cap_applied,
                 entry_source_override=cand.get("entry_source_override", ""),
+                strategy_id=cand.get("strategy_id", ""),
             ))
 
         sizes.sort(key=lambda s: s.target_weight, reverse=True)

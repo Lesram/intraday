@@ -28,12 +28,15 @@ from __future__ import annotations
 
 import json
 import os
+import csv
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from backend.infra.security import AuthenticatedUser, require_admin
 
 router = APIRouter(prefix="/health", tags=["Health"])
 
@@ -80,6 +83,39 @@ def _read_brain_total_trades(brain_dir: Path) -> int | None:
     return None
 
 
+def _read_brain_trade_history_summary(brain_dir: Path) -> dict[str, Any]:
+    """Return cheap CSV scope metadata for operator reconciliation."""
+    path = brain_dir / "trade_history.csv"
+    out: dict[str, Any] = {
+        "rows": None,
+        "closed_rows": None,
+        "first_closed_at": None,
+        "last_closed_at": None,
+        "path": str(path),
+    }
+    if not path.is_file():
+        return out
+
+    rows = 0
+    closed: list[str] = []
+    try:
+        with path.open(newline="") as f:
+            for row in csv.DictReader(f):
+                rows += 1
+                closed_at = (row.get("closed_at") or "").strip()
+                if closed_at:
+                    closed.append(closed_at)
+    except OSError:
+        return out
+
+    out["rows"] = rows
+    out["closed_rows"] = len(closed)
+    if closed:
+        out["first_closed_at"] = min(closed)
+        out["last_closed_at"] = max(closed)
+    return out
+
+
 async def _count_model_rows(session: AsyncSession, model: type[Any]) -> int | None:
     from sqlalchemy.exc import SQLAlchemyError
     try:
@@ -96,6 +132,52 @@ async def _count_realized_trades(session: AsyncSession) -> int | None:
     except ImportError:
         return None
     return await _count_model_rows(session, RealizedTrade)
+
+
+async def _realized_trade_summary(session: AsyncSession) -> dict[str, Any]:
+    """Summarize realized accounting at the same semantic level as the DB.
+
+    ``realized_trades`` is a lot-accounting table. A single close order can
+    create multiple rows when it closes multiple FIFO lots, so raw row count is
+    intentionally not comparable to brain trade-history rows.
+    """
+    out: dict[str, Any] = {
+        "lot_rows": None,
+        "distinct_close_orders": None,
+        "distinct_open_orders": None,
+        "distinct_lots": None,
+        "first_close_date": None,
+        "last_close_date": None,
+    }
+    try:
+        from backend.infra.schemas import RealizedTrade
+    except ImportError:
+        return out
+
+    from sqlalchemy.exc import SQLAlchemyError
+    try:
+        stmt = select(
+            func.count(RealizedTrade.id),
+            func.count(func.distinct(RealizedTrade.close_order_id)),
+            func.count(func.distinct(RealizedTrade.open_order_id)),
+            func.count(func.distinct(RealizedTrade.lot_id)),
+            func.min(RealizedTrade.close_date),
+            func.max(RealizedTrade.close_date),
+        )
+        result = await session.execute(stmt)
+        row = result.one()
+    except SQLAlchemyError:
+        return out
+
+    out["lot_rows"] = int(row[0] or 0)
+    out["distinct_close_orders"] = int(row[1] or 0)
+    out["distinct_open_orders"] = int(row[2] or 0)
+    out["distinct_lots"] = int(row[3] or 0)
+    if row[4] is not None:
+        out["first_close_date"] = row[4].isoformat()
+    if row[5] is not None:
+        out["last_close_date"] = row[5].isoformat()
+    return out
 
 
 def _compute_variance(realized: int | None, brain: int | None) -> dict[str, Any]:
@@ -115,6 +197,23 @@ def _compute_variance(realized: int | None, brain: int | None) -> dict[str, Any]
     out["variance_abs"] = abs_var
     out["variance_pct"] = round(var_pct, 4)
     out["within_tolerance"] = var_pct <= _DEFAULT_TOLERANCE_PCT
+    return out
+
+
+def _compute_count_variance(left: int | None, right: int | None) -> dict[str, Any]:
+    out: dict[str, Any] = {
+        "variance_abs": None,
+        "variance_pct": None,
+        "within_tolerance": None,
+    }
+    if left is None or right is None:
+        return out
+    abs_var = abs(left - right)
+    base = max(left, right, 1)
+    pct = (abs_var / base) * 100.0
+    out["variance_abs"] = abs_var
+    out["variance_pct"] = round(pct, 4)
+    out["within_tolerance"] = pct <= _DEFAULT_TOLERANCE_PCT
     return out
 
 
@@ -138,6 +237,41 @@ def _round_trip_variance(realized: int | None, brain: int | None) -> dict[str, A
     return out
 
 
+def _classify_scope_status(
+    *,
+    brain_history: dict[str, Any],
+    realized_summary: dict[str, Any],
+) -> dict[str, Any]:
+    """Describe whether brain history and DB accounting share a scope."""
+    notes: list[str] = []
+    brain_rows = brain_history.get("rows")
+    db_close_orders = realized_summary.get("distinct_close_orders")
+    brain_first = brain_history.get("first_closed_at")
+    db_first = realized_summary.get("first_close_date")
+
+    if brain_first and db_first and str(db_first) < str(brain_first):
+        notes.append("db_history_starts_before_brain_history")
+    if (
+        isinstance(db_close_orders, int)
+        and isinstance(brain_rows, int)
+        and db_close_orders > brain_rows
+        and _compute_count_variance(db_close_orders, brain_rows)["within_tolerance"] is False
+    ):
+        notes.append("db_close_orders_exceed_brain_history_rows")
+
+    if notes:
+        return {
+            "scope_status": "not_comparable_db_superset",
+            "scope_notes": notes,
+        }
+    if brain_rows is None or db_close_orders is None:
+        return {
+            "scope_status": "unknown",
+            "scope_notes": ["brain_or_db_scope_unreadable"],
+        }
+    return {"scope_status": "comparable", "scope_notes": []}
+
+
 def _classify_accounting_status(
     *,
     brain: int | None,
@@ -146,6 +280,9 @@ def _classify_accounting_status(
     executions: int | None,
     position_lots: int | None,
     tick_telemetry: int | None,
+    scope_status: str = "comparable",
+    realized_close_orders: int | None = None,
+    brain_history_rows: int | None = None,
 ) -> dict[str, Any]:
     """Classify accounting health without mutating any production data."""
     reasons: list[str] = []
@@ -165,12 +302,18 @@ def _classify_accounting_status(
     if (orders or 0) > 0 and tick_telemetry == 0:
         reasons.append("orders_exist_but_tick_telemetry_empty")
 
-    rt = _round_trip_variance(realized, brain)
-    if (
-        rt["round_trip_within_tolerance"] is False
-        and "brain_has_trades_but_realized_trades_empty" not in reasons
-    ):
-        reasons.append("brain_vs_realized_round_trip_ratio_outside_tolerance")
+    if scope_status == "comparable":
+        if realized_close_orders is not None and brain_history_rows is not None:
+            scoped = _compute_count_variance(realized_close_orders, brain_history_rows)
+            if scoped["within_tolerance"] is False:
+                reasons.append("brain_history_vs_db_close_orders_outside_tolerance")
+        else:
+            rt = _round_trip_variance(realized, brain)
+            if (
+                rt["round_trip_within_tolerance"] is False
+                and "brain_has_trades_but_realized_trades_empty" not in reasons
+            ):
+                reasons.append("brain_vs_realized_round_trip_ratio_outside_tolerance")
 
     if reasons:
         severity = "critical" if any(
@@ -187,7 +330,10 @@ def _classify_accounting_status(
 
 
 @router.get("/data-integrity")
-async def data_integrity(request: Request) -> dict[str, Any]:
+async def data_integrity(
+    request: Request,
+    _current_user: AuthenticatedUser = Depends(require_admin),
+) -> dict[str, Any]:
     """V13 W95: realized_trades vs brain.total_trades reconciliation.
 
     Surfaces the V12 EXT-3 divergence with a programmatic answer.
@@ -200,8 +346,17 @@ async def data_integrity(request: Request) -> dict[str, Any]:
     """
     brain_dir = _resolve_brain_dir()
     brain = _read_brain_total_trades(brain_dir)
+    brain_history = _read_brain_trade_history_summary(brain_dir)
 
     realized: int | None = None
+    realized_summary: dict[str, Any] = {
+        "lot_rows": None,
+        "distinct_close_orders": None,
+        "distinct_open_orders": None,
+        "distinct_lots": None,
+        "first_close_date": None,
+        "last_close_date": None,
+    }
     table_counts: dict[str, int | None] = {
         "orders": None,
         "executions": None,
@@ -215,6 +370,7 @@ async def data_integrity(request: Request) -> dict[str, Any]:
             from backend.infra.schemas import Execution, Order, PositionLot, TickTelemetry
 
             realized = await _count_realized_trades(session)
+            realized_summary = await _realized_trade_summary(session)
             table_counts["orders"] = await _count_model_rows(session, Order)
             table_counts["executions"] = await _count_model_rows(session, Execution)
             table_counts["realized_trades"] = realized
@@ -229,6 +385,10 @@ async def data_integrity(request: Request) -> dict[str, Any]:
 
     payload = _compute_variance(realized, brain)
     payload.update(_round_trip_variance(realized, brain))
+    scope = _classify_scope_status(
+        brain_history=brain_history,
+        realized_summary=realized_summary,
+    )
     payload.update(_classify_accounting_status(
         brain=brain,
         realized=realized,
@@ -236,13 +396,23 @@ async def data_integrity(request: Request) -> dict[str, Any]:
         executions=table_counts["executions"],
         position_lots=table_counts["position_lots"],
         tick_telemetry=table_counts["tick_telemetry"],
+        scope_status=scope["scope_status"],
+        realized_close_orders=realized_summary.get("distinct_close_orders"),
+        brain_history_rows=brain_history.get("rows"),
     ))
     payload["table_counts"] = table_counts
+    payload["realized_trade_summary"] = realized_summary
+    payload["brain_trade_history"] = brain_history
+    payload.update(scope)
     payload["brain_dir"] = str(brain_dir)
     payload["explanation"] = (
-        "brain.total_trades increments at fill (entry + exit each count); "
-        "realized_trades stores ONE row per closed round-trip, so a clean "
-        "run should be approximately brain.total_trades = 2 * realized_trades. "
+        "realized_trades is a lot-accounting table: one close order can "
+        "create multiple realized rows when it closes multiple FIFO lots. "
+        "The brain manifest/trade_history is strategy history and may have "
+        "a shorter scope than the cumulative DB ledger. The endpoint only "
+        "uses count comparisons for warning status when the scopes are "
+        "comparable; otherwise it reports the scope note and verifies that "
+        "orders, executions, lots, realized rows, and tick telemetry exist. "
         "If brain/orders exist while executions, realized_trades, or position_lots remain "
         "empty, the endpoint reports critical accounting drift rather than "
         "treating the divergence as by-design."

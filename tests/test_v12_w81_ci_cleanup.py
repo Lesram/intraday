@@ -130,6 +130,28 @@ def test_w81_enforcer_passes_v12_commit_history():
     )
 
 
+def test_w81_enforcer_default_clamps_long_lived_branch_to_v12_range():
+    """Default CLI-style range should skip pre-V12 legacy wave history.
+
+    The long-lived audit branch has old audit-wave commits before 38d1b74 that
+    cannot satisfy the modern marker contract.  V13 defines the supported check
+    as V12+, so origin/main..HEAD-style runs should clamp to that baseline when
+    the baseline is present on the branch.
+    """
+    import sys
+    sys.path.insert(0, str(REPO_ROOT / "scripts" / "ci"))
+    import check_wave_markers as cwm
+
+    base = subprocess.check_output(
+        ["git", "merge-base", "origin/main", "HEAD"],
+        text=True,
+        cwd=REPO_ROOT,
+    ).strip()
+
+    assert cwm.effective_base_ref(base, "HEAD") == cwm.V12_BASELINE_REF
+    assert cwm.effective_base_ref(base, "HEAD", all_history=True) == base
+
+
 def test_w81_enforcer_regex_matches_v12_id_styles():
     """Regex must match V8+ ID styles including DD5-1, BB5-F1,
     HH3-N-1, AAA-F1, EXT-F821, W74-FOLLOWUP-1."""

@@ -41,12 +41,17 @@ from backend.organism.adaptive_exits import AdaptiveExitEngine
 from backend.organism.alpha_scanner import AlphaScanner
 from backend.organism.brain_persistence import OrganismBrain
 from backend.organism.breakout_scanner import BreakoutScanner
+from backend.organism.candidate_shadow_telemetry import (
+    CandidateShadowTelemetryRecorder,
+    infer_entry_source,
+)
 from backend.organism.continuous_learner import ContinuousLearner, TradeRecord
 from backend.organism.governance import GovernanceController
 from backend.organism.kelly_sizer import KellySizer
 from backend.organism.ml_features import compute_ml_features, FEATURE_COLUMNS
 from backend.organism.multi_timeframe import add_multi_timeframe_features
 from backend.organism.ml_signal import MLSignalGenerator
+from backend.organism.schema.candidate_signal import infer_strategy_id
 from backend.organism.pyramider import (
     MomentumPyramider,
     PyramidPosition,
@@ -65,6 +70,12 @@ from backend.organism.decision_telemetry import (
     PositionExitDetail,
     SymbolAlphaDetail,
     SymbolBreakoutDetail,
+)
+from backend.organism.engines import (
+    EODReversalShadowEngine,
+    ETFIntradayMomentumEngine,
+    ORBSIPV2Engine,
+    ResidualMeanReversionEngine,
 )
 from backend.organism.self_evolution import (
     EvolutionEngine,
@@ -291,12 +302,48 @@ MR_TOP_N = _env_int("ORGANISM_MR_TOP_N", 3)
 # unambiguous; flip OFF (=false) to revert if observable behavior degrades.
 DROP_ML_FROM_GATE = _env_bool("ORGANISM_DROP_ML_FROM_GATE", True)
 
+# Phase 3 candidate-filter shadow telemetry. Disabled by default and
+# observability-only: when enabled, records candidate slices that would be
+# blocked by the proposed confidence/regime filters without changing ranking,
+# sizing, or order submission.
+CANDIDATE_FILTER_SHADOW_TELEMETRY_ENABLED = _env_bool(
+    "ORGANISM_CANDIDATE_FILTER_SHADOW_TELEMETRY_ENABLED", False,
+)
+CANDIDATE_FILTER_SHADOW_TELEMETRY_PATH = _env_str(
+    "ORGANISM_CANDIDATE_FILTER_SHADOW_TELEMETRY_PATH",
+    "organism_brain/candidate_filter_shadow_telemetry.jsonl",
+)
+ALPHA_BREAKOUT_BAD_REGIME_FILTER_ENABLED = _env_bool(
+    "ORGANISM_ALPHA_BREAKOUT_BAD_REGIME_FILTER_ENABLED", True,
+)
+ALPHA_BREAKOUT_BAD_REGIME_FILTERS = frozenset({"chop", "trending_down"})
+STRATEGY_EVIDENCE_TELEMETRY_ENABLED = _env_bool(
+    "ORGANISM_STRATEGY_EVIDENCE_TELEMETRY_ENABLED", False,
+)
+STRATEGY_EVIDENCE_TELEMETRY_PATH = _env_str(
+    "ORGANISM_STRATEGY_EVIDENCE_TELEMETRY_PATH",
+    "organism_brain/strategy_evidence_events.jsonl",
+)
+PHASE9_SHADOW_ENGINES_ENABLED = _env_bool(
+    "ORGANISM_PHASE9_SHADOW_ENGINES_ENABLED", False,
+)
+
 # ── Dynamic intraday adjustments ────────────────────────────────
 _IS_INTRADAY = LIVE_TIMEFRAME in ("1Min", "5Min", "15Min", "1Hour")
 if _IS_INTRADAY and MIN_BARS == 200:
     MIN_BARS = _env_int("ORGANISM_MIN_BARS", 50)
 if _IS_INTRADAY and RETRAIN_INTERVAL == 60:
     RETRAIN_INTERVAL = _env_int("ORGANISM_RETRAIN_INTERVAL", 200)
+
+
+@dataclass
+class SafetyGateResult:
+    """Decision object for a hard pass/block safety gate."""
+    blocked: bool
+    reason: str = ""
+    activity_type: str = ""
+    activity_message: str = ""
+    error_message: str = ""
 
 
 @dataclass
@@ -394,6 +441,35 @@ def _should_suppress_chop_cut(
     bars_held = max(0, int((now_ts - entry_time) // bar_seconds))
     suppress = (regime == "chop") and (bars_held < chop_min_hold_bars)
     return suppress, bars_held
+
+
+def _market_return_bps(frame: pd.DataFrame | None, now: Any | None = None) -> float:
+    if frame is None or len(frame) < 2 or "close" not in frame.columns:
+        return 0.0
+    if now is not None and "timestamp" in frame.columns:
+        now_ts = pd.Timestamp(now)
+        if now_ts.tzinfo is None:
+            now_ts = now_ts.tz_localize("UTC")
+        ts = pd.to_datetime(frame["timestamp"], utc=True, errors="coerce")
+        frame = frame[ts <= now_ts]
+        if len(frame) < 2:
+            return 0.0
+    elif now is not None and frame.index.dtype.kind == "M":
+        now_ts = pd.Timestamp(now)
+        if now_ts.tzinfo is None:
+            now_ts = now_ts.tz_localize("UTC")
+        ts = pd.to_datetime(pd.Series(frame.index), utc=True, errors="coerce")
+        frame = frame[(ts <= now_ts).to_numpy()]
+        if len(frame) < 2:
+            return 0.0
+    try:
+        first = float(frame["close"].iloc[0])
+        latest = float(frame["close"].iloc[-1])
+    except (TypeError, ValueError):
+        return 0.0
+    if first <= 0:
+        return 0.0
+    return (latest - first) / first * 10000.0
 
 
 class OrganismLiveEngine:
@@ -614,6 +690,35 @@ class OrganismLiveEngine:
 
         # ── Decision telemetry (in-memory ring buffer) ────────
         self._telemetry = DecisionTelemetryStore()
+        self._candidate_filter_shadow_events: int = 0
+        self._candidate_filter_shadow_recorder = (
+            CandidateShadowTelemetryRecorder(
+                CANDIDATE_FILTER_SHADOW_TELEMETRY_PATH
+            )
+            if CANDIDATE_FILTER_SHADOW_TELEMETRY_ENABLED
+            else None
+        )
+        self._strategy_evidence_events: int = 0
+        self._strategy_evidence_recorder = (
+            CandidateShadowTelemetryRecorder(
+                STRATEGY_EVIDENCE_TELEMETRY_PATH,
+                record_all_candidates=True,
+            )
+            if STRATEGY_EVIDENCE_TELEMETRY_ENABLED
+            else None
+        )
+        self._phase9_shadow_engines = (
+            [
+                ETFIntradayMomentumEngine(),
+                ORBSIPV2Engine(),
+                ResidualMeanReversionEngine(),
+                EODReversalShadowEngine(),
+            ]
+            if PHASE9_SHADOW_ENGINES_ENABLED
+            else []
+        )
+        self._phase9_shadow_signal_events: int = 0
+        self._phase9_last_shadow_bar: str = ""
 
         # ── Live state ──────────────────────────────────────────
         self._session_id = uuid.uuid4().hex[:8]  # unique per engine lifetime
@@ -828,6 +933,46 @@ class OrganismLiveEngine:
         ]
 
     @property
+    def _trading_phase(self) -> dict[str, Any]:
+        """Phase 2: cached phase resolver with expectancy-aware promotion.
+
+        Trade count still controls bootstrap thresholds.  Once the brain
+        has enough strategy trades, realized expectancy can demote it to
+        ``production_guarded`` so full Kelly/ML behavior is not enabled
+        solely because a losing system crossed 300 trades.
+        """
+        cache: tuple[int, dict[str, Any]] | None = getattr(
+            self, "_trading_phase_tick_cache", None
+        )
+        tick = getattr(self, "_tick_count", -1)
+        if cache is not None and cache[0] == tick:
+            return cache[1]
+
+        trades = self._strategy_trades()
+        expectancy: dict[str, Any] | None = None
+        try:
+            from backend.organism.trading_phase import EVOLUTION_FREEZE_TRADES
+            if len(trades) >= EVOLUTION_FREEZE_TRADES:
+                from backend.organism.strategy_expectancy import compute_from_trades
+                expectancy = compute_from_trades(trades)
+            from backend.organism.trading_phase import resolve_trading_phase
+            phase = resolve_trading_phase(
+                len(trades),
+                strategy_expectancy=expectancy,
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(
+                "Trading phase resolver failed; falling back to count-only "
+                "learning mode check: %s",
+                exc,
+            )
+            from backend.organism.trading_phase import resolve_trading_phase
+            phase = resolve_trading_phase(len(trades))
+
+        self._trading_phase_tick_cache = (tick, phase)
+        return phase
+
+    @property
     def _is_learning_mode(self) -> bool:
         """True when engine has < LEARNING_MODE_TRADES completed strategy trades.
 
@@ -837,6 +982,7 @@ class OrganismLiveEngine:
         Cache is keyed on `self._tick_count`; the next tick recomputes.
         """
         from backend.organism.trading_phase import LEARNING_MODE_TRADES
+        threshold = LEARNING_MODE_TRADES
         # V4 R-F-8 (2026-05-02): filter reconciliation artifacts.
         cache: tuple[int, bool] | None = getattr(
             self, "_learning_mode_tick_cache", None
@@ -844,9 +990,33 @@ class OrganismLiveEngine:
         tick = getattr(self, "_tick_count", -1)
         if cache is not None and cache[0] == tick:
             return cache[1]
-        value = len(self._strategy_trades()) < LEARNING_MODE_TRADES
+        phase = getattr(self, "_trading_phase", None)
+        if isinstance(phase, dict):
+            value = bool(
+                phase.get(
+                    "is_learning",
+                    len(self._strategy_trades()) < threshold,
+                )
+            )
+        else:
+            value = len(self._strategy_trades()) < threshold
         self._learning_mode_tick_cache = (tick, value)
         return value
+
+    @property
+    def _is_guarded_production_mode(self) -> bool:
+        """True when realized expectancy blocks full production promotion."""
+        return bool(self._trading_phase.get("is_guarded", False))
+
+    @property
+    def _ml_isolation_mode(self) -> bool:
+        """True when ML must not influence main-book ranking/gates."""
+        return not bool(self._trading_phase.get("ml_influence_enabled", False))
+
+    @property
+    def _fixed_risk_sizing_mode(self) -> bool:
+        """True when Kelly sizing must be bypassed for fixed ATR risk."""
+        return bool(self._trading_phase.get("fixed_risk_sizing", False))
 
     @property
     def _dynamic_max_entries_per_hour(self) -> int:
@@ -962,6 +1132,46 @@ class OrganismLiveEngine:
             return False, "circuit_breaker"
         return True, ""
 
+    def _alpha_breakout_defensive_filter_reason(
+        self,
+        candidate: dict[str, Any],
+        regime: str,
+    ) -> str:
+        """Return non-empty reason when evidence says this slice should not fire."""
+        if (
+            not ALPHA_BREAKOUT_BAD_REGIME_FILTER_ENABLED
+            or str(regime) not in ALPHA_BREAKOUT_BAD_REGIME_FILTERS
+            or infer_entry_source(candidate) != "alpha+breakout"
+        ):
+            return ""
+        return f"alpha_breakout_{regime}_blocked_by_evidence"
+
+    def _record_defensive_filtered_candidate(
+        self,
+        candidate: dict[str, Any],
+        regime: str,
+        rejected: list[dict[str, Any]],
+    ) -> bool:
+        reason = self._alpha_breakout_defensive_filter_reason(candidate, regime)
+        if not reason:
+            return False
+        rejected.append({
+            **candidate,
+            "live_pipeline_candidate": False,
+            "defensive_filter_reason": reason,
+        })
+        logger.info(
+            "Defensive alpha+breakout filter blocked %s regime=%s "
+            "confidence=%.3f eff_conf=%.3f breakout=%.3f reason=%s",
+            candidate.get("symbol"),
+            regime,
+            float(candidate.get("confidence") or 0.0),
+            float(candidate.get("effective_confidence") or 0.0),
+            float(candidate.get("breakout_score") or 0.0),
+            reason,
+        )
+        return True
+
     # ═════════════════════════════════════════════════════════════
     #  INITIALIZATION / SHUTDOWN
     # ═════════════════════════════════════════════════════════════
@@ -975,8 +1185,8 @@ class OrganismLiveEngine:
 
         if brain_loaded:
             # Restore ML models
-            ml_ok = self.brain.apply_to_signal_generator(self.signal_gen)
-            lr_ok = self.brain.apply_to_learner(self.learner)
+            self.brain.apply_to_signal_generator(self.signal_gen)
+            self.brain.apply_to_learner(self.learner)
 
             # Restore evolved params (Phase 1.1 — own file)
             # Hardening: only restore bookkeeping fields (symbol_fitness,
@@ -1388,9 +1598,16 @@ class OrganismLiveEngine:
         else:
             logger.info("Organism live engine starting fresh (no brain)")
 
-        # H4: Log resolved trading phase using shared resolver
+        # H4 / Phase 2: log resolved trading phase using shared resolver.
+        # Use strategy-trade count plus expectancy so a high-trade losing
+        # brain is logged as production_guarded rather than full production.
+        from backend.organism.strategy_expectancy import compute_from_trades
         from backend.organism.trading_phase import log_trading_phase
-        log_trading_phase(len(self._all_trades))
+        _strategy_trades_for_phase = self._strategy_trades()
+        log_trading_phase(
+            len(_strategy_trades_for_phase),
+            strategy_expectancy=compute_from_trades(_strategy_trades_for_phase),
+        )
 
         # ── Phase 4.7: Transfer learning warm-start ──────────────
         # Hardening: skip warm-start during 300-trade evolution freeze.
@@ -1584,6 +1801,10 @@ class OrganismLiveEngine:
                     actual_return=actual_return,
                     confidence=float(en_attrs.get("confidence", 0.0)),
                     is_reconciliation_artifact=_is_recon,
+                    strategy_id=infer_strategy_id(
+                        en_attrs.get("entry_source", ""),
+                        en_attrs.get("strategy_id", ""),
+                    ),
                     closed_at="",
                 ))
 
@@ -1770,60 +1991,63 @@ class OrganismLiveEngine:
             if self._tick_count - tick < self._PENDING_EXIT_TICKS
         }
 
+    def _evaluate_entry_blocker_gate(self) -> SafetyGateResult:
+        """Evaluate early entry blockers without mutating tick state."""
+        if self.governance.is_trading_halted:
+            return SafetyGateResult(
+                blocked=True,
+                reason="governance_halt",
+                activity_type="governance",
+                activity_message=(
+                    "Trading halted — blocking new entries, exits still running"
+                ),
+                error_message="Trading halted by governance — exits still active",
+            )
+        if self._entries_blocked:
+            return SafetyGateResult(blocked=False)
+        if self._tick_count <= self._WARMUP_TICKS:
+            return SafetyGateResult(
+                blocked=True,
+                reason="warmup",
+                activity_type="skip",
+                activity_message=(
+                    f"Warmup: tick {self._tick_count}/{self._WARMUP_TICKS} "
+                    "— entries blocked"
+                ),
+            )
+        if self._data_stale:
+            return SafetyGateResult(
+                blocked=True,
+                reason="stale_data",
+                activity_type="skip",
+                activity_message="Stale data — blocking entries (exits still active)",
+            )
+        return SafetyGateResult(blocked=False)
+
     # V8 HH R-1 / Wave-40 (2026-05-03): stages 1 + 1.1 + 1.2 extracted
-    # together — they're the three earliest entry-blocker checks and
-    # share `self._entries_blocked` (uplifted from local in wave-39).
-    # Each stage is short-circuit ordered: governance halt > warmup >
-    # stale data. Activity events go to `result`.
+    # together. P7.2 adds a SafetyGateResult decision boundary so the
+    # pass/block decision is testable separately from LiveTickResult effects.
     def _stage_check_entry_blockers(
         self, result: "LiveTickResult", now_iso: str,
     ) -> None:
-        """Stages 1 / 1.1 / 1.2 — set self._entries_blocked + reason.
+        """Stages 1 / 1.1 / 1.2 — apply the early entry blocker gate."""
+        gate = self._evaluate_entry_blocker_gate()
+        if not gate.blocked:
+            return
 
-        Order matters: governance halt is checked first (operator
-        override); warmup second (system not stable); stale data third
-        (data plane unhealthy). Each gate adds a `result.activity`
-        event so downstream observers see the reason.
-        """
-        # 1. GOVERNANCE CHECK — when halted, exits still process; entries blocked.
-        if self.governance.is_trading_halted:
-            self._entries_blocked = True
-            self._last_entries_blocked_reason = "governance_halt"
-            result.errors.append(
-                "Trading halted by governance — exits still active"
-            )
-            result.activity.append(ActivityEvent(
-                event_type="governance",
-                message=(
-                    "Trading halted — blocking new entries, exits still running"
-                ),
-                timestamp=now_iso,
-            ))
-
-        # 1.1 WARMUP GATE — let features stabilize before entering.
-        if not self._entries_blocked and self._tick_count <= self._WARMUP_TICKS:
-            self._entries_blocked = True
-            self._last_entries_blocked_reason = "warmup"
+        self._entries_blocked = True
+        self._last_entries_blocked_reason = gate.reason
+        if gate.reason == "warmup":
             logger.info(
                 "Warmup period: %d/%d ticks — blocking entries",
                 self._tick_count, self._WARMUP_TICKS,
             )
+        if gate.error_message:
+            result.errors.append(gate.error_message)
+        if gate.activity_message:
             result.activity.append(ActivityEvent(
-                event_type="skip",
-                message=(
-                    f"Warmup: tick {self._tick_count}/{self._WARMUP_TICKS} "
-                    "— entries blocked"
-                ),
-                timestamp=now_iso,
-            ))
-
-        # 1.2 STALE DATA GATE — block entries when data > 2 min stale.
-        if not self._entries_blocked and self._data_stale:
-            self._entries_blocked = True
-            self._last_entries_blocked_reason = "stale_data"
-            result.activity.append(ActivityEvent(
-                event_type="skip",
-                message="Stale data — blocking entries (exits still active)",
+                event_type=gate.activity_type,
+                message=gate.activity_message,
                 timestamp=now_iso,
             ))
 
@@ -1839,6 +2063,212 @@ class OrganismLiveEngine:
                 del self._equity_curve[:drop_count]
         except Exception:
             pass
+
+    def _record_candidate_evidence(
+        self,
+        cand_dicts: list[dict[str, Any]],
+        *,
+        regime: str,
+        now_iso: str,
+    ) -> None:
+        """Record pre-sizing candidate evidence without affecting live decisions."""
+        # Phase 3 candidate-filter shadow telemetry. This records
+        # only proposed no-entry filter matches and is deliberately
+        # placed before Kelly sizing/order submission so it cannot
+        # influence the live path. Disabled unless explicitly enabled.
+        if self._candidate_filter_shadow_recorder is not None:
+            try:
+                _shadow_written = (
+                    self._candidate_filter_shadow_recorder.record_candidates(
+                        cand_dicts,
+                        regime=regime,
+                        tick=self._tick_count,
+                        timestamp=now_iso,
+                    )
+                )
+                self._candidate_filter_shadow_events += _shadow_written
+            except Exception as _shadow_err:
+                logger.warning(
+                    "Candidate filter shadow telemetry write failed: %s",
+                    _shadow_err,
+                )
+
+        # Phase 6 strategy evidence warehouse feed. Records every
+        # surviving pre-sizing candidate, including candidates with no
+        # current shadow-filter tag. Observability-only and intentionally
+        # before Kelly sizing/order submission.
+        if self._strategy_evidence_recorder is not None:
+            try:
+                _evidence_written = (
+                    self._strategy_evidence_recorder.record_candidates(
+                        cand_dicts,
+                        regime=regime,
+                        tick=self._tick_count,
+                        timestamp=now_iso,
+                    )
+                )
+                self._strategy_evidence_events += _evidence_written
+            except Exception as _evidence_err:
+                logger.warning(
+                    "Strategy evidence telemetry write failed: %s",
+                    _evidence_err,
+                )
+
+    def _record_phase9_shadow_signals(
+        self,
+        features_by_symbol: dict[str, pd.DataFrame],
+        *,
+        regime: str,
+        now_iso: str,
+    ) -> None:
+        """Record Phase 9 strategy-engine shadow signals once per bar."""
+        if not self._phase9_shadow_engines or self._strategy_evidence_recorder is None:
+            return
+        shadow_now = self._now_fn()
+        current_bar = shadow_now.strftime("%Y-%m-%d %H:%M")
+        if current_bar == self._phase9_last_shadow_bar:
+            return
+        self._phase9_last_shadow_bar = current_bar
+        context = {
+            "features_by_symbol": features_by_symbol,
+            "now": shadow_now,
+            "regime": str(regime),
+            "market_return_bps": _market_return_bps(features_by_symbol.get("SPY"), shadow_now),
+        }
+        signals = []
+        for engine in self._phase9_shadow_engines:
+            try:
+                signals.extend(engine.generate_signals(context))
+            except Exception as exc:
+                logger.debug("Phase 9 shadow engine %s failed: %s", engine, exc)
+        if not signals:
+            return
+        try:
+            written = self._strategy_evidence_recorder.record_signals(
+                signals,
+                tick=self._tick_count,
+                timestamp=now_iso,
+            )
+            self._strategy_evidence_events += written
+            self._phase9_shadow_signal_events += written
+            logger.info("Phase 9 shadow recorded %d strategy signals", written)
+        except Exception as exc:
+            logger.warning("Phase 9 shadow signal telemetry write failed: %s", exc)
+
+    def _record_signal_activity(
+        self,
+        result: LiveTickResult,
+        cand_dicts: list[dict[str, Any]],
+        *,
+        now_iso: str,
+    ) -> None:
+        """Append signal activity events for dashboard/operator visibility."""
+        for cd in cand_dicts[:10]:
+            side = "BUY" if cd["direction"] > 0 else "SELL"
+            result.activity.append(ActivityEvent(
+                event_type="signal",
+                symbol=cd["symbol"],
+                message=(
+                    f"{side} signal: {cd['symbol']} "
+                    f"(confidence={cd['confidence']:.2f}, "
+                    f"breakout={cd['breakout_score']:.2f})"
+                ),
+                details=cd,
+                timestamp=now_iso,
+            ))
+
+    def _record_sizer_rejections(self) -> None:
+        """Copy sizer-level rejection counts into tick gate telemetry."""
+        _sizer_rejects = getattr(self.kelly_sizer, "_exploration_rejects", [])
+        self._last_gate_rejections["cost_gate"] = sum(
+            1 for r in _sizer_rejects if r.get("reason") == "weight_too_small"
+        )
+        self._last_gate_rejections["min_notional"] = sum(
+            1 for r in _sizer_rejects if r.get("reason") == "below_min_notional"
+        )
+
+    def _apply_intraday_seasonality_filter(self, sizes: list[Any]) -> None:
+        """Reduce late-session allocations in-place for intraday trading."""
+        if not self._is_intraday or not sizes:
+            return
+        _now = self._now_fn()
+        try:
+            import zoneinfo
+            now_et = _now.astimezone(zoneinfo.ZoneInfo("America/New_York"))
+        except Exception:
+            now_et = _now
+        hhmm = now_et.hour * 100 + now_et.minute
+        if 1545 <= hhmm <= 1600:
+            for sz in sizes:
+                sz.shares = max(1, int(sz.shares * 0.6))
+                sz.notional = sz.notional * 0.6
+                sz.target_weight = sz.target_weight * 0.6
+            logger.info(
+                "Seasonality filter: reduced allocation 40%% (time=%d)",
+                hhmm,
+            )
+
+    async def _stage_check_stream_health(
+        self, result: LiveTickResult, now_iso: str,
+    ) -> None:
+        """Stage 0 — recover stale streaming data on the existing cadence."""
+        if (
+            self._streaming_provider is None
+            or self._tick_count % 30 != 0
+        ):
+            return
+        try:
+            recovered = await self._streaming_provider.check_and_recover_stale_stream()
+            if recovered:
+                result.activity.append(ActivityEvent(
+                    event_type="stream",
+                    message="Stale data detected — stream reconnect attempted",
+                    timestamp=now_iso,
+                ))
+        except Exception as e:
+            logger.debug("Stream staleness check error (non-fatal): %s", e)
+
+    def _stage_update_data_staleness(self) -> None:
+        """Stage 0.5 — refresh aggregate and per-symbol data-stale state."""
+        _was_stale = self._data_stale
+        if self._streaming_provider is None:
+            return
+        try:
+            last_update = getattr(self._streaming_provider, "last_update_time", None)
+            if last_update is not None:
+                staleness_s = self._time_fn() - last_update
+                self._data_stale = staleness_s > self._DATA_STALE_THRESHOLD_S
+                if self._data_stale and not _was_stale:
+                    logger.warning(
+                        "Data stream stale: %.0fs since last update "
+                        "(threshold=%.0fs) — blocking entries",
+                        staleness_s, self._DATA_STALE_THRESHOLD_S,
+                    )
+                elif not self._data_stale and _was_stale:
+                    logger.info("Data stream fresh again — entries unblocked")
+            else:
+                self._data_stale = False
+            # V9 PP-6: per-symbol staleness check.
+            if hasattr(self._streaming_provider, "stale_symbols"):
+                stale_syms = self._streaming_provider.stale_symbols(
+                    threshold_s=self._DATA_STALE_THRESHOLD_S,
+                    now=self._time_fn(),
+                )
+                if stale_syms:
+                    # Trigger _data_stale even if aggregate looked fresh.
+                    self._data_stale = True
+                    if not _was_stale:
+                        logger.warning(
+                            "PP-6: %d symbol(s) stale beyond threshold "
+                            "(aggregate looked fresh): %s",
+                            len(stale_syms),
+                            [(s, round(a, 1)) for s, a in stale_syms[:5]],
+                        )
+        except Exception as _stale_err:
+            # V9 UU pattern: surface, don't pass.
+            logger.debug(
+                "Stale-data check error (non-fatal): %s", _stale_err,
+            )
 
     async def _live_tick_inner(self) -> LiveTickResult:
         """Inner tick logic — always called under _tick_lock."""
@@ -1869,64 +2299,14 @@ class OrganismLiveEngine:
 
             # 0. STREAM HEALTH — detect and recover stale WebSocket data.
             # Run every 30 ticks (~5 min) to avoid hammering reconnect.
-            if (
-                self._streaming_provider is not None
-                and self._tick_count % 30 == 0
-            ):
-                try:
-                    recovered = await self._streaming_provider.check_and_recover_stale_stream()
-                    if recovered:
-                        result.activity.append(ActivityEvent(
-                            event_type="stream",
-                            message="Stale data detected — stream reconnect attempted",
-                            timestamp=now_iso,
-                        ))
-                except Exception as e:
-                    logger.debug("Stream staleness check error (non-fatal): %s", e)
+            await self._stage_check_stream_health(result, now_iso)
 
             # 0.5 STALE DATA GATE — check streaming provider freshness.
             # V9 PP-6 / Wave-45 (2026-05-03): also check PER-SYMBOL
             # staleness via stale_symbols(). The aggregate
             # last_update_time hid stalls on active symbols when
             # background symbols kept ticking.
-            _was_stale = self._data_stale
-            if self._streaming_provider is not None:
-                try:
-                    last_update = getattr(self._streaming_provider, "last_update_time", None)
-                    if last_update is not None:
-                        staleness_s = self._time_fn() - last_update
-                        self._data_stale = staleness_s > self._DATA_STALE_THRESHOLD_S
-                        if self._data_stale and not _was_stale:
-                            logger.warning(
-                                "Data stream stale: %.0fs since last update "
-                                "(threshold=%.0fs) — blocking entries",
-                                staleness_s, self._DATA_STALE_THRESHOLD_S,
-                            )
-                        elif not self._data_stale and _was_stale:
-                            logger.info("Data stream fresh again — entries unblocked")
-                    else:
-                        self._data_stale = False
-                    # V9 PP-6: per-symbol staleness check.
-                    if hasattr(self._streaming_provider, "stale_symbols"):
-                        stale_syms = self._streaming_provider.stale_symbols(
-                            threshold_s=self._DATA_STALE_THRESHOLD_S,
-                            now=self._time_fn(),
-                        )
-                        if stale_syms:
-                            # Trigger _data_stale even if aggregate looked fresh.
-                            self._data_stale = True
-                            if not _was_stale:
-                                logger.warning(
-                                    "PP-6: %d symbol(s) stale beyond threshold "
-                                    "(aggregate looked fresh): %s",
-                                    len(stale_syms),
-                                    [(s, round(a, 1)) for s, a in stale_syms[:5]],
-                                )
-                except Exception as _stale_err:
-                    # V9 UU pattern: surface, don't pass.
-                    logger.debug(
-                        "Stale-data check error (non-fatal): %s", _stale_err,
-                    )
+            self._stage_update_data_staleness()
 
             # V8 HH R-1 / Wave-40 (2026-05-03): stages 1 + 1.1 + 1.2 extracted.
             self._stage_check_entry_blockers(result, now_iso)
@@ -2241,6 +2621,10 @@ class OrganismLiveEngine:
                             )
                 except Exception as _mr_err:
                     logger.debug("MR shadow scan err: %s", _mr_err)
+
+                self._record_phase9_shadow_signals(
+                    features_by_symbol, regime=regime, now_iso=now_iso,
+                )
 
             # 4. GET CURRENT POSITIONS from broker
             current_positions = await self._positions_service.get_all_positions()
@@ -2990,7 +3374,7 @@ class OrganismLiveEngine:
                         "Entry throttle: %d entries in last hour (max %d, %s) — "
                         "blocking new entries this tick",
                         len(self._entry_timestamps), _effective_max,
-                        "learning" if self._is_learning_mode else "production",
+                        self._trading_phase.get("phase", "unknown"),
                     )
                     result.activity.append(ActivityEvent(
                         event_type="skip",
@@ -3197,7 +3581,7 @@ class OrganismLiveEngine:
                 candidates = self.alpha_scanner.scan(
                     features_by_symbol, ml_signals, regime,
                     ml_is_trained=self.signal_gen.is_trained,
-                    learning_mode=self._is_learning_mode,
+                    learning_mode=self._ml_isolation_mode,
                 )
 
                 # Build candidate list
@@ -3259,6 +3643,7 @@ class OrganismLiveEngine:
                 }
 
                 cand_dicts = []
+                _defensive_filtered_cand_dicts: list[dict[str, Any]] = []
                 # M3-4: When DISABLE_ALPHA_BREAKOUT, skip the alpha+breakout
                 # candidate-build phase entirely. Slots and ranking competition
                 # belong solely to ORB/EOD. Diagnostic mode for evaluating the
@@ -3321,10 +3706,10 @@ class OrganismLiveEngine:
                             from backend.organism.ml_features import compute_tension_proxy
                             tension = compute_tension_proxy(feat_df)
                     # Additive confidence — preserves ranking granularity
-                    if self._is_learning_mode:
-                        # improve9: ML weight = 0 in learning mode. ML is
-                        # untrained and anti-predictive (high conf = worse
-                        # outcomes on Mar 6). Use only observable signals.
+                    if self._ml_isolation_mode:
+                        # improve9 / Phase 2: ML weight = 0 while the
+                        # brain is bootstrapping or guarded by realized
+                        # expectancy. Use only observable signals.
                         confidence = (
                             0.65 * breakout_score
                             + 0.35 * min(tension, 1.0)
@@ -3369,7 +3754,7 @@ class OrganismLiveEngine:
                     )
                     _conf_ml_component = (
                         (c.ml_signal.confidence if c.ml_signal else 0.0)
-                        if not self._is_learning_mode
+                        if not self._ml_isolation_mode
                         else 0.0
                     )
                     # Will the candidate pass the main-book gate?
@@ -3380,11 +3765,13 @@ class OrganismLiveEngine:
                         "Exp3: confidence side-by-side: %s regime=%s "
                         "conf_live=%.4f conf_bt_only=%.4f ml_component=%.4f "
                         "gate_pass_live=%s gate_pass_bt_only=%s "
-                        "breakout=%.4f tension=%.4f learning_mode=%s",
+                        "breakout=%.4f tension=%.4f learning_mode=%s "
+                        "ml_isolation_mode=%s",
                         c.symbol, regime,
                         confidence, _conf_bt_only, _conf_ml_component,
                         _would_pass_live, _would_pass_bt_only,
                         breakout_score, tension, self._is_learning_mode,
+                        self._ml_isolation_mode,
                     )
 
                     # A2 (improve8): Two-tier confidence gate
@@ -3393,12 +3780,17 @@ class OrganismLiveEngine:
                     # both paths (unified threshold).
 
                     # B1 (improve8): Heuristic expected_return → exploration only
-                    # Exception: in learning mode, allow heuristic through main-book
-                    # (A4 risk caps protect sizing). Otherwise engine can never
-                    # accumulate 200 trades to train ML.
+                    # Exception: in bootstrap learning or guarded production,
+                    # allow heuristic through main-book (fixed risk caps
+                    # protect sizing). Otherwise a guarded losing brain
+                    # would have ML disabled but no non-ML entry route.
+                    _heuristic_main_book_allowed = (
+                        self._is_learning_mode
+                        or self._is_guarded_production_mode
+                    )
                     _is_heuristic = (
                         c.expected_return_source == "heuristic"
-                        and not self._is_learning_mode
+                        and not _heuristic_main_book_allowed
                     )
 
                     # Track 1 fix (RC-1.5 curated): gate on composite confidence,
@@ -3419,7 +3811,10 @@ class OrganismLiveEngine:
                     # the relative ordering of candidates still benefits
                     # from any ML signal that does exist; only the
                     # pass/fail threshold drops the ML weight.
-                    if DROP_ML_FROM_GATE and not self._is_learning_mode:
+                    if (
+                        self._ml_isolation_mode
+                        or (DROP_ML_FROM_GATE and not self._is_learning_mode)
+                    ):
                         _eff_conf = (
                             0.65 * breakout_score
                             + 0.35 * min(tension, 1.0)
@@ -3458,7 +3853,7 @@ class OrganismLiveEngine:
                             c.symbol, _eff_conf, _is_heuristic, regime,
                         )
                         continue
-                    cand_dicts.append({
+                    _cand_dict = {
                         "symbol": c.symbol,
                         "direction": c.direction,
                         "predicted_return": (
@@ -3479,7 +3874,13 @@ class OrganismLiveEngine:
                         "confidence_bt_only": _conf_bt_only,
                         "confidence_ml_component": _conf_ml_component,
                         "gate_pass_bt_only": _would_pass_bt_only,
-                    })
+                    }
+                    if self._record_defensive_filtered_candidate(
+                        _cand_dict, regime, _defensive_filtered_cand_dicts,
+                    ):
+                        _rej_counts["confidence_gate"] += 1
+                        continue
+                    cand_dicts.append(_cand_dict)
                     _planned_entries.add(c.symbol)
 
                 # Pure breakout signals not in alpha candidates (capped at 2)
@@ -3518,7 +3919,7 @@ class OrganismLiveEngine:
                     # vetoing breakout signals on ML direction blocks valid
                     # entries from accumulating training data.
                     ml_sig = ml_signals.get(bs.symbol)
-                    if not self._is_learning_mode and ml_sig and ml_sig.direction < 0:
+                    if not self._ml_isolation_mode and ml_sig and ml_sig.direction < 0:
                         continue
                     # Surgical fix (Ferrari v1, ML leakage audit): the
                     # 0.003 floor was masking weak ML signals — 49% of
@@ -3542,7 +3943,7 @@ class OrganismLiveEngine:
                     # predicted_return still feed Kelly a positive expected
                     # return for a LONG entry.
                     if (
-                        ml_sig and not self._is_learning_mode
+                        ml_sig and not self._ml_isolation_mode
                         and ml_sig.direction > 0
                         and abs(ml_sig.predicted_return) > 1e-4
                     ):
@@ -3552,12 +3953,12 @@ class OrganismLiveEngine:
                     # Determine expected_return_source for breakout
                     _bo_ret_source = "heuristic"
                     if (
-                        ml_sig and not self._is_learning_mode
+                        ml_sig and not self._ml_isolation_mode
                         and ml_sig.direction > 0
                         and abs(ml_sig.predicted_return) > 1e-6
                     ):
                         _bo_ret_source = "calibrated_breakout"
-                    cand_dicts.append({
+                    _cand_dict = {
                         "symbol": bs.symbol,
                         "direction": 1.0,
                         "predicted_return": pred_ret,
@@ -3566,7 +3967,13 @@ class OrganismLiveEngine:
                         "breakout_score": bs.composite_score,
                         "expected_return_source": _bo_ret_source,
                         "ranking_score": bs.composite_score * _bo_conf,
-                    })
+                    }
+                    if self._record_defensive_filtered_candidate(
+                        _cand_dict, regime, _defensive_filtered_cand_dicts,
+                    ):
+                        _rej_counts["confidence_gate"] += 1
+                        continue
+                    cand_dicts.append(_cand_dict)
                     _planned_entries.add(bs.symbol)
                     _breakout_added += 1
 
@@ -3581,7 +3988,7 @@ class OrganismLiveEngine:
                 if (
                     ORB_LIVE_ENABLED
                     and self._latest_orb_triggered
-                    and not self._is_learning_mode
+                    and not self._ml_isolation_mode
                 ):
                     _existing_syms = {d["symbol"] for d in cand_dicts}
                     for orbc in self._latest_orb_triggered:
@@ -3744,7 +4151,7 @@ class OrganismLiveEngine:
                 if (
                     EOD_LIVE_ENABLED
                     and self._latest_eod_candidates
-                    and not self._is_learning_mode
+                    and not self._ml_isolation_mode
                 ):
                     _existing_syms = {d["symbol"] for d in cand_dicts}
                     for eodc in self._latest_eod_candidates:
@@ -3905,7 +4312,7 @@ class OrganismLiveEngine:
                 if (
                     MEAN_REVERSION_LIVE_ENABLED
                     and self._latest_mr_candidates
-                    and not self._is_learning_mode
+                    and not self._ml_isolation_mode
                 ):
                     _existing_syms = {d["symbol"] for d in cand_dicts}
                     for mrc in self._latest_mr_candidates:
@@ -4066,16 +4473,17 @@ class OrganismLiveEngine:
                 _rej_counts["missingness"] = _rej_missingness
                 self._last_gate_rejections = dict(_rej_counts)
 
-                # Log signal activity
-                for cd in cand_dicts[:10]:
-                    result.activity.append(ActivityEvent(
-                        event_type="signal",
-                        symbol=cd["symbol"],
-                        message=f"{'BUY' if cd['direction'] > 0 else 'SELL'} signal: {cd['symbol']} "
-                                f"(confidence={cd['confidence']:.2f}, breakout={cd['breakout_score']:.2f})",
-                        details=cd,
-                        timestamp=now_iso,
-                    ))
+                self._record_candidate_evidence(
+                    cand_dicts + _defensive_filtered_cand_dicts,
+                    regime=regime,
+                    now_iso=now_iso,
+                )
+
+                self._record_signal_activity(
+                    result,
+                    cand_dicts,
+                    now_iso=now_iso,
+                )
 
                 # 8. SIZE POSITIONS (Kelly)
                 drawdown = (
@@ -4095,35 +4503,16 @@ class OrganismLiveEngine:
                     # learning-mode-vs-production sizing; reconciliation
                     # bookkeeping should not advance the regime-promote.
                     trade_count=len(self._strategy_trades()),
+                    fixed_risk_mode=self._fixed_risk_sizing_mode,
                 )
                 self._last_kelly_sizes = sizes
 
                 # Wire sizer-level rejections into gate telemetry
-                _sizer_rejects = getattr(self.kelly_sizer, "_exploration_rejects", [])
-                _rej_cost_gate = sum(1 for r in _sizer_rejects if r.get("reason") == "weight_too_small")
-                _rej_min_notional = sum(1 for r in _sizer_rejects if r.get("reason") == "below_min_notional")
-                self._last_gate_rejections["cost_gate"] = _rej_cost_gate
-                self._last_gate_rejections["min_notional"] = _rej_min_notional
+                self._record_sizer_rejections()
 
                 # 8b. INTRADAY SEASONALITY FILTER — reduce allocation
                 # during first/last 15 min (highest volatility, worst fills)
-                if self._is_intraday and sizes:
-                    _now = self._now_fn()
-                    try:
-                        import zoneinfo
-                        now_et = _now.astimezone(zoneinfo.ZoneInfo("America/New_York"))
-                    except Exception:
-                        now_et = _now
-                    hhmm = now_et.hour * 100 + now_et.minute
-                    if 1545 <= hhmm <= 1600:
-                        for sz in sizes:
-                            sz.shares = max(1, int(sz.shares * 0.6))
-                            sz.notional = sz.notional * 0.6
-                            sz.target_weight = sz.target_weight * 0.6
-                        logger.info(
-                            "Seasonality filter: reduced allocation 40%% (time=%d)",
-                            hhmm,
-                        )
+                self._apply_intraday_seasonality_filter(sizes)
 
                 # 9. SUBMIT ENTRY ORDERS
                 # Re-check positions right before ordering to catch partial
@@ -4326,6 +4715,10 @@ class OrganismLiveEngine:
                                     _entry_source = "breakout"
                                 elif sz.breakout_score >= 0.4:
                                     _entry_source = "alpha+breakout"
+                            _strategy_id = infer_strategy_id(
+                                _entry_source,
+                                getattr(sz, "strategy_id", ""),
+                            )
                             self._entry_metadata[sz.symbol] = {
                                 "entry_price": price,
                                 "entry_tick": self._tick_count,
@@ -4335,6 +4728,7 @@ class OrganismLiveEngine:
                                 "predicted_return": predicted_return,
                                 "confidence": sz.confidence,
                                 "entry_source": _entry_source,
+                                "strategy_id": _strategy_id,
                                 "regime_at_entry": regime,
                             }
 
@@ -4817,6 +5211,13 @@ class OrganismLiveEngine:
             effective_fitness_gate=getattr(self, "_last_eff_fitness_gate", 0.45),
             effective_confidence_gate=getattr(self, "_last_eff_conf_gate", 0.30),
             burst_cap_remaining=getattr(self, "_last_burst_remaining", 4),
+            trading_phase=str(self._trading_phase.get("phase", "")),
+            guarded_mode=self._is_guarded_production_mode,
+            ml_isolation_mode=self._ml_isolation_mode,
+            fixed_risk_sizing=self._fixed_risk_sizing_mode,
+            promotion_blockers=list(
+                self._trading_phase.get("promotion_blockers", [])
+            ),
         )
 
         return snap
@@ -4859,6 +5260,7 @@ class OrganismLiveEngine:
                             "direction": getattr(lvl, "direction", 1.0),
                             "predicted_return": 0.01,
                             "confidence": 0.5,
+                            "strategy_id": "alpha_baseline",
                         }
 
             # INV-2: _tick_count must be positive after first tick
@@ -5725,6 +6127,10 @@ class OrganismLiveEngine:
                 # artifacts. Filtered by all 5+ learning consumers below.
                 is_reconciliation_artifact=_is_reconciliation,
                 entry_source=meta.get("entry_source", ""),
+                strategy_id=meta.get(
+                    "strategy_id",
+                    infer_strategy_id(meta.get("entry_source", "")),
+                ),
                 regime_at_entry=_regime_at_entry,
                 regime_at_exit=_regime_at_exit,
                 mfe=round(_mfe, 2),
@@ -5918,6 +6324,7 @@ class OrganismLiveEngine:
                 "predicted_return": 0.01,
                 "confidence": 0.5,
                 "entry_source": "reconciliation_orphan",
+                "strategy_id": "reconciliation_artifact",
             }
 
             # Try to create exit levels for proper management
@@ -6177,6 +6584,7 @@ class OrganismLiveEngine:
                     "predicted_return": 0.02,
                     "confidence": 0.5,
                     "entry_source": "reconciliation_orphan",
+                    "strategy_id": "reconciliation_artifact",
                 }
 
                 logger.info(
@@ -6888,6 +7296,9 @@ class OrganismLiveEngine:
         win_rate = len(winning) / total_trades if total_trades > 0 else 0.0
         avg_win = sum(t.pnl for t in winning) / len(winning) if winning else 0.0
         avg_loss = sum(t.pnl for t in losing) / len(losing) if losing else 0.0
+        strategy_trades = self._strategy_trades()
+        from backend.organism.strategy_expectancy import compute_from_trades
+        strategy_expectancy = compute_from_trades(strategy_trades)
 
         # ML model metrics
         ml_accuracy = 0.0
@@ -6901,6 +7312,7 @@ class OrganismLiveEngine:
         if hasattr(self.learner, "generation_metrics"):
             training_history = list(self.learner.generation_metrics)
 
+        trading_phase = self._trading_phase
         return {
             "initialized": self._initialized,
             "tick_count": self._tick_count,
@@ -6922,6 +7334,16 @@ class OrganismLiveEngine:
             "losing_trades": len(losing),
             "avg_win": round(avg_win, 2),
             "avg_loss": round(avg_loss, 2),
+            "strategy_total_trades": len(strategy_trades),
+            "strategy_cumulative_pnl": round(
+                float(strategy_expectancy.get("total_pnl", 0.0)),
+                2,
+            ),
+            "strategy_win_rate": strategy_expectancy.get("win_rate", 0.0),
+            "strategy_sharpe_ratio_per_trade": strategy_expectancy.get(
+                "sharpe_ratio_per_trade",
+                0.0,
+            ),
             "ml_accuracy": round(ml_accuracy, 4),
             "ml_trained": self.signal_gen.is_trained,
             "training_history": training_history,
@@ -6929,6 +7351,17 @@ class OrganismLiveEngine:
             "shorts_enabled": self.evolved_params.shorts_enabled,
             "data_stale": self._data_stale,
             "learning_mode": self._is_learning_mode,
+            "trading_phase": trading_phase.get("phase", ""),
+            "guarded_mode": trading_phase.get("is_guarded", False),
+            "ml_influence_enabled": trading_phase.get(
+                "ml_influence_enabled",
+                not self._ml_isolation_mode,
+            ),
+            "fixed_risk_sizing": trading_phase.get(
+                "fixed_risk_sizing",
+                self._fixed_risk_sizing_mode,
+            ),
+            "promotion_blockers": trading_phase.get("promotion_blockers", []),
             "watchdog": self.get_watchdog_state(),
             **scanner_info,
         }
@@ -7028,7 +7461,7 @@ class OrganismLiveEngine:
         candidates = self.alpha_scanner.scan(
             features_by_symbol, ml_signals, regime,
             ml_is_trained=self.signal_gen.is_trained,
-            learning_mode=self._is_learning_mode,
+            learning_mode=self._ml_isolation_mode,
         )
 
         signals = []
@@ -7040,9 +7473,9 @@ class OrganismLiveEngine:
         for c in candidates:
             if LONG_ONLY and not self.evolved_params.shorts_enabled and c.direction < 0:
                 continue
-            # Learning mode: use composite_score (breakout+tension based,
-            # no ML). Production: use ML confidence if available.
-            if self._is_learning_mode:
+            # ML isolation mode: use composite_score (observable factors,
+            # no ML). Full production: use ML confidence if available.
+            if self._ml_isolation_mode:
                 confidence = c.composite_score
             else:
                 confidence = c.ml_signal.confidence if c.ml_signal else 0.3

@@ -35,8 +35,19 @@ def _build_defaults_snapshot() -> dict:
             DEFAULT_MAX_CHANGES_PER_DAY,
         )
         from backend.organism.kelly_sizer import KellySizer
+        from backend.organism.trading_phase import (
+            EVOLUTION_FREEZE_TRADES,
+            PROMOTION_MIN_LAST_50_MEAN_PNL,
+            PROMOTION_MIN_LAST_50_WIN_RATE,
+            PROMOTION_MIN_SHARPE_PER_TRADE,
+            PROMOTION_MIN_TOTAL_PNL,
+            ML_ISOLATION_TRADES,
+        )
         from backend.organism.live_engine import (
             ALPHA_TOP_N,
+            ALPHA_BREAKOUT_BAD_REGIME_FILTER_ENABLED,
+            CANDIDATE_FILTER_SHADOW_TELEMETRY_ENABLED,
+            CANDIDATE_FILTER_SHADOW_TELEMETRY_PATH,
             EXPLORATION_ENABLED,
             LIVE_LOOKBACK,
             LIVE_TIMEFRAME,
@@ -47,7 +58,10 @@ def _build_defaults_snapshot() -> dict:
             MAX_OPEN_POSITIONS,
             MIN_BARS,
             PREDICTION_HORIZON,
+            PHASE9_SHADOW_ENGINES_ENABLED,
             RETRAIN_INTERVAL,
+            STRATEGY_EVIDENCE_TELEMETRY_ENABLED,
+            STRATEGY_EVIDENCE_TELEMETRY_PATH,
             USE_STREAMING,
         )
 
@@ -61,14 +75,36 @@ def _build_defaults_snapshot() -> dict:
             "universe": [s.strip() for s in LIVE_UNIVERSE_CSV.split(",") if s.strip()],
             "universe_size": len([s for s in LIVE_UNIVERSE_CSV.split(",") if s.strip()]),
 
-            "learning_mode_threshold_trades": 200,
-            "evolution_freeze_until_trades": 300,
+            "learning_mode_threshold_trades": ML_ISOLATION_TRADES,
+            "evolution_freeze_until_trades": EVOLUTION_FREEZE_TRADES,
+            "production_promotion_gate": {
+                "min_total_pnl": PROMOTION_MIN_TOTAL_PNL,
+                "min_last_50_mean_pnl": PROMOTION_MIN_LAST_50_MEAN_PNL,
+                "min_last_50_win_rate": PROMOTION_MIN_LAST_50_WIN_RATE,
+                "min_sharpe_per_trade": PROMOTION_MIN_SHARPE_PER_TRADE,
+            },
 
             "max_positions": MAX_OPEN_POSITIONS,
             "alpha_top_n": ALPHA_TOP_N,
             "long_only": LONG_ONLY,
 
             "exploration_enabled": EXPLORATION_ENABLED,
+            "alpha_breakout_bad_regime_filter_enabled": (
+                ALPHA_BREAKOUT_BAD_REGIME_FILTER_ENABLED
+            ),
+            "candidate_filter_shadow_telemetry_enabled": (
+                CANDIDATE_FILTER_SHADOW_TELEMETRY_ENABLED
+            ),
+            "candidate_filter_shadow_telemetry_path": (
+                CANDIDATE_FILTER_SHADOW_TELEMETRY_PATH
+            ),
+            "strategy_evidence_telemetry_enabled": (
+                STRATEGY_EVIDENCE_TELEMETRY_ENABLED
+            ),
+            "strategy_evidence_telemetry_path": (
+                STRATEGY_EVIDENCE_TELEMETRY_PATH
+            ),
+            "phase9_shadow_engines_enabled": PHASE9_SHADOW_ENGINES_ENABLED,
             "streaming_enabled": USE_STREAMING,
             "retrain_interval": RETRAIN_INTERVAL,
 
@@ -85,6 +121,7 @@ def _build_defaults_snapshot() -> dict:
 
             "risk_budget_production": KellySizer._RISK_BUDGET_PER_TRADE,
             "risk_budget_learning": KellySizer._RISK_BUDGET_PER_TRADE_LEARNING,
+            "risk_budget_guarded": KellySizer._RISK_BUDGET_PER_TRADE_LEARNING,
             "risk_budget_stop_atr": KellySizer._RISK_BUDGET_STOP_ATR,
 
             "stop_atr_table": AdaptiveExitEngine.REGIME_STOP_ATR,
@@ -101,12 +138,15 @@ def _build_defaults_snapshot() -> dict:
             "confidence_weights_learning": {
                 "breakout": 0.65, "tension": 0.35, "ml": 0.0,
             },
+            "confidence_weights_guarded": {
+                "breakout": 0.65, "tension": 0.35, "ml": 0.0,
+            },
             "confidence_weights_production": {
                 "ml": 0.50, "breakout": 0.30, "tension": 0.20,
             },
         }
 
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         return {
             "source": "env_fallback",
             "error": str(e),
@@ -118,8 +158,50 @@ def _build_defaults_snapshot() -> dict:
             "max_changes_per_day": int(os.getenv("ORGANISM_MAX_CHANGES_PER_DAY", "100")),
             "max_notional_per_trade": float(os.getenv("ORGANISM_MAX_NOTIONAL", "0")),
             "max_daily_loss": float(os.getenv("ORGANISM_MAX_DAILY_LOSS", "0")),
+            "alpha_breakout_bad_regime_filter_enabled": (
+                os.getenv(
+                    "ORGANISM_ALPHA_BREAKOUT_BAD_REGIME_FILTER_ENABLED",
+                    "true",
+                ).lower()
+                in ("1", "true", "yes")
+            ),
+            "candidate_filter_shadow_telemetry_enabled": (
+                os.getenv(
+                    "ORGANISM_CANDIDATE_FILTER_SHADOW_TELEMETRY_ENABLED",
+                    "false",
+                ).lower()
+                in ("1", "true", "yes")
+            ),
+            "candidate_filter_shadow_telemetry_path": os.getenv(
+                "ORGANISM_CANDIDATE_FILTER_SHADOW_TELEMETRY_PATH",
+                "organism_brain/candidate_filter_shadow_telemetry.jsonl",
+            ),
+            "strategy_evidence_telemetry_enabled": (
+                os.getenv(
+                    "ORGANISM_STRATEGY_EVIDENCE_TELEMETRY_ENABLED",
+                    "false",
+                ).lower()
+                in ("1", "true", "yes")
+            ),
+            "strategy_evidence_telemetry_path": os.getenv(
+                "ORGANISM_STRATEGY_EVIDENCE_TELEMETRY_PATH",
+                "organism_brain/strategy_evidence_events.jsonl",
+            ),
+            "phase9_shadow_engines_enabled": (
+                os.getenv(
+                    "ORGANISM_PHASE9_SHADOW_ENGINES_ENABLED",
+                    "false",
+                ).lower()
+                in ("1", "true", "yes")
+            ),
             "learning_mode_threshold_trades": 200,
             "evolution_freeze_until_trades": 300,
+            "production_promotion_gate": {
+                "min_total_pnl": 0.0,
+                "min_last_50_mean_pnl": 0.0,
+                "min_last_50_win_rate": 0.35,
+                "min_sharpe_per_trade": 0.0,
+            },
             "alpha_top_n": 5,
             "horizon_timeout_bars": 18,
             "bar_boundary_entry_only": True,
@@ -152,6 +234,24 @@ def _build_resolved_config_snapshot() -> dict:
                 "ORGANISM_MAX_NOTIONAL": env_map.get("ORGANISM_MAX_NOTIONAL"),
                 "ORGANISM_TICK_INTERVAL_SECONDS": env_map.get("ORGANISM_TICK_INTERVAL_SECONDS"),
                 "ORGANISM_EXPLORATION_ENABLED": env_map.get("ORGANISM_EXPLORATION_ENABLED"),
+                "ORGANISM_ALPHA_BREAKOUT_BAD_REGIME_FILTER_ENABLED": env_map.get(
+                    "ORGANISM_ALPHA_BREAKOUT_BAD_REGIME_FILTER_ENABLED"
+                ),
+                "ORGANISM_CANDIDATE_FILTER_SHADOW_TELEMETRY_ENABLED": env_map.get(
+                    "ORGANISM_CANDIDATE_FILTER_SHADOW_TELEMETRY_ENABLED"
+                ),
+                "ORGANISM_CANDIDATE_FILTER_SHADOW_TELEMETRY_PATH": env_map.get(
+                    "ORGANISM_CANDIDATE_FILTER_SHADOW_TELEMETRY_PATH"
+                ),
+                "ORGANISM_STRATEGY_EVIDENCE_TELEMETRY_ENABLED": env_map.get(
+                    "ORGANISM_STRATEGY_EVIDENCE_TELEMETRY_ENABLED"
+                ),
+                "ORGANISM_STRATEGY_EVIDENCE_TELEMETRY_PATH": env_map.get(
+                    "ORGANISM_STRATEGY_EVIDENCE_TELEMETRY_PATH"
+                ),
+                "ORGANISM_PHASE9_SHADOW_ENGINES_ENABLED": env_map.get(
+                    "ORGANISM_PHASE9_SHADOW_ENGINES_ENABLED"
+                ),
                 "ORGANISM_ALPHA_TOP_N": env_map.get("ORGANISM_ALPHA_TOP_N"),
                 "ORGANISM_LIVE_TIMEFRAME": env_map.get("ORGANISM_LIVE_TIMEFRAME"),
                 "APP_ENVIRONMENT": env_map.get("APP_ENVIRONMENT"),
@@ -173,6 +273,24 @@ def _build_resolved_config_snapshot() -> dict:
             "ORGANISM_MAX_NOTIONAL": env_map.get("ORGANISM_MAX_NOTIONAL"),
             "ORGANISM_TICK_INTERVAL_SECONDS": env_map.get("ORGANISM_TICK_INTERVAL_SECONDS"),
             "ORGANISM_EXPLORATION_ENABLED": env_map.get("ORGANISM_EXPLORATION_ENABLED"),
+            "ORGANISM_ALPHA_BREAKOUT_BAD_REGIME_FILTER_ENABLED": env_map.get(
+                "ORGANISM_ALPHA_BREAKOUT_BAD_REGIME_FILTER_ENABLED"
+            ),
+            "ORGANISM_CANDIDATE_FILTER_SHADOW_TELEMETRY_ENABLED": env_map.get(
+                "ORGANISM_CANDIDATE_FILTER_SHADOW_TELEMETRY_ENABLED"
+            ),
+            "ORGANISM_CANDIDATE_FILTER_SHADOW_TELEMETRY_PATH": env_map.get(
+                "ORGANISM_CANDIDATE_FILTER_SHADOW_TELEMETRY_PATH"
+            ),
+            "ORGANISM_STRATEGY_EVIDENCE_TELEMETRY_ENABLED": env_map.get(
+                "ORGANISM_STRATEGY_EVIDENCE_TELEMETRY_ENABLED"
+            ),
+            "ORGANISM_STRATEGY_EVIDENCE_TELEMETRY_PATH": env_map.get(
+                "ORGANISM_STRATEGY_EVIDENCE_TELEMETRY_PATH"
+            ),
+            "ORGANISM_PHASE9_SHADOW_ENGINES_ENABLED": env_map.get(
+                "ORGANISM_PHASE9_SHADOW_ENGINES_ENABLED"
+            ),
             "ORGANISM_ALPHA_TOP_N": env_map.get("ORGANISM_ALPHA_TOP_N"),
         }
         resolved["dotenv"] = dotenv
@@ -225,6 +343,20 @@ def _build_resolved_config_snapshot() -> dict:
 
     timeframe_val, timeframe_source = _resolve_str("ORGANISM_LIVE_TIMEFRAME", "timeframe")
     resolution_sources["timeframe"] = timeframe_source
+    shadow_path_val, shadow_path_source = _resolve_str(
+        "ORGANISM_CANDIDATE_FILTER_SHADOW_TELEMETRY_PATH",
+        "candidate_filter_shadow_telemetry_path",
+    )
+    resolution_sources["candidate_filter_shadow_telemetry_path"] = (
+        shadow_path_source
+    )
+    evidence_path_val, evidence_path_source = _resolve_str(
+        "ORGANISM_STRATEGY_EVIDENCE_TELEMETRY_PATH",
+        "strategy_evidence_telemetry_path",
+    )
+    resolution_sources["strategy_evidence_telemetry_path"] = (
+        evidence_path_source
+    )
 
     resolved["resolved"] = {
         "drawdown_kill_pct": _resolve_float(
@@ -252,20 +384,45 @@ def _build_resolved_config_snapshot() -> dict:
         "exploration_enabled": _resolve_bool(
             "ORGANISM_EXPLORATION_ENABLED", "exploration_enabled", "exploration_enabled",
         ),
+        "alpha_breakout_bad_regime_filter_enabled": _resolve_bool(
+            "ORGANISM_ALPHA_BREAKOUT_BAD_REGIME_FILTER_ENABLED",
+            "alpha_breakout_bad_regime_filter_enabled",
+            "alpha_breakout_bad_regime_filter_enabled",
+        ),
+        "candidate_filter_shadow_telemetry_enabled": _resolve_bool(
+            "ORGANISM_CANDIDATE_FILTER_SHADOW_TELEMETRY_ENABLED",
+            "candidate_filter_shadow_telemetry_enabled",
+            "candidate_filter_shadow_telemetry_enabled",
+        ),
+        "candidate_filter_shadow_telemetry_path": shadow_path_val,
+        "strategy_evidence_telemetry_enabled": _resolve_bool(
+            "ORGANISM_STRATEGY_EVIDENCE_TELEMETRY_ENABLED",
+            "strategy_evidence_telemetry_enabled",
+            "strategy_evidence_telemetry_enabled",
+        ),
+        "strategy_evidence_telemetry_path": evidence_path_val,
+        "phase9_shadow_engines_enabled": _resolve_bool(
+            "ORGANISM_PHASE9_SHADOW_ENGINES_ENABLED",
+            "phase9_shadow_engines_enabled",
+            "phase9_shadow_engines_enabled",
+        ),
         "timeframe": timeframe_val,
         "timeframe_source": timeframe_source,
         "learning_mode_threshold_trades": defaults.get("learning_mode_threshold_trades"),
         "evolution_freeze_until_trades": defaults.get("evolution_freeze_until_trades"),
+        "production_promotion_gate": defaults.get("production_promotion_gate"),
         "horizon_timeout_bars": defaults.get("horizon_timeout_bars"),
         "bar_boundary_entry_only": defaults.get("bar_boundary_entry_only"),
         "confidence_gate_baseline": defaults.get("confidence_gate_baseline"),
         "confidence_gate_defensive": defaults.get("confidence_gate_defensive"),
         "fitness_gate_production": defaults.get("fitness_gate_production"),
         "risk_budget_learning": defaults.get("risk_budget_learning"),
+        "risk_budget_guarded": defaults.get("risk_budget_guarded"),
         "risk_budget_production": defaults.get("risk_budget_production"),
         "inverse_etfs": defaults.get("inverse_etfs"),
         "universe_size": defaults.get("universe_size"),
         "confidence_weights_learning": defaults.get("confidence_weights_learning"),
+        "confidence_weights_guarded": defaults.get("confidence_weights_guarded"),
         "confidence_weights_production": defaults.get("confidence_weights_production"),
         "stop_atr_table": defaults.get("stop_atr_table"),
     }
@@ -302,6 +459,9 @@ def _build_legacy_runtime_snapshot(
             "max_positions": defaults.get("max_positions"),
             "max_daily_loss": defaults.get("max_daily_loss"),
             "max_notional_per_trade": defaults.get("max_notional_per_trade"),
+            "production_promotion_gate": defaults.get("production_promotion_gate"),
+            "risk_budget_guarded": defaults.get("risk_budget_guarded"),
+            "confidence_weights_guarded": defaults.get("confidence_weights_guarded"),
         },
         "live_process_reachable": live_process.get("reachable"),
         "config_truth_status": _assess_config_truth(resolved, live_process),
@@ -418,6 +578,9 @@ def _build_live_process_snapshot() -> dict:
         if env_text:
             env_map = _parse_env_text(env_text)
             result["process_env"] = {
+                "GIT_SHA": env_map.get("GIT_SHA"),
+                "BUILD_TIME": env_map.get("BUILD_TIME"),
+                "IMAGE_SHA": env_map.get("IMAGE_SHA"),
                 "APP_ENVIRONMENT": env_map.get("APP_ENVIRONMENT"),
                 "ALPACA_PAPER": env_map.get("ALPACA_PAPER"),
                 "ORGANISM_DRAWDOWN_KILL_PCT": env_map.get("ORGANISM_DRAWDOWN_KILL_PCT"),
@@ -427,6 +590,15 @@ def _build_live_process_snapshot() -> dict:
                 "ORGANISM_MAX_DAILY_LOSS": env_map.get("ORGANISM_MAX_DAILY_LOSS"),
                 "ORGANISM_MAX_NOTIONAL": env_map.get("ORGANISM_MAX_NOTIONAL"),
                 "ORGANISM_TICK_INTERVAL_SECONDS": env_map.get("ORGANISM_TICK_INTERVAL_SECONDS"),
+                "ORGANISM_CANDIDATE_FILTER_SHADOW_TELEMETRY_ENABLED": env_map.get(
+                    "ORGANISM_CANDIDATE_FILTER_SHADOW_TELEMETRY_ENABLED"
+                ),
+                "ORGANISM_STRATEGY_EVIDENCE_TELEMETRY_ENABLED": env_map.get(
+                    "ORGANISM_STRATEGY_EVIDENCE_TELEMETRY_ENABLED"
+                ),
+                "ORGANISM_PHASE9_SHADOW_ENGINES_ENABLED": env_map.get(
+                    "ORGANISM_PHASE9_SHADOW_ENGINES_ENABLED"
+                ),
             }
 
         # Get container start time
@@ -436,7 +608,7 @@ def _build_live_process_snapshot() -> dict:
                 text=True, stderr=subprocess.DEVNULL, timeout=5,
             ).strip()
             result["container_started_at"] = started
-        except Exception:
+        except Exception:  # noqa: BLE001, S110
             pass
 
     # --- 3. Derive live runtime values from process state ---
@@ -466,6 +638,17 @@ def _build_live_process_snapshot() -> dict:
         )
         live["is_learning_mode"] = _pick_annotated(
             "is_learning_mode", "learning_mode", "is_learning_mode",
+        )
+        live["trading_phase"] = _pick_annotated("trading_phase", "trading_phase")
+        live["guarded_mode"] = _pick_annotated("guarded_mode", "guarded_mode")
+        live["ml_influence_enabled"] = _pick_annotated(
+            "ml_influence_enabled", "ml_influence_enabled",
+        )
+        live["fixed_risk_sizing"] = _pick_annotated(
+            "fixed_risk_sizing", "fixed_risk_sizing",
+        )
+        live["promotion_blockers"] = _pick_annotated(
+            "promotion_blockers", "promotion_blockers",
         )
         live["brain_generation"] = _pick_annotated("brain_generation", "brain_generation")
         live["uptime_seconds"] = _pick_annotated("uptime_seconds", "uptime_seconds")
@@ -534,7 +717,7 @@ def _find_api_container() -> str:
         for line in out.splitlines():
             if "api" in line:
                 return line
-    except Exception:
+    except Exception:  # noqa: BLE001, S110
         pass
     return ""
 
@@ -545,7 +728,7 @@ def _docker_exec(container: str, cmd: str) -> str:
             ["docker", "exec", container, "sh", "-c", cmd],
             text=True, stderr=subprocess.DEVNULL, timeout=10,
         ).strip()
-    except Exception:
+    except Exception:  # noqa: BLE001
         return ""
 
 
@@ -568,7 +751,7 @@ def _curl_organism_status() -> dict | None:
                 data = json.loads(out)
                 if "detail" not in data:  # not an error response
                     return data
-        except Exception:
+        except Exception:  # noqa: BLE001, S112
             continue
     return None
 
@@ -601,7 +784,7 @@ def _get_auth_token(base: str) -> str:
         with urllib.request.urlopen(req, timeout=5) as resp:
             data = json.loads(resp.read())
             return data.get("access_token", "")
-    except Exception:
+    except Exception:  # noqa: BLE001
         return ""
 
 

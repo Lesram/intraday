@@ -270,6 +270,11 @@ class FilteringSummary:
     entries_blocked_reason: str = ""
     # M3: Learning mode throttle telemetry
     learning_mode: bool = False
+    trading_phase: str = ""
+    guarded_mode: bool = False
+    ml_isolation_mode: bool = False
+    fixed_risk_sizing: bool = False
+    promotion_blockers: list[str] = field(default_factory=list)
     effective_max_entries_per_hour: int = 3
     # improve8 additions
     regime_scale_source: str = ""
@@ -307,6 +312,11 @@ class FilteringSummary:
             },
             "entries_blocked_reason": self.entries_blocked_reason,
             "learning_mode": _b(self.learning_mode),
+            "trading_phase": str(self.trading_phase),
+            "guarded_mode": _b(self.guarded_mode),
+            "ml_isolation_mode": _b(self.ml_isolation_mode),
+            "fixed_risk_sizing": _b(self.fixed_risk_sizing),
+            "promotion_blockers": [str(x) for x in self.promotion_blockers],
             "effective_max_entries_per_hour": int(self.effective_max_entries_per_hour),
             "regime_scale_source": str(self.regime_scale_source),
             "effective_fitness_gate": round(_f(self.effective_fitness_gate), 2),

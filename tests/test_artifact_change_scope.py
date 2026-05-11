@@ -133,9 +133,35 @@ def test_audit_index_classifies_ci_scripts_as_tooling_evidence():
     audit_index = _load_audit_index()
 
     scope = audit_index.classify_pr_scope([
+        ".github/workflows/pr-verify.yml",
         "scripts/ci/change_scope.py",
         "scripts/ci/generate_artifacts.py",
         "tests/test_artifact_change_scope.py",
+    ])
+
+    assert scope == "tooling/evidence_only"
+
+
+def test_audit_index_classifies_research_scripts_as_tooling_evidence():
+    audit_index = _load_audit_index()
+
+    scope = audit_index.classify_pr_scope([
+        "scripts/phase3_candidate_filter_replay.py",
+        "tests/test_phase3_candidate_filter_replay.py",
+        "docs/engineering/PHASE3_CANDIDATE_FILTER_REPLAY_REPORT.md",
+    ])
+
+    assert scope == "tooling/evidence_only"
+
+
+def test_audit_index_classifies_phase4_shadow_tools_as_tooling_evidence():
+    audit_index = _load_audit_index()
+
+    scope = audit_index.classify_pr_scope([
+        "scripts/phase4_shadow_target_model.py",
+        "scripts/phase4_candidate_shadow_analysis.py",
+        "tests/test_phase4_shadow_target_model.py",
+        "docs/engineering/PHASE4_SHADOW_TARGET_MODEL_REPORT.md",
     ])
 
     assert scope == "tooling/evidence_only"

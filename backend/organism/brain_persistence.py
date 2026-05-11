@@ -56,6 +56,8 @@ import joblib
 import numpy as np
 import pandas as pd
 
+from backend.organism.schema.candidate_signal import infer_strategy_id
+
 logger = logging.getLogger(__name__)
 
 # ── Brain format version — bump if we change what we persist ─────
@@ -65,6 +67,33 @@ MAX_BACKUPS = 5
 MAX_TRADE_ROWS = 10_000          # Phase 3.2: keep latest N trades in active CSV
 ARCHIVE_PREFIX = "trade_history_archive_"
 LOCK_FILE = ".brain.lock"
+CANDIDATE_FILTER_SHADOW_TELEMETRY_FILE = "candidate_filter_shadow_telemetry.jsonl"
+STRATEGY_EVIDENCE_TELEMETRY_FILE = "strategy_evidence_events.jsonl"
+
+
+def _truthy_flag(value: Any) -> bool:
+    if isinstance(value, bool):
+        return value
+    if value is None:
+        return False
+    return str(value).strip().lower() in {"1", "true", "yes", "y"}
+
+
+def _is_reconciliation_artifact_trade(trade: Any) -> bool:
+    """Return True for bookkeeping rows that should not count as strategy PnL."""
+    if isinstance(trade, dict):
+        artifact_flag = trade.get("is_reconciliation_artifact")
+        exit_reason = str(trade.get("exit_reason", "")).strip()
+        entry_source = str(trade.get("entry_source", "")).strip()
+    else:
+        artifact_flag = getattr(trade, "is_reconciliation_artifact", None)
+        exit_reason = str(getattr(trade, "exit_reason", "")).strip()
+        entry_source = str(getattr(trade, "entry_source", "")).strip()
+    return (
+        _truthy_flag(artifact_flag)
+        or exit_reason == "reconciliation_adjustment"
+        or entry_source == "reconciliation_orphan"
+    )
 
 
 # ── Cross-platform file locking (Phase 3.1) ─────────────────────
@@ -205,7 +234,7 @@ class OrganismBrain:
         """
         if not self.exists:
             logger.info("No previous brain found at %s — starting fresh", self.brain_dir)
-            print(f"  🧠 No previous brain found — starting fresh")
+            print("  🧠 No previous brain found — starting fresh")
             self._loaded = False
             return False
 
@@ -526,6 +555,8 @@ class OrganismBrain:
                 ".brain_old",
                 LOCK_FILE,
                 "backups",
+                CANDIDATE_FILTER_SHADOW_TELEMETRY_FILE,
+                STRATEGY_EVIDENCE_TELEMETRY_FILE,
             }
 
             def _preserve_during_swap(path: Path) -> bool:
@@ -771,18 +802,11 @@ class OrganismBrain:
                 # missing (legacy rows), DERIVE it from exit_reason so that
                 # historical reconciliation_adjustment trades are correctly
                 # excluded from learning consumers post-restart.
-                _saved_artifact = td.get("is_reconciliation_artifact")
-                if _saved_artifact is None:
-                    # V4 R-F-1 (2026-05-02): legacy CSVs without the column
-                    # — derive the flag from BOTH triggers used at runtime
-                    # (live_engine._reconcile_fills sets _is_reconciliation
-                    # for either exit_reason or entry_source). Orphan-adopted
-                    # exits keep their normal exit_reason but must still be
-                    # excluded from learning.
-                    _saved_artifact = (
-                        td.get("exit_reason", "") == "reconciliation_adjustment"
-                        or td.get("entry_source", "") == "reconciliation_orphan"
-                    )
+                # V4 R-F-1 (2026-05-02): legacy CSVs without the column
+                # derive the flag from BOTH triggers used at runtime. Keep
+                # that derivation even if a stale flag is false so strategy
+                # accounting cannot re-include orphan/reconciliation rows.
+                _saved_artifact = _is_reconciliation_artifact_trade(td)
                 learner.trade_history.append(TradeRecord(
                     symbol=td.get("symbol", ""),
                     direction=td.get("direction", 0),
@@ -799,6 +823,10 @@ class OrganismBrain:
                     is_exploration=td.get("is_exploration", False),
                     is_reconciliation_artifact=bool(_saved_artifact),
                     entry_source=td.get("entry_source", ""),
+                    strategy_id=td.get(
+                        "strategy_id",
+                        infer_strategy_id(td.get("entry_source", "")),
+                    ),
                     regime_at_entry=td.get("regime_at_entry", ""),
                     regime_at_exit=td.get("regime_at_exit", ""),
                     mfe=td.get("mfe", 0.0),
@@ -1355,7 +1383,36 @@ class OrganismBrain:
                 trades_src = learner.trade_history
             elif self.trade_history:
                 trades_src = self.trade_history
-            manifest["strategy_expectancy"] = _sx.compute_from_trades(trades_src)
+            all_trades_src = list(trades_src or [])
+            strategy_trades_src = [
+                t for t in all_trades_src
+                if not _is_reconciliation_artifact_trade(t)
+            ]
+            manifest["strategy_expectancy"] = _sx.compute_from_trades(
+                strategy_trades_src
+            )
+            manifest["all_records_expectancy"] = _sx.compute_from_trades(
+                all_trades_src
+            )
+            manifest["excluded_reconciliation_artifacts"] = (
+                len(all_trades_src) - len(strategy_trades_src)
+            )
+            # Phase 2: persist bounded attribution so strategy health is
+            # actionable, not just a headline PnL number.
+            from backend.organism import strategy_attribution as _attr
+            manifest["strategy_attribution"] = _attr.compute_from_trades(
+                strategy_trades_src
+            )
+            try:
+                from backend.organism.strategy_alerts import (
+                    maybe_dispatch_low_win_rate_alert,
+                )
+                maybe_dispatch_low_win_rate_alert(manifest["strategy_expectancy"])
+            except Exception as alert_exc:  # noqa: BLE001
+                logger.warning(
+                    "V13 W94: strategy health alert dispatch failed (%s)",
+                    alert_exc,
+                )
         except Exception as e:
             # Manifest writes must never crash on expectancy compute —
             # the manifest is too important to block on a math error.
@@ -1564,9 +1621,14 @@ class OrganismBrain:
                 # (entry_source="reconciliation_orphan") with normal exit
                 # reasons would silently lose the flag and re-enter learning.
                 "is_reconciliation_artifact": bool(
-                    getattr(t, "is_reconciliation_artifact", False)
+                    _is_reconciliation_artifact_trade(t)
                 ),
                 "entry_source": getattr(t, "entry_source", ""),
+                "strategy_id": getattr(
+                    t,
+                    "strategy_id",
+                    infer_strategy_id(getattr(t, "entry_source", "")),
+                ),
                 "regime_at_entry": getattr(t, "regime_at_entry", ""),
                 "regime_at_exit": getattr(t, "regime_at_exit", ""),
                 "mfe": round(getattr(t, "mfe", 0.0), 4),
@@ -2187,6 +2249,10 @@ class OrganismBrain:
                         )
                     ),
                     entry_source=td.get("entry_source", ""),
+                    strategy_id=td.get(
+                        "strategy_id",
+                        infer_strategy_id(td.get("entry_source", "")),
+                    ),
                     regime_at_entry=td.get("regime_at_entry", ""),
                     regime_at_exit=td.get("regime_at_exit", ""),
                     mfe=td.get("mfe", 0.0),
@@ -2219,7 +2285,7 @@ class OrganismBrain:
         saved = manifest.get("saved_at", "unknown")
         trained = manifest.get("ml_is_trained", False)
 
-        print(f"  🧠 Brain Status:")
+        print("  🧠 Brain Status:")
         print(f"     Generation:     {gen}")
         print(f"     Total Runs:     {runs}")
         print(f"     Total Trades:   {trades}")

@@ -185,6 +185,64 @@ def test_apply_live_manifest_fields_writes_strategy_expectancy(tmp_path: Path):
     assert sx["win_rate"] == pytest.approx(2 / 3, abs=1e-3)
 
 
+def test_apply_live_manifest_fields_filters_reconciliation_artifacts(
+    tmp_path: Path,
+):
+    """Manifest strategy expectancy must match the live promotion gate scope."""
+    from backend.organism.brain_persistence import OrganismBrain
+
+    class _FakeState:
+        generation = 6
+        total_trades = 3
+        cumulative_pnl = 85.0
+        best_sharpe = 0.0
+
+    class _FakeTrade:
+        def __init__(
+            self,
+            pnl: float,
+            *,
+            exit_reason: str = "stop_loss",
+            entry_source: str = "alpha",
+            is_reconciliation_artifact: bool = False,
+        ):
+            self.pnl = pnl
+            self.symbol = "AAPL"
+            self.exit_reason = exit_reason
+            self.entry_source = entry_source
+            self.regime_at_entry = "chop"
+            self.confidence = 0.7
+            self.is_reconciliation_artifact = is_reconciliation_artifact
+
+    class _FakeLearner:
+        state = _FakeState()
+        trade_history = [
+            _FakeTrade(-10.0),
+            _FakeTrade(-5.0, exit_reason="max_holding_period"),
+            _FakeTrade(
+                100.0,
+                exit_reason="reconciliation_adjustment",
+                entry_source="reconciliation_orphan",
+                is_reconciliation_artifact=True,
+            ),
+        ]
+
+    brain = OrganismBrain.__new__(OrganismBrain)
+    brain.brain_dir = tmp_path
+    brain._manifest = {}
+    brain.trade_history = []
+
+    manifest: dict = {}
+    brain._apply_live_manifest_fields(manifest, None, _FakeLearner())
+
+    assert manifest["strategy_expectancy"]["n_trades"] == 2
+    assert manifest["strategy_expectancy"]["total_pnl"] == pytest.approx(-15.0)
+    assert manifest["all_records_expectancy"]["n_trades"] == 3
+    assert manifest["all_records_expectancy"]["total_pnl"] == pytest.approx(85.0)
+    assert manifest["excluded_reconciliation_artifacts"] == 1
+    assert manifest["strategy_attribution"]["n_trades"] == 2
+
+
 def test_apply_live_manifest_fields_handles_no_learner(tmp_path: Path):
     """Manifest write must succeed when learner is None or missing
     trade_history.  Expectancy block falls back to empty payload."""
@@ -267,10 +325,52 @@ def test_strategy_health_endpoint_recomputes_from_csv(tmp_path: Path, monkeypatc
     import asyncio
     payload = asyncio.run(strategy_health())
 
-    assert payload["source"] == "trade_history_csv"
+    assert payload["source"] == "trade_history_csv_strategy_only"
     assert payload["n_trades"] == 3
     assert payload["total_pnl"] == pytest.approx(5.5, abs=1e-6)
     assert payload["is_profitable"] is True
+
+
+def test_strategy_health_endpoint_prefers_csv_strategy_scope_when_manifest_stale(
+    tmp_path: Path,
+    monkeypatch,
+):
+    """A stale all-record manifest must not mask strategy-only live truth."""
+    brain_dir = tmp_path / "brain"
+    brain_dir.mkdir()
+    (brain_dir / "manifest.json").write_text(json.dumps({
+        "strategy_expectancy": {
+            "n_trades": 3,
+            "total_pnl": 85.0,
+            "last_50_win_rate": 0.67,
+        },
+    }))
+    (brain_dir / "trade_history.csv").write_text(
+        "pnl,exit_reason,entry_source,is_reconciliation_artifact,"
+        "regime_at_entry,confidence\n"
+        "-10.0,stop_loss,alpha,False,chop,0.72\n"
+        "-5.0,max_holding_period,breakout,False,chop,0.55\n"
+        "100.0,reconciliation_adjustment,reconciliation_orphan,True,chop,0.00\n"
+    )
+    monkeypatch.setenv("ORGANISM_BRAIN_DIR", str(brain_dir))
+
+    from backend.api.routes.strategy_health import strategy_health
+    import asyncio
+
+    payload = asyncio.run(strategy_health(detail="attribution"))
+    assert payload["source"] == "trade_history_csv_strategy_only"
+    assert payload["strategy_scope"] == "strategy_only"
+    assert payload["n_trades"] == 2
+    assert payload["total_pnl"] == pytest.approx(-15.0)
+    assert payload["is_profitable"] is False
+    assert payload["excluded_reconciliation_artifacts"] == 1
+    assert payload["all_records_expectancy"]["n_trades"] == 3
+    assert payload["all_records_expectancy"]["total_pnl"] == pytest.approx(85.0)
+    assert payload["strategy_attribution"]["n_trades"] == 2
+
+    window = asyncio.run(strategy_health(window="last_50"))
+    assert window["strategy_scope"] == "strategy_only"
+    assert window["excluded_reconciliation_artifacts"] == 1
 
 
 def test_strategy_health_endpoint_503_when_nothing(tmp_path: Path, monkeypatch):

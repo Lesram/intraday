@@ -130,6 +130,18 @@ def test_w82_rebuild_helper_captures_git_sha():
     assert "date -u" in src
 
 
+def test_w82_rebuild_helper_preserves_phase7_telemetry_defaults():
+    """A plain paper rebuild must not silently disable advisory evidence
+    collection during Phase 7."""
+    src = REBUILD_SCRIPT.read_text()
+    assert (
+        'ORGANISM_CANDIDATE_FILTER_SHADOW_TELEMETRY_ENABLED:-true'
+        in src
+    )
+    assert 'ORGANISM_STRATEGY_EVIDENCE_TELEMETRY_ENABLED:-true' in src
+    assert "Container telemetry switches?" in src
+
+
 # ────────────────────────────────────────────────────────────────────
 # Endpoint behavioral check (in-process — container rebuild verified
 # in W83 separately).

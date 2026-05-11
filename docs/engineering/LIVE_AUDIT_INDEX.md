@@ -1,9 +1,9 @@
 # Live Audit Index
 
-Generated: 2026-05-04T19:17:53Z
-PR: PR #4
-SHA: `955a53bc17`
-Branch: `codex/v13-root-fixes`
+Generated: 2026-05-11T00:23:15Z
+PR: PR #6
+SHA: `d7062debbd`
+Branch: `codex/v13-phase2-expectancy`
 Scope: **backend_logic**
 Change scope: `working-tree` (`HEAD+working-tree`)
 
@@ -11,10 +11,12 @@ Change scope: `working-tree` (`HEAD+working-tree`)
 
 | Category | Count | Files |
 |----------|-------|-------|
-| Backend | 1 | `backend/organism/self_evolution.py` |
-| Organism | 1 | `backend/organism/self_evolution.py` |
-| Tests | 1 | `tests/test_self_evolution.py` |
-| Docs | 0 | none |
+| Backend | 3 | `backend/organism/eod_scanner.py`, `backend/organism/mean_reversion_scanner.py`, `backend/organism/orb_scanner.py` |
+| Organism | 3 | `backend/organism/eod_scanner.py`, `backend/organism/mean_reversion_scanner.py`, `backend/organism/orb_scanner.py` |
+| Scripts | 0 | none |
+| CI | 0 | none |
+| Tests | 3 | `tests/test_eod_scanner.py`, `tests/test_mean_reversion_scanner.py`, `tests/test_orb_scanner.py` |
+| Docs | 2 | `docs/engineering/LIVE_AUDIT_INDEX.md`, `docs/engineering/PRE9D_LEGACY_SCANNER_CAUSAL_AUDIT_2026-05-10.md` |
 
 ## Live constants
 
@@ -30,7 +32,10 @@ Source: `resolved_config_snapshot.json`
   "horizon_timeout_bars": 18,
   "drawdown_kill_pct": 0.2,
   "exploration_enabled": false,
-  "bar_boundary_entry_only": true
+  "bar_boundary_entry_only": true,
+  "candidate_filter_shadow_telemetry_enabled": true,
+  "strategy_evidence_telemetry_enabled": true,
+  "phase9_shadow_engines_enabled": true
 }
 ```
 
@@ -49,4 +54,4 @@ Source: `resolved_config_snapshot.json`
 
 ## Open risks
 
-- 1 organism file(s) changed — require replay verification
+- 3 organism file(s) changed — require replay verification
