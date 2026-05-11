@@ -629,19 +629,38 @@ async def get_organism_orders(
 
 
 @router.post("/close-shorts")
-async def close_legacy_shorts(request: Request, _admin=Depends(require_admin)):
+async def close_legacy_shorts(
+    request: Request,
+    dry_run: bool = Query(
+        True,
+        description="Preview legacy short covers without submitting broker orders.",
+    ),
+    confirm: str | None = Query(
+        None,
+        description="Set to CLOSE_SHORTS when dry_run=false.",
+    ),
+    _admin=Depends(require_admin),
+):
     """Close legacy short positions that violate LONG_ONLY mode.
 
-    Fetches all positions from Alpaca, identifies any with negative quantity,
-    and submits buy-to-cover market orders directly via the broker client.
-    Idempotent — returns empty list if no shorts exist.
+    Fetches all positions from Alpaca and identifies any with negative quantity.
+    Defaults to dry-run; live buy-to-cover requires ``dry_run=false`` plus
+    ``confirm=CLOSE_SHORTS`` so this emergency path cannot mutate broker state
+    by accidental click or replayed request.
     """
     import os
+    dry_run = dry_run if isinstance(dry_run, bool) else True
+    confirm = confirm if isinstance(confirm, str) else None
     long_only = os.getenv("ORGANISM_LONG_ONLY", "true").lower() in ("1", "true", "yes")
     if not long_only:
         raise HTTPException(
             status_code=400,
             detail="LONG_ONLY is not enabled — short positions are allowed",
+        )
+    if not dry_run and confirm != "CLOSE_SHORTS":
+        raise HTTPException(
+            status_code=400,
+            detail="Set confirm=CLOSE_SHORTS when dry_run=false",
         )
 
     from backend.integrations.alpaca_broker import get_alpaca_broker_client
@@ -655,6 +674,13 @@ async def close_legacy_shorts(request: Request, _admin=Depends(require_admin)):
 
     closed = []
     errors = []
+    client_host = request.client.host if request.client else "unknown"
+    logger.warning(
+        "close-shorts requested dry_run=%s confirm=%s operator_host=%s",
+        dry_run,
+        bool(confirm),
+        client_host,
+    )
     for pos in (positions or []):
         qty = float(pos.get("qty", 0))
         if qty >= 0:
@@ -662,7 +688,20 @@ async def close_legacy_shorts(request: Request, _admin=Depends(require_admin)):
 
         sym = pos.get("symbol", "UNKNOWN")
         abs_qty = abs(int(qty))
-        logger.warning("Closing legacy short: %s qty=%d", sym, qty)
+        logger.warning(
+            "Legacy short detected: %s qty=%s dry_run=%s",
+            sym,
+            qty,
+            dry_run,
+        )
+        if dry_run:
+            closed.append({
+                "symbol": sym,
+                "qty_to_cover": abs_qty,
+                "dry_run": True,
+                "status": "preview",
+            })
+            continue
 
         try:
             result = await broker.place_order(
@@ -685,6 +724,7 @@ async def close_legacy_shorts(request: Request, _admin=Depends(require_admin)):
 
     return {
         "long_only": True,
+        "dry_run": dry_run,
         "shorts_found": len(closed) + len(errors),
         "closed": closed,
         "errors": errors,

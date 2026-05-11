@@ -51,7 +51,7 @@ from backend.organism.kelly_sizer import KellySizer
 from backend.organism.ml_features import compute_ml_features, FEATURE_COLUMNS
 from backend.organism.multi_timeframe import add_multi_timeframe_features
 from backend.organism.ml_signal import MLSignalGenerator
-from backend.organism.schema.candidate_signal import infer_strategy_id
+from backend.organism.schema.candidate_signal import CandidateSignal, infer_strategy_id
 from backend.organism.pyramider import (
     MomentumPyramider,
     PyramidPosition,
@@ -62,6 +62,7 @@ from backend.organism.orb_scanner import ORBScanner
 from backend.organism.eod_scanner import EODMomentumScanner
 from backend.organism.mean_reversion_scanner import MeanReversionScanner
 from backend.organism.sector_map import sector_gate_allows, get_sector
+from backend.organism.strategy_governor import StrategyGovernor
 from backend.organism.decision_telemetry import (
     DecisionSnapshot,
     DecisionTelemetryStore,
@@ -472,6 +473,37 @@ def _market_return_bps(frame: pd.DataFrame | None, now: Any | None = None) -> fl
     return (latest - first) / first * 10000.0
 
 
+def _trim_frame_asof(frame: pd.DataFrame, now: Any) -> pd.DataFrame:
+    """Return only rows observable at ``now`` when a timestamp is available."""
+    if frame is None or len(frame) == 0:
+        return frame
+    now_ts = pd.Timestamp(now)
+    if now_ts.tzinfo is None:
+        now_ts = now_ts.tz_localize("UTC")
+    else:
+        now_ts = now_ts.tz_convert("UTC")
+    if "timestamp" in frame.columns:
+        ts = pd.to_datetime(frame["timestamp"], utc=True, errors="coerce")
+        if ts.notna().any():
+            return frame.loc[(ts <= now_ts).to_numpy()].copy()
+    if frame.index.dtype.kind == "M":
+        ts = pd.to_datetime(pd.Series(frame.index), utc=True, errors="coerce")
+        if ts.notna().any():
+            return frame.loc[(ts <= now_ts).to_numpy()].copy()
+    return frame
+
+
+def trim_feature_frames_asof(
+    features_by_symbol: dict[str, pd.DataFrame],
+    now: Any,
+) -> dict[str, pd.DataFrame]:
+    """Causal boundary before ranking/sizing/order paths see feature frames."""
+    return {
+        symbol: _trim_frame_asof(frame, now)
+        for symbol, frame in features_by_symbol.items()
+    }
+
+
 class OrganismLiveEngine:
     """Unified live trading engine — the organism in production.
 
@@ -719,6 +751,7 @@ class OrganismLiveEngine:
         )
         self._phase9_shadow_signal_events: int = 0
         self._phase9_last_shadow_bar: str = ""
+        self._strategy_governor = StrategyGovernor()
 
         # ── Live state ──────────────────────────────────────────
         self._session_id = uuid.uuid4().hex[:8]  # unique per engine lifetime
@@ -2441,6 +2474,7 @@ class OrganismLiveEngine:
 
             # 2. FETCH LATEST DATA
             features_by_symbol = await self._fetch_and_compute_features()
+            features_by_symbol = trim_feature_frames_asof(features_by_symbol, now_iso)
             # Save for telemetry: latest close prices and feature count
             self._last_features_count = len(features_by_symbol)
             self._last_prices = {}
@@ -2464,6 +2498,7 @@ class OrganismLiveEngine:
             # Skip regime detection when features are insufficient — it
             # requires meaningful price data to function.
             regime = RegimeLabel.UNKNOWN  # default — overwritten below if features are sufficient
+            self._last_regime = str(regime)
             _regime_conf = 0.0  # confidence of regime label
             if not insufficient_features:
                 spy_features = features_by_symbol.get("SPY")
@@ -2485,6 +2520,7 @@ class OrganismLiveEngine:
                         features_by_symbol
                     )
                 regime = regime_state.primary
+                self._last_regime = str(regime)
                 _regime_conf = getattr(regime_state, "confidence", 0.0)
                 result.regime = regime
                 result.activity.append(ActivityEvent(
@@ -3456,11 +3492,20 @@ class OrganismLiveEngine:
                             )
                             continue
                         try:
+                            _pyr_entry_source = str(
+                                meta.get("entry_source") or "alpha"
+                            )
+                            _pyr_strategy_id = infer_strategy_id(
+                                _pyr_entry_source,
+                                meta.get("strategy_id", ""),
+                            )
                             pyr_order_result = await self._submit_entry_order(
                                 sym,
                                 action.shares_to_add,
                                 confidence=0.7,
                                 reason="pyramid_add",
+                                strategy_id=_pyr_strategy_id,
+                                entry_source=_pyr_entry_source,
                             )
                             self._pending_entry[sym] = self._tick_count
                             # CORE-011: track order_id for broker-level cancellation
@@ -4612,12 +4657,15 @@ class OrganismLiveEngine:
                                 initial_shares = _capped
 
                     try:
+                        _entry_source, _strategy_id = self._entry_identity_from_size(sz)
                         order_result = await self._submit_entry_order(
                             sz.symbol,
                             initial_shares,
                             direction=sz.direction,
                             confidence=sz.confidence,
                             reason="organism_entry",
+                            strategy_id=_strategy_id,
+                            entry_source=_entry_source,
                         )
 
                         # V4 H-2 / Wave-16c (2026-05-02): the sync
@@ -4699,26 +4747,6 @@ class OrganismLiveEngine:
                             )
 
                             # Track entry metadata for TradeRecord.
-                            # Entry source: prefer override (e.g., "orb_sip"
-                            # set by M2-B ORB live path), else infer from
-                            # breakout score.
-                            _entry_source_override = getattr(
-                                sz, "entry_source_override", None,
-                            )
-                            if _entry_source_override:
-                                _entry_source = _entry_source_override
-                            else:
-                                _entry_source = "alpha"
-                                if sz.breakout_score >= 0.55 and (
-                                    not hasattr(sz, 'predicted_return') or abs(sz.predicted_return) < 0.003
-                                ):
-                                    _entry_source = "breakout"
-                                elif sz.breakout_score >= 0.4:
-                                    _entry_source = "alpha+breakout"
-                            _strategy_id = infer_strategy_id(
-                                _entry_source,
-                                getattr(sz, "strategy_id", ""),
-                            )
                             self._entry_metadata[sz.symbol] = {
                                 "entry_price": price,
                                 "entry_tick": self._tick_count,
@@ -5663,6 +5691,79 @@ class OrganismLiveEngine:
     # Slippage cap for marketable limit orders (0.1% above ask / below bid)
     _ENTRY_SLIPPAGE_CAP = 0.001
 
+    def _entry_identity_from_size(self, size: Any) -> tuple[str, str]:
+        """Return canonical ``(entry_source, strategy_id)`` for a sized entry."""
+        override = getattr(size, "entry_source_override", None)
+        if override:
+            entry_source = str(override)
+        else:
+            entry_source = "alpha"
+            breakout_score = float(getattr(size, "breakout_score", 0.0) or 0.0)
+            predicted_return = abs(float(getattr(size, "predicted_return", 0.0) or 0.0))
+            if breakout_score >= 0.55 and predicted_return < 0.003:
+                entry_source = "breakout"
+            elif breakout_score >= 0.4:
+                entry_source = "alpha+breakout"
+        return entry_source, infer_strategy_id(
+            entry_source,
+            getattr(size, "strategy_id", ""),
+        )
+
+    def _authorize_live_entry_order(
+        self,
+        *,
+        symbol: str,
+        side: str,
+        confidence: float,
+        strategy_id: str,
+        entry_source: str,
+        reason: str,
+        evidence_tier: int,
+        shadow_only: bool,
+    ) -> None:
+        """Hard governor checkpoint before any live entry order is submitted."""
+        governor = getattr(self, "_strategy_governor", None)
+        if governor is None:
+            governor = StrategyGovernor()
+            self._strategy_governor = governor
+        signal = CandidateSignal(
+            signal_id=(
+                f"live-{getattr(self, '_session_id', 'unknown')}-"
+                f"t{getattr(self, '_tick_count', 0)}-{symbol}-{strategy_id}"
+            ),
+            strategy_id=strategy_id,
+            engine_version=f"{strategy_id}.live_v1",
+            symbol=symbol,
+            side=side,
+            timeframe="1Min",
+            created_at=self._now_fn(),
+            intended_horizon_bars=1,
+            regime=str(getattr(self, "_last_regime", "unknown")),
+            evidence_tier=evidence_tier,
+            shadow_only=shadow_only,
+            confidence=confidence,
+            risk_budget_bps=0.0,
+            features={
+                "entry_source": entry_source,
+                "reason": reason,
+            },
+        )
+        decision = governor.authorize_signal(signal, live_intent=True)
+        if not decision.allowed:
+            logger.warning(
+                "StrategyGovernor blocked live entry: symbol=%s strategy_id=%s "
+                "reason=%s entry_source=%s order_reason=%s",
+                symbol,
+                strategy_id,
+                decision.reason,
+                entry_source,
+                reason,
+            )
+            raise RuntimeError(
+                "StrategyGovernor blocked live entry "
+                f"{symbol}/{strategy_id}: {decision.reason}"
+            )
+
     async def _submit_entry_order(
         self,
         symbol: str,
@@ -5670,6 +5771,10 @@ class OrganismLiveEngine:
         direction: float = 1.0,
         confidence: float = 0.6,
         reason: str = "organism_entry",
+        strategy_id: str = "alpha_baseline",
+        entry_source: str = "alpha",
+        evidence_tier: int = 0,
+        shadow_only: bool = False,
     ) -> dict[str, Any]:
         """Submit an entry order via OrderService.
 
@@ -5680,6 +5785,17 @@ class OrganismLiveEngine:
         direction >= 0 → buy, direction < 0 → sell (short).
         """
         side = "sell" if direction < 0 else "buy"
+        strategy_id = infer_strategy_id(entry_source, strategy_id)
+        self._authorize_live_entry_order(
+            symbol=symbol,
+            side="short" if direction < 0 else "long",
+            confidence=confidence,
+            strategy_id=strategy_id,
+            entry_source=entry_source,
+            reason=reason,
+            evidence_tier=evidence_tier,
+            shadow_only=shadow_only,
+        )
         idem_key = (
             f"organism_{symbol}"
             # Audit-K finding K-6 (2026-05-02): use ET trading-day not UTC.
@@ -5727,6 +5843,9 @@ class OrganismLiveEngine:
                 "reason": reason,
                 "confidence": round(confidence, 4),
                 "tick": self._tick_count,
+                "entry_source": entry_source,
+                "strategy_id": strategy_id,
+                "evidence_tier": int(evidence_tier),
             },
         )
         # Apr-7 P0: authoritative monotonic counter — survives result

@@ -246,7 +246,15 @@ def test_build_candidate_shadow_events_can_record_all_candidates_for_phase6():
 
 def test_candidate_shadow_recorder_writes_jsonl(tmp_path: Path):
     path = tmp_path / "shadow" / "candidate_filter_shadow_telemetry.jsonl"
-    recorder = CandidateShadowTelemetryRecorder(path)
+    recorder = CandidateShadowTelemetryRecorder(
+        path,
+        runtime_identity={
+            "git_sha": "abc123",
+            "runtime_config_hash": "cfg123",
+            "image_sha": "img123",
+            "build_time": "2026-05-10T00:00:00Z",
+        },
+    )
 
     written = recorder.record_candidates(
         [
@@ -278,11 +286,28 @@ def test_candidate_shadow_recorder_writes_jsonl(tmp_path: Path):
         "alpha_breakout_chop",
         "alpha_breakout_chop_or_trending_down",
     ]
+    assert rows[0]["strategy_id"] == "alpha_baseline"
+    assert rows[0]["signal_id"].startswith("legacy-alpha_baseline-AAPL-")
+    assert rows[0]["engine_version"] == "alpha_baseline.legacy_v1"
+    assert rows[0]["created_at"] == "2026-05-04T14:00:00Z"
+    assert rows[0]["evidence_tier"] == 0
+    assert rows[0]["shadow_only"] is False
+    assert rows[0]["git_sha"] == "abc123"
+    assert rows[0]["runtime_config_hash"] == "cfg123"
 
 
 def test_phase6_strategy_evidence_recorder_writes_untagged_candidates(tmp_path: Path):
     path = tmp_path / "strategy_evidence_events.jsonl"
-    recorder = CandidateShadowTelemetryRecorder(path, record_all_candidates=True)
+    recorder = CandidateShadowTelemetryRecorder(
+        path,
+        record_all_candidates=True,
+        runtime_identity={
+            "git_sha": "abc123",
+            "runtime_config_hash": "cfg123",
+            "image_sha": "img123",
+            "build_time": "2026-05-10T00:00:00Z",
+        },
+    )
 
     written = recorder.record_candidates(
         [
@@ -303,13 +328,26 @@ def test_phase6_strategy_evidence_recorder_writes_untagged_candidates(tmp_path: 
     rows = [json.loads(line) for line in path.read_text().splitlines()]
     assert rows[0]["symbol"] == "MSFT"
     assert rows[0]["matched_filters"] == []
+    assert rows[0]["strategy_id"] == "alpha_baseline"
+    assert rows[0]["signal_id"].startswith("legacy-alpha_baseline-MSFT-")
+    assert rows[0]["git_sha"] == "abc123"
+    assert rows[0]["runtime_config_hash"] == "cfg123"
 
 
 def test_phase9_signal_recorder_writes_candidate_signal_contract(tmp_path: Path):
     from backend.organism.schema import CandidateSignal
 
     path = tmp_path / "strategy_evidence_events.jsonl"
-    recorder = CandidateShadowTelemetryRecorder(path, record_all_candidates=True)
+    recorder = CandidateShadowTelemetryRecorder(
+        path,
+        record_all_candidates=True,
+        runtime_identity={
+            "git_sha": "abc123",
+            "runtime_config_hash": "cfg123",
+            "image_sha": "img123",
+            "build_time": "2026-05-10T00:00:00Z",
+        },
+    )
     signal = CandidateSignal(
         signal_id="sig-1",
         strategy_id="etf_intraday_momentum",
@@ -338,6 +376,8 @@ def test_phase9_signal_recorder_writes_candidate_signal_contract(tmp_path: Path)
     assert row["live_pipeline_candidate"] is False
     assert row["shadow_only"] is True
     assert row["risk_budget_bps"] == 0.0
+    assert row["git_sha"] == "abc123"
+    assert row["runtime_config_hash"] == "cfg123"
     assert row["matched_filters"] == [
         "phase9_shadow",
         "strategy:etf_intraday_momentum",
