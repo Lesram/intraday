@@ -1,22 +1,22 @@
 # Live Audit Index
 
-Generated: 2026-05-11T05:50:25Z
+Generated: 2026-05-12T05:06:32Z
 PR: PR #8
-SHA: `284fd53809`
+SHA: `12fdd95b8a`
 Branch: `codex/phase9d-portfolio-construction`
-Scope: **backend_logic**
+Scope: **tooling/evidence_only**
 Change scope: `task` (`HEAD`)
 
 ## Changed files
 
 | Category | Count | Files |
 |----------|-------|-------|
-| Backend | 1 | `backend/organism/evidence/portfolio_construction.py` |
-| Organism | 1 | `backend/organism/evidence/portfolio_construction.py` |
-| Scripts | 1 | `scripts/phase9d_portfolio_construction.py` |
+| Backend | 0 | none |
+| Organism | 0 | none |
+| Scripts | 1 | `scripts/ci/phase9_preopen_evidence_readiness.py` |
 | CI | 0 | none |
-| Tests | 1 | `tests/test_phase9d_portfolio_construction.py` |
-| Docs | 4 | `docs/architecture/mapss.md`, `docs/engineering/LIVE_AUDIT_INDEX.md`, `docs/engineering/PHASE9D_PORTFOLIO_CONSTRUCTION_IMPLEMENTATION.md`, `docs/engineering/STRATEGY_REBUILD_MASTER_ROADMAP_2026-05-09.md` |
+| Tests | 5 | `tests/test_phase9_preopen_evidence_readiness.py`, `tests/test_v13_w100_live_tick_coverage.py`, `tests/test_v13_w94_strategy_floor.py`, `tests/test_v13_w95_data_integrity.py`, `tests/test_v13_w96_idor.py` |
+| Docs | 4 | `docs/engineering/FINAL_GRAND_AUDIT_2026-05-10.md`, `docs/engineering/LIVE_AUDIT_INDEX.md`, `docs/engineering/PHASE9D_FINAL_GRAND_AUDIT_PROMPT_2026-05-10.md`, `docs/engineering/PREOPEN_CLEANUP_2026-05-10.md` |
 
 ## Live constants
 
@@ -54,4 +54,4 @@ Source: `resolved_config_snapshot.json`
 
 ## Open risks
 
-- 1 organism file(s) changed — require replay verification
+- Evidence/tooling script changed only — no backend runtime or order-path behavior changed

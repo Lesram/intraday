@@ -253,6 +253,7 @@ class FilteringSummary:
     passed_fitness_gate: int = 0
     passed_cooldown: int = 0
     passed_position_limit: int = 0
+    live_candidates_pre_sizing: int = 0
     kelly_sized: int = 0
     orders_submitted: int = 0
     # Gate-level rejection counters
@@ -267,7 +268,13 @@ class FilteringSummary:
     rejected_by_missingness: int = 0
     rejected_by_cost_gate: int = 0
     rejected_by_min_notional: int = 0
+    rejected_by_direction_zero: int = 0
+    rejected_by_below_main_conf: int = 0
+    rejected_by_below_expl_conf: int = 0
+    rejected_by_defensive_filter: int = 0
+    rejected_by_sizer_invalid: int = 0
     entries_blocked_reason: str = ""
+    no_order_reason: str = ""
     # M3: Learning mode throttle telemetry
     learning_mode: bool = False
     trading_phase: str = ""
@@ -295,6 +302,7 @@ class FilteringSummary:
             "passed_fitness_gate": self.passed_fitness_gate,
             "passed_cooldown": self.passed_cooldown,
             "passed_position_limit": self.passed_position_limit,
+            "live_candidates_pre_sizing": self.live_candidates_pre_sizing,
             "kelly_sized": self.kelly_sized,
             "orders_submitted": self.orders_submitted,
             "rejections": {
@@ -309,8 +317,15 @@ class FilteringSummary:
                 "missingness": self.rejected_by_missingness,
                 "cost_gate": self.rejected_by_cost_gate,
                 "min_notional": self.rejected_by_min_notional,
+                "direction_zero": self.rejected_by_direction_zero,
+                "below_main_conf": self.rejected_by_below_main_conf,
+                "below_expl_conf": self.rejected_by_below_expl_conf,
+                "defensive_filter": self.rejected_by_defensive_filter,
+                "sizer_invalid": self.rejected_by_sizer_invalid,
+                "no_order_reason": str(self.no_order_reason),
             },
             "entries_blocked_reason": self.entries_blocked_reason,
+            "no_order_reason": str(self.no_order_reason),
             "learning_mode": _b(self.learning_mode),
             "trading_phase": str(self.trading_phase),
             "guarded_mode": _b(self.guarded_mode),

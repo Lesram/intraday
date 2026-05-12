@@ -1205,6 +1205,68 @@ class OrganismLiveEngine:
         )
         return True
 
+    def _record_directionless_candidate(
+        self,
+        candidate: dict[str, Any],
+        rejected: list[dict[str, Any]],
+    ) -> bool:
+        """Record and reject live-path candidates that have no trade side."""
+        try:
+            direction = float(candidate.get("direction") or 0.0)
+        except (TypeError, ValueError):
+            direction = 0.0
+        if direction != 0.0:
+            return False
+        rejected.append({
+            **candidate,
+            "live_pipeline_candidate": False,
+            "defensive_filter_reason": "direction_zero",
+        })
+        logger.info(
+            "Direction-zero candidate rejected before sizing: %s "
+            "confidence=%.3f eff_conf=%.3f breakout=%.3f",
+            candidate.get("symbol"),
+            float(candidate.get("confidence") or 0.0),
+            float(candidate.get("effective_confidence") or 0.0),
+            float(candidate.get("breakout_score") or 0.0),
+        )
+        return True
+
+    def _infer_no_order_reason(
+        self,
+        result: LiveTickResult,
+        *,
+        sizes_count: int | None = None,
+    ) -> str:
+        """Return the dominant reason a tick produced no order."""
+        if result.orders_submitted > 0:
+            return ""
+        entries_blocked_reason = getattr(self, "_last_entries_blocked_reason", "")
+        if entries_blocked_reason:
+            return entries_blocked_reason
+        rejections = getattr(self, "_last_gate_rejections", {})
+        live_candidates = int(getattr(self, "_last_live_candidates_pre_sizing", 0))
+        sized = (
+            int(sizes_count)
+            if sizes_count is not None
+            else len(getattr(self, "_last_kelly_sizes", []) or [])
+        )
+        if rejections.get("direction_zero", 0) > 0 and live_candidates == 0:
+            return "direction_zero"
+        if rejections.get("defensive_filter", 0) > 0 and live_candidates == 0:
+            return "defensive_filter"
+        if rejections.get("below_main_conf", 0) > 0 and live_candidates == 0:
+            return "below_main_conf"
+        if rejections.get("below_expl_conf", 0) > 0 and live_candidates == 0:
+            return "below_expl_conf"
+        if rejections.get("sizer_invalid", 0) > 0 and sized == 0:
+            return "sizer_invalid"
+        if live_candidates > 0 and sized == 0:
+            return "sizer_rejected_all"
+        if sized > 0:
+            return "orders_skipped_after_sizing"
+        return "no_actionable_candidates"
+
     # ═════════════════════════════════════════════════════════════
     #  INITIALIZATION / SHUTDOWN
     # ═════════════════════════════════════════════════════════════
@@ -2219,6 +2281,21 @@ class OrganismLiveEngine:
         self._last_gate_rejections["min_notional"] = sum(
             1 for r in _sizer_rejects if r.get("reason") == "below_min_notional"
         )
+        _invalid_direction = sum(
+            1 for r in _sizer_rejects if r.get("reason") == "invalid_direction"
+        )
+        _invalid_signal = sum(
+            1 for r in _sizer_rejects if r.get("reason") == "invalid_signal"
+        )
+        if _invalid_direction:
+            self._last_gate_rejections["direction_zero"] = (
+                self._last_gate_rejections.get("direction_zero", 0)
+                + _invalid_direction
+            )
+        if _invalid_direction or _invalid_signal:
+            self._last_gate_rejections["sizer_invalid"] = (
+                _invalid_direction + _invalid_signal
+            )
 
     def _apply_intraday_seasonality_filter(self, sizes: list[Any]) -> None:
         """Reduce late-session allocations in-place for intraday trading."""
@@ -2316,6 +2393,8 @@ class OrganismLiveEngine:
         # Gate-level rejection telemetry (reset each tick)
         self._last_gate_rejections: dict[str, int] = {}
         self._last_entries_blocked_reason: str = ""
+        self._last_live_candidates_pre_sizing: int = 0
+        self._last_no_order_reason: str = ""
         # V8 HH R-1 prep / Wave-39 (2026-05-03): uplift `entries_blocked`
         # from local var to instance attribute so it's shareable with
         # extracted stage helpers (waves 39-40 stage 0.5 / 1 / 1.1 / 1.2).
@@ -3627,6 +3706,7 @@ class OrganismLiveEngine:
                     features_by_symbol, ml_signals, regime,
                     ml_is_trained=self.signal_gen.is_trained,
                     learning_mode=self._ml_isolation_mode,
+                    derive_direction_from_observables=DROP_ML_FROM_GATE,
                 )
 
                 # Build candidate list
@@ -3685,6 +3765,9 @@ class OrganismLiveEngine:
                     "long_only": 0, "sector_gate": 0,
                     "fitness_gate": 0, "liquidity": 0,
                     "circuit_breaker": 0, "confidence_gate": 0,
+                    "below_expl_conf": 0, "below_main_conf": 0,
+                    "defensive_filter": 0, "direction_zero": 0,
+                    "sizer_invalid": 0,
                 }
 
                 cand_dicts = []
@@ -3879,6 +3962,7 @@ class OrganismLiveEngine:
                     elif _eff_conf < _EXPL_CONF_GATE:
                         # Below exploration gate → reject outright
                         _rej_counts["confidence_gate"] += 1
+                        _rej_counts["below_expl_conf"] += 1
                         logger.info(
                             "Confidence reject: %s (eff_conf=%.2f < %.2f)",
                             c.symbol, _eff_conf, _EXPL_CONF_GATE,
@@ -3889,6 +3973,7 @@ class OrganismLiveEngine:
 
                     if _route_exploration:
                         _rej_counts["confidence_gate"] += 1
+                        _rej_counts["below_main_conf"] += 1
                         # improve9 A7: Log exploration-eligible candidates
                         # instead of routing to dead queue. The exploration
                         # queue was dead code — no executor ever processed it.
@@ -3923,7 +4008,13 @@ class OrganismLiveEngine:
                     if self._record_defensive_filtered_candidate(
                         _cand_dict, regime, _defensive_filtered_cand_dicts,
                     ):
+                        _rej_counts["defensive_filter"] += 1
                         _rej_counts["confidence_gate"] += 1
+                        continue
+                    if self._record_directionless_candidate(
+                        _cand_dict, _defensive_filtered_cand_dicts,
+                    ):
+                        _rej_counts["direction_zero"] += 1
                         continue
                     cand_dicts.append(_cand_dict)
                     _planned_entries.add(c.symbol)
@@ -4016,6 +4107,7 @@ class OrganismLiveEngine:
                     if self._record_defensive_filtered_candidate(
                         _cand_dict, regime, _defensive_filtered_cand_dicts,
                     ):
+                        _rej_counts["defensive_filter"] += 1
                         _rej_counts["confidence_gate"] += 1
                         continue
                     cand_dicts.append(_cand_dict)
@@ -4513,6 +4605,7 @@ class OrganismLiveEngine:
                     _filtered.append(cd)
                 cand_dicts = _filtered
                 result.signals_generated = len(cand_dicts)
+                self._last_live_candidates_pre_sizing = len(cand_dicts)
 
                 # Store gate-level rejection counts for telemetry
                 _rej_counts["missingness"] = _rej_missingness
@@ -4554,6 +4647,10 @@ class OrganismLiveEngine:
 
                 # Wire sizer-level rejections into gate telemetry
                 self._record_sizer_rejections()
+                self._last_no_order_reason = self._infer_no_order_reason(
+                    result,
+                    sizes_count=len(sizes),
+                )
 
                 # 8b. INTRADAY SEASONALITY FILTER — reduce allocation
                 # during first/last 15 min (highest volatility, worst fills)
@@ -4764,6 +4861,11 @@ class OrganismLiveEngine:
                         result.errors.append(
                             f"Entry order failed for {sz.symbol}: {e}"
                         )
+
+                self._last_no_order_reason = self._infer_no_order_reason(
+                    result,
+                    sizes_count=len(sizes),
+                )
 
                 # 9b. EXPLORATION BUCKET — REMOVED (improve9 hardening)
                 # The exploration execution path submitted live orders for
@@ -5219,6 +5321,9 @@ class OrganismLiveEngine:
             passed_fitness_gate=_above_alpha - rej.get("fitness_gate", 0),
             passed_cooldown=_above_alpha - rej.get("exit_cooldown", 0) - rej.get("pending_entry", 0),
             passed_position_limit=_above_alpha - rej.get("open_position", 0),
+            live_candidates_pre_sizing=getattr(
+                self, "_last_live_candidates_pre_sizing", 0
+            ),
             kelly_sized=len(snap.kelly_details),
             orders_submitted=result.orders_submitted,
             # Gate-level rejection counters
@@ -5233,7 +5338,16 @@ class OrganismLiveEngine:
             rejected_by_missingness=rej.get("missingness", 0),
             rejected_by_cost_gate=rej.get("cost_gate", 0),
             rejected_by_min_notional=rej.get("min_notional", 0),
+            rejected_by_direction_zero=rej.get("direction_zero", 0),
+            rejected_by_below_main_conf=rej.get("below_main_conf", 0),
+            rejected_by_below_expl_conf=rej.get("below_expl_conf", 0),
+            rejected_by_defensive_filter=rej.get("defensive_filter", 0),
+            rejected_by_sizer_invalid=rej.get("sizer_invalid", 0),
             entries_blocked_reason=getattr(self, "_last_entries_blocked_reason", ""),
+            no_order_reason=(
+                getattr(self, "_last_no_order_reason", "")
+                or self._infer_no_order_reason(result)
+            ),
             learning_mode=self._is_learning_mode,
             effective_max_entries_per_hour=self._dynamic_max_entries_per_hour,
             effective_fitness_gate=getattr(self, "_last_eff_fitness_gate", 0.45),
