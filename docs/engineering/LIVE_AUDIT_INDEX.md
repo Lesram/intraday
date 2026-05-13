@@ -1,22 +1,22 @@
 # Live Audit Index
 
-Generated: 2026-05-12T05:06:32Z
+Generated: 2026-05-13T03:27:53Z
 PR: PR #8
-SHA: `12fdd95b8a`
+SHA: `3fedd94076`
 Branch: `codex/phase9d-portfolio-construction`
-Scope: **tooling/evidence_only**
+Scope: **backend_logic**
 Change scope: `task` (`HEAD`)
 
 ## Changed files
 
 | Category | Count | Files |
 |----------|-------|-------|
-| Backend | 0 | none |
-| Organism | 0 | none |
-| Scripts | 1 | `scripts/ci/phase9_preopen_evidence_readiness.py` |
+| Backend | 3 | `backend/config/base_settings.py`, `backend/config/settings.py`, `backend/organism/orb_scanner.py` |
+| Organism | 1 | `backend/organism/orb_scanner.py` |
+| Scripts | 0 | none |
 | CI | 0 | none |
-| Tests | 5 | `tests/test_phase9_preopen_evidence_readiness.py`, `tests/test_v13_w100_live_tick_coverage.py`, `tests/test_v13_w94_strategy_floor.py`, `tests/test_v13_w95_data_integrity.py`, `tests/test_v13_w96_idor.py` |
-| Docs | 4 | `docs/engineering/FINAL_GRAND_AUDIT_2026-05-10.md`, `docs/engineering/LIVE_AUDIT_INDEX.md`, `docs/engineering/PHASE9D_FINAL_GRAND_AUDIT_PROMPT_2026-05-10.md`, `docs/engineering/PREOPEN_CLEANUP_2026-05-10.md` |
+| Tests | 2 | `tests/test_orb_scanner.py`, `tests/test_paper_runtime_config.py` |
+| Docs | 1 | `docs/engineering/LIVE_AUDIT_INDEX.md` |
 
 ## Live constants
 
@@ -54,4 +54,4 @@ Source: `resolved_config_snapshot.json`
 
 ## Open risks
 
-- Evidence/tooling script changed only — no backend runtime or order-path behavior changed
+- 1 organism file(s) changed — require replay verification

@@ -332,7 +332,7 @@ def test_breakout_triggered_when_above_orb_high():
 
     s = ORBScanner(min_rv_ratio=0.0, top_n=1)
     # First call: at 9:35 ET (=13:35 UTC), populates ORB cache
-    s.scan({"TEST": df_orb_only}, pd.Timestamp("2026-04-25 13:35:00", tz="UTC"))
+    s.scan({"TEST": df_orb_only}, pd.Timestamp("2026-04-24 13:35:00", tz="UTC"))
     # Verify cache populated
     assert s.orb_cache_size == 1
     cached = s._orb_cache["TEST"]
@@ -347,7 +347,7 @@ def test_breakout_triggered_when_above_orb_high():
         "volume": 1000.0,
     }
     cands = s.scan({"TEST": df_with_breakout},
-                   pd.Timestamp("2026-04-25 13:40:00", tz="UTC"))
+                   pd.Timestamp("2026-04-24 13:40:00", tz="UTC"))
 
     assert len(cands) == 1
     c = cands[0]
@@ -389,6 +389,36 @@ def test_scan_ignores_future_breakout_bars_after_now():
     assert len(cands) == 1
     assert cands[0].current_price == pytest.approx(104.0)
     assert not cands[0].breakout_triggered
+
+
+def test_scan_rejects_stale_session_orb_frame():
+    """A stale historical frame must not be cached for the current session.
+
+    The May 12 paper session showed repeated "cached session=2026-05-08,
+    current=2026-05-12" warnings. The scanner was invalidating the stale
+    cache, then recomputing the same stale ORB from the stale frame and
+    leaving it in cache for the current session.
+    """
+    from backend.organism.orb_scanner import ORBScanner
+
+    stale_df = _make_orb_df(
+        orb_high=104.5,
+        orb_low=99.0,
+        orb_open=100.0,
+        orb_close=104.0,
+        base_volume=100_000,
+        orb_volume_multiplier=3.0,
+    )
+    scanner = ORBScanner(min_rv_ratio=0.0, top_n=1)
+
+    cands = scanner.scan(
+        {"NFLX": stale_df},
+        pd.Timestamp("2026-05-12 14:00:00", tz="UTC"),
+        session_date="2026-05-12",
+    )
+
+    assert cands == []
+    assert scanner.orb_cache_size == 0
 
 
 # ── Daily reset ──────────────────────────────────────────────

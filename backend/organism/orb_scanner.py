@@ -113,6 +113,7 @@ class ORBScanner:
         # symbol -> dict with orb_high, orb_low, orb_open, orb_close, rv_ratio,
         #          atr_at_entry, computed_for_date
         self._orb_cache: dict[str, dict[str, float]] = {}
+        self._stale_orb_warned: set[tuple[str, str, str]] = set()
         # Date string of currently-cached session (YYYY-MM-DD)
         self._current_session_date: Optional[str] = None
         # Symbols that fired entries this session — don't re-fire
@@ -122,8 +123,27 @@ class ORBScanner:
         """Clear cached state at start of a new session."""
         self._orb_cache.clear()
         self._fired_today.clear()
+        self._stale_orb_warned.clear()
         self._current_session_date = session_date
         logger.info("ORB scanner reset for session %s", session_date)
+
+    def _warn_stale_orb_once(
+        self,
+        symbol: str,
+        cached_session_date: str,
+        current_session_date: str,
+    ) -> None:
+        """Warn once per symbol/session when stale ORB data is skipped."""
+        key = (symbol, cached_session_date, current_session_date)
+        if key in self._stale_orb_warned:
+            return
+        self._stale_orb_warned.add(key)
+        logger.warning(
+            "ORB cache stale for %s (cached session=%s, current=%s) — invalidating",
+            symbol,
+            cached_session_date or "unknown",
+            current_session_date,
+        )
 
     @staticmethod
     def _is_in_orb_window(now_et: dtime) -> bool:
@@ -468,11 +488,9 @@ class ORBScanner:
                 # cause; this is defensive belt-and-suspenders.
                 cached = self._orb_cache[symbol]
                 if cached.get("orb_session_date", "") != session_date:
-                    logger.warning(
-                        "ORB cache stale for %s (cached session=%s, "
-                        "current=%s) — invalidating",
+                    self._warn_stale_orb_once(
                         symbol,
-                        cached.get("orb_session_date", "unknown"),
+                        str(cached.get("orb_session_date", "unknown")),
                         session_date,
                     )
                     del self._orb_cache[symbol]
@@ -492,6 +510,10 @@ class ORBScanner:
 
             orb = self._compute_orb_range(symbol, known_df, atr)
             if orb is None:
+                continue
+            orb_session_date = str(orb.get("orb_session_date", ""))
+            if orb_session_date != session_date:
+                self._warn_stale_orb_once(symbol, orb_session_date, session_date)
                 continue
 
             rv_ratio = self._compute_relative_volume(known_df, orb["orb_volume"])

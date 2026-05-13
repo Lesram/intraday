@@ -381,23 +381,41 @@ class AppSettings:
     updated_at: datetime = field(default_factory=datetime.now)
 
     def __post_init__(self):
-        # Check for explicit environment variable settings
+        # Check for explicit environment variable settings. Paper
+        # trading intentionally runs with APP_ENVIRONMENT=development
+        # in local compose, so explicit runtime toggles must win over
+        # environment defaults.
+        mock_data_env = os.getenv("USE_MOCK_DATA")
+        explicit_mock_data = mock_data_env is not None
+        if explicit_mock_data:
+            use_mock_data = mock_data_env.lower() in ('true', '1', 'yes', 'on')
+            object.__setattr__(self, 'use_mock_data', use_mock_data)
+
         mock_broker_env = os.getenv("USE_MOCK_BROKER")
         if mock_broker_env is not None:
-            # Respect explicit environment variable
-            use_mock = mock_broker_env.lower() in ('true', '1', 'yes')
+            use_mock = mock_broker_env.lower() in ('true', '1', 'yes', 'on')
             object.__setattr__(self, 'use_mock_broker', use_mock)
+
+        alpaca_paper_env = os.getenv("ALPACA_PAPER")
+        explicit_alpaca_paper = alpaca_paper_env is not None
+        if explicit_alpaca_paper:
+            alpaca_paper = alpaca_paper_env.lower() in ('true', '1', 'yes', 'on')
+            object.__setattr__(self, 'alpaca_paper', alpaca_paper)
 
         # Set other environment-specific defaults
         env_name = os.getenv("APP_ENVIRONMENT", "development").lower()
         if env_name == "development":
             # dev: USE_MOCK_DATA=True, ALPACA_PAPER=True
-            object.__setattr__(self, 'use_mock_data', True)
-            object.__setattr__(self, 'alpaca_paper', True)
+            if not explicit_mock_data:
+                object.__setattr__(self, 'use_mock_data', True)
+            if not explicit_alpaca_paper:
+                object.__setattr__(self, 'alpaca_paper', True)
         elif env_name == "staging":
             # staging: USE_MOCK_DATA=False, ALPACA_PAPER=True
-            object.__setattr__(self, 'use_mock_data', False)
-            object.__setattr__(self, 'alpaca_paper', True)
+            if not explicit_mock_data:
+                object.__setattr__(self, 'use_mock_data', False)
+            if not explicit_alpaca_paper:
+                object.__setattr__(self, 'alpaca_paper', True)
         # For production, use explicit settings or defaults
 
         if self.environment == EnvironmentEnum.PRODUCTION:
