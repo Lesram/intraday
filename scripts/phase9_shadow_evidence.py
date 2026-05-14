@@ -49,6 +49,7 @@ DEFAULT_TELEMETRY_PATH = ROOT / "organism_brain" / "strategy_evidence_events.jso
 DEFAULT_OUT_DIR = ROOT / "artifacts" / "phase9_shadow_evidence"
 PHASE9_STRATEGY_IDS = frozenset({
     "etf_intraday_momentum",
+    "orb_legacy_shadow",
     "orb_sip_v2",
     "residual_mean_reversion",
     "eod_reversal_shadow",

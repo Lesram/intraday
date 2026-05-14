@@ -274,6 +274,15 @@ class KellySizer:
                 or math.isinf(direction)
                 or math.isinf(predicted_return)
             ):
+                reason = "invalid_direction" if direction == 0 else "invalid_signal"
+                self._exploration_rejects.append({
+                    "symbol": symbol,
+                    "reason": reason,
+                    "confidence": confidence,
+                    "breakout_score": breakout_score,
+                    "predicted_return": predicted_return,
+                    "direction": direction,
+                })
                 continue
 
             # Get recent returns for Kelly calculation

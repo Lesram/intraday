@@ -239,7 +239,6 @@ def test_w96_all_per_order_handlers_have_idor_check():
 
 
 def test_w96_helper_present_in_orders_module():
-    """Sanity: the new helper is exported from orders.py."""
-    src = ORDERS_PATH.read_text()
-    assert "def assert_order_owner_or_404(" in src
-    assert "def _order_owner_id(" in src
+    """Sanity: the new helper is exported and callable from orders.py."""
+    assert _order_owner_id({"user_id": "owner-1"}) == "owner-1"
+    assert assert_order_owner_or_404({"user_id": "owner-1"}, _user("owner-1")) is None

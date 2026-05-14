@@ -6,13 +6,15 @@ Status: active execution roadmap
 
 ## Implementation Status
 
-As of the Phase 9B implementation slice, the roadmap is no longer only a plan.
+As of the Phase 9D implementation slice, the roadmap is no longer only a plan.
 
 - Phase 9A evidence foundation is implemented: `CandidateSignal`, strategy governance, benchmark/null helpers, strategy league reporting, and `strategy_id` persistence through the current evidence warehouse.
 - Phase 9B shadow research surfaces are implemented as isolated, side-effect-free modules: `etf_intraday_momentum`, `gamma_vol_proxy`, `stocks_in_play`, `orb_sip_v2`, `residual_mean_reversion`, `eod_reversal_shadow`, and `microstructure_schema`.
 - Phase 9C shadow capture and evidence reporting are implemented: paper deploys can enable `ORGANISM_PHASE9_SHADOW_ENGINES_ENABLED=true`, Phase 9 signals write to `strategy_evidence_events.jsonl`, and `scripts/phase9_shadow_evidence.py` joins outcomes with same-symbol, market, sector, random, and delayed-entry null comparisons.
-- These engines emit candidate evidence contracts only. They are not wired into live ranking, sizing, order submission, or promotion.
+- Phase 9D portfolio construction is implemented as advisory evidence tooling: `backend/organism/evidence/portfolio_construction.py` and `scripts/phase9d_portfolio_construction.py` compute risk-budget, beta, correlation, family-diversity, and concentration verdicts without changing live behavior.
+- These engines and reports emit candidate evidence contracts only. They are not wired into live ranking, sizing, order submission, or promotion.
 - Phase 9C still needs market-hours data collection before any replay or micro-paper decision can be made.
+- Phase 9D currently authorizes no portfolio allocation because no strategy family has portfolio-eligible forward evidence yet.
 
 ## North Star
 
@@ -260,6 +262,8 @@ Priority:
 Objective: combine validated engines with risk budgets, beta control, correlation controls, and exposure scaling.
 
 No portfolio scaling until more than one strategy family proves after-cost alpha.
+
+Implementation status: advisory tooling exists and currently blocks allocation. The Phase 9D report is a decision surface, not a live allocator.
 
 ## What Not To Build
 

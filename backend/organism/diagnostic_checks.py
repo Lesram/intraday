@@ -469,15 +469,31 @@ async def check_data_kelly_floor(*, engine: Any = None, app: Any = None) -> Diag
             "breakout_score": 0.0,
         }]
         import pandas as pd
-        dummy_features = {"TEST": pd.DataFrame({"close": [100.0] * 20, "volume": [1e6] * 20})}
+        dummy_features = {"TEST": pd.DataFrame({
+            "open": [99.5 + i * 0.02 for i in range(30)],
+            "high": [101.0 + i * 0.02 for i in range(30)],
+            "low": [99.0 + i * 0.02 for i in range(30)],
+            "close": [100.0 + i * 0.02 for i in range(30)],
+            "volume": [1e6] * 30,
+        })}
+        fixed_risk_attr = getattr(engine, "_fixed_risk_sizing_mode", None)
+        fixed_risk_mode = (
+            bool(fixed_risk_attr())
+            if callable(fixed_risk_attr)
+            else bool(fixed_risk_attr)
+        )
         sized = ks.size_positions(
             test_candidates, 100_000.0, 0.0,
             dummy_features, current_regime="unknown", ml_is_trained=True,
+            trade_count=len(getattr(engine, "_all_trades", []) or []),
+            fixed_risk_mode=fixed_risk_mode,
         )
         if not sized or all(p.shares == 0 for p in sized):
-            return _fail(n, c, s, "Kelly produces 0 shares at confidence=0.65")
+            mode = "fixed-risk" if fixed_risk_mode else "Kelly"
+            return _fail(n, c, s, f"{mode} sizing produces 0 shares at confidence=0.65")
         shares = sized[0].shares if sized else 0
-        return _ok(n, c, s, f"Kelly produces {shares} shares at confidence=0.65")
+        mode = "fixed-risk" if fixed_risk_mode else "Kelly"
+        return _ok(n, c, s, f"{mode} sizing produces {shares} shares at confidence=0.65")
     except Exception as e:
         return _fail(n, c, s, f"Kelly sizing failed: {e}")
 

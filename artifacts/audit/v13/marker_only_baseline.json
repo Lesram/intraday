@@ -1,6 +1,6 @@
 {
   "files_scanned": 54,
-  "marker_only": 122,
+  "marker_only": 110,
   "marker_tests": [
     "tests/test_v12_w77_findings_ledger.py::test_w77_builder_includes_v11_audited_closures",
     "tests/test_v12_w82_dockerfile_env.py::test_w82_dockerfile_redeclares_args_in_runtime_stage",
@@ -8,7 +8,6 @@
     "tests/test_v12_w82_dockerfile_env.py::test_w82_rebuild_helper_captures_git_sha",
     "tests/test_v12_w84_governance_docs.py::test_w84_branch_hygiene_doc_describes_v13_cutover",
     "tests/test_v12_w84_governance_docs.py::test_w84_v13_framework_has_no_lens_expansion_clause",
-    "tests/test_v13_w100_live_tick_coverage.py::test_w100_equity_gates_drawdown_kill_invocation",
     "tests/test_v13_w100_live_tick_coverage.py::test_w100_pyramid_path_present_in_source",
     "tests/test_v13_w101_synthesis.py::test_w101_synthesis_has_external_auditor_handoff",
     "tests/test_v13_w101_synthesis.py::test_w101_synthesis_recommends_v14_framework",
@@ -19,13 +18,6 @@
     "tests/test_v13_w91_plan_doc.py::test_v13_plan_lists_what_v13_will_not_do",
     "tests/test_v13_w93_trading_safety.py::test_w93_replay_throttle_test_pair_documented",
     "tests/test_v13_w93_trading_safety.py::test_w93_tension_caps_at_one_in_confidence_formula",
-    "tests/test_v13_w94_strategy_floor.py::test_w94_endpoint_window_projects_to_slice",
-    "tests/test_v13_w94_strategy_floor.py::test_w94_endpoint_window_query_param_validated",
-    "tests/test_v13_w95_data_integrity.py::test_w95_data_integrity_route_mounted",
-    "tests/test_v13_w95_data_integrity.py::test_w95_gdpr_forget_user_audit_pseudonymize_default",
-    "tests/test_v13_w95_data_integrity.py::test_w95_outbox_prune_emits_metrics",
-    "tests/test_v13_w95_data_integrity.py::test_w95_outbox_prune_metrics_declared",
-    "tests/test_v13_w96_idor.py::test_w96_helper_present_in_orders_module",
     "tests/test_v13_w97_test_quality.py::test_w97_classifier_full_corpus_flag_exists",
     "tests/test_v13_w98_frontend_build.py::test_w98_admin_credentials_only_under_dev_bypass_branch",
     "tests/test_v13_w98_frontend_build.py::test_w98_dist_artifact_exists_or_buildable",
@@ -53,10 +45,7 @@
     "tests/test_wave39_fixes.py::test_wave39_plan_doc_updated",
     "tests/test_wave39_fixes.py::test_wave39_self_entries_blocked_initialized_at_tick_entry",
     "tests/test_wave40_fixes.py::test_wave40_inline_governance_check_removed",
-    "tests/test_wave40_fixes.py::test_wave40_short_circuit_ordering_preserved",
     "tests/test_wave40_fixes.py::test_wave40_stage_helper_called_from_tick_inner",
-    "tests/test_wave40_fixes.py::test_wave40_stage_helper_evaluates_governance_halt",
-    "tests/test_wave40_fixes.py::test_wave40_stage_helper_evaluates_warmup_and_stale",
     "tests/test_wave40_fixes.py::test_wave40_stage_helper_method_exists",
     "tests/test_wave41_fixes.py::test_pp_1_save_epoch_metrics_uses_atomic_write",
     "tests/test_wave41_fixes.py::test_pp_1_save_equity_curve_uses_atomic_write",
@@ -76,7 +65,6 @@
     "tests/test_wave42_fixes.py::test_aa3_3_refresh_blacklists_redeemed_jti",
     "tests/test_wave42_fixes.py::test_aa3_3_refresh_replay_returns_401",
     "tests/test_wave43_fixes.py::test_dd3_2_alpaca_stream_uses_incremental_qty",
-    "tests/test_wave43_fixes.py::test_dd3_2_zero_or_negative_increment_skipped",
     "tests/test_wave44_fixes.py::test_dd3_1_check_pyramid_keys_on_max_level",
     "tests/test_wave44_fixes.py::test_dd3_4_eod_flatten_cancels_pending_entries",
     "tests/test_wave44_fixes.py::test_dd3_5_fitness_gate_distinguishes_missing_from_default",
@@ -125,6 +113,6 @@
     "tests/test_wave68_fixes.py::test_ccc_2_default_compose_wires_risk_caps",
     "tests/test_wave68_fixes.py::test_ccc_2_paper_compose_wires_risk_caps"
   ],
-  "pct": 36.5269,
-  "tests_total": 334
+  "pct": 29.5699,
+  "tests_total": 372
 }
