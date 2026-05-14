@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from copy import deepcopy
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -81,6 +82,8 @@ def _bare_live_engine():
     engine._phase9_shadow_engines = []
     engine._phase9_shadow_signal_events = 0
     engine._phase9_last_shadow_bar = ""
+    engine._phase9_last_engine_counts = {}
+    engine._legacy_orb_last_signal_keys = set()
     return engine
 
 
@@ -476,6 +479,81 @@ def test_live_engine_phase9_shadow_signals_record_once_per_bar():
     assert recorder.calls[0]["tick"] == 42
     assert engine._strategy_evidence_events == 21
     assert engine._phase9_shadow_signal_events == 1
+    assert engine._phase9_last_engine_counts == {"_FakePhase9Engine": 1}
+
+
+def test_live_engine_records_legacy_orb_breakouts_as_shadow_evidence_once_per_bar():
+    from backend.organism.orb_scanner import ORBCandidate
+
+    engine = _bare_live_engine()
+    recorder = _FakeCandidateRecorder(written=1)
+    engine._strategy_evidence_recorder = recorder
+    engine._now_fn = lambda: datetime(2026, 5, 13, 14, 5, tzinfo=UTC)
+    candidate = ORBCandidate(
+        symbol="MSFT",
+        direction=1.0,
+        rv_ratio=2.1,
+        orb_high=500.0,
+        orb_low=495.0,
+        orb_close=499.0,
+        orb_open=496.0,
+        current_price=501.0,
+        breakout_triggered=True,
+        suggested_stop=497.5,
+        atr_at_entry=2.0,
+        timestamp="2026-05-13T14:05:00Z",
+    )
+
+    engine._record_legacy_orb_shadow_signals(
+        [candidate],
+        regime="trending_up",
+        now_iso="2026-05-13T14:05:00Z",
+    )
+    engine._record_legacy_orb_shadow_signals(
+        [candidate],
+        regime="trending_up",
+        now_iso="2026-05-13T14:05:30Z",
+    )
+
+    assert len(recorder.calls) == 1
+    signal = recorder.calls[0]["signals"][0]
+    assert signal.strategy_id == "orb_legacy_shadow"
+    assert signal.engine_version == "legacy_orb_scanner.v1"
+    assert signal.symbol == "MSFT"
+    assert signal.shadow_only is True
+    assert signal.features["variant"] == "legacy_orb_breakout_long"
+    assert signal.features["live_enabled"] is False
+    assert engine._strategy_evidence_events == 21
+    assert engine._phase9_shadow_signal_events == 1
+
+
+def test_live_engine_db_entry_fill_lookup_uses_weighted_actual_fills():
+    class _FakeResult:
+        def all(self):
+            return [(227.10, 3), (227.20, 5)]
+
+    class _FakeSession:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+        async def execute(self, stmt):
+            return _FakeResult()
+
+    engine = _bare_live_engine()
+    engine._sessionmaker = lambda: _FakeSession()
+    meta = {
+        "entry_source": "alpha",
+        "direction": 1.0,
+        "entry_submitted_at": "2026-05-13T15:07:09+00:00",
+    }
+
+    price, qty = asyncio.run(engine._lookup_entry_fill_from_db("NVDA", meta))
+
+    assert round(price, 4) == 227.1625
+    assert qty == 8
 
 
 def test_live_engine_candidate_evidence_fanout_is_noop_when_disabled():

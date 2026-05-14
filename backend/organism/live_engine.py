@@ -751,6 +751,8 @@ class OrganismLiveEngine:
         )
         self._phase9_shadow_signal_events: int = 0
         self._phase9_last_shadow_bar: str = ""
+        self._phase9_last_engine_counts: dict[str, int] = {}
+        self._legacy_orb_last_signal_keys: set[str] = set()
         self._strategy_governor = StrategyGovernor()
 
         # ── Live state ──────────────────────────────────────────
@@ -2228,14 +2230,27 @@ class OrganismLiveEngine:
             "features_by_symbol": features_by_symbol,
             "now": shadow_now,
             "regime": str(regime),
-            "market_return_bps": _market_return_bps(features_by_symbol.get("SPY"), shadow_now),
+            "market_return_bps": _market_return_bps(
+                features_by_symbol.get("SPY"),
+                shadow_now,
+            ),
         }
         signals = []
+        engine_counts: dict[str, int] = {}
         for engine in self._phase9_shadow_engines:
+            strategy_id = str(
+                getattr(engine, "strategy_id", engine.__class__.__name__),
+            )
             try:
-                signals.extend(engine.generate_signals(context))
+                generated = list(engine.generate_signals(context))
+                engine_counts[strategy_id] = len(generated)
+                signals.extend(generated)
             except Exception as exc:
+                engine_counts[strategy_id] = -1
                 logger.debug("Phase 9 shadow engine %s failed: %s", engine, exc)
+        self._phase9_last_engine_counts = engine_counts
+        if signals or self._tick_count % 30 == 0:
+            logger.info("Phase 9 shadow engine counts: %s", engine_counts)
         if not signals:
             return
         try:
@@ -2249,6 +2264,106 @@ class OrganismLiveEngine:
             logger.info("Phase 9 shadow recorded %d strategy signals", written)
         except Exception as exc:
             logger.warning("Phase 9 shadow signal telemetry write failed: %s", exc)
+
+    def _record_legacy_orb_shadow_signals(
+        self,
+        triggered: list[Any],
+        *,
+        regime: str,
+        now_iso: str,
+    ) -> None:
+        """Mirror legacy ORB shadow breakouts into the strategy evidence feed."""
+        if not triggered or self._strategy_evidence_recorder is None:
+            return
+        shadow_now = self._now_fn()
+        current_bar = shadow_now.strftime("%Y-%m-%d %H:%M")
+        if len(self._legacy_orb_last_signal_keys) > 5000:
+            self._legacy_orb_last_signal_keys.clear()
+
+        signals: list[CandidateSignal] = []
+        for candidate in triggered:
+            symbol = str(getattr(candidate, "symbol", "") or "").upper()
+            direction = float(getattr(candidate, "direction", 1.0) or 1.0)
+            side = "long" if direction >= 0 else "short"
+            key = f"{current_bar}:{symbol}:{side}"
+            if not symbol or key in self._legacy_orb_last_signal_keys:
+                continue
+            self._legacy_orb_last_signal_keys.add(key)
+            variant = f"legacy_orb_breakout_{side}"
+            signals.append(
+                CandidateSignal(
+                    signal_id=(
+                        f"orb-legacy-{symbol.lower()}-{self._tick_count}-"
+                        f"{current_bar.replace(' ', 'T').replace(':', '')}"
+                    ),
+                    strategy_id="orb_legacy_shadow",
+                    engine_version="legacy_orb_scanner.v1",
+                    symbol=symbol,
+                    side=side,
+                    timeframe="1Min",
+                    created_at=now_iso,
+                    intended_horizon_bars=60,
+                    regime=str(regime),
+                    evidence_tier=0,
+                    shadow_only=True,
+                    expected_edge_bps=None,
+                    confidence=min(
+                        0.8,
+                        max(
+                            0.35,
+                            0.45
+                            + 0.05
+                            * float(getattr(candidate, "rv_ratio", 0.0) or 0.0),
+                        ),
+                    ),
+                    stop_price=(
+                        float(getattr(candidate, "suggested_stop", 0.0) or 0.0)
+                        or None
+                    ),
+                    target_price=None,
+                    risk_budget_bps=0.0,
+                    features={
+                        "variant": variant,
+                        "orb_high": float(
+                            getattr(candidate, "orb_high", 0.0) or 0.0,
+                        ),
+                        "orb_low": float(
+                            getattr(candidate, "orb_low", 0.0) or 0.0,
+                        ),
+                        "orb_open": float(
+                            getattr(candidate, "orb_open", 0.0) or 0.0,
+                        ),
+                        "orb_close": float(
+                            getattr(candidate, "orb_close", 0.0) or 0.0,
+                        ),
+                        "current_price": float(
+                            getattr(candidate, "current_price", 0.0) or 0.0,
+                        ),
+                        "rv_ratio": float(getattr(candidate, "rv_ratio", 0.0) or 0.0),
+                        "atr_at_entry": float(
+                            getattr(candidate, "atr_at_entry", 0.0) or 0.0,
+                        ),
+                        "breakout_triggered": bool(
+                            getattr(candidate, "breakout_triggered", False),
+                        ),
+                        "live_enabled": False,
+                    },
+                )
+            )
+
+        if not signals:
+            return
+        try:
+            written = self._strategy_evidence_recorder.record_signals(
+                signals,
+                tick=self._tick_count,
+                timestamp=now_iso,
+            )
+            self._strategy_evidence_events += written
+            self._phase9_shadow_signal_events += written
+            logger.info("Legacy ORB shadow recorded %d strategy evidence signals", written)
+        except Exception as exc:
+            logger.warning("Legacy ORB shadow telemetry write failed: %s", exc)
 
     def _record_signal_activity(
         self,
@@ -2675,6 +2790,11 @@ class OrganismLiveEngine:
                                     c.orb_high, c.orb_low, c.current_price,
                                     c.suggested_stop, c.atr_at_entry,
                                 )
+                            self._record_legacy_orb_shadow_signals(
+                                triggered,
+                                regime=regime,
+                                now_iso=now_iso,
+                            )
                         elif self._orb_shadow_log_count % 60 == 0:
                             # Periodic non-triggered summary every 60 logged
                             # scans — confirms scanner is alive but quiet.
@@ -4848,6 +4968,17 @@ class OrganismLiveEngine:
                                 "entry_price": price,
                                 "entry_tick": self._tick_count,
                                 "entry_time": self._time_fn(),
+                                "entry_submitted_at": (
+                                    self._now_fn().astimezone(UTC).isoformat()
+                                ),
+                                "entry_order_id": (
+                                    str(order_result.get("order_id"))
+                                    if (
+                                        isinstance(order_result, dict)
+                                        and order_result.get("order_id")
+                                    )
+                                    else ""
+                                ),
                                 "direction": sz.direction,
                                 "filled_shares": filled_shares,
                                 "predicted_return": predicted_return,
@@ -6278,6 +6409,14 @@ class OrganismLiveEngine:
             else:
                 entry_price = meta["entry_price"]
 
+            entry_fill = await self._lookup_entry_fill_from_db(sym, meta)
+            if entry_fill is not None:
+                db_entry_price, db_entry_qty = entry_fill
+                if db_entry_price > 0:
+                    entry_price = db_entry_price
+                if db_entry_qty > 0:
+                    shares = int(round(db_entry_qty))
+
             if shares == 0:
                 # Fallback to tracked filled_shares from entry metadata
                 shares = meta.get("filled_shares", 0)
@@ -6646,6 +6785,109 @@ class OrganismLiveEngine:
                 )
             except Exception:
                 pass
+
+    async def _lookup_entry_fill_from_db(
+        self,
+        symbol: str,
+        meta: dict[str, Any] | None = None,
+    ) -> tuple[float, float] | None:
+        """Look up actual entry fill price/quantity for a trade record.
+
+        Entry orders are submitted asynchronously, so the live tick only has a
+        decision-time quote when it creates exit state.  At close/reconcile time
+        the DB order row has the broker's authoritative fill; use it so brain
+        trade PnL matches order/execution accounting.
+        """
+        if not self._sessionmaker:
+            return None
+        meta = meta or {}
+        if meta.get("entry_source") == "reconciliation_orphan":
+            return None
+
+        order_id = str(meta.get("entry_order_id") or "").strip()
+        entry_since: datetime | None = None
+        raw_submitted_at = str(meta.get("entry_submitted_at") or "").strip()
+        if raw_submitted_at:
+            try:
+                entry_since = datetime.fromisoformat(
+                    raw_submitted_at.replace("Z", "+00:00"),
+                )
+            except ValueError:
+                entry_since = None
+        if entry_since is None:
+            try:
+                raw_entry_time = float(meta.get("entry_time", 0) or 0)
+                if raw_entry_time > 0:
+                    entry_since = datetime.fromtimestamp(raw_entry_time, tz=UTC)
+            except (TypeError, ValueError, OSError):
+                entry_since = None
+
+        try:
+            from sqlalchemy import select, text as sa_text
+            from backend.infra.schemas import Order
+
+            async with self._sessionmaker() as session:
+                rows = []
+                if entry_since is not None:
+                    entry_side = (
+                        "sell"
+                        if float(meta.get("direction", 1.0) or 1.0) < 0
+                        else "buy"
+                    )
+                    stmt = (
+                        select(Order.avg_fill_price, Order.filled_qty)
+                        .where(
+                            Order.symbol == symbol,
+                            Order.side == entry_side,
+                            Order.status == "filled",
+                            Order.submitted_at
+                            >= entry_since - timedelta(minutes=2),
+                            sa_text("attributes->>'source' = 'organism'"),
+                        )
+                        .order_by(Order.submitted_at.asc())
+                    )
+                    rows = list((await session.execute(stmt)).all())
+
+                if not rows and order_id:
+                    try:
+                        order_uuid = uuid.UUID(order_id)
+                    except ValueError:
+                        order_uuid = None
+                    if order_uuid is not None:
+                        stmt = (
+                            select(Order.avg_fill_price, Order.filled_qty)
+                            .where(
+                                Order.id == order_uuid,
+                                Order.symbol == symbol,
+                                Order.status == "filled",
+                                sa_text("attributes->>'source' = 'organism'"),
+                            )
+                        )
+                        rows = list((await session.execute(stmt)).all())
+
+                total_qty = 0.0
+                total_notional = 0.0
+                for price_raw, qty_raw in rows:
+                    if price_raw is None or qty_raw is None:
+                        continue
+                    price = float(price_raw)
+                    qty = float(qty_raw)
+                    if price <= 0 or qty <= 0:
+                        continue
+                    total_qty += qty
+                    total_notional += price * qty
+                if total_qty > 0:
+                    avg_price = total_notional / total_qty
+                    logger.info(
+                        "DB fill price for %s entry: $%.2f qty=%.4f",
+                        symbol,
+                        avg_price,
+                        total_qty,
+                    )
+                    return avg_price, total_qty
+        except Exception as e:
+            logger.debug("DB entry fill lookup failed for %s: %s", symbol, e)
+        return None
 
     async def _lookup_exit_fill_from_db(self, symbol: str) -> float | None:
         """Look up actual exit fill price from DB for a recently closed position.

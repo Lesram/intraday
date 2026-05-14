@@ -8,9 +8,8 @@ from __future__ import annotations
 
 import asyncio
 import json
-import os
+from types import SimpleNamespace
 from typing import Any
-from unittest.mock import AsyncMock
 
 import numpy as np
 import pandas as pd
@@ -73,6 +72,22 @@ class MockOrderService:
     async def submit_symbol_order(self, **kwargs) -> dict:
         self.submitted.append(kwargs)
         return {"id": f"mock_{len(self.submitted)}", "status": "accepted"}
+
+
+class _FakeSizer:
+    def __init__(self, shares: int = 5):
+        self.shares = shares
+        self.calls: list[dict[str, Any]] = []
+
+    def size_positions(self, candidates, portfolio_value, drawdown, features, **kwargs):
+        self.calls.append({
+            "candidates": candidates,
+            "portfolio_value": portfolio_value,
+            "drawdown": drawdown,
+            "features": features,
+            **kwargs,
+        })
+        return [SimpleNamespace(shares=self.shares)]
 
 
 @pytest.fixture
@@ -233,6 +248,37 @@ class TestDeepDiagnostics:
         )
         assert numpy_check is not None
         assert numpy_check.passed, "numpy JSON serialization should pass"
+
+    @pytest.mark.asyncio
+    async def test_kelly_floor_diagnostic_uses_actual_fixed_risk_mode(self):
+        from backend.organism.diagnostic_checks import check_data_kelly_floor
+
+        sizer = _FakeSizer(shares=7)
+        engine = SimpleNamespace(
+            kelly_sizer=sizer,
+            _all_trades=[],
+            _fixed_risk_sizing_mode=lambda: True,
+        )
+
+        result = await check_data_kelly_floor(engine=engine)
+
+        assert result.passed
+        assert "fixed-risk sizing produces 7 shares" in result.message
+        assert sizer.calls[0]["fixed_risk_mode"] is True
+        assert sizer.calls[0]["trade_count"] == 0
+
+    @pytest.mark.asyncio
+    async def test_governance_config_conflict_clears_when_multi_strategy_disabled(self, monkeypatch):
+        from backend.organism.diagnostic_checks import check_governance_config
+
+        monkeypatch.setenv("ENABLE_ORGANISM_SCHEDULER", "1")
+        monkeypatch.setenv("MULTI_STRATEGY_LIVE_ENABLED", "1")
+        conflicted = await check_governance_config()
+        assert not conflicted.passed
+
+        monkeypatch.setenv("MULTI_STRATEGY_LIVE_ENABLED", "0")
+        cleared = await check_governance_config()
+        assert cleared.passed
 
 
 # ═══════════════════════════════════════════════════════════════════

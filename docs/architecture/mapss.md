@@ -151,7 +151,8 @@ G. [ORM Models & Configuration](#g-orm-models--configuration)
 │                                   │  │    ML → Alpha → Kelly → Exits        │  │  │
 │                                   │  │                                      │  │  │
 │                                   │  │  PATH B: MultiStrategyLiveScheduler  │  │  │
-│                                   │  │    MULTI_STRATEGY_LIVE_ENABLED=1     │  │  │
+│                                   │  │    MULTI_STRATEGY_LIVE_ENABLED=0     │  │  │
+│                                   │  │    (paper deploy; opt-in with =1)    │  │  │
 │                                   │  │    10 independent strategies (300s)  │  │  │
 │                                   │  │    OrganismRunner governance hooks   │  │  │
 │                                   │  │                                      │  │  │
@@ -3385,7 +3386,7 @@ ENGINE PATH SELECTION (lifespan.py startup):
   │   └── Includes: Diagnostic scheduler (pre-open/post-close)
   │
   ├── PATH B: MultiStrategyLiveScheduler
-  │   ├── Flag: MULTI_STRATEGY_LIVE_ENABLED=1
+  │   ├── Flag: MULTI_STRATEGY_LIVE_ENABLED=1 to enable
   │   ├── Creates: MultiStrategyLiveRunner (10 strategies)
   │   ├── Tick interval: MULTI_STRATEGY_LIVE_INTERVAL_SECONDS (default 300s)
   │   ├── Signal generation: 10 independent strategies in parallel
@@ -3393,6 +3394,9 @@ ENGINE PATH SELECTION (lifespan.py startup):
   │   └── Integrates: OrganismRunner governance hooks (if ORGANISM_ENABLED=1)
   │
   └── MUTUAL EXCLUSION:
+      Current paper deploy keeps Path A enabled and Path B disabled
+      (MULTI_STRATEGY_LIVE_ENABLED=0). Setting both scheduler flags to 1
+      is a governance diagnostic warning and should block paper-live deploy.
       └── If ENABLE_ORGANISM_SCHEDULER=1, MultiStrategyLiveScheduler is SKIPPED
           (explicit check in lifespan.py step 7)
 ```
