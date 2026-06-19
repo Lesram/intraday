@@ -115,3 +115,56 @@ def test_validate_signature_extended():
     params = list(sig.parameters.keys())
     assert "old_reg" in params, "_validate_new_model should accept old_reg"
     assert "old_trained" in params, "_validate_new_model should accept old_trained"
+
+
+# ── S17b: stale-baseline must not promote via the relative path ──────────
+# When there is no trustworthy same-holdout baseline, acceptance_gate is
+# called with allow_relative=False so a deflated historical baseline cannot
+# wave through a challenger that only "beats" it (Data Leakage Audit Concern 1).
+
+
+def _metrics(**kw):
+    from backend.organism.ml_signal import ModelMetrics
+    base = dict(
+        generation=0, accuracy=0.40, precision=0.50, direction_accuracy=0.52,
+        hit_rate=0.46, mean_pred_return=0.01, effective_mean_pred_return=0.01,
+        calibration_sample_count=100, candidate_calibration_sample_count=100,
+        candidate_calibration_monotonic=True, candidate_calibration_error=0.1,
+    )
+    base.update(kw)
+    return ModelMetrics(**base)
+
+
+def test_acceptance_gate_has_allow_relative_param():
+    import inspect
+    from backend.organism.continuous_learner import acceptance_gate
+    assert "allow_relative" in inspect.signature(acceptance_gate).parameters
+
+
+def test_weak_challenger_promoted_only_when_relative_allowed():
+    """A weak challenger (below the absolute bar) that merely beats a deflated
+    stale baseline is accepted under allow_relative=True but REJECTED under
+    allow_relative=False."""
+    from backend.organism.continuous_learner import acceptance_gate
+    # score = 0.46*0.4 + 0.40*0.3 + (0.52-0.5)*0.6 = 0.316 → below the 0.40 bar
+    weak = _metrics(hit_rate=0.46, accuracy=0.40, direction_accuracy=0.52)
+    stale_deflated = _metrics(hit_rate=0.20, accuracy=0.20, direction_accuracy=0.50)
+
+    accepted_rel, _ = acceptance_gate(weak, old_metrics=stale_deflated, allow_relative=True)
+    accepted_abs, _ = acceptance_gate(weak, old_metrics=stale_deflated, allow_relative=False)
+    assert accepted_rel is True, "relative path should accept (legacy behavior)"
+    assert accepted_abs is False, (
+        "fix regression: weak challenger promoted against a deflated stale "
+        "baseline even without a same-holdout comparison"
+    )
+
+
+def test_strong_challenger_accepted_even_without_relative():
+    """A genuinely strong challenger clears the absolute bar regardless of the
+    (untrusted) baseline, so model improvement is not frozen."""
+    from backend.organism.continuous_learner import acceptance_gate
+    # score = 0.55*0.4 + 0.50*0.3 + (0.60-0.5)*0.6 = 0.43 → above the 0.40 bar
+    strong = _metrics(hit_rate=0.55, accuracy=0.50, direction_accuracy=0.60)
+    stale_deflated = _metrics(hit_rate=0.20, accuracy=0.20, direction_accuracy=0.50)
+    accepted, _ = acceptance_gate(strong, old_metrics=stale_deflated, allow_relative=False)
+    assert accepted is True

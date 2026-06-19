@@ -40,10 +40,25 @@ def acceptance_gate(
     new_metrics: "ModelMetrics",
     old_metrics: "ModelMetrics | None" = None,
     improvement_threshold: float = 0.05,
+    allow_relative: bool = False,
 ) -> tuple[bool, str]:
     """Unified model acceptance gate.
 
     Returns (accepted, reason).
+
+    Audit 2026-06-09 finding 3.2: ``allow_relative`` now defaults to
+    ``False`` (fail-closed). The relative "beat the incumbent" path is only
+    sound when the incumbent was scored on the SAME holdout as the
+    challenger; callers must opt in explicitly after a same-holdout eval.
+
+    ``allow_relative`` controls the new-vs-old comparison when
+    ``old_metrics`` is provided. When True, a challenger may be accepted either
+    by beating the incumbent by ``improvement_threshold`` (relative) OR by
+    clearing the absolute ``good_enough`` bar. When False, the relative path is
+    disabled and only the absolute bar applies — used when the incumbent's
+    metrics are NOT from a same-holdout evaluation (a deflated stale baseline
+    measured in a different regime must not wave through a weak challenger;
+    Data Leakage Audit Concern 1).
 
     Composite score:
         score = hit_rate * 0.4 + accuracy * 0.3 + (direction_acc - 0.5) * 0.6
@@ -106,6 +121,17 @@ def acceptance_gate(
     if cand_sufficient and cand_cal_err >= 0.25:
         quality_ok = False
 
+    # Audit 2026-06-09 (plan 2.2): realized-correlation gate. A candidate
+    # whose holdout predictions are uncorrelated (or anti-correlated) with
+    # realized returns has no edge regardless of accuracy/hit-rate — those
+    # are satisfiable by a no-edge model (the audit's central ML finding).
+    # Only binds when the holdout sample is large enough to be meaningful.
+    _vpac = getattr(new_metrics, "val_pred_actual_corr", None)
+    _vpac_n = getattr(new_metrics, "val_pred_actual_corr_n", 0)
+    if _vpac is not None and _vpac_n >= MIN_CALIBRATION_SAMPLES_FOR_ACCEPTANCE:
+        if _vpac <= 0:
+            quality_ok = False
+
     # Score threshold: raised if either system or candidate calibration
     # is immature (insufficient samples).
     min_score = 0.25 if (sys_mature and cand_sufficient) else 0.35
@@ -124,11 +150,17 @@ def acceptance_gate(
 
     old_score = _score(old_metrics)
 
-    # New model must beat old by threshold, OR be above absolute bar
+    # New model must beat old by threshold, OR be above absolute bar.
     improved = (new_score - old_score) >= improvement_threshold
     good_enough = new_score >= 0.40 and new_metrics.hit_rate >= 0.48
 
-    accepted = (improved or good_enough) and quality_ok
+    # The relative ("improved") path is only trustworthy when old_metrics came
+    # from a same-holdout evaluation. Without that (stale historical baseline),
+    # require the absolute bar so a deflated baseline can't promote a weak model.
+    if allow_relative:
+        accepted = (improved or good_enough) and quality_ok
+    else:
+        accepted = good_enough and quality_ok
     reason = (
         "accepted" if accepted
         else f"score={new_score:.3f}, old={old_score:.3f}, precision={new_metrics.precision:.3f}, "
@@ -208,8 +240,33 @@ class TradeRecord:
     # gate counters) to avoid pollution of strategy-edge signals.
     is_reconciliation_artifact: bool = False
 
+    # Audit 2026-06-11 (measurement-integrity audit) — fidelity fields:
+    # predicted_return_signed: the SIGNED ML prediction captured at entry
+    #   (the legacy `predicted_return` field is magnitude-only and defaults
+    #   to 0.01 when ML never spoke — unusable for directional-skill
+    #   correlation). None/NaN when unavailable.
+    # ml_spoke: True only when the value came from the ML model rather
+    #   than a heuristic default — the correct exclusion filter for
+    #   corr(predicted, actual).
+    # price_source: which rung of the exit-price fallback ladder priced
+    #   this row ("fill"/"db_fill" = broker reality; "bar_close"/"quote_*"
+    #   = approximation that may diverge from realized PnL).
+    # had_partial_exits: True when the position scaled out in pieces
+    #   before final close. KNOWN LIMITATION: such rows record the FULL
+    #   share count at the FINAL exit price (no per-leg accounting yet),
+    #   so their per-trade pnl is approximate — segregate in analysis.
+    predicted_return_signed: "float | None" = None
+    ml_spoke: bool = False
+    price_source: str = ""
+    had_partial_exits: bool = False
+
     @property
     def correct_direction(self) -> bool:
+        # NB (2026-06-11): this is "did the TRADE make money in its
+        # direction" — i.e. win/loss — NOT "was the ML's predicted
+        # direction right". corr(confidence, correct_direction) therefore
+        # measures confidence-vs-win, and is labeled accordingly in the
+        # edge monitor.
         return (self.direction > 0 and self.actual_return > 0) or \
                (self.direction < 0 and self.actual_return < 0)
 
@@ -488,7 +545,10 @@ class ContinuousLearner:
         comparing against old metrics from a different historical window.
 
         Falls back to historical comparison if same-holdout eval is
-        unavailable (e.g., first training, no cached val data).
+        unavailable (e.g., first training, no cached val data) — but in that
+        case the relative path is disabled (allow_relative=False) so the
+        challenger must clear the absolute bar rather than merely beat a
+        deflated stale baseline (Data Leakage Audit Concern 1).
 
         Note: this is the LIVE acceptance gate, used by both the synchronous
         retrain path and the background trainer. walk_forward.py provides a
@@ -498,12 +558,16 @@ class ContinuousLearner:
         """
         # Determine old metrics for comparison.
         old_m: ModelMetrics | None = None
+        # fair_baseline is True ONLY when old_m comes from a same-holdout eval.
+        # It gates whether the relative "beat the incumbent" path is allowed.
+        fair_baseline = False
 
         # S17 — preferred: same-holdout comparison.
         if old_trained and old_clf is not None and old_reg is not None:
             try:
                 old_m = self.signal_gen.evaluate_external_clf_reg(old_clf, old_reg)
                 if old_m is not None:
+                    fair_baseline = True
                     logger.info(
                         "S17 same-holdout comparison: old_acc=%.3f new_acc=%.3f "
                         "old_dir_acc=%.3f new_dir_acc=%.3f",
@@ -517,7 +581,10 @@ class ContinuousLearner:
                 old_m = None
 
         # Fallback: historical metrics from when old model was trained
-        # (apples-to-oranges, but better than nothing if same-holdout failed).
+        # (apples-to-oranges). Kept as a baseline object for diagnostics/reason,
+        # but acceptance against it is gated to the absolute bar via
+        # allow_relative=fair_baseline (False here) so a deflated stale baseline
+        # cannot wave through a weak challenger.
         if old_m is None and old_clf and self.state.model_metrics:
             old_m = self.state.model_metrics[-1]
 
@@ -525,6 +592,7 @@ class ContinuousLearner:
             new_metrics,
             old_metrics=old_m,
             improvement_threshold=self.improvement_threshold,
+            allow_relative=fair_baseline,
         )
         return accepted, reason
 
