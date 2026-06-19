@@ -1,21 +1,21 @@
 # Live Audit Index
 
-Generated: 2026-05-14T05:08:38Z
-PR: PR #8
-SHA: `f16a218d16`
+Generated: 2026-05-26T22:21:16Z
+PR: n/a
+SHA: `04f21200d4`
 Branch: `codex/phase9d-portfolio-construction`
-Scope: **backend_logic**
-Change scope: `task` (`HEAD`)
+Scope: **tooling/evidence_only**
+Change scope: `working-tree` (`HEAD+working-tree`)
 
 ## Changed files
 
 | Category | Count | Files |
 |----------|-------|-------|
-| Backend | 3 | `backend/config/base_settings.py`, `backend/config/settings.py`, `backend/organism/orb_scanner.py` |
-| Organism | 1 | `backend/organism/orb_scanner.py` |
+| Backend | 0 | none |
+| Organism | 0 | none |
 | Scripts | 0 | none |
 | CI | 0 | none |
-| Tests | 2 | `tests/test_orb_scanner.py`, `tests/test_paper_runtime_config.py` |
+| Tests | 0 | none |
 | Docs | 1 | `docs/engineering/LIVE_AUDIT_INDEX.md` |
 
 ## Live constants
@@ -54,4 +54,4 @@ Source: `resolved_config_snapshot.json`
 
 ## Open risks
 
-- 1 organism file(s) changed — require replay verification
+- No code changes in this PR — verify evidence artifacts are current
