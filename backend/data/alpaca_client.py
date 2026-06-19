@@ -972,7 +972,7 @@ class AlpacaClient:
 
     def __del__(self):
         """Cleanup on destruction."""
-        if self.connected:
+        if getattr(self, "connected", False):
             self.disconnect()
 
     def get_bars(self, *args, **kwargs) -> pd.DataFrame:
