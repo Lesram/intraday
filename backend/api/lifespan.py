@@ -2,14 +2,43 @@
 Application lifespan management — startup and shutdown sequences.
 
 Extracted from factory.py for maintainability.
+
+Structure (2026-06-08 decomposition):
+  ``startup`` / ``shutdown`` are thin orchestrators that invoke one
+  ``_step_*`` / ``_shut_*`` function per subsystem, in a fixed order.
+  Each step owns a single subsystem's init/teardown, its env-flag gate,
+  and its own try/except so a failure stays isolated. Ordering is
+  load-bearing and intentionally explicit here (NOT auto-derived):
+  shutdown is not the reverse of startup — the brain save runs first and
+  the DB engine is disposed late.
+
+  Behaviour is identical to the prior monolithic version. Regression
+  guards depend on marker strings remaining in THIS module's source
+  (PP-4 / ALLOW_NO_DB, PP2-1 before "Pre-warm connection pool",
+  AA4-2 / init_token_blacklist / redis.asyncio) and on the S-J3-1
+  event-loop capture remaining inside ``startup`` itself. Do not move
+  those across the module boundary without updating
+  tests/test_wave41_fixes.py, test_wave50_fixes.py, test_wave51_fixes.py,
+  and test_reachability_v8.py.
 """
 import asyncio
 import os
+from dataclasses import dataclass
 from datetime import UTC
 
 from backend.utils.logger import get_structured_logger
 
 logger = get_structured_logger(__name__)
+
+
+@dataclass(frozen=True)
+class BootFlags:
+    """Boot-time flags computed once and threaded through the steps."""
+
+    reload_active: bool
+    skip_bg: bool
+    has_db: bool
+    use_mock: bool
 
 
 async def startup(app) -> dict:
@@ -36,6 +65,9 @@ async def startup(app) -> dict:
     # asyncio.run_coroutine_threadsafe. The wave-8c J-3 fix tried to
     # re-fetch the loop from the worker thread itself — that always raises
     # RuntimeError because worker threads have no running loop.
+    #
+    # NOTE: this block must remain inline in startup() — test_reachability_v8
+    # inspects inspect.getsource(startup) for the S-J3-1 capture call.
     try:
         import asyncio as _aio_startup
         from backend.infra.alerting import set_main_event_loop
@@ -50,6 +82,46 @@ async def startup(app) -> dict:
             _loop_err,
         )
 
+    await _step_observability(app)
+    await _step_slo(app)
+    await _step_database(app)
+
+    flags = BootFlags(
+        reload_active=(os.getenv("UVICORN_RELOAD_ACTIVE") == "1"),
+        skip_bg=(
+            os.getenv("UVICORN_RELOAD_ACTIVE") == "1"
+            and os.getenv("PYTEST_CURRENT_TEST") is None
+        ),
+        has_db=bool(hasattr(app.state, "sessionmaker") and app.state.sessionmaker),
+        use_mock=(os.getenv("USE_MOCK_BROKER", "false").lower() in ("true", "1", "yes")),
+    )
+
+    await _step_token_blacklist(app)
+    await _step_outbox_worker(app, ctx, flags)
+    await _step_living_policy(app, flags)
+    await _step_living_organism(app, flags)
+    await _step_multi_strategy(app, flags)
+    await _step_auto_breakout(app, flags)
+    await _step_ml_scheduler(app, ctx, flags)
+    await _step_organism_scheduler(app, ctx, flags)
+    await _step_alpaca_stream(app, ctx, flags)
+    await _step_reconciliation(app, ctx, flags)
+    await _step_portfolio_sync(app, flags)
+
+    # ── Order Sync ───────────────────────────────────────────────────
+    if ctx["stream_task"] is not None:
+        await asyncio.sleep(0.5)
+
+    if not flags.use_mock and flags.has_db:
+        await _sync_orders(app)
+
+    return ctx
+
+
+# ── Startup steps ────────────────────────────────────────────────────
+
+
+async def _step_observability(app) -> None:
     # ── Observability ────────────────────────────────────────────────
     try:
         from backend.infra.observability import (
@@ -80,6 +152,8 @@ async def startup(app) -> dict:
     except Exception as obs_e:
         logger.warning("Observability initialization failed (non-critical)", error=str(obs_e))
 
+
+async def _step_slo(app) -> None:
     # ── SLO Monitoring ───────────────────────────────────────────────
     try:
         from backend.monitoring.slo_metrics import SLOMetricsCollector
@@ -89,6 +163,8 @@ async def startup(app) -> dict:
     except Exception as slo_e:
         logger.warning("SLO metrics collector failed (non-critical)", error=str(slo_e))
 
+
+async def _step_database(app) -> None:
     # ── Database ─────────────────────────────────────────────────────
     if hasattr(app.state, "database_url") and app.state.database_url:
         try:
@@ -191,10 +267,8 @@ async def startup(app) -> dict:
         app.state.sessionmaker = None
         app.state.db_sessionmaker = None
 
-    _reload_active = os.getenv("UVICORN_RELOAD_ACTIVE") == "1"
-    _skip_bg = _reload_active and os.getenv("PYTEST_CURRENT_TEST") is None
-    _has_db = hasattr(app.state, "sessionmaker") and app.state.sessionmaker
 
+async def _step_token_blacklist(app) -> None:
     # ── V10 AA4-2 / Wave-50 (2026-05-03): Token Blacklist Redis init ─
     # The blacklist machinery in backend/infra/security.py was orphan —
     # the helper init_token_blacklist() existed but had ZERO callers.
@@ -229,8 +303,10 @@ async def startup(app) -> dict:
         )
         app.state.redis = None
 
+
+async def _step_outbox_worker(app, ctx: dict, flags: "BootFlags") -> None:
     # ── Outbox Worker ────────────────────────────────────────────────
-    if _has_db and not _skip_bg:
+    if flags.has_db and not flags.skip_bg:
         try:
             from backend.infra.outbox_worker import start_outbox_worker
 
@@ -243,10 +319,12 @@ async def startup(app) -> dict:
     else:
         app.state.outbox_worker = None
 
+
+async def _step_living_policy(app, flags: "BootFlags") -> None:
     # ── Living Strategy Policy (OPT-OUT) ─────────────────────────────
     if (
         os.getenv("LIVING_STRATEGY_ENABLED", "true").lower() in ("1", "true", "yes")
-        and _has_db
+        and flags.has_db
         and not os.getenv("PYTEST_CURRENT_TEST")
     ):
         try:
@@ -260,10 +338,12 @@ async def startup(app) -> dict:
             logger.warning("Living strategy policy failed", error=str(e))
             app.state.living_policy = None
 
+
+async def _step_living_organism(app, flags: "BootFlags") -> None:
     # ── Full Living Organism (OPT-IN) ────────────────────────────────
     if (
         os.getenv("ORGANISM_ENABLED", "0").lower() in ("1", "true", "yes")
-        and _has_db
+        and flags.has_db
         and not os.getenv("PYTEST_CURRENT_TEST")
     ):
         try:
@@ -292,6 +372,8 @@ async def startup(app) -> dict:
             app.state.organism_runner = None
             app.state.organism_promotion = None
 
+
+async def _step_multi_strategy(app, flags: "BootFlags") -> None:
     # ── Multi-Strategy Live Runner (OPT-IN) ──────────────────────────
     # Skip if the organism engine is enabled — they manage overlapping
     # universes and running both causes spurious risk-gating errors.
@@ -318,6 +400,8 @@ async def startup(app) -> dict:
     elif _organism_active and os.getenv("MULTI_STRATEGY_LIVE_ENABLED", "0") in ("1", "true", "True", "yes"):
         logger.info("Multi-strategy live scheduler skipped — organism engine is active")
 
+
+async def _step_auto_breakout(app, flags: "BootFlags") -> None:
     # ── Auto Breakout Scanner (OPT-IN) ───────────────────────────────
     if (
         os.getenv("AUTO_BREAKOUT_SCAN_ENABLED", "0").lower() in ("1", "true", "yes")
@@ -336,10 +420,12 @@ async def startup(app) -> dict:
             logger.warning("Auto breakout scanner scheduler failed", error=str(e))
             app.state.auto_breakout_scanner_started = False
 
+
+async def _step_ml_scheduler(app, ctx: dict, flags: "BootFlags") -> None:
     # ── ML Lifecycle Scheduler (OPT-IN) ──────────────────────────────
     if (
         os.getenv("ENABLE_ML_LIFECYCLE_SCHEDULER", "0") == "1"
-        and _has_db
+        and flags.has_db
         and not os.getenv("PYTEST_CURRENT_TEST")
     ):
         try:
@@ -354,6 +440,8 @@ async def startup(app) -> dict:
             logger.warning("ML lifecycle scheduler failed", error=str(e))
             app.state.ml_lifecycle_scheduler = None
 
+
+async def _step_organism_scheduler(app, ctx: dict, flags: "BootFlags") -> None:
     # ── Organism Live Engine Scheduler (OPT-IN) ──────────────────────
     if (
         os.getenv("ENABLE_ORGANISM_SCHEDULER", "0").lower() in ("1", "true", "yes")
@@ -365,9 +453,10 @@ async def startup(app) -> dict:
             logger.warning("Organism scheduler failed", error=str(e))
             app.state.organism_scheduler = None
 
+
+async def _step_alpaca_stream(app, ctx: dict, flags: "BootFlags") -> None:
     # ── Alpaca Stream ────────────────────────────────────────────────
-    use_mock = os.getenv("USE_MOCK_BROKER", "false").lower() in ("true", "1", "yes")
-    if not use_mock and _has_db:
+    if not flags.use_mock and flags.has_db:
         try:
             from backend.integrations.alpaca_stream import get_stream_client
 
@@ -384,8 +473,10 @@ async def startup(app) -> dict:
         app.state.alpaca_stream_task = None
         app.state.alpaca_stream_client = None
 
+
+async def _step_reconciliation(app, ctx: dict, flags: "BootFlags") -> None:
     # ── Reconciliation Scheduler ────────────────────────────────────
-    if _has_db and not _skip_bg and not os.getenv("PYTEST_CURRENT_TEST"):
+    if flags.has_db and not flags.skip_bg and not os.getenv("PYTEST_CURRENT_TEST"):
         try:
             from backend.services.scheduled_reconciliation import start_reconciliation_scheduler
 
@@ -397,8 +488,10 @@ async def startup(app) -> dict:
             logger.warning("Reconciliation scheduler failed (non-critical)", error=str(e))
             ctx["reconciliation_scheduler"] = False
 
+
+async def _step_portfolio_sync(app, flags: "BootFlags") -> None:
     # ── Portfolio Sync ───────────────────────────────────────────────
-    if not use_mock and _has_db:
+    if not flags.use_mock and flags.has_db:
         try:
             from backend.services.portfolio_sync_service import get_portfolio_sync_service
 
@@ -412,18 +505,26 @@ async def startup(app) -> dict:
         except Exception as e:
             logger.warning("Portfolio sync failed", error=str(e))
 
-    # ── Order Sync ───────────────────────────────────────────────────
-    if ctx["stream_task"] is not None:
-        await asyncio.sleep(0.5)
-
-    if not use_mock and _has_db:
-        await _sync_orders(app)
-
-    return ctx
-
 
 async def shutdown(app, ctx: dict, baseline: set) -> None:
     """Graceful shutdown of all services."""
+    await _shut_brain_save(app, ctx)
+    await _shut_ml_scheduler(app, ctx)
+    await _shut_organism_scheduler(app, ctx)
+    await _shut_alpaca_stream(app, ctx)
+    await _shut_broker_clients(app, ctx)
+    await _shut_stream_task(app, ctx)
+    await _shut_outbox_worker(app, ctx)
+    await _shut_multi_strategy_breakout(app, ctx)
+    await _shut_reconciliation(app, ctx)
+    await _shut_database(app, ctx)
+    await _shut_background_tasks(app, baseline)
+
+
+# ── Shutdown steps ───────────────────────────────────────────────────
+
+
+async def _shut_brain_save(app, ctx: dict) -> None:
     # Audit-G BUG-H fix: save brain FIRST, before any other cleanup that
     # could hang. Track-G audit (2026-05-01) traced both reconciliation
     # incidents this week (NVDA Wed, AMD Thu) to brain not being saved
@@ -441,6 +542,8 @@ async def shutdown(app, ctx: dict, baseline: set) -> None:
         except Exception as e:
             logger.error(f"Defensive brain save failed at shutdown: {e}")
 
+
+async def _shut_ml_scheduler(app, ctx: dict) -> None:
     # ML scheduler
     if ctx.get("ml_scheduler"):
         try:
@@ -449,6 +552,8 @@ async def shutdown(app, ctx: dict, baseline: set) -> None:
         except Exception as e:
             logger.warning(f"Error stopping ML scheduler: {e}")
 
+
+async def _shut_organism_scheduler(app, ctx: dict) -> None:
     # Organism scheduler
     if ctx.get("organism_scheduler"):
         try:
@@ -457,6 +562,8 @@ async def shutdown(app, ctx: dict, baseline: set) -> None:
         except Exception as e:
             logger.warning(f"Error stopping organism scheduler: {e}")
 
+
+async def _shut_alpaca_stream(app, ctx: dict) -> None:
     # Alpaca stream client
     if hasattr(app.state, "alpaca_stream_client") and app.state.alpaca_stream_client:
         try:
@@ -465,6 +572,8 @@ async def shutdown(app, ctx: dict, baseline: set) -> None:
         except Exception as e:
             logger.warning(f"Error stopping Alpaca stream: {e}")
 
+
+async def _shut_broker_clients(app, ctx: dict) -> None:
     # Close broker/data httpx clients
     for attr in ("alpaca_broker_client", "alpaca_data_client"):
         client = getattr(app.state, attr, None)
@@ -474,6 +583,8 @@ async def shutdown(app, ctx: dict, baseline: set) -> None:
             except Exception:
                 pass
 
+
+async def _shut_stream_task(app, ctx: dict) -> None:
     # Cancel stream task
     stream_task = ctx.get("stream_task")
     if stream_task and not stream_task.done():
@@ -483,6 +594,8 @@ async def shutdown(app, ctx: dict, baseline: set) -> None:
         except asyncio.CancelledError:
             pass
 
+
+async def _shut_outbox_worker(app, ctx: dict) -> None:
     # Outbox worker
     if ctx.get("outbox_worker"):
         try:
@@ -491,6 +604,8 @@ async def shutdown(app, ctx: dict, baseline: set) -> None:
         except Exception as e:
             logger.warning(f"Error stopping outbox worker: {e}")
 
+
+async def _shut_multi_strategy_breakout(app, ctx: dict) -> None:
     # Multi-strategy / breakout scheduler
     try:
         from backend.services.multi_strategy_live_scheduler import stop_multi_strategy_live_scheduler
@@ -507,6 +622,8 @@ async def shutdown(app, ctx: dict, baseline: set) -> None:
     except Exception:
         pass
 
+
+async def _shut_reconciliation(app, ctx: dict) -> None:
     # Reconciliation scheduler
     if ctx.get("reconciliation_scheduler"):
         try:
@@ -517,6 +634,8 @@ async def shutdown(app, ctx: dict, baseline: set) -> None:
         except Exception as e:
             logger.warning(f"Error stopping reconciliation scheduler: {e}")
 
+
+async def _shut_database(app, ctx: dict) -> None:
     # Database engine
     if hasattr(app.state, "sessionmaker") and app.state.sessionmaker:
         try:
@@ -527,6 +646,8 @@ async def shutdown(app, ctx: dict, baseline: set) -> None:
         except Exception as e:
             logger.warning(f"Error disposing database: {e}")
 
+
+async def _shut_background_tasks(app, baseline: set) -> None:
     # Cleanup background tasks
     reg = list(app.state.task_registry.tasks())
     new = [t for t in asyncio.all_tasks() if t not in baseline]
