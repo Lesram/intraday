@@ -65,7 +65,14 @@ async def test_uu_1_daily_max_loss_dispatches_alert_behaviorally(monkeypatch):
     mocks["positions_service"].get_all_positions = AsyncMock(return_value={})
     _stub_engine_for_tick(engine, {}, equity=98_500.0)
     engine._daily_starting_equity = 100_000.0
-    engine._daily_loss_date = engine._now_fn().strftime("%Y-%m-%d")
+    # Seed with the ET calendar date — the engine's date-roll check runs
+    # in America/New_York. A naive (UTC) strftime makes this test flake
+    # between 00:00 and ~04:00 UTC: the tick sees a "date roll", resets
+    # _daily_starting_equity, and the simulated breach evaporates.
+    from zoneinfo import ZoneInfo
+    engine._daily_loss_date = (
+        engine._now_fn().astimezone(ZoneInfo("America/New_York")).strftime("%Y-%m-%d")
+    )
 
     monkeypatch.setattr("backend.organism.live_engine.MAX_DAILY_LOSS", 1_000.0)
     monkeypatch.setattr(
@@ -266,15 +273,19 @@ def test_pp_2_restore_from_latest_backup_method_exists():
 
 
 def test_pp_2_load_invokes_backup_fallback_on_exception():
-    """The load() method must reference _restore_from_latest_backup
-    in its exception handler."""
+    """The load path must reference _restore_from_latest_backup in its
+    exception handler. (The body of load() moved into _load_locked()
+    when the 2026-06 audit added shared load/save locking — the guard
+    covers both so the fallback can't be silently dropped.)"""
     from backend.organism.brain_persistence import OrganismBrain
-    src = inspect.getsource(OrganismBrain.load)
+    src = inspect.getsource(OrganismBrain.load) + inspect.getsource(
+        OrganismBrain._load_locked
+    )
     assert "_restore_from_latest_backup" in src, (
         "PP-2 regression: load() no longer falls back to backup on "
         "HEAD-corrupt. One OOM = lose 161 generations again."
     )
-    assert "PP-2" in src, "PP-2 marker missing from load()"
+    assert "PP-2" in src, "PP-2 marker missing from load()/_load_locked()"
 
 
 # ─────────────────────────────────────────────────────────────────────

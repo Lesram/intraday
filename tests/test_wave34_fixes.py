@@ -156,8 +156,10 @@ def test_nn_high_1_telemetry_write_logs_at_warning_on_failure():
     when DB writes fail.  The V7-era DEBUG silently masked the
     zero-rows-in-DB issue."""
     import inspect
-    from backend.organism import live_engine
-    src = inspect.getsource(live_engine)
+    # Moved from live_engine.py to live_engine_telemetry.py in the
+    # 2026-06 live-engine decomposition.
+    from backend.organism import live_engine_telemetry
+    src = inspect.getsource(live_engine_telemetry)
     # Locate the telemetry write block and verify it warns on failure.
     idx = src.find("Telemetry DB write")
     assert idx > 0, (
@@ -175,7 +177,7 @@ async def test_nn_high_1_telemetry_write_failure_warns_behaviorally(monkeypatch)
     """Behavioral: a DB write failure increments the visible error counter
     and emits the telemetry warning instead of disappearing silently."""
     import backend.infra.db as db
-    from backend.organism import live_engine
+    from backend.organism import live_engine, live_engine_telemetry
 
     class BrokenSessionContext:
         async def __aenter__(self):
@@ -210,7 +212,9 @@ async def test_nn_high_1_telemetry_write_failure_warns_behaviorally(monkeypatch)
     )
 
     monkeypatch.setattr(db, "get_session_context", lambda: BrokenSessionContext())
-    monkeypatch.setattr(live_engine.logger, "warning", fake_warning)
+    # The warning is emitted by the telemetry mixin's logger since the
+    # 2026-06 live-engine decomposition.
+    monkeypatch.setattr(live_engine_telemetry.logger, "warning", fake_warning)
 
     await live_engine.OrganismLiveEngine._persist_telemetry_to_db(engine)
 

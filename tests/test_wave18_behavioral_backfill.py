@@ -31,8 +31,10 @@ def test_b_t_1_db_replay_resolves_direction_from_entry_side():
     entry order's `.side` rather than hard-coding 1.0. A regression
     would re-introduce `direction=1.0` and silently invert short-trade
     actual_return / correct_direction in the learner."""
+    # Moved from live_engine.py to live_engine_state.py in the 2026-06
+    # live-engine decomposition.
     src = inspect.getsource(__import__(
-        "backend.organism.live_engine", fromlist=["live_engine"]
+        "backend.organism.live_engine_state", fromlist=["live_engine_state"]
     ))
     # The fix introduces _en_side resolution.
     assert "_en_side = (getattr(en_order" in src, (

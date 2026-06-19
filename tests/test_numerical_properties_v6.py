@@ -508,10 +508,11 @@ def test_db_replay_pnl_sign_flips_for_short() -> None:
 
 
 def test_db_replay_direction_source_matches_invariant() -> None:
-    """B-T-1 source-level: the wave-18 fix must remain in
-    live_engine.py — the side-based resolution and the legacy fall-back
-    must both be present."""
-    src = (Path(_REPO_ROOT) / "backend" / "organism" / "live_engine.py").read_text()
+    """B-T-1 source-level: the wave-18 fix must remain in the live
+    engine — the side-based resolution and the legacy fall-back must
+    both be present. (Moved from live_engine.py to live_engine_state.py
+    in the 2026-06 live-engine decomposition.)"""
+    src = (Path(_REPO_ROOT) / "backend" / "organism" / "live_engine_state.py").read_text()
     # Resolution: en_side = (side or "").lower()
     assert '_en_side' in src, (
         "live_engine no longer extracts entry-order side — B-T-1 / "
