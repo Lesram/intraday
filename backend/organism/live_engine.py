@@ -31,6 +31,7 @@ import time
 import uuid
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 from zoneinfo import ZoneInfo
 from typing import Any, Callable
 
@@ -48,8 +49,11 @@ from backend.organism.candidate_shadow_telemetry import (
 from backend.organism.continuous_learner import ContinuousLearner, TradeRecord
 from backend.organism.governance import GovernanceController
 from backend.organism.kelly_sizer import KellySizer
-from backend.organism.ml_features import compute_ml_features, FEATURE_COLUMNS
-from backend.organism.multi_timeframe import add_multi_timeframe_features
+from backend.organism.live_engine_data import _DataFeederMixin
+from backend.organism.live_engine_fills import _FillLookupMixin
+from backend.organism.live_engine_state import _StateReconstructionMixin
+from backend.organism.live_engine_telemetry import _TelemetryRecordingMixin
+from backend.organism.ml_features import FEATURE_COLUMNS
 from backend.organism.ml_signal import MLSignalGenerator
 from backend.organism.schema.candidate_signal import CandidateSignal, infer_strategy_id
 from backend.organism.pyramider import (
@@ -318,6 +322,16 @@ ALPHA_BREAKOUT_BAD_REGIME_FILTER_ENABLED = _env_bool(
     "ORGANISM_ALPHA_BREAKOUT_BAD_REGIME_FILTER_ENABLED", True,
 )
 ALPHA_BREAKOUT_BAD_REGIME_FILTERS = frozenset({"chop", "trending_down"})
+# Audit 2026-06-09 (plan 3.2): which entry sources the bad-regime filter
+# applies to. Default preserves existing behavior (alpha+breakout only).
+# The chop stand-down experiment widens this to "alpha,alpha+breakout,
+# breakout" — live data showed 364 chop trades netting ~$0 gross (negative
+# after costs), mostly from the pure-alpha source the filter never covered.
+BAD_REGIME_FILTER_SOURCES = frozenset(
+    s.strip() for s in _env_str(
+        "ORGANISM_BAD_REGIME_FILTER_SOURCES", "alpha+breakout",
+    ).split(",") if s.strip()
+)
 STRATEGY_EVIDENCE_TELEMETRY_ENABLED = _env_bool(
     "ORGANISM_STRATEGY_EVIDENCE_TELEMETRY_ENABLED", False,
 )
@@ -504,7 +518,12 @@ def trim_feature_frames_asof(
     }
 
 
-class OrganismLiveEngine:
+class OrganismLiveEngine(
+    _FillLookupMixin,
+    _StateReconstructionMixin,
+    _TelemetryRecordingMixin,
+    _DataFeederMixin,
+):
     """Unified live trading engine — the organism in production.
 
     Combines all organism modules into a single ``live_tick()`` method
@@ -540,6 +559,27 @@ class OrganismLiveEngine:
         self._is_intraday = self._timeframe in ("1Min", "5Min", "15Min", "1Hour")
         _TIMEFRAME_BPD = {"1Min": 390, "5Min": 78, "15Min": 26, "1Hour": 7, "1Day": 1}
         self._bars_per_day = _TIMEFRAME_BPD.get(self._timeframe, 1)
+
+        # ── Fail-closed risk-limit guard (audit 2026-06-09, finding 3.3) ──
+        # In `execute` mode the engine refuses to start with the dollar
+        # circuit breakers disabled. MAX_DAILY_LOSS / MAX_NOTIONAL_PER_TRADE
+        # default to 0 (= disabled); running real order flow without a hard
+        # daily-loss halt must be impossible, not merely unconfigured.
+        self._assert_risk_limits_armed()
+
+        # ── Timeframe sanity + runtime risk snapshot (plan 1.4) ──────────
+        # The intraday scanners (ORB/MR/EOD) are time-of-day-gated 1-minute
+        # strategies; on a daily timeframe they silently go dormant. An env
+        # regression must be loud, not silent.
+        self._warn_if_timeframe_strands_strategies()
+        logger.info(
+            "RUNTIME RISK SNAPSHOT: timeframe=%s is_intraday=%s "
+            "max_daily_loss=%.2f max_notional_per_trade=%.2f "
+            "max_open_positions=%s long_only=%s universe_size=%d",
+            self._timeframe, self._is_intraday,
+            MAX_DAILY_LOSS, MAX_NOTIONAL_PER_TRADE,
+            MAX_OPEN_POSITIONS, LONG_ONLY, len(self._universe),
+        )
 
         # ── Organism components ──────────────────────────────────
         self.signal_gen = MLSignalGenerator(
@@ -926,6 +966,221 @@ class OrganismLiveEngine:
         self._total_exits_submitted: int = 0
         self._watchdog_last_total_orders: int = 0
 
+    def _warn_if_timeframe_strands_strategies(self) -> None:
+        """Plan 1.4: loud error when time-of-day-gated strategies are
+        enabled on a non-intraday timeframe (they would silently never
+        fire — the audit found the module DEFAULT timeframe is 1Day while
+        every intraday engine needs 1Min)."""
+        if self._is_intraday:
+            return
+        stranded = [
+            name for name, enabled in (
+                ("ORB (ORGANISM_ORB_LIVE_ENABLED)", ORB_LIVE_ENABLED),
+                ("EOD (ORGANISM_EOD_LIVE_ENABLED)", EOD_LIVE_ENABLED),
+                ("MeanReversion (ORGANISM_MEAN_REVERSION_LIVE_ENABLED)",
+                 MEAN_REVERSION_LIVE_ENABLED),
+            ) if enabled
+        ]
+        if stranded:
+            logger.error(
+                "TIMEFRAME MISMATCH: timeframe=%s is not intraday but these "
+                "live-enabled strategies require 1-minute bars and will "
+                "NEVER fire: %s. Set ORGANISM_LIVE_TIMEFRAME=1Min or disable "
+                "them. (Audit 2026-06-09, plan 1.4.)",
+                self._timeframe, ", ".join(stranded),
+            )
+
+    @staticmethod
+    def _assert_risk_limits_armed() -> None:
+        """Fail-closed startup guard (audit 2026-06-09, finding 3.3).
+
+        Refuse to construct the engine in ``execute`` mode while the dollar
+        circuit breakers are disabled (their module defaults are 0 =
+        disabled). Raises ``RuntimeError`` listing exactly which limits are
+        unarmed and which env vars arm them. Shadow/dry_run modes are
+        unaffected, so tests and replay keep working without env setup.
+        """
+        try:
+            from backend.services.trading_execution_mode import (
+                get_trading_execution_mode,
+            )
+            mode = get_trading_execution_mode().mode
+        except Exception:
+            # If the execution-mode service is unavailable, fall back to the
+            # raw env with the same fail-closed semantics as AppSettings.
+            raw = os.getenv("TRADING_EXECUTION_MODE", "shadow").strip().lower()
+            mode = "execute" if raw in ("paper", "live", "execute") else "shadow"
+
+        if mode != "execute":
+            return
+
+        unarmed: list[str] = []
+        if MAX_DAILY_LOSS <= 0:
+            unarmed.append("ORGANISM_MAX_DAILY_LOSS (daily dollar-loss halt)")
+        if MAX_NOTIONAL_PER_TRADE <= 0:
+            unarmed.append("ORGANISM_MAX_NOTIONAL (per-trade notional cap)")
+        if unarmed:
+            raise RuntimeError(
+                "REFUSING TO START in execute mode with risk breakers "
+                f"disabled: {', '.join(unarmed)}. Set these env vars to "
+                "positive values, or run in shadow/dry_run mode. "
+                "(Audit 2026-06-09, finding 3.3: real order flow without a "
+                "hard daily-loss halt must be impossible.)"
+            )
+
+    # ── EOD flatten escalation (audit 2026-06-09, finding 3.4) ───────
+
+    def _overnight_flag_path(self) -> Path:
+        return Path(self.brain.brain_dir) / "overnight_positions.json"
+
+    def _record_unflattened_positions(
+        self, symbols: list[str], session_date: str, now_iso: str
+    ) -> None:
+        """Escalate when positions survive past the 16:00 ET close.
+
+        Previously this condition produced a single ``logger.warning`` and
+        nothing else — broker reject/outage during the 15:58–16:00 flatten
+        window silently left positions carrying overnight gap risk.
+        Now: persist a flag file (consumed next session for a forced exit)
+        and fire a CRITICAL alert, once per session.
+        """
+        import json as _json
+
+        try:
+            self._overnight_flag_path().write_text(_json.dumps({
+                "session_date": session_date,
+                "symbols": sorted(set(symbols)),
+                "recorded_at": now_iso,
+            }))
+        except Exception as _werr:
+            logger.error("EOD escalation: failed to persist overnight flag: %s", _werr)
+
+        if getattr(self, "_eod_escalation_alerted_date", "") == session_date:
+            return  # already alerted this session
+        self._eod_escalation_alerted_date = session_date
+        try:
+            from backend.infra.alerting import (
+                AlertCategory, AlertSeverity, send_alert,
+                dispatch_alert_from_thread,
+            )
+            _syms_text = ", ".join(sorted(set(symbols)))
+            dispatch_alert_from_thread(
+                lambda: send_alert(
+                    AlertCategory.RISK_VIOLATION,
+                    AlertSeverity.CRITICAL,
+                    "EOD FLATTEN FAILED — positions open past close",
+                    f"Positions still open after 16:00 ET: {_syms_text}. "
+                    f"Overnight gap risk. A forced exit is scheduled for the "
+                    f"next session open. Manual intervention recommended.",
+                )
+            )
+        except Exception as _aerr:
+            logger.error("EOD escalation: alert dispatch failed: %s", _aerr)
+
+    def _load_overnight_flag(self) -> "tuple[str, list[str]] | None":
+        import json as _json
+
+        p = self._overnight_flag_path()
+        try:
+            if not p.is_file():
+                return None
+            data = _json.loads(p.read_text())
+            return str(data.get("session_date", "")), list(data.get("symbols", []))
+        except Exception as _rerr:
+            logger.warning("EOD escalation: overnight flag unreadable: %s", _rerr)
+            return None
+
+    def _clear_overnight_flag(self) -> None:
+        try:
+            p = self._overnight_flag_path()
+            if p.is_file():
+                p.unlink()
+        except Exception as _derr:
+            logger.warning("EOD escalation: failed to clear overnight flag: %s", _derr)
+
+    async def _force_exit_overnight_stragglers(
+        self,
+        current_positions: dict[str, Any],
+        result: "LiveTickResult",
+        now_iso: str,
+    ) -> None:
+        """Audit 2026-06-09 finding 3.4 — morning forced exit.
+
+        If a previous session ended with positions that the EOD flatten
+        failed to close (broker reject/outage/partial fill), a flag file
+        was persisted. Force-exit those symbols during the NEXT session's
+        regular hours instead of letting them ride.
+        """
+        _ov = self._load_overnight_flag()
+        if _ov is None:
+            return
+        _ov_date, _ov_syms = _ov
+        try:
+            import zoneinfo as _zi
+            _now_et2 = self._now_fn().astimezone(
+                _zi.ZoneInfo("America/New_York")
+            )
+            _today_et = _now_et2.strftime("%Y-%m-%d")
+            _hhmm_now = _now_et2.hour * 100 + _now_et2.minute
+        except Exception:
+            _today_et, _hhmm_now = "", -1
+        # Only on a LATER session than the failed flatten, and only during
+        # regular hours (same-session re-entry into the flatten window must
+        # not trigger this).
+        if not (_today_et > _ov_date and 930 <= _hhmm_now < 1558):
+            return
+        for sym in _ov_syms:
+            pos_data = current_positions.get(sym)
+            if pos_data is None or sym in self._pending_exit:
+                continue
+            _shares = int(abs(float(pos_data.get("qty", 0))))
+            if _shares <= 0:
+                continue
+            try:
+                _dir = (
+                    1.0 if pos_data.get("side", "long") == "long" else -1.0
+                )
+                await self._submit_exit_order(
+                    sym, _shares, "overnight_force_exit",
+                    direction=_dir,
+                    broker_positions=current_positions,
+                )
+                self._exit_cooldown[sym] = self._tick_count
+                self._pending_exit[sym] = self._tick_count
+                result.trades_closed += 1
+                result.orders_submitted += 1
+                result.activity.append(ActivityEvent(
+                    event_type="exit",
+                    symbol=sym,
+                    message=(
+                        f"OVERNIGHT FORCE EXIT: {sym} — EOD flatten failed "
+                        f"on {_ov_date}; closing {_shares} shares at "
+                        f"session open"
+                    ),
+                    details={
+                        "reason": "overnight_force_exit",
+                        "shares": _shares,
+                        "failed_flatten_date": _ov_date,
+                    },
+                    timestamp=now_iso,
+                ))
+                logger.warning(
+                    "Overnight force exit: closing %s (%d shares) — EOD "
+                    "flatten failed on %s", sym, _shares, _ov_date,
+                )
+            except Exception as _fe_err:
+                result.errors.append(
+                    f"Overnight force exit failed for {sym}: {_fe_err}"
+                )
+        # Clear the flag once all flagged symbols have been dispatched
+        # (or are no longer held).
+        _remaining = [
+            s for s in _ov_syms
+            if s in current_positions and s not in self._pending_exit
+        ]
+        if not _remaining:
+            self._clear_overnight_flag()
+
     # ── Dynamic throttle ──────────────────────────────────────
 
     @staticmethod
@@ -1092,6 +1347,7 @@ class OrganismLiveEngine:
         fitness_gate: float,
         min_trades_for_fitness: int,
         allow_short: bool = False,
+        for_pyramid_add: bool = False,
     ) -> tuple[bool, str]:
         """Shared entry gate check used by both alpha and pure-breakout paths.
 
@@ -1101,28 +1357,37 @@ class OrganismLiveEngine:
         allow_short (M3-1): when True, the long_only gate is skipped. Caller
         must have independently verified the signal qualifies as "strong
         enough" per the strong-signal-shorting feature thresholds.
+
+        for_pyramid_add (audit 2026-06-09, finding 3.5): when True, the
+        position-presence checks (open_position / pending_entry /
+        entry_metadata / re-entry cooldowns), long_only, and sector gates
+        are skipped — a pyramid add necessarily targets an already-open
+        position whose direction and sector count are established. The
+        QUALITY gates below (fitness, liquidity, circuit breaker) still
+        apply, so a symbol degrading mid-day cannot receive adds.
         """
-        if symbol in open_symbols:
-            return False, "open_position"
-        if symbol in self._exit_cooldown:
-            return False, "exit_cooldown"
-        # Per-exit-type re-entry cooldown
-        _last_exit_type = self._symbol_exit_type.get(symbol)
-        _last_exit_tick = self._symbol_exit_tick.get(symbol, 0)
-        if _last_exit_type and _last_exit_tick > 0:
-            _ticks_since = self._tick_count - _last_exit_tick
-            if _last_exit_type in ("stop_loss", "safety_net") and _ticks_since < self._STOP_LOSS_REENTRY_TICKS:
+        if not for_pyramid_add:
+            if symbol in open_symbols:
+                return False, "open_position"
+            if symbol in self._exit_cooldown:
                 return False, "exit_cooldown"
-            elif _last_exit_type == "ftf_loss" and _ticks_since < self._FTF_LOSS_REENTRY_TICKS:
-                return False, "exit_cooldown"
-        if symbol in self._pending_entry:
-            return False, "pending_entry"
-        if symbol in self._entry_metadata:
-            return False, "entry_metadata"
-        if LONG_ONLY and direction < 0 and not allow_short:
-            return False, "long_only"
-        if not sector_gate_allows(symbol, open_symbols, planned_entries):
-            return False, "sector_gate"
+            # Per-exit-type re-entry cooldown
+            _last_exit_type = self._symbol_exit_type.get(symbol)
+            _last_exit_tick = self._symbol_exit_tick.get(symbol, 0)
+            if _last_exit_type and _last_exit_tick > 0:
+                _ticks_since = self._tick_count - _last_exit_tick
+                if _last_exit_type in ("stop_loss", "safety_net") and _ticks_since < self._STOP_LOSS_REENTRY_TICKS:
+                    return False, "exit_cooldown"
+                elif _last_exit_type == "ftf_loss" and _ticks_since < self._FTF_LOSS_REENTRY_TICKS:
+                    return False, "exit_cooldown"
+            if symbol in self._pending_entry:
+                return False, "pending_entry"
+            if symbol in self._entry_metadata:
+                return False, "entry_metadata"
+            if LONG_ONLY and direction < 0 and not allow_short:
+                return False, "long_only"
+            if not sector_gate_allows(symbol, open_symbols, planned_entries):
+                return False, "sector_gate"
         # Fitness gate: learning = no gate, production = hard gate for 10+ trades.
         # V9 DD3-5 / Wave-44 (2026-05-03): if symbol_fitness has no entry
         # for this symbol, treat as "fitness data unavailable" — block the
@@ -1173,13 +1438,15 @@ class OrganismLiveEngine:
         regime: str,
     ) -> str:
         """Return non-empty reason when evidence says this slice should not fire."""
+        _src = infer_entry_source(candidate)
         if (
             not ALPHA_BREAKOUT_BAD_REGIME_FILTER_ENABLED
             or str(regime) not in ALPHA_BREAKOUT_BAD_REGIME_FILTERS
-            or infer_entry_source(candidate) != "alpha+breakout"
+            # Plan 3.2: configurable source coverage (default unchanged).
+            or _src not in BAD_REGIME_FILTER_SOURCES
         ):
             return ""
-        return f"alpha_breakout_{regime}_blocked_by_evidence"
+        return f"{_src.replace('+', '_')}_{regime}_blocked_by_evidence"
 
     def _record_defensive_filtered_candidate(
         self,
@@ -1431,6 +1698,7 @@ class OrganismLiveEngine:
                             atr_at_entry=_atr,
                             regime_at_entry=lvl_data.get("regime_at_entry", "unknown"),
                             highest_favorable=float(lvl_data.get("highest_favorable", lvl_data.get("entry", 0))),
+                            worst_adverse=float(lvl_data.get("worst_adverse", 0)),
                             bars_held=int(lvl_data.get("bars_held", 0)),
                             partial_tp_price=float(lvl_data.get("partial_tp_price", 0)),
                             partial_tp_taken=bool(lvl_data.get("partial_tp_taken", False)),
@@ -1782,163 +2050,10 @@ class OrganismLiveEngine:
 
         return brain_loaded
 
-    async def _reconstruct_trades_from_db(self) -> None:
-        """Reconstruct trade history from filled organism orders in DB.
-
-        Called on startup when brain has no trade records (e.g. after a
-        Docker restart that wiped trade_history.csv before it was written).
-        Pairs entry and exit orders per symbol to build TradeRecord objects.
-        """
-        from sqlalchemy import select, text as sa_text
-        from backend.infra.schemas import Order
-
-        async with self._sessionmaker() as session:
-            stmt = (
-                select(Order)
-                .where(
-                    Order.status == "filled",
-                    sa_text("attributes->>'source' = 'organism'"),
-                )
-                .order_by(Order.submitted_at.asc())
-            )
-            result = await session.execute(stmt)
-            orders = list(result.scalars().all())
-
-        if not orders:
-            logger.info("No filled organism orders in DB — nothing to reconstruct")
-            return
-
-        # Separate entries and exits
-        entry_reasons = {"entry", "pyramid", "ml_entry", "alpha_entry", "breakout_entry"}
-        entries: dict[str, list] = {}  # symbol → [order, ...]
-        exits: dict[str, list] = {}
-
-        for o in orders:
-            attrs = o.attributes or {}
-            reason = (attrs.get("reason") or "").lower()
-            sym = o.symbol
-
-            is_entry = (
-                any(r in reason for r in entry_reasons)
-                or (o.side == "buy" and not reason)
-            )
-            if is_entry:
-                entries.setdefault(sym, []).append(o)
-            else:
-                exits.setdefault(sym, []).append(o)
-
-        # Pair exits to entries
-        reconstructed: list[TradeRecord] = []
-        entry_idx: dict[str, int] = {}  # symbol → next unmatched entry index
-
-        for sym, exit_orders in exits.items():
-            sym_entries = entries.get(sym, [])
-            idx = entry_idx.get(sym, 0)
-
-            for ex_order in exit_orders:
-                if idx >= len(sym_entries):
-                    break  # No more entries to match
-
-                en_order = sym_entries[idx]
-                idx += 1
-
-                entry_price = float(en_order.avg_fill_price or 0)
-                exit_price = float(ex_order.avg_fill_price or 0)
-                shares = int(float(en_order.filled_qty or en_order.qty or 0))
-
-                if entry_price <= 0 or exit_price <= 0 or shares <= 0:
-                    continue
-
-                pnl = (exit_price - entry_price) * shares
-                actual_return = (exit_price - entry_price) / entry_price
-
-                en_attrs = en_order.attributes or {}
-                ex_attrs = ex_order.attributes or {}
-
-                # Audit-G v2 GAP-5 (2026-05-02): derive
-                # is_reconciliation_artifact from exit_reason so DB-restored
-                # trades correctly skip learner.record_trade below.
-                _ex_reason = ex_attrs.get("reason", "unknown")
-                _is_recon = _ex_reason == "reconciliation_adjustment"
-
-                # V5 B-T-1 / Wave-18 (2026-05-03): direction was hard-coded
-                # to 1.0 (LONG_ONLY). If LONG_ONLY is ever flipped to False
-                # (or STRONG_SHORT_ENABLED / inverse-ETF flow exits a short
-                # via DB), every short trade restored from the DB would
-                # carry direction=1.0, inverting `actual_return` and
-                # `correct_direction` and poisoning the learner.
-                # Resolve direction from the entry order's side instead;
-                # buy → +1, sell → -1. Fall back to +1 only when the side
-                # is missing AND LONG_ONLY is in force (preserving prior
-                # behavior under the only configuration where it was safe).
-                _en_side = (getattr(en_order, "side", "") or "").lower()
-                if _en_side == "buy":
-                    _direction = 1.0
-                elif _en_side == "sell":
-                    _direction = -1.0
-                else:
-                    _direction = 1.0  # legacy default; LONG_ONLY-safe.
-                # Recompute pnl/actual_return so they match the resolved
-                # direction (entry → exit price diff is signed by direction).
-                if _direction < 0:
-                    pnl = (entry_price - exit_price) * shares
-                    actual_return = (entry_price - exit_price) / entry_price
-
-                reconstructed.append(TradeRecord(
-                    symbol=sym,
-                    direction=_direction,
-                    entry_price=entry_price,
-                    exit_price=exit_price,
-                    entry_bar=0,
-                    exit_bar=0,
-                    shares=shares,
-                    pnl=pnl,
-                    exit_reason=_ex_reason,
-                    predicted_return=0.0,
-                    actual_return=actual_return,
-                    confidence=float(en_attrs.get("confidence", 0.0)),
-                    is_reconciliation_artifact=_is_recon,
-                    strategy_id=infer_strategy_id(
-                        en_attrs.get("entry_source", ""),
-                        en_attrs.get("strategy_id", ""),
-                    ),
-                    closed_at="",
-                ))
-
-            entry_idx[sym] = idx
-
-        if not reconstructed:
-            logger.info("No matched entry/exit pairs found in DB")
-            return
-
-        self._all_trades = reconstructed
-        cumulative = 0.0
-        for t in reconstructed:
-            cumulative += t.pnl
-        self._cumulative_pnl = cumulative
-        # Do NOT populate _equity_curve from PnL — it should only contain
-        # actual broker equity snapshots from _get_equity().
-
-        # Feed reconstructed trades to learner so ML can train.
-        # Audit-G v2 GAP-5: skip reconciliation artifacts.
-        if hasattr(self, 'learner') and self.learner:
-            for t in reconstructed:
-                if getattr(t, "is_reconciliation_artifact", False):
-                    continue
-                try:
-                    self.learner.record_trade(t)
-                except Exception as e:
-                    logger.warning("Failed to record reconstructed trade for %s: %s", t.symbol, e)
-            logger.info(
-                "Fed %d reconstructed trades to learner (total_trades=%d)",
-                len(reconstructed), self.learner.state.total_trades,
-            )
-
-        logger.info(
-            "Reconstructed %d trades from DB: cumulative PnL=$%.2f",
-            len(reconstructed),
-            cumulative,
-        )
+    # _reconstruct_trades_from_db extracted to
+    # backend/organism/live_engine_state.py::_StateReconstructionMixin
+    # (2026-06-08 decomposition). Still a method of OrganismLiveEngine via
+    # inheritance — getsource and all call sites are unchanged.
 
     async def shutdown(self) -> None:
         """Save brain state on graceful shutdown."""
@@ -2211,159 +2326,12 @@ class OrganismLiveEngine:
                     _evidence_err,
                 )
 
-    def _record_phase9_shadow_signals(
-        self,
-        features_by_symbol: dict[str, pd.DataFrame],
-        *,
-        regime: str,
-        now_iso: str,
-    ) -> None:
-        """Record Phase 9 strategy-engine shadow signals once per bar."""
-        if not self._phase9_shadow_engines or self._strategy_evidence_recorder is None:
-            return
-        shadow_now = self._now_fn()
-        current_bar = shadow_now.strftime("%Y-%m-%d %H:%M")
-        if current_bar == self._phase9_last_shadow_bar:
-            return
-        self._phase9_last_shadow_bar = current_bar
-        context = {
-            "features_by_symbol": features_by_symbol,
-            "now": shadow_now,
-            "regime": str(regime),
-            "market_return_bps": _market_return_bps(
-                features_by_symbol.get("SPY"),
-                shadow_now,
-            ),
-        }
-        signals = []
-        engine_counts: dict[str, int] = {}
-        for engine in self._phase9_shadow_engines:
-            strategy_id = str(
-                getattr(engine, "strategy_id", engine.__class__.__name__),
-            )
-            try:
-                generated = list(engine.generate_signals(context))
-                engine_counts[strategy_id] = len(generated)
-                signals.extend(generated)
-            except Exception as exc:
-                engine_counts[strategy_id] = -1
-                logger.debug("Phase 9 shadow engine %s failed: %s", engine, exc)
-        self._phase9_last_engine_counts = engine_counts
-        if signals or self._tick_count % 30 == 0:
-            logger.info("Phase 9 shadow engine counts: %s", engine_counts)
-        if not signals:
-            return
-        try:
-            written = self._strategy_evidence_recorder.record_signals(
-                signals,
-                tick=self._tick_count,
-                timestamp=now_iso,
-            )
-            self._strategy_evidence_events += written
-            self._phase9_shadow_signal_events += written
-            logger.info("Phase 9 shadow recorded %d strategy signals", written)
-        except Exception as exc:
-            logger.warning("Phase 9 shadow signal telemetry write failed: %s", exc)
-
-    def _record_legacy_orb_shadow_signals(
-        self,
-        triggered: list[Any],
-        *,
-        regime: str,
-        now_iso: str,
-    ) -> None:
-        """Mirror legacy ORB shadow breakouts into the strategy evidence feed."""
-        if not triggered or self._strategy_evidence_recorder is None:
-            return
-        shadow_now = self._now_fn()
-        current_bar = shadow_now.strftime("%Y-%m-%d %H:%M")
-        if len(self._legacy_orb_last_signal_keys) > 5000:
-            self._legacy_orb_last_signal_keys.clear()
-
-        signals: list[CandidateSignal] = []
-        for candidate in triggered:
-            symbol = str(getattr(candidate, "symbol", "") or "").upper()
-            direction = float(getattr(candidate, "direction", 1.0) or 1.0)
-            side = "long" if direction >= 0 else "short"
-            key = f"{current_bar}:{symbol}:{side}"
-            if not symbol or key in self._legacy_orb_last_signal_keys:
-                continue
-            self._legacy_orb_last_signal_keys.add(key)
-            variant = f"legacy_orb_breakout_{side}"
-            signals.append(
-                CandidateSignal(
-                    signal_id=(
-                        f"orb-legacy-{symbol.lower()}-{self._tick_count}-"
-                        f"{current_bar.replace(' ', 'T').replace(':', '')}"
-                    ),
-                    strategy_id="orb_legacy_shadow",
-                    engine_version="legacy_orb_scanner.v1",
-                    symbol=symbol,
-                    side=side,
-                    timeframe="1Min",
-                    created_at=now_iso,
-                    intended_horizon_bars=60,
-                    regime=str(regime),
-                    evidence_tier=0,
-                    shadow_only=True,
-                    expected_edge_bps=None,
-                    confidence=min(
-                        0.8,
-                        max(
-                            0.35,
-                            0.45
-                            + 0.05
-                            * float(getattr(candidate, "rv_ratio", 0.0) or 0.0),
-                        ),
-                    ),
-                    stop_price=(
-                        float(getattr(candidate, "suggested_stop", 0.0) or 0.0)
-                        or None
-                    ),
-                    target_price=None,
-                    risk_budget_bps=0.0,
-                    features={
-                        "variant": variant,
-                        "orb_high": float(
-                            getattr(candidate, "orb_high", 0.0) or 0.0,
-                        ),
-                        "orb_low": float(
-                            getattr(candidate, "orb_low", 0.0) or 0.0,
-                        ),
-                        "orb_open": float(
-                            getattr(candidate, "orb_open", 0.0) or 0.0,
-                        ),
-                        "orb_close": float(
-                            getattr(candidate, "orb_close", 0.0) or 0.0,
-                        ),
-                        "current_price": float(
-                            getattr(candidate, "current_price", 0.0) or 0.0,
-                        ),
-                        "rv_ratio": float(getattr(candidate, "rv_ratio", 0.0) or 0.0),
-                        "atr_at_entry": float(
-                            getattr(candidate, "atr_at_entry", 0.0) or 0.0,
-                        ),
-                        "breakout_triggered": bool(
-                            getattr(candidate, "breakout_triggered", False),
-                        ),
-                        "live_enabled": False,
-                    },
-                )
-            )
-
-        if not signals:
-            return
-        try:
-            written = self._strategy_evidence_recorder.record_signals(
-                signals,
-                tick=self._tick_count,
-                timestamp=now_iso,
-            )
-            self._strategy_evidence_events += written
-            self._phase9_shadow_signal_events += written
-            logger.info("Legacy ORB shadow recorded %d strategy evidence signals", written)
-        except Exception as exc:
-            logger.warning("Legacy ORB shadow telemetry write failed: %s", exc)
+    # _record_phase9_shadow_signals / _record_legacy_orb_shadow_signals
+    # extracted to backend/organism/live_engine_telemetry.py
+    # ::_TelemetryRecordingMixin (2026-06-08 decomposition). Still methods of
+    # OrganismLiveEngine via inheritance — getsource and all call sites are
+    # unchanged. (_record_candidate_evidence above stays here on purpose: a
+    # file-text guard pins its def location relative to _live_tick_inner.)
 
     def _record_signal_activity(
         self,
@@ -2571,16 +2539,16 @@ class OrganismLiveEngine:
                     if 1558 <= _hhmm_eod < 1600:
                         _eod_flatten_triggered = True
                     elif _hhmm_eod >= 1600:
-                        # Past close — flatten window passed.  Don't keep
-                        # retrying broker submits that will reject; just
-                        # surface a warning if positions are still open.
+                        # Past close — don't keep retrying rejecting submits.
+                        # Audit 2026-06-09 finding 3.4: escalate (CRITICAL
+                        # alert + overnight flag → next-open forced exit).
                         _open = getattr(self, "_last_known_positions", None) or {}
                         if _open:
                             logger.warning(
                                 "EOD flatten window passed (now=%d ET); "
-                                "positions still open: %s",
-                                _hhmm_eod, list(_open),
-                            )
+                                "positions still open: %s", _hhmm_eod, list(_open))
+                            self._record_unflattened_positions(
+                                list(_open), _now_et.strftime("%Y-%m-%d"), now_iso)
                 except Exception as exc:
                     # V8 DD2-9 / Wave-35: zoneinfo / clock failures previously
                     # silently disabled EOD flatten globally via bare `pass`.
@@ -3469,6 +3437,11 @@ class OrganismLiveEngine:
                             self._exit_cooldown[sym] = self._tick_count
                             self._pending_exit[sym] = self._tick_count
 
+            # Overnight-straggler forced exit (audit 2026-06-09, 3.4).
+            if self._is_intraday and current_positions:
+                await self._force_exit_overnight_stragglers(
+                    current_positions, result, now_iso)
+
             # ── Steps 6-9 and 11 are gated: skip when entries are blocked ──
             if self._entries_blocked:
                 if _PROMETHEUS_AVAILABLE:
@@ -3668,17 +3641,24 @@ class OrganismLiveEngine:
                         # symbol that was banned mid-day for repeated losses
                         # could still receive pyramid adds. Now: enforce the
                         # same gates here.
-                        if sym in self._symbol_banned:
-                            logger.info(
-                                "Pyramid add blocked: %s banned this session",
-                                sym,
-                            )
-                            continue
                         if self._entries_blocked:  # daily-loss halt etc.
                             logger.info(
                                 "Pyramid add blocked: entries blocked (%s)",
                                 self._last_entries_blocked_reason,
                             )
+                            continue
+                        # Audit 2026-06-09 finding 3.5: route adds through the
+                        # shared quality gates (fitness/liquidity/ban) in
+                        # pyramid mode; gate params mirror the alpha path.
+                        _pyr_gate_ok, _pyr_gate_reason = self._passes_entry_gates(
+                            sym, float(getattr(pyr, "direction", 1.0) or 1.0),
+                            features_by_symbol, open_symbols, set(),
+                            fitness_gate=0.0 if self._is_learning_mode else 0.45,
+                            min_trades_for_fitness=10, for_pyramid_add=True,
+                        )
+                        if not _pyr_gate_ok:
+                            logger.info("Pyramid add blocked: %s failed %s gate",
+                                        sym, _pyr_gate_reason)
                             continue
                         # Audit-H H-7 (2026-05-02): orphan-adopted positions
                         # are reconciliation artifacts — should not be
@@ -4109,6 +4089,19 @@ class OrganismLiveEngine:
                         "predicted_return": (
                             c.ml_signal.predicted_return if c.ml_signal else 0.01
                         ),
+                        # Audit 2026-06-11 (measurement integrity): preserve
+                        # the SIGNED ML prediction and whether ML actually
+                        # produced it — the sizer abs()es predicted_return,
+                        # destroying the sign before it reaches the trade
+                        # record.
+                        "predicted_return_signed": (
+                            float(c.ml_signal.predicted_return)
+                            if c.ml_signal else None
+                        ),
+                        "ml_spoke": bool(
+                            c.ml_signal is not None
+                            and abs(c.ml_signal.predicted_return) > 1e-9
+                        ),
                         "confidence": confidence,
                         # V8 DD2-2 / Wave-33: carry raw_confidence so calibration
                         # outcome-recording bins on the same axis as
@@ -4218,6 +4211,14 @@ class OrganismLiveEngine:
                         "symbol": bs.symbol,
                         "direction": 1.0,
                         "predicted_return": pred_ret,
+                        # Audit 2026-06-11 (measurement integrity): signed
+                        # ML value + provenance for the trade record.
+                        "predicted_return_signed": (
+                            float(ml_sig.predicted_return)
+                            if _bo_ret_source == "calibrated_breakout"
+                            else None
+                        ),
+                        "ml_spoke": _bo_ret_source == "calibrated_breakout",
                         "confidence": _bo_conf,
                         "effective_confidence": _bo_conf,
                         "breakout_score": bs.composite_score,
@@ -4982,6 +4983,26 @@ class OrganismLiveEngine:
                                 "direction": sz.direction,
                                 "filled_shares": filled_shares,
                                 "predicted_return": predicted_return,
+                                # Audit 2026-06-11 (measurement integrity):
+                                # recover the SIGNED prediction + provenance
+                                # from the original candidate (the sizer
+                                # abs()es predicted_return).
+                                "predicted_return_signed": next(
+                                    (
+                                        c.get("predicted_return_signed")
+                                        for c in cand_dicts
+                                        if c.get("symbol") == sz.symbol
+                                    ),
+                                    None,
+                                ),
+                                "ml_spoke": next(
+                                    (
+                                        bool(c.get("ml_spoke"))
+                                        for c in cand_dicts
+                                        if c.get("symbol") == sz.symbol
+                                    ),
+                                    False,
+                                ),
                                 "confidence": sz.confidence,
                                 "entry_source": _entry_source,
                                 "strategy_id": _strategy_id,
@@ -5534,6 +5555,15 @@ class OrganismLiveEngine:
                             "predicted_return": 0.01,
                             "confidence": 0.5,
                             "strategy_id": "alpha_baseline",
+                            # Audit 2026-06-11 (measurement integrity): the
+                            # stub previously omitted these, emitting rows
+                            # with empty source/regime that polluted the
+                            # per-source attribution as 'unknown'.
+                            "entry_source": "stub_recovered",
+                            "regime_at_entry": getattr(
+                                self, "_last_regime", "unknown"
+                            ) or "unknown",
+                            "ml_spoke": False,
                         }
 
             # INV-2: _tick_count must be positive after first tick
@@ -5742,192 +5772,11 @@ class OrganismLiveEngine:
     #  DATA PIPELINE
     # ═════════════════════════════════════════════════════════════
 
-    async def _fetch_and_compute_features(
-        self,
-    ) -> dict[str, pd.DataFrame]:
-        """Fetch latest bars and compute ML features for the universe.
-
-        Uses VersionedFeatureStore when available (Phase 3.3),
-        falling back to raw compute_ml_features otherwise.
-        Phase 5: Handles larger dynamic universe with concurrency control.
-        """
-        features_by_symbol: dict[str, pd.DataFrame] = {}
-        spy_df = None
-        _concurrency = asyncio.Semaphore(10)  # Max 10 parallel bar fetches
-        _streaming_active = self._streaming_provider is not None
-
-        # Fetch SPY first (needed for cross-asset features)
-        # When streaming, SPY is already buffered so this is instant
-        spy_df = await self._fetch_bars("SPY")
-
-        def _compute_features_sync(
-            raw_df: pd.DataFrame, sym: str, spy_ref: pd.DataFrame | None,
-        ) -> pd.DataFrame:
-            """CPU-bound feature computation — runs in thread when streaming."""
-            if self._feature_store is not None:
-                feats, _snapshot = self._feature_store.compute_features(
-                    raw_df, symbol=sym,
-                )
-                feats_ml = compute_ml_features(
-                    raw_df,
-                    spy_df=spy_ref if sym != "SPY" else None,
-                    bars_per_day=self._bars_per_day,
-                )
-                feats = feats.reset_index(drop=True)
-                feats_ml = feats_ml.reset_index(drop=True)
-                n_min = min(len(feats), len(feats_ml))
-                feats = feats.iloc[-n_min:].reset_index(drop=True)
-                feats_ml = feats_ml.iloc[-n_min:].reset_index(drop=True)
-                for col in feats.columns:
-                    if col not in feats_ml.columns:
-                        feats_ml[col] = feats[col].values
-                feats = feats_ml
-            else:
-                feats = compute_ml_features(
-                    raw_df,
-                    spy_df=spy_ref if sym != "SPY" else None,
-                    bars_per_day=self._bars_per_day,
-                )
-                feats = feats.reset_index(drop=True)
-
-            # Preserve OHLCV columns
-            n_feats = len(feats)
-            for col in ["open", "high", "low", "close", "volume"]:
-                if col in raw_df.columns and col not in feats.columns:
-                    feats[col] = raw_df[col].values[-n_feats:]
-
-            # Phase 4.2: Multi-timeframe features
-            feats = add_multi_timeframe_features(feats)
-            return feats
-
-        async def _fetch_one(sym: str) -> tuple[str, pd.DataFrame | None]:
-            async with _concurrency:
-                try:
-                    if sym == "SPY" and spy_df is not None:
-                        raw_df = spy_df
-                    else:
-                        raw_df = await self._fetch_bars(sym)
-
-                    if raw_df is None or len(raw_df) < MIN_BARS:
-                        return sym, None
-
-                    # When streaming is active, offload CPU-bound work
-                    # to a thread so the event loop stays responsive
-                    if _streaming_active:
-                        feats = await asyncio.to_thread(
-                            _compute_features_sync, raw_df, sym, spy_df,
-                        )
-                    else:
-                        feats = _compute_features_sync(raw_df, sym, spy_df)
-
-                    return sym, feats
-                except Exception as e:
-                    logger.warning("Failed to fetch/compute %s: %s", sym, e)
-                    return sym, None
-
-        # Fetch all universe symbols concurrently (semaphore-limited)
-        tasks = [_fetch_one(sym) for sym in self._universe]
-        results = await asyncio.gather(*tasks)
-        for sym, feats in results:
-            if feats is not None:
-                features_by_symbol[sym] = feats
-
-        # Also fetch features for open position symbols that aren't in
-        # the universe.  Without this, exit checks are silently skipped
-        # for positions whose symbols rotated out of the universe.
-        try:
-            current_positions = await self._positions_service.get_all_positions()
-            position_syms_missing = [
-                sym for sym in current_positions
-                if sym not in features_by_symbol
-            ]
-            if position_syms_missing:
-                pos_tasks = [_fetch_one(sym) for sym in position_syms_missing]
-                pos_results = await asyncio.gather(*pos_tasks)
-                for sym, feats in pos_results:
-                    if feats is not None:
-                        features_by_symbol[sym] = feats
-                logger.info(
-                    "Fetched features for %d position symbols outside universe: %s",
-                    len(position_syms_missing),
-                    position_syms_missing,
-                )
-        except Exception as e:
-            logger.warning("Failed to fetch position symbol features: %s", e)
-
-        return features_by_symbol
-
-    async def _fetch_bars(self, symbol: str) -> pd.DataFrame | None:
-        """Fetch historical bars for a single symbol.
-
-        When a streaming provider is active, returns bars from the
-        in-memory ring buffer (zero latency).  Falls back to REST
-        if streaming has no data for this symbol.
-
-        Handles both sync clients (AlpacaClient) and async clients
-        (AlpacaDataClient) transparently.
-        """
-        # ── Streaming fast-path ──────────────────────────────────
-        if self._streaming_provider is not None:
-            try:
-                df = self._streaming_provider.get_bars(symbol, LIVE_LOOKBACK)
-                if df is not None and not df.empty and len(df) >= MIN_BARS:
-                    return df
-                # Fall through to REST if streaming buffer insufficient
-            except Exception as e:
-                logger.debug("Streaming fallback for %s: %s", symbol, e)
-
-        try:
-            if hasattr(self._data_client, "get_historical_bars_df"):
-                method = self._data_client.get_historical_bars_df
-                if asyncio.iscoroutinefunction(method):
-                    df = await method(
-                        symbol,
-                        lookback=LIVE_LOOKBACK,
-                        timeframe=LIVE_TIMEFRAME,
-                    )
-                else:
-                    df = await asyncio.to_thread(
-                        method,
-                        symbol,
-                        lookback=LIVE_LOOKBACK,
-                        timeframe=LIVE_TIMEFRAME,
-                    )
-            elif hasattr(self._data_client, "get_historical_data"):
-                method = self._data_client.get_historical_data
-                if asyncio.iscoroutinefunction(method):
-                    df = await method(
-                        symbol,
-                        timeframe=LIVE_TIMEFRAME,
-                        limit=LIVE_LOOKBACK,
-                    )
-                else:
-                    df = await asyncio.to_thread(
-                        method,
-                        symbol,
-                        timeframe=LIVE_TIMEFRAME,
-                        limit=LIVE_LOOKBACK,
-                    )
-            else:
-                return None
-
-            if df is None or df.empty:
-                return None
-
-            # Normalize columns
-            col_map = {
-                "Open": "open",
-                "High": "high",
-                "Low": "low",
-                "Close": "close",
-                "Volume": "volume",
-            }
-            df = df.rename(columns=col_map)
-            return df
-
-        except Exception as e:
-            logger.warning("Bar fetch failed for %s: %s", symbol, e)
-            return None
+    # _fetch_and_compute_features / _fetch_bars extracted to
+    # backend/organism/live_engine_data.py::_DataFeederMixin (2026-06-08
+    # decomposition). Still methods of OrganismLiveEngine via inheritance —
+    # getsource, instance-attribute monkeypatching in tests, and all call sites
+    # are unchanged.
 
     # ═════════════════════════════════════════════════════════════
     #  ORDER SUBMISSION
@@ -6054,6 +5903,13 @@ class OrganismLiveEngine:
             # site shipped without source attribution — adding now.)
             f"_{self._now_fn().astimezone(ZoneInfo('America/New_York')).strftime('%Y%m%d')}"
             f"_{self._session_id}_t{self._tick_count}"
+            # Audit 2026-06-09 finding 3.5: include intent + side + qty.
+            # Previously a fresh entry and a pyramid add for the same symbol
+            # in the same tick produced IDENTICAL keys (one silently deduped),
+            # and conversely the key couldn't distinguish legitimately
+            # different same-tick intents. ``reason`` is "pyramid_add" for
+            # adds and the entry reason otherwise.
+            f"_{reason}_{side}_q{shares}"
         )
 
         # Try to compute a marketable limit price from live quote
@@ -6120,6 +5976,15 @@ class OrganismLiveEngine:
         """
         # Track exit reason for trade attribution
         self._last_exit_reason[symbol] = reason
+        # Audit 2026-06-11 (measurement integrity): mark positions that
+        # scale out in pieces. Per-leg exit accounting does not exist yet —
+        # the eventual single trade row records full size at the FINAL exit
+        # price — so flag the row as approximate for analysis.
+        if "partial" in reason and symbol in self._entry_metadata:
+            try:
+                self._entry_metadata[symbol]["had_partial_exits"] = True
+            except Exception:
+                pass
         side = "buy" if direction < 0 else "sell"
 
         # LONG_ONLY guard: never submit a sell (short-creating) exit when
@@ -6182,6 +6047,11 @@ class OrganismLiveEngine:
             # source attribution — adding now.)
             f"_{self._now_fn().astimezone(ZoneInfo('America/New_York')).strftime('%Y%m%d')}"
             f"_{self._session_id}_t{self._tick_count}"
+            # Audit 2026-06-09 finding 3.5: include intent + qty so distinct
+            # same-tick exit intents (e.g. a pyramid partial-cut AND a full
+            # stop-loss exit) are not silently deduplicated, while identical
+            # intents still dedup.
+            f"_{reason}_q{shares}"
         )
         result = await self._order_service.submit_symbol_order(
             symbol=symbol,
@@ -6354,20 +6224,29 @@ class OrganismLiveEngine:
             if meta is None:
                 continue
 
-            # Use real fill price from exit order when available
+            # Use real fill price from exit order when available.
+            # Audit 2026-06-11 (measurement integrity): tag WHICH rung of
+            # the fallback ladder priced this exit. Rows priced from a bar
+            # close or quote (not a broker fill) diverge from realized PnL
+            # and must be identifiable downstream.
             real_fill = self._last_exit_fill_price.pop(sym, None)
             exit_price: float | None = None
+            _price_source = ""
             if real_fill and real_fill > 0:
                 exit_price = real_fill
+                _price_source = "fill"
             else:
                 # Try DB-based fill price (actual filled exit order)
                 exit_price = await self._lookup_exit_fill_from_db(sym)
+                if exit_price is not None:
+                    _price_source = "db_fill"
                 if exit_price is None:
                     # Get last known price for exit — never fall back to entry_price
                     # (that would create phantom 0-PnL trades).
                     feat_df = features_by_symbol.get(sym)
                     if feat_df is not None and len(feat_df) > 0:
                         exit_price = float(feat_df["close"].iloc[-1])
+                        _price_source = "bar_close"
                     else:
                         # Try latest quote from streaming data provider
                         quote = self._data_client.get_latest_quote(sym)
@@ -6375,6 +6254,7 @@ class OrganismLiveEngine:
                         ask = quote.get("ask")
                         if bid and ask and bid > 0 and ask > 0:
                             exit_price = (bid + ask) / 2.0
+                            _price_source = "quote_mid"
                             logger.info(
                                 "Using quote midpoint for %s exit price: $%.2f "
                                 "(no bar features available)",
@@ -6382,8 +6262,10 @@ class OrganismLiveEngine:
                             )
                         elif bid and bid > 0:
                             exit_price = bid
+                            _price_source = "quote_bid"
                         elif ask and ask > 0:
                             exit_price = ask
+                            _price_source = "quote_ask"
 
             if exit_price is None:
                 logger.warning(
@@ -6449,10 +6331,18 @@ class OrganismLiveEngine:
                 # MFE: max favorable excursion in dollars
                 _highest = _exit_lvl.highest_favorable
                 _mfe = (_highest - entry_price) * direction * shares
-                # MAE: max adverse excursion (worst unrealized loss)
-                # Use stop_loss distance as proxy for MAE (conservative)
-                _stop_dist = abs(entry_price - _exit_lvl.stop_loss)
-                _mae = _stop_dist * shares
+                # MAE (audit 2026-06-11): use the REAL tracked worst-adverse
+                # price when available; fall back to the legacy
+                # stop-distance proxy only for positions whose levels
+                # predate the worst_adverse tracker.
+                _worst = getattr(_exit_lvl, "worst_adverse", 0.0)
+                if _worst and _worst > 0:
+                    _mae = max(
+                        0.0, (entry_price - _worst) * direction * shares
+                    )
+                else:
+                    _stop_dist = abs(entry_price - _exit_lvl.stop_loss)
+                    _mae = _stop_dist * shares
             _entry_time = meta.get("entry_time", 0)
             _time_in_trade = self._time_fn() - _entry_time if _entry_time > 0 else 0.0
 
@@ -6510,6 +6400,11 @@ class OrganismLiveEngine:
                 bars_held_at_exit=_bars_held,
                 time_in_trade_seconds=round(_time_in_trade, 1),
                 closed_at=datetime.fromtimestamp(self._time_fn(), tz=UTC).isoformat() if self._time_fn() > 0 else "",
+                # Audit 2026-06-11 (measurement integrity): fidelity fields.
+                predicted_return_signed=meta.get("predicted_return_signed"),
+                ml_spoke=bool(meta.get("ml_spoke", False)),
+                price_source=_price_source,
+                had_partial_exits=bool(meta.get("had_partial_exits", False)),
             )
             self._all_trades.append(trade)
             # Audit-G BUG-G: do NOT feed reconciliation artifacts into the
@@ -6786,292 +6681,20 @@ class OrganismLiveEngine:
             except Exception:
                 pass
 
-    async def _lookup_entry_fill_from_db(
-        self,
-        symbol: str,
-        meta: dict[str, Any] | None = None,
-    ) -> tuple[float, float] | None:
-        """Look up actual entry fill price/quantity for a trade record.
-
-        Entry orders are submitted asynchronously, so the live tick only has a
-        decision-time quote when it creates exit state.  At close/reconcile time
-        the DB order row has the broker's authoritative fill; use it so brain
-        trade PnL matches order/execution accounting.
-        """
-        if not self._sessionmaker:
-            return None
-        meta = meta or {}
-        if meta.get("entry_source") == "reconciliation_orphan":
-            return None
-
-        order_id = str(meta.get("entry_order_id") or "").strip()
-        entry_since: datetime | None = None
-        raw_submitted_at = str(meta.get("entry_submitted_at") or "").strip()
-        if raw_submitted_at:
-            try:
-                entry_since = datetime.fromisoformat(
-                    raw_submitted_at.replace("Z", "+00:00"),
-                )
-            except ValueError:
-                entry_since = None
-        if entry_since is None:
-            try:
-                raw_entry_time = float(meta.get("entry_time", 0) or 0)
-                if raw_entry_time > 0:
-                    entry_since = datetime.fromtimestamp(raw_entry_time, tz=UTC)
-            except (TypeError, ValueError, OSError):
-                entry_since = None
-
-        try:
-            from sqlalchemy import select, text as sa_text
-            from backend.infra.schemas import Order
-
-            async with self._sessionmaker() as session:
-                rows = []
-                if entry_since is not None:
-                    entry_side = (
-                        "sell"
-                        if float(meta.get("direction", 1.0) or 1.0) < 0
-                        else "buy"
-                    )
-                    stmt = (
-                        select(Order.avg_fill_price, Order.filled_qty)
-                        .where(
-                            Order.symbol == symbol,
-                            Order.side == entry_side,
-                            Order.status == "filled",
-                            Order.submitted_at
-                            >= entry_since - timedelta(minutes=2),
-                            sa_text("attributes->>'source' = 'organism'"),
-                        )
-                        .order_by(Order.submitted_at.asc())
-                    )
-                    rows = list((await session.execute(stmt)).all())
-
-                if not rows and order_id:
-                    try:
-                        order_uuid = uuid.UUID(order_id)
-                    except ValueError:
-                        order_uuid = None
-                    if order_uuid is not None:
-                        stmt = (
-                            select(Order.avg_fill_price, Order.filled_qty)
-                            .where(
-                                Order.id == order_uuid,
-                                Order.symbol == symbol,
-                                Order.status == "filled",
-                                sa_text("attributes->>'source' = 'organism'"),
-                            )
-                        )
-                        rows = list((await session.execute(stmt)).all())
-
-                total_qty = 0.0
-                total_notional = 0.0
-                for price_raw, qty_raw in rows:
-                    if price_raw is None or qty_raw is None:
-                        continue
-                    price = float(price_raw)
-                    qty = float(qty_raw)
-                    if price <= 0 or qty <= 0:
-                        continue
-                    total_qty += qty
-                    total_notional += price * qty
-                if total_qty > 0:
-                    avg_price = total_notional / total_qty
-                    logger.info(
-                        "DB fill price for %s entry: $%.2f qty=%.4f",
-                        symbol,
-                        avg_price,
-                        total_qty,
-                    )
-                    return avg_price, total_qty
-        except Exception as e:
-            logger.debug("DB entry fill lookup failed for %s: %s", symbol, e)
-        return None
-
-    async def _lookup_exit_fill_from_db(self, symbol: str) -> float | None:
-        """Look up actual exit fill price from DB for a recently closed position.
-
-        Queries the most recent filled sell order for this symbol with
-        organism source attribution.  Returns the avg_fill_price if found,
-        or None if no DB session is available or no matching order exists.
-        """
-        if not self._sessionmaker:
-            return None
-        try:
-            from sqlalchemy import select, text as sa_text
-            from backend.infra.schemas import Order
-
-            async with self._sessionmaker() as session:
-                stmt = (
-                    select(Order.avg_fill_price)
-                    .where(
-                        Order.symbol == symbol,
-                        Order.side == "sell",
-                        Order.status == "filled",
-                        sa_text("attributes->>'source' = 'organism'"),
-                    )
-                    .order_by(Order.updated_at.desc())
-                    .limit(1)
-                )
-                result = await session.execute(stmt)
-                row = result.scalar_one_or_none()
-                if row is not None and float(row) > 0:
-                    price = float(row)
-                    logger.info(
-                        "DB fill price for %s exit: $%.2f", symbol, price,
-                    )
-                    return price
-        except Exception as e:
-            logger.debug("DB exit fill lookup failed for %s: %s", symbol, e)
-        return None
+    # _lookup_entry_fill_from_db / _lookup_exit_fill_from_db were extracted to
+    # backend/organism/live_engine_fills.py::_FillLookupMixin (2026-06-08
+    # decomposition). They remain methods of OrganismLiveEngine via inheritance,
+    # so inspect.getsource(OrganismLiveEngine._lookup_*_fill_from_db) and all
+    # behavioural call sites are unchanged.
 
     # ═════════════════════════════════════════════════════════════
     #  POSITION STATE RECONSTRUCTION (Phase 2.5)
     # ═════════════════════════════════════════════════════════════
 
-    async def _reconstruct_position_state(self) -> None:
-        """On startup, reconstruct exit levels and pyramid state
-        from live broker positions.
-
-        This handles the case where the engine restarts mid-trade.
-        """
-        try:
-            positions = await self._positions_service.get_all_positions()
-        except Exception as e:
-            logger.warning("Cannot reconstruct positions: %s", e)
-            return
-
-        if not positions:
-            return
-
-        for sym, pos_data in positions.items():
-            qty = abs(float(pos_data.get("qty", 0)))
-            avg_entry = float(pos_data.get("avg_entry_price", 0))
-            side = pos_data.get("side", "long")
-            direction = 1.0 if side == "long" else -1.0
-
-            if qty <= 0 or avg_entry <= 0:
-                continue
-
-            # Skip symbols that already have exit levels restored from
-            # the brain — those have richer state (trailing stop progress,
-            # partial_tp_taken, stress_tightened) that would be lost if we
-            # overwrite with fresh conservative defaults.
-            if sym in self._exit_levels:
-                logger.debug(
-                    "Skipping reconstruction for %s — exit levels "
-                    "already restored from brain",
-                    sym,
-                )
-                continue
-
-            # Create basic exit levels (conservative defaults)
-            try:
-                feat_df = None
-                if hasattr(self._data_client, "get_historical_data"):
-                    raw = await asyncio.to_thread(
-                        self._data_client.get_historical_data,
-                        sym, timeframe=LIVE_TIMEFRAME, limit=100,
-                    )
-                    if raw is not None and not raw.empty:
-                        col_map = {
-                            "Open": "open", "High": "high",
-                            "Low": "low", "Close": "close",
-                            "Volume": "volume",
-                        }
-                        feat_df = raw.rename(columns=col_map)
-
-                if feat_df is not None and len(feat_df) > 10:
-                    exit_lvl = self.exit_engine.create_exit_levels(
-                        symbol=sym,
-                        direction=direction,
-                        entry_price=avg_entry,
-                        predicted_return=0.02,
-                        features_df=feat_df,
-                        regime=RegimeLabel.UNKNOWN,
-                        prediction_horizon=PREDICTION_HORIZON,
-                    )
-                else:
-                    # Fallback: create exit levels with a 2% ATR estimate.
-                    # Better than nothing — ensures max-loss safety net is
-                    # enforced through normal check_exit() rather than only
-                    # through the emergency safety net added in the tick loop.
-                    fallback_atr = avg_entry * 0.02
-                    fallback_df = pd.DataFrame({
-                        "close": [avg_entry] * 20,
-                        "high": [avg_entry * 1.01] * 20,
-                        "low": [avg_entry * 0.99] * 20,
-                    })
-                    exit_lvl = self.exit_engine.create_exit_levels(
-                        symbol=sym,
-                        direction=direction,
-                        entry_price=avg_entry,
-                        predicted_return=0.02,
-                        features_df=fallback_df,
-                        regime=RegimeLabel.UNKNOWN,
-                        prediction_horizon=PREDICTION_HORIZON,
-                    )
-                    logger.warning(
-                        "Using fallback ATR ($%.2f) for %s — "
-                        "no historical data available",
-                        fallback_atr, sym,
-                    )
-
-                self._exit_levels[sym] = exit_lvl
-
-                atr = exit_lvl.atr_at_entry
-                self._pyramid_positions[sym] = PyramidPosition(
-                    symbol=sym,
-                    direction=direction,
-                    layers=[
-                        PyramidLevel(
-                            shares=int(qty),
-                            entry_price=avg_entry,
-                            bar_added=0,
-                            level=0,
-                        )
-                    ],
-                    # V4 R-F-9 (2026-05-02): symmetry with in-tick orphan
-                    # adoption (line ~5198). The previous startup path used
-                    # `qty * 1.5` while the in-tick path uses `qty` flat,
-                    # an asymmetry that meant a startup-adopted orphan
-                    # would invite a pyramid add to reach 1.5×qty whereas
-                    # the same position adopted in-tick would not. The
-                    # pyramid-block guard (H-7) catches the actual add,
-                    # but eliminating the asymmetry is defense in depth
-                    # and matches the H-7 fix at the in-tick site.
-                    target_total_shares=int(qty),
-                    atr_at_entry=atr,
-                    initial_stop=exit_lvl.stop_loss,
-                    current_stop=exit_lvl.stop_loss,
-                    highest_price=avg_entry,
-                    lowest_price=avg_entry,
-                )
-
-                # Audit-G v2 GAP-1 (2026-05-02): tag startup-recovery orphan
-                # adoptions identically to in-tick orphan adoption (Phase 4).
-                # Otherwise post-restart orphan closes pollute learning.
-                self._entry_metadata[sym] = {
-                    "entry_price": avg_entry,
-                    "entry_tick": 0,
-                    "direction": direction,
-                    "predicted_return": 0.02,
-                    "confidence": 0.5,
-                    "entry_source": "reconciliation_orphan",
-                    "strategy_id": "reconciliation_artifact",
-                }
-
-                logger.info(
-                    "Reconstructed position state for %s: "
-                    "%d shares @ $%.2f",
-                    sym,
-                    int(qty),
-                    avg_entry,
-                )
-
-            except Exception as e:
-                logger.warning("Cannot reconstruct %s: %s", sym, e)
+    # _reconstruct_position_state extracted to
+    # backend/organism/live_engine_state.py::_StateReconstructionMixin
+    # (2026-06-08 decomposition). Still a method of OrganismLiveEngine via
+    # inheritance — getsource and all call sites are unchanged.
 
     # ═════════════════════════════════════════════════════════════
     #  RETRAIN & EVOLVE
@@ -7181,64 +6804,10 @@ class OrganismLiveEngine:
     #  BRAIN PERSISTENCE
     # ═════════════════════════════════════════════════════════════
 
-    async def _persist_telemetry_to_db(self) -> None:
-        """Write latest telemetry snapshot to DB (every 6th tick ≈ 1/min)."""
-        if self._sessionmaker is None:
-            return
-        snap = self._telemetry.latest
-        if snap is None:
-            return
-        try:
-            from backend.infra.schemas import TickTelemetry
-            # V4 N-C-2 (2026-05-02): canonical module is `backend.infra.db`;
-            # `backend.infra.database` does not exist — the ImportError was
-            # silently swallowed by `except Exception`, dropping every
-            # tick_telemetry write since this code path was added.
-            from backend.infra.db import get_session_context
-
-            # Top candidates summary (compact)
-            top_cands = [
-                {"sym": ad.symbol, "score": round(ad.composite_score, 4), "dir": ad.direction}
-                for ad in snap.alpha_details[:5]
-            ]
-            # Exit decisions summary
-            exit_decs = [
-                {"sym": ed.symbol, "bars": ed.bars_held, "pnl": round(ed.pnl_pct, 4),
-                 "nearest": ed.nearest_exit}
-                for ed in snap.exit_details
-            ]
-
-            async with get_session_context() as session:
-                row = TickTelemetry(
-                    tick_number=snap.tick_number,
-                    regime=snap.regime,
-                    equity=snap.equity,
-                    drawdown_pct=snap.drawdown_pct,
-                    open_positions=snap.open_positions,
-                    entries_blocked_reason=snap.filtering.entries_blocked_reason,
-                    orders_submitted=snap.filtering.orders_submitted,
-                    gate_rejections=snap.filtering.to_dict().get("rejections", {}),
-                    top_candidates=top_cands,
-                    exit_decisions=exit_decs,
-                )
-                session.add(row)
-                await session.commit()
-        except Exception as e:
-            # V8 NN-HIGH-1 / Wave-34 (2026-05-03): surface telemetry-write
-            # failures at WARNING (was DEBUG, which silently masked the
-            # zero-rows-in-DB issue audited in V8 BB2 / NN tracks).  The
-            # write is best-effort — we never raise — but the operator
-            # should see persistent failures.
-            try:
-                self._telemetry_write_errors = (
-                    getattr(self, "_telemetry_write_errors", 0) + 1
-                )
-            except Exception:
-                pass
-            logger.warning(
-                "Telemetry DB write FAILED (count=%d): %s",
-                getattr(self, "_telemetry_write_errors", 1), e,
-            )
+    # _persist_telemetry_to_db extracted to
+    # backend/organism/live_engine_telemetry.py::_TelemetryRecordingMixin
+    # (2026-06-08 decomposition). Still a method of OrganismLiveEngine via
+    # inheritance — getsource and all call sites are unchanged.
 
     async def _cleanup_old_telemetry(self) -> None:
         """Delete telemetry rows older than 7 days."""
