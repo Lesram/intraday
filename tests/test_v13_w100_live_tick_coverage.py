@@ -50,9 +50,15 @@ LIVE_ENGINE_PATH = REPO_ROOT / "backend" / "organism" / "live_engine.py"
 # [finding 3.4], pyramid quality-gate call [3.5], overnight force-exit
 # dispatch). The bulk of 3.4 was extracted to
 # _force_exit_overnight_stragglers to stay near the ceiling; the
-# remaining +11 lines are irreducible call sites. Next change must
+# remaining +11 lines are irreducible call sites.
+# Audit 2026-06-11 (measurement integrity): ceiling raised 2,765 → 2,805
+# for the signed-prediction + ML-provenance fields (predicted_return_signed,
+# ml_spoke) added inline at the three candidate-construction sites. The
+# sizer abs()es predicted_return downstream, so the signed value must be
+# captured into the trade record at build time — these are inline dict
+# literals in the tick flow, not extractable to a mixin. Next change must
 # reduce, not raise.
-LIVE_TICK_INNER_LOC_CEILING = 2_765
+LIVE_TICK_INNER_LOC_CEILING = 2_805
 
 
 def _find_live_tick_inner_loc() -> int:

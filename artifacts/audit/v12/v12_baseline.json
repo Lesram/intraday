@@ -4,13 +4,15 @@
   "git_head": "38d1b74aeca56ad8b1153e6b7abc735042827d3c",
   "git_head_short": "38d1b74",
   "live_engine_metrics": {
-    "_live_tick_inner_loc": 2761,
+    "_live_tick_inner_loc": 2802,
     "_live_tick_inner_loc_pre_v12_w72": 2707,
     "_live_tick_inner_loc_post_v12_w75_lint_fixes": 2738,
     "pre_v8_baseline_loc": 2510,
-    "regression_delta": 228,
+    "regression_delta": 269,
     "note": "W72 added DD5-1 helper call + DD5-2 canonical routing + DD5-3 accumulator increment (+17 LOC). W75 added F821 fixes with explanatory comments (+14 LOC). LOC reduction via subroutine extraction is deferred to V13 multi-wave: extracting 200+ LOC from the live tick path in one wave is too risky \u2014 the function has zero direct behavioral test coverage and is the most critical hot path.",
-    "_live_tick_inner_loc_post_audit_2026_06_phase0": 2761
+    "_live_tick_inner_loc_post_audit_2026_06_phase0": 2761,
+    "_live_tick_inner_loc_post_audit_2026_06_11_measurement_integrity": 2802,
+    "note_2026_06_11": "Measurement-integrity audit added predicted_return_signed + ml_spoke fields inline at the three candidate-construction sites (sizer abs()es predicted_return downstream, so the sign must be captured at trade-record build time). Inline dict literals in the tick flow, not extractable to a mixin. Baseline 2761 -> 2802; W100 ceiling 2765 -> 2805."
   },
   "pytest_baseline": {
     "n_failed": 125,

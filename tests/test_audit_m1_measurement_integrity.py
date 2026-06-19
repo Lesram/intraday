@@ -37,8 +37,6 @@ def test_trade_record_fidelity_fields_default_safe():
 
 
 def test_persistence_roundtrip_of_fidelity_fields(tmp_path):
-    import pandas as pd
-
     from backend.organism.brain_persistence import (
         _float_or_none,
         _truthy_cell,
