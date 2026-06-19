@@ -549,9 +549,20 @@ class EvolutionEngine:
 
         current_scale = params.regime_size_scales[epoch_regime]
 
+        # Audit 2026-06-09 (plan 2.5): above-1.0 sizing is risk-EXPANDING
+        # and must clear an evidence bar, not ride a small-sample epoch.
+        # Scale-ups beyond 1.0 require >= 100 resolved trades in this
+        # regime (cumulative); the 1.5 ceiling only becomes reachable with
+        # real evidence. Scale-DOWNS (risk-reducing) are never gated.
+        _regime_trade_count = int(
+            params.regime_trade_counts.get(epoch_regime, 0)
+            if hasattr(params, "regime_trade_counts") else 0
+        ) or n
+        _up_ceiling = 1.5 if _regime_trade_count >= 100 else 1.0
+
         # Positive average → this regime is working, scale up (gently)
         if avg_pnl > 0:
-            new_scale = min(current_scale * 1.08, 1.5)
+            new_scale = min(current_scale * 1.08, _up_ceiling)
         elif avg_pnl < 0:
             new_scale = max(current_scale * 0.90, 0.05)
         else:
@@ -920,10 +931,16 @@ class EvolutionEngine:
     # ═════════════════════════════════════════════════════════════
 
     # Thresholds for enabling / disabling shorts
+    # Audit 2026-06-09 (plan 2.5): re-enabling shorts from a 10-trade EMA
+    # was statistically meaningless (a coin flips 55%+ over 10 trials ~25%
+    # of the time) and defeated the conservative shorts-start-disabled
+    # guard. Now requires 100 resolved short observations — Gate-2-style
+    # evidence, not noise.
     _SHORT_ENABLE_WR = 0.55       # need 55% win rate on shorts to enable
     _SHORT_ENABLE_PNL = 10.0      # need avg PnL > $10 on shorts
     _SHORT_DISABLE_WR = 0.35      # disable if WR drops below 35%
-    _SHORT_MIN_TRADES = 10        # minimum short trades to judge
+    _SHORT_MIN_TRADES = 10        # minimum short trades to update EMA stats
+    _SHORT_ENABLE_MIN_TRADES = 100  # plan 2.5: evidence bar to ENABLE shorts
 
     def _evolve_short_side(
         self,
@@ -970,6 +987,10 @@ class EvolutionEngine:
             return  # Not enough data
 
         if not params.shorts_enabled:
+            # Plan 2.5: ENABLING is a risk-expanding decision and needs a
+            # much higher evidence bar than the EMA-update threshold.
+            if params.short_trade_count < self._SHORT_ENABLE_MIN_TRADES:
+                return
             # Check if we should enable
             if (
                 params.short_win_rate >= self._SHORT_ENABLE_WR

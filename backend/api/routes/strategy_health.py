@@ -263,7 +263,7 @@ async def strategy_health(
         if attribution is not None:
             payload["strategy_attribution"] = attribution
 
-    # V13 W94: windowed projection.
+    # V13 W94: windowed projection. (continues below)
     if window is not None:
         prefix = f"{window}_"
         slim: dict[str, Any] = {
@@ -292,3 +292,36 @@ async def strategy_health(
         return slim
 
     return payload
+
+
+@router.get("/edge")
+async def edge_health(
+    window: int = 100,
+    _current_user: AuthenticatedUser = Depends(require_trader),
+) -> dict[str, Any]:
+    """Audit 2026-06-09 (plan 1.3): live edge monitor.
+
+    Returns rolling corr(predicted_return, actual_return),
+    corr(confidence, correct_direction), expectancy/PF/win-rate (full
+    sample + rolling window), breakdowns by entry_source and regime, and
+    any active edge alerts. A mature rolling window with corr <= 0 means
+    the signal stack is not adding information — this is the number the
+    go-live gates key on.
+    """
+    from backend.organism import edge_monitor as _em
+
+    if not 10 <= window <= 1000:
+        raise HTTPException(
+            status_code=400, detail="window must be between 10 and 1000"
+        )
+    brain_dir = _resolve_brain_dir()
+    rows = _read_csv_rows(brain_dir)
+    if rows is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"trade_history.csv not found under {brain_dir}",
+        )
+    metrics = _em.compute_edge_metrics(rows, window=window)
+    metrics["alerts"] = _em.evaluate_edge_alerts(metrics)
+    metrics["brain_dir"] = str(brain_dir)
+    return metrics

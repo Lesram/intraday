@@ -107,6 +107,23 @@ def _train_in_process(
             signal_gen._reg = pickle.loads(signal_gen_state["reg_pickle"])
         if signal_gen_state.get("is_trained"):
             signal_gen._is_trained = True
+
+        # Audit 2026-06-09 finding 3.2: materialize INDEPENDENT copies of the
+        # OLD model artifacts so the incumbent can be re-scored on the NEW
+        # model's validation holdout (same-holdout comparison — mirrors
+        # continuous_learner._validate_new_model S17). NB: train() calls
+        # .fit() on self._clf/_reg IN PLACE, so holding a reference to the
+        # restored objects would alias the retrained model — deserialize
+        # fresh copies from the pickles instead.
+        old_clf = (
+            pickle.loads(signal_gen_state["clf_pickle"])
+            if signal_gen_state.get("clf_pickle") else None
+        )
+        old_reg = (
+            pickle.loads(signal_gen_state["reg_pickle"])
+            if signal_gen_state.get("reg_pickle") else None
+        )
+        old_was_trained = bool(signal_gen_state.get("is_trained"))
         if signal_gen_state.get("feature_cols"):
             signal_gen._feature_cols = signal_gen_state["feature_cols"]
 
@@ -139,10 +156,26 @@ def _train_in_process(
         from backend.organism.continuous_learner import acceptance_gate
         from backend.organism.ml_signal import ModelMetrics as _MM
 
-        # Reconstruct old metrics for comparison (if available)
+        # Audit 2026-06-09 finding 3.2 — preferred path: same-holdout
+        # comparison. Score the OLD model on the NEW model's validation set
+        # (train() above cached it as _last_val_*). Only when this succeeds
+        # is the relative "beat the incumbent" promotion path trustworthy.
         old_metrics_obj = None
+        fair_baseline = False
+        if old_was_trained and old_clf is not None and old_reg is not None:
+            try:
+                old_metrics_obj = signal_gen.evaluate_external_clf_reg(old_clf, old_reg)
+                if old_metrics_obj is not None:
+                    fair_baseline = True
+            except Exception:  # noqa: BLE001 - model libs raise mixed types
+                old_metrics_obj = None
+
+        # Fallback: historical metrics dict from a DIFFERENT window
+        # (apples-to-oranges). Kept for diagnostics, but the relative path
+        # stays disabled (allow_relative=False) so a deflated stale baseline
+        # cannot wave through a weak challenger (Data Leakage Audit Concern 1).
         old_metrics_dict = learner_state.get("old_model_metrics")
-        if old_metrics_dict:
+        if old_metrics_obj is None and old_metrics_dict:
             old_metrics_obj = _MM(
                 generation=old_metrics_dict.get("generation", 0),
                 accuracy=old_metrics_dict.get("accuracy", 0),
@@ -164,6 +197,9 @@ def _train_in_process(
         accepted, rejection_reason = acceptance_gate(
             metrics,
             old_metrics=old_metrics_obj,
+            # Relative promotion only after a verified same-holdout eval
+            # (audit 2026-06-09 finding 3.2).
+            allow_relative=fair_baseline,
         )
 
         # Helper to build train_metrics dict (includes calibration + effective fields)
@@ -184,6 +220,10 @@ def _train_in_process(
                 "candidate_calibration_sample_count": getattr(m, "candidate_calibration_sample_count", 0),
                 "candidate_calibration_monotonic": getattr(m, "candidate_calibration_monotonic", True),
                 "candidate_calibration_error": getattr(m, "candidate_calibration_error", 0.0),
+                # Plan 2.2: realized-correlation gate field must survive the
+                # worker→parent round trip.
+                "val_pred_actual_corr": getattr(m, "val_pred_actual_corr", None),
+                "val_pred_actual_corr_n": getattr(m, "val_pred_actual_corr_n", 0),
                 "evaluated_at": getattr(m, "evaluated_at", ""),
             }
 
@@ -560,6 +600,58 @@ class BackgroundTrainer:
         )
         return True, self._last_result
 
+    def _preserve_incumbent_for_rollback(
+        self, signal_gen: Any, result: Any,
+    ) -> None:
+        """Plan 2.3: snapshot the incumbent model + append a swap-audit
+        record before a retrained artifact replaces live inference.
+
+        Writes to ``<brain_dir>/previous_model/`` (clf/reg pickles +
+        incumbent metrics) and appends to
+        ``<brain_dir>/model_swap_audit.jsonl``. Rollback = load the
+        previous_model pickles back into the signal generator.
+        """
+        import json
+        import os
+        import pickle
+        from pathlib import Path
+
+        brain_dir = Path(os.environ.get("ORGANISM_BRAIN_DIR", "organism_brain"))
+        if not brain_dir.is_dir():
+            return
+        prev_dir = brain_dir / "previous_model"
+        prev_dir.mkdir(parents=True, exist_ok=True)
+
+        old_metrics = None
+        if getattr(signal_gen, "_latest_metrics", None) is not None:
+            try:
+                old_metrics = signal_gen._latest_metrics.to_dict()
+            except Exception:
+                old_metrics = None
+
+        if getattr(signal_gen, "_clf", None) is not None:
+            (prev_dir / "clf.pkl").write_bytes(pickle.dumps(signal_gen._clf))
+        if getattr(signal_gen, "_reg", None) is not None:
+            (prev_dir / "reg.pkl").write_bytes(pickle.dumps(signal_gen._reg))
+        (prev_dir / "metrics.json").write_text(json.dumps({
+            "generation": getattr(signal_gen, "generation", None),
+            "metrics": old_metrics,
+        }))
+
+        audit_entry = {
+            "swapped_at": self._now_fn().isoformat(),
+            "old_generation": getattr(signal_gen, "generation", None),
+            "new_metrics": result.train_metrics or {},
+            "rejection_reason": result.rejection_reason,
+            "rollback_artifacts": str(prev_dir),
+        }
+        with open(brain_dir / "model_swap_audit.jsonl", "a") as fh:
+            fh.write(json.dumps(audit_entry) + "\n")
+        logger.info(
+            "Model-swap audit: incumbent gen=%s preserved at %s",
+            audit_entry["old_generation"], prev_dir,
+        )
+
     def apply_result(
         self,
         signal_gen: Any,
@@ -580,6 +672,22 @@ class BackgroundTrainer:
         result = self._last_result
         if result is None or not result.accepted:
             return evolved_params
+
+        # Audit 2026-06-09 (plan 2.3): before any swap, preserve the
+        # INCUMBENT artifacts and write a swap-audit record. Retrained
+        # models previously replaced live inference with no staging and no
+        # one-command rollback path. The saved artifacts + audit trail
+        # enable instant rollback, and the live edge monitor
+        # (backend/organism/edge_monitor.py) provides the post-swap
+        # detection: a mature rolling window with corr <= 0 after a swap
+        # is the rollback trigger.
+        try:
+            self._preserve_incumbent_for_rollback(signal_gen, result)
+        except Exception as _preserve_err:
+            logger.warning(
+                "Model-swap audit: incumbent preservation failed "
+                "(swap proceeds): %s", _preserve_err,
+            )
 
         # Swap classifier
         if result.new_clf_state:
@@ -631,6 +739,8 @@ class BackgroundTrainer:
                 candidate_calibration_sample_count=tm.get("candidate_calibration_sample_count", 0),
                 candidate_calibration_monotonic=tm.get("candidate_calibration_monotonic", True),
                 candidate_calibration_error=tm.get("candidate_calibration_error", 0.0),
+                val_pred_actual_corr=tm.get("val_pred_actual_corr"),
+                val_pred_actual_corr_n=tm.get("val_pred_actual_corr_n", 0),
                 evaluated_at=tm.get("evaluated_at", ""),
             )
             if "generation" in tm:

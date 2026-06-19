@@ -41,6 +41,10 @@ class ExitLevels:
     regime_at_entry: str
     highest_favorable: float  # Best price since entry
     bars_held: int = 0
+    # Audit 2026-06-11 (measurement integrity): worst price since entry —
+    # enables a REAL max-adverse-excursion. The trade record's mae was
+    # previously a static stop-distance proxy, never a measurement.
+    worst_adverse: float = 0.0  # 0.0 = uninitialized (legacy state)
 
     # ── v2 additions ──
     partial_tp_price: float = 0.0    # Price at which to take partial TP
@@ -74,6 +78,7 @@ class ExitLevels:
             "atr": round(float(self.atr_at_entry), 4),
             "regime_at_entry": str(self.regime_at_entry),
             "highest_favorable": round(float(self.highest_favorable), 4),
+            "worst_adverse": round(float(self.worst_adverse), 4),
             "bars_held": int(self.bars_held),
             "partial_tp_price": round(float(self.partial_tp_price), 4),
             "partial_tp_taken": bool(self.partial_tp_taken),
@@ -226,23 +231,55 @@ class AdaptiveExitEngine:
 
     @classmethod
     def for_timeframe(cls, timeframe: str) -> "AdaptiveExitEngine":
-        """Factory that returns an exit engine tuned for the given bar timeframe."""
+        """Factory that returns an exit engine tuned for the given bar timeframe.
+
+        Audit 2026-06-09 (plan 3.1): key exit parameters are
+        env-overridable so the exit-logic A/B experiment can vary them
+        per-arm (subprocess + env) without code edits. Defaults unchanged.
+        Live trade data motivated this: active exits (stop/trail/FTF) lost
+        −$1,115 while passive exits made +$739, and 63% of trades that
+        reached positive MFE still closed red.
+        """
+        import os
+
+        def _f(name: str, default: float) -> float:
+            try:
+                return float(os.getenv(name, default))
+            except (TypeError, ValueError):
+                return default
+
+        def _i(name: str, default: int) -> int:
+            try:
+                return int(os.getenv(name, default))
+            except (TypeError, ValueError):
+                return default
+
         is_intraday = timeframe in ("1Min", "5Min", "15Min", "1Hour")
         if is_intraday:
             return cls(
-                atr_multiplier=1.0, profit_r_multiple=3.0,
-                trailing_start_atr=2.0, trailing_distance_atr=1.5,
-                max_bars_held=60, time_decay_start=40,  # 60 min max, 40 min decay (bar-based)
-                partial_tp_r=3.0, partial_tp_pct=0.20,
-                max_loss_pct=0.08, profit_lock_r=2.0,
+                atr_multiplier=_f("ORGANISM_EXIT_ATR_MULT", 1.0),
+                profit_r_multiple=_f("ORGANISM_EXIT_PROFIT_R", 3.0),
+                trailing_start_atr=_f("ORGANISM_EXIT_TRAIL_START_ATR", 2.0),
+                trailing_distance_atr=_f("ORGANISM_EXIT_TRAIL_DIST_ATR", 1.5),
+                max_bars_held=_i("ORGANISM_EXIT_MAX_BARS", 60),
+                time_decay_start=_i("ORGANISM_EXIT_DECAY_START", 40),
+                partial_tp_r=_f("ORGANISM_EXIT_PARTIAL_TP_R", 3.0),
+                partial_tp_pct=_f("ORGANISM_EXIT_PARTIAL_TP_PCT", 0.20),
+                max_loss_pct=0.08,
+                profit_lock_r=_f("ORGANISM_EXIT_PROFIT_LOCK_R", 2.0),
             )
         else:  # daily
             return cls(
-                atr_multiplier=1.5, profit_r_multiple=4.0,
-                trailing_start_atr=2.0, trailing_distance_atr=2.5,
-                max_bars_held=40, time_decay_start=30,
-                partial_tp_r=3.0, partial_tp_pct=0.25,
-                max_loss_pct=0.08, profit_lock_r=2.0,
+                atr_multiplier=_f("ORGANISM_EXIT_ATR_MULT", 1.5),
+                profit_r_multiple=_f("ORGANISM_EXIT_PROFIT_R", 4.0),
+                trailing_start_atr=_f("ORGANISM_EXIT_TRAIL_START_ATR", 2.0),
+                trailing_distance_atr=_f("ORGANISM_EXIT_TRAIL_DIST_ATR", 2.5),
+                max_bars_held=_i("ORGANISM_EXIT_MAX_BARS", 40),
+                time_decay_start=_i("ORGANISM_EXIT_DECAY_START", 30),
+                partial_tp_r=_f("ORGANISM_EXIT_PARTIAL_TP_R", 3.0),
+                partial_tp_pct=_f("ORGANISM_EXIT_PARTIAL_TP_PCT", 0.25),
+                max_loss_pct=0.08,
+                profit_lock_r=_f("ORGANISM_EXIT_PROFIT_LOCK_R", 2.0),
             )
 
     # ── public API ────────────────────────────────────────────────────────
@@ -394,6 +431,14 @@ class AdaptiveExitEngine:
             if levels.highest_favorable == levels.entry_price:
                 levels.highest_favorable = current_price
             levels.highest_favorable = min(levels.highest_favorable, current_price)
+
+        # Audit 2026-06-11: track worst ADVERSE price (real MAE source).
+        if levels.worst_adverse <= 0:
+            levels.worst_adverse = current_price
+        elif direction > 0:
+            levels.worst_adverse = min(levels.worst_adverse, current_price)
+        else:
+            levels.worst_adverse = max(levels.worst_adverse, current_price)
 
         # 0. ABSOLUTE MAX LOSS — safety net regardless of ATR calculations.
         if levels.entry_price > 0:

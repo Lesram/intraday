@@ -122,6 +122,8 @@ async def _loop(app, interval_seconds: int, symbols: list[str], lookback: int, t
                         data_client=data_client,
                         order_service=order_service,
                         strategy_engine=engine,
+                        # Audit 2026-06-09 finding 3.1: hard kill-switch coverage.
+                        governance=getattr(app.state, "organism_governance", None),
                     )
 
                     await session.commit()

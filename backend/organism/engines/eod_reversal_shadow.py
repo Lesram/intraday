@@ -1,4 +1,13 @@
-"""Shadow-only single-name end-of-day reversal engine."""
+"""Shadow-only single-name end-of-day reversal engine.
+
+DEPRECATED (audit 2026-06-09, plan 3.3): single-name EOD reversal has no
+support in the intraday-momentum literature (which documents CONTINUATION
+on index ETFs — see eod_scanner.py), and this engine traded the same
+window in the opposite direction as eod_scanner with no validation for
+either. Do not promote. Scheduled for deletion; kept only so historical
+shadow telemetry remains interpretable. The live EOD path is restricted to
+SPY/QQQ continuation via ORGANISM_EOD_UNIVERSE.
+"""
 
 from __future__ import annotations
 

@@ -45,7 +45,14 @@ LIVE_ENGINE_PATH = REPO_ROOT / "backend" / "organism" / "live_engine.py"
 # small refactor (e.g. adding a missing comment) doesn't blow the gate.
 # Actual reduction is V13.1+ work; the goal of W100 is "no regression
 # while we accumulate coverage".
-LIVE_TICK_INNER_LOC_CEILING = 2_750
+# Audit 2026-06-09 remediation: ceiling raised 2,750 → 2,765 for the
+# safety additions inside the tick loop (EOD-flatten escalation hook
+# [finding 3.4], pyramid quality-gate call [3.5], overnight force-exit
+# dispatch). The bulk of 3.4 was extracted to
+# _force_exit_overnight_stragglers to stay near the ceiling; the
+# remaining +11 lines are irreducible call sites. Next change must
+# reduce, not raise.
+LIVE_TICK_INNER_LOC_CEILING = 2_765
 
 
 def _find_live_tick_inner_loc() -> int:

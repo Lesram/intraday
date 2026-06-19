@@ -67,8 +67,28 @@ MAX_BACKUPS = 5
 MAX_TRADE_ROWS = 10_000          # Phase 3.2: keep latest N trades in active CSV
 ARCHIVE_PREFIX = "trade_history_archive_"
 LOCK_FILE = ".brain.lock"
+# Audit 2026-06-09 finding 3.6: save() deletes this before its swap and
+# rewrites it after — a brain dir without it was interrupted mid-swap.
+SAVE_COMPLETE_SENTINEL = ".save_complete"
 CANDIDATE_FILTER_SHADOW_TELEMETRY_FILE = "candidate_filter_shadow_telemetry.jsonl"
 STRATEGY_EVIDENCE_TELEMETRY_FILE = "strategy_evidence_events.jsonl"
+
+
+def _float_or_none(value: Any) -> "float | None":
+    """CSV-safe float parse: ''/NaN/None → None (2026-06-11 fields)."""
+    try:
+        if value is None or value == "":
+            return None
+        f = float(value)
+        import math as _math
+        return f if _math.isfinite(f) else None
+    except (TypeError, ValueError):
+        return None
+
+
+def _truthy_cell(value: Any) -> bool:
+    """CSV-safe bool parse for the 2026-06-11 fidelity flags."""
+    return str(value).strip().lower() in {"1", "true", "yes", "y"}
 
 
 def _truthy_flag(value: Any) -> bool:
@@ -238,6 +258,62 @@ class OrganismBrain:
             self._loaded = False
             return False
 
+        # Audit 2026-06-09 finding 3.6 (root cause of the 2026-06-09
+        # corrupt_head_* snapshots): load() previously ran LOCKLESS while
+        # save()'s "atomic" swap is really a file-by-file shutil.move loop.
+        # A load racing a save observed a half-swapped directory, threw,
+        # and quarantined a perfectly good brain as corrupt — then the
+        # backup restore raced the still-running save. Now: load takes the
+        # same exclusive lock save() holds (briefly retrying while a save
+        # finishes its swap), so a mid-swap state can never be observed.
+        import time as _time
+
+        _lock = _BrainLock(self.brain_dir / LOCK_FILE)
+        _lock_acquired = False
+        for _attempt in range(40):  # up to ~20 s for a slow save to finish
+            try:
+                _lock.acquire()
+                _lock_acquired = True
+                break
+            except RuntimeError:
+                if _attempt == 0:
+                    logger.info(
+                        "Brain load: save in progress (lock held) — waiting"
+                    )
+                _time.sleep(0.5)
+        if not _lock_acquired:
+            logger.warning(
+                "Brain load: could not acquire lock after 20s — "
+                "proceeding unlocked (legacy behavior)"
+            )
+
+        try:
+            return self._load_locked()
+        finally:
+            if _lock_acquired:
+                _lock.release()
+
+    def _load_locked(self) -> bool:
+        """Body of load(); caller holds the brain lock."""
+        # Audit 2026-06-09 finding 3.6: detect crash-mid-swap. save()
+        # removes the sentinel before the swap and rewrites it after, so a
+        # missing sentinel means either (a) the previous save died mid-swap
+        # (SIGKILL/OOM) or (b) a legacy pre-sentinel brain. We log loudly
+        # and attempt the normal load — a genuinely half-swapped directory
+        # still fails into the existing backup-restore path, but now with
+        # an accurate diagnosis in the log; a legacy-but-healthy brain
+        # loads fine and gains a sentinel below.
+        _sentinel = self.brain_dir / SAVE_COMPLETE_SENTINEL
+        _manifest_file = self.brain_dir / MANIFEST_FILE
+        if _manifest_file.is_file() and not _sentinel.is_file():
+            logger.warning(
+                "Brain HEAD has no save-completion sentinel — either a "
+                "legacy (pre-sentinel) brain or the previous save() died "
+                "mid-swap. Attempting load; if it fails, the corrupt-head "
+                "snapshot should be read as a MID-SWAP CRASH, not data "
+                "corruption."
+            )
+
         try:
             self._load_manifest()
             self._load_ml_models()
@@ -253,6 +329,14 @@ class OrganismBrain:
             self._load_regime_state()
             self._load_evaluation_event_history()
             self._loaded = True
+
+            # 3.6: a successful load proves the HEAD is coherent — ensure
+            # the completion sentinel exists (upgrades legacy brains).
+            try:
+                if not _sentinel.is_file():
+                    _sentinel.write_text(datetime.now(timezone.utc).isoformat())
+            except Exception:
+                pass
 
             gen = self._manifest.get("generation", 0)
             runs = self._manifest.get("total_runs", 0)
@@ -570,6 +654,15 @@ class OrganismBrain:
                 f for f in self.brain_dir.iterdir()
                 if not _preserve_during_swap(f)
             )
+            # Audit 2026-06-09 finding 3.6: drop the completion sentinel
+            # BEFORE the (non-atomic) file-by-file swap. If this process
+            # dies mid-swap, the missing sentinel tells the next load()
+            # exactly what happened.
+            _sentinel_path = self.brain_dir / SAVE_COMPLETE_SENTINEL
+            try:
+                _sentinel_path.unlink()
+            except FileNotFoundError:
+                pass
             try:
                 if has_existing:
                     # Move current files to old_dir
@@ -593,6 +686,9 @@ class OrganismBrain:
                 raise
             finally:
                 shutil.rmtree(old_dir, ignore_errors=True)
+
+            # Swap finished — rewrite the completion sentinel (3.6).
+            _sentinel_path.write_text(datetime.now(timezone.utc).isoformat())
 
             shutil.rmtree(tmp_dir, ignore_errors=True)
 
@@ -834,6 +930,16 @@ class OrganismBrain:
                     bars_held_at_exit=td.get("bars_held_at_exit", 0),
                     time_in_trade_seconds=td.get("time_in_trade_seconds", 0.0),
                     closed_at=td.get("closed_at", ""),
+                    # 2026-06-11 measurement-integrity fields (absent in
+                    # legacy rows → None/False defaults).
+                    predicted_return_signed=_float_or_none(
+                        td.get("predicted_return_signed")
+                    ),
+                    ml_spoke=_truthy_cell(td.get("ml_spoke")),
+                    price_source=str(td.get("price_source", "") or ""),
+                    had_partial_exits=_truthy_cell(
+                        td.get("had_partial_exits")
+                    ),
                 ))
 
             # Restore evaluation event history (J4)
@@ -1636,6 +1742,15 @@ class OrganismBrain:
                 "bars_held_at_exit": getattr(t, "bars_held_at_exit", 0),
                 "time_in_trade_seconds": round(getattr(t, "time_in_trade_seconds", 0.0), 2),
                 "closed_at": getattr(t, "closed_at", ""),
+                # Audit 2026-06-11 (measurement integrity): fidelity fields.
+                "predicted_return_signed": getattr(
+                    t, "predicted_return_signed", None
+                ),
+                "ml_spoke": bool(getattr(t, "ml_spoke", False)),
+                "price_source": getattr(t, "price_source", ""),
+                "had_partial_exits": bool(
+                    getattr(t, "had_partial_exits", False)
+                ),
             })
         df = pd.DataFrame(records)
 
@@ -2260,6 +2375,14 @@ class OrganismBrain:
                     bars_held_at_exit=td.get("bars_held_at_exit", 0),
                     time_in_trade_seconds=td.get("time_in_trade_seconds", 0.0),
                     closed_at=td.get("closed_at", ""),
+                    predicted_return_signed=_float_or_none(
+                        td.get("predicted_return_signed")
+                    ),
+                    ml_spoke=_truthy_cell(td.get("ml_spoke")),
+                    price_source=str(td.get("price_source", "") or ""),
+                    had_partial_exits=_truthy_cell(
+                        td.get("had_partial_exits")
+                    ),
                 ))
             return records
         except Exception as e:

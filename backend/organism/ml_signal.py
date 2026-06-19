@@ -118,6 +118,11 @@ class ModelMetrics:
     candidate_calibration_sample_count: int = 0
     candidate_calibration_monotonic: bool = True
     candidate_calibration_error: float = 0.0
+    # Audit 2026-06-09 (plan 2.2): realized predictive correlation on the
+    # candidate's validation holdout — corr(predicted_return, actual_return).
+    # None = not computable (insufficient samples / zero variance).
+    val_pred_actual_corr: "float | None" = None
+    val_pred_actual_corr_n: int = 0
     evaluated_at: str = ""  # ISO-8601 UTC when evaluated (J3)
 
     def to_dict(self) -> dict[str, Any]:
@@ -138,6 +143,11 @@ class ModelMetrics:
             "candidate_calibration_sample_count": self.candidate_calibration_sample_count,
             "candidate_calibration_monotonic": self.candidate_calibration_monotonic,
             "candidate_calibration_error": round(self.candidate_calibration_error, 4),
+            "val_pred_actual_corr": (
+                round(self.val_pred_actual_corr, 6)
+                if self.val_pred_actual_corr is not None else None
+            ),
+            "val_pred_actual_corr_n": self.val_pred_actual_corr_n,
             "evaluated_at": self.evaluated_at,
         }
 
@@ -774,14 +784,22 @@ class MLSignalGenerator:
         Each symbol's chunk is split independently: first (1 - val_ratio)
         bars go to train, the rest to validation.  This ensures no future
         data from any symbol leaks into the training set.
+
+        Audit 2026-06-09 (plan 2.1): a PURGE GAP of ``prediction_horizon``
+        bars is dropped between train and validation in every chunk. The
+        last training row's label is built from ``close[t+H]`` — without
+        the purge, that bar is the first validation row's feature bar (a
+        one-bar-per-chunk leak at H=1 that grows with the horizon).
         """
+        purge = max(0, int(getattr(self, "prediction_horizon", 1)))
         chunks = getattr(self, "_chunk_sizes", [])
         if not chunks or sum(chunks) != len(X_all):
-            # Fallback to simple temporal split
+            # Fallback to simple temporal split (purged)
             split_idx = int(len(X_all) * (1 - val_ratio))
+            val_start = min(len(X_all), split_idx + purge)
             return (
                 (X_all[:split_idx], y_dir_all[:split_idx], y_ret_all[:split_idx]),
-                (X_all[split_idx:], y_dir_all[split_idx:], y_ret_all[split_idx:]),
+                (X_all[val_start:], y_dir_all[val_start:], y_ret_all[val_start:]),
             )
 
         train_X, train_dir, train_ret = [], [], []
@@ -789,12 +807,13 @@ class MLSignalGenerator:
         offset = 0
         for size in chunks:
             s = int(size * (1 - val_ratio))
+            v = min(size, s + purge)  # purge gap: skip H bars after train
             train_X.append(X_all[offset : offset + s])
             train_dir.append(y_dir_all[offset : offset + s])
             train_ret.append(y_ret_all[offset : offset + s])
-            val_X.append(X_all[offset + s : offset + size])
-            val_dir.append(y_dir_all[offset + s : offset + size])
-            val_ret.append(y_ret_all[offset + s : offset + size])
+            val_X.append(X_all[offset + v : offset + size])
+            val_dir.append(y_dir_all[offset + v : offset + size])
+            val_ret.append(y_ret_all[offset + v : offset + size])
             offset += size
 
         return (
@@ -837,6 +856,23 @@ class MLSignalGenerator:
             correct_sign = np.sign(ret_pred) == np.sign(y_ret_val)
             metrics.hit_rate = float(np.mean(correct_sign))
             metrics.mean_pred_return = float(np.mean(ret_pred))
+            # Audit 2026-06-09 (plan 2.2): realized predictive correlation —
+            # corr(predicted_return, actual_return) on the holdout. This is
+            # the number that distinguishes an edge from noise; the project's
+            # own forensics measured ≈0.056 live and the gate never checked
+            # it. NaN-safe: zero-variance predictions yield 0.0.
+            if (
+                len(ret_pred) >= 5
+                and float(np.std(ret_pred)) > 0
+                and float(np.std(y_ret_val)) > 0
+            ):
+                _corr = float(np.corrcoef(
+                    np.asarray(ret_pred, dtype=float),
+                    np.asarray(y_ret_val, dtype=float),
+                )[0, 1])
+                if np.isfinite(_corr):
+                    metrics.val_pred_actual_corr = _corr
+                    metrics.val_pred_actual_corr_n = int(len(ret_pred))
         except Exception:
             pass
 

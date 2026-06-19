@@ -4,7 +4,16 @@ from __future__ import annotations
 
 import numpy as np
 import pandas as pd
+import pytest
 from datetime import time as dtime
+
+
+@pytest.fixture(autouse=True)
+def _widen_eod_universe(monkeypatch):
+    """Audit 2026-06-09 (plan 3.3): production restricts the EOD scanner
+    to index ETFs (SPY,QQQ). These mechanism tests use synthetic symbols,
+    so widen the universe for the duration of each test."""
+    monkeypatch.setenv("ORGANISM_EOD_UNIVERSE", "TEST,A,B,C,D,AAA,BBB,CCC,SPY,QQQ")
 
 
 def _make_eod_df(

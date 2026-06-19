@@ -456,13 +456,20 @@ class AppSettings:
 
     @property
     def trading_execution_mode(self) -> str:  # noqa: N802
-        """§2.1 FIX: Consolidated trading execution mode from env."""
-        mode = os.getenv("TRADING_EXECUTION_MODE", "execute").strip().lower()
+        """§2.1 FIX: Consolidated trading execution mode from env.
+
+        Audit 2026-06-09 finding 3.3 (fail-closed): a MISSING or
+        unrecognized ``TRADING_EXECUTION_MODE`` now resolves to ``shadow``,
+        never ``execute``. Sending real orders must be an explicit,
+        deliberate configuration (``paper``/``live``/``execute``), not the
+        accident of an unset environment variable.
+        """
+        mode = os.getenv("TRADING_EXECUTION_MODE", "shadow").strip().lower()
         if mode in ("paper", "live"):
             return "execute"
         if mode in ("execute", "shadow", "dry_run"):
             return mode
-        return "execute"
+        return "shadow"
 
     @property
     def alpaca_base_url(self) -> str:

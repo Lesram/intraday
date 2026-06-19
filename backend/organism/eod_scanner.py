@@ -208,6 +208,15 @@ class EODMomentumScanner:
         except Exception:
             return 0.0
 
+    @staticmethod
+    def _allowed_symbols() -> frozenset:
+        """Plan 3.3: EOD continuation trades index ETFs only by default.
+        Override via ORGANISM_EOD_UNIVERSE (comma-separated) if evidence
+        for other symbols ever materializes."""
+        import os
+        raw = os.getenv("ORGANISM_EOD_UNIVERSE", "SPY,QQQ")
+        return frozenset(s.strip().upper() for s in raw.split(",") if s.strip())
+
     def scan(
         self,
         features_by_symbol: dict[str, pd.DataFrame],
@@ -235,6 +244,12 @@ class EODMomentumScanner:
         candidates: list[EODCandidate] = []
 
         for symbol, df in features_by_symbol.items():
+            # Audit 2026-06-09 (plan 3.3): the intraday-momentum
+            # continuation effect (Heston-Korajczyk-Sadka / Gao et al.) is
+            # documented on INDEX ETFs, not single names. Restrict the
+            # scanner to the allowed universe (env-overridable).
+            if symbol not in self._allowed_symbols():
+                continue
             if symbol in self._fired_today:
                 continue
             known_df = self._known_bars(df, ts)

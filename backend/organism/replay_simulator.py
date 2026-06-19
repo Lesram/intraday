@@ -73,11 +73,30 @@ class SimulatedBroker:
     integration smoke tests and the replay simulator.
     """
 
+    # Audit 2026-06-09 (plan 1.1): per-symbol-class half-spread defaults, in
+    # basis points. Crossing the spread costs ~half the quoted spread per
+    # side on marketable orders. Liquid index ETFs are tightest, mega-caps
+    # next, everything else gets a conservative default.
+    _ETF_SYMBOLS = frozenset({
+        "SPY", "QQQ", "IWM", "DIA", "SH", "PSQ",
+        "XLK", "XLE", "XLF", "XLV", "XLY", "XLP", "XLI", "XLU", "XLB", "XLRE",
+    })
+    _MEGACAP_SYMBOLS = frozenset({
+        "AAPL", "MSFT", "NVDA", "AMZN", "GOOGL", "GOOG", "META", "TSLA",
+        "AVGO", "AMD", "WMT", "LLY", "JPM", "COST", "CRM", "XOM", "CAT",
+        "COIN", "UBER", "SNOW",
+    })
+    _HALF_SPREAD_ETF_BPS = 0.5
+    _HALF_SPREAD_MEGACAP_BPS = 1.0
+    _HALF_SPREAD_DEFAULT_BPS = 2.5
+
     def __init__(
         self,
         initial_cash: float = 100_000,
         slippage_bps: float = 0,
         delay_fill: bool = False,
+        half_spread_bps: "float | dict[str, float] | str | None" = None,
+        commission_per_share: float = 0.0,
     ) -> None:
         self.cash: float = initial_cash
         self.initial_cash: float = initial_cash
@@ -86,6 +105,15 @@ class SimulatedBroker:
         # but fill at the NEXT bar's open. More realistic than instant
         # same-bar fill at observed close. Default False for backward-compat.
         self.delay_fill: bool = delay_fill
+        # Audit 2026-06-09 (plan 1.1): spread + commission modeling.
+        #   None      → 0 bps (legacy zero-cost behavior, default)
+        #   "auto"    → per-symbol-class defaults (ETF/megacap/other)
+        #   float     → flat bps for all symbols
+        #   dict      → explicit per-symbol bps (missing symbols → auto)
+        self.half_spread_bps = half_spread_bps
+        self.commission_per_share: float = commission_per_share
+        self.total_commission: float = 0.0
+        self.total_spread_slippage_cost: float = 0.0
 
         # symbol → {qty, avg_entry_price, side, market_value, cost_basis, ...}
         self._positions: dict[str, dict[str, Any]] = {}
@@ -133,6 +161,44 @@ class SimulatedBroker:
             return price
         slip = price * (self.slippage_bps / 10_000)
         return price + slip if side == "buy" else price - slip
+
+    def _half_spread_for(self, symbol: str) -> float:
+        """Resolve half-spread bps for a symbol (audit 2026-06-09, plan 1.1)."""
+        cfg = self.half_spread_bps
+        if cfg is None:
+            return 0.0
+        if isinstance(cfg, (int, float)):
+            return float(cfg)
+        if isinstance(cfg, dict) and symbol in cfg:
+            return float(cfg[symbol])
+        # "auto" or dict-miss → classify
+        if symbol in self._ETF_SYMBOLS:
+            return self._HALF_SPREAD_ETF_BPS
+        if symbol in self._MEGACAP_SYMBOLS:
+            return self._HALF_SPREAD_MEGACAP_BPS
+        return self._HALF_SPREAD_DEFAULT_BPS
+
+    def _apply_costs(self, price: float, side: str, symbol: str) -> float:
+        """Apply slippage + half-spread to the fill price (plan 1.1).
+
+        Both costs move the fill against the trader: buys fill higher,
+        sells fill lower. Commission is handled separately as a cash debit.
+        """
+        total_bps = max(0.0, self.slippage_bps) + self._half_spread_for(symbol)
+        if total_bps <= 0:
+            return price
+        adj = price * (total_bps / 10_000)
+        self.total_spread_slippage_cost += adj
+        return price + adj if side == "buy" else price - adj
+
+    def _charge_commission(self, qty: int) -> float:
+        """Debit commission from cash; returns the amount charged."""
+        if self.commission_per_share <= 0 or qty <= 0:
+            return 0.0
+        fee = self.commission_per_share * qty
+        self.cash -= fee
+        self.total_commission += fee
+        return fee
 
     def add_position(
         self,
@@ -192,7 +258,8 @@ class SimulatedBroker:
         if price <= 0:
             return {"id": str(uuid.uuid4()), "status": "rejected", "reason": "no_price"}
 
-        fill_price = self._apply_slippage(price, side)
+        # Plan 1.1: slippage + half-spread move the fill against the trader.
+        fill_price = self._apply_costs(price, side, symbol)
 
         if side == "buy":
             cost = fill_price * qty
@@ -255,6 +322,9 @@ class SimulatedBroker:
                 pos["market_value"] = remaining * fill_price
                 pos["cost_basis"] = remaining * pos["avg_entry_price"]
 
+        # Plan 1.1: commission as a per-share cash debit (both sides).
+        _commission = self._charge_commission(qty)
+
         order_id = str(uuid.uuid4())
         order_record = {
             "id": order_id,
@@ -265,6 +335,7 @@ class SimulatedBroker:
             "filled_qty": str(qty),
             "status": "filled",
             "avg_fill_price": str(fill_price),
+            "commission": round(_commission, 6),
             "idempotency_key": kwargs.get("idempotency_key", ""),
         }
         self.filled_orders.append(order_record)
@@ -498,6 +569,9 @@ class ReplayEngine:
         timeframe: str = "1Day",
         lookback: int | None = None,
         delay_fill: bool = False,
+        half_spread_bps: "float | dict[str, float] | str | None" = None,
+        commission_per_share: float = 0.0,
+        cost_profile: str | None = None,
     ) -> None:
         self.bars_by_symbol = bars_by_symbol
         self.initial_cash = initial_cash
@@ -507,6 +581,24 @@ class ReplayEngine:
         self.max_entries_per_hour = max_entries_per_hour
         self.timeframe = timeframe
         self.delay_fill = delay_fill
+        self.half_spread_bps = half_spread_bps
+        self.commission_per_share = commission_per_share
+
+        # Audit 2026-06-09 (plan 1.1): cost_profile="realistic" switches on
+        # next-bar-open fills + per-class half-spread + >=1bp slippage in one
+        # flag. This is the configuration REQUIRED for promotion evidence
+        # (go-live Gate 1/2); the legacy zero-cost defaults remain available
+        # for unit tests and mechanism debugging only.
+        if cost_profile == "realistic":
+            self.delay_fill = True
+            if self.half_spread_bps is None:
+                self.half_spread_bps = "auto"
+            self.slippage_bps = max(1.0, float(slippage_bps))
+        elif cost_profile not in (None, "legacy"):
+            raise ValueError(
+                f"Unknown cost_profile {cost_profile!r}; use 'realistic' or 'legacy'"
+            )
+        self.cost_profile = cost_profile
 
         if lookback is not None:
             self.lookback = lookback
@@ -524,8 +616,23 @@ class ReplayEngine:
             initial_cash=self.initial_cash,
             slippage_bps=self.slippage_bps,
             delay_fill=self.delay_fill,
+            half_spread_bps=self.half_spread_bps,
+            commission_per_share=self.commission_per_share,
         )
         broker.set_bar_provider(bar_provider)
+
+        # Audit 2026-06-09 (plan 1.1): optimistic runs must self-label.
+        # Same-bar close fills with no spread make every strategy look
+        # better than it is — never use such a run as promotion evidence.
+        if not self.delay_fill or (
+            self.half_spread_bps in (None, 0) and self.slippage_bps <= 0
+        ):
+            logger.warning(
+                "OPTIMISTIC FILL MODE: same_bar_fills=%s half_spread=%s "
+                "slippage_bps=%s — results overstate performance and are "
+                "NOT valid promotion evidence (use cost_profile='realistic').",
+                not self.delay_fill, self.half_spread_bps, self.slippage_bps,
+            )
 
         brain_dir = self.brain_dir or tempfile.mkdtemp(prefix="replay_brain_")
 
@@ -639,6 +746,9 @@ class ReplayEngine:
         initial_cash: float = 100_000,
         slippage_bps: float = 5,
         lookback: int | None = None,
+        half_spread_bps: "float | dict[str, float] | str | None" = None,
+        commission_per_share: float = 0.0,
+        cost_profile: str | None = None,
     ) -> ReplayEngine:
         """Fetch bars from Alpaca API and create a replay engine."""
         from backend.data.alpaca_client import AlpacaClient
@@ -678,6 +788,9 @@ class ReplayEngine:
             universe=symbols,
             timeframe=timeframe,
             lookback=lookback,
+            half_spread_bps=half_spread_bps,
+            commission_per_share=commission_per_share,
+            cost_profile=cost_profile,
         )
 
     @classmethod
@@ -792,6 +905,16 @@ if __name__ == "__main__":
     parser.add_argument("--lookback", type=int, default=None,
                         help="Lookback bars for warmup (default: 200 daily, 500 intraday)")
     parser.add_argument("--max-ticks", type=int, default=None)
+    # Audit 2026-06-09 (plan 1.1): the CLI is the evidence path — it now
+    # defaults to REALISTIC costs (next-bar-open fills, per-class
+    # half-spread, 1bp slippage). Pass --cost-profile legacy to reproduce
+    # old optimistic-fill runs (clearly labeled in the log).
+    parser.add_argument("--cost-profile", default="realistic",
+                        choices=["realistic", "legacy"])
+    parser.add_argument("--slippage-bps", type=float, default=1.0)
+    parser.add_argument("--half-spread-bps", type=float, default=None,
+                        help="Flat half-spread bps (default: auto per symbol class)")
+    parser.add_argument("--commission-per-share", type=float, default=0.0)
     args = parser.parse_args()
 
     symbols = [s.strip().upper() for s in args.symbols.split(",")]
@@ -803,8 +926,18 @@ if __name__ == "__main__":
             end=args.end,
             timeframe=args.timeframe,
             initial_cash=args.cash,
-            slippage_bps=5,
+            slippage_bps=args.slippage_bps,
             lookback=args.lookback,
+            half_spread_bps=args.half_spread_bps,
+            commission_per_share=args.commission_per_share,
+            cost_profile=args.cost_profile,
+        )
+        print(
+            f"Cost profile: {args.cost_profile} | fills="
+            f"{'next-bar-open' if engine.delay_fill else 'SAME-BAR CLOSE (optimistic)'}"
+            f" | half_spread={engine.half_spread_bps}"
+            f" | slippage_bps={engine.slippage_bps}"
+            f" | commission/share=${engine.commission_per_share}"
         )
         result = await engine.run(max_ticks=args.max_ticks)
         print(result.summary())
