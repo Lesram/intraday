@@ -76,6 +76,13 @@ ARMS: dict[str, dict[str, str]] = {
         "ORGANISM_ALT_DISASTER_PCT": "0.05",
         "ORGANISM_ALT_TIME_CAP_BARS": "120",
     },
+    # Task C: soften the pyramid anti-add cuts (prod -1.0R/-0.7R). 80% of the
+    # pyramid_cut bleed is chop trades cut at -1.0R..-2.0R; widening to
+    # -3.0R/-2.5R should let those breathe past the noise band.
+    "pyramid_soft": {
+        "ORGANISM_PYRAMID_CUT_FULL_R": "-3.0",
+        "ORGANISM_PYRAMID_CUT_PARTIAL_R": "-2.5",
+    },
 }
 
 
@@ -235,6 +242,22 @@ async def run_arm(arm: str, max_ticks: int | None, out_path: str) -> None:
         import backend.organism.live_engine as _le
         from backend.organism.experimental.alt_exit_engine import AltExitEngine
         _le.AdaptiveExitEngine = AltExitEngine
+
+    # Task C: pyramid-cut softening for replay ONLY. pyramid_cut* is the
+    # single biggest live bleed (151 trades, -$452, 57% of net; 80% in chop)
+    # and lives inline in _live_tick_inner, which AltExitEngine cannot reach.
+    # The cut DECISION is MomentumPyramider.CUT_FULL/CUT_PARTIAL (self.* class
+    # attrs read in check_pyramid). Widen them via env (default unset = prod
+    # -1.0R/-0.7R) by patching the class in this subprocess only — no edit to
+    # pyramider.py (guarded) or _live_tick_inner.
+    _cut_full = os.getenv("ORGANISM_PYRAMID_CUT_FULL_R")
+    _cut_partial = os.getenv("ORGANISM_PYRAMID_CUT_PARTIAL_R")
+    if _cut_full or _cut_partial:
+        from backend.organism.pyramider import MomentumPyramider
+        if _cut_full:
+            MomentumPyramider.CUT_FULL = float(_cut_full)
+        if _cut_partial:
+            MomentumPyramider.CUT_PARTIAL = float(_cut_partial)
 
     bars = collect_cached_bars()
     if not bars:
