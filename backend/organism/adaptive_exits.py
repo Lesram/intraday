@@ -256,7 +256,7 @@ class AdaptiveExitEngine:
 
         is_intraday = timeframe in ("1Min", "5Min", "15Min", "1Hour")
         if is_intraday:
-            return cls(
+            engine = cls(
                 atr_multiplier=_f("ORGANISM_EXIT_ATR_MULT", 1.0),
                 profit_r_multiple=_f("ORGANISM_EXIT_PROFIT_R", 3.0),
                 trailing_start_atr=_f("ORGANISM_EXIT_TRAIL_START_ATR", 2.0),
@@ -269,7 +269,7 @@ class AdaptiveExitEngine:
                 profit_lock_r=_f("ORGANISM_EXIT_PROFIT_LOCK_R", 2.0),
             )
         else:  # daily
-            return cls(
+            engine = cls(
                 atr_multiplier=_f("ORGANISM_EXIT_ATR_MULT", 1.5),
                 profit_r_multiple=_f("ORGANISM_EXIT_PROFIT_R", 4.0),
                 trailing_start_atr=_f("ORGANISM_EXIT_TRAIL_START_ATR", 2.0),
@@ -281,6 +281,57 @@ class AdaptiveExitEngine:
                 max_loss_pct=0.08,
                 profit_lock_r=_f("ORGANISM_EXIT_PROFIT_LOCK_R", 2.0),
             )
+        cls._apply_regime_env_overrides(engine)
+        return engine
+
+    @staticmethod
+    def _apply_regime_env_overrides(engine: "AdaptiveExitEngine") -> None:
+        """Audit 2026-06-09 Task B: scale the per-regime exit dicts by env
+        multipliers, as INSTANCE copies.
+
+        Root cause this fixes: the scalar ``ORGANISM_EXIT_*`` overrides (read
+        in ``for_timeframe``) only set the fallback scalars
+        (``self.atr_multiplier`` etc.), which are never reached because the
+        engine selects via ``self.REGIME_*.get(regime, scalar)`` and every
+        regime — including ``chop`` — has a dict entry. Replay windows are
+        ~100% chop, so the scalar knobs never bind (``wide_exits`` was
+        byte-identical to ``baseline``). These multipliers scale the dicts
+        themselves.
+
+        All multipliers default to 1.0 ⇒ env-unset behavior is byte-identical,
+        and the class dicts are never mutated (instance copies only), so the
+        replay-immutability guard holds.
+        """
+        import os
+
+        def _mult(name: str) -> float:
+            try:
+                return float(os.getenv(name, 1.0))
+            except (TypeError, ValueError):
+                return 1.0
+
+        stop_m = _mult("ORGANISM_EXIT_STOP_ATR_MULT")
+        trail_m = _mult("ORGANISM_EXIT_TRAIL_ATR_MULT")
+        bars_m = _mult("ORGANISM_EXIT_MAX_BARS_MULT")
+        decay_m = _mult("ORGANISM_EXIT_DECAY_START_MULT")
+
+        if stop_m != 1.0:
+            engine.REGIME_STOP_ATR = {
+                k: v * stop_m for k, v in engine.REGIME_STOP_ATR.items()
+            }
+        if trail_m != 1.0:
+            engine.REGIME_TRAIL_ATR = {
+                k: v * trail_m for k, v in engine.REGIME_TRAIL_ATR.items()
+            }
+        if bars_m != 1.0:
+            # 0 = "no time limit" must stay 0; round to whole bars.
+            engine.REGIME_MAX_BARS = {
+                k: int(round(v * bars_m)) for k, v in engine.REGIME_MAX_BARS.items()
+            }
+        if decay_m != 1.0:
+            engine.REGIME_DECAY_START = {
+                k: int(round(v * decay_m)) for k, v in engine.REGIME_DECAY_START.items()
+            }
 
     # ── public API ────────────────────────────────────────────────────────
 

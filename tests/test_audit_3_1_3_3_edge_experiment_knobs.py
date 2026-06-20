@@ -47,6 +47,63 @@ def test_exit_env_garbage_falls_back(monkeypatch):
     assert e.atr_multiplier == 1.0
 
 
+# ── Task B (2026-06-20): per-regime dict multipliers actually bind ────
+
+
+def _clear_regime_mults(monkeypatch):
+    for var in ("ORGANISM_EXIT_STOP_ATR_MULT", "ORGANISM_EXIT_TRAIL_ATR_MULT",
+                "ORGANISM_EXIT_MAX_BARS_MULT", "ORGANISM_EXIT_DECAY_START_MULT"):
+        monkeypatch.delenv(var, raising=False)
+
+
+def test_regime_mults_unset_leave_dicts_unchanged(monkeypatch):
+    """Env unset ⇒ instance regime dicts equal the class defaults (chop too)."""
+    _clear_regime_mults(monkeypatch)
+    e = AdaptiveExitEngine.for_timeframe("1Min")
+    assert e.REGIME_STOP_ATR["chop"] == AdaptiveExitEngine.REGIME_STOP_ATR["chop"]
+    assert e.REGIME_STOP_ATR["chop"] == 2.5
+    assert e.REGIME_MAX_BARS["chop"] == 30
+    assert e.REGIME_TRAIL_ATR["chop"] == 3.0
+
+
+def test_regime_stop_mult_doubles_chop_stop(monkeypatch):
+    """The core fix: STOP_ATR_MULT=2.0 doubles the effective chop stop-ATR
+    (which the scalar ORGANISM_EXIT_ATR_MULT never reached)."""
+    _clear_regime_mults(monkeypatch)
+    monkeypatch.setenv("ORGANISM_EXIT_STOP_ATR_MULT", "2.0")
+    e = AdaptiveExitEngine.for_timeframe("1Min")
+    assert e.REGIME_STOP_ATR["chop"] == 5.0   # 2.5 × 2.0
+    assert e.REGIME_STOP_ATR["high_vol"] == 8.0  # 4.0 × 2.0
+    # Class dict must NOT be mutated (no leak across arms/instances).
+    assert AdaptiveExitEngine.REGIME_STOP_ATR["chop"] == 2.5
+
+
+def test_regime_max_bars_mult_keeps_zero_zero(monkeypatch):
+    """MAX_BARS_MULT scales nonzero entries; 0 ('no limit') stays 0."""
+    _clear_regime_mults(monkeypatch)
+    monkeypatch.setenv("ORGANISM_EXIT_MAX_BARS_MULT", "2.0")
+    e = AdaptiveExitEngine.for_timeframe("1Min")
+    assert e.REGIME_MAX_BARS["chop"] == 60       # 30 × 2.0
+    assert e.REGIME_MAX_BARS["trending_up"] == 0  # 0 stays 0
+    assert AdaptiveExitEngine.REGIME_MAX_BARS["chop"] == 30  # class unmutated
+
+
+def test_regime_trail_and_decay_mults(monkeypatch):
+    _clear_regime_mults(monkeypatch)
+    monkeypatch.setenv("ORGANISM_EXIT_TRAIL_ATR_MULT", "1.5")
+    monkeypatch.setenv("ORGANISM_EXIT_DECAY_START_MULT", "2.0")
+    e = AdaptiveExitEngine.for_timeframe("1Min")
+    assert e.REGIME_TRAIL_ATR["chop"] == 4.5      # 3.0 × 1.5
+    assert e.REGIME_DECAY_START["chop"] == 40      # 20 × 2.0
+
+
+def test_regime_mult_garbage_falls_back(monkeypatch):
+    _clear_regime_mults(monkeypatch)
+    monkeypatch.setenv("ORGANISM_EXIT_STOP_ATR_MULT", "not_a_number")
+    e = AdaptiveExitEngine.for_timeframe("1Min")
+    assert e.REGIME_STOP_ATR["chop"] == 2.5
+
+
 # ── 3.2 Bad-regime filter sources ────────────────────────────────────
 
 

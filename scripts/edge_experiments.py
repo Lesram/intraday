@@ -44,22 +44,23 @@ ROOT = Path(__file__).resolve().parents[1]
 
 ARMS: dict[str, dict[str, str]] = {
     "baseline": {},
+    # Task B (2026-06-20): the scalar ORGANISM_EXIT_* knobs never bind in
+    # chop-heavy replay (every regime has a REGIME_* dict entry). Use the
+    # *_MULT vars, which scale the per-regime dicts as instance copies.
     "wide_exits": {
-        "ORGANISM_EXIT_ATR_MULT": "2.0",
-        "ORGANISM_EXIT_TRAIL_START_ATR": "3.0",
-        "ORGANISM_EXIT_TRAIL_DIST_ATR": "2.5",
-        "ORGANISM_EXIT_MAX_BARS": "120",
-        "ORGANISM_EXIT_DECAY_START": "90",
+        "ORGANISM_EXIT_STOP_ATR_MULT": "1.6",   # wider stops
+        "ORGANISM_EXIT_TRAIL_ATR_MULT": "1.6",  # wider trails
+        "ORGANISM_EXIT_MAX_BARS_MULT": "2.0",   # longer holds
+        "ORGANISM_EXIT_DECAY_START_MULT": "2.0",
     },
     "chop_standdown": {
         "ORGANISM_BAD_REGIME_FILTER_SOURCES": "alpha,alpha+breakout,breakout",
     },
     "combined": {
-        "ORGANISM_EXIT_ATR_MULT": "2.0",
-        "ORGANISM_EXIT_TRAIL_START_ATR": "3.0",
-        "ORGANISM_EXIT_TRAIL_DIST_ATR": "2.5",
-        "ORGANISM_EXIT_MAX_BARS": "120",
-        "ORGANISM_EXIT_DECAY_START": "90",
+        "ORGANISM_EXIT_STOP_ATR_MULT": "1.6",
+        "ORGANISM_EXIT_TRAIL_ATR_MULT": "1.6",
+        "ORGANISM_EXIT_MAX_BARS_MULT": "2.0",
+        "ORGANISM_EXIT_DECAY_START_MULT": "2.0",
         "ORGANISM_BAD_REGIME_FILTER_SOURCES": "alpha,alpha+breakout,breakout",
     },
     # §8.2 structural exit policies (AltExitEngine, swapped in for replay only).
