@@ -120,6 +120,14 @@ def _load_bars_pickle(path: str):
                 return _shim
             return super().find_class(module, name)
 
+    # Fast path: a normally-written pickle (e.g. fetch_broad_corpus.py output)
+    # loads directly. Fall back to the pandas>=3 string-array shim only for
+    # older caches that fail the plain load.
+    try:
+        with open(path, "rb") as fh:
+            return pickle.load(fh)
+    except Exception:
+        pass
     try:
         with open(path, "rb") as fh:
             return U(fh).load()
@@ -131,7 +139,10 @@ def collect_cached_bars() -> dict[str, pd.DataFrame]:
     """Merge all cached symbol-day minute bars into continuous per-symbol
     frames (deduped by symbol+date, chronological)."""
     frames: dict[tuple[str, str], pd.DataFrame] = {}
-    for p in sorted(glob.glob(str(ROOT / "artifacts/**/bars*.pkl"), recursive=True)):
+    # ORGANISM_EDGE_CORPUS_GLOB lets a run pin a single corpus (e.g. the broad
+    # RTH corpus) instead of merging every cached pkl. Default = all caches.
+    pattern = os.getenv("ORGANISM_EDGE_CORPUS_GLOB", "artifacts/**/bars*.pkl")
+    for p in sorted(glob.glob(str(ROOT / pattern), recursive=True)):
         b = _load_bars_pickle(p)
         if not isinstance(b, dict):
             continue
