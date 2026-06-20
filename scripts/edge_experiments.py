@@ -62,6 +62,19 @@ ARMS: dict[str, dict[str, str]] = {
         "ORGANISM_EXIT_DECAY_START": "90",
         "ORGANISM_BAD_REGIME_FILTER_SOURCES": "alpha,alpha+breakout,breakout",
     },
+    # §8.2 structural exit policies (AltExitEngine, swapped in for replay only).
+    "time_only": {
+        "ORGANISM_EXIT_POLICY": "time_only",
+        "ORGANISM_ALT_DISASTER_PCT": "0.05",
+        "ORGANISM_ALT_TIME_CAP_BARS": "120",
+    },
+    "retracement": {
+        "ORGANISM_EXIT_POLICY": "retracement",
+        "ORGANISM_ALT_RETRACE_FRAC": "0.5",
+        "ORGANISM_ALT_MIN_FAVORABLE_R": "0.5",
+        "ORGANISM_ALT_DISASTER_PCT": "0.05",
+        "ORGANISM_ALT_TIME_CAP_BARS": "120",
+    },
 }
 
 
@@ -155,21 +168,85 @@ def collect_cached_bars() -> dict[str, pd.DataFrame]:
 
 # ── single arm (runs in subprocess with arm env applied) ────────────────────
 
+def _trade_history_metrics(brain_dir: str) -> dict:
+    """Real per-trade metrics from the engine's persisted TradeRecords.
+
+    result.trades (broker.trade_log) carries only symbol/side/qty/price/pnl —
+    no exit_reason or mfe — so read the trade_history.csv the engine wrote into
+    this arm's brain_dir to get the real exit mix and MFE-giveback.
+    """
+    paths = glob.glob(os.path.join(brain_dir, "**", "trade_history.csv"), recursive=True)
+    if not paths:
+        return {"th_found": False}
+    try:
+        df = pd.read_csv(max(paths, key=os.path.getsize))
+    except Exception as e:
+        return {"th_found": False, "th_error": str(e)}
+    if "is_reconciliation_artifact" in df.columns:
+        df = df[~df["is_reconciliation_artifact"].astype(str).str.lower().isin(["true", "1"])]
+    if "pnl" not in df.columns:
+        return {"th_found": True, "th_n_trades": int(len(df))}
+    df["pnl"] = pd.to_numeric(df["pnl"], errors="coerce")
+    if "mfe" in df.columns:
+        df["mfe"] = pd.to_numeric(df["mfe"], errors="coerce")
+    df = df.dropna(subset=["pnl"])
+    n = len(df)
+    if n == 0:
+        return {"th_found": True, "th_n_trades": 0}
+    pnl = df["pnl"]
+    wins, losses = pnl[pnl > 0], pnl[pnl < 0]
+    gl = float(abs(losses.sum()))
+    out = {
+        "th_found": True,
+        "th_n_trades": int(n),
+        "th_net_pnl": round(float(pnl.sum()), 2),
+        "th_expectancy": round(float(pnl.mean()), 4),
+        "th_win_rate": round(float((pnl > 0).mean()), 4),
+        "th_profit_factor": round(float(wins.sum()) / gl, 4) if gl > 0 else None,
+    }
+    if "exit_reason" in df.columns:
+        g = df.groupby("exit_reason")["pnl"].agg(["size", "sum"]).sort_values("sum")
+        out["th_pnl_by_exit_reason"] = {
+            str(k): {"n": int(r["size"]), "pnl": round(float(r["sum"]), 2)}
+            for k, r in g.iterrows()
+        }
+    if "mfe" in df.columns:
+        pos = df[df["mfe"] > 0]
+        if len(pos):
+            out["th_mfe_giveback"] = {
+                "pos_mfe_trades": int(len(pos)),
+                "closed_le_0": int((pos["pnl"] <= 0).sum()),
+                "sum_mfe": round(float(pos["mfe"].sum()), 2),
+                "realized": round(float(pos["pnl"].sum()), 2),
+                "given_back": round(float((pos["mfe"] - pos["pnl"]).sum()), 2),
+            }
+    return out
+
+
 async def run_arm(arm: str, max_ticks: int | None, out_path: str) -> None:
     sys.path.insert(0, str(ROOT))
     from backend.organism.replay_simulator import ReplayEngine
+
+    # §8.2 structural arms: swap the exit policy for replay ONLY (no live-path
+    # edits). Gated on the arm's env; rebinding the module global makes the
+    # engine build an AltExitEngine for its self.exit_engine on construction.
+    if os.getenv("ORGANISM_EXIT_POLICY"):
+        import backend.organism.live_engine as _le
+        from backend.organism.experimental.alt_exit_engine import AltExitEngine
+        _le.AdaptiveExitEngine = AltExitEngine
 
     bars = collect_cached_bars()
     if not bars:
         Path(out_path).write_text(json.dumps({"error": "no cached bars found"}))
         return
 
+    bdir = tempfile.mkdtemp(prefix=f"edge_exp_{arm}_")
     engine = ReplayEngine(
         bars_by_symbol=bars,
         timeframe="1Min",
         cost_profile="realistic",
         slippage_bps=1.0,
-        brain_dir=tempfile.mkdtemp(prefix=f"edge_exp_{arm}_"),
+        brain_dir=bdir,
     )
     result = await engine.run(max_ticks=max_ticks)
 
@@ -177,12 +254,8 @@ async def run_arm(arm: str, max_ticks: int | None, out_path: str) -> None:
     wins = [p for p in pnls if p > 0]
     losses = [p for p in pnls if p < 0]
     gross_loss = abs(sum(losses))
-    exit_mix: dict[str, int] = {}
-    for t in result.trades:
-        r = str(t.get("exit_reason") or t.get("reason") or "unknown")
-        exit_mix[r] = exit_mix.get(r, 0) + 1
 
-    Path(out_path).write_text(json.dumps({
+    payload = {
         "arm": arm,
         "env": ARMS[arm],
         "ticks": result.ticks,
@@ -195,9 +268,11 @@ async def run_arm(arm: str, max_ticks: int | None, out_path: str) -> None:
         ),
         "max_drawdown": round(result.max_drawdown, 6),
         "final_equity": result.equity_curve[-1] if result.equity_curve else None,
-        "exit_mix": exit_mix,
         "n_symbols": len(bars),
-    }, indent=1))
+    }
+    # Real exit_reason / MFE-giveback metrics from persisted TradeRecords.
+    payload.update(_trade_history_metrics(bdir))
+    Path(out_path).write_text(json.dumps(payload, indent=1))
 
 
 # ── orchestrator ─────────────────────────────────────────────────────────────
