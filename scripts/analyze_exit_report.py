@@ -69,13 +69,27 @@ def _arm_gate2(csv: Path) -> dict:
             "retention_pct": round(100 * float(pos["pnl"].sum()) / sm, 1) if sm > 0 else None,
         }
 
-    # Two non-overlapping sub-periods, split by entry order (entry_bar).
+    # Time-ordered splits (by entry_bar): 2-way and 3-way for stability.
     sort_col = "entry_bar" if "entry_bar" in df.columns else None
     d = df.sort_values(sort_col) if sort_col else df
-    half = len(d) // 2
-    if half >= 1:
-        out["sub1"] = _stats(d.iloc[:half]["pnl"])
-        out["sub2"] = _stats(d.iloc[half:]["pnl"])
+    n = len(d)
+    if n >= 2:
+        h = n // 2
+        out["sub1"] = _stats(d.iloc[:h]["pnl"])
+        out["sub2"] = _stats(d.iloc[h:]["pnl"])
+    if n >= 3:
+        t = n // 3
+        out["t1"] = _stats(d.iloc[:t]["pnl"])
+        out["t2"] = _stats(d.iloc[t:2 * t]["pnl"])
+        out["t3"] = _stats(d.iloc[2 * t:]["pnl"])
+
+    # Per-regime split (regime_at_entry).
+    if "regime_at_entry" in df.columns:
+        by_reg = {}
+        for reg, g in df.groupby("regime_at_entry"):
+            if len(g) >= 3:  # skip negligible-sample regimes
+                by_reg[str(reg)] = _stats(g["pnl"])
+        out["by_regime"] = by_reg
     return out
 
 
@@ -95,12 +109,20 @@ def main() -> None:
     def verdict(g: dict) -> str:
         h = g.get("held_ge_2", {}) or g.get("overall", {})
         ov = g.get("overall", {})
-        s1, s2 = g.get("sub1", {}), g.get("sub2", {})
         exp_ok = (h.get("expectancy") or 0) > 0 and (h.get("t_stat") or 0) >= 2
         pf_ok = (ov.get("profit_factor") or 0) >= 1.3
-        stable = (s1.get("expectancy") or 0) > 0 and (s2.get("expectancy") or 0) > 0
-        return "PASS" if (exp_ok and pf_ok and stable) else "FAIL: " + ", ".join(
-            x for x, ok in [("exp>0@t>=2", exp_ok), ("PF>=1.3", pf_ok), ("sub-period-stable", stable)] if not ok
+        # Stable across BOTH the 2-way and 3-way time splits (brief Task X).
+        halves = [g.get("sub1", {}), g.get("sub2", {})]
+        thirds = [g.get("t1", {}), g.get("t2", {}), g.get("t3", {})]
+        splits = [s for s in halves + thirds if s]
+        stable = bool(splits) and all((s.get("expectancy") or 0) > 0 for s in splits)
+        # Not negative in any major regime (>= 10 trades).
+        regs = g.get("by_regime", {}) or {}
+        major = {r: s for r, s in regs.items() if (s.get("n") or 0) >= 10}
+        reg_ok = all((s.get("expectancy") or 0) > 0 for s in major.values()) if major else True
+        return "PASS" if (exp_ok and pf_ok and stable and reg_ok) else "FAIL: " + ", ".join(
+            x for x, ok in [("exp>0@t>=2", exp_ok), ("PF>=1.3", pf_ok),
+                            ("all-splits-stable", stable), ("no-neg-regime", reg_ok)] if not ok
         )
 
     summary = {}

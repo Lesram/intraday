@@ -27,8 +27,10 @@ SYMBOLS = [
     "META", "MSFT", "NVDA", "PSQ", "QQQ", "SH", "SPY", "TSLA", "WMT", "XLE",
     "XLK", "XOM",
 ]
-START = "2026-03-30"
-END = "2026-06-19"
+# Override via argv: fetch_broad_corpus.py [START END [OUT_SUBDIR]]
+START = sys.argv[1] if len(sys.argv) > 1 else "2026-03-30"
+END = sys.argv[2] if len(sys.argv) > 2 else "2026-06-19"
+OUT_SUBDIR = sys.argv[3] if len(sys.argv) > 3 else "broad_corpus"
 
 
 def main() -> None:
@@ -68,7 +70,7 @@ def main() -> None:
     if not bars:
         raise SystemExit("No bars fetched for any symbol.")
 
-    out_dir = ROOT / "artifacts" / "broad_corpus"
+    out_dir = ROOT / "artifacts" / OUT_SUBDIR
     out_dir.mkdir(parents=True, exist_ok=True)
     out = out_dir / "bars.pkl"
     with open(out, "wb") as fh:

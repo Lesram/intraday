@@ -85,6 +85,19 @@ ARMS: dict[str, dict[str, str]] = {
     },
 }
 
+# Task X (2026-06-21): retracement parameter sweep — F (retrace fraction) x
+# min-favorable-R, to find the best F and prove the Tier-2B edge is not a
+# single-point fluke. Names: retracement_f40_m05 ... f70_m10.
+for _F in ("0.4", "0.5", "0.6", "0.7"):
+    for _M in ("0.5", "1.0"):
+        ARMS[f"retracement_f{int(float(_F) * 100):02d}_m{int(float(_M) * 10):02d}"] = {
+            "ORGANISM_EXIT_POLICY": "retracement",
+            "ORGANISM_ALT_RETRACE_FRAC": _F,
+            "ORGANISM_ALT_MIN_FAVORABLE_R": _M,
+            "ORGANISM_ALT_DISASTER_PCT": "0.05",
+            "ORGANISM_ALT_TIME_CAP_BARS": "120",
+        }
+
 
 # ── pandas>=3 pickle compatibility (cached bars were written by pandas 3.x) ──
 
