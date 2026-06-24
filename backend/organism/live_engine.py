@@ -53,6 +53,11 @@ from backend.organism.live_engine_data import _DataFeederMixin
 from backend.organism.live_engine_fills import _FillLookupMixin
 from backend.organism.live_engine_state import _StateReconstructionMixin
 from backend.organism.live_engine_telemetry import _TelemetryRecordingMixin
+from backend.organism.experimental.alt_exit_engine import AltExitEngine
+from backend.organism.experimental.shadow_exit import (
+    ShadowExitTelemetryRecorder,
+    _ShadowExitMixin,
+)
 from backend.organism.ml_features import FEATURE_COLUMNS
 from backend.organism.ml_signal import MLSignalGenerator
 from backend.organism.schema.candidate_signal import CandidateSignal, infer_strategy_id
@@ -342,6 +347,16 @@ STRATEGY_EVIDENCE_TELEMETRY_PATH = _env_str(
 PHASE9_SHADOW_ENGINES_ENABLED = _env_bool(
     "ORGANISM_PHASE9_SHADOW_ENGINES_ENABLED", False,
 )
+# Task S (SHADOW_EXIT_AND_CORPUS_BRIEF): log-only retracement shadow exit.
+# "" = off; "retracement" = on. Zero effect on real trading. Defaults are the
+# Task-X best variant (F=0.6, min_favorable_R=1.0).
+ORGANISM_SHADOW_EXIT_POLICY = _env_str("ORGANISM_SHADOW_EXIT_POLICY", "")
+ORGANISM_SHADOW_EXIT_RETRACE_FRAC = _env_float("ORGANISM_SHADOW_EXIT_RETRACE_FRAC", 0.6)
+ORGANISM_SHADOW_EXIT_MIN_FAV_R = _env_float("ORGANISM_SHADOW_EXIT_MIN_FAVORABLE_R", 1.0)
+ORGANISM_SHADOW_EXIT_TELEMETRY_PATH = _env_str(
+    "ORGANISM_SHADOW_EXIT_TELEMETRY_PATH",
+    "organism_brain/shadow_exit_telemetry.jsonl",
+)
 
 # ── Dynamic intraday adjustments ────────────────────────────────
 _IS_INTRADAY = LIVE_TIMEFRAME in ("1Min", "5Min", "15Min", "1Hour")
@@ -523,6 +538,7 @@ class OrganismLiveEngine(
     _StateReconstructionMixin,
     _TelemetryRecordingMixin,
     _DataFeederMixin,
+    _ShadowExitMixin,
 ):
     """Unified live trading engine — the organism in production.
 
@@ -792,6 +808,23 @@ class OrganismLiveEngine(
         self._phase9_shadow_signal_events: int = 0
         self._phase9_last_shadow_bar: str = ""
         self._phase9_last_engine_counts: dict[str, int] = {}
+
+        # Task S: log-only retracement shadow exit (off by default).
+        if ORGANISM_SHADOW_EXIT_POLICY:
+            self._shadow_engine = AltExitEngine.for_timeframe(self._timeframe)
+            self._shadow_engine.alt_policy = ORGANISM_SHADOW_EXIT_POLICY
+            self._shadow_engine.alt_retrace_frac = ORGANISM_SHADOW_EXIT_RETRACE_FRAC
+            self._shadow_engine.alt_min_fav_r = ORGANISM_SHADOW_EXIT_MIN_FAV_R
+            self._shadow_levels = {}
+            self._shadow_pending = {}
+            self._shadow_prev_syms = set()
+            self._shadow_last_price = {}
+            self._shadow_bar_seen = {}
+            self._shadow_exit = ShadowExitTelemetryRecorder(
+                ORGANISM_SHADOW_EXIT_TELEMETRY_PATH
+            )
+        else:
+            self._shadow_exit = None
         self._legacy_orb_last_signal_keys: set[str] = set()
         self._strategy_governor = StrategyGovernor()
 
@@ -2107,10 +2140,18 @@ class OrganismLiveEngine(
         """
         async with self._tick_lock:
             try:
-                return await asyncio.wait_for(
+                result = await asyncio.wait_for(
                     self._live_tick_inner(),
                     timeout=self._TICK_WATCHDOG_SECONDS,
                 )
+                # Task S: log-only shadow exit eval (outside _live_tick_inner;
+                # never affects real trading, never raises into the tick).
+                if getattr(self, "_shadow_exit", None) is not None:
+                    try:
+                        self._shadow_evaluate_exits(result)
+                    except Exception as e:
+                        logger.warning("shadow exit eval failed: %s", e)
+                return result
             except asyncio.TimeoutError:
                 self._tick_watchdog_timeouts = (
                     getattr(self, "_tick_watchdog_timeouts", 0) + 1
