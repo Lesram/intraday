@@ -188,8 +188,42 @@ class ScheduledDiagnosticRunner:
                 trigger, summary["passed"], summary["total"],
                 summary["critical_failures"], summary["warnings"],
             )
+            if trigger == "post_close":
+                self._log_shadow_exit_delta(engine)
         except Exception as e:
             logger.error("Scheduled diagnostics [%s] failed: %s", trigger, e)
+
+    @staticmethod
+    def _log_shadow_exit_delta(engine: Any) -> None:
+        """Task S bridge: fold the retracement shadow-vs-real delta into the
+        post-close report so Gate-2 evidence builds visibly each afternoon.
+        Best-effort; no-op when the shadow is off or has no data."""
+        try:
+            recorder = getattr(engine, "_shadow_exit", None)
+            if recorder is None:
+                return
+            from backend.organism.experimental.shadow_exit import (
+                summarize_shadow_telemetry,
+            )
+            s = summarize_shadow_telemetry(recorder.path)
+            if not s.get("n"):
+                logger.info("Shadow exit: no closed-position rows yet.")
+                return
+            ov = s["overall"]
+            engine._last_shadow_summary = s
+            by_reg = "; ".join(
+                f"{r}: sum=${st['sum']} t={st['t_stat']} (n={st['n']})"
+                for r, st in s.get("by_regime", {}).items()
+            )
+            logger.info(
+                "Shadow vs real (retracement) — closed=%d, shadow-diverged=%d | "
+                "cumulative delta $%.2f, mean $%.4f, t=%.2f | by_regime: %s | "
+                "Gate-2: flip live exits only when this delta is positive at t>=2.",
+                s["n"], s["n_triggered"], ov["sum"], ov["mean"], ov["t_stat"],
+                by_reg or "(none triggered yet)",
+            )
+        except Exception as e:
+            logger.warning("Shadow exit delta summary failed: %s", e)
 
     async def _evaluate_and_alert(self, report: Any, trigger: str) -> None:
         """Map diagnostic results to alerts via the existing alert system."""

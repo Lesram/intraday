@@ -14,6 +14,8 @@ import json
 import sys
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
 
 def _stats(deltas: list[float]) -> dict:
     n = len(deltas)
@@ -40,15 +42,17 @@ def main() -> None:
 
     deltas = [float(r.get("delta_gross", 0) or 0) for r in rows]
     triggered = [r for r in rows if r.get("shadow_triggered")]
-    trig_deltas = [float(r.get("delta_gross", 0) or 0) for r in triggered]
 
+    # Reuse the same summary the EOD scheduled task logs (one source of truth).
+    from backend.organism.experimental.shadow_exit import summarize_shadow_telemetry
+    s = summarize_shadow_telemetry(path)
     print(f"=== shadow-vs-real exit ({path}) — {len(rows)} closed positions ===")
     print(f"shadow would have changed the exit on {len(triggered)} / {len(rows)} "
           f"({100*len(triggered)/len(rows):.0f}%)")
     print(f"\nALL closed positions (held-agreed rows have delta 0):")
-    print(f"  {_stats(deltas)}")
+    print(f"  {s['overall']}")
     print(f"TRIGGERED only (where retracement diverged from the real exit):")
-    print(f"  {_stats(trig_deltas)}")
+    print(f"  {s['triggered']}")
 
     # By regime.
     print("\n-- by regime (triggered) --")

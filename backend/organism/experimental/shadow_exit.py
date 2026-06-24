@@ -32,6 +32,47 @@ from backend.utils.logger import get_logger
 logger = get_logger(__name__)
 
 
+def _delta_stats(deltas: list[float]) -> dict:
+    n = len(deltas)
+    if n == 0:
+        return {"n": 0, "sum": 0.0, "mean": 0.0, "t_stat": 0.0}
+    mean = sum(deltas) / n
+    var = sum((x - mean) ** 2 for x in deltas) / (n - 1) if n > 1 else 0.0
+    sd = var ** 0.5
+    t = (mean / (sd / (n ** 0.5))) if sd > 0 else 0.0
+    return {"n": n, "sum": round(sum(deltas), 2), "mean": round(mean, 4),
+            "t_stat": round(t, 3)}
+
+
+def summarize_shadow_telemetry(path: str | Path) -> dict:
+    """Cumulative shadow-vs-real gross-delta summary from the telemetry JSONL.
+
+    Shared by the EOD scheduled task and scripts/analyze_shadow_exits.py so the
+    Gate-2 accumulation has one source of truth. Returns overall + triggered-only
+    delta stats and a per-regime breakdown. Returns {"n": 0} if no telemetry.
+    """
+    p = Path(path)
+    if not p.exists():
+        return {"n": 0}
+    rows = [json.loads(ln) for ln in p.read_text().splitlines() if ln.strip()]
+    if not rows:
+        return {"n": 0}
+    deltas = [float(r.get("delta_gross", 0) or 0) for r in rows]
+    trig = [r for r in rows if r.get("shadow_triggered")]
+    by_regime: dict[str, dict] = {}
+    for r in trig:
+        by_regime.setdefault(str(r.get("regime")), {"_d": []})["_d"].append(
+            float(r.get("delta_gross", 0) or 0))
+    by_regime = {k: _delta_stats(v["_d"]) for k, v in by_regime.items()}
+    return {
+        "n": len(rows),
+        "n_triggered": len(trig),
+        "overall": _delta_stats(deltas),
+        "triggered": _delta_stats([float(r.get("delta_gross", 0) or 0) for r in trig]),
+        "by_regime": by_regime,
+    }
+
+
 class ShadowExitTelemetryRecorder:
     """Append-only JSONL writer for shadow-vs-real exit comparison rows."""
 
