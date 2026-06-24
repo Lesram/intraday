@@ -86,6 +86,13 @@ services:
       # Phase 9 strategy-engine shadow capture: emits CandidateSignal evidence
       # only. It never touches ranking, sizing, gates, orders, or promotion.
       - ORGANISM_PHASE9_SHADOW_ENGINES_ENABLED=${ORGANISM_PHASE9_SHADOW_ENGINES_ENABLED:-false}
+      # Task S log-only retracement shadow exit: logs what retracement_f60_m10
+      # would do vs the real exit, per closed position. Zero effect on trading.
+      # Off unless ORGANISM_SHADOW_EXIT_POLICY=retracement is set in .env.
+      - ORGANISM_SHADOW_EXIT_POLICY=${ORGANISM_SHADOW_EXIT_POLICY:-}
+      - ORGANISM_SHADOW_EXIT_RETRACE_FRAC=${ORGANISM_SHADOW_EXIT_RETRACE_FRAC:-0.6}
+      - ORGANISM_SHADOW_EXIT_MIN_FAVORABLE_R=${ORGANISM_SHADOW_EXIT_MIN_FAVORABLE_R:-1.0}
+      - ORGANISM_SHADOW_EXIT_TELEMETRY_PATH=${ORGANISM_SHADOW_EXIT_TELEMETRY_PATH:-organism_brain/shadow_exit_telemetry.jsonl}
 
       # Observability Settings
       - OTEL_SERVICE_NAME=algotrading-api-paper
