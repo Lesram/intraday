@@ -199,7 +199,15 @@ class MomentumPyramider:
 
     MAX_LAYERS = 3
 
-    def __init__(self):
+    def __init__(self, enabled: bool = True):
+        # Work order Task C (2026-06-25): pyramiding is structurally negative
+        # (-$452 across 151 trades, 0.7% win). When disabled, entries size at
+        # full target (no Layer-0 reduction) and no adds/cuts ever fire, so no
+        # pyramid positions — and thus no pyramid_cut_* exits — are created.
+        # Default True keeps behavior byte-identical; set ORGANISM_PYRAMID_ENABLED
+        # =false in the deployment to disable. The code path is preserved (guards
+        # intact), just inert.
+        self.enabled = enabled
         self._pyramid_count = 0
         self._max_layers_reached = 0
 
@@ -218,7 +226,12 @@ class MomentumPyramider:
         }
 
     def initial_shares(self, target_shares: int) -> int:
-        """Calculate initial entry size (Layer 0)."""
+        """Calculate initial entry size (Layer 0).
+
+        Disabled (Task C): no reduction — enter at the full target size.
+        """
+        if not self.enabled:
+            return max(1, int(target_shares))
         return max(1, int(target_shares * self.LAYER_0_PCT))
 
     def check_pyramid(
@@ -237,6 +250,8 @@ class MomentumPyramider:
         -------
         PyramidAction with recommended action.
         """
+        if not self.enabled:
+            return PyramidAction(action="none")  # Task C: pyramiding disabled
         if not position.layers:
             return PyramidAction(action="none")
 

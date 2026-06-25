@@ -350,6 +350,9 @@ PHASE9_SHADOW_ENGINES_ENABLED = _env_bool(
 # Task S (SHADOW_EXIT_AND_CORPUS_BRIEF): log-only retracement shadow exit.
 # "" = off; "retracement" = on. Zero effect on real trading. Defaults are the
 # Task-X best variant (F=0.6, min_favorable_R=1.0).
+# Work order Task C: pyramiding is structurally negative (-$452, 0.7% win).
+# Default True (byte-identical behavior); set false in deployment to disable.
+ORGANISM_PYRAMID_ENABLED = _env_bool("ORGANISM_PYRAMID_ENABLED", True)
 ORGANISM_SHADOW_EXIT_POLICY = _env_str("ORGANISM_SHADOW_EXIT_POLICY", "")
 ORGANISM_SHADOW_EXIT_RETRACE_FRAC = _env_float("ORGANISM_SHADOW_EXIT_RETRACE_FRAC", 0.6)
 ORGANISM_SHADOW_EXIT_MIN_FAV_R = _env_float("ORGANISM_SHADOW_EXIT_MIN_FAVORABLE_R", 1.0)
@@ -616,7 +619,7 @@ class OrganismLiveEngine(
             self.breakout_scanner.ATR_SHORT = 10 * _intraday_scale      # 40
             self.breakout_scanner.ATR_LONG = 50 * _intraday_scale       # 200
             self.breakout_scanner.VOL_AVG_PERIOD = 20 * _intraday_scale # 80
-        self.pyramider = MomentumPyramider()
+        self.pyramider = MomentumPyramider(enabled=ORGANISM_PYRAMID_ENABLED)
         if self._is_intraday:
             self.kelly_sizer = KellySizer(
                 max_position_pct=0.08,    # HFT: smaller positions, faster turns

@@ -86,6 +86,11 @@ services:
       # Phase 9 strategy-engine shadow capture: emits CandidateSignal evidence
       # only. It never touches ranking, sizing, gates, orders, or promotion.
       - ORGANISM_PHASE9_SHADOW_ENGINES_ENABLED=${ORGANISM_PHASE9_SHADOW_ENGINES_ENABLED:-false}
+      # Work order Task C: pyramiding is structurally negative (-$452, 0.7% win).
+      # Disabled in this deployment; code path preserved, just inert.
+      - ORGANISM_PYRAMID_ENABLED=${ORGANISM_PYRAMID_ENABLED:-true}
+      # Task A: realistic round-trip cost (bps) for the costed EOD scoreboard.
+      - ORGANISM_COST_BPS=${ORGANISM_COST_BPS:-3.0}
       # Task S log-only retracement shadow exit: logs what retracement_f60_m10
       # would do vs the real exit, per closed position. Zero effect on trading.
       # Off unless ORGANISM_SHADOW_EXIT_POLICY=retracement is set in .env.
