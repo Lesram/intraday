@@ -17,6 +17,12 @@ services:
         VCS_REF: ${VCS_REF:-unknown}
         BUILD_DATE: ${BUILD_DATE:-unknown}
         VERSION: ${VERSION:-1.0.0}
+    # Task E: the recurring corrupt_head_* quarantines are container SIGKILLs
+    # mid-save — the graceful shutdown brain save (_shut_brain_save) exceeded
+    # Docker's default 10s grace, leaving a half-written HEAD that load then
+    # quarantines + restores from backup (recovery works, but it's noise).
+    # Give the shutdown save room to finish before SIGKILL.
+    stop_grace_period: 60s
     ports:
       - "8000:8000"
     env_file:

@@ -122,3 +122,45 @@ def test_load_roundtrip_after_save(tmp_path):
     fresh = OrganismBrain(brain_dir=brain.brain_dir)
     assert fresh.load() is True
     assert fresh.generation == 3
+
+
+def test_concurrent_save_load_produces_no_false_corruption(tmp_path):
+    """Task E regression: hammering concurrent save/load must never produce a
+    corrupt_head_* quarantine — the cross-process flock serializes writers so a
+    load can't observe a half-swapped HEAD. (The remaining live quarantines are
+    container SIGKILLs mid-save, addressed by stop_grace_period, not a lock bug.)"""
+    brain = _seed_brain(tmp_path)
+    errors: list[Exception] = []
+    load_oks: list[bool] = []
+
+    def _saver():
+        for _ in range(15):
+            try:
+                brain.save(
+                    signal_gen=_make_signal_gen(), learner=_make_learner(),
+                    equity_curve=[100000.0], all_trades=[], epoch_metrics=[],
+                    force=True,
+                )
+            except Exception as e:  # lock-held skips are fine; real errors aren't
+                errors.append(e)
+
+    def _loader():
+        for _ in range(15):
+            try:
+                fresh = OrganismBrain(brain_dir=brain.brain_dir)
+                load_oks.append(fresh.load())
+            except Exception as e:
+                errors.append(e)
+            time.sleep(0.001)
+
+    threads = [threading.Thread(target=_saver) for _ in range(2)] + \
+              [threading.Thread(target=_loader) for _ in range(2)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+
+    assert not errors, f"concurrent save/load raised: {errors[:3]}"
+    corrupt = list(brain.brain_dir.glob("corrupt_head_*"))
+    assert not corrupt, f"false corruption quarantine(s) under concurrency: {corrupt}"
+    assert all(load_oks), "every concurrent load must succeed (never false-fail)"
