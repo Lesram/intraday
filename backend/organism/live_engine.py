@@ -1362,12 +1362,34 @@ class OrganismLiveEngine(
 
         Fails closed: missing data, missing volume column, or fewer than
         20 bars all return False.
+
+        Diagnostics (2026-06-24): the two block reasons are logged distinctly
+        so a flood of blocks is never again mistaken for a dead feed —
+          - <20 bars: the symbol is outside the streaming data universe (e.g.
+            an in-play name the market scanner surfaced but the feed never
+            subscribed to). NOT real illiquidity; DEBUG.
+          - avg_vol < floor: genuine thin volume on a covered symbol; INFO with
+            the value. NOTE: the floor is a SHARE count, so high-priced names
+            (COST/AAPL) can trip it on quiet bars despite ample dollar-volume
+            — see follow-up to switch to a dollar-volume floor.
         """
         df = features_by_symbol.get(symbol)
-        if df is None or "volume" not in df.columns or len(df) < 20:
+        n_bars = 0 if df is None or "volume" not in getattr(df, "columns", []) else len(df)
+        if n_bars < 20:
+            logger.debug(
+                "Liquidity gate: %s has %d bars (<20) — outside data universe / "
+                "no streaming coverage, not real illiquidity.", symbol, n_bars,
+            )
             return False  # Fail closed — insufficient data
         avg_vol = float(df["volume"].iloc[-20:].mean())
-        return avg_vol >= self._MIN_AVG_VOLUME
+        if avg_vol < self._MIN_AVG_VOLUME:
+            logger.info(
+                "Liquidity gate blocked %s: 20-bar avg_vol=%.0f shares < %d "
+                "floor (share-count floor; high-priced names can trip on quiet "
+                "bars).", symbol, avg_vol, self._MIN_AVG_VOLUME,
+            )
+            return False
+        return True
 
     def _passes_entry_gates(
         self,
@@ -3949,7 +3971,7 @@ class OrganismLiveEngine(
                                 _MAIN_FITNESS_GATE,
                             )
                         elif _gate_reason == "liquidity":
-                            logger.info("Liquidity gate blocked %s", c.symbol)
+                            logger.debug("Liquidity gate blocked %s", c.symbol)
                         continue
 
                     # B3 (improve8): Data-source provenance — determine freshness
