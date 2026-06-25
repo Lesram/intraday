@@ -35,6 +35,16 @@ from backend.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
+# Work order Task F (2026-06-25): ML is confirmed noise (corr≈0) and already
+# dropped from the entry gate (DROP_ML_FROM_GATE), yet the background trainer
+# kept retraining + persisting models every interval — pure compute and added
+# brain-corruption surface for an unused model. When disabled, retrain is a
+# no-op; the corr(pred, actual) early-warning is still computed cheaply by the
+# edge monitor (GET /api/v1/health/edge), so a future real signal isn't missed.
+# Default True = byte-identical behavior.
+import os as _os
+ML_RETRAIN_ENABLED = _os.getenv("ORGANISM_ML_RETRAIN_ENABLED", "true").strip().lower() in ("1", "true", "yes", "y")
+
 
 @dataclass
 class TrainResult:
@@ -368,6 +378,16 @@ class BackgroundTrainer:
         Serializes the current state and submits to the executor.
         Non-blocking — returns immediately.
         """
+        if not ML_RETRAIN_ENABLED:
+            if not getattr(self, "_ml_retrain_disabled_logged", False):
+                logger.info(
+                    "ML retrain DISABLED (ORGANISM_ML_RETRAIN_ENABLED=false): "
+                    "skipping retrain+persist while ML is benched (corr still "
+                    "monitored via the edge monitor).",
+                )
+                self._ml_retrain_disabled_logged = True
+            return
+
         if self._is_training:
             logger.debug("BackgroundTrainer: training already in progress, skipping")
             return
