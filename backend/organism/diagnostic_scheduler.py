@@ -189,9 +189,42 @@ class ScheduledDiagnosticRunner:
                 summary["critical_failures"], summary["warnings"],
             )
             if trigger == "post_close":
+                self._log_costed_book(engine)
                 self._log_shadow_exit_delta(engine)
         except Exception as e:
             logger.error("Scheduled diagnostics [%s] failed: %s", trigger, e)
+
+    @staticmethod
+    def _log_costed_book(engine: Any) -> None:
+        """Task A: log a COSTED book summary each post-close so the daily
+        scoreboard reflects realistic costs (the recorded P&L is bar-close mids
+        with no spread/slippage). Best-effort; no-op if history is unreadable."""
+        try:
+            import os
+
+            import pandas as pd
+
+            from backend.organism.costing import costed_summary
+
+            brain_dir = getattr(getattr(engine, "brain", None), "brain_dir", None) or "organism_brain"
+            path = os.path.join(str(brain_dir), "trade_history.csv")
+            if not os.path.exists(path):
+                return
+            df = pd.read_csv(path)
+            if "is_reconciliation_artifact" in df.columns:
+                df = df[~df["is_reconciliation_artifact"].astype(str).str.lower().isin(["true", "1"])]
+            s = costed_summary(df)
+            if not s.get("n"):
+                return
+            logger.info(
+                "Costed book @%.1fbps: n=%d gross=$%.2f NET=$%.2f exp=$%.4f "
+                "PF=%s t=%.2f win=%.1f%% (recorded P&L is bar-close mids; this "
+                "is the honest scoreboard).",
+                s["cost_bps"], s["n"], s["gross_pnl"], s["net_pnl"], s["expectancy"],
+                s["profit_factor"], s["t_stat"], 100 * (s["win_rate"] or 0),
+            )
+        except Exception as e:
+            logger.warning("Costed-book summary failed: %s", e)
 
     @staticmethod
     def _log_shadow_exit_delta(engine: Any) -> None:
