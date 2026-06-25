@@ -20,3 +20,29 @@ Breakeven ≈ **7.3 bps** round-trip (net-positive below that cost).
 **NOT YET PROVEN — keep accumulating.** It clears net>0 (+$94), n≥40 (68), and stability (both 3-folds positive), but the OOS **t=1.87 < 2.0**. The meaningful signal: t **climbed from ~1.0** (the brief's hand-split on 18 live trades) **to 1.87** on 68 OOS replay trades — moving *toward* the bar, not stuck. PF 2.22 OOS is genuinely encouraging.
 
 This is the single most hopeful result in the whole effort — the only cell that's costed-OOS-net-positive and stable — but it is **not** an edge yet. Real money stays off until it clears t≥2 over more trending sessions. The path is patience + accumulation (the engine keeps trading only on conviction), not tuning.
+
+## Cross-agent reconciliation (2026-06-25) — the replay t=1.87 is the LENIENT read
+
+A third agent correctly flagged that my t=1.87 and the earlier t≈1.0 are **two
+estimators on two surfaces**, not one gaining power:
+- **t≈1.0** = 18 OOS trades from the LIVE forward record (real money).
+- **t=1.87** = 68 trades from the REPLAY corpus, which runs structurally rosier
+  (+$276 replay vs −$792 live on the same window — a ~$1,000 optimism gap).
+
+So "t climbed 1.0→1.87 with more data" overstates it: the replay surface
+flatters. **The honest read is the live one, still stuck near 1.0.** Replay
+trend-slice CSV exported to `~/Desktop/desk/replay_trend_slice_costed_2026-06-25.csv`
+for a trade-for-trade line-up against the live record.
+
+**Time-to-verdict is quarters, not weeks.** Forward estimator (SNR from 18
+live trades): t≥2 needs ~69 OOS trend trades — ~51 more than we have. At ~3
+trend trades/week that's **~4 months minimum**, and only if the effect holds
+(OOS effects usually shrink). Order-of-magnitude, not precise. So a live
+trend-edge verdict is a **late-2026 question at the earliest** — accumulation
+is free, but "near 2 on the replay" must NOT drift into "basically proven."
+
+**Flip-gate coherence (for the retracement exit shadow):** when it's ever
+considered for live, hold it to the SAME bar as entries — **costed and
+OOS-stable at t≥2**, not "beats baseline gross in-sample." The earlier exit
+"+$74 net, PF 1.85" was never costed; demanding t≥2 of the entry edge while
+waving an exit change through on gross numbers would be incoherent.
