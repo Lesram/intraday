@@ -866,6 +866,12 @@ class OrganismLiveEngine(
         # NOTE: This is per-bar volume, not daily. For 1-min bars, mega-caps
         # do 50K-200K/bar. 10K/bar ≈ 3.9M daily — filters out true penny stocks.
         self._MIN_AVG_VOLUME = 10_000
+        # 2026-06-24: share-count floor spuriously blocks high-priced / thin-ETF
+        # core names (COST ~$900, SH) that have ample DOLLAR volume. Primary
+        # gate is now a per-bar dollar-volume floor (default $1M/min); the
+        # share-count floor above is the fallback when no price is available.
+        # Set to 0 to disable the dollar-volume floor (share-count only).
+        self._MIN_AVG_DOLLAR_VOLUME = _env_float("ORGANISM_MIN_AVG_DOLLAR_VOLUME", 1_000_000.0)
 
         # Symbols with pending exit orders — prevents duplicate exits across
         # ticks while the broker is still processing the exit.
@@ -1382,11 +1388,26 @@ class OrganismLiveEngine(
             )
             return False  # Fail closed — insufficient data
         avg_vol = float(df["volume"].iloc[-20:].mean())
+        # Primary gate: per-bar DOLLAR volume (when enabled + price available),
+        # so high-priced names (COST/AAPL) and thin-priced ETFs are judged on
+        # the dollars that actually trade, not raw share count.
+        min_dollar = getattr(self, "_MIN_AVG_DOLLAR_VOLUME", 0.0)
+        if min_dollar > 0 and "close" in df.columns:
+            avg_dollar = float((df["volume"].iloc[-20:] * df["close"].iloc[-20:]).mean())
+            if avg_dollar < min_dollar:
+                logger.info(
+                    "Liquidity gate blocked %s: 20-bar avg dollar-vol=$%.0f < "
+                    "$%.0f floor (avg_vol=%.0f shares).",
+                    symbol, avg_dollar, min_dollar, avg_vol,
+                )
+                return False
+            return True
+        # Fallback: share-count floor (no price column available).
         if avg_vol < self._MIN_AVG_VOLUME:
             logger.info(
                 "Liquidity gate blocked %s: 20-bar avg_vol=%.0f shares < %d "
-                "floor (share-count floor; high-priced names can trip on quiet "
-                "bars).", symbol, avg_vol, self._MIN_AVG_VOLUME,
+                "floor (share-count fallback; no price for dollar-volume).",
+                symbol, avg_vol, self._MIN_AVG_VOLUME,
             )
             return False
         return True
