@@ -16,7 +16,15 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
+import os as _os
+
 from backend.organism.ml_signal import MLSignal
+
+# Work order Task D: a symmetric SHORT side for the observable-direction signal
+# (currently long has 4 paths, short has 1 -> trending_down is 0% win). Add
+# mirror bearish paths. SHIPPED OFF by default (byte-identical) — enable only
+# after the costed-OOS validation + Cowork red-team, per the brief.
+SYMMETRIC_SHORT_ENABLED = _os.getenv("ORGANISM_SYMMETRIC_SHORT_ENABLED", "false").strip().lower() in ("1", "true", "yes", "y")
 from backend.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -345,8 +353,23 @@ class AlphaScanner:
             or (breakout_readiness > 0.50 and squeeze_momentum > 0.50)
         )
         bullish_momentum = ret_5d > 0.005 or (ret_20d > 0.010 and trend_strength >= 0)
-        bearish_momentum = ret_5d < -0.005 and not bullish_breakout
 
+        if SYMMETRIC_SHORT_ENABLED:
+            # Mirror-image bearish paths (Task D), symmetric to the long logic:
+            #   bearish_breakdown  ~ bullish_breakout (negative squeeze)
+            #   bearish_momentum   ~ bullish_momentum (sign-flipped)
+            bearish_breakdown = squeeze_momentum < -0.50
+            bearish_momentum = (
+                ret_5d < -0.005 or (ret_20d < -0.010 and trend_strength <= 0)
+            ) and not bullish_breakout
+            if bullish_breakout or bullish_momentum:
+                return 1.0
+            if bearish_breakdown or bearish_momentum:
+                return -1.0
+            return 0.0
+
+        # Default (flag off): original asymmetric logic — byte-identical.
+        bearish_momentum = ret_5d < -0.005 and not bullish_breakout
         if bullish_breakout or bullish_momentum:
             return 1.0
         if bearish_momentum:
