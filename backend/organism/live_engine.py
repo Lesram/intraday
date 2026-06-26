@@ -312,6 +312,22 @@ MR_TOP_N = _env_int("ORGANISM_MR_TOP_N", 3)
 # unambiguous; flip OFF (=false) to revert if observable behavior degrades.
 DROP_ML_FROM_GATE = _env_bool("ORGANISM_DROP_ML_FROM_GATE", True)
 
+# Intra 2.0 Phase 1 (step 5) — THIN SEAM. When True, the live engine re-sources
+# per-symbol entry DIRECTION through the Strategy framework (MomentumStrategy via
+# StrategySelector) instead of trusting alpha_scanner's direction field directly.
+# It is a PROVABLE NO-OP in the live config: momentum._direction reproduces
+# alpha_scanner._observable_direction bit-for-bit (29k-grid parity test), and the
+# scanner already derives direction from observables when DROP_ML_FROM_GATE is on.
+# Universe, regime-gating, confidence, ranking, sizing and exits are UNCHANGED —
+# they stay in the engine (thin seam: only direction authority moves). The seam
+# self-activates only when DROP_ML_FROM_GATE is also on (the regime the framework
+# models). Default OFF; flip via ORGANISM_FRAMEWORK_ROUTING after engine-level
+# replay parity is proven. NOTE: the framework also OWNS confidence/sizing in its
+# own contract, but that is DEFERRED to a later named step with its own parity
+# gate (the live confidence composite is known anti-predictive, corr=-0.112, so
+# that step is a redesign, NOT a faithful port). See docs Phase-1 step 5.
+FRAMEWORK_ROUTING_ENABLED = _env_bool("ORGANISM_FRAMEWORK_ROUTING", False)
+
 # Phase 3 candidate-filter shadow telemetry. Disabled by default and
 # observability-only: when enabled, records candidate slices that would be
 # blocked by the proposed confidence/regime filters without changing ranking,
@@ -2550,6 +2566,64 @@ class OrganismLiveEngine(
                 "Stale-data check error (non-fatal): %s", _stale_err,
             )
 
+    def _get_strategy_selector(self):
+        """Lazily build + cache the momentum-only live StrategySelector.
+
+        Phase 1 step 5 thin seam. Built once, momentum-only, in LIVE mode (so
+        the selector's Rule-A regime/live_routing policy is active). Mean-
+        reversion/ORB are registered but live_routing:false, so they never
+        influence this live path even once built (steps 7/9)."""
+        sel = getattr(self, "_strategy_selector", None)
+        if sel is None:
+            from backend.organism.strategy_selector import StrategySelector
+            sel = StrategySelector.from_config(mode="live", only={"momentum"})
+            self._strategy_selector = sel
+        return sel
+
+    def _scan_entry_candidates(self, features_by_symbol, ml_signals, regime):
+        """Produce the entry-candidate list for this tick.
+
+        Default path (flag off) is byte-identical to the historical inline call:
+        ``alpha_scanner.scan(...)``. With the Phase-1 thin seam on
+        (FRAMEWORK_ROUTING_ENABLED and DROP_ML_FROM_GATE), per-symbol entry
+        DIRECTION is re-sourced through the Strategy framework. Everything else
+        about each candidate — the universe, scores, ml_signal, and all
+        downstream confidence/gate/rank/size logic — is untouched, so flag-on
+        equals flag-off by construction (momentum._direction == the scanner's
+        _observable_direction). A tripwire logs any divergence (must never fire).
+        """
+        candidates = self.alpha_scanner.scan(
+            features_by_symbol, ml_signals, regime,
+            ml_is_trained=self.signal_gen.is_trained,
+            learning_mode=self._ml_isolation_mode,
+            derive_direction_from_observables=DROP_ML_FROM_GATE,
+        )
+        # Seam activates only when direction is observable-derived (the regime
+        # the framework models). If ML is in the gate, the scanner's direction
+        # is ml-derived and the framework does not represent it — leave as-is.
+        if not (FRAMEWORK_ROUTING_ENABLED and DROP_ML_FROM_GATE):
+            return candidates
+
+        try:
+            mom_cands = self._get_strategy_selector().select(features_by_symbol, regime)
+        except Exception as _seam_err:  # never let the seam break a live tick
+            logger.warning("Framework seam disabled this tick (select error): %s", _seam_err)
+            return candidates
+        mom_dir = {c.symbol: c.direction for c in mom_cands}
+
+        for c in candidates:
+            fw = mom_dir.get(c.symbol)
+            if fw is None:
+                continue  # regime not eligible for momentum -> engine direction stands
+            if fw != c.direction:
+                logger.error(
+                    "FRAMEWORK SEAM MISMATCH %s: framework_dir=%s scanner_dir=%s "
+                    "regime=%s — parity tripwire (should be impossible)",
+                    c.symbol, fw, c.direction, regime,
+                )
+            c.direction = fw  # framework is the direction authority when routed
+        return candidates
+
     async def _live_tick_inner(self) -> LiveTickResult:
         """Inner tick logic — always called under _tick_lock."""
         # V6 X-2 / Wave-20b (2026-05-03): use injected clock so tick
@@ -3888,12 +3962,10 @@ class OrganismLiveEngine(
                 # ML predictions — reuse sit-out batch if available
                 ml_signals = _sitout_ml if _sitout_ml else self.signal_gen.predict_batch(features_by_symbol)
 
-                # Alpha scan
-                candidates = self.alpha_scanner.scan(
-                    features_by_symbol, ml_signals, regime,
-                    ml_is_trained=self.signal_gen.is_trained,
-                    learning_mode=self._ml_isolation_mode,
-                    derive_direction_from_observables=DROP_ML_FROM_GATE,
+                # Alpha scan (Phase 1 step 5: routed via the thin-seam helper —
+                # byte-identical when the framework flag is off).
+                candidates = self._scan_entry_candidates(
+                    features_by_symbol, ml_signals, regime
                 )
 
                 # Build candidate list

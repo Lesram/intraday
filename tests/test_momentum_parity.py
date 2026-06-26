@@ -52,15 +52,22 @@ def _run_parity():
 
 def test_parity_default_long_only():
     # default: symmetric short OFF (live default)
-    assert als.SYMMETRIC_SHORT_ENABLED is False and mom.SYMMETRIC_SHORT_ENABLED is False
+    assert als.SYMMETRIC_SHORT_ENABLED is False
+    # momentum reads the flag from alpha_scanner at call time — it must NOT
+    # carry its own module-level copy that could drift.
+    assert not hasattr(mom, "SYMMETRIC_SHORT_ENABLED"), (
+        "momentum.py must read SYMMETRIC_SHORT_ENABLED from alpha_scanner at "
+        "call time, not bind its own module-level copy."
+    )
     n, mism = _run_parity()
     assert not mism, f"{len(mism)} direction mismatches over {n} rows; first: {mism[:3]}"
 
 
 def test_parity_symmetric_short_on(monkeypatch):
-    # flip the flag in BOTH modules (momentum imported the value by binding)
+    # Flip the flag in ONLY the canonical home (alpha_scanner). Because momentum
+    # reads it at call time, patching one place must flip BOTH paths in lockstep
+    # — this is the regression test for the call-time-read fix.
     monkeypatch.setattr(als, "SYMMETRIC_SHORT_ENABLED", True)
-    monkeypatch.setattr(mom, "SYMMETRIC_SHORT_ENABLED", True)
     n, mism = _run_parity()
     assert not mism, f"{len(mism)} mismatches (short-on) over {n} rows; first: {mism[:3]}"
 

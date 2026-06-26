@@ -17,8 +17,10 @@ from typing import Any
 
 import pandas as pd
 
-# Reuse the SAME symmetric-short flag the live path uses, so the two never diverge.
-from backend.organism.alpha_scanner import SYMMETRIC_SHORT_ENABLED
+# Read the symmetric-short flag from its canonical home AT CALL TIME (not a
+# module-level value bind), so a runtime toggle (Task D) can never let this
+# module and the live alpha_scanner silently disagree on direction.
+import backend.organism.alpha_scanner as _alpha_scanner
 from backend.organism.strategies.base import Candidate, FeatureFrame, Strategy
 from backend.organism.strategies.registry import register
 
@@ -43,9 +45,17 @@ class MomentumStrategy(Strategy):
         return set(self.config.get("eligible_regimes", []))
 
     def validate_config(self) -> None:
+        # Fail-closed on EVERY key _direction() reads — not just the bullish
+        # ones. bearish_ret_5d_threshold is read even in long-only mode, and
+        # the rest are read under the symmetric-short flag; a config missing any
+        # of them would pass a partial check and then KeyError at runtime on a
+        # live tick. Validate the full surface the logic touches.
         required = (
             "breakout_readiness_threshold", "breakout_readiness_squeeze_threshold",
             "squeeze_momentum_threshold", "ret_5d_threshold", "ret_20d_threshold",
+            "trend_strength_min", "bearish_squeeze_threshold",
+            "bearish_ret_5d_threshold", "bearish_ret_20d_threshold",
+            "trend_strength_max",
         )
         for k in required:
             if k not in self.config:
@@ -72,7 +82,7 @@ class MomentumStrategy(Strategy):
             or (ret_20d > c["ret_20d_threshold"] and trend >= c["trend_strength_min"])
         )
 
-        if SYMMETRIC_SHORT_ENABLED:
+        if _alpha_scanner.SYMMETRIC_SHORT_ENABLED:
             bearish_breakdown = squeeze < c["bearish_squeeze_threshold"]
             bearish_momentum = (
                 ret_5d < c["bearish_ret_5d_threshold"]
