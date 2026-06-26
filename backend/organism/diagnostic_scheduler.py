@@ -91,7 +91,7 @@ class DiagnosticReportStore:
                 "Loaded %d diagnostic reports from %s",
                 len(self._reports), self._path,
             )
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             logger.warning("Failed to load diagnostic history: %s", e)
             self._reports = []
 
@@ -111,12 +111,12 @@ class DiagnosticReportStore:
             with os.fdopen(fd, "w") as f:
                 json.dump(payload, f, indent=2)
             os.replace(tmp_path, str(self._path))
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             logger.warning("Failed to persist diagnostic history: %s", e)
             # Clean up tmp file if rename failed
             try:
                 os.unlink(tmp_path)
-            except Exception:
+            except Exception:  # noqa: BLE001, S110
                 pass
 
 
@@ -191,7 +191,7 @@ class ScheduledDiagnosticRunner:
             if trigger == "post_close":
                 self._log_costed_book(engine)
                 self._log_shadow_exit_delta(engine)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             logger.error("Scheduled diagnostics [%s] failed: %s", trigger, e)
 
     @staticmethod
@@ -223,7 +223,7 @@ class ScheduledDiagnosticRunner:
                 s["cost_bps"], s["n"], s["gross_pnl"], s["net_pnl"], s["expectancy"],
                 s["profit_factor"], s["t_stat"], 100 * (s["win_rate"] or 0),
             )
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             logger.warning("Costed-book summary failed: %s", e)
 
     @staticmethod
@@ -255,7 +255,7 @@ class ScheduledDiagnosticRunner:
                 s["n"], s["n_triggered"], ov["sum"], ov["mean"], ov["t_stat"],
                 by_reg or "(none triggered yet)",
             )
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             logger.warning("Shadow exit delta summary failed: %s", e)
 
     async def _evaluate_and_alert(self, report: Any, trigger: str) -> None:

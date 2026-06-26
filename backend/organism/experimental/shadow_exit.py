@@ -113,7 +113,7 @@ class _ShadowExitMixin:
         ts = ""
         try:
             ts = self._now_fn().isoformat()
-        except Exception:
+        except Exception:  # noqa: BLE001, S110
             pass
 
         live_levels_map = dict(self._exit_levels)
@@ -153,7 +153,7 @@ class _ShadowExitMixin:
                         "per_share": (price - entry) * d,
                         "pnl": (price - entry) * d * qty,
                     }
-            except Exception as e:  # best-effort per symbol
+            except Exception as e:  # best-effort per symbol  # noqa: BLE001
                 logger.warning("shadow eval failed for %s: %s", sym, e)
 
         # 2) Reconcile real closes: any sym seen last tick but gone now.
@@ -195,7 +195,7 @@ class _ShadowExitMixin:
                     "delta_gross": round(shadow_pnl - real_pnl, 4),
                 }
                 recorder.write(row)
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001
                 logger.warning("shadow reconcile failed for %s: %s", sym, e)
             finally:
                 self._shadow_levels.pop(sym, None)

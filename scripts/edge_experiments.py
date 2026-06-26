@@ -139,12 +139,12 @@ def _load_bars_pickle(path: str):
     try:
         with open(path, "rb") as fh:
             return pickle.load(fh)
-    except Exception:
+    except Exception:  # noqa: BLE001, S110
         pass
     try:
         with open(path, "rb") as fh:
             return U(fh).load()
-    except Exception:
+    except Exception:  # noqa: BLE001
         return None
 
 
@@ -212,7 +212,7 @@ def _trade_history_metrics(brain_dir: str) -> dict:
         return {"th_found": False}
     try:
         df = pd.read_csv(max(paths, key=os.path.getsize))
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         return {"th_found": False, "th_error": str(e)}
     if "is_reconciliation_artifact" in df.columns:
         df = df[~df["is_reconciliation_artifact"].astype(str).str.lower().isin(["true", "1"])]

@@ -49,9 +49,9 @@ def main() -> None:
     print(f"=== shadow-vs-real exit ({path}) — {len(rows)} closed positions ===")
     print(f"shadow would have changed the exit on {len(triggered)} / {len(rows)} "
           f"({100*len(triggered)/len(rows):.0f}%)")
-    print(f"\nALL closed positions (held-agreed rows have delta 0):")
+    print("\nALL closed positions (held-agreed rows have delta 0):")
     print(f"  {s['overall']}")
-    print(f"TRIGGERED only (where retracement diverged from the real exit):")
+    print("TRIGGERED only (where retracement diverged from the real exit):")
     print(f"  {s['triggered']}")
 
     # By regime.
