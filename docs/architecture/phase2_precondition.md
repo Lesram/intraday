@@ -1,6 +1,8 @@
 # Phase 2 PRECONDITION — the honest OOS measuring instrument (work order)
 
-**Status:** not started. **Branch target:** new branch off `intra-2.0-phase1`.
+**Status:** Task 0 ✅ (clock FROZEN_AT 2026-06-27T02:33Z) · Task 1 ✅ (real holdout
++ teeth-test) · Tasks 2/3 pending (forward corpus + verdict gate — accumulation-
+gated). **Branch:** `phase2-precondition` off `intra-2.0-phase1`.
 **Gate:** this is the PRECONDITION for Phase 2, not a Phase-2 step. Do NOT run any
 config sweep or flip any `live_routing` until every acceptance gate below is green.
 **Why first:** step 5b's whole purpose is to test whether a redesigned confidence

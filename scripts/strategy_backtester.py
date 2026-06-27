@@ -20,8 +20,8 @@ WHAT THIS IS *NOT* (read before quoting any number):
       - On a corpus that OVERLAPS the tuning period, the read is IN-SAMPLE and
         flatters. A genuine OOS edge verdict needs a corpus DISJOINT from tuning
         (forward / shadow data), or walk-forward folds that re-fit params per
-        train fold (required once Phase 2 SWEEPS config through this harness —
-        see `holdout_frac`).
+        train fold (required once Phase 2 SWEEPS config — see
+        `walk_forward_select`, the real tune-on-train/report-on-test holdout).
       - "causal" is necessary but not sufficient for "OOS". Do not conflate them.
   * NOT an edge measurement on SYNTHETIC data. make_features_dict is a drifting
     random walk; momentum wins on it BY CONSTRUCTION (the drift IS the signal).
@@ -54,6 +54,45 @@ OOS_CAVEAT = ("CAUSAL + costed, but NOT held-out OOS: fixed params, no train/tes
               "disjoint/forward corpus or walk-forward refit (Phase 2).")
 
 
+def _tstat(pnl) -> float:
+    s = pd.Series(list(pnl), dtype="float64")
+    n = len(s)
+    if n < 2:
+        return 0.0
+    sd = s.std(ddof=1)
+    return float(s.mean() / (sd / (n ** 0.5))) if sd and sd > 0 else 0.0
+
+
+def time_train_test_split(n: int, train_frac: float = 0.6, embargo: int = 0):
+    """Time-ordered split with an EMBARGO (purge) gap between train and test, so
+    overlapping/lagged observations can't leak train info into test."""
+    train_end = max(1, int(n * train_frac))
+    test_start = min(n, train_end + embargo)
+    return list(range(0, train_end)), list(range(test_start, n))
+
+
+def walk_forward_select(param_grid, pnl_for_param, n: int, *, train_frac: float = 0.6,
+                        embargo: int = 0, stat=_tstat) -> dict:
+    """The REAL holdout (Phase-2 step-8 / precondition Task 1): SELECT the param on
+    TRAIN-fold metrics ONLY, then REPORT on the untouched TEST fold.
+
+    `pnl_for_param(param, idx)` returns the per-trade pnl array for `param` over row
+    indices `idx`. Leakage is structurally impossible: selection never sees the test
+    fold. This is what makes "tune a param" honest — contrast with restricting the
+    eval window (`eval_tail_frac`), which does NOT close leakage. The teeth-test
+    plants a param that overfits train (train_stat≥2) and shows test_stat collapses.
+    """
+    train_idx, test_idx = time_train_test_split(n, train_frac, embargo)
+    best, best_train = None, float("-inf")
+    for p in param_grid:
+        t = stat(pnl_for_param(p, train_idx))     # SELECTION: train only
+        if t > best_train:
+            best_train, best = t, p
+    test_stat = stat(pnl_for_param(best, test_idx))  # REPORT: test only
+    return {"selected": best, "train_stat": best_train, "test_stat": test_stat,
+            "n_train": len(train_idx), "n_test": len(test_idx)}
+
+
 @dataclass
 class BacktestConfig:
     cost_bps: float = DEFAULT_COST_BPS   # round-trip, costing.DEFAULT_COST_BPS
@@ -65,12 +104,11 @@ class BacktestConfig:
     max_bars: int | None = None          # cap evaluated bars (None = all)
     bars_per_day: int = 390              # 1-min RTH
     t_stat_gate: float = 2.0             # acceptance: t_stat >= this
-    holdout_frac: float = 0.0            # >0 ⇒ evaluate only the FINAL fraction (test window).
-                                         # SCAFFOLD ONLY: this restricts the eval window; it does
-                                         # NOT by itself enforce OOS. A Phase-2 sweep must tune
-                                         # params on the earlier (train) portion and report on this
-                                         # test window — that tune-on-train step is not built yet.
-                                         # See the Phase-2 PRECONDITION in docs/architecture/intra_2.0_phase1.md.
+    eval_tail_frac: float = 0.0          # >0 ⇒ evaluate only the FINAL fraction of bars.
+                                         # This is a WINDOW RESTRICTION, NOT a holdout — it does
+                                         # not enforce OOS on its own (renamed from holdout_frac so
+                                         # it can't be mistaken for one). The REAL tune-on-train /
+                                         # report-on-test holdout is walk_forward_select() below.
 
 
 @dataclass
@@ -154,7 +192,7 @@ def run_backtest(bars_by_symbol, config: BacktestConfig | None = None,
     detector = RegimeDetector(is_intraday=True, bars_per_day=cfg.bars_per_day)
     selector = StrategySelector.from_config(mode="backtest")
 
-    start = max(cfg.warmup, int(n * cfg.holdout_frac))  # holdout: skip the train portion
+    start = max(cfg.warmup, int(n * cfg.eval_tail_frac))  # window restriction (NOT a holdout)
     last_t = n - cfg.entry_lag - cfg.horizon - 1
     if cfg.max_bars is not None:
         last_t = min(last_t, start + cfg.max_bars)
@@ -229,13 +267,14 @@ def main() -> int:
     p.add_argument("--horizon", type=int, default=20)
     p.add_argument("--entry-lag", type=int, default=1)
     p.add_argument("--max-bars", type=int, default=None)
-    p.add_argument("--holdout-frac", type=float, default=0.0)
+    p.add_argument("--eval-tail-frac", type=float, default=0.0,
+                   help="evaluate only the final fraction of bars (window restriction, NOT a holdout)")
     p.add_argument("--notional", type=float, default=10_000.0)
     args = p.parse_args()
 
     cfg = BacktestConfig(cost_bps=args.cost_bps, horizon=args.horizon,
                          entry_lag=args.entry_lag, notional=args.notional,
-                         max_bars=args.max_bars, holdout_frac=args.holdout_frac)
+                         max_bars=args.max_bars, eval_tail_frac=args.eval_tail_frac)
     if args.bars_pickle:
         bars = load_bars_pickle(args.bars_pickle)
         res = run_backtest(bars, cfg, data_source="real")
