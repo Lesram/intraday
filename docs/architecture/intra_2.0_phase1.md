@@ -119,33 +119,43 @@ latest bar timestamp (contract convention: a FeatureFrame is as-of-now); no
 timestamp ⇒ stand down. Flipping it live requires a STRUCTURAL change
 (cost/horizon/instrument) that is OOS-positive at t≥2 — not a config toggle.
 
-## Step 8 — OOS cost-disciplined backtester (done, checkpoint #2)
+## Step 8 — causal, cost-disciplined backtester (done, checkpoint #2)
 `scripts/strategy_backtester.py` (`run_backtest`, `BacktestConfig`,
-`BacktestResult`). The scoreboard that decides routing flips for `live_routing:
-false` strategies and re-confirms momentum/breakout.
+`BacktestResult`, `load_bars_pickle`). The scoreboard that decides routing flips
+for `live_routing:false` strategies and re-confirms momentum/breakout.
 
-OOS/costed **by construction** (Rule B):
+**Guarantees by construction:**
+- CAUSAL — no look-ahead: at bar t the strategy scans only `features[t-W+1:t+1]`;
+  regime detected causally from SPY (stateful detector fed bar-by-bar); entry =
+  OPEN of bar `t+entry_lag` (`entry_lag>=1` ⇒ strictly after the signal, no
+  same-bar fill); exit `horizon` bars later.
+- COST-DISCIPLINED — round-trip bps per trade (`backend.organism.costing`).
 - Features from the SAME live function (`compute_ml_features`) — online/offline
   parity.
-- At bar t the strategy scans only `features[:t+1]` (causal); regime is detected
-  causally from SPY, feeding the stateful detector bar-by-bar like live.
-- Entry = OPEN of bar `t+entry_lag` (`entry_lag>=1` ⇒ strictly after the signal,
-  no same-bar fill ⇒ out-of-sample); exit `horizon` bars later.
-- Every trade costed (round-trip bps, `backend.organism.costing`).
-- **Acceptance gate (Rule B): net expectancy > 0 AND t_stat >= 2** on costed OOS
-  trades (`accepted` per strategy).
+- Acceptance gate: net expectancy > 0 AND t_stat >= 2 (`accepted`, REAL bars only).
+
+**CORRECTION (2026-06-26): causal ≠ OOS, and synthetic ≠ edge.** An earlier draft
+mislabeled this "OOS by construction" and demoed it on synthetic trending data
+(reported momentum t=5.59). Both were wrong:
+- It is CAUSAL, not held-out OOS. Params are fixed (tuned on historical real
+  data), there's no train/test split, so on an overlapping corpus the read is
+  IN-SAMPLE. Genuine OOS needs a corpus disjoint from tuning (forward/shadow) or
+  walk-forward refit once Phase 2 SWEEPS config (scaffolded via `holdout_frac`).
+  The result object carries `oos_caveat`; the report prints it.
+- Synthetic `make_features_dict` is a drifting random walk — momentum wins on it
+  BY CONSTRUCTION (the drift IS the signal). So synthetic is a SMOKE TEST of
+  harness mechanics ONLY: `data_source="synthetic"` ⇒ `is_smoke`, NEVER renders
+  an ACCEPT verdict. Edge claims require `--bars-pickle` (real cached corpus).
 
 **Guardrail decision (the step-8 fork): SIGNAL significance, labeled — NOT live
-P&L.** Trades are sized FLAT (fixed notional). Routing through the live
+P&L.** Trades sized FLAT (fixed notional). Routing through the live
 confidence/Kelly composite would measure a known defect (anti-predictive,
-corr=-0.112, deferred 5b), so flat sizing answers "does the signal have edge?"
-comparably across strategies. The result object self-labels this (`sizing_label`)
-and the report prints it. Live-P&L-grade significance waits on 5b.
+corr=-0.112, deferred 5b). Self-labeled via `sizing_label`.
 
-Methodology proven in `tests/test_strategy_backtester.py`: OOS (entry strictly
-after signal, exit within data), costs applied (net<gross), gate semantics,
-honest label, regime-eligibility routing, determinism. (Validates the harness,
-not that a synthetic strategy is profitable — edge is a data question.)
+Tests (`tests/test_strategy_backtester.py`): synthetic is smoke & never accepts;
+causal entries; costs bite; gate arithmetic on REAL bars; honest sizing/OOS
+labels; regime-eligibility routing; determinism. (Validates the harness; edge is
+a data question answered only on real, OOS-disjoint corpora.)
 
 ## DEFERRED — named, with their own gates (do NOT let "Phase 1 done" hide these)
 
