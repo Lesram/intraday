@@ -31,7 +31,8 @@ def test_momentum_values_are_verbatim_from_observable_direction():
 
 
 def test_live_routing_gating_rule_a():
-    assert get_config("momentum")["live_routing"] is True   # only live book
+    assert get_config("momentum")["live_routing"] is True   # live book
+    assert get_config("breakout")["live_routing"] is True    # also a live capital path
     assert get_config("mean_reversion")["live_routing"] is False  # evidence-negative
     assert get_config("orb")["live_routing"] is False        # unbuilt/untested
 

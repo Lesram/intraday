@@ -39,7 +39,8 @@ STRATEGY_CONFIG: dict[str, dict[str, Any]] = {
         "live_routing": True,  # only live book (still unproven; t≈0.2 OOS)
     },
 
-    # ── Mean-reversion: VERBATIM from mean_reversion_scanner defaults. ──
+    # ── Mean-reversion: VERBATIM from mean_reversion_scanner + live MR_* env
+    #    defaults (live_engine sets top_n=3, cooldown=60, long_only=LONG_ONLY). ──
     "mean_reversion": {
         "timeframe": "1Min",
         "min_displacement_atr": 4.0,
@@ -47,6 +48,12 @@ STRATEGY_CONFIG: dict[str, dict[str, Any]] = {
         "stop_extension_atr": 1.0,
         "min_stop_bps": 5.0,
         "min_price": 5.0,
+        "cooldown_minutes": 60,   # MR_COOLDOWN_MINUTES
+        "top_n": 3,               # MR_TOP_N (live overrides scanner default 5)
+        "long_only": True,        # scanner long_only (LONG_ONLY env)
+        "min_vwap_bars": 10,      # DEFAULT_MIN_VWAP_BARS
+        "entry_hour_et": 9, "entry_min_et": 45,    # skip 9:30-9:45 open vol
+        "no_new_hour_et": 15, "no_new_min_et": 30,  # no entries into EOD flatten
         "eligible_regimes": ["chop"],
         # Rule A: evidence-NEGATIVE — gross bounce ~1.7-2.2bps < ~4bps round-trip
         # cost, net-negative in every sweep incl. residual variant; bounce
@@ -68,8 +75,33 @@ STRATEGY_CONFIG: dict[str, dict[str, Any]] = {
         "live_routing": False,
     },
 
-    # breakout: resolved in step 6 (fold into momentum vs keep distinct), then
-    #   added here with a documented parity decision.
+    # ── Breakout: KEEP-DISTINCT (step-6 decision). A separate multi-factor
+    #    generator (BreakoutScanner) that enters symbols momentum's
+    #    _observable_direction never flags — folding it into momentum would
+    #    either DROP those entries (parity break) or force momentum to replicate
+    #    the whole breakout composite (conflating two signals). So it stays its
+    #    own Strategy. Params VERBATIM from BreakoutScanner; the live pure-
+    #    breakout entry path forces LONG and gates at composite>=0.55. ──
+    "breakout": {
+        "timeframe": "1Min",
+        "top_n": 8,  # MAX_OPEN_POSITIONS (BreakoutScanner default)
+        # Scanner composite weights (BreakoutScanner.W_*).
+        "w_squeeze": 0.25, "w_volume": 0.25, "w_contraction": 0.15,
+        "w_rs": 0.15, "w_pivot": 0.15, "w_flow": 0.05,
+        "min_breakout_score": 0.20,  # scanner's own floor (MIN_BREAKOUT_SCORE)
+        # Lookbacks: intraday-scaled (engine sets 4x for 1Min bars).
+        "bb_period": 80, "atr_short": 40, "atr_long": 200, "vol_avg_period": 80,
+        # Live pure-breakout ENTRY rule (live_engine ~4307/4321/4371):
+        "entry_composite_threshold": 0.55,  # engine gate, above the scanner floor
+        "max_pure_breakout": 2,             # per-tick cap (selector/routing concern)
+        "long_only": True,                  # entry path forces direction=1.0
+        # No hard regime gate live (runs every tick, gated by _MIN_MAIN_CONF +
+        # shared entry gates). eligible_regimes here is the framework view; the
+        # engine's real regime behavior is authoritative until 5c reconciliation.
+        "eligible_regimes": ["trending_up", "high_vol", "chop", "trending_down"],
+        "live_routing": True,  # a LIVE capital path today (still unproven, like momentum)
+    },
+
     # eod: PARKED — two contradictory unvalidated engines; excluded from the
     #   registry entirely (Section 5). Do not expand Phase 1 scope on it.
 }

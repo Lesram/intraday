@@ -58,6 +58,8 @@ class StrategySelector:
         each configured (non-parked) strategy with its config block. `only`
         restricts to a subset (e.g. {"momentum"} for the parity path)."""
         # Import for registration side effects (parked EOD is intentionally absent).
+        import backend.organism.strategies.breakout  # noqa: F401
+        import backend.organism.strategies.mean_reversion  # noqa: F401
         import backend.organism.strategies.momentum  # noqa: F401
         from backend.organism.strategies.registry import build_strategy
         from backend.organism.strategies.strategy_config import all_configs

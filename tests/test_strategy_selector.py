@@ -62,10 +62,24 @@ def test_select_ranks_by_confidence_desc():
     assert confs == sorted(confs, reverse=True) and confs[0] == 0.9
 
 
-def test_from_config_live_builds_momentum_only_live():
+def test_from_config_builds_registered_strategies():
+    # momentum + breakout (live_routing True) + mean_reversion (registered but
+    # live_routing False) are built; ORB not yet registered (step 9) -> skipped.
+    names = {s.name for s in StrategySelector.from_config(mode="live").strategies}
+    assert {"momentum", "breakout", "mean_reversion"} <= names
+    assert "orb" not in names
+    # low_vol is eligible for NEITHER momentum {trending_up,high_vol} nor breakout
+    # {trending_up,high_vol,chop,trending_down} -> live mode stands down.
     sel = StrategySelector.from_config(mode="live")
-    # momentum is registered + live_routing True; MR/ORB not yet registered (steps 7/9)
-    names = {s.name for s in sel.strategies}
-    assert "momentum" in names
-    # In a chop regime, live mode stands down (momentum not eligible there).
-    assert sel.select({"A": pd.DataFrame({"ret_5d": [0.0]})}, "chop") == []
+    assert sel.select({"A": pd.DataFrame({"close": [1.0]})}, "low_vol") == []
+
+
+def test_rule_a_mean_reversion_measured_not_routed():
+    """MR's regime is chop. In BACKTEST it is measured; in LIVE it is NOT routed
+    (live_routing False) even in its own regime — Rule A."""
+    live = StrategySelector.from_config(mode="live")
+    bt = StrategySelector.from_config(mode="backtest")
+    live_chop = {s.name for s in live.eligible_strategies("chop")}
+    bt_chop = {s.name for s in bt.eligible_strategies("chop")}
+    assert "mean_reversion" not in live_chop   # capital gated off
+    assert "mean_reversion" in bt_chop          # measured
