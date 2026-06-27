@@ -65,8 +65,12 @@ class BacktestConfig:
     max_bars: int | None = None          # cap evaluated bars (None = all)
     bars_per_day: int = 390              # 1-min RTH
     t_stat_gate: float = 2.0             # acceptance: t_stat >= this
-    holdout_frac: float = 0.0            # >0 ⇒ evaluate only the final fraction (test set); the
-                                         #     earlier portion is where a Phase-2 sweep must tune.
+    holdout_frac: float = 0.0            # >0 ⇒ evaluate only the FINAL fraction (test window).
+                                         # SCAFFOLD ONLY: this restricts the eval window; it does
+                                         # NOT by itself enforce OOS. A Phase-2 sweep must tune
+                                         # params on the earlier (train) portion and report on this
+                                         # test window — that tune-on-train step is not built yet.
+                                         # See the Phase-2 PRECONDITION in docs/architecture/intra_2.0_phase1.md.
 
 
 @dataclass

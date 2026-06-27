@@ -63,11 +63,10 @@ def test_select_ranks_by_confidence_desc():
 
 
 def test_from_config_builds_registered_strategies():
-    # momentum + breakout (live_routing True) + mean_reversion (registered but
-    # live_routing False) are built; ORB not yet registered (step 9) -> skipped.
+    # All four are registered: momentum + breakout live_routing True;
+    # mean_reversion + orb registered but live_routing False (benchmarks).
     names = {s.name for s in StrategySelector.from_config(mode="live").strategies}
-    assert {"momentum", "breakout", "mean_reversion"} <= names
-    assert "orb" not in names
+    assert {"momentum", "breakout", "mean_reversion", "orb"} <= names
     # low_vol is eligible for NEITHER momentum {trending_up,high_vol} nor breakout
     # {trending_up,high_vol,chop,trending_down} -> live mode stands down.
     sel = StrategySelector.from_config(mode="live")

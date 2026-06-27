@@ -61,6 +61,7 @@ class StrategySelector:
         import backend.organism.strategies.breakout  # noqa: F401
         import backend.organism.strategies.mean_reversion  # noqa: F401
         import backend.organism.strategies.momentum  # noqa: F401
+        import backend.organism.strategies.orb  # noqa: F401
         from backend.organism.strategies.registry import build_strategy
         from backend.organism.strategies.strategy_config import all_configs
 

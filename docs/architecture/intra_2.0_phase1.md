@@ -8,9 +8,10 @@ routed through a `StrategySelector`, with an OOS backtester — all flag-gated a
 ## Binding rules (from the plan)
 - **Rule A — modularizing ≠ endorsing.** A strategy can be registered and
   measured without influencing capital. `live_routing` in `strategy_config.py`
-  gates CAPITAL, not measurement. Today only `momentum` is `live_routing:true`
-  (and still unproven); `mean_reversion` (evidence-negative after costs) and
-  `orb` (unbuilt) are backtest/shadow benchmarks.
+  gates CAPITAL, not measurement. Today `momentum` + `breakout` are
+  `live_routing:true` (the live books, still unproven); `mean_reversion`
+  (evidence-negative after costs) and `orb` (built step 9, untested) are
+  backtest/shadow benchmarks. `eod` is PARKED — excluded from the registry.
 - **Rule B — the backtester is OOS/cost-disciplined by construction.** Net
   expectancy > 0 at t≥2 out-of-sample, costed. See the step-8 guardrail below.
 
@@ -24,11 +25,31 @@ routed through a `StrategySelector`, with an OOS backtester — all flag-gated a
 | 5 | **Thin seam: engine routes entry DIRECTION via framework; prove parity** | ✅ done — engine-level parity proven (below) |
 | 6 | Breakout: fold-in vs keep-distinct (documented + parity) | ✅ done — **KEEP DISTINCT**; extracted to contract (below) |
 | 7 | Extract mean_reversion (registered, `live_routing:false`) | ✅ done — registered benchmark (below) |
-| 8 | `scripts/strategy_backtester.py` — OOS/costed (checkpoint #2) | ✅ done — methodology proven (below) |
-| 9 | Build ORB to contract + dynamic in-play universe | ⬜ todo |
-| 10 | Park EOD + docs | ⬜ in progress (this doc) |
+| 8 | `scripts/strategy_backtester.py` — OOS/costed (checkpoint #2) | ⚠️ harness built + honestly labeled; **OOS-verdict capability OWED** (Phase-2 precondition, below) |
+| 9 | Build ORB to contract + dynamic in-play universe | ✅ done — ORBStrategy + in-play selector (below) |
+| 10 | Park EOD + docs | ✅ done — EOD excluded + this doc (below) |
 | **5b** | **Confidence/sizing extraction — REDESIGN, own parity gate** | ⛔ DEFERRED (named, see below) |
-| **5c** | **Selector regime-policy reconciliation** | ⛔ DEFERRED (named, see below) |
+| **5c** | **Selector regime-policy reconciliation (+ breakout routing)** | ⛔ DEFERRED (named, see below) |
+| **9b** | **In-play universe: live wider-symbol data sourcing** | ⛔ DEFERRED (named, see below) |
+| **8b** | **Backtester live-P&L mode (needs 5b)** | ⛔ DEFERRED (named, see below) |
+
+**Phase 1 (steps 1–10) is COMPLETE — with one honest asterisk.** The strategy
+framework exists end to end: shared contract, all four strategies registered,
+externalized config, Rule-A routing through the selector, a thin parity-proven
+live seam (direction only), and a CAUSAL, cost-disciplined, honestly-labeled
+backtester — with the live momentum book bit-for-bit unchanged (parity,
+acceptance #1).
+
+**The asterisk (step 8):** the backtester is an *honesty fix, not a function
+fix*. It correctly REFUSES a false verdict (synthetic ⇒ no verdict; causal ≠ OOS
+labeled), but it has not produced a real one. Rule B's actual requirement —
+"OOS **by construction**" — is NOT delivered; what exists is "causal by
+construction, OOS *scaffolded* (`holdout_frac`) but not *enforced*." So the edge
+question is exactly as unanswered as before: we deleted a fake t=5.59, we did not
+replace it. **Enforcing the holdout + obtaining a corpus disjoint from the tuning
+period is the PRECONDITION for Phase 2, not a Phase-2 step** (see below). What's
+otherwise left is the explicitly-named deferrals; none is implied by "Phase 1
+done".
 
 ## Step 5 — the thin seam (done)
 **Decision: thin seam, not faithful confidence extraction.** In live mode the
@@ -157,6 +178,59 @@ causal entries; costs bite; gate arithmetic on REAL bars; honest sizing/OOS
 labels; regime-eligibility routing; determinism. (Validates the harness; edge is
 a data question answered only on real, OOS-disjoint corpora.)
 
+**What the real-bars run actually showed — and didn't (2026-06-26).** Ran on
+`broad_corpus_v2` (24.5k 1-min bars, gitignored): `breakout` t=−0.43 (no edge),
+`mean_reversion` t=−13.67, n=6493 (decisively negative — independently confirms
+its `live_routing:false`), `momentum` **absent**. Two reasons this is NOT an edge
+verdict: (1) the regime detector tagged the whole corpus `chop`, so momentum
+(eligible trending_up/high_vol) never fired — a chop-only corpus can't measure a
+trending-regime strategy; (2) the corpus overlaps the tuning period, so even the
+breakout/MR reads are IN-SAMPLE. So: honest negatives for MR/breakout in-sample,
+**no momentum OOS verdict at all**. The edge question is still open.
+
+**Honesty fix, not function fix.** The tool is built and refuses to lie; the one
+property step 8 was scoped to guarantee — a trustworthy OOS edge verdict — is
+OWED, not delivered.
+
+## ⛔ PHASE-2 PRECONDITION (hard gate — do this BEFORE any config sweep)
+A config sweep run through this harness *as it stands* would be an overfitting
+machine: with no enforced holdout and an in-sample-by-default corpus, it would
+happily report flattering in-sample t-stats and the failure would be invisible.
+So Phase 2's task #1 — its *precondition*, not a step — is:
+1. **Enforce** the holdout: `holdout_frac` currently only restricts the eval
+   window; sweeps must tune params on the train fold and report on the held-out
+   test fold (walk-forward, with purge/embargo). Wire and enforce it.
+2. **Obtain a corpus disjoint from tuning** (forward / shadow data), so "OOS"
+   means it.
+3. **Validate the gate** (net exp>0 at t≥2) on that corpus before trusting any
+   sweep result or flipping any `live_routing`.
+Until 1–3 are done, the backtester answers "does the signal have edge?" only
+in-sample — necessary plumbing, not a verdict.
+
+## Step 9 — ORB to contract + dynamic in-play universe (done)
+**ORBStrategy** (`backend/organism/strategies/orb.py`) wraps the unchanged
+`ORBScanner`, verbatim config, emits the live ORB entry (signals whose breakout
+has TRIGGERED now, scanner direction). `live_routing:false` (Rule A — untested).
+`now` from the latest bar timestamp (no timestamp ⇒ stand down). Confidence =
+RV-intensity `min(rv_ratio/4,1)` (the live `_orb_tension`; full ML composite is
+5b, and ORB's ML corr≈0.056 is noise). **Config reconciled**: the step-2 ORB
+block was speculative and wrong (`opening_range_minutes:15`, a `breakout_buffer_atr`
+with no scanner equivalent); now verbatim from `ORBScanner` defaults
+(opening_minutes=5, top_n=10, rv_lookback=14, min_price=5, min_rv_ratio=1.5,
+stop_atr_mult=1).
+
+**Dynamic in-play universe feed** (`in_play_universe.py`): the SELECTION logic —
+rank symbols by relative volume, return the top-K with RV≥min (the canonical 1.5
+gate the live shadow had to lower to 1.0 on the static 22). `relative_volume`,
+`rank_in_play`, `select_in_play_universe` (empty ⇒ stand down on a quiet tape).
+**Honest boundary:** this is the ranking mechanism; SOURCING a wider symbol set
+(>the 22) from the live data provider each session is a data-infrastructure
+follow-on (Phase 1 adds no new live feeds) — a named deferral below. Widen the
+pool upstream and the 1.5 gate becomes viable.
+
+`from_config` now builds all four (momentum, breakout, mean_reversion, orb). Tests:
+`test_orb_strategy.py`, `test_in_play_universe.py`.
+
 ## DEFERRED — named, with their own gates (do NOT let "Phase 1 done" hide these)
 
 ### Step 5b — confidence/sizing ownership (a REDESIGN, not a port)
@@ -173,7 +247,7 @@ redesign question; **flat sizing is a legitimate baseline candidate** and would
 let us measure whether the composite adds anything but noise. Gate: a candidate
 confidence model must beat flat sizing on costed OOS expectancy before it routes.
 
-### Step 5c — selector regime-policy reconciliation
+### Step 5c — selector regime-policy reconciliation (+ breakout routing)
 `momentum.eligible_regimes = {trending_up, high_vol}` does **not** match the live
 engine's actual regime behavior (it also acts in chop/trending_down with
 graduated handling: trending_down→exploration-route, chop→defensive conf
@@ -181,6 +255,23 @@ threshold, high_vol/stress→raised composite threshold). The step-5 seam theref
 re-sources DIRECTION only and leaves regime authority in the engine. Making the
 selector's regime policy authoritative requires first reconciling
 `eligible_regimes` with the engine's real behavior, then a fresh parity proof.
+This also covers routing the **breakout** entry path (dedup-vs-momentum, the
+per-tick cap of 2, ranking interplay) through the selector rather than the inline
+engine block.
+
+### Step 9b — in-play universe: live wider-symbol data sourcing
+`in_play_universe.py` is the SELECTION mechanism (rank by relative volume, top-K
+≥ gate). It works on whatever pool it's given. SOURCING a dynamic, wider-than-22
+symbol set from the live data provider each session — so ORB's canonical RV≥1.5
+gate becomes viable instead of the lowered 1.0 — is a data-infrastructure
+follow-on; Phase 1 adds no new live feeds. Gate: ORB must clear the OOS bar on
+the wider in-play universe before `live_routing` flips.
+
+### Step 8b — backtester live-P&L mode (needs 5b)
+The backtester reports SIGNAL significance (flat sizing), deliberately (below).
+A live-P&L-significance mode — sizing through a *fixed* confidence model — only
+becomes meaningful once 5b defines a confidence worth sizing by. Until then,
+"signal significance, not live-P&L" stands.
 
 ## Step 8 guardrail — backtester sizing honesty (decide on purpose)
 If live sizing stays in the engine (per 5b deferral) but the backtester sizes
@@ -192,3 +283,14 @@ by a backtest surface that ran rosier than live. So step 8 must EITHER route the
 backtester through the real Kelly/confidence path, OR label its output explicitly
 as "signal significance, not live-P&L significance." Pick one deliberately;
 never let it happen silently.
+(Resolved in step 8: chose signal-significance, explicitly labeled. See above.)
+
+## Step 10 — park EOD + docs (done)
+**EOD stays PARKED.** The codebase has two contradictory, unvalidated end-of-day
+engines; Section 5 of the plan excludes EOD from the framework entirely. It is NOT
+in `STRATEGY_CONFIG` and NOT registered, enforced by
+`test_strategy_config.test_eod_is_parked_excluded`. Do not expand Phase-1 scope on
+it; any EOD work is a separate, later effort with its own validation.
+
+This document is the Phase-1 ledger (steps + binding decisions + named deferrals).
+Phase 1 is complete; the deferrals above are the honest, tracked remainder.

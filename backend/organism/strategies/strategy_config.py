@@ -62,16 +62,24 @@ STRATEGY_CONFIG: dict[str, dict[str, Any]] = {
         "live_routing": False,
     },
 
-    # ── ORB: BUILT to the contract in step 9 (was never properly built). ──
+    # ── ORB: built to the contract in step 9. Params VERBATIM from the ORBScanner
+    #    defaults (the canonical "stocks-in-play" ORB spec). NOTE: the live SHADOW
+    #    construction lowers min_rv_ratio 1.5→1.0 because the static 22-symbol
+    #    universe lacks RV>=1.5 catalyst names — which is exactly what the dynamic
+    #    in-play universe feed (in_play_universe.py) is for: surface wider, more
+    #    in-play names so the canonical 1.5 threshold is viable. ──
     "orb": {
         "timeframe": "1Min",
-        "opening_range_minutes": 15,   # opening-range window
-        "min_relative_volume": 1.5,    # in-play universe rank gate
-        "breakout_buffer_atr": 0.1,    # trigger = OR high/low +/- buffer*ATR
-        "universe_size": 50,           # dynamic in-play universe (wider than the 22)
+        "opening_minutes": 5,          # ORB window (DEFAULT_OPENING_MINUTES)
+        "top_n": 10,                   # stocks-in-play candidates (DEFAULT_TOP_N)
+        "rv_lookback_days": 14,        # RV baseline window (DEFAULT_RV_LOOKBACK_DAYS)
+        "min_price": 5.0,              # paper: > $5/share
+        "min_rv_ratio": 1.5,           # canonical in-play gate (live shadow uses 1.0 — see note)
+        "stop_atr_mult": 1.0,          # ORB-anchored stop (DEFAULT_STOP_ATR_MULT)
+        "universe_size": 50,           # dynamic in-play universe target (wider than the 22)
         "eligible_regimes": ["high_vol"],
-        # Rule A: unbuilt/untested; no validated backtest exists. Prove OOS at
-        # t>=2 (incl. the dynamic in-play universe feed) before routing.
+        # Rule A: untested; no validated backtest exists. Prove OOS at t>=2 (incl.
+        # the dynamic in-play universe feed) before a human flips live_routing.
         "live_routing": False,
     },
 
