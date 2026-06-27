@@ -1,0 +1,117 @@
+{
+  "FROZEN_AT": "2026-06-27T02:33:43.330051+00:00",
+  "_note_status": "surface unchanged \u2014 clock preserved",
+  "git_sha": "5988bcbd324f87630bcd6681be4b60d473d5d99e",
+  "n_target": 60,
+  "n_target_range": [
+    50,
+    70
+  ],
+  "note": "Forward-only by construction. The verdict corpus is trades taken STRICTLY AFTER FROZEN_AT. Any decision-surface drift (source_hashes/strategy_config/exit_env) RESETS the clock \u2014 re-run this script.",
+  "provenance": "no reconstructable fit-date; all pre-cutoff data contaminated by construction",
+  "surface": {
+    "exit_env": {
+      "ORGANISM_EXIT_ATR_MULT": null,
+      "ORGANISM_EXIT_DECAY_START": null,
+      "ORGANISM_EXIT_DECAY_START_MULT": null,
+      "ORGANISM_EXIT_MAX_BARS": null,
+      "ORGANISM_EXIT_MAX_BARS_MULT": null,
+      "ORGANISM_EXIT_PARTIAL_TP_PCT": null,
+      "ORGANISM_EXIT_PARTIAL_TP_R": null,
+      "ORGANISM_EXIT_PROFIT_LOCK_R": null,
+      "ORGANISM_EXIT_PROFIT_R": null,
+      "ORGANISM_EXIT_STOP_ATR_MULT": null,
+      "ORGANISM_EXIT_TRAIL_ATR_MULT": null,
+      "ORGANISM_EXIT_TRAIL_DIST_ATR": null,
+      "ORGANISM_EXIT_TRAIL_START_ATR": null
+    },
+    "source_hashes": {
+      "entry_direction": "12d65c08efcdaaa6d2440858e568ee6813fc543287c631e5ba106dc796aad790",
+      "entry_gates_dispatch": "31597aa21034080dbe086e0c48de9074804f5fb867e16831663ae07587b2539f",
+      "exit_engine": "33310e3a2bb5ecf291d1edbfa99f43a9d29b0a2df608816313dfa8439363f0ed",
+      "kelly_sizer": "679887491910e936d575d3347e6dd611b9433ca78ff4c609762a23d12665198e",
+      "regime_detector": "4a6eef4179ae40987b044462eac60b481b8fafd148097e408af9858e5d36dfd4"
+    },
+    "strategy_config": {
+      "breakout": {
+        "atr_long": 200,
+        "atr_short": 40,
+        "bb_period": 80,
+        "eligible_regimes": [
+          "trending_up",
+          "high_vol",
+          "chop",
+          "trending_down"
+        ],
+        "entry_composite_threshold": 0.55,
+        "live_routing": true,
+        "long_only": true,
+        "max_pure_breakout": 2,
+        "min_breakout_score": 0.2,
+        "timeframe": "1Min",
+        "top_n": 8,
+        "vol_avg_period": 80,
+        "w_contraction": 0.15,
+        "w_flow": 0.05,
+        "w_pivot": 0.15,
+        "w_rs": 0.15,
+        "w_squeeze": 0.25,
+        "w_volume": 0.25
+      },
+      "mean_reversion": {
+        "cooldown_minutes": 60,
+        "eligible_regimes": [
+          "chop"
+        ],
+        "entry_hour_et": 9,
+        "entry_min_et": 45,
+        "live_routing": false,
+        "long_only": true,
+        "min_displacement_atr": 4.0,
+        "min_price": 5.0,
+        "min_stop_bps": 5.0,
+        "min_vwap_bars": 10,
+        "no_new_hour_et": 15,
+        "no_new_min_et": 30,
+        "stop_extension_atr": 1.0,
+        "target_retracement": 0.8,
+        "timeframe": "1Min",
+        "top_n": 3
+      },
+      "momentum": {
+        "bearish_ret_20d_threshold": -0.01,
+        "bearish_ret_5d_threshold": -0.005,
+        "bearish_squeeze_threshold": -0.5,
+        "breakout_readiness_squeeze_threshold": 0.5,
+        "breakout_readiness_threshold": 0.6,
+        "eligible_regimes": [
+          "trending_up",
+          "high_vol"
+        ],
+        "live_routing": true,
+        "ret_20d_threshold": 0.01,
+        "ret_5d_threshold": 0.005,
+        "squeeze_momentum_threshold": 0.5,
+        "timeframe": "1Min",
+        "top_n": 5,
+        "trend_strength_max": 0.0,
+        "trend_strength_min": 0.0
+      },
+      "orb": {
+        "eligible_regimes": [
+          "high_vol"
+        ],
+        "live_routing": false,
+        "min_price": 5.0,
+        "min_rv_ratio": 1.5,
+        "opening_minutes": 5,
+        "rv_lookback_days": 14,
+        "stop_atr_mult": 1.0,
+        "timeframe": "1Min",
+        "top_n": 10,
+        "universe_size": 50
+      }
+    },
+    "strategy_config_hash": "d9f606d01c7179e7bd6159186380ad93b36ebc4ac9749fd5b82efc8410ff67fe"
+  }
+}
