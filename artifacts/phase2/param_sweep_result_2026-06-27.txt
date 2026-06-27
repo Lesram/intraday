@@ -1,0 +1,58 @@
+# Phase 2 walk-forward parameter sweep — VERDICT: NO EDGE (both strategies)
+# Run 2026-06-27 on artifacts/broad_corpus_v2/bars.pkl (10000 bars/symbol, 22 syms).
+# select-on-train / report-on-test; gate test_t>=2. Reproduce: scripts/phase2_param_sweep.py --which both --max-bars 10000
+
+corpus=10000 bars/symbol  train=[:6000]  embargo=300  test=[6300:]  symbols=22
+==============================================================================
+WALK-FORWARD SWEEP — MOMENTUM (regime-relaxed signal test)  (select on TRAIN, report on TEST; gate test_t>=2)
+==============================================================================
+ ret_5d_threshold  ret_20d_threshold  breakout_readiness_threshold  train_n  train_t  train_exp  test_n  test_t  test_exp
+            0.010              0.020                           0.7     2328   -1.291    -1.7487    1733  -5.851  -11.0868
+            0.010              0.020                           0.6     2328   -1.291    -1.7487    1733  -5.851  -11.0868
+            0.010              0.020                           0.5     2328   -1.291    -1.7487    1733  -5.851  -11.0868
+            0.005              0.020                           0.7     3507   -2.657    -2.9852    2452  -1.312   -2.1867
+            0.005              0.020                           0.6     3507   -2.657    -2.9852    2452  -1.312   -2.1867
+            0.005              0.020                           0.5     3507   -2.657    -2.9852    2452  -1.312   -2.1867
+            0.010              0.010                           0.7     3764   -5.542    -5.7088    2761  -4.141   -6.0423
+            0.010              0.010                           0.6     3764   -5.542    -5.7088    2761  -4.141   -6.0423
+            0.010              0.010                           0.5     3764   -5.542    -5.7088    2761  -4.141   -6.0423
+            0.005              0.010                           0.5     4702   -6.147    -5.6602    3279  -1.003   -1.3989
+            0.005              0.010                           0.7     4702   -6.147    -5.6602    3279  -1.003   -1.3989
+            0.005              0.010                           0.6     4702   -6.147    -5.6602    3279  -1.003   -1.3989
+            0.010              0.005                           0.5     9323   -6.326    -3.6149    6439   5.319    5.2159
+            0.010              0.005                           0.6     9323   -6.326    -3.6149    6439   5.319    5.2159
+            0.010              0.005                           0.7     9323   -6.326    -3.6149    6439   5.319    5.2159
+            0.005              0.005                           0.7     9784   -7.066    -3.9747    6655   5.997    5.8120
+            0.005              0.005                           0.6     9784   -7.066    -3.9747    6655   5.997    5.8120
+            0.005              0.005                           0.5     9784   -7.066    -3.9747    6655   5.997    5.8120
+            0.002              0.020                           0.7    12798   -7.651    -3.8843    7658   4.904    4.4057
+            0.002              0.020                           0.6    12798   -7.651    -3.8843    7658   4.904    4.4057
+            0.002              0.020                           0.5    12798   -7.651    -3.8843    7658   4.904    4.4057
+            0.002              0.010                           0.7    13498   -9.376    -4.6051    8171   4.666    4.0154
+            0.002              0.010                           0.6    13498   -9.376    -4.6051    8171   4.666    4.0154
+            0.002              0.010                           0.5    13498   -9.376    -4.6051    8171   4.666    4.0154
+            0.002              0.005                           0.6    16912   -9.941    -4.1979   10391   8.186    6.1747
+            0.002              0.005                           0.7    16912   -9.941    -4.1979   10391   8.186    6.1747
+            0.002              0.005                           0.5    16912   -9.941    -4.1979   10391   8.186    6.1747
+
+SELECTED on train (train_t=-1.29, n=2328): {'ret_5d_threshold': np.float64(0.01), 'ret_20d_threshold': np.float64(0.02), 'breakout_readiness_threshold': np.float64(0.7)}
+  -> TEST fold (the only valid read): t=-5.85  exp=-11.0868  n=1733
+
+VERDICT: NO EDGE — train-selected config test_t=-5.85 < 2
+(note: 15 configs happen to have test_t>=2, but choosing among them by TEST performance is the exact leakage the walk-forward prevents — the train-selected config above is the only honest answer.)
+==============================================================================
+WALK-FORWARD SWEEP — BREAKOUT  (select on TRAIN, report on TEST; gate test_t>=2)
+==============================================================================
+ entry_composite_threshold  min_rv_ratio  train_n  train_t  train_exp  test_n  test_t  test_exp
+                      0.65           1.0     1004    1.535     4.1835     680  -0.336   -0.7046
+                      0.65           1.5     1004    1.535     4.1835     680  -0.336   -0.7046
+                      0.55           1.0     3046    0.626     0.8200    2101   2.556    3.6479
+                      0.55           1.5     3046    0.626     0.8200    2101   2.556    3.6479
+                      0.45           1.0     8409   -1.033    -0.7157    6023   1.361    1.1580
+                      0.45           1.5     8409   -1.033    -0.7157    6023   1.361    1.1580
+
+SELECTED on train (train_t=1.53, n=1004): {'entry_composite_threshold': np.float64(0.65), 'min_rv_ratio': np.float64(1.0)}
+  -> TEST fold (the only valid read): t=-0.34  exp=-0.7046  n=680
+
+VERDICT: NO EDGE — train-selected config test_t=-0.34 < 2
+(note: 2 configs happen to have test_t>=2, but choosing among them by TEST performance is the exact leakage the walk-forward prevents — the train-selected config above is the only honest answer.)

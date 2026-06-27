@@ -183,14 +183,20 @@ def _compute_all_features(bars_by_symbol, bars_per_day):
 
 
 def run_backtest(bars_by_symbol, config: BacktestConfig | None = None,
-                 data_source: str = "real") -> BacktestResult:
+                 data_source: str = "real", only: set | None = None,
+                 precomputed_feats: dict | None = None) -> BacktestResult:
+    """`only` restricts the selector to a strategy subset (e.g. {"momentum"}).
+    `precomputed_feats` reuses features across calls (param sweeps) so they're
+    computed once per corpus, not once per config — features don't depend on the
+    strategy params being swept."""
     cfg = config or BacktestConfig()
-    feats = _compute_all_features(bars_by_symbol, cfg.bars_per_day)
+    feats = precomputed_feats if precomputed_feats is not None else \
+        _compute_all_features(bars_by_symbol, cfg.bars_per_day)
     spy_feats = feats.get("SPY")
 
     n = min(len(f) for f in feats.values())
     detector = RegimeDetector(is_intraday=True, bars_per_day=cfg.bars_per_day)
-    selector = StrategySelector.from_config(mode="backtest")
+    selector = StrategySelector.from_config(mode="backtest", only=only)
 
     start = max(cfg.warmup, int(n * cfg.eval_tail_frac))  # window restriction (NOT a holdout)
     last_t = n - cfg.entry_lag - cfg.horizon - 1
