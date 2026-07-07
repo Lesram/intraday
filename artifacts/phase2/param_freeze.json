@@ -1,7 +1,7 @@
 {
-  "FROZEN_AT": "2026-06-27T02:33:43.330051+00:00",
-  "_note_status": "surface unchanged \u2014 clock preserved",
-  "git_sha": "6646d389fbfcd0d17b5f446f4db1d23977ccdeea",
+  "FROZEN_AT": "2026-07-07T17:30:19.356337+00:00",
+  "_note_status": "clock reset",
+  "git_sha": "3d3b80bcd88bcb165ce15fd74f68593b977a70a5",
   "n_target": 60,
   "n_target_range": [
     50,
@@ -27,7 +27,7 @@
     },
     "source_hashes": {
       "entry_direction": "12d65c08efcdaaa6d2440858e568ee6813fc543287c631e5ba106dc796aad790",
-      "entry_gates_dispatch": "31597aa21034080dbe086e0c48de9074804f5fb867e16831663ae07587b2539f",
+      "entry_gates_dispatch": "b561fb24e50b9ff4f38479628c3f354ffc7cd0783b96746b70921632ca33830a",
       "exit_engine": "33310e3a2bb5ecf291d1edbfa99f43a9d29b0a2df608816313dfa8439363f0ed",
       "kelly_sizer": "679887491910e936d575d3347e6dd611b9433ca78ff4c609762a23d12665198e",
       "regime_detector": "4a6eef4179ae40987b044462eac60b481b8fafd148097e408af9858e5d36dfd4"
