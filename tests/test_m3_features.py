@@ -124,7 +124,11 @@ def test_alpha_loop_short_circuited_when_disabled():
 
 def test_breakout_loop_short_circuited_when_disabled():
     src = _engine_source()
-    assert "_breakout_iter = [] if _ab_disabled else breakout_signals" in src
+    # 5c Commit A restructured the else-branch (v2 sources from the selector
+    # pass) — the M3-4 short-circuit contract is the disabled-side: [] when
+    # _ab_disabled, regardless of which path supplies the signals.
+    assert "_breakout_iter = [] if _ab_disabled else (" in src
+    assert "if FRAMEWORK_ROUTING_V2_ENABLED else breakout_signals" in src
 
 
 def test_eod_late_block_audit_fix():
