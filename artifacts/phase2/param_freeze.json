@@ -1,7 +1,7 @@
 {
-  "FROZEN_AT": "2026-07-07T17:30:19.356337+00:00",
+  "FROZEN_AT": "2026-07-07T18:01:16.307237+00:00",
   "_note_status": "clock reset",
-  "git_sha": "3d3b80bcd88bcb165ce15fd74f68593b977a70a5",
+  "git_sha": "ed2121829faf7f02e471685fabdfdd6bbd0bffa6",
   "n_target": 60,
   "n_target_range": [
     50,
@@ -25,12 +25,42 @@
       "ORGANISM_EXIT_TRAIL_DIST_ATR": null,
       "ORGANISM_EXIT_TRAIL_START_ATR": null
     },
+    "regime_policy": {
+      "chop": [
+        "mean_reversion"
+      ],
+      "high_vol": [
+        "momentum",
+        "breakout",
+        "orb"
+      ],
+      "low_vol": [
+        "breakout"
+      ],
+      "stress": [],
+      "trending_down": [
+        "momentum"
+      ],
+      "trending_up": [
+        "momentum",
+        "breakout"
+      ],
+      "unknown": []
+    },
+    "routing_data_env": {
+      "ALPACA_DATA_FEED": "iex",
+      "ORGANISM_FRAMEWORK_ROUTING": null,
+      "ORGANISM_FRAMEWORK_ROUTING_V2": null,
+      "ORGANISM_MIN_AVG_DOLLAR_VOLUME": "50000",
+      "ORGANISM_ROUTING_RANK_POLICY": null
+    },
     "source_hashes": {
       "entry_direction": "12d65c08efcdaaa6d2440858e568ee6813fc543287c631e5ba106dc796aad790",
-      "entry_gates_dispatch": "b561fb24e50b9ff4f38479628c3f354ffc7cd0783b96746b70921632ca33830a",
+      "entry_gates_dispatch": "9a23a34e193226e222eb492f5808bbcd62fedeae89bb58b6ba17f6bfe01c5f9d",
       "exit_engine": "33310e3a2bb5ecf291d1edbfa99f43a9d29b0a2df608816313dfa8439363f0ed",
-      "kelly_sizer": "679887491910e936d575d3347e6dd611b9433ca78ff4c609762a23d12665198e",
-      "regime_detector": "4a6eef4179ae40987b044462eac60b481b8fafd148097e408af9858e5d36dfd4"
+      "kelly_sizer": "2a5d52aff866ce3425ca1d787ce3416895634adf61529e3989369bccc3a664bc",
+      "regime_detector": "4a6eef4179ae40987b044462eac60b481b8fafd148097e408af9858e5d36dfd4",
+      "selector_routing": "bed6a91e7f95f3ad11e159767ecdb6d54b42c022997df3b801bcbe20ad8628d2"
     },
     "strategy_config": {
       "breakout": {

@@ -44,6 +44,19 @@ EXIT_ENV_VARS = [
     "ORGANISM_EXIT_TRAIL_START_ATR",
 ]
 
+# Phase 3 Task 5: the routing/data half of the decision surface. The DATA FEED
+# is a first-class frozen fact (Task 0 — a verdict must never be read out of
+# its data context); routing flags decide WHICH code path trades; the
+# liquidity floor was recalibrated 20x for IEX (2026-07-06) and gates the
+# whole universe; REGIME_POLICY is the Task-4 ranking authority.
+ROUTING_DATA_ENV_VARS = [
+    "ALPACA_DATA_FEED",
+    "ORGANISM_MIN_AVG_DOLLAR_VOLUME",
+    "ORGANISM_FRAMEWORK_ROUTING",
+    "ORGANISM_FRAMEWORK_ROUTING_V2",
+    "ORGANISM_ROUTING_RANK_POLICY",
+]
+
 
 def _h(s: str) -> str:
     return hashlib.sha256(s.encode()).hexdigest()
@@ -56,7 +69,9 @@ def compute_surface() -> dict:
     from backend.organism.kelly_sizer import KellySizer
     from backend.organism.live_engine import OrganismLiveEngine
     from backend.organism.regime import RegimeDetector
-    from backend.organism.strategies.strategy_config import STRATEGY_CONFIG
+    from backend.organism.strategies.strategy_config import (
+        REGIME_POLICY, STRATEGY_CONFIG,
+    )
 
     source_hashes = {
         "entry_direction": _h(inspect.getsource(AlphaScanner._observable_direction)),
@@ -64,12 +79,19 @@ def compute_surface() -> dict:
         "regime_detector": _h(inspect.getsource(RegimeDetector)),
         "kelly_sizer": _h(inspect.getsource(KellySizer)),
         "entry_gates_dispatch": _h(inspect.getsource(OrganismLiveEngine._live_tick_inner)),
+        # Phase 3: the selector routing path is decision surface once V2 is on.
+        "selector_routing": _h(
+            inspect.getsource(OrganismLiveEngine._rank_candidates)
+            + inspect.getsource(OrganismLiveEngine._scan_all_strategies_v2)
+            + inspect.getsource(OrganismLiveEngine._scan_entry_candidates)),
     }
     surface = {
         "source_hashes": source_hashes,
         "strategy_config": STRATEGY_CONFIG,
         "strategy_config_hash": _h(json.dumps(STRATEGY_CONFIG, sort_keys=True, default=str)),
+        "regime_policy": REGIME_POLICY,
         "exit_env": {k: os.getenv(k) for k in EXIT_ENV_VARS},
+        "routing_data_env": {k: os.getenv(k) for k in ROUTING_DATA_ENV_VARS},
     }
     # Normalize to the JSON representation so on-disk vs in-memory compare cleanly.
     return json.loads(json.dumps(surface, sort_keys=True, default=str))
