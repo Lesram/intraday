@@ -74,6 +74,36 @@ class StrategySelector:
             out[s.name] = {"candidates": cands, "routed": self._eligible(s, regime)}
         return out
 
+    def select_policy_ranked(self, features: FeatureFrame, regime: str,
+                             policy: dict[str, list[str]] | None = None,
+                             scan_res: dict | None = None) -> list[Candidate]:
+        """Phase 3 Task 4: policy-ordered capital candidates for one regime.
+
+        Under the 5b verdict (FLAT ships — no confidence model beat flat OOS),
+        candidate ranking carries no information, so ORDER IS POLICY: the
+        declarative REGIME_POLICY list is the ranking authority; within one
+        strategy, native scan order is preserved. A strategy contributes only
+        if it is BOTH routed (Rule A via scan_all) AND named in the policy for
+        this regime — the policy can only narrow live routing, never widen it.
+
+        Absent/empty policy entry ⇒ [] ⇒ EXPLICIT STAND-DOWN.
+        ``scan_res`` lets the caller reuse an existing scan_all() pass (the
+        engine's per-tick memoized result) instead of scanning again.
+        """
+        if policy is None:
+            from backend.organism.strategies.strategy_config import regime_policy
+            policy = regime_policy()
+        order = policy.get(regime, [])
+        if not order:
+            return []                      # stand down
+        res = scan_res if scan_res is not None else self.scan_all(features, regime)
+        out: list[Candidate] = []
+        for name in order:
+            entry = res.get(name) or {}
+            if entry.get("routed"):
+                out.extend(entry.get("candidates", []))
+        return out
+
     @classmethod
     def from_config(cls, mode: str = LIVE, only: Iterable[str] | None = None,
                     scanner_overrides: dict | None = None) -> "StrategySelector":

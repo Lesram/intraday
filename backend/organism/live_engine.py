@@ -860,6 +860,8 @@ class OrganismLiveEngine(
         else:
             self._shadow_exit = None
         self._legacy_orb_last_signal_keys: set[str] = set()
+        # Task 4: per-bar dedup keys for un-routed framework shadow signals.
+        self._fw_shadow_last_signal_keys: set[str] = set()
         self._strategy_governor = StrategyGovernor()
 
         # ── Live state ──────────────────────────────────────────
@@ -2637,6 +2639,14 @@ class OrganismLiveEngine(
             res = {}
         self._last_scan_all_result = res
         self._last_scan_all_tick = self._tick_count
+        # Task 4: un-routed strategies stream into the evidence feed as
+        # shadow-attribution signals (measured, never sized — Rule A). Once
+        # per tick, on the fresh scan only; failure never affects the tick.
+        try:
+            self._record_framework_shadow_candidates(
+                res, regime=regime, now_iso=self._now_fn().isoformat())
+        except Exception as _fw_shadow_err:
+            logger.debug("Framework shadow attribution err: %s", _fw_shadow_err)
         return res
 
     @staticmethod

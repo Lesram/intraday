@@ -115,6 +115,35 @@ STRATEGY_CONFIG: dict[str, dict[str, Any]] = {
 }
 
 
+# ───────────────────────────────────────────────────────────────────
+# Phase 3 Task 4 — declarative regime→strategy policy.
+#
+# ORDER IS THE RANKING AUTHORITY under the 5b flat-confidence verdict
+# (artifacts/phase2/phase5b_confidence_verdict.txt): no confidence model
+# beat flat OOS, so candidate ranking carries no information — priority is
+# a POLICY decision, declared here, not a score pretending to know better.
+# Within one strategy, candidates keep that strategy's native scan order.
+#
+# An empty list is an EXPLICIT STAND-DOWN (no strategy trades that regime).
+# A strategy appearing here still needs BOTH its own eligible_regimes AND
+# Rule A (live_routing / forward-verdict) to actually route capital —
+# this table can only NARROW, never widen, live routing.
+REGIME_POLICY: dict[str, list[str]] = {
+    "trending_up":   ["momentum", "breakout"],
+    "high_vol":      ["momentum", "breakout", "orb"],
+    "chop":          ["mean_reversion"],   # Rule-A gated: shadow-only until verdict
+    "trending_down": ["momentum"],         # engine inverse/defensive handling applies
+    "low_vol":       ["breakout"],
+    "stress":        [],                   # explicit stand-down
+    "unknown":       [],                   # explicit stand-down
+}
+
+
+def regime_policy() -> dict[str, list[str]]:
+    """Deep copy of the regime→strategy priority policy (mutation-safe)."""
+    return copy.deepcopy(REGIME_POLICY)
+
+
 def get_config(name: str) -> dict[str, Any]:
     """Return a deep copy of a strategy's config block (mutation-safe)."""
     return copy.deepcopy(STRATEGY_CONFIG.get(name, {}))

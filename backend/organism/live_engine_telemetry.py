@@ -194,6 +194,88 @@ class _TelemetryRecordingMixin:
         except Exception as exc:
             logger.warning("Legacy ORB shadow telemetry write failed: %s", exc)
 
+    def _record_framework_shadow_candidates(
+        self,
+        scan_res: dict,
+        *,
+        regime: str,
+        now_iso: str,
+    ) -> None:
+        """Phase 3 Task 4: stream UN-ROUTED framework candidates into the
+        strategy evidence feed as shadow signals — measured, never sized
+        (Rule A: a strategy influences live capital only after its forward
+        verdict; until then it accumulates comparison data here). Dedup is
+        per bar+strategy+symbol+side, same discipline as the legacy ORB
+        mirror. strategy_id = "fw_<name>_shadow" keys the per-strategy
+        per-regime attribution report."""
+        from backend.organism.schema.candidate_signal import CandidateSignal
+
+        if not scan_res or self._strategy_evidence_recorder is None:
+            return
+        shadow_now = self._now_fn()
+        current_bar = shadow_now.strftime("%Y-%m-%d %H:%M")
+        if len(self._fw_shadow_last_signal_keys) > 5000:
+            self._fw_shadow_last_signal_keys.clear()
+
+        signals: list[CandidateSignal] = []
+        for name, entry in scan_res.items():
+            if entry.get("routed"):
+                continue                    # capital path records itself
+            for cand in entry.get("candidates", []):
+                symbol = str(cand.symbol or "").upper()
+                side = "long" if cand.direction >= 0 else "short"
+                key = f"{current_bar}:{name}:{symbol}:{side}"
+                if not symbol or key in self._fw_shadow_last_signal_keys:
+                    continue
+                self._fw_shadow_last_signal_keys.add(key)
+                extra = cand.extra if isinstance(cand.extra, dict) else {}
+                signals.append(
+                    CandidateSignal(
+                        signal_id=(
+                            f"fw-{name}-{symbol.lower()}-{self._tick_count}-"
+                            f"{current_bar.replace(' ', 'T').replace(':', '')}"
+                        ),
+                        strategy_id=f"fw_{name}_shadow",
+                        engine_version="framework_selector.v2",
+                        symbol=symbol,
+                        side=side,
+                        timeframe="1Min",
+                        created_at=now_iso,
+                        intended_horizon_bars=60,
+                        regime=str(regime),
+                        evidence_tier=0,
+                        shadow_only=True,
+                        expected_edge_bps=None,
+                        confidence=float(cand.confidence),
+                        stop_price=(
+                            float(extra.get("stop_price")
+                                  or extra.get("suggested_stop") or 0.0) or None
+                        ),
+                        target_price=(
+                            float(extra.get("target_price") or 0.0) or None
+                        ),
+                        risk_budget_bps=0.0,
+                        features={
+                            "framework_strategy": name,
+                            "routed": False,
+                            "atr_at_entry": float(extra.get("atr_at_entry", 0.0) or 0.0),
+                        },
+                    )
+                )
+        if not signals:
+            return
+        try:
+            written = self._strategy_evidence_recorder.record_signals(
+                signals, tick=self._tick_count, timestamp=now_iso,
+            )
+            self._strategy_evidence_events += written
+            self._phase9_shadow_signal_events += written
+            logger.info(
+                "Framework shadow recorded %d un-routed strategy signals", written,
+            )
+        except Exception as exc:
+            logger.warning("Framework shadow telemetry write failed: %s", exc)
+
     async def _persist_telemetry_to_db(self) -> None:
         """Write latest telemetry snapshot to DB (every 6th tick ≈ 1/min)."""
         if self._sessionmaker is None:
