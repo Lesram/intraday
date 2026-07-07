@@ -185,6 +185,7 @@ class KellySizer:
         quote_provider: Callable[[str], dict[str, Any]] | None = None,
         trade_count: int | None = None,
         fixed_risk_mode: bool | None = None,
+        rank_policy: str = "legacy",
     ) -> list[PositionSize]:
         """Size positions for a list of alpha candidates.
 
@@ -222,7 +223,14 @@ class KellySizer:
         # of predicted_return * confidence.
         # Production mode: full predicted_return * confidence ranking.
         _is_learning_mode = _fixed_risk_mode
-        if _is_learning_mode:
+        _flat_policy = rank_policy == "flat_policy"
+        if _flat_policy:
+            # 5c Commit B / Task 4: under the 5b flat verdict the upstream
+            # order IS the policy ranking (REGIME_POLICY priority). No score
+            # re-sort — every internal ordering heuristic measured no better
+            # than flat OOS (phase5b_confidence_verdict.txt).
+            pass
+        elif _is_learning_mode:
             # Preserve upstream ranking_score when available (set by
             # live_engine from alpha/breakout composite scores). Only
             # fall back to local heuristic if ranking_score is absent.
@@ -509,12 +517,17 @@ class KellySizer:
                 ann_vol = float(np.std(returns, ddof=1)) * np.sqrt(252 * self._bars_per_day)
                 vol_scale = min(self.vol_target / max(ann_vol, 0.01), 2.0)
 
-                # 6. Confidence scaling
-                _eff_conf = cand.get("effective_confidence", confidence)
-                confidence_scale = 0.3 + min(_eff_conf, 1.0) * 1.2
-
-                # 7. Breakout bonus
-                breakout_bonus = self._breakout_bonus(breakout_score)
+                # 6. Confidence scaling — neutralized under flat_policy
+                # (5b verdict: no confidence model beat flat sizing OOS;
+                # scaling by the composite would size on measured noise).
+                if _flat_policy:
+                    confidence_scale = 1.0
+                    breakout_bonus = 1.0
+                else:
+                    _eff_conf = cand.get("effective_confidence", confidence)
+                    confidence_scale = 0.3 + min(_eff_conf, 1.0) * 1.2
+                    # 7. Breakout bonus
+                    breakout_bonus = self._breakout_bonus(breakout_score)
 
                 target_weight = (
                     kelly_half

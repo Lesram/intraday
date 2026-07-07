@@ -343,6 +343,17 @@ FRAMEWORK_ROUTING_ENABLED = _env_bool("ORGANISM_FRAMEWORK_ROUTING", False)
 # confidence + attribution) is a SEPARATE behavior change with its own gate.
 FRAMEWORK_ROUTING_V2_ENABLED = _env_bool("ORGANISM_FRAMEWORK_ROUTING_V2", False)
 
+# Phase 3 Task 3/4 COMMIT B — the INTENDED behavior change (requires V2 on).
+#   "legacy"      : ranking_score sort + composite confidence gates (today).
+#   "flat_policy" : the 5b/Task-4 redesign — REGIME_POLICY order is the ranking
+#                   authority (5b verdict: flat ships, no score beat flat OOS),
+#                   composite-confidence entry gates bypass (caps/liquidity/
+#                   fitness/sector/risk-budget remain the binding constraints),
+#                   Kelly confidence/breakout multipliers neutralized to 1.0.
+# Gate: scripts/verify_strategy_reconciliation.py + replay review, then Task-5
+# freeze. NOT inert — do not expect A/B parity with legacy.
+ROUTING_RANK_POLICY = os.getenv("ORGANISM_ROUTING_RANK_POLICY", "legacy").strip().lower()
+
 # Phase 3 candidate-filter shadow telemetry. Disabled by default and
 # observability-only: when enabled, records candidate slices that would be
 # blocked by the proposed confidence/regime filters without changing ranking,
@@ -2689,6 +2700,46 @@ class OrganismLiveEngine(
             self._scan_all_strategies_v2(features_by_symbol, regime),
             "mean_reversion")
 
+    def _rank_policy_effective(self) -> str:
+        """Commit B: the rank policy in force ("legacy" unless V2 is on)."""
+        return ROUTING_RANK_POLICY if FRAMEWORK_ROUTING_V2_ENABLED else "legacy"
+
+    def _composite_conf_gates_active(self) -> bool:
+        """5c Commit B: composite-confidence entry gates (eff_conf/_bo_conf
+        thresholds) bypass under flat_policy — the 5b verdict retired the
+        composite from the decision path. Caps/liquidity/fitness/sector/
+        risk-budget stay binding; data-quality & regime-safety exploration
+        routes (heuristic, trending_down, stale) REMAIN active."""
+        return self._rank_policy_effective() != "flat_policy"
+
+    def _rank_candidates(self, cand_dicts, regime):
+        """Task 4 ranking authority (5c Commit B).
+
+        legacy (default): ranking_score desc — today's composite ordering.
+        flat_policy (V2 + ORGANISM_ROUTING_RANK_POLICY=flat_policy): the
+        declarative REGIME_POLICY order ranks candidates — (policy index of
+        fw_strategy, build order) — because the 5b verdict shipped FLAT: no
+        score beat flat sizing OOS, so composite ordering is noise-ordering.
+        Candidates whose fw_strategy is absent from the regime's policy are
+        DROPPED; an empty policy list drops everything = explicit STAND-DOWN.
+        """
+        if not (FRAMEWORK_ROUTING_V2_ENABLED and ROUTING_RANK_POLICY == "flat_policy"):
+            cand_dicts.sort(key=lambda x: x["ranking_score"], reverse=True)
+            return cand_dicts
+        from backend.organism.strategies.strategy_config import regime_policy
+        order = regime_policy().get(regime, [])
+        idx = {name: i for i, name in enumerate(order)}
+        kept = [(idx[d.get("fw_strategy")], i, d)
+                for i, d in enumerate(cand_dicts) if d.get("fw_strategy") in idx]
+        if len(kept) < len(cand_dicts):
+            logger.info(
+                "Task-4 policy: regime=%s dropped %d/%d candidates (%s)",
+                regime, len(cand_dicts) - len(kept), len(cand_dicts),
+                "STAND-DOWN" if not order else "not policy-eligible",
+            )
+        kept.sort(key=lambda t: (t[0], t[1]))
+        return [d for _, _, d in kept]
+
     def _v2_breakout_raws(self, features_by_symbol, regime):
         """5c Commit A: pure-breakout entry signals from the selector pass
         (breakout-as-STRATEGY). The inline step-7 scan stays as a FEATURE
@@ -4128,6 +4179,7 @@ class OrganismLiveEngine(
                 # counts them when evaluating subsequent candidates.  Prevents
                 # intra-tick sector-limit violations.
                 _planned_entries: set[str] = set()
+                _conf_gates_active = self._composite_conf_gates_active()
 
                 # Store gate thresholds for telemetry
                 self._last_eff_fitness_gate = 0.0 if self._is_learning_mode else _MAIN_FITNESS_GATE
@@ -4353,7 +4405,7 @@ class OrganismLiveEngine(
                     elif _data_source != "streaming" and self._streaming_provider is not None:
                         # B3: Main-book requires streaming data; rest/stale → exploration
                         _route_exploration = True
-                    elif _eff_conf < _EXPL_CONF_GATE:
+                    elif _conf_gates_active and _eff_conf < _EXPL_CONF_GATE:
                         # Below exploration gate → reject outright
                         _rej_counts["confidence_gate"] += 1
                         _rej_counts["below_expl_conf"] += 1
@@ -4362,7 +4414,7 @@ class OrganismLiveEngine(
                             c.symbol, _eff_conf, _EXPL_CONF_GATE,
                         )
                         continue
-                    elif _eff_conf < _MIN_MAIN_CONF:
+                    elif _conf_gates_active and _eff_conf < _MIN_MAIN_CONF:
                         _route_exploration = True
 
                     if _route_exploration:
@@ -4406,7 +4458,7 @@ class OrganismLiveEngine(
                         "effective_confidence": _eff_conf,
                         "breakout_score": breakout_score,
                         "expected_return_source": c.expected_return_source,
-                        "ranking_score": c.composite_score,
+                        "ranking_score": c.composite_score, "fw_strategy": "momentum",
                         # Exp3 instrumentation: side-by-side confidence
                         "confidence_bt_only": _conf_bt_only,
                         "confidence_ml_component": _conf_ml_component,
@@ -4457,7 +4509,7 @@ class OrganismLiveEngine(
                     # Confidence threshold
                     _bo_conf = min(bs.composite_score, 1.0)
                     # B1 parity: use unified threshold (same as alpha path)
-                    if _bo_conf < _MIN_MAIN_CONF:
+                    if _conf_gates_active and _bo_conf < _MIN_MAIN_CONF:
                         continue
                     # ML negative-direction veto — production only.
                     # In learning mode ML is untrained and anti-predictive;
@@ -4519,7 +4571,7 @@ class OrganismLiveEngine(
                         "effective_confidence": _bo_conf,
                         "breakout_score": bs.composite_score,
                         "expected_return_source": _bo_ret_source,
-                        "ranking_score": bs.composite_score * _bo_conf,
+                        "ranking_score": bs.composite_score * _bo_conf, "fw_strategy": "breakout",
                     }
                     if self._record_defensive_filtered_candidate(
                         _cand_dict, regime, _defensive_filtered_cand_dicts,
@@ -4674,7 +4726,7 @@ class OrganismLiveEngine(
                             "effective_confidence": _orb_composite,
                             "breakout_score": _orb_breakout_proxy,
                             "expected_return_source": _orb_ret_source,
-                            "ranking_score": _orb_composite * orbc.rv_ratio,
+                            "ranking_score": _orb_composite * orbc.rv_ratio, "fw_strategy": "orb",
                             # ORB-specific fields for telemetry / sizing
                             "orb_high": orbc.orb_high,
                             "orb_low": orbc.orb_low,
@@ -4832,7 +4884,7 @@ class OrganismLiveEngine(
                             "effective_confidence": _eod_composite,
                             "breakout_score": _eod_breakout_proxy,
                             "expected_return_source": _eod_ret_source,
-                            "ranking_score": _eod_composite * abs(eodc.day_return_pct),
+                            "ranking_score": _eod_composite * abs(eodc.day_return_pct), "fw_strategy": "eod",
                             "eod_open_price": eodc.open_price,
                             "eod_day_return_pct": eodc.day_return_pct,
                             "entry_source_override": (
@@ -4943,7 +4995,7 @@ class OrganismLiveEngine(
                             # displacement first.
                             "ranking_score": (
                                 _mr_composite * mrc.abs_distance_atr
-                            ),
+                            ), "fw_strategy": "mean_reversion",
                             # MR-specific fields for telemetry / sizing
                             "mr_vwap": mrc.vwap,
                             "mr_target_price": mrc.target_price,
@@ -4966,10 +5018,7 @@ class OrganismLiveEngine(
                             mrc.expected_r_r,
                         )
 
-                cand_dicts.sort(
-                    key=lambda x: x["ranking_score"],
-                    reverse=True,
-                )
+                cand_dicts = self._rank_candidates(cand_dicts, regime)
 
                 open_slots = MAX_OPEN_POSITIONS - len(open_symbols)
                 cand_dicts = cand_dicts[: max(0, open_slots)]
@@ -5059,6 +5108,7 @@ class OrganismLiveEngine(
                     # bookkeeping should not advance the regime-promote.
                     trade_count=len(self._strategy_trades()),
                     fixed_risk_mode=self._fixed_risk_sizing_mode,
+                    rank_policy=self._rank_policy_effective(),
                 )
                 self._last_kelly_sizes = sizes
 
