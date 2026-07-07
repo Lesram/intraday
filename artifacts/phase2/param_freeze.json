@@ -1,7 +1,7 @@
 {
-  "FROZEN_AT": "2026-07-07T18:01:16.307237+00:00",
+  "FROZEN_AT": "2026-07-07T20:36:49.008305+00:00",
   "_note_status": "clock reset",
-  "git_sha": "ed2121829faf7f02e471685fabdfdd6bbd0bffa6",
+  "git_sha": "e7461cc599b2d938afcae2a57f11efd53820d791",
   "n_target": 60,
   "n_target_range": [
     50,
@@ -50,13 +50,13 @@
     "routing_data_env": {
       "ALPACA_DATA_FEED": "iex",
       "ORGANISM_FRAMEWORK_ROUTING": null,
-      "ORGANISM_FRAMEWORK_ROUTING_V2": null,
+      "ORGANISM_FRAMEWORK_ROUTING_V2": "true",
       "ORGANISM_MIN_AVG_DOLLAR_VOLUME": "50000",
-      "ORGANISM_ROUTING_RANK_POLICY": null
+      "ORGANISM_ROUTING_RANK_POLICY": "flat_policy"
     },
     "source_hashes": {
       "entry_direction": "12d65c08efcdaaa6d2440858e568ee6813fc543287c631e5ba106dc796aad790",
-      "entry_gates_dispatch": "9a23a34e193226e222eb492f5808bbcd62fedeae89bb58b6ba17f6bfe01c5f9d",
+      "entry_gates_dispatch": "85ef0b9525f7cb4b2b8b343942f67a50833c36bdde4b644446f99de923f172a6",
       "exit_engine": "33310e3a2bb5ecf291d1edbfa99f43a9d29b0a2df608816313dfa8439363f0ed",
       "kelly_sizer": "2a5d52aff866ce3425ca1d787ce3416895634adf61529e3989369bccc3a664bc",
       "regime_detector": "4a6eef4179ae40987b044462eac60b481b8fafd148097e408af9858e5d36dfd4",
