@@ -10,9 +10,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from backend.organism.confidence_lab import (
-    ConfidenceModel, default_models, evaluate_models,
-)
+from backend.organism.confidence_lab import ConfidenceModel, evaluate_models
 
 
 def _mk_trades(n=400, seed=0, predictive=False):

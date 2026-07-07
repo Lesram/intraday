@@ -8,7 +8,6 @@ flat_policy MUST differ in the direction the 5b verdict dictates.
 from __future__ import annotations
 
 import pandas as pd
-import pytest
 
 import backend.organism.live_engine as le
 from backend.organism.kelly_sizer import KellySizer
@@ -69,11 +68,11 @@ def test_rank_candidates_drops_non_policy_strategies(monkeypatch):
 
 def test_conf_gates_bypass_only_under_flat_policy(monkeypatch):
     _with_flags(monkeypatch, v2=True, policy="flat_policy")
-    assert _eng()._composite_conf_gates_active() is False
+    assert _eng()._conf_gates_on() is False
     _with_flags(monkeypatch, v2=True, policy="legacy")
-    assert _eng()._composite_conf_gates_active() is True
+    assert _eng()._conf_gates_on() is True
     _with_flags(monkeypatch, v2=False, policy="flat_policy")  # B needs V2
-    assert _eng()._composite_conf_gates_active() is True
+    assert _eng()._conf_gates_on() is True
     assert _eng()._rank_policy_effective() == "legacy"
 
 
@@ -122,7 +121,6 @@ def test_sizer_flat_policy_equal_sizes_regardless_of_confidence():
               ml_is_trained=True, trade_count=10_000, fixed_risk_mode=False)
     flat = sizer.size_positions(_sizer_candidates(), rank_policy="flat_policy", **kw)
     if len(flat) >= 2:
-        w = {s.symbol: s.target_weight for s in flat}
         # predicted_return still differs (sizing INPUT, not confidence) — so
         # assert the confidence multipliers specifically were neutralized:
         inter = sizer._last_intermediates

@@ -64,15 +64,19 @@ def main() -> int:
     print("\n[3] SHADOW — framework un-routed signal accumulation")
     if EVIDENCE.exists():
         counts: Counter = Counter()
+        bad_lines = 0
         with EVIDENCE.open() as fh:
             for line in fh:
                 try:
                     rec = json.loads(line)
-                except Exception:
+                except json.JSONDecodeError:
+                    bad_lines += 1     # counted + reported below, not swallowed
                     continue
                 sid = str(rec.get("strategy_id", ""))
                 if sid.startswith("fw_") and sid.endswith("_shadow"):
                     counts[(sid[3:-7], str(rec.get("regime", "?")))] += 1
+        if bad_lines:
+            print(f"  (skipped {bad_lines} unparseable evidence lines)")
         if counts:
             for (strat, regime), n in sorted(counts.items()):
                 print(f"  {strat:16s} {regime:14s} signals={n}")

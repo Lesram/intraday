@@ -68,7 +68,9 @@ class StrategySelector:
         for s in self.strategies:
             try:
                 cands = s.scan(features, regime)
-            except Exception:  # one strategy's failure never blocks the rest
+            except Exception:  # noqa: BLE001 — fail-closed BY DESIGN:
+                # any strategy error becomes stand-down for that strategy
+                # only; never poisons the others' scan.
                 cands = []
             cands.sort(key=lambda c: c.confidence, reverse=True)
             out[s.name] = {"candidates": cands, "routed": self._eligible(s, regime)}

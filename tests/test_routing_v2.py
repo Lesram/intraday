@@ -4,7 +4,6 @@ scripts/verify_routing_v2_parity.py; these are the fast candidate-level teeth).
 from __future__ import annotations
 
 import pandas as pd
-import pytest
 
 import backend.organism.live_engine as le
 from backend.organism.strategy_selector import StrategySelector

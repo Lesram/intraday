@@ -2704,7 +2704,7 @@ class OrganismLiveEngine(
         """Commit B: the rank policy in force ("legacy" unless V2 is on)."""
         return ROUTING_RANK_POLICY if FRAMEWORK_ROUTING_V2_ENABLED else "legacy"
 
-    def _composite_conf_gates_active(self) -> bool:
+    def _conf_gates_on(self) -> bool:
         """5c Commit B: composite-confidence entry gates (eff_conf/_bo_conf
         thresholds) bypass under flat_policy — the 5b verdict retired the
         composite from the decision path. Caps/liquidity/fitness/sector/
@@ -4179,7 +4179,6 @@ class OrganismLiveEngine(
                 # counts them when evaluating subsequent candidates.  Prevents
                 # intra-tick sector-limit violations.
                 _planned_entries: set[str] = set()
-                _conf_gates_active = self._composite_conf_gates_active()
 
                 # Store gate thresholds for telemetry
                 self._last_eff_fitness_gate = 0.0 if self._is_learning_mode else _MAIN_FITNESS_GATE
@@ -4405,7 +4404,7 @@ class OrganismLiveEngine(
                     elif _data_source != "streaming" and self._streaming_provider is not None:
                         # B3: Main-book requires streaming data; rest/stale → exploration
                         _route_exploration = True
-                    elif _conf_gates_active and _eff_conf < _EXPL_CONF_GATE:
+                    elif self._conf_gates_on() and _eff_conf < _EXPL_CONF_GATE:
                         # Below exploration gate → reject outright
                         _rej_counts["confidence_gate"] += 1
                         _rej_counts["below_expl_conf"] += 1
@@ -4414,7 +4413,7 @@ class OrganismLiveEngine(
                             c.symbol, _eff_conf, _EXPL_CONF_GATE,
                         )
                         continue
-                    elif _conf_gates_active and _eff_conf < _MIN_MAIN_CONF:
+                    elif self._conf_gates_on() and _eff_conf < _MIN_MAIN_CONF:
                         _route_exploration = True
 
                     if _route_exploration:
@@ -4509,7 +4508,7 @@ class OrganismLiveEngine(
                     # Confidence threshold
                     _bo_conf = min(bs.composite_score, 1.0)
                     # B1 parity: use unified threshold (same as alpha path)
-                    if _conf_gates_active and _bo_conf < _MIN_MAIN_CONF:
+                    if self._conf_gates_on() and _bo_conf < _MIN_MAIN_CONF:
                         continue
                     # ML negative-direction veto — production only.
                     # In learning mode ML is untrained and anti-predictive;

@@ -273,7 +273,9 @@ class _TelemetryRecordingMixin:
             logger.info(
                 "Framework shadow recorded %d un-routed strategy signals", written,
             )
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 — telemetry must never
+            # break a live tick; surfaced at WARNING, matching the two
+            # recorders above.
             logger.warning("Framework shadow telemetry write failed: %s", exc)
 
     async def _persist_telemetry_to_db(self) -> None:

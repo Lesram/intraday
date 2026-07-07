@@ -104,7 +104,7 @@ async def main() -> int:
                                   seed=WINDOW["seed"], trend=WINDOW["trend"])
         eng = ReplayEngine(bars_by_symbol=bars, initial_cash=100_000,
                            lookback=WINDOW["lookback"])
-        res = await eng.run(max_ticks=WINDOW["max_ticks"])
+        await eng.run(max_ticks=WINDOW["max_ticks"])
         organism = eng.engine if hasattr(eng, "engine") else None
         if organism is not None and getattr(organism, "kelly_sizer", None) is not None:
             sizer_intermediates.append(organism.kelly_sizer._last_intermediates)
