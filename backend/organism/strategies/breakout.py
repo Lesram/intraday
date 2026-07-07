@@ -27,10 +27,14 @@ from backend.organism.strategies.registry import register
 class BreakoutStrategy(Strategy):
     """Live pure-breakout book. Long entries on high-composite breakout signals."""
 
-    def __init__(self, config) -> None:
+    def __init__(self, config, scanner=None) -> None:
         super().__init__(config)
-        # Build the scanner once, configured VERBATIM from the config block so it
-        # matches the live (intraday-scaled) scanner bit-for-bit.
+        # 5c: injected scanner = the engine's own instance (exactness by
+        # identity, not by config replication). Default: build VERBATIM from
+        # the config block so it matches the live scanner bit-for-bit.
+        if scanner is not None:
+            self._scanner = scanner
+            return
         c = config
         scanner = BreakoutScanner(top_n=int(c["top_n"]))
         scanner.W_SQUEEZE = c["w_squeeze"]
@@ -85,6 +89,8 @@ class BreakoutStrategy(Strategy):
                 direction=direction,
                 confidence=max(0.0, min(1.0, sig.composite_score)),
                 strategy_name=self.name,
-                extra={"regime": regime, "composite_score": sig.composite_score},
+                extra={"regime": regime, "composite_score": sig.composite_score,
+                       # 5c: raw signal for the engine adapter.
+                       "raw": sig},
             ))
         return out

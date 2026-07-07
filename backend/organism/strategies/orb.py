@@ -26,10 +26,13 @@ from backend.organism.strategies.registry import register
 class ORBStrategy(Strategy):
     """Opening-range breakout on in-play (high relative-volume) names."""
 
-    def __init__(self, config) -> None:
+    def __init__(self, config, scanner=None) -> None:
         super().__init__(config)
         c = config
-        self._scanner = ORBScanner(
+        # 5c: an injected scanner shares STATE (orb cache, mark_fired cooldowns)
+        # with the engine — mandatory when this strategy routes live, otherwise
+        # duplicate instances double-fire. Default self-built for backtests.
+        self._scanner = scanner if scanner is not None else ORBScanner(
             opening_minutes=int(c["opening_minutes"]),
             top_n=int(c["top_n"]),
             rv_lookback_days=int(c["rv_lookback_days"]),
@@ -102,6 +105,9 @@ class ORBStrategy(Strategy):
                     "orb_high": oc.orb_high, "orb_low": oc.orb_low,
                     "suggested_stop": oc.suggested_stop,
                     "atr_at_entry": oc.atr_at_entry,
+                    # 5c: raw scanner candidate so the engine adapter can
+                    # replicate the inline cand_dict field-for-field.
+                    "raw": oc,
                 },
             ))
         return out

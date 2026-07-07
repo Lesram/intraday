@@ -50,13 +50,41 @@ class StrategySelector:
         cands.sort(key=lambda c: c.confidence, reverse=True)
         return cands
 
+    def scan_all(self, features: FeatureFrame, regime: str) -> dict[str, dict]:
+        """Phase 3 Task 3 (5c): one scan pass over EVERY registered strategy,
+        returning per-strategy results tagged with their Rule-A routing status:
+
+            {name: {"candidates": [Candidate...], "routed": bool}}
+
+        - ``routed`` is this selector's `_eligible` (mode + regime + live_routing):
+          in live mode only routed strategies may convert to capital candidates;
+          un-routed strategies are returned anyway as SHADOW/ATTRIBUTION data
+          (Task 4: measured, never sized). live_routing gates capital, not data.
+        - Strategies scan regardless of eligibility (backtest semantics for the
+          measurement half) — a scan error in one strategy never poisons the
+          others (fail-closed to an empty list, matching stand-down).
+        """
+        out: dict[str, dict] = {}
+        for s in self.strategies:
+            try:
+                cands = s.scan(features, regime)
+            except Exception:  # one strategy's failure never blocks the rest
+                cands = []
+            cands.sort(key=lambda c: c.confidence, reverse=True)
+            out[s.name] = {"candidates": cands, "routed": self._eligible(s, regime)}
+        return out
+
     @classmethod
-    def from_config(cls, mode: str = LIVE, only: Iterable[str] | None = None) -> "StrategySelector":
+    def from_config(cls, mode: str = LIVE, only: Iterable[str] | None = None,
+                    scanner_overrides: dict | None = None) -> "StrategySelector":
         """Build the selector from the registry + strategy_config.
 
         Imports the strategy modules so they self-register, then instantiates
         each configured (non-parked) strategy with its config block. `only`
-        restricts to a subset (e.g. {"momentum"} for the parity path)."""
+        restricts to a subset (e.g. {"momentum"} for the parity path).
+        `scanner_overrides` maps strategy name -> a live scanner INSTANCE to
+        inject (5c: the engine passes its own stateful scanners so mark_fired/
+        cooldown/cache state stays single-source)."""
         # Import for registration side effects (parked EOD is intentionally absent).
         import backend.organism.strategies.breakout  # noqa: F401
         import backend.organism.strategies.mean_reversion  # noqa: F401
@@ -69,10 +97,13 @@ class StrategySelector:
         if only is not None:
             only = set(only)
             names = [n for n in names if n in only]
+        overrides = scanner_overrides or {}
         strategies = []
         for name in names:
             try:
-                strategies.append(build_strategy(name, all_configs()[name]))
+                strategies.append(
+                    build_strategy(name, all_configs()[name],
+                                   scanner=overrides.get(name)))
             except KeyError:
                 # configured but not yet registered (e.g. mean_reversion/orb
                 # before steps 7/9) — skip cleanly; they join as they're built.

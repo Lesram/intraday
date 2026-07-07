@@ -30,9 +30,14 @@ from backend.organism.strategies.registry import register
 class MeanReversionStrategy(Strategy):
     """VWAP-displacement fade. Benchmark only (live_routing:false)."""
 
-    def __init__(self, config) -> None:
+    def __init__(self, config, scanner=None) -> None:
         super().__init__(config)
         c = config
+        # 5c: injected scanner shares mark_fired/cooldown state with the engine
+        # (mandatory for live routing); default self-built for backtests.
+        if scanner is not None:
+            self._scanner = scanner
+            return
         self._scanner = MeanReversionScanner(
             entry_hour_et=int(c["entry_hour_et"]), entry_min_et=int(c["entry_min_et"]),
             no_new_hour_et=int(c["no_new_hour_et"]), no_new_min_et=int(c["no_new_min_et"]),
@@ -114,6 +119,8 @@ class MeanReversionStrategy(Strategy):
                     "stop_price": mrc.stop_price,
                     "expected_r_r": mrc.expected_r_r,
                     "atr_at_entry": mrc.atr_at_entry,
+                    # 5c: raw scanner candidate for the engine adapter.
+                    "raw": mrc,
                 },
             ))
         return out

@@ -37,6 +37,13 @@ def registered_names() -> list[str]:
     return sorted(_REGISTRY)
 
 
-def build_strategy(name: str, config: dict[str, Any]) -> Strategy:
-    """Instantiate a registered strategy with its config block (validates on load)."""
-    return get_strategy_class(name)(config)
+def build_strategy(name: str, config: dict[str, Any], scanner: Any = None) -> Strategy:
+    """Instantiate a registered strategy with its config block (validates on load).
+
+    ``scanner`` (5c): optional live scanner INSTANCE to inject so engine and
+    strategy share one stateful scanner. Strategies without a scanner param
+    (momentum is a pure function) reject the kwarg — passing one is a bug."""
+    cls = get_strategy_class(name)
+    if scanner is not None:
+        return cls(config, scanner=scanner)
+    return cls(config)
