@@ -109,6 +109,10 @@ class BacktestConfig:
                                          # not enforce OOS on its own (renamed from holdout_frac so
                                          # it can't be mistaken for one). The REAL tune-on-train /
                                          # report-on-test holdout is walk_forward_select() below.
+    capture_feature_cols: tuple = ()     # 5b: feature columns snapshotted per trade at the
+                                         # SIGNAL bar (causal — same row the scanner saw) as
+                                         # feat_<col>. Default () = no extra columns, output
+                                         # unchanged. Consumed by confidence_lab (Task 2/5b).
 
 
 @dataclass
@@ -227,13 +231,18 @@ def run_backtest(bars_by_symbol, config: BacktestConfig | None = None,
                 continue
             shares = cfg.notional / entry_price                  # FLAT sizing
             pnl = (exit_price - entry_price) * shares * c.direction
-            rows.append({
+            row = {
                 "strategy": c.strategy_name, "symbol": c.symbol,
                 "signal_idx": t, "entry_idx": entry_idx, "exit_idx": exit_idx,
                 "entry_price": entry_price, "exit_price": exit_price,
                 "shares": shares, "direction": c.direction, "pnl": pnl,
                 "confidence": c.confidence, "regime": regime,
-            })
+            }
+            if cfg.capture_feature_cols:
+                snap = feats[c.symbol].iloc[t]       # signal bar — causal
+                for col in cfg.capture_feature_cols:
+                    row[f"feat_{col}"] = float(snap.get(col, float("nan")))
+            rows.append(row)
 
     trades = pd.DataFrame(rows)
     per_strategy = {}
