@@ -328,6 +328,21 @@ DROP_ML_FROM_GATE = _env_bool("ORGANISM_DROP_ML_FROM_GATE", True)
 # that step is a redesign, NOT a faithful port). See docs Phase-1 step 5.
 FRAMEWORK_ROUTING_ENABLED = _env_bool("ORGANISM_FRAMEWORK_ROUTING", False)
 
+# Phase 3 Task 3 (5c) COMMIT A — full selector routing, STRUCTURALLY INERT.
+# When on: ONE selector.scan_all() pass per tick produces every strategy's
+# candidates (momentum direction authority, pure-breakout entries, ORB/MR
+# shadow lists), replacing the scattered per-strategy scanner calls. All
+# conversion logic, gates, caps, ranking formulas and sizing are UNCHANGED —
+# flag-on must equal flag-off on the replay parity axes (entries/exits/
+# ledger/equity). The inline breakout scan at step 7 still runs as a FEATURE
+# input (alpha confidence's breakout_score reads ALL signals, sub-threshold
+# included — scanner-as-feature is distinct from breakout-as-strategy).
+# Known inert deltas: ORB "quiet scan" periodic log and shadow-count telemetry
+# derive from triggered-only candidates under v2. Default OFF; flip only after
+# scripts/verify_routing_v2_parity.py is green. Commit B (ranking by 5b
+# confidence + attribution) is a SEPARATE behavior change with its own gate.
+FRAMEWORK_ROUTING_V2_ENABLED = _env_bool("ORGANISM_FRAMEWORK_ROUTING_V2", False)
+
 # Phase 3 candidate-filter shadow telemetry. Disabled by default and
 # observability-only: when enabled, records candidate slices that would be
 # blocked by the proposed confidence/regime filters without changing ranking,
@@ -2580,6 +2595,101 @@ class OrganismLiveEngine(
             self._strategy_selector = sel
         return sel
 
+    def _get_strategy_selector_v2(self):
+        """Lazily build + cache the ALL-strategy live selector (5c Commit A).
+
+        Engine scanner instances are INJECTED so mark_fired/cooldown/orb-cache
+        state stays single-source (a duplicate scanner would double-fire).
+        Momentum is a pure function — no scanner to inject."""
+        sel = getattr(self, "_strategy_selector_v2", None)
+        if sel is None:
+            from backend.organism.strategy_selector import StrategySelector
+            sel = StrategySelector.from_config(
+                mode="live",
+                scanner_overrides={
+                    "breakout": self.breakout_scanner,
+                    "mean_reversion": self._mean_reversion_scanner,
+                    "orb": self._orb_scanner,
+                },
+            )
+            self._strategy_selector_v2 = sel
+        return sel
+
+    def _scan_all_strategies_v2(self, features_by_symbol, regime):
+        """5c Commit A: the single per-tick scan pass. Returns scan_all()'s
+        {name: {candidates, routed}} and caches it on the instance for
+        downstream consumers (Task 4 attribution reads the same result).
+
+        PER-TICK MEMOIZED: the ORB/MR shadow lists, the pure-breakout entry
+        block and the momentum seam all consume this — the underlying scanners
+        are STATEFUL (mark_fired/cooldowns), so exactly one scan may run per
+        tick no matter how many consumers ask.
+
+        Fail-closed: an unexpected selector error yields an empty result —
+        every consumer then behaves as a no-candidate tick (stand down)."""
+        if getattr(self, "_last_scan_all_tick", None) == self._tick_count:
+            return self._last_scan_all_result
+        try:
+            res = self._get_strategy_selector_v2().scan_all(features_by_symbol, regime)
+        except Exception as _v2_err:
+            logger.warning("Routing v2 scan_all failed this tick (stand down): %s",
+                           _v2_err)
+            res = {}
+        self._last_scan_all_result = res
+        self._last_scan_all_tick = self._tick_count
+        return res
+
+    @staticmethod
+    def _v2_raws(scan_res, name):
+        """Unwrap the raw scanner candidates for one strategy from scan_all()."""
+        return [c.extra["raw"] for c in scan_res.get(name, {}).get("candidates", [])
+                if isinstance(c.extra, dict) and "raw" in c.extra]
+
+    def _v2_orb_shadow_pass(self, features_by_symbol, regime, now_iso):
+        """5c Commit A: ORB shadow+live-list population from the single
+        selector pass (engine scanner injected ⇒ cooldown/cache state identical
+        to the inline call). Wrapper pre-filters to triggered && direction!=0 —
+        the same subset the inline live block acts on. The non-triggered
+        "scanner alive but quiet" periodic log is not reproduced (documented
+        inert delta; parity axes unaffected). Sets self._latest_orb_triggered."""
+        try:
+            triggered = self._v2_raws(
+                self._scan_all_strategies_v2(features_by_symbol, regime), "orb")
+            self._latest_orb_triggered = triggered
+            self._orb_shadow_log_count += 1
+            self._orb_shadow_breakout_count += len(triggered)
+            if triggered:
+                for c in triggered:
+                    logger.info(
+                        "ORB shadow BREAKOUT: %s dir=%+.0f rv=%.2f "
+                        "orb_high=%.4f orb_low=%.4f curr=%.4f stop=%.4f atr=%.4f",
+                        c.symbol, c.direction, c.rv_ratio, c.orb_high, c.orb_low,
+                        c.current_price, c.suggested_stop, c.atr_at_entry,
+                    )
+                self._record_legacy_orb_shadow_signals(
+                    triggered, regime=regime, now_iso=now_iso)
+        except Exception as _orb_err:
+            logger.debug("ORB v2 scan err: %s", _orb_err)
+
+    def _v2_mr_candidates(self, features_by_symbol, regime):
+        """5c Commit A: MR candidates from this tick's memoized selector pass
+        (never a second scan of the stateful scanner). The MR wrapper emits
+        every scanner candidate — the same list the inline call produced."""
+        return self._v2_raws(
+            self._scan_all_strategies_v2(features_by_symbol, regime),
+            "mean_reversion")
+
+    def _v2_breakout_raws(self, features_by_symbol, regime):
+        """5c Commit A: pure-breakout entry signals from the selector pass
+        (breakout-as-STRATEGY). The inline step-7 scan stays as a FEATURE
+        input (alpha confidence reads sub-threshold composites from
+        breakout_by_sym). The wrapper pre-filters at
+        entry_composite_threshold (== the inline 0.55 gate, which then
+        no-ops) and stable-sorts by clamped confidence, so the first-2 cap
+        selects the same signals."""
+        return self._v2_raws(
+            self._scan_all_strategies_v2(features_by_symbol, regime), "breakout")
+
     def _scan_entry_candidates(self, features_by_symbol, ml_signals, regime):
         """Produce the entry-candidate list for this tick.
 
@@ -2601,11 +2711,21 @@ class OrganismLiveEngine(
         # Seam activates only when direction is observable-derived (the regime
         # the framework models). If ML is in the gate, the scanner's direction
         # is ml-derived and the framework does not represent it — leave as-is.
-        if not (FRAMEWORK_ROUTING_ENABLED and DROP_ML_FROM_GATE):
+        # 5c Commit A: routing v2 implies the seam (v2 is a superset).
+        if not ((FRAMEWORK_ROUTING_ENABLED or FRAMEWORK_ROUTING_V2_ENABLED)
+                and DROP_ML_FROM_GATE):
             return candidates
 
         try:
-            mom_cands = self._get_strategy_selector().select(features_by_symbol, regime)
+            if FRAMEWORK_ROUTING_V2_ENABLED:
+                # Reuse this tick's memoized scan_all pass. Rule-A parity with
+                # the v1 momentum-only live selector: un-routed (regime-
+                # ineligible) momentum contributes nothing — directions stand.
+                _mom = self._scan_all_strategies_v2(
+                    features_by_symbol, regime).get("momentum") or {}
+                mom_cands = _mom.get("candidates", []) if _mom.get("routed") else []
+            else:
+                mom_cands = self._get_strategy_selector().select(features_by_symbol, regime)
         except Exception as _seam_err:  # never let the seam break a live tick
             logger.warning("Framework seam disabled this tick (select error): %s", _seam_err)
             return candidates
@@ -2890,53 +3010,56 @@ class OrganismLiveEngine(
                 # Always runs (logs). When ORGANISM_ORB_LIVE_ENABLED=true,
                 # triggered candidates flow into the entry pipeline below.
                 self._latest_orb_triggered = []  # reset each tick
-                try:
-                    _now_ts = self._now_fn()
-                    orb_candidates = self._orb_scanner.scan(
-                        features_by_symbol, _now_ts,
-                    )
-                    if orb_candidates:
-                        triggered = [c for c in orb_candidates if c.breakout_triggered]
-                        self._latest_orb_triggered = triggered  # for live path
-                        self._orb_shadow_log_count += 1
-                        self._orb_shadow_breakout_count += len(triggered)
-                        if triggered:
-                            for c in triggered:
-                                # Cross-reference: did alpha+breakout also pick this name?
-                                # V12 W75 (UU3-2 / F821): ``dir()`` returned
-                                # a stale list for ruff's static analysis;
-                                # ``locals().get("open_symbols", set())`` is
-                                # equivalent semantics with a name ruff can
-                                # follow.  Same defensive intent: gracefully
-                                # handle the early-tick case where
-                                # ``open_symbols`` hasn't been computed yet.
-                                _in_alpha = c.symbol in locals().get("open_symbols", set())
-                                logger.info(
-                                    "ORB shadow BREAKOUT: %s dir=%+.0f rv=%.2f "
-                                    "orb_high=%.4f orb_low=%.4f curr=%.4f "
-                                    "stop=%.4f atr=%.4f",
-                                    c.symbol, c.direction, c.rv_ratio,
-                                    c.orb_high, c.orb_low, c.current_price,
-                                    c.suggested_stop, c.atr_at_entry,
+                if FRAMEWORK_ROUTING_V2_ENABLED:  # 5c: see helper docstring
+                    self._v2_orb_shadow_pass(features_by_symbol, regime, now_iso)
+                else:  # inline path (flag off) — logic unchanged, re-indented
+                    try:
+                        _now_ts = self._now_fn()
+                        orb_candidates = self._orb_scanner.scan(
+                            features_by_symbol, _now_ts,
+                        )
+                        if orb_candidates:
+                            triggered = [c for c in orb_candidates if c.breakout_triggered]
+                            self._latest_orb_triggered = triggered  # for live path
+                            self._orb_shadow_log_count += 1
+                            self._orb_shadow_breakout_count += len(triggered)
+                            if triggered:
+                                for c in triggered:
+                                    # Cross-reference: did alpha+breakout also pick this name?
+                                    # V12 W75 (UU3-2 / F821): ``dir()`` returned
+                                    # a stale list for ruff's static analysis;
+                                    # ``locals().get("open_symbols", set())`` is
+                                    # equivalent semantics with a name ruff can
+                                    # follow.  Same defensive intent: gracefully
+                                    # handle the early-tick case where
+                                    # ``open_symbols`` hasn't been computed yet.
+                                    _in_alpha = c.symbol in locals().get("open_symbols", set())
+                                    logger.info(
+                                        "ORB shadow BREAKOUT: %s dir=%+.0f rv=%.2f "
+                                        "orb_high=%.4f orb_low=%.4f curr=%.4f "
+                                        "stop=%.4f atr=%.4f",
+                                        c.symbol, c.direction, c.rv_ratio,
+                                        c.orb_high, c.orb_low, c.current_price,
+                                        c.suggested_stop, c.atr_at_entry,
+                                    )
+                                self._record_legacy_orb_shadow_signals(
+                                    triggered,
+                                    regime=regime,
+                                    now_iso=now_iso,
                                 )
-                            self._record_legacy_orb_shadow_signals(
-                                triggered,
-                                regime=regime,
-                                now_iso=now_iso,
-                            )
-                        elif self._orb_shadow_log_count % 60 == 0:
-                            # Periodic non-triggered summary every 60 logged
-                            # scans — confirms scanner is alive but quiet.
-                            logger.info(
-                                "ORB shadow scan: %d candidates ranked, %d "
-                                "breakouts in cache (none triggered now); "
-                                "session breakouts=%d",
-                                len(orb_candidates),
-                                self._orb_scanner.orb_cache_size,
-                                self._orb_shadow_breakout_count,
-                            )
-                except Exception as _orb_err:
-                    logger.debug("ORB shadow scan err: %s", _orb_err)
+                            elif self._orb_shadow_log_count % 60 == 0:
+                                # Periodic non-triggered summary every 60 logged
+                                # scans — confirms scanner is alive but quiet.
+                                logger.info(
+                                    "ORB shadow scan: %d candidates ranked, %d "
+                                    "breakouts in cache (none triggered now); "
+                                    "session breakouts=%d",
+                                    len(orb_candidates),
+                                    self._orb_scanner.orb_cache_size,
+                                    self._orb_shadow_breakout_count,
+                                )
+                    except Exception as _orb_err:
+                        logger.debug("ORB shadow scan err: %s", _orb_err)
 
                 # M2-C: EOD Momentum scan (Heston-Korajczyk-Sadka inspired).
                 # Always runs (logs). When ORGANISM_EOD_LIVE_ENABLED=true,
@@ -2967,10 +3090,12 @@ class OrganismLiveEngine(
                 # 9:45-15:30 ET (skips opening-vol + EOD-flatten zones).
                 self._latest_mr_candidates = []
                 try:
-                    _now_ts = self._now_fn()
-                    mr_cands = self._mean_reversion_scanner.scan(
-                        features_by_symbol, _now_ts,
-                    )
+                    if FRAMEWORK_ROUTING_V2_ENABLED:  # 5c: see helper docstring
+                        mr_cands = self._v2_mr_candidates(features_by_symbol, regime)
+                    else:
+                        mr_cands = self._mean_reversion_scanner.scan(
+                            features_by_symbol, self._now_fn(),
+                        )
                     if mr_cands:
                         self._latest_mr_candidates = mr_cands
                         self._mr_shadow_log_count += len(mr_cands)
@@ -4298,7 +4423,9 @@ class OrganismLiveEngine(
                 alpha_syms = {d["symbol"] for d in cand_dicts}
                 _breakout_added = 0
                 _MAX_PURE_BREAKOUT = 2
-                _breakout_iter = [] if _ab_disabled else breakout_signals
+                _breakout_iter = [] if _ab_disabled else (  # 5c: see helper doc
+                    self._v2_breakout_raws(features_by_symbol, regime)
+                    if FRAMEWORK_ROUTING_V2_ENABLED else breakout_signals)
                 for bs in _breakout_iter:
                     if _breakout_added >= _MAX_PURE_BREAKOUT:
                         break

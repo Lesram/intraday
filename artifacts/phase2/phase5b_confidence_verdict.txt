@@ -1,0 +1,90 @@
+5b CONFIDENCE REDESIGN VERDICT
+corpus=artifacts/broad_corpus_v2/bars.pkl  horizon=20  train_frac=0.6  embargo=300
+(momentum = regime-relaxed signal test; others = native config)
+
+==============================================================================
+5b CONFIDENCE REDESIGN — momentum(signal-test)  (fit/select on TRAIN, verdict on TEST)
+==============================================================================
+n_train=13259  n_test=8665  embargo=300 bars  gate: test_t>=2.0 AND test_exp > flat
+model                         train_t   test_t  t_clust   test_exp  corr(c,win)
+logit_pwin                      -1.26    +2.58    +0.93    +2.8381       +0.003
+rank:z_score_20                 -1.61    +3.13    +1.07    +3.2367       +0.022
+rank:rsi_14                     -2.32    +3.01    +0.96    +3.0636       +0.032
+rank:vol_sma_ratio              -3.32    +1.25    +0.56    +1.6745       -0.062
+rank:atr_ratio                  -4.19    +2.12    +0.84    +2.5546       -0.013
+rank:choppiness                 -4.74    +1.69    +0.65    +2.0366       -0.031
+rank:trend_strength             -4.80    +1.99    +0.64    +2.0834       +0.018
+rank:rel_strength_spy           -5.24    +2.78    +1.00    +3.0621       +0.003
+flat                            -5.37    +2.33    +0.85    +2.5043       +0.000
+native                          -5.37    +2.33    +0.85    +2.5043       +0.000
+rank:comp_breakout_readiness    -5.37    +2.33    +0.85    +2.5043       +0.000
+rank:comp_squeeze_momentum      -5.37    +2.33    +0.85    +2.5043       +0.000
+rank:comp_momentum_quality      -5.37    +2.33    +0.85    +2.5043       +0.000
+VERDICT: FLAT_SHIPS  ->  ship 'flat'
+  train-selected 'logit_pwin' test_t=+2.58 (clustered +0.93) test_exp=+2.8381 vs flat_test_exp=+2.5043 @ gate t>=2.0 — simple-t pass KILLED by cluster-robust re-check
+==============================================================================
+==============================================================================
+5b CONFIDENCE REDESIGN — breakout  (fit/select on TRAIN, verdict on TEST)
+==============================================================================
+n_train=8629  n_test=5609  embargo=300 bars  gate: test_t>=2.0 AND test_exp > flat
+model                         train_t   test_t  t_clust   test_exp  corr(c,win)
+logit_pwin                      +1.50    +1.01    +0.34    +1.1971       +0.031
+rank:z_score_20                 +1.30    +0.35    +0.13    +0.3532       -0.006
+rank:rsi_14                     +0.97    +0.29    +0.10    +0.2859       -0.010
+native                          +0.92    +0.67    +0.24    +0.7059       +0.032
+rank:atr_ratio                  +0.86    +1.12    +0.39    +1.3274       +0.046
+rank:choppiness                 +0.70    +0.96    +0.31    +1.0036       +0.009
+rank:rel_strength_spy           +0.60    +0.11    +0.04    +0.1032       -0.033
+rank:trend_strength             +0.56    -0.71    -0.25    -0.7237       -0.026
+flat                            +0.55    +0.28    +0.09    +0.2690       +0.000
+rank:comp_breakout_readiness    +0.55    +0.28    +0.09    +0.2690       +0.000
+rank:comp_squeeze_momentum      +0.55    +0.28    +0.09    +0.2690       +0.000
+rank:comp_momentum_quality      +0.55    +0.28    +0.09    +0.2690       +0.000
+rank:vol_sma_ratio              +0.38    +0.46    +0.16    +0.5151       +0.025
+VERDICT: FLAT_SHIPS  ->  ship 'flat'
+  train-selected 'logit_pwin' test_t=+1.01 (clustered +0.34) test_exp=+1.1971 vs flat_test_exp=+0.2690 @ gate t>=2.0
+==============================================================================
+==============================================================================
+5b CONFIDENCE REDESIGN — mean_reversion  (fit/select on TRAIN, verdict on TEST)
+==============================================================================
+n_train=32144  n_test=20757  embargo=300 bars  gate: test_t>=2.0 AND test_exp > flat
+model                         train_t   test_t  t_clust   test_exp  corr(c,win)
+logit_pwin                     -12.74    -5.34    -1.31    -2.3098       +0.056
+rank:vol_sma_ratio             -12.90    -4.80    -1.25    -2.2183       +0.038
+rank:atr_ratio                 -13.34    -4.80    -1.25    -2.1407       +0.038
+rank:trend_strength            -13.44    -4.81    -1.16    -1.7915       +0.036
+native                         -14.97    -8.32    -1.83    -2.7230       -0.020
+rank:choppiness                -15.28    -9.80    -2.11    -3.2963       +0.004
+rank:z_score_20                -15.81   -10.64    -2.25    -3.1676       -0.038
+flat                           -15.97    -7.81    -1.77    -2.6486       +0.000
+rank:comp_breakout_readiness   -15.97    -7.81    -1.77    -2.6486       +0.000
+rank:comp_squeeze_momentum     -15.97    -7.81    -1.77    -2.6486       +0.000
+rank:comp_momentum_quality     -15.97    -7.81    -1.77    -2.6486       +0.000
+rank:rsi_14                    -16.41   -11.36    -2.39    -3.4848       -0.044
+rank:rel_strength_spy          -17.11    -7.22    -1.84    -2.4025       +0.001
+VERDICT: FLAT_SHIPS  ->  ship 'flat'
+  train-selected 'logit_pwin' test_t=-5.34 (clustered -1.31) test_exp=-2.3098 vs flat_test_exp=-2.6486 @ gate t>=2.0
+==============================================================================
+==============================================================================
+5b CONFIDENCE REDESIGN — orb  (fit/select on TRAIN, verdict on TEST)
+==============================================================================
+n_train=89  n_test=44  embargo=300 bars  gate: test_t>=2.0 AND test_exp > flat
+model                         train_t   test_t  t_clust   test_exp  corr(c,win)
+logit_pwin                      +4.52    +0.53    +0.53    +4.5829       -0.211
+rank:vol_sma_ratio              +4.29    +0.72    +0.72    +5.5338       -0.112
+rank:trend_strength             +4.16    +0.70    +0.70    +6.2065       -0.029
+rank:rsi_14                     +3.69    +0.71    +0.71    +6.2340       -0.249
+rank:rel_strength_spy           +3.54    +0.79    +0.79    +4.9081       +0.000
+native                          +3.46    +0.79    +0.79    +4.7900       +0.000
+rank:z_score_20                 +3.43    +0.89    +0.89    +7.2973       +0.153
+flat                            +3.43    +0.79    +0.79    +4.6652       +0.000
+rank:comp_breakout_readiness    +3.43    +0.79    +0.79    +4.6652       +0.000
+rank:comp_squeeze_momentum      +3.43    +0.79    +0.79    +4.6652       +0.000
+rank:comp_momentum_quality      +3.43    +0.79    +0.79    +4.6652       +0.000
+rank:choppiness                 +2.93    -0.04    -0.04    -0.1669       -0.029
+rank:atr_ratio                  +2.80    +1.99    +1.99    +9.3707       +0.412
+VERDICT: FLAT_SHIPS  ->  ship 'flat'
+  train-selected 'logit_pwin' test_t=+0.53 (clustered +0.53) test_exp=+4.5829 vs flat_test_exp=+4.6652 @ gate t>=2.0
+==============================================================================
+
+SHIP DECISIONS: momentum(signal-test) -> flat, breakout -> flat, mean_reversion -> flat, orb -> flat
