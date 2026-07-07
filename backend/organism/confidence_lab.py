@@ -130,6 +130,25 @@ def _tstat(x: np.ndarray) -> float:
     return float(x.mean() / (sd / np.sqrt(n))) if sd > 0 else 0.0
 
 
+def _cluster_tstat(x: np.ndarray, clusters: np.ndarray) -> float:
+    """Session-cluster-robust t (CR1, same estimator family as phase2_gate):
+    same-session trades share regime/news shocks, so iid SEs overstate
+    precision. Mean is the plain mean; the variance is computed over cluster
+    sums (CR1 small-sample scaling G/(G-1))."""
+    x = np.asarray(x, dtype=float)
+    n = len(x)
+    if n < 2:
+        return 0.0
+    cl = pd.Series(clusters[:n])
+    sums = pd.Series(x - x.mean()).groupby(cl.values).sum()
+    G = len(sums)
+    if G < 2:
+        return _tstat(x)
+    var_mean = (G / (G - 1)) * float((sums ** 2).sum()) / (n ** 2)
+    se = np.sqrt(var_mean)
+    return float(x.mean() / se) if se > 0 else 0.0
+
+
 def _weights(c: np.ndarray, train_mean_w: float) -> np.ndarray:
     return (W_LO + W_SPAN * c) / train_mean_w
 
@@ -169,9 +188,12 @@ def evaluate_models(trades: pd.DataFrame, *, train_frac: float = 0.6,
         w_tr = _weights(c_tr, mean_w_tr)
         w_te = _weights(c_te, mean_w_tr)               # train-fold normalizer on test
         wins_te = (net_te > 0).astype(float)
+        # Session id for cluster-robust SEs: signal_idx // bars_per_day.
+        sess_te = (test["signal_idx"].to_numpy() // 390).astype(int)
         rows[m.name] = {
             "train_exp": float(np.mean(w_tr * net_tr)), "train_t": _tstat(w_tr * net_tr),
             "test_exp": float(np.mean(w_te * net_te)), "test_t": _tstat(w_te * net_te),
+            "test_t_clustered": _cluster_tstat(w_te * net_te, sess_te),
             "corr_conf_win_test": float(np.corrcoef(c_te, wins_te)[0, 1])
             if len(set(c_te)) > 1 and len(set(wins_te)) > 1 else 0.0,
         }
@@ -183,12 +205,21 @@ def evaluate_models(trades: pd.DataFrame, *, train_frac: float = 0.6,
     sel = max(contenders, key=lambda k: contenders[k]["train_t"])
     s = rows[sel]
     out["selected_on_train"] = sel
-    passed = s["test_t"] >= t_gate and s["test_exp"] > flat_test_exp
+    # Two-step decision (repo protocol, cf. phase2_param_sweep + phase2_gate):
+    # the plain t is LENIENT, so failing it is conclusive; passing it must ALSO
+    # survive the session-cluster-robust t at the same gate, or the "pass" is
+    # an iid-SE artifact of correlated same-session trades.
+    passed_simple = s["test_t"] >= t_gate and s["test_exp"] > flat_test_exp
+    passed = passed_simple and s["test_t_clustered"] >= t_gate
     out["verdict"] = "MODEL_SHIPS" if passed else "FLAT_SHIPS"
     out["ship"] = sel if passed else "flat"
-    out["reason"] = (
-        f"train-selected '{sel}' test_t={s['test_t']:+.2f} test_exp={s['test_exp']:+.4f} "
-        f"vs flat_test_exp={flat_test_exp:+.4f} @ gate t>={t_gate}")
+    detail = (f"train-selected '{sel}' test_t={s['test_t']:+.2f} "
+              f"(clustered {s['test_t_clustered']:+.2f}) "
+              f"test_exp={s['test_exp']:+.4f} vs flat_test_exp={flat_test_exp:+.4f} "
+              f"@ gate t>={t_gate}")
+    if passed_simple and not passed:
+        detail += " — simple-t pass KILLED by cluster-robust re-check"
+    out["reason"] = detail
     return out
 
 
@@ -200,9 +231,11 @@ def report(name: str, res: dict) -> str:
              f"embargo={res['embargo_bars']} bars  gate: test_t>={res['t_gate']} "
              f"AND test_exp > flat"]
     if res.get("models"):
-        lines.append(f"{'model':28s} {'train_t':>8s} {'test_t':>8s} {'test_exp':>10s} {'corr(c,win)':>12s}")
+        lines.append(f"{'model':28s} {'train_t':>8s} {'test_t':>8s} {'t_clust':>8s} "
+                     f"{'test_exp':>10s} {'corr(c,win)':>12s}")
         for k, v in sorted(res["models"].items(), key=lambda kv: -kv[1]["train_t"]):
             lines.append(f"{k:28s} {v['train_t']:+8.2f} {v['test_t']:+8.2f} "
+                         f"{v.get('test_t_clustered', 0.0):+8.2f} "
                          f"{v['test_exp']:+10.4f} {v['corr_conf_win_test']:+12.3f}")
     lines.append(f"VERDICT: {res['verdict']}  ->  ship '{res['ship']}'")
     lines.append(f"  {res.get('reason', '')}")

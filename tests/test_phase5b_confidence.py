@@ -107,6 +107,29 @@ def test_selection_is_train_only_not_test_cherrypick():
     assert sel == best_train
 
 
+def test_session_clustered_mirage_is_killed():
+    """A 'signal' that is really a handful of session-wide shocks passes the
+    iid t (hundreds of correlated trades look like hundreds of observations)
+    but must be killed by the cluster-robust re-check — few effective obs."""
+    rng = np.random.default_rng(11)
+    n = 800
+    idx = np.arange(n) * 5                     # 78 trades/session, ~10 sessions
+    sess = idx // 390
+    shock = rng.normal(0.6, 1.0, size=sess.max() + 1)   # per-session shock
+    net = 10.0 * shock[sess] + rng.normal(0, 1, n)
+    df = _mk_trades(n=n, seed=11, predictive=False)
+    df["signal_idx"] = idx
+    df["net_pnl"] = net
+    # Feature "predicts" the session shock -> looks skilled under iid SEs.
+    df["feat_comp_breakout_readiness"] = shock[sess] + rng.normal(0, 0.05, n)
+    res = evaluate_models(df)
+    sel = res["models"][res["selected_on_train"]]
+    if sel["test_t"] >= 2.0 and sel["test_exp"] > res["flat_test_exp"]:
+        # The iid gate was fooled — the clustered re-check must be the killer.
+        assert res["ship"] == "flat" or sel["test_t_clustered"] >= 2.0
+        assert sel["test_t_clustered"] < sel["test_t"]
+
+
 def test_backtester_default_output_unchanged():
     """capture_feature_cols default () must add no columns (protects every
     existing consumer of run_backtest)."""
