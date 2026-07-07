@@ -35,14 +35,21 @@ def test_freeze_is_complete_and_permanent(freeze):
 
 
 def test_freeze_covers_full_decision_surface(freeze):
-    # Gap-2: not just the four thresholds — entry direction, exits, regime, gates, sizing.
+    # Gap-2: not just the four thresholds — entry direction, exits, regime, gates,
+    # sizing; Phase 3 adds the selector routing path, the regime policy and the
+    # routing/data env (the data feed is a first-class frozen fact — Task 0).
     sh = freeze["surface"]["source_hashes"]
     assert set(sh) == {
         "entry_direction", "exit_engine", "regime_detector",
-        "kelly_sizer", "entry_gates_dispatch",
+        "kelly_sizer", "entry_gates_dispatch", "selector_routing",
     }
     assert "strategy_config" in freeze["surface"]
     assert "exit_env" in freeze["surface"]
+    assert "regime_policy" in freeze["surface"]
+    rde = freeze["surface"]["routing_data_env"]
+    assert set(rde) >= {"ALPACA_DATA_FEED", "ORGANISM_MIN_AVG_DOLLAR_VOLUME",
+                        "ORGANISM_FRAMEWORK_ROUTING_V2",
+                        "ORGANISM_ROUTING_RANK_POLICY"}
 
 
 def test_decision_surface_unchanged(freeze):
