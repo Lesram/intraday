@@ -25,6 +25,7 @@ import inspect
 import json
 import os
 import subprocess
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -128,7 +129,55 @@ def build_freeze() -> dict:
     }
 
 
+def _diff_surface(stored: dict, current: dict) -> list[str]:
+    """Human-readable list of the exact keys that drifted (≤2 levels deep,
+    which covers source_hashes / exit_env / routing_data_env / regime_policy /
+    strategy_config-per-strategy)."""
+    diffs: list[str] = []
+    for k in sorted(set(stored) | set(current)):
+        sv, cv = stored.get(k), current.get(k)
+        if sv == cv:
+            continue
+        if isinstance(sv, dict) and isinstance(cv, dict):
+            for sk in sorted(set(sv) | set(cv)):
+                if sv.get(sk) != cv.get(sk):
+                    diffs.append(
+                        f"    {k}.{sk}: frozen={sv.get(sk)!r} current={cv.get(sk)!r}")
+        else:
+            diffs.append(f"    {k}: frozen={sv!r} current={cv!r}")
+    return diffs
+
+
+def verify() -> int:
+    """READ-ONLY drift check (never writes). Recompute the live decision
+    surface and compare it to the frozen artifact. Exit 0 if identical, 1 if
+    drifted, 2 if there is no artifact to verify against.
+
+    This is the check that ``main()`` is deliberately NOT: ``main()`` RE-STAMPS
+    ``FROZEN_AT`` on drift, which resets the forward clock. Running this after
+    every task proves a change did not silently contaminate the forward corpus.
+    """
+    if not FREEZE_PATH.exists():
+        print(f"DRIFT-VERIFY FAIL: no freeze artifact at {FREEZE_PATH}")
+        return 2
+    stored = json.loads(FREEZE_PATH.read_text())
+    stored_surface = stored.get("surface")
+    current = compute_surface()
+    frozen_at = stored.get("FROZEN_AT")
+    if stored_surface == current:
+        print(f"DRIFT-VERIFY OK: decision surface matches freeze "
+              f"(FROZEN_AT={frozen_at})")
+        return 0
+    print(f"DRIFT-VERIFY FAIL: decision surface DRIFTED from freeze "
+          f"(FROZEN_AT={frozen_at}) — the forward clock would reset. Offending keys:")
+    for line in _diff_surface(stored_surface or {}, current):
+        print(line)
+    return 1
+
+
 def main() -> int:
+    if "--verify" in sys.argv[1:]:
+        return verify()
     FREEZE_PATH.parent.mkdir(parents=True, exist_ok=True)
     freeze = build_freeze()
     FREEZE_PATH.write_text(json.dumps(freeze, indent=2, sort_keys=True) + "\n")

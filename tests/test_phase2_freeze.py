@@ -14,8 +14,9 @@ from pathlib import Path
 
 import pytest
 
+import scripts.phase2_freeze as phase2_freeze
 from scripts.phase2_freeze import (
-    FREEZE_PATH, N_TARGET_RANGE, PROVENANCE, compute_surface,
+    FREEZE_PATH, N_TARGET_RANGE, PROVENANCE, compute_surface, verify,
 )
 
 
@@ -61,3 +62,41 @@ def test_decision_surface_unchanged(freeze):
         "RESET the accumulation clock. (This is the designed reset signal, not a "
         "flake.)"
     )
+
+
+# ── Work order 2026-07-23, global rule #2: read-only --verify drift check ──
+# Behavioral probes, not marker-greps: they exercise verify()'s return code on
+# both the matching and the drifted case, and prove it never mutates the artifact.
+
+
+def test_verify_mode_passes_on_unchanged_surface(freeze):
+    """--verify returns 0 when the live surface still matches the freeze."""
+    assert verify() == 0
+
+
+def test_verify_mode_detects_drift_and_is_read_only(tmp_path, monkeypatch):
+    """--verify returns 1 on a drifted artifact and NEVER writes to disk.
+
+    Unlike main(), verify() must not re-stamp FROZEN_AT — that would silently
+    reset the forward clock. We point the module at a mutated COPY and assert
+    (a) it reports drift via exit code 1, and (b) the file is byte-identical
+    afterwards.
+    """
+    real = json.loads(Path(FREEZE_PATH).read_text())
+    mutated = json.loads(json.dumps(real))
+    mutated["surface"]["source_hashes"]["exit_engine"] = "DELIBERATELY_WRONG_HASH"
+    fake = tmp_path / "param_freeze.json"
+    fake.write_text(json.dumps(mutated))
+    before = fake.read_bytes()
+
+    monkeypatch.setattr(phase2_freeze, "FREEZE_PATH", fake)
+    rc = verify()
+
+    assert rc == 1, "verify() must return 1 when the surface has drifted"
+    assert fake.read_bytes() == before, "verify() must be read-only (no re-stamp)"
+
+
+def test_verify_mode_reports_missing_artifact(tmp_path, monkeypatch):
+    """--verify returns 2 (not 0) when there is no artifact to check against."""
+    monkeypatch.setattr(phase2_freeze, "FREEZE_PATH", tmp_path / "does_not_exist.json")
+    assert verify() == 2
