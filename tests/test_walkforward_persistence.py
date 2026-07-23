@@ -318,3 +318,142 @@ class TestLoadAfterEssentialSave:
                 rows = list(csv.DictReader(f))
             assert len(rows) == 3
             assert rows[0]["symbol"] == "SYM0"
+
+
+# ═════════════════════════════════════════════════════════════
+#  BOUNDED WALK-FORWARD SKIP  (work order 2026-07-23 Task 1)
+# ═════════════════════════════════════════════════════════════
+
+def _make_gated_engine(max_skips):
+    """A MagicMock engine wired so the REAL ``OrganismLiveEngine._save_brain``
+    can run against it with the walk-forward gate ALWAYS failing.
+
+    Only the save sinks (``brain.save`` / ``brain.save_essential_state``) and
+    pure-data helpers are mocked — the bounded-skip control flow under test is
+    the real production code.
+    """
+    engine = MagicMock()
+    engine._consecutive_wf_skips = 0
+    engine._max_wf_save_skips = max_skips
+    engine._tick_count = 100
+    engine._exit_levels = {}
+    engine._entry_metadata = {}
+    # Quiet the forensic identity guard (ids must match __init__ snapshot).
+    engine._forensic_signal_gen_id = id(engine.signal_gen)
+    engine._forensic_learner_id = id(engine.learner)
+    # total_trades > 0 so the F4 fresh-learner abort guard does not fire.
+    engine.learner.state.total_trades = 42
+    # The gate ALWAYS fails — the permanently-closed-gate scenario from the
+    # 2026-07-23 restart (current=-1.021 vs monotonic best=3.436).
+    engine.brain.walk_forward_gate.return_value = (
+        False, "Walk-forward FAIL: current=-1.021, best=3.436, ratio=-0.297")
+    engine._strategy_trades.return_value = []
+    return engine
+
+
+def _drive_save(engine):
+    from backend.organism.live_engine import OrganismLiveEngine
+    OrganismLiveEngine._save_brain(engine)
+
+
+class TestBoundedWalkForwardSkip:
+    """A permanently-closed walk-forward gate must not block full saves
+    forever. Below the ceiling: essential-only save (unchanged). At the
+    ceiling: one FORCED full save (gated_save=true), then the counter resets.
+    """
+
+    def test_essential_only_below_ceiling(self):
+        engine = _make_gated_engine(max_skips=3)
+        _drive_save(engine)
+        _drive_save(engine)
+        assert engine.brain.save_essential_state.call_count == 2
+        assert engine.brain.save.call_count == 0
+        assert engine._consecutive_wf_skips == 2
+
+    def test_full_save_forced_at_ceiling(self):
+        engine = _make_gated_engine(max_skips=3)
+        for _ in range(3):
+            _drive_save(engine)
+        # 2 essential saves, then 1 forced full save on the 3rd cycle.
+        assert engine.brain.save_essential_state.call_count == 2
+        assert engine.brain.save.call_count == 1
+        # The forced save is tagged force=True (audit-only; save() performs the
+        # same atomic full save either way and does not bypass the trained
+        # overwrite guard).
+        _, kwargs = engine.brain.save.call_args
+        assert kwargs.get("force") is True
+        # Counter resets after a full save lands — no permanent block.
+        assert engine._consecutive_wf_skips == 0
+
+    def test_counter_resets_and_recurs(self):
+        """After a forced full save the cycle repeats — never permanent."""
+        engine = _make_gated_engine(max_skips=2)
+        for _ in range(4):
+            _drive_save(engine)
+        # ceiling=2 → essential, force, essential, force.
+        assert engine.brain.save.call_count == 2
+        assert engine.brain.save_essential_state.call_count == 2
+
+    def test_gate_pass_does_clean_full_save_and_resets(self):
+        engine = _make_gated_engine(max_skips=5)
+        _drive_save(engine)  # one gated skip
+        assert engine._consecutive_wf_skips == 1
+        # The gate now PASSES → clean full save (force=False), counter resets.
+        engine.brain.walk_forward_gate.return_value = (True, "Walk-forward passed")
+        _drive_save(engine)
+        assert engine.brain.save.call_count == 1
+        _, kwargs = engine.brain.save.call_args
+        assert kwargs.get("force") is False
+        assert engine._consecutive_wf_skips == 0
+
+    def test_env_override_sets_ceiling(self, monkeypatch):
+        """ORGANISM_MAX_WF_SAVE_SKIPS controls the ceiling; default is 12."""
+        import importlib
+        import backend.organism.live_engine as le
+        monkeypatch.setenv("ORGANISM_MAX_WF_SAVE_SKIPS", "4")
+        # Re-read the env the way __init__ does (no full engine construction).
+        val = max(1, int(le.os.environ.get("ORGANISM_MAX_WF_SAVE_SKIPS", "12")))
+        assert val == 4
+        monkeypatch.delenv("ORGANISM_MAX_WF_SAVE_SKIPS", raising=False)
+        assert max(1, int(le.os.environ.get("ORGANISM_MAX_WF_SAVE_SKIPS", "12"))) == 12
+
+
+# ═════════════════════════════════════════════════════════════
+#  STALE BRAIN LOCK  (work order 2026-07-23 Task 1 acceptance)
+# ═════════════════════════════════════════════════════════════
+
+class TestStaleBrainLock:
+    """The brain lock is a POSIX ``fcntl.flock`` tied to the open fd — NOT a
+    sentinel-file whose mere existence means "locked". So a ``.brain.lock``
+    file left behind by a process killed in a dirty shutdown (the 2026-07-08
+    Mac power-off) carries no live lock and can never deadlock the next boot.
+    """
+
+    def test_leftover_lock_file_does_not_deadlock(self, tmp_path):
+        from backend.organism.brain_persistence import _BrainLock, LOCK_FILE
+        lock_path = tmp_path / LOCK_FILE
+        # Simulate the leftover file from a dead process.
+        lock_path.write_bytes(b"")
+        assert lock_path.exists()
+        lock = _BrainLock(lock_path)
+        lock.acquire()          # must NOT raise — no live holder
+        lock.release()
+        # And it remains re-acquirable by a fresh lock object.
+        lock2 = _BrainLock(lock_path)
+        lock2.acquire()
+        lock2.release()
+
+    def test_lock_is_genuinely_exclusive_while_held(self, tmp_path):
+        """Proves acquire() really locks (so the stale-file test above is not
+        vacuously passing): a second acquire while the first is held raises."""
+        from backend.organism.brain_persistence import _BrainLock, LOCK_FILE
+        lock_path = tmp_path / LOCK_FILE
+        a = _BrainLock(lock_path)
+        a.acquire()
+        b = _BrainLock(lock_path)
+        with pytest.raises(RuntimeError):
+            b.acquire()
+        a.release()
+        # Once released, the contended lock is acquirable.
+        b.acquire()
+        b.release()

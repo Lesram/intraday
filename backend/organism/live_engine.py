@@ -1043,6 +1043,19 @@ class OrganismLiveEngine(
         self._watchdog_universe_drift: dict[str, Any] = {}
         # C4: Brain save watchdog
         self._watchdog_last_brain_save_tick: int = 0
+        # Work order 2026-07-23 Task 1 — bounded walk-forward save-skip.
+        # The walk-forward gate compares current Sharpe to a MONOTONIC
+        # best_sharpe high-water mark, so a losing/chop tape can gate 100%
+        # of full saves indefinitely — ML joblibs, evolved_params, transfer
+        # knowledge and the .save_complete sentinel then never persist and a
+        # restart silently reverts them to the last clean full save. After
+        # this many consecutive gated skips we force ONE full (gated_save=true)
+        # save to bound restart state-loss. Persistence cadence only — not a
+        # decision param, so it is not part of the frozen surface.
+        self._consecutive_wf_skips: int = 0
+        self._max_wf_save_skips: int = max(
+            1, int(os.environ.get("ORGANISM_MAX_WF_SAVE_SKIPS", "12"))
+        )
         # Apr-7 P0 fix: monotonic authoritative submission counters.
         # These are bumped inside _submit_entry_order / _submit_exit_order
         # on every successful broker submission, independent of per-tick
@@ -7434,25 +7447,50 @@ class OrganismLiveEngine(
                 learner=self.learner,
             )
             if not should_save:
+                # Work order 2026-07-23 Task 1 — BOUNDED walk-forward skip.
+                # A guard that can gate every full save forever is a
+                # persistence bug: below the ceiling we take the essential
+                # (in-place, promotion-gated) save and return, exactly as
+                # before; at the ceiling we fall through to force ONE full
+                # save so ML joblibs / evolved_params / transfer knowledge /
+                # the .save_complete sentinel cannot drift behind in-memory
+                # state indefinitely. This changes only WHEN state persists.
+                self._consecutive_wf_skips += 1
+                if self._consecutive_wf_skips < self._max_wf_save_skips:
+                    logger.warning(
+                        "Full brain save SKIPPED by walk-forward gate "
+                        "(%d/%d consecutive): %s — persisting all runtime "
+                        "truth (ML models + evolved_params gated)",
+                        self._consecutive_wf_skips, self._max_wf_save_skips,
+                        reason,
+                    )
+                    self.brain.save_essential_state(
+                        signal_gen=self.signal_gen,
+                        learner=self.learner,
+                        all_trades=self._all_trades,
+                        equity_curve=self._equity_curve,
+                        epoch_metrics=self._epoch_metrics,
+                        peak_equity=self._peak_equity,
+                        extra_counters=self._build_extra_counters(),
+                        governance_controller=self.governance,
+                        regime_detector=self.regime_detector,
+                    )
+                    self._watchdog_last_brain_save_tick = self._tick_count
+                    return
                 logger.warning(
-                    "Full brain save SKIPPED by walk-forward gate: %s "
-                    "— persisting all runtime truth (ML models + evolved_params gated)",
-                    reason,
+                    "Walk-forward gate has blocked %d consecutive full brain "
+                    "saves — forcing a gated full save (gated_save=true) to "
+                    "bound restart state-loss. Gate reason: %s",
+                    self._consecutive_wf_skips, reason,
                 )
-                self.brain.save_essential_state(
-                    signal_gen=self.signal_gen,
-                    learner=self.learner,
-                    all_trades=self._all_trades,
-                    equity_curve=self._equity_curve,
-                    epoch_metrics=self._epoch_metrics,
-                    peak_equity=self._peak_equity,
-                    extra_counters=self._build_extra_counters(),
-                    governance_controller=self.governance,
-                    regime_detector=self.regime_detector,
-                )
-                self._watchdog_last_brain_save_tick = self._tick_count
-                return
 
+            # Full brain save. When reached via the bounded-skip ceiling,
+            # `force=True` is AUDIT-ONLY: save() performs the identical atomic
+            # full save either way and force alone does NOT bypass the
+            # trained-overwrite guard (that needs force+allow_reset+reason), so
+            # a gated save can still never wipe a trained brain with fresh
+            # state. It only tags the save as a bounded gated save.
+            gated_save = not should_save
             self.brain.save(
                 signal_gen=self.signal_gen,
                 learner=self.learner,
@@ -7464,11 +7502,16 @@ class OrganismLiveEngine(
                 evolved_params=self.evolved_params.to_dict(),
                 governance_controller=self.governance,
                 regime_detector=self.regime_detector,
+                force=gated_save,
             )
-            # C4: Update brain save watchdog tick
+            # C4: Update brain save watchdog tick; reset the skip counter now
+            # that a full save (clean or gated) has landed.
+            self._consecutive_wf_skips = 0
             self._watchdog_last_brain_save_tick = self._tick_count
             logger.info(
-                "Brain saved at tick %d (%s)", self._tick_count, reason
+                "Brain saved at tick %d (%s%s)",
+                self._tick_count, reason,
+                ", gated_save=true" if gated_save else "",
             )
 
             # Phase 4.7 — Record run into transfer knowledge
