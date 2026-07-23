@@ -457,8 +457,12 @@ class OrganismBrain:
                 _forensic_err,
             )
 
+        # Task 6 (2026-07-23): only real backups are restore candidates. Backups
+        # are named ``brain_gen*``; the ``quarantine/`` subdir (moved-aside
+        # corrupt heads) and any other non-backup dir must never be loaded.
         candidates = sorted(
-            (p for p in backups_dir.iterdir() if p.is_dir()),
+            (p for p in backups_dir.iterdir()
+             if p.is_dir() and p.name.startswith("brain_gen")),
             key=lambda p: p.stat().st_mtime,
             reverse=True,
         )
@@ -2351,9 +2355,13 @@ class OrganismBrain:
                         str(f), str(backup_path / f.name), dirs_exist_ok=True
                     )
 
-            # Prune old backups — keep only the latest MAX_BACKUPS
+            # Prune old backups — keep only the latest MAX_BACKUPS. Task 6
+            # (2026-07-23): count only real ``brain_gen*`` backups so the
+            # ``quarantine/`` subdir is never pruned (and never displaces a real
+            # backup from the retained set).
             backups = sorted(
-                [d for d in self.backup_dir.iterdir() if d.is_dir()],
+                [d for d in self.backup_dir.iterdir()
+                 if d.is_dir() and d.name.startswith("brain_gen")],
                 key=lambda d: d.stat().st_mtime,
             )
             while len(backups) > MAX_BACKUPS:

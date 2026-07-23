@@ -191,6 +191,40 @@ def _make_shadow_host(recorder, qty):
     )
 
 
+class TestQuarantineGuard:
+    """Task 6: backups/quarantine/ holds moved-aside corrupt heads. It must
+    survive backup pruning and never be treated as a restore candidate."""
+
+    def test_quarantine_dir_survives_backup_pruning(self, tmp_path):
+        brain_dir = tmp_path / "brain"
+        brain = OrganismBrain(brain_dir=brain_dir)
+        _do_full_save(brain)
+        q = brain_dir / "backups" / "quarantine" / "corrupt_head_x"
+        q.mkdir(parents=True)
+        (q / "manifest.json").write_text("{}")
+        # Exceed MAX_BACKUPS (5) so the pruner runs several times.
+        for _ in range(7):
+            _do_full_save(brain)
+        assert q.exists(), "quarantine/ must not be pruned as if it were a backup"
+        real = [d for d in (brain_dir / "backups").iterdir()
+                if d.is_dir() and d.name.startswith("brain_gen")]
+        assert len(real) <= 5
+
+    def test_quarantine_dir_is_not_a_restore_candidate(self, tmp_path):
+        brain_dir = tmp_path / "brain"
+        brain = OrganismBrain(brain_dir=brain_dir)
+        _do_full_save(brain)                       # establish the head
+        _do_full_save(brain)                       # 2nd save mints a real backup
+        # Corrupt the live HEAD so load() falls into the backup-restore path.
+        (brain_dir / "manifest.json").write_text("{ not json")
+        # A quarantine dir that would THROW if the loader tried to restore it.
+        q = brain_dir / "backups" / "quarantine" / "corrupt_head_x"
+        q.mkdir(parents=True)
+        (q / "manifest.json").write_text("{ also not json")
+        reloaded = OrganismBrain(brain_dir=brain_dir)
+        assert reloaded.load() is True             # restored from the brain_gen backup
+
+
 class TestRealCloseGuard:
     def test_qty_zero_row_is_not_emitted(self):
         rec = _FakeRecorder()
