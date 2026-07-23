@@ -11,8 +11,26 @@ import concurrent.futures
 import asyncio
 import pathlib
 import glob
+import tempfile
 from unittest.mock import AsyncMock, MagicMock, patch
 from fastapi.testclient import TestClient
+
+# ── Brain-volume isolation (2026-07-23 ops work order follow-up) ─────────────
+# Tests that construct an engine/brain with the default brain_dir resolve it via
+# ORGANISM_BRAIN_DIR (read at IMPORT time in backend/organism/live_engine.py) and
+# default to the REAL organism_brain/ — the live Docker volume. Un-isolated runs
+# have destroyed data twice (qty=0 shadow pollution; four 07-07 corrupt-head
+# forensic dirs evicted via the keep-5 retention cap on 2026-07-23). This
+# module-level redirect runs before any test module imports live_engine, so the
+# import-time BRAIN_DIR pickup lands on a scratch dir. An explicit
+# ORGANISM_BRAIN_DIR from the caller is respected (CI / manual overrides).
+# Tests that intentionally read the real volume (test_v12_baseline_invariants,
+# test_audit_1_3_edge_monitor, …) build explicit absolute paths and are
+# unaffected by this env var.
+if "ORGANISM_BRAIN_DIR" not in os.environ:
+    os.environ["ORGANISM_BRAIN_DIR"] = tempfile.mkdtemp(
+        prefix="test_organism_brain_"
+    )
 
 # Global flag to track if database has been initialized
 _db_initialized = False

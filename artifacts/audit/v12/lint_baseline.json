@@ -1,5 +1,5 @@
 {
-  "captured_at": "2026-06-11T03:23:34.700263+00:00",
+  "captured_at": "2026-07-23T23:45:27.490754+00:00",
   "counts_by_key": {
     "backend/analytics/order_flow.py::BLE001": 1,
     "backend/analytics/order_flow.py::F401": 1,
@@ -225,8 +225,6 @@
     "backend/organism/decision_telemetry.py::F401": 3,
     "backend/organism/diagnostic_checks.py::BLE001": 9,
     "backend/organism/diagnostic_checks.py::F541": 1,
-    "backend/organism/diagnostic_scheduler.py::BLE001": 4,
-    "backend/organism/diagnostic_scheduler.py::S110": 1,
     "backend/organism/diagnostics.py::BLE001": 1,
     "backend/organism/ensemble_models.py::BLE001": 6,
     "backend/organism/eod_scanner.py::BLE001": 6,
@@ -427,7 +425,6 @@
     "scripts/dev/export_openapi.py::F541": 1,
     "scripts/dev/get_token.py::BLE001": 1,
     "scripts/dev/quick_http.py::BLE001": 1,
-    "scripts/edge_experiments.py::BLE001": 1,
     "scripts/extended_3year_backtest.py::BLE001": 1,
     "scripts/extended_3year_backtest.py::F541": 9,
     "scripts/fetch_alt_bars.py::BLE001": 1,
@@ -972,6 +969,6 @@
     "tests/unit/test_utils_helpers_coverage.py::F401": 2,
     "tests/unit/test_websocket_modules.py::F401": 2
   },
-  "reason": "--update-baseline manual refresh",
-  "total": 3696
+  "reason": "--shrink-baseline incremental cleanup",
+  "total": 3690
 }

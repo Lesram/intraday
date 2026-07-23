@@ -67,7 +67,9 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
-    "ruff>=0.1.0",
+    # EXACT ruff pin — the W75 lint-ratchet count is toolchain-relative; a
+    # floating ruff makes the ratchet unfalsifiable off-machine (Cowork 2026-07-23).
+    "ruff==0.15.12",
     "mypy>=1.5.0",
     "bandit[toml]>=1.7.0",
     "safety>=2.3.0",
