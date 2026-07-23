@@ -194,6 +194,15 @@ class _ShadowExitMixin:
                     "real_pnl_gross": round(real_pnl, 4),
                     "delta_gross": round(shadow_pnl - real_pnl, 4),
                 }
+                # Work order 2026-07-23 Task 2 — real-close guard. Only emit a
+                # shadow row for an ACTUAL closed position (qty>0). Replay/test
+                # harnesses reconcile synthetic symbols that never held shares
+                # (qty=0); those rows carry no shadow-vs-real signal and were
+                # the bulk of the telemetry pollution. Logging hygiene only —
+                # the shadow path never touches real trading. The finally block
+                # below still clears this symbol's shadow tracking state.
+                if not qty or qty <= 0:
+                    continue
                 recorder.write(row)
             except Exception as e:  # noqa: BLE001
                 logger.warning("shadow reconcile failed for %s: %s", sym, e)
