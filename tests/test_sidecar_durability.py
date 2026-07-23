@@ -21,8 +21,6 @@ from pathlib import Path
 from types import SimpleNamespace
 from datetime import datetime, timezone
 
-import pytest
-
 from backend.organism.brain_persistence import (
     OrganismBrain,
     SHADOW_EXIT_TELEMETRY_FILE,
