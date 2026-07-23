@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  OPTIONAL hourly watchdog — 2026-07-23 ops work order Task 3.
+  Re-runs paper_watchdog.sh every hour: if Docker is up but intra-api-1 is not,
+  it brings the stack back. Belt-and-suspenders on top of the login LaunchAgent
+  and compose's `restart: unless-stopped`.
+
+  Install:
+    cp ops/launchd/com.intra.paper.watchdog.plist ~/Library/LaunchAgents/
+    launchctl load ~/Library/LaunchAgents/com.intra.paper.watchdog.plist
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.intra.paper.watchdog</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>/Users/marselkei/VS/intra/scripts/ops/paper_watchdog.sh</string>
+    </array>
+    <key>StartInterval</key>
+    <integer>3600</integer>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>ProcessType</key>
+    <string>Background</string>
+</dict>
+</plist>

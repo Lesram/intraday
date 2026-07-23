@@ -2,7 +2,7 @@
 # AlgoTrading Platform Development Makefile
 # =====================================
 
-.PHONY: help install test-fast test-deep auto format lint typecheck coverage coverage-quality-gate coverage-full coverage-diff clean rebuild-paper deploy-parity deploy-parity-live
+.PHONY: help install test-fast test-deep auto format lint typecheck coverage coverage-quality-gate coverage-full coverage-diff clean rebuild-paper deploy-parity deploy-parity-live paper-up paper-status paper-watchdog
 
 # Configuration
 PYTHON := python
@@ -199,6 +199,16 @@ rebuild-paper: ## Rebuild + restart the paper API container (V12 W82, promoted t
 	@echo "$(BLUE)🚢 Rebuilding paper container (V12 W82 → V13 W92)...$(NC)"
 	@./scripts/deploy/rebuild_paper.sh
 	@echo "$(GREEN)✅ Paper container rebuilt; run 'make deploy-parity-live' to verify$(NC)"
+
+# Paper-trading uptime (2026-07-23 ops work order Task 3)
+paper-up: ## Launch Docker Desktop (if needed) and bring the paper stack up
+	@bash ops/launchd/paper_boot.sh && echo "$(GREEN)✅ paper stack up$(NC)"
+
+paper-status: ## Container state + brain-save freshness + last trade row
+	@bash scripts/ops/paper_status.sh
+
+paper-watchdog: ## One-shot: restart the api container if Docker is up but it isn't
+	@bash scripts/ops/paper_watchdog.sh && echo "$(GREEN)✅ watchdog check done$(NC)"
 
 deploy-parity: ## Sandbox parity self-test (no container needed)
 	@$(PYTHON) scripts/ci/check_deploy_parity.py
