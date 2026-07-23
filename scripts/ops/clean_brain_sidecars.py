@@ -105,8 +105,10 @@ def clean_model_swap_audit(apply: bool) -> dict:
         if len(hist) > len(best_rows):
             best, best_rows = snap, hist
 
+    # Restore the real audit trail when the live head is the test burst OR the
+    # file is absent (e.g. a prior full-save swap deleted it before Task 2's fix).
     action = "none"
-    if is_test_burst and best_rows:
+    if (is_test_burst or not live_rows) and best_rows:
         action = f"restore {len(best_rows)} historical rows from {Path(best).parent.name}"
         if apply:
             if live_rows:
