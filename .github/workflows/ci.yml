@@ -29,9 +29,15 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install dependencies
+        # EXACT ruff pin, single-sourced from requirements-dev.txt (punchlist
+        # 2026-07-24 item 2): the W75 lint-ratchet count is toolchain-relative,
+        # so a floating ``pip install ruff`` makes the ratchet gate
+        # non-deterministic (red-team measured 3726 on ruff 0.16 vs the 3690
+        # baseline on 0.15.12). The grep fails the job loudly if the pin is
+        # ever removed from requirements-dev.txt — that is intentional.
         run: |
           python -m pip install --upgrade pip
-          pip install ruff
+          pip install "$(grep -oE '^ruff==[0-9]+\.[0-9]+\.[0-9]+' requirements-dev.txt)"
 
       - name: Lint with ruff (current select rules — V12 W75 narrow ruleset)
         # V12 W81 (post-audit cleanup, 2026-05-03): the strict
