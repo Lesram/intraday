@@ -44,3 +44,47 @@ def test_live_engine_import_time_brain_dir_is_isolated():
     probe = resolved / ".isolation_probe"
     probe.write_text("ok")
     probe.unlink()
+
+
+# ── Punchlist 2026-07-24 item 3: bare-constructed components honor the env ──
+# DiagnosticReportStore and TransferLearningEngine used to hardcode
+# brain_dir="organism_brain", bypassing ORGANISM_BRAIN_DIR entirely — the
+# conftest shield could not cover a future test constructing them bare. Their
+# defaults now resolve the env lazily; these probes pin that behavior.
+
+
+def test_bare_diagnostic_store_lands_in_scratch(tmp_path, monkeypatch):
+    monkeypatch.setenv("ORGANISM_BRAIN_DIR", str(tmp_path / "redirected"))
+    from backend.organism.diagnostic_scheduler import DiagnosticReportStore
+
+    store = DiagnosticReportStore()  # bare — no brain_dir argument
+    resolved = Path(store._dir).resolve()
+    assert str(resolved).startswith(str((tmp_path / "redirected").resolve())), (
+        f"bare DiagnosticReportStore landed at {resolved}, not the redirected "
+        "scratch dir — the env-aware default regressed to the literal."
+    )
+
+
+def test_bare_transfer_engine_lands_in_scratch(tmp_path, monkeypatch):
+    monkeypatch.setenv("ORGANISM_BRAIN_DIR", str(tmp_path / "redirected"))
+    from backend.organism.transfer_learning import TransferLearningEngine
+
+    engine = TransferLearningEngine()  # bare — no brain_dir argument
+    assert engine.brain_dir == (tmp_path / "redirected").resolve(), (
+        f"bare TransferLearningEngine landed at {engine.brain_dir}, not the "
+        "redirected scratch dir — the env-aware default regressed to the literal."
+    )
+
+
+def test_explicit_brain_dir_still_wins_over_env(tmp_path, monkeypatch):
+    """An explicit argument must override the env — engine call sites pass
+    brain_dir explicitly and must be unaffected by the redirect."""
+    monkeypatch.setenv("ORGANISM_BRAIN_DIR", str(tmp_path / "env_dir"))
+    from backend.organism.diagnostic_scheduler import DiagnosticReportStore
+    from backend.organism.transfer_learning import TransferLearningEngine
+
+    explicit = tmp_path / "explicit"
+    store = DiagnosticReportStore(brain_dir=str(explicit))
+    assert Path(store._dir).resolve() == (explicit / "diagnostics").resolve()
+    engine = TransferLearningEngine(brain_dir=explicit)
+    assert engine.brain_dir == explicit.resolve()

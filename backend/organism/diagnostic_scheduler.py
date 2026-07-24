@@ -40,7 +40,13 @@ class DiagnosticReportStore:
     (matches brain_persistence.py pattern).
     """
 
-    def __init__(self, brain_dir: str = "organism_brain") -> None:
+    def __init__(self, brain_dir: str | None = None) -> None:
+        # Punchlist 2026-07-24 item 3: a literal "organism_brain" default
+        # bypassed ORGANISM_BRAIN_DIR, so a bare-constructed store wrote the
+        # REAL brain volume even under the test-suite redirect. Lazy env read
+        # (not import-time) so a late-set env is still honored.
+        if brain_dir is None:
+            brain_dir = os.environ.get("ORGANISM_BRAIN_DIR", "organism_brain")
         self._dir = Path(brain_dir) / "diagnostics"
         self._path = self._dir / "history.json"
         self._lock = asyncio.Lock()
@@ -206,7 +212,8 @@ class ScheduledDiagnosticRunner:
 
             from backend.organism.costing import costed_summary
 
-            brain_dir = getattr(getattr(engine, "brain", None), "brain_dir", None) or "organism_brain"
+            brain_dir = getattr(getattr(engine, "brain", None), "brain_dir", None) \
+                or os.environ.get("ORGANISM_BRAIN_DIR", "organism_brain")
             path = os.path.join(str(brain_dir), "trade_history.csv")
             if not os.path.exists(path):
                 return
