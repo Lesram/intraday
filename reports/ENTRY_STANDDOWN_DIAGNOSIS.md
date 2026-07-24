@@ -20,6 +20,13 @@ config changed. Drift-verify green. FROZEN_AT unchanged.
 | 2026-07-2_ (TBD) | — | — | — | — | — | — |
 | 2026-07-2_ (TBD) | — | — | — | — | — | — |
 
+*Sessions 2–3 rows are generated at session close by
+`python scripts/ops/standdown_session_row.py` (punchlist 2026-07-24 item 4) — it
+computes every column from the adjudicated predicates, prints the paste-ready
+markdown row, and REFUSES to run mid-session (the discipline rule, enforced in
+code). Validated by backfill: it reproduces this Session-1 row exactly, including
+the 25/30 direction_zero predicate split.*
+
 ## 2. Session 1 (2026-07-23) — measured at session close (23:39Z)
 
 **Regime (from `strategy_evidence_events.jsonl`, 1,153 events):** trending_down
