@@ -131,14 +131,16 @@ Marsel (wait / pre-register shadow-admission / longer horizon). Drift-verify gre
 `reports/ENTRY_STANDDOWN_DIAGNOSIS.md`. **CORRECTED at session close (23:39Z) after
 Cowork's red-team caught that the first draft was a ~17:48Z mid-session snapshot
 presented as the full session.** EOD numbers: regime **74% trending_down / 22% chop**
-(n=1,153 evidence events); **0 orders / 0 fills all day**; `direction_zero` fired
-**30×** (not 0 — 27 in a 19:18–19:35Z cluster after the snapshot) and the $50k
-liquidity floor fired **7×, all SH** (not "0 ever" — first occurrences in the retained
-log, post-snapshot). Both are second-order (37 events) against the dominant binding
-constraint, **IEX data starvation**: scanner empty **164×** (`market_scanner.py:410`)
-and **1,582** stale-bar fall-throughs, 75% on PSQ (599) + SH (585). 17 live candidates,
-0 submissions. **The Task-0(b) closure (IEX starves the universe) stands on the honest
-numbers — starvation outweighs gate-kills ~47×.** Sessions 2–3 stubs remain and will be
+(n=1,153 evidence events); **0 orders / 0 fills all day**; the `direction_zero` filter
+fired **25×** (not 0 — mostly a 19:18–19:35Z cluster after the snapshot; round-2
+adjudication: 25 = `defensive_filter_reason == "direction_zero"`, while 30 rows carry
+`direction == 0` — the other 5 died at `alpha_breakout_chop_blocked_by_evidence`) and
+the $50k liquidity floor fired **7×, all SH** (not "0 ever" — first occurrences in the
+retained log, post-snapshot). Both are second-order (32 events) against the dominant
+binding constraint, **IEX data starvation**: scanner empty **164×**
+(`market_scanner.py:410`) and **1,582** stale-bar fall-throughs, 75% on PSQ (599) + SH
+(585). 17 live candidates, 0 submissions. **The Task-0(b) closure (IEX starves the
+universe) stands on the honest numbers — starvation outweighs gate-kills ~55×.** Sessions 2–3 stubs remain and will be
 measured at session close only. DECISION
 ITEMs (SIP re-subscribe / universe expansion / symmetric-short `2454ceb`) listed with
 clock consequences. Drift-verify green.

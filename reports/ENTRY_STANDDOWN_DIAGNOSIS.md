@@ -44,14 +44,22 @@ session — but chop is a real 22% minority, not the ~2% the mid-session draft i
   | CRM | 12 | |
   | XOM | 4 | |
 
-- `direction_zero`: **30** — 3 at the 15:46Z boot + 27 during 19:18–19:35Z. NOT zero
-  (the earlier "0" predated the 19:xx cluster). Second-order: 2.6% of events.
+- The `direction_zero` filter fired **25×** — 3 at the 15:46Z boot + the rest in a
+  19:18–19:35Z cluster. NOT zero (the earlier "0" predated the 19:xx cluster).
+  Second-order: ~2% of events.¹
 - Liquidity floor (`$50k`, `live_engine.py:1457`): **7** blocks, **all SH**,
   18:55–19:22Z — the first liquidity blocks in the retained log, landing on an inverse
   ETF (short-side, thinnest on IEX). NOT "0 ever" as the first draft claimed.
 
+¹ *Two predicates, adjudicated in red-team round 2: **25** = evidence rows with
+`defensive_filter_reason == "direction_zero"` (the filter actually firing); **30** =
+all rows with `direction == 0`, of which the other 5 were killed by
+`alpha_breakout_chop_blocked_by_evidence` instead. Both counts are stable across
+cutoffs (last event 20:00:07Z) — the earlier 25-vs-30 discrepancy was a predicate
+difference, not timing.*
+
 **Net:** starvation (1,582 stale + 164 empty = 1,746) outweighs the second-order gate
-kills (30 direction_zero + 7 liquidity = 37) by ~47×. **17 `live_pipeline_candidate`
+kills (25 direction_zero + 7 liquidity = 32) by ~55×. **17 `live_pipeline_candidate`
 events** produced **0 order submissions.** (Note: the raw `entry_source` alpha/
 alpha+breakout tags total 60, but only 17 carry `live_pipeline_candidate=True` — the
 first draft conflated the two into "13 candidates / alpha 16 + breakout 5"; the
@@ -63,15 +71,15 @@ The deferred question from `docs/architecture/phase3_task0_data_decision.md` —
 IEX starve the in-play universe?* — is answered **YES, decisively.** The most-actives/
 movers screener is dry (164× empty) and the streaming feed cannot keep the universe
 fresh (1,582 stale-bar fall-throughs; SH+PSQ = 75%). The `$50k` floor is reached only
-7× (all SH); starvation is ~47× larger. On IEX the universe is starved before any
-strategy logic meaningfully runs.
+7× (all SH); starvation is ~55× larger than all gate kills combined. On IEX the
+universe is starved before any strategy logic meaningfully runs.
 
 ## 3. Does the live path fire on a trending/high-vol session?
 
 **Session 1 answer: no — and starvation, not regime, is why.** 2026-07-23 was 74%
 trending_down (momentum/breakout-eligible per REGIME_POLICY), the live path generated
-17 candidates, and still **zero filled.** The `direction_zero` (30) and liquidity (7)
-kills DID fire late in the session, but they are second-order — 37 events against 1,746
+17 candidates, and still **zero filled.** The `direction_zero` (25) and liquidity (7)
+kills DID fire late in the session, but they are second-order — 32 events against 1,746
 starvation events. The primary binding constraint is **IEX data starvation** (empty
 screener + stale bars), not the chop/`direction_zero` mechanism the plan assumed. The
 plan's hypothesis ("chop → `direction_zero` → no fills") is not the dominant story;
