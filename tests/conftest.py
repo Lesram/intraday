@@ -32,6 +32,18 @@ if "ORGANISM_BRAIN_DIR" not in os.environ:
         prefix="test_organism_brain_"
     )
 
+# Third isolation hole (found 2026-07-29 during the activation rebuild): the
+# shadow-exit recorder path is a SEPARATE env with its own literal default
+# (live_engine.py ORGANISM_SHADOW_EXIT_TELEMETRY_PATH), so the brain-dir
+# redirect above did not cover it — replay/test runs with
+# ORGANISM_SHADOW_EXIT_POLICY set (loaded from .env by pydantic settings) wrote
+# qty>0 Jan-replay rows into the REAL organism_brain/shadow_exit_telemetry.jsonl.
+# Redirect it into the scratch brain dir; an explicit caller value is respected.
+if "ORGANISM_SHADOW_EXIT_TELEMETRY_PATH" not in os.environ:
+    os.environ["ORGANISM_SHADOW_EXIT_TELEMETRY_PATH"] = os.path.join(
+        os.environ["ORGANISM_BRAIN_DIR"], "shadow_exit_telemetry.jsonl"
+    )
+
 # Global flag to track if database has been initialized
 _db_initialized = False
 _db_engine = None

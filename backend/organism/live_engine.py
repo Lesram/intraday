@@ -398,9 +398,14 @@ ORGANISM_PYRAMID_ENABLED = _env_bool("ORGANISM_PYRAMID_ENABLED", True)
 ORGANISM_SHADOW_EXIT_POLICY = _env_str("ORGANISM_SHADOW_EXIT_POLICY", "")
 ORGANISM_SHADOW_EXIT_RETRACE_FRAC = _env_float("ORGANISM_SHADOW_EXIT_RETRACE_FRAC", 0.6)
 ORGANISM_SHADOW_EXIT_MIN_FAV_R = _env_float("ORGANISM_SHADOW_EXIT_MIN_FAVORABLE_R", 1.0)
+# Default derives from BRAIN_DIR (2026-07-29 sign-off) so the test suite's
+# ORGANISM_BRAIN_DIR redirect covers this path transitively — the old literal
+# bypassed it and let replay runs write the real telemetry file. Behavior-
+# invariant in-container: the paper compose sets this env explicitly, and with
+# both envs unset the derived value equals the old literal byte-for-byte.
 ORGANISM_SHADOW_EXIT_TELEMETRY_PATH = _env_str(
     "ORGANISM_SHADOW_EXIT_TELEMETRY_PATH",
-    "organism_brain/shadow_exit_telemetry.jsonl",
+    os.path.join(BRAIN_DIR, "shadow_exit_telemetry.jsonl"),
 )
 
 # ── Dynamic intraday adjustments ────────────────────────────────

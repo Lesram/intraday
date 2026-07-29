@@ -76,6 +76,24 @@ def test_bare_transfer_engine_lands_in_scratch(tmp_path, monkeypatch):
     )
 
 
+def test_shadow_telemetry_path_is_isolated():
+    """Third isolation hole (2026-07-29): the shadow-exit recorder path has its
+    own env + literal default and was NOT covered by the brain-dir redirect —
+    replay runs wrote qty>0 Jan-replay rows into the REAL telemetry file. The
+    conftest now redirects the env, and live_engine derives the default from
+    BRAIN_DIR; either way the import-time value must resolve outside the real
+    organism_brain/."""
+    from backend.organism.live_engine import ORGANISM_SHADOW_EXIT_TELEMETRY_PATH
+
+    resolved = Path(ORGANISM_SHADOW_EXIT_TELEMETRY_PATH).resolve()
+    real = (Path(__file__).resolve().parents[1] / "organism_brain").resolve()
+    assert not str(resolved).startswith(str(real)), (
+        f"shadow-exit telemetry path {resolved} points inside the REAL "
+        "organism_brain volume — replay/test runs would pollute live telemetry "
+        "(this happened 2026-07-29: 10 Jan-replay rows, quarantined)."
+    )
+
+
 def test_explicit_brain_dir_still_wins_over_env(tmp_path, monkeypatch):
     """An explicit argument must override the env — engine call sites pass
     brain_dir explicitly and must be unaffected by the redirect."""
