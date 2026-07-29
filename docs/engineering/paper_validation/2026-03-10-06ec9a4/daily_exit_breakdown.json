@@ -1,0 +1,65 @@
+{
+  "eod_flatten": {
+    "count": 1,
+    "total_pnl": 1.58,
+    "avg_pnl": 1.58,
+    "win_rate": 1.0,
+    "avg_hold_time_seconds": 0.0
+  },
+  "failure_to_follow": {
+    "count": 50,
+    "total_pnl": -279.72,
+    "avg_pnl": -5.59,
+    "win_rate": 0.36,
+    "avg_hold_time_seconds": 0.0
+  },
+  "max_holding_period": {
+    "count": 5,
+    "total_pnl": 33.87,
+    "avg_pnl": 6.77,
+    "win_rate": 0.8,
+    "avg_hold_time_seconds": 0.0
+  },
+  "max_loss_limit": {
+    "count": 3,
+    "total_pnl": -206.17,
+    "avg_pnl": -68.72,
+    "win_rate": 0.0,
+    "avg_hold_time_seconds": 0.0
+  },
+  "ml_reversal": {
+    "count": 23,
+    "total_pnl": 185.92,
+    "avg_pnl": 8.08,
+    "win_rate": 0.6522,
+    "avg_hold_time_seconds": 0.0
+  },
+  "partial_take_profit": {
+    "count": 7,
+    "total_pnl": -4.06,
+    "avg_pnl": -0.58,
+    "win_rate": 0.7143,
+    "avg_hold_time_seconds": 0.0
+  },
+  "stop_loss": {
+    "count": 47,
+    "total_pnl": -489.02,
+    "avg_pnl": -10.4,
+    "win_rate": 0.234,
+    "avg_hold_time_seconds": 0.0
+  },
+  "take_profit": {
+    "count": 1,
+    "total_pnl": 15.36,
+    "avg_pnl": 15.36,
+    "win_rate": 1.0,
+    "avg_hold_time_seconds": 0.0
+  },
+  "trailing_stop": {
+    "count": 5,
+    "total_pnl": -202.51,
+    "avg_pnl": -40.5,
+    "win_rate": 0.4,
+    "avg_hold_time_seconds": 0.0
+  }
+}

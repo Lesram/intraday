@@ -5,10 +5,12 @@ Main API application - FastAPI entry point using factory pattern
 from typing import Any
 
 from backend.api.factory import create_app
+from backend.api.logging_setup import configure_api_logging
 from backend.config.settings import get_settings
 
 # Create the real FastAPI application using factory pattern
 settings = get_settings()
+configure_api_logging(settings)
 app = create_app(settings)
 
 # Backward compatibility: Expose app state for any tests that might reference it

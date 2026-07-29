@@ -31,6 +31,36 @@ from backend.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
+# V6 X-1 / Wave-20c (2026-05-03): eager load_dotenv to kill mid-replay
+# determinism bug. Track X reproduced this: live_tick() lazy-imports
+# `alpaca_stream`, which calls `load_dotenv()` in its own module init.
+# The first GovernanceController() constructed (before alpaca_stream
+# loads) read code defaults; the second (after alpaca_stream's
+# load_dotenv mutated os.environ) read .env overrides. Two replay runs
+# produced different governance state. Eagerly loading dotenv at the
+# top of replay_simulator means every os.getenv() call sees the same
+# environment from tick 1.
+try:
+    from dotenv import load_dotenv as _load_dotenv
+    _load_dotenv()
+except Exception:
+    # python-dotenv may not be installed in stripped-down test envs.
+    pass
+
+# V6 X-7 / Wave-22 (2026-05-03): mark replay mode so OrganismLiveEngine
+# refuses to write to the production brain dir without explicit override.
+# Defense-in-depth — replay's tempdir wrapper is supposed to handle this,
+# but if a future change constructs the engine directly without the
+# wrapper, this assertion is the safety net.
+#
+# V12 W80 (post-audit cleanup): the V12 external auditor flagged the
+# original ``os.environ.setdefault("ORGANISM_REPLAY_MODE", "1")`` here
+# as global env pollution on import — any test that merely imports this
+# module would inherit replay-mode env, polluting unrelated test runs.
+# The flag is now set only while ``ReplayEngine.run`` constructs the
+# live engine, then restored immediately. Constructor-time pollution still
+# leaks into unrelated scheduler tests that share the same Python process.
+
 
 # ═════════════════════════════════════════════════════════════════════════
 #  SIMULATED BROKER
@@ -43,14 +73,47 @@ class SimulatedBroker:
     integration smoke tests and the replay simulator.
     """
 
+    # Audit 2026-06-09 (plan 1.1): per-symbol-class half-spread defaults, in
+    # basis points. Crossing the spread costs ~half the quoted spread per
+    # side on marketable orders. Liquid index ETFs are tightest, mega-caps
+    # next, everything else gets a conservative default.
+    _ETF_SYMBOLS = frozenset({
+        "SPY", "QQQ", "IWM", "DIA", "SH", "PSQ",
+        "XLK", "XLE", "XLF", "XLV", "XLY", "XLP", "XLI", "XLU", "XLB", "XLRE",
+    })
+    _MEGACAP_SYMBOLS = frozenset({
+        "AAPL", "MSFT", "NVDA", "AMZN", "GOOGL", "GOOG", "META", "TSLA",
+        "AVGO", "AMD", "WMT", "LLY", "JPM", "COST", "CRM", "XOM", "CAT",
+        "COIN", "UBER", "SNOW",
+    })
+    _HALF_SPREAD_ETF_BPS = 0.5
+    _HALF_SPREAD_MEGACAP_BPS = 1.0
+    _HALF_SPREAD_DEFAULT_BPS = 2.5
+
     def __init__(
         self,
         initial_cash: float = 100_000,
         slippage_bps: float = 0,
+        delay_fill: bool = False,
+        half_spread_bps: "float | dict[str, float] | str | None" = None,
+        commission_per_share: float = 0.0,
     ) -> None:
         self.cash: float = initial_cash
         self.initial_cash: float = initial_cash
         self.slippage_bps: float = slippage_bps
+        # delay_fill: when True, orders observe the current bar's close
+        # but fill at the NEXT bar's open. More realistic than instant
+        # same-bar fill at observed close. Default False for backward-compat.
+        self.delay_fill: bool = delay_fill
+        # Audit 2026-06-09 (plan 1.1): spread + commission modeling.
+        #   None      → 0 bps (legacy zero-cost behavior, default)
+        #   "auto"    → per-symbol-class defaults (ETF/megacap/other)
+        #   float     → flat bps for all symbols
+        #   dict      → explicit per-symbol bps (missing symbols → auto)
+        self.half_spread_bps = half_spread_bps
+        self.commission_per_share: float = commission_per_share
+        self.total_commission: float = 0.0
+        self.total_spread_slippage_cost: float = 0.0
 
         # symbol → {qty, avg_entry_price, side, market_value, cost_basis, ...}
         self._positions: dict[str, dict[str, Any]] = {}
@@ -83,12 +146,59 @@ class SimulatedBroker:
             return self._bar_provider.current_price(symbol)
         return 0.0
 
+    def _fill_price(self, symbol: str) -> float:
+        """Get fill price. With delay_fill=True, returns NEXT bar's open
+        (more realistic than same-bar close). Otherwise returns current price.
+        """
+        if not self.delay_fill or self._bar_provider is None:
+            return self._current_price(symbol)
+        # Look up next bar's open via bar provider
+        return self._bar_provider.next_bar_open(symbol)
+
     def _apply_slippage(self, price: float, side: str) -> float:
         """Apply slippage in basis points."""
         if self.slippage_bps <= 0:
             return price
         slip = price * (self.slippage_bps / 10_000)
         return price + slip if side == "buy" else price - slip
+
+    def _half_spread_for(self, symbol: str) -> float:
+        """Resolve half-spread bps for a symbol (audit 2026-06-09, plan 1.1)."""
+        cfg = self.half_spread_bps
+        if cfg is None:
+            return 0.0
+        if isinstance(cfg, (int, float)):
+            return float(cfg)
+        if isinstance(cfg, dict) and symbol in cfg:
+            return float(cfg[symbol])
+        # "auto" or dict-miss → classify
+        if symbol in self._ETF_SYMBOLS:
+            return self._HALF_SPREAD_ETF_BPS
+        if symbol in self._MEGACAP_SYMBOLS:
+            return self._HALF_SPREAD_MEGACAP_BPS
+        return self._HALF_SPREAD_DEFAULT_BPS
+
+    def _apply_costs(self, price: float, side: str, symbol: str) -> float:
+        """Apply slippage + half-spread to the fill price (plan 1.1).
+
+        Both costs move the fill against the trader: buys fill higher,
+        sells fill lower. Commission is handled separately as a cash debit.
+        """
+        total_bps = max(0.0, self.slippage_bps) + self._half_spread_for(symbol)
+        if total_bps <= 0:
+            return price
+        adj = price * (total_bps / 10_000)
+        self.total_spread_slippage_cost += adj
+        return price + adj if side == "buy" else price - adj
+
+    def _charge_commission(self, qty: int) -> float:
+        """Debit commission from cash; returns the amount charged."""
+        if self.commission_per_share <= 0 or qty <= 0:
+            return 0.0
+        fee = self.commission_per_share * qty
+        self.cash -= fee
+        self.total_commission += fee
+        return fee
 
     def add_position(
         self,
@@ -141,12 +251,15 @@ class SimulatedBroker:
         symbol = kwargs["symbol"]
         side = kwargs["side"]
         qty = int(float(kwargs["qty"]))
-        price = self._current_price(symbol)
+        # With delay_fill, orders observe the current bar's close but fill
+        # at next bar's open (more realistic). Without it, fill at current.
+        price = self._fill_price(symbol)
 
         if price <= 0:
             return {"id": str(uuid.uuid4()), "status": "rejected", "reason": "no_price"}
 
-        fill_price = self._apply_slippage(price, side)
+        # Plan 1.1: slippage + half-spread move the fill against the trader.
+        fill_price = self._apply_costs(price, side, symbol)
 
         if side == "buy":
             cost = fill_price * qty
@@ -209,6 +322,9 @@ class SimulatedBroker:
                 pos["market_value"] = remaining * fill_price
                 pos["cost_basis"] = remaining * pos["avg_entry_price"]
 
+        # Plan 1.1: commission as a per-share cash debit (both sides).
+        _commission = self._charge_commission(qty)
+
         order_id = str(uuid.uuid4())
         order_record = {
             "id": order_id,
@@ -219,6 +335,7 @@ class SimulatedBroker:
             "filled_qty": str(qty),
             "status": "filled",
             "avg_fill_price": str(fill_price),
+            "commission": round(_commission, 6),
             "idempotency_key": kwargs.get("idempotency_key", ""),
         }
         self.filled_orders.append(order_record)
@@ -295,6 +412,20 @@ class HistoricalBarProvider:
         idx = min(self._current_idx - 1, len(df) - 1)
         return float(df["close"].iloc[idx])
 
+    def next_bar_open(self, symbol: str) -> float:
+        """Get the OPEN of the bar AFTER the current cursor — the price an
+        order submitted at the current bar's close would actually fill at.
+        Falls back to current_price if at last bar.
+        """
+        df = self._bars.get(symbol)
+        if df is None or self._current_idx <= 0:
+            return 0.0
+        # current_idx points to the bar we just observed; next bar's open
+        # is at df.iloc[current_idx]['open'] (if it exists).
+        if self._current_idx < len(df) and "open" in df.columns:
+            return float(df["open"].iloc[self._current_idx])
+        return self.current_price(symbol)
+
     @property
     def current_time(self) -> datetime | None:
         """Timestamp at current cursor position."""
@@ -342,6 +473,7 @@ class ReplayResult:
     """Structured output from a replay run."""
 
     ticks: int = 0
+    orders: list[dict] = field(default_factory=list)
     trades: list[dict] = field(default_factory=list)
     equity_curve: list[float] = field(default_factory=list)
     regime_history: list[str] = field(default_factory=list)
@@ -436,6 +568,10 @@ class ReplayEngine:
         max_entries_per_hour: int = 20,
         timeframe: str = "1Day",
         lookback: int | None = None,
+        delay_fill: bool = False,
+        half_spread_bps: "float | dict[str, float] | str | None" = None,
+        commission_per_share: float = 0.0,
+        cost_profile: str | None = None,
     ) -> None:
         self.bars_by_symbol = bars_by_symbol
         self.initial_cash = initial_cash
@@ -444,6 +580,25 @@ class ReplayEngine:
         self.brain_dir = brain_dir
         self.max_entries_per_hour = max_entries_per_hour
         self.timeframe = timeframe
+        self.delay_fill = delay_fill
+        self.half_spread_bps = half_spread_bps
+        self.commission_per_share = commission_per_share
+
+        # Audit 2026-06-09 (plan 1.1): cost_profile="realistic" switches on
+        # next-bar-open fills + per-class half-spread + >=1bp slippage in one
+        # flag. This is the configuration REQUIRED for promotion evidence
+        # (go-live Gate 1/2); the legacy zero-cost defaults remain available
+        # for unit tests and mechanism debugging only.
+        if cost_profile == "realistic":
+            self.delay_fill = True
+            if self.half_spread_bps is None:
+                self.half_spread_bps = "auto"
+            self.slippage_bps = max(1.0, float(slippage_bps))
+        elif cost_profile not in (None, "legacy"):
+            raise ValueError(
+                f"Unknown cost_profile {cost_profile!r}; use 'realistic' or 'legacy'"
+            )
+        self.cost_profile = cost_profile
 
         if lookback is not None:
             self.lookback = lookback
@@ -460,30 +615,85 @@ class ReplayEngine:
         broker = SimulatedBroker(
             initial_cash=self.initial_cash,
             slippage_bps=self.slippage_bps,
+            delay_fill=self.delay_fill,
+            half_spread_bps=self.half_spread_bps,
+            commission_per_share=self.commission_per_share,
         )
         broker.set_bar_provider(bar_provider)
 
+        # Audit 2026-06-09 (plan 1.1): optimistic runs must self-label.
+        # Same-bar close fills with no spread make every strategy look
+        # better than it is — never use such a run as promotion evidence.
+        if not self.delay_fill or (
+            self.half_spread_bps in (None, 0) and self.slippage_bps <= 0
+        ):
+            logger.warning(
+                "OPTIMISTIC FILL MODE: same_bar_fills=%s half_spread=%s "
+                "slippage_bps=%s — results overstate performance and are "
+                "NOT valid promotion evidence (use cost_profile='realistic').",
+                not self.delay_fill, self.half_spread_bps, self.slippage_bps,
+            )
+
         brain_dir = self.brain_dir or tempfile.mkdtemp(prefix="replay_brain_")
 
-        engine = OrganismLiveEngine(
-            data_client=bar_provider,
-            order_service=broker,
-            positions_service=broker,
-            brain_dir=brain_dir,
-            universe=self.universe,
-            timeframe=self.timeframe,
-        )
+        _previous_replay_mode = os.environ.get("ORGANISM_REPLAY_MODE")
+        os.environ["ORGANISM_REPLAY_MODE"] = "1"
+        try:
+            engine = OrganismLiveEngine(
+                data_client=bar_provider,
+                order_service=broker,
+                positions_service=broker,
+                brain_dir=brain_dir,
+                universe=self.universe,
+                timeframe=self.timeframe,
+            )
+        finally:
+            if _previous_replay_mode is None:
+                os.environ.pop("ORGANISM_REPLAY_MODE", None)
+            else:
+                os.environ["ORGANISM_REPLAY_MODE"] = _previous_replay_mode
         await engine.initialize()
 
-        # Override clock to use bar time instead of wall time
-        engine._time_fn = lambda: bar_provider.current_simulated_time
-        engine._now_fn = lambda: bar_provider.current_simulated_datetime
+        # Override clock to use bar time instead of wall time.
+        # V5 Wave-17b (2026-05-03): extend the override to the auxiliary
+        # components that also hold their own clocks.
+        # V6 X-5/X-6 / Wave-20d (2026-05-03): the wave-19 loop had two
+        # bugs — (a) it only matched `_now_fn` so StreamingDataProvider
+        # (uses `_time_fn`) was silently skipped; (b) it listed a
+        # nonexistent `promotion_controller` attribute (the engine
+        # holds no such attribute; PromotionController lives on
+        # `app.state`). Now: explicit attr → clock-attr mapping,
+        # use the same `_replay_now` for `_now_fn` and `_replay_time`
+        # for `_time_fn`. `brain` clock added (wave-20b X-3 fix).
+        _replay_now = lambda: bar_provider.current_simulated_datetime
+        _replay_time = lambda: bar_provider.current_simulated_time
+        engine._time_fn = _replay_time
+        engine._now_fn = _replay_now
+
+        _now_fn_components = (
+            "regime_detector",
+            "governance",
+            "learner",
+            "brain",
+        )
+        _time_fn_components = (
+            "_streaming_provider",
+        )
+        for _attr in _now_fn_components:
+            _comp = getattr(engine, _attr, None)
+            if _comp is not None and hasattr(_comp, "_now_fn"):
+                _comp._now_fn = _replay_now
+        for _attr in _time_fn_components:
+            _comp = getattr(engine, _attr, None)
+            if _comp is not None and hasattr(_comp, "_time_fn"):
+                _comp._time_fn = _replay_time
 
         # Disable MarketScanner — don't hit real APIs during replay
         engine.market_scanner = None
 
-        # Relax entry throttle for learning (production default is 3)
-        engine._MAX_ENTRIES_PER_HOUR = self.max_entries_per_hour
+        # Replay must be able to exercise both loose and tight throttle
+        # settings even while the live engine is in learning mode.
+        engine._entry_throttle_override_per_hour = self.max_entries_per_hour
 
         result = ReplayResult()
         tick_count = 0
@@ -521,6 +731,7 @@ class ReplayEngine:
         await engine.shutdown()
 
         result.ticks = tick_count
+        result.orders = list(broker.filled_orders)
         result.trades = list(broker.trade_log)
 
         return result
@@ -535,6 +746,9 @@ class ReplayEngine:
         initial_cash: float = 100_000,
         slippage_bps: float = 5,
         lookback: int | None = None,
+        half_spread_bps: "float | dict[str, float] | str | None" = None,
+        commission_per_share: float = 0.0,
+        cost_profile: str | None = None,
     ) -> ReplayEngine:
         """Fetch bars from Alpaca API and create a replay engine."""
         from backend.data.alpaca_client import AlpacaClient
@@ -574,6 +788,9 @@ class ReplayEngine:
             universe=symbols,
             timeframe=timeframe,
             lookback=lookback,
+            half_spread_bps=half_spread_bps,
+            commission_per_share=commission_per_share,
+            cost_profile=cost_profile,
         )
 
     @classmethod
@@ -688,6 +905,16 @@ if __name__ == "__main__":
     parser.add_argument("--lookback", type=int, default=None,
                         help="Lookback bars for warmup (default: 200 daily, 500 intraday)")
     parser.add_argument("--max-ticks", type=int, default=None)
+    # Audit 2026-06-09 (plan 1.1): the CLI is the evidence path — it now
+    # defaults to REALISTIC costs (next-bar-open fills, per-class
+    # half-spread, 1bp slippage). Pass --cost-profile legacy to reproduce
+    # old optimistic-fill runs (clearly labeled in the log).
+    parser.add_argument("--cost-profile", default="realistic",
+                        choices=["realistic", "legacy"])
+    parser.add_argument("--slippage-bps", type=float, default=1.0)
+    parser.add_argument("--half-spread-bps", type=float, default=None,
+                        help="Flat half-spread bps (default: auto per symbol class)")
+    parser.add_argument("--commission-per-share", type=float, default=0.0)
     args = parser.parse_args()
 
     symbols = [s.strip().upper() for s in args.symbols.split(",")]
@@ -699,8 +926,18 @@ if __name__ == "__main__":
             end=args.end,
             timeframe=args.timeframe,
             initial_cash=args.cash,
-            slippage_bps=5,
+            slippage_bps=args.slippage_bps,
             lookback=args.lookback,
+            half_spread_bps=args.half_spread_bps,
+            commission_per_share=args.commission_per_share,
+            cost_profile=args.cost_profile,
+        )
+        print(
+            f"Cost profile: {args.cost_profile} | fills="
+            f"{'next-bar-open' if engine.delay_fill else 'SAME-BAR CLOSE (optimistic)'}"
+            f" | half_spread={engine.half_spread_bps}"
+            f" | slippage_bps={engine.slippage_bps}"
+            f" | commission/share=${engine.commission_per_share}"
         )
         result = await engine.run(max_ticks=args.max_ticks)
         print(result.summary())

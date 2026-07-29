@@ -1,0 +1,107 @@
+{
+  "date": "2026-03-12",
+  "head_sha": "8db0fab",
+  "audit_question": "Are the trade forensic fields wired correctly, or simply untested because no post-rebuild trades have closed?",
+
+  "new_closed_trades_found": false,
+  "validation_mode": "code_path_trace_plus_legacy_csv_inspection",
+
+  "explanation": {
+    "summary": "The forensic fields are FULLY WIRED in code but have NOT been exercised by the live runtime since the fix was deployed. The 142 trades in trade_history.csv are ALL pre-fix legacy rows. The 16 in-memory trades (143-158) were created by the post-fix runtime but the brain has not persisted to disk since 2026-03-11T21:13:37 UTC — so we cannot verify from the CSV. However, comprehensive code path tracing confirms every field is populated end-to-end.",
+
+    "timeline": {
+      "forensic_fix_commit": "8b52363 (patch queue C2, 2026-03-09)",
+      "current_head": "8db0fab (2026-03-11)",
+      "last_brain_save": "2026-03-11T21:13:37 UTC",
+      "trades_in_csv": 142,
+      "trades_in_engine_memory": 158,
+      "gap": "16 trades exist only in memory, not yet persisted to CSV",
+      "zero_trade_days_since_rebuild": "2 (2026-03-11, 2026-03-12) — no new closes to test"
+    },
+
+    "why_legacy_rows_are_blank": "All 142 CSV rows were created BEFORE the C2 patch. The old code path did not populate entry_source, regime_at_entry, regime_at_exit, mfe, mae, bars_held_at_exit, time_in_trade_seconds, or closed_at. The persistence layer uses getattr() with safe defaults, so old rows load correctly with zeros/blanks."
+  },
+
+  "fields_working": {
+    "entry_source": {
+      "status": "WIRED_UNTESTED_LIVE",
+      "entry_path": "live_engine.py:2223-2240 — classified as 'alpha', 'breakout', or 'alpha+breakout' based on breakout_score",
+      "exit_path": "live_engine.py:3348 — read from _entry_metadata",
+      "persist_path": "brain_persistence.py:660 — getattr(t, 'entry_source', '')",
+      "restore_path": "brain_persistence.py:468 — td.get('entry_source', '')",
+      "test_coverage": "test_audit_patch_queue_c2.py:219 — roundtrip test passes"
+    },
+    "regime_at_entry": {
+      "status": "WIRED_UNTESTED_LIVE",
+      "entry_path": "live_engine.py:2239 — stored in _entry_metadata from current regime",
+      "exit_path": "live_engine.py:3319 — read from _entry_metadata",
+      "persist_path": "brain_persistence.py:663",
+      "restore_path": "brain_persistence.py:469",
+      "test_coverage": "test_audit_patch_queue_c2.py:219"
+    },
+    "regime_at_exit": {
+      "status": "WIRED_UNTESTED_LIVE",
+      "exit_path": "live_engine.py:3320 — getattr(self.regime_detector, 'current_regime', 'unknown')",
+      "persist_path": "brain_persistence.py:664",
+      "restore_path": "brain_persistence.py:470",
+      "test_coverage": "test_audit_patch_queue_c2.py:219"
+    },
+    "mfe": {
+      "status": "WIRED_UNTESTED_LIVE",
+      "tracking": "adaptive_exits.py:378-385 — highest_favorable updated every tick via evaluate()",
+      "exit_path": "live_engine.py:3326 — (_highest - entry_price) * direction * shares",
+      "persist_path": "brain_persistence.py:666",
+      "restore_path": "brain_persistence.py:472",
+      "test_coverage": "test_audit_patch_queue_c2.py:219",
+      "note": "MFE uses highest_favorable from ExitLevels — a genuine per-tick high-water mark"
+    },
+    "mae": {
+      "status": "WIRED_UNTESTED_LIVE",
+      "exit_path": "live_engine.py:3330 — abs(entry_price - stop_loss) * shares (conservative proxy)",
+      "note": "Uses stop_loss distance as MAE proxy, NOT actual worst-observed price. This is a DESIGN CHOICE, not a bug — but it overestimates MAE for trades that never reached the stop.",
+      "persist_path": "brain_persistence.py:667",
+      "restore_path": "brain_persistence.py:473",
+      "test_coverage": "test_audit_patch_queue_c2.py:219"
+    },
+    "bars_held_at_exit": {
+      "status": "WIRED_UNTESTED_LIVE",
+      "tracking": "adaptive_exits.py:43 — ExitLevels.bars_held incremented each evaluate()",
+      "exit_path": "live_engine.py:3321 — _exit_lvl.bars_held",
+      "persist_path": "brain_persistence.py:668",
+      "restore_path": "brain_persistence.py:474",
+      "test_coverage": "test_audit_patch_queue_c2.py:219"
+    },
+    "time_in_trade_seconds": {
+      "status": "WIRED_UNTESTED_LIVE",
+      "entry_path": "live_engine.py:2233 — self._time_fn() stored in _entry_metadata",
+      "exit_path": "live_engine.py:3332 — self._time_fn() - _entry_time",
+      "persist_path": "brain_persistence.py:669",
+      "restore_path": "brain_persistence.py:475",
+      "test_coverage": "test_audit_patch_queue_c2.py:219"
+    },
+    "closed_at": {
+      "status": "WIRED_UNTESTED_LIVE",
+      "exit_path": "live_engine.py:3355 — datetime.fromtimestamp(self._time_fn(), tz=UTC).isoformat()",
+      "persist_path": "brain_persistence.py:670",
+      "restore_path": "brain_persistence.py:476",
+      "test_coverage": "test_audit_patch_queue_c2.py:219"
+    }
+  },
+
+  "evidence_examples": {
+    "csv_row_142": "SPY,1.0,673.7,675.07,0,0,1,1.37,partial_take_profit,0.0,0.002034,0.2236,True,False,,,,0.0,0.0,0,0.0,",
+    "interpretation": "Last CSV row shows all forensic fields as blank/zero — this is a PRE-FIX legacy row, not evidence of a bug in the current code",
+    "unit_test_evidence": "test_audit_patch_queue_c2.py has 3 tests: roundtrip, backward_compat, apply_to_learner — all pass and verify all 8 fields"
+  },
+
+  "blocker": false,
+  "blocker_note": "No blocker. Fields are correctly wired. They will populate on the next trade that opens and closes through the live runtime. The blank legacy data is cosmetic — it reflects pre-fix history, not a current defect.",
+
+  "mae_design_note": {
+    "severity": "LOW",
+    "finding": "MAE uses stop_loss distance as proxy, not actual lowest price observed during the trade",
+    "file": "backend/organism/live_engine.py:3330",
+    "impact": "MAE will be overstated for trades that never approached the stop. For true MAE, a 'lowest_adverse' tracker would be needed in ExitLevels, analogous to highest_favorable.",
+    "action": "Informational only. Not a blocker. Consider adding true MAE tracking in a future patch."
+  }
+}

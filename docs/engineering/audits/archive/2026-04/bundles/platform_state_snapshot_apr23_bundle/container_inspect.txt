@@ -1,0 +1,25 @@
+=== docker ps ===
+NAMES                       IMAGE                STATUS                  CREATED AT
+intra-api-1                 intra-api            Up 21 hours (healthy)   2026-04-15 19:42:19 -0700 PDT
+intra-redis-1               redis:7-alpine       Up 21 hours (healthy)   2026-03-15 14:09:27 -0700 PDT
+trading_platform_db_paper   postgres:16-alpine   Up 21 hours (healthy)   2026-03-08 18:02:15 -0700 PDT
+
+=== docker inspect intra-api-1 (key fields) ===
+image                 : intra-api
+image_id              : sha256:32296cf9a48623c33fcf671b0650b42490c4ffbc20400b9c6003f000e388b477
+image_created_utc     : 2026-04-16T02:41:24.645Z
+container_started_utc : 2026-04-23T06:45:08.490Z
+uptime_approx         : 21h at capture
+restart_count         : 0
+status                : running
+health                : healthy
+
+=== Commit-vs-image alignment ===
+Most recent commit prior to image-build timestamp: b97f903 (Apr 13). Commit ce06d41 predates image build.
+Per DEPLOY_VERIFICATION_DEPLOY2_33d6138.md §3, file-hash fingerprint of 5 critical files (live_engine.py, kelly_sizer.py, ml_signal.py, brain_persistence.py, settings.py) matches ce06d41 exactly — NONE match 33d6138.
+Conclusion: Running container is ce06d41.
+
+=== Health endpoints (captured 2026-04-24T03:59Z) ===
+GET /healthz -> {"status":"ok","version":"1.0.0","timestamp":"2026-04-24T03:59:08Z"}
+GET /health  -> {"status":"ok","version":"1.0.0","timestamp":"2026-04-24T03:59:08Z"}
+/api/v1/organism/status -> 401 (auth required; endpoint alive)

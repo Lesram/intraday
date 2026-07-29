@@ -1,0 +1,37 @@
+{
+  "date": "2026-03-11",
+  "head_sha": "8db0fab",
+
+  "classification": "HEALTHY_SELECTIVITY",
+
+  "evidence": {
+    "counterfactual_win_rate": "20% (2 winners, 7 losers, 1 marginal out of 10 rejected candidates)",
+    "best_missed_opportunity": "XLE +1.21% (eff_conf=0.21, 0.04 below 0.25 gate)",
+    "worst_avoided_loss": "SNOW -1.68%, TSLA -1.11%",
+    "gate_responsible": "confidence_gate (100% of rejections)",
+    "regime_instability": "HIGH — 4 changes in 5 hours (trending_up → trending_down → high_vol → low_vol)",
+    "scanner_output": "zero movers, zero most-actives passing filters all day",
+    "near_miss_band_outcome": "50/50 (1 winner, 1 loser) — no signal for gate adjustment"
+  },
+
+  "why_not_OVER_RESTRICTIVE_CONFIDENCE": "Only 1 out of 10 counterfactual trades would have been profitable. The 0.25 floor correctly kept the organism out of 7+ losing trades. Lowering it would have produced negative expectancy today.",
+
+  "why_not_UNIVERSE_MISS": "While HIMS (+12%), PATH (+3.2%), INTC (+2.5%), and MU (+1.9%) were outside the universe and had strong moves, these are (a) mid-cap names not appropriate for a learning-mode seed universe, or (b) would require universe expansion which is a strategic decision, not an operational fix. The top 2 in-universe opportunities (XOM +2.4%, XLE +2.4%) WERE in the universe — the organism's breakout/tension model simply didn't detect them with sufficient confidence.",
+
+  "why_not_PIPELINE_BLOCKAGE": "No stale state issues, no suspicious gate blocking, no bar-boundary problems. The one notable finding is that XOM (+2.43%) was never even logged as a rejected candidate — suggesting the alpha/breakout scanner didn't produce it as a candidate at all. This is not a blockage per se — the scanner's breakout criteria simply didn't fire for XOM's gradual energy-sector rally.",
+
+  "why_not_MIXED": "The single XLE near-miss and the XOM scanner absence are minor findings that don't rise to the level of a separate root cause category. The dominant explanation is genuine low-confidence market conditions.",
+
+  "notable_findings": [
+    {
+      "finding": "XOM (+2.43%) was never logged as a rejected candidate despite being in the 22-symbol universe",
+      "significance": "MEDIUM — the breakout scanner's criteria may not detect gradual sector-driven rallies",
+      "action": "Investigation item, not an immediate fix"
+    },
+    {
+      "finding": "XLE was the only genuine missed winner (eff_conf=0.21, gate=0.25, +1.21% forward return)",
+      "significance": "LOW — single datapoint, 50/50 in the near-miss band",
+      "action": "No gate adjustment warranted from one day's evidence"
+    }
+  ]
+}

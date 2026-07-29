@@ -1,0 +1,88 @@
+commit 35281624cf85ddab0d5c9a20e5eccf74c385aa7b
+Author: Marsel Kamberaj <marselkei@Marsels-MacBook-Pro.local>
+Date:   Wed Apr 8 23:46:29 2026 -0700
+
+    fix(brain): extend trained-state overwrite guard to save_essential_state [F-lite]
+    
+    Closes the proven Patch E gap. The recurring brain wipe (2026-04-08 02:08
+    UTC and 2026-04-09 02:58 UTC) went through save_essential_state(), not
+    save(). Patch E's guard was only in save(), so save_essential_state()
+    silently wrote zeros over a trained manifest when called with a fresh
+    learner/signal_gen.
+    
+    F-lite mirrors Patch E's guard at the top of save_essential_state() with
+    one addition: if self._manifest is empty (e.g. fresh OrganismBrain instance
+    pointing at an already-trained brain dir), the guard falls back to reading
+    manifest.json from disk before deciding. Unlike save(), there is no force
+    flag — the essential-save path is protected unconditionally against
+    trained→fresh regressions. The force-save endpoint (POST /organism/save?
+    force=true) is unaffected because it goes through save(), not
+    save_essential_state().
+    
+    Full Patch F (helper consolidation, read-back invariant, break-glass
+    semantics, suspicious-write stack tracing, LiveEngine forensic guard)
+    remains queued for a dedicated maintenance window. F-lite is the tactical
+    close of the one proven gap.
+    
+    Tests: 3 new tests in test_apr9_patch_f_lite_essential_state_guard.py
+    (blocks trained overwrite, allows healthy save, reads from disk when
+    self._manifest is empty). All 44 patch tests + 107 organism regression
+    subset pass.
+    
+    Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>
+
+diff --git a/backend/organism/brain_persistence.py b/backend/organism/brain_persistence.py
+index 335a272..e737f44 100644
+--- a/backend/organism/brain_persistence.py
++++ b/backend/organism/brain_persistence.py
+@@ -580,6 +580,50 @@ class OrganismBrain:
+         """
+         self.brain_dir.mkdir(parents=True, exist_ok=True)
+ 
++        # PATCH F-LITE: extend the trained-state overwrite guard to the
++        # essential-save path. The proven wipe recurrence on 2026-04-08
++        # 02:08 UTC and 2026-04-09 02:58 UTC traced to this path (see
++        # APR9_PATCH_F_LITE_REPORT.md). Patch E's guard in save() did
++        # not cover this method. Mirrors save()'s guard exactly, with
++        # one addition: falls back to on-disk manifest when self._manifest
++        # is empty, so a fresh OrganismBrain instance pointing at an
++        # already-trained brain dir is still protected.
++        existing_manifest: dict[str, Any] | None = None
++        if self._manifest:
++            existing_manifest = self._manifest
++        else:
++            manifest_path_check = self.brain_dir / MANIFEST_FILE
++            if manifest_path_check.is_file():
++                try:
++                    existing_manifest = _read_json(manifest_path_check)
++                except Exception:
++                    existing_manifest = None
++        if existing_manifest:
++            existing_trades = existing_manifest.get("total_trades", 0) or 0
++            existing_trained = bool(existing_manifest.get("ml_is_trained", False))
++            incoming_trades = (
++                learner.state.total_trades
++                if learner is not None and hasattr(learner, "state")
++                else 0
++            )
++            incoming_trained = bool(getattr(signal_gen, "_is_trained", False))
++            if (
++                (existing_trades > 0 or existing_trained)
++                and incoming_trades == 0
++                and not incoming_trained
++            ):
++                logger.error(
++                    "BRAIN SAVE BLOCKED (save_essential_state): refusing to "
++                    "overwrite trained manifest "
++                    "(existing: total_trades=%d, ml_is_trained=%s) with untrained "
++                    "state (incoming: total_trades=0, ml_is_trained=False). "
++                    "This usually means the caller passed a fresh learner/signal_gen "
++                    "by mistake. save_essential_state has no force flag; this path "
++                    "is protected unconditionally against trained→fresh regressions.",
++                    existing_trades, existing_trained,
++                )
++                return
++
+         try:
+             # Runtime truth — always persist
+             self._save_trade_history(self.brain_dir, all_trades)

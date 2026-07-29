@@ -16,6 +16,13 @@ Evaluation includes:
 - Stability of weights/params across windows
 - Sensitivity to cost assumptions
 - Acceptance gates (minimum improvement, no drawdown regression, no instability)
+
+Contract: walk_forward is an OFFLINE-ONLY evaluation tool. It is not used
+in the live model promotion path. Live acceptance uses a simpler composite
+quality gate (ContinuousLearner._validate_new_model) that can run
+synchronously in the tick loop or inside the background training process.
+Walk-forward is intended for manual strategy evaluation, parameter sweeps,
+and pre-deployment validation — not for gating individual model retrains.
 """
 
 from __future__ import annotations
@@ -379,8 +386,23 @@ class WalkForwardEvaluator:
             result.total_return = float(np.sum(daily_pnls))
 
             mean = float(np.mean(daily_pnls))
-            std = float(np.std(daily_pnls, ddof=1)) if len(daily_pnls) > 1 else 1.0
-            result.sharpe = (mean / std * math.sqrt(252)) if std > 0 else 0.0
+            # V5 B-T-5 / Wave-19 (2026-05-03): the previous fallback
+            # `std=1.0` for single-pnl windows synthesized a fake
+            # Sharpe number that downstream consumers couldn't
+            # distinguish from a real one. Refuse to grade in the
+            # under-determined regime — Sharpe stays 0.0 (same as the
+            # std==0 branch). Continuous_learner.py:403's `>1e-8` floor
+            # is the stricter sibling that rejects near-zero variance;
+            # mirror that semantic here.
+            if len(daily_pnls) <= 1:
+                result.sharpe = 0.0
+            else:
+                std = float(np.std(daily_pnls, ddof=1))
+                result.sharpe = (
+                    mean / std * math.sqrt(252)
+                    if std > 1e-8
+                    else 0.0
+                )
 
             cumulative = np.cumsum(daily_pnls)
             peak = np.maximum.accumulate(cumulative)

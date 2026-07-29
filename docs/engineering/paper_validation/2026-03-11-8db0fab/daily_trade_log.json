@@ -1,0 +1,7 @@
+{
+  "date": "2026-03-11",
+  "head_sha": "8db0fab",
+  "today_trades": [],
+  "today_trade_count": 0,
+  "note": "ZERO trades today. No candidates passed the confidence gate (max eff_conf=0.22 vs 0.25 floor). This is an explicit zero-trade day, not a data gap."
+}

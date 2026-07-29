@@ -1,0 +1,17 @@
+ backend/api/routes/settings.py                    |  14 ++
+ backend/organism/adaptive_exits.py                |  40 ++++-
+ backend/organism/brain_persistence.py             |  13 ++
+ backend/organism/governance.py                    |  62 ++++++-
+ backend/organism/kelly_sizer.py                   |  18 ++
+ backend/organism/live_engine.py                   |  66 ++++++++
+ backend/organism/ml_signal.py                     |  38 ++++-
+ backend/organism/pyramider.py                     |   8 +
+ docker-compose.yml                                |   5 +-
+ scripts/generate_experiment_observation_report.py |  80 +++++++++
+ tests/test_experiment_4_trailing_giveback.py      | 194 ++++++++++++++++++++++
+ tests/test_g1_g2_g3_mechanical_fixes.py           | 183 ++++++++++++++++++++
+ tests/test_governance_drawdown_canonical.py       |  85 ++++++++++
+ tests/test_h1_h2_real_money_hardening.py          | 172 +++++++++++++++++++
+ tests/test_h5_settings_governance.py              |  44 +++++
+ tests/test_real_money_risk_limits.py              | 135 +++++++++++++++
+ 16 files changed, 1144 insertions(+), 13 deletions(-)

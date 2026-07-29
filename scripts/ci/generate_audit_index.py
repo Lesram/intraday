@@ -19,11 +19,13 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
+from change_scope import get_change_set  # noqa: E402
+
 
 def sh(cmd: list[str]) -> str:
     try:
         return subprocess.check_output(cmd, text=True, cwd=str(ROOT), stderr=subprocess.STDOUT).strip()
-    except Exception:
+    except (OSError, subprocess.SubprocessError):
         return ""
 
 
@@ -41,13 +43,17 @@ def classify_pr_scope(changed: list[str]) -> str:
         p.startswith(("tests/", "docs/"))
         for p in changed
     )
+    has_evidence_tooling = any(
+        p.startswith(("scripts/", "artifacts/", ".github/"))
+        for p in changed
+    )
 
     if has_backend_logic:
         return "backend_logic"
     if has_config and not has_backend_logic:
         return "runtime_config_only"
-    if has_tests_docs and not has_backend_logic and not has_config:
-        return "tests/docs/evidence_only"
+    if (has_tests_docs or has_evidence_tooling) and not has_backend_logic and not has_config:
+        return "tooling/evidence_only"
     if not changed:
         return "empty"
     return "mixed"
@@ -65,14 +71,18 @@ def main() -> None:
         pr_number = sh(["gh", "pr", "view", "--json", "number", "-q", ".number"])
     pr_label = f"PR #{pr_number}" if pr_number else "n/a"
 
-    # Changed files vs main
-    base = "origin/main" if branch != "main" else "HEAD~1"
-    diff_output = sh(["git", "diff", "--name-only", f"{base}...HEAD"])
-    all_changed = [p for p in diff_output.splitlines() if p.strip()]
+    change_set = get_change_set(root=ROOT)
+    all_changed = [p for p in change_set.paths if p.strip()]
     backend_changed = [p for p in all_changed if p.startswith("backend/")]
+    backend_runtime_changed = [
+        p for p in backend_changed
+        if not p.startswith(("backend/migrations/", "backend/config/"))
+    ]
     tests_changed = [p for p in all_changed if p.startswith("tests/")]
     organism_changed = [p for p in all_changed if p.startswith("backend/organism/")]
     docs_changed = [p for p in all_changed if p.startswith("docs/")]
+    scripts_changed = [p for p in all_changed if p.startswith("scripts/")]
+    ci_changed = [p for p in all_changed if p.startswith(".github/")]
 
     # PR scope classification
     scope = classify_pr_scope(all_changed)
@@ -80,7 +90,6 @@ def main() -> None:
     # Load runtime snapshots
     defaults_path = ROOT / "artifacts" / "runtime_defaults_snapshot.json"
     resolved_path = ROOT / "artifacts" / "resolved_config_snapshot.json"
-    live_path = ROOT / "artifacts" / "live_process_runtime_snapshot.json"
     legacy_path = ROOT / "artifacts" / "runtime_config_snapshot.json"
 
     # Prefer resolved config snapshot for display
@@ -99,6 +108,15 @@ def main() -> None:
             "drawdown_kill_pct": src.get("drawdown_kill_pct"),
             "exploration_enabled": src.get("exploration_enabled"),
             "bar_boundary_entry_only": src.get("bar_boundary_entry_only"),
+            "candidate_filter_shadow_telemetry_enabled": src.get(
+                "candidate_filter_shadow_telemetry_enabled"
+            ),
+            "strategy_evidence_telemetry_enabled": src.get(
+                "strategy_evidence_telemetry_enabled"
+            ),
+            "phase9_shadow_engines_enabled": src.get(
+                "phase9_shadow_engines_enabled"
+            ),
         }
         snapshot_label = snapshot_path.name
     else:
@@ -138,11 +156,20 @@ def main() -> None:
         risks.append("No runtime config snapshot — organism constants not verified")
     if organism_changed:
         risks.append(f"{len(organism_changed)} organism file(s) changed — require replay verification")
+    elif backend_runtime_changed:
+        risks.append(
+            f"{len(backend_runtime_changed)} backend runtime file(s) changed — require targeted verification"
+        )
     if not latest_report:
         risks.append("No trading report found — paper trading results not documented")
     # Always include at least one structural risk
     if not risks:
-        risks.append("No code changes in this PR — verify evidence artifacts are current")
+        if scripts_changed:
+            risks.append(
+                "Evidence/tooling script changed only — no backend runtime or order-path behavior changed"
+            )
+        else:
+            risks.append("No code changes in this PR — verify evidence artifacts are current")
 
     # Warnings for missing data
     warnings: list[str] = []
@@ -158,6 +185,7 @@ def main() -> None:
         f"SHA: `{short_sha}`",
         f"Branch: `{branch}`",
         f"Scope: **{scope}**",
+        f"Change scope: `{change_set.scope}` (`{change_set.ref}`)",
         "",
         "## Changed files",
         "",
@@ -165,6 +193,8 @@ def main() -> None:
         "|----------|-------|-------|",
         f"| Backend | {len(backend_changed)} | {', '.join(f'`{p}`' for p in backend_changed[:10]) or 'none'} |",
         f"| Organism | {len(organism_changed)} | {', '.join(f'`{p}`' for p in organism_changed[:10]) or 'none'} |",
+        f"| Scripts | {len(scripts_changed)} | {', '.join(f'`{p}`' for p in scripts_changed[:10]) or 'none'} |",
+        f"| CI | {len(ci_changed)} | {', '.join(f'`{p}`' for p in ci_changed[:10]) or 'none'} |",
         f"| Tests | {len(tests_changed)} | {', '.join(f'`{p}`' for p in tests_changed[:10]) or 'none'} |",
         f"| Docs | {len(docs_changed)} | {', '.join(f'`{p}`' for p in docs_changed[:10]) or 'none'} |",
         "",
@@ -178,16 +208,16 @@ def main() -> None:
         "",
         "## Snapshot files",
         "",
-        f"- Defaults: `artifacts/runtime_defaults_snapshot.json`",
-        f"- Resolved config: `artifacts/resolved_config_snapshot.json`",
-        f"- Live process: `artifacts/live_process_runtime_snapshot.json`",
+        "- Defaults: `artifacts/runtime_defaults_snapshot.json`",
+        "- Resolved config: `artifacts/resolved_config_snapshot.json`",
+        "- Live process: `artifacts/live_process_runtime_snapshot.json`",
         "",
         "## Reference paths",
         "",
         f"- Latest improve doc: `{latest_improve}`",
         f"- Latest trading report: `{latest_report or 'MISSING — required before merge'}`",
         f"- Grep assertions: `artifacts/grep_assertions.json` (status: **{grep_status}**)",
-        f"- Semantic invariants: `tests/test_semantic_invariants.py`",
+        "- Semantic invariants: `tests/test_semantic_invariants.py`",
         "",
         "## Open risks",
         "",

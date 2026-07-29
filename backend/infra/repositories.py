@@ -5,7 +5,7 @@ This module provides repository classes that replace all direct SQL usage.
 Ensures consistent, transaction-safe database operations through SQLAlchemy ORM.
 """
 
-from datetime import datetime
+from datetime import UTC, datetime
 import uuid
 
 from sqlalchemy import select
@@ -43,7 +43,7 @@ class OrderRepository(BaseRepository):
 
     async def update(self, order: Order) -> Order:
         """Update existing order."""
-        order.updated_at = datetime.utcnow()
+        order.updated_at = datetime.now(UTC)
         await self.session.flush()
 
         logger.info("Order updated via repository",

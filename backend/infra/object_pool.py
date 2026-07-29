@@ -39,31 +39,36 @@ from prometheus_client import Counter, Gauge, Histogram
 
 logger = logging.getLogger(__name__)
 
-# Metrics
-pool_acquisitions = Counter(
-    "object_pool_acquisitions_total",
-    "Total object pool acquisitions",
-    ["pool_name", "source"],  # source: pool, new
-)
-
-pool_releases = Counter(
-    "object_pool_releases_total",
-    "Total object pool releases",
-    ["pool_name"],
-)
-
-pool_size = Gauge(
-    "object_pool_size",
-    "Current objects in pool",
-    ["pool_name"],
-)
-
-pool_acquisition_time = Histogram(
-    "object_pool_acquisition_seconds",
-    "Time to acquire object from pool",
-    ["pool_name"],
-    buckets=[0.00001, 0.00005, 0.0001, 0.0005, 0.001, 0.005, 0.01],
-)
+# Metrics (XSYS-010: handle duplicate registration on re-import)
+try:
+    pool_acquisitions = Counter(
+        "object_pool_acquisitions_total",
+        "Total object pool acquisitions",
+        ["pool_name", "source"],  # source: pool, new
+    )
+    pool_releases = Counter(
+        "object_pool_releases_total",
+        "Total object pool releases",
+        ["pool_name"],
+    )
+    pool_size = Gauge(
+        "object_pool_size",
+        "Current objects in pool",
+        ["pool_name"],
+    )
+    pool_acquisition_time = Histogram(
+        "object_pool_acquisition_seconds",
+        "Time to acquire object from pool",
+        ["pool_name"],
+        buckets=[0.00001, 0.00005, 0.0001, 0.0005, 0.001, 0.005, 0.01],
+    )
+except ValueError:
+    import prometheus_client
+    _reg = prometheus_client.REGISTRY._names_to_collectors
+    pool_acquisitions = _reg.get("object_pool_acquisitions_total_total", _reg.get("object_pool_acquisitions_total"))
+    pool_releases = _reg.get("object_pool_releases_total_total", _reg.get("object_pool_releases_total"))
+    pool_size = _reg.get("object_pool_size", None)
+    pool_acquisition_time = _reg.get("object_pool_acquisition_seconds", None)
 
 T = TypeVar("T")
 

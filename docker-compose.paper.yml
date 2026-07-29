@@ -7,12 +7,35 @@ services:
       context: .
       dockerfile: Dockerfile
       target: runtime
+      # V12 W82 (post-audit cleanup): pass build provenance so
+      # /api/v1/health/deploy returns useful values.  Set in your
+      # shell before ``docker-compose build``:
+      #   export VCS_REF=$(git rev-parse HEAD)
+      #   export BUILD_DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+      # …or use the ``scripts/deploy/rebuild_paper.sh`` helper.
+      args:
+        VCS_REF: ${VCS_REF:-unknown}
+        BUILD_DATE: ${BUILD_DATE:-unknown}
+        VERSION: ${VERSION:-1.0.0}
+    # Task E: the recurring corrupt_head_* quarantines are container SIGKILLs
+    # mid-save — the graceful shutdown brain save (_shut_brain_save) exceeded
+    # Docker's default 10s grace, leaving a half-written HEAD that load then
+    # quarantines + restores from backup (recovery works, but it's noise).
+    # Give the shutdown save room to finish before SIGKILL.
+    stop_grace_period: 60s
     ports:
       - "8000:8000"
+    env_file:
+      - .env
     environment:
       # Application Settings - PAPER TRADING
-      - APP_ENVIRONMENT=paper
-      - APP_LOG_LEVEL=INFO
+      - APP_ENVIRONMENT=development
+      # Audit-L finding L-8 (2026-05-02): APP_LOG_LEVEL was a phantom
+      # — code reads LOG_LEVEL (per backend/config/base_settings.py:937).
+      # Use the canonical name; keep APP_LOG_LEVEL for any consumer
+      # explicitly looking for it.
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - APP_LOG_LEVEL=${LOG_LEVEL:-INFO}
       - DEBUG=false
 
       # CORS (frontend origins)
@@ -36,6 +59,18 @@ services:
       - ALPACA_STREAM_URL=wss://paper-api.alpaca.markets/stream
       - ALPACA_PAPER=true
 
+      # V11 CCC-2 / Wave-68 (2026-05-03): explicit risk-cap wiring.
+      # Pre-V11 paper compose did NOT wire these — code defaults are
+      # 0.05 / 0 / 0 (max_daily_loss + max_notional DISABLED), and a
+      # missing .env silently allowed unbounded loss windows.  Now:
+      # paper has explicit fallbacks matching the conservative
+      # paper-trading risk profile (kill at 5% drawdown; 5500 daily
+      # max-loss; 2000 max single-position notional).
+      - ORGANISM_DRAWDOWN_KILL_PCT=${ORGANISM_DRAWDOWN_KILL_PCT:-0.05}
+      - ORGANISM_DRAWDOWN_COOLDOWN_S=${ORGANISM_DRAWDOWN_COOLDOWN_S:-300}
+      - ORGANISM_MAX_DAILY_LOSS=${ORGANISM_MAX_DAILY_LOSS:-5500}
+      - ORGANISM_MAX_NOTIONAL=${ORGANISM_MAX_NOTIONAL:-2000}
+
       # Security Settings - PRODUCTION SECURE JWT
       - JWT_SECRET_KEY=${JWT_SECRET_KEY}
       - SECURITY_JWT_SECRET=${JWT_SECRET_KEY}
@@ -45,6 +80,32 @@ services:
       # Trading Settings
       - USE_MOCK_DATA=false
       - USE_MOCK_BROKER=false
+      # Phase 5 shadow evidence loop: disabled by default and
+      # telemetry-only when enabled. This lets operators turn on candidate
+      # filter shadow capture for paper sessions without editing .env.
+      - ORGANISM_CANDIDATE_FILTER_SHADOW_TELEMETRY_ENABLED=${ORGANISM_CANDIDATE_FILTER_SHADOW_TELEMETRY_ENABLED:-false}
+      - ORGANISM_CANDIDATE_FILTER_SHADOW_TELEMETRY_PATH=${ORGANISM_CANDIDATE_FILTER_SHADOW_TELEMETRY_PATH:-organism_brain/candidate_filter_shadow_telemetry.jsonl}
+      # Phase 6 strategy evidence warehouse feed: records every surviving
+      # pre-sizing candidate for post-close research. Shadow/advisory only.
+      - ORGANISM_STRATEGY_EVIDENCE_TELEMETRY_ENABLED=${ORGANISM_STRATEGY_EVIDENCE_TELEMETRY_ENABLED:-false}
+      - ORGANISM_STRATEGY_EVIDENCE_TELEMETRY_PATH=${ORGANISM_STRATEGY_EVIDENCE_TELEMETRY_PATH:-organism_brain/strategy_evidence_events.jsonl}
+      # Phase 9 strategy-engine shadow capture: emits CandidateSignal evidence
+      # only. It never touches ranking, sizing, gates, orders, or promotion.
+      - ORGANISM_PHASE9_SHADOW_ENGINES_ENABLED=${ORGANISM_PHASE9_SHADOW_ENGINES_ENABLED:-false}
+      # Work order Task C: pyramiding is structurally negative (-$452, 0.7% win).
+      # Disabled in this deployment; code path preserved, just inert.
+      - ORGANISM_PYRAMID_ENABLED=${ORGANISM_PYRAMID_ENABLED:-true}
+      # Task A: realistic round-trip cost (bps) for the costed EOD scoreboard.
+      - ORGANISM_COST_BPS=${ORGANISM_COST_BPS:-3.0}
+      # Task F: bench dead-ML retrain (corr still monitored via the edge monitor).
+      - ORGANISM_ML_RETRAIN_ENABLED=${ORGANISM_ML_RETRAIN_ENABLED:-true}
+      # Task S log-only retracement shadow exit: logs what retracement_f60_m10
+      # would do vs the real exit, per closed position. Zero effect on trading.
+      # Off unless ORGANISM_SHADOW_EXIT_POLICY=retracement is set in .env.
+      - ORGANISM_SHADOW_EXIT_POLICY=${ORGANISM_SHADOW_EXIT_POLICY:-}
+      - ORGANISM_SHADOW_EXIT_RETRACE_FRAC=${ORGANISM_SHADOW_EXIT_RETRACE_FRAC:-0.6}
+      - ORGANISM_SHADOW_EXIT_MIN_FAVORABLE_R=${ORGANISM_SHADOW_EXIT_MIN_FAVORABLE_R:-1.0}
+      - ORGANISM_SHADOW_EXIT_TELEMETRY_PATH=${ORGANISM_SHADOW_EXIT_TELEMETRY_PATH:-organism_brain/shadow_exit_telemetry.jsonl}
 
       # Observability Settings
       - OTEL_SERVICE_NAME=algotrading-api-paper
@@ -64,6 +125,7 @@ services:
     volumes:
       - ./logs:/app/logs
       - ./data:/app/data
+      - ./organism_brain:/app/organism_brain
     depends_on:
       postgres:
         condition: service_healthy
@@ -76,6 +138,34 @@ services:
       retries: 3
       start_period: 60s
     restart: unless-stopped
+    # V4 P-P1 (2026-05-02): match production.yml's log rotation. The
+    # paper compose previously had no `logging` block, so docker's
+    # default `json-file` driver buffered logs unboundedly — host has
+    # multiple 50MB rotated files plus a stale 126MB `app.log` from
+    # February. 100MB × 5 file ceiling matches production.
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "5"
+    # V7 AA-H-4 / Wave-24 (2026-05-03): container hardening.
+    # - cap_drop ALL + cap_add only required: minimum kernel surface.
+    # - security_opt no-new-privileges: blocks setuid escalation.
+    # - mem_limit + cpus: bound resource consumption (V7 EE-7 also).
+    # - user 10001:10001: drop the gid=0 root group membership the
+    #   audit found (uid was already 10001 but gid stayed 0).
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - DAC_OVERRIDE
+      - SETUID
+      - SETGID
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 4g
+    cpus: 2.0
+    user: "10001:10001"
     networks:
       - trading-network
 
@@ -83,8 +173,20 @@ services:
   redis:
     image: redis:7-alpine
     ports:
-      - "6379:6379"
-    command: redis-server --requirepass ${REDIS_PASSWORD:-changeme_redis} --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru --save 900 1
+      # V12 W89 (post-cleanup, COMP-409): bind host port to 127.0.0.1
+      # only.  Pre-W89 the publish was ``"6379:6379"`` (host 0.0.0.0),
+      # exposing Redis on all host interfaces.  Even with auth, that's
+      # not appropriate for paper-trading on a dev machine.  Container
+      # internal --bind stays 0.0.0.0 (V7 EE-3 / Wave-23e: required for
+      # cross-container traffic on the docker-compose network).
+      - "127.0.0.1:6379:6379"
+    # V7 EE-3 / Wave-23e (2026-05-03): bind 0.0.0.0 (was 127.0.0.1).
+    # 127.0.0.1 inside a container's network namespace refused all
+    # cross-container traffic, leaving the broker SLI permanently red.
+    # docker-compose's user-defined network is the security boundary;
+    # the container is not reachable from the host without explicit
+    # port mapping (we don't publish 6379), so 0.0.0.0 + auth is safe.
+    command: redis-server --bind 0.0.0.0 --requirepass ${REDIS_PASSWORD:-changeme_redis} --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru --save 900 1
     volumes:
       - redis_data:/data
     healthcheck:
@@ -93,6 +195,13 @@ services:
       timeout: 5s
       retries: 5
     restart: unless-stopped
+    # V7 EE-7 / Wave-24 (2026-05-03): match api log rotation so a runaway
+    # redis log doesn't fill the host disk.
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
     networks:
       - trading-network
 
@@ -132,6 +241,12 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    # V7 EE-7 / Wave-24 (2026-05-03): postgres log rotation.
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
     networks:
       - trading-network
 

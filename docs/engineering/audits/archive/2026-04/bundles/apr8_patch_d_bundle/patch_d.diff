@@ -1,0 +1,54 @@
+commit c5fb0edd0751f67bd194ed702b4a3e9cbeb89b22
+Author: Marsel Kamberaj <marselkei@Marsels-MacBook-Pro.local>
+Date:   Wed Apr 8 19:57:43 2026 -0700
+
+    fix(scripts): default standalone scripts to organism_brain_sandbox/
+    
+    Both run_hft_organism.py and run_breakout_organism.py previously defaulted
+    to brain_dir="organism_brain", which is the same directory bind-mounted into
+    the live paper-trading container. A manual invocation of either script on
+    the host would write directly to the live container's brain storage through
+    its own brain.save() path, bypassing the live engine entirely.
+    
+    This is the most plausible trigger for the Apr 8 02:08 UTC brain wipe
+    incident where a zeroed manifest was written without any organism save-log
+    entry. The root cause investigation proved that the wipe manifest matches
+    byte-for-byte what these scripts would produce when called with fresh
+    learner/signal_gen objects.
+    
+    Change defaults to organism_brain_sandbox/ so scripts cannot accidentally
+    mutate the live brain. Explicit --brain-dir organism_brain still works
+    for intentional use.
+    
+    Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>
+
+diff --git a/scripts/run_breakout_organism.py b/scripts/run_breakout_organism.py
+index dcd29bf..7650c02 100644
+--- a/scripts/run_breakout_organism.py
++++ b/scripts/run_breakout_organism.py
+@@ -1629,8 +1629,8 @@ def main():
+         help="Start fresh — ignore any saved brain state",
+     )
+     parser.add_argument(
+-        "--brain-dir", type=str, default="organism_brain",
+-        help="Directory for brain persistence (default: organism_brain)",
++        "--brain-dir", type=str, default="organism_brain_sandbox",
++        help="Directory for brain persistence (default: organism_brain_sandbox)",
+     )
+     args = parser.parse_args()
+ 
+diff --git a/scripts/run_hft_organism.py b/scripts/run_hft_organism.py
+index 698d8b0..47ca21f 100644
+--- a/scripts/run_hft_organism.py
++++ b/scripts/run_hft_organism.py
+@@ -1049,8 +1049,8 @@ def main():
+         help="Start fresh — ignore any saved brain state",
+     )
+     parser.add_argument(
+-        "--brain-dir", type=str, default="organism_brain",
+-        help="Directory for brain persistence (default: organism_brain)",
++        "--brain-dir", type=str, default="organism_brain_sandbox",
++        help="Directory for brain persistence (default: organism_brain_sandbox)",
+     )
+     args = parser.parse_args()
+ 

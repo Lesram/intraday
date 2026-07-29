@@ -1,0 +1,59 @@
+{
+  "version": "v9",
+  "branch": "rc-1.5-curated",
+  "head_at_v9_start": "db1a3fc",
+  "head_at_v9_end": "post-wave-49",
+  "phase": "complete",
+  "phases": {
+    "phase_1_verify_v8": {
+      "status": "complete",
+      "tests_pass": "147/147",
+      "fixed_test_alignment": "test_pending_exit_prevents_re_exit (commit db1a3fc)"
+    },
+    "phase_2_design_v9": {
+      "status": "complete",
+      "prompts_committed_at": "ccba97f"
+    },
+    "phase_3_audit": {
+      "status": "complete",
+      "tracks_total": 8,
+      "agents_completed": 8,
+      "synthesis_committed_at": "805c7e2"
+    },
+    "phase_4_synthesis": {
+      "status": "complete",
+      "findings_total": 32,
+      "critical": 5,
+      "high": 11,
+      "medium": 8,
+      "low": 8
+    },
+    "phase_5_implementation": {
+      "status": "complete",
+      "waves_committed": [
+        {"wave": 41, "sha": "0e3f2a4", "findings": ["PP-1", "PP-2", "PP-3", "PP-4", "UU-1", "UU-2", "UU-3"]},
+        {"wave": 42, "sha": "79db54a", "findings": ["AA3-1", "AA3-2", "AA3-3"]},
+        {"wave": 43, "sha": "39b1408", "findings": ["DD3-2", "DD3-3"]},
+        {"wave": 44, "sha": "a8a9684", "findings": ["DD3-1", "DD3-4", "DD3-5"]},
+        {"wave": 45, "sha": "6f8ec1f", "findings": ["PP-5", "PP-6"]},
+        {"wave": 46, "sha": "5ef385a", "findings": ["TT-2"]},
+        {"wave": 47, "sha": "29fcf4f", "findings": ["TT-4", "TT-5", "AA3-4"]},
+        {"wave": 48, "sha": "2ca51a9", "findings": ["Z7-1", "W4-1", "W4-3"]},
+        {"wave": 49, "sha": "<this commit>", "findings": ["UU-4 deferred", "DD3-6 observe"]}
+      ],
+      "closures_in_v9": 25,
+      "deferred": [
+        "BB3-F1", "BB3-F3", "BB3-F4",
+        "TT-1", "TT-3",
+        "W4-2",
+        "UU-4 (V10 lint rule)",
+        "DD3-6 (observe)"
+      ]
+    }
+  },
+  "v10_recommendation": {
+    "retain_lenses": ["AA", "BB", "DD", "HH", "NN", "OO", "PP", "UU", "TT", "W3/W4", "Z6/Z7"],
+    "candidate_new_lenses": ["VV frontend-backend contract drift", "WW multi-day soak", "XX migration round-trip"],
+    "yield_expectation": "5-20 findings"
+  }
+}

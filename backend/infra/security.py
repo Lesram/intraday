@@ -8,7 +8,13 @@ from datetime import UTC, datetime, timedelta
 import logging
 import os
 import secrets
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
+
+if TYPE_CHECKING:
+    # V12 W75 (UU3-2 / F821): import Redis for the forward-ref type
+    # annotation below.  Static analysers (ruff) flag string-quoted
+    # forward refs without a TYPE_CHECKING import as F821 undefined.
+    from redis.asyncio import Redis  # noqa: F401
 
 import bcrypt
 from fastapi import Depends, HTTPException, Request, status
@@ -401,6 +407,8 @@ def create_access_token(sub: str, roles: list[str], expires_minutes: int | None 
     expire = now + timedelta(minutes=expires_minutes)
 
     # Normalized JWT claims
+    # V9 AA3-2 / Wave-42 (2026-05-03): include explicit token_type="access"
+    # so decode_token can reject refresh tokens presented as access.
     claims = {
         "sub": sub,
         "roles": roles,
@@ -409,6 +417,7 @@ def create_access_token(sub: str, roles: list[str], expires_minutes: int | None 
         "exp": int(expire.timestamp()),
         "iat": int(now.timestamp()),
         "jti": secrets.token_urlsafe(16),  # Unique token ID
+        "token_type": "access",
     }
 
     try:
@@ -569,7 +578,18 @@ def decode_token(token: str) -> dict:
         # SECURITY: No test token bypass - all tokens must be valid JWTs
         # Tests should use proper JWT fixtures via create_access_token()
 
-        # Decode with normalized options
+        # Decode with normalized options.
+        # V11 AA5-1 / Wave-67 (2026-05-03): the wave-47 fix passed
+        # `leeway=JWT_CLOCK_SKEW` as a top-level kwarg, but
+        # python-jose 3.5's `jwt.decode` signature only accepts:
+        #   (token, key, algorithms, options, audience, issuer,
+        #    subject, access_token)
+        # — `leeway` was raising TypeError, swallowed by decode_token's
+        # catch-all `except Exception`, returned as 401 invalid_token,
+        # silently breaking EVERY JWT-authenticated endpoint in the
+        # post-wave-50 image.  python-jose accepts leeway INSIDE the
+        # options dict; PyJWT (a different library) accepts the kwarg
+        # form.  Wave-47's source-grep test mistook one for the other.
         payload = jwt.decode(
             token,
             secret,
@@ -582,6 +602,7 @@ def decode_token(token: str) -> dict:
                 "require_exp": True,
                 "require_iss": True,
                 "require_aud": True,
+                "leeway": JWT_CLOCK_SKEW,
             },
             issuer=JWT_ISSUER,
             audience=JWT_AUDIENCE,
@@ -592,6 +613,20 @@ def decode_token(token: str) -> dict:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="invalid_token"
+            )
+
+        # V9 AA3-2 / Wave-42 (2026-05-03): reject refresh tokens on the
+        # access-token verification path.  Previously decode_token did
+        # NOT check token_type; refresh tokens (7-day TTL) were accepted
+        # at /auth/me, /auth/verify, and admin audit endpoints — a
+        # privilege/scope bypass.  The `decode_refresh_token()` helper
+        # at line ~519 enforces token_type == "refresh"; the symmetric
+        # check belongs here for "access".
+        token_type = payload.get("token_type")
+        if token_type and token_type != "access":
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="invalid_token_type",
             )
 
         return payload
@@ -626,7 +661,27 @@ def verify_token(token: str) -> UserClaims:
         HTTPException: If token is invalid, expired, or malformed
     """
     payload = decode_token(token)
-    return UserClaims(**payload)
+    # V8 AA2-NEW-2 / Wave-32 (2026-05-03): catch pydantic ValidationError on
+    # malformed claims (missing roles / iat / jti, wrong types) and return 401
+    # instead of letting it bubble up as 500 + stack trace.  Previously a
+    # signed-but-malformed token gave attackers a low-cost DoS + schema-leak
+    # vector; now it presents identically to any other invalid token.
+    try:
+        return UserClaims(**payload)
+    except (TypeError, ValueError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="invalid_token",
+        ) from exc
+    except Exception as exc:
+        # pydantic ValidationError is not in the import surface; catch broadly
+        # but only for the constructor path.
+        if exc.__class__.__name__ == "ValidationError":
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="invalid_token",
+            ) from exc
+        raise
 
 
 def verify_api_key(api_key: str) -> bool:
@@ -641,12 +696,19 @@ def verify_api_key(api_key: str) -> bool:
     """
     settings = get_settings()
 
-    if not settings.security.api_keys:
+    # V10 AA4-4 / Wave-59 (2026-05-03): defensive `api_keys` lookup.
+    # The wave-50 fix coerced settings.app.environment but the actual
+    # 500 came from this path: `SecuritySettings` object has no
+    # `api_keys` attribute in the current pydantic config.  `getattr`
+    # with default returns falsy, allowing the existing branch to
+    # return False cleanly instead of raising AttributeError.
+    api_keys = getattr(settings.security, "api_keys", None)
+    if not api_keys:
         return False
 
     # Use constant-time comparison to prevent timing attacks
     return any(
-        secrets.compare_digest(api_key, valid_key) for valid_key in settings.security.api_keys
+        secrets.compare_digest(api_key, valid_key) for valid_key in api_keys
     )
 
 
@@ -674,12 +736,32 @@ async def get_current_user(
     if credentials and credentials.credentials:
         try:
             claims = verify_token(credentials.credentials)
+            # V9 AA3-1 / Wave-42 (2026-05-03): reject blacklisted tokens.
+            # Logout / refresh-rotation blacklist the jti; this gate
+            # ensures a stolen token can be revoked.
+            try:
+                if await is_token_blacklisted(claims.jti):
+                    raise HTTPException(
+                        status_code=status.HTTP_401_UNAUTHORIZED,
+                        detail="token_revoked",
+                    )
+            except HTTPException:
+                raise
+            except Exception as _bl_err:
+                # Blacklist backend (Redis) down — fail-closed in prod
+                # would break logins; fail-open here is acceptable since
+                # the blacklist is a defense-in-depth layer, not the only
+                # auth check. Log and continue.
+                _blacklist_logger.warning(
+                    "AA3-1: blacklist check failed (allowing token): %s",
+                    _bl_err,
+                )
             return AuthenticatedUser(
                 username=claims.sub, roles=claims.roles, token_id=claims.jti
             )
         except HTTPException as e:
             # Re-raise specific JWT errors (expired, invalid signature, etc.)
-            if any(term in str(e.detail).lower() for term in ["expired", "signature", "invalid token"]):
+            if any(term in str(e.detail).lower() for term in ["expired", "signature", "invalid token", "revoked"]):
                 raise
             # Invalid JWT token - continue to try other auth methods
             pass
@@ -687,8 +769,18 @@ async def get_current_user(
     # If no JWT, check X-API-Key for staging environments
     api_key = request.headers.get("X-API-Key")
     if api_key:
-        # Check staging API key (only in dev/staging environments)
-        app_env = getattr(settings.app, "environment", "").lower()
+        # V10 AA4-4 / Wave-50 (2026-05-03): coerce env to str BEFORE
+        # .lower() — `settings.app.environment` is an Enum in some
+        # configs and `Enum.lower()` raises AttributeError, which
+        # propagated as HTTP 500 with stack trace + reference ID.
+        # str(enum) returns "Environment.DEVELOPMENT"; .value gives
+        # the raw string; getattr fallback covers both shapes.
+        _env_obj = getattr(settings.app, "environment", "")
+        _env_str = (
+            getattr(_env_obj, "value", None)
+            or (str(_env_obj) if _env_obj is not None else "")
+        )
+        app_env = _env_str.lower() if isinstance(_env_str, str) else ""
         staging_key = os.environ.get("STAGING_API_KEY")
 
         if staging_key and app_env in {"dev", "development", "staging"}:
@@ -743,50 +835,53 @@ def require_roles(*required_roles: str):
         *required_roles: One or more roles required for access
 
     Returns:
-        FastAPI dependency function or direct callable for testing
+        An async FastAPI dependency callable. Use with `Depends(...)`:
 
-    Usage:
-        @app.get("/admin-only")
-        async def admin_endpoint(user: AuthenticatedUser = Depends(require_roles("admin"))):
-            pass
+            @app.get("/admin-only")
+            async def admin_endpoint(
+                user: AuthenticatedUser = Depends(require_admin),
+            ): ...
 
-        # For testing/direct use:
-        check_func = require_roles("admin")
-        result = check_func(user)  # Sync call
+    For sync / unit-test role checking against a user object directly,
+    use `check_user_roles(user, *roles)` defined below.
+
+    V7 AA-C-2 / Wave-23b (2026-05-03): the previous implementation
+    returned a `check_roles_hybrid` wrapper that introspected its
+    argument at call time. FastAPI's dependency injection saw a
+    function with an optional `user_or_dependency=None` parameter,
+    called it with no args, and got back the *function reference*
+    `check_roles_async` — never actually executing the role check.
+    Result: 18 admin endpoints (12 organism, 6 audit) silently lost
+    their role gate. Combined with self-registration granting
+    `["user"]` role, any registered user could call any admin route.
+
+    Now: returns the async dependency directly. FastAPI's DI
+    introspects the *async* function's `current_user` parameter,
+    resolves it via `Depends(get_authenticated_user)`, and runs the
+    role check in the function body.
     """
 
-    def check_roles_impl(user: AuthenticatedUser) -> AuthenticatedUser:
-        """Implementation of role checking logic."""
-        user_roles = set(user.roles)
+    async def check_roles_dep(
+        current_user: AuthenticatedUser = Depends(get_authenticated_user),
+    ) -> AuthenticatedUser:
+        """Async FastAPI dependency that enforces the required roles."""
+        user_roles = set(current_user.roles)
         required_roles_set = set(required_roles)
 
         if not required_roles_set.intersection(user_roles):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"Insufficient permissions. Required roles: {', '.join(required_roles)}",
+                detail=(
+                    "Insufficient permissions. Required roles: "
+                    f"{', '.join(required_roles)}"
+                ),
             )
 
-        return user
+        return current_user
 
-    async def check_roles_async(
-        current_user: AuthenticatedUser = Depends(get_authenticated_user),
-    ) -> AuthenticatedUser:
-        """Async FastAPI dependency version."""
-        return check_roles_impl(current_user)
-
-    # Return a function that can handle both sync and async calls
-    def check_roles_hybrid(user_or_dependency=None):
-        if user_or_dependency is None:
-            # Called without arguments - return the async dependency
-            return check_roles_async
-        elif isinstance(user_or_dependency, AuthenticatedUser):
-            # Called with a user directly - do sync check
-            return check_roles_impl(user_or_dependency)
-        else:
-            # This shouldn't happen but handle gracefully
-            return check_roles_async(user_or_dependency)
-
-    return check_roles_hybrid
+    # Tag with the role list so test code / introspection can read it.
+    check_roles_dep.required_roles = list(required_roles)  # type: ignore[attr-defined]
+    return check_roles_dep
 
 
 # Common role-based dependencies

@@ -252,7 +252,10 @@ def cached(
             key_parts = [key_prefix, func.__name__]
             key_parts.extend(str(a) for a in args)
             key_parts.extend(f"{k}={v}" for k, v in sorted(kwargs.items()))
-            cache_key = hashlib.md5(":".join(key_parts).encode()).hexdigest()
+            cache_key = hashlib.md5(
+                ":".join(key_parts).encode(),
+                usedforsecurity=False,
+            ).hexdigest()
 
             # Try cache
             result = await cache.get(cache_key)

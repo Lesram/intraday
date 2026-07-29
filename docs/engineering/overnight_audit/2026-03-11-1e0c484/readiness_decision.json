@@ -1,0 +1,40 @@
+{
+  "local_head_sha": "1e0c484",
+  "runtime_reported_sha": "unknown",
+  "sha_match": "unknown",
+  "runtime_reachable": true,
+  "container_rebuilt": true,
+  "container_rebuilt_from_sha": "1e0c484",
+  "readiness_verdict": "GO",
+  "critical_blockers_count": 0,
+  "high_risks_count": 0,
+  "medium_risks_count": 1,
+  "low_risks_count": 2,
+  "prior_high_findings_resolved": [
+    "F1 RESOLVED: MAX_OPEN_POSITIONS aligned to 8 (was 15)",
+    "F2 RESOLVED: bar_boundary_entry_only IS enforced — prior audit was false positive (_is_entry_bar at line 1704)",
+    "F3 RESOLVED: universe aligned to 22 symbols with SH/PSQ (was 30 without)"
+  ],
+  "remaining_risks": [
+    "MEDIUM: entry_source was empty for all 142 prior trades — new trades should populate correctly after rebuild (verify tomorrow)",
+    "LOW: BreakoutScanner top_n=8 vs AlphaScanner top_n=5 — reasonable balance",
+    "LOW: 19 stale test assertions in H1/H2/C2/D1/D2 (return type mismatch, not code bugs)"
+  ],
+  "config_convergence": {
+    "max_positions": "15 → 8 (aligned with code default)",
+    "universe": "30 → 22 (aligned with code default, includes SH/PSQ)",
+    "alpha_top_n": "unset → 5 (explicit)",
+    "exploration_enabled": "unset → false (explicit)",
+    "all_organism_config_aligned": true
+  },
+  "notes": [
+    "Container rebuilt from 1e0c484 with all J2-J5 patches deployed.",
+    "API healthy and reachable. Brain loaded (142 trades, gen 0, 63 runs).",
+    "Learning mode active. Evolution freeze active (142 < 300 trades).",
+    "All 3 prior HIGH findings resolved (2 config drift fixed, 1 false positive corrected).",
+    "7,599 tests passing. 19 stale test assertions (pre-existing, not regressions).",
+    "26 replay tests passing. 70 J2-J5 tests passing.",
+    "Paper equity shows 100000.0 (brain default, will update with broker sync on first tick).",
+    "No strategy logic changes made. Config alignment only."
+  ]
+}

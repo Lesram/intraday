@@ -1,0 +1,81 @@
+{
+  "date": "2026-03-12",
+  "head_sha": "8db0fab",
+  "audit_question": "Why did the regime detector report trending_up during a broad selloff (SPY -1.52%)?",
+
+  "dominant_explanation": "SMOOTHING_TOO_STRONG_PLUS_LOOKBACK_TOO_LONG",
+
+  "regime_timeline": [
+    {"timestamp_utc": "15:15:46", "et": "10:15", "regime": "trending_up", "note": "Session start — inherited from prior smoothed state"},
+    {"timestamp_utc": "15:20:11", "et": "10:20", "regime": "trending_down", "note": "CORRECT flip — detected sell-off ~50 min into session"},
+    {"timestamp_utc": "17:37:36", "et": "12:37", "regime": "trending_up", "note": "INCORRECT flip back — market still selling (SPY ~-1.0% at this point)"},
+    {"timestamp_utc": "17:44:43", "et": "12:44", "regime": "trending_down", "note": "Brief re-detection of sell-off"},
+    {"timestamp_utc": "17:45:09", "et": "12:45", "regime": "trending_up", "note": "INCORRECT flip back within 26 seconds — then STAYS trending_up until close"}
+  ],
+
+  "regime_duration_summary": {
+    "trending_up_minutes": "~270 (75% of session)",
+    "trending_down_minutes": "~90 (25% of session)",
+    "market_actual": "SPY -1.52% — should have been trending_down for majority of session"
+  },
+
+  "component_diagnostics": {
+    "sma_lookback": {
+      "configured": "SMA(200) on 1-min bars (50 * 4x intraday scale)",
+      "effect": "200-minute (~3.3 hours) lookback means the SMA incorporates prior-day and early-session uptrend data. On a day that opens down, the SMA slope can still be positive because it includes yesterday's late rally.",
+      "severity": "HIGH — this is the primary contributor"
+    },
+    "trend_slope_window": {
+      "configured": "Last 10 bars of SMA series (regime.py:168-176)",
+      "effect": "Only 10 minutes of SMA change is used for slope calculation. During choppy sell-offs with brief bounces, 10 bars can briefly show positive slope even as the market trends lower.",
+      "severity": "MEDIUM"
+    },
+    "ema_smoothing": {
+      "configured": "alpha=0.3 (regime.py:99,110)",
+      "formula": "new_prob = 0.7 * old_prob + 0.3 * current_prob",
+      "effect": "After the session opened with trending_up (inherited from 3/11 close), the smoothed trending_up probability stayed elevated. When trending_down briefly appeared at 10:20, the smoothed probs shifted toward trending_down. But after a small bounce around 12:30, the raw scores briefly favored trending_up, and the EMA snapped back. The 0.7 persistence factor then kept trending_up dominant for the rest of the session.",
+      "severity": "HIGH — compounds the SMA lag"
+    },
+    "threshold_scaling": {
+      "configured": "tf_scale = 1/sqrt(bars_per_day) for intraday",
+      "trend_threshold": "0.02 * tf_scale ≈ 0.001 (0.1%)",
+      "effect": "Extremely small threshold means even tiny positive SMA slopes trigger trending_up. A 0.1% upward slope in the SMA (which can persist for hours after a prior-day rally) is enough.",
+      "severity": "MEDIUM"
+    },
+    "cross_session_contamination": {
+      "finding": "Smoothed probabilities persist across sessions via brain state. The 3/11 close was trending_up. On 3/12 open, the smoothed_probs['trending_up'] was already high (~0.6-0.8) before any new bars were processed.",
+      "severity": "HIGH — prior-day regime dominates early-session detection"
+    }
+  },
+
+  "whether_inverse_etf_logic_was_effectively_blocked": {
+    "answer": "PARTIALLY — but the primary blocker was confidence, not regime",
+    "detail": [
+      "SH appeared as a candidate 8 times, always with eff_conf=0.00",
+      "PSQ appeared as a candidate 3 times, always with eff_conf=0.00",
+      "During trending_down windows (15:20-17:37), SH/PSQ WERE produced but with zero confidence",
+      "The regime flip logic in alpha_scanner._regime_alignment() correctly flips trending_down→trending_up for SH/PSQ — this gives them positive regime alignment (5% weight)",
+      "But regime alignment is only 5% of the alpha score. With breakout_readiness=0 and squeeze_momentum=0, the overall alpha score is near-zero regardless of regime",
+      "CONCLUSION: Even with a perfect regime detector, SH/PSQ would still have eff_conf=0.00 because the confidence formula is 0.65*breakout + 0.35*tension, and both components are zero for inverse ETFs"
+    ]
+  },
+
+  "exact_suspect_files_lines": [
+    {"file": "backend/organism/regime.py", "lines": "95-127", "issue": "SMA(200) on 1-min bars is too laggy for intraday regime detection"},
+    {"file": "backend/organism/regime.py", "lines": "168-176", "issue": "10-bar slope window is too short to distinguish trend from noise"},
+    {"file": "backend/organism/regime.py", "lines": "305-318", "issue": "EMA alpha=0.3 preserves prior regime too strongly"},
+    {"file": "backend/organism/regime.py", "lines": "328-356", "issue": "Smoothed state persists across sessions — contaminates next-day open"}
+  ],
+
+  "would_correct_detector_have_called_trending_down": {
+    "answer": "YES — a correctly functioning detector should have reported trending_down for ~80% of the session (after 10:00 ET). SPY fell -1.52% in a steady decline with no meaningful reversal.",
+    "caveat": "The regime DID correctly detect trending_down from 10:20-12:37 ET (the strongest selling window). It failed to maintain that call as selling decelerated in the afternoon."
+  },
+
+  "recommended_investigation": [
+    "Consider separate intraday SMA period (e.g., 50 instead of 200 on 1-min bars)",
+    "Consider resetting smoothed_probs at session open instead of carrying forward",
+    "Consider using returns-based trend detection instead of SMA slope",
+    "Consider adding SPY intraday-return-from-open as a direct regime input"
+  ]
+}

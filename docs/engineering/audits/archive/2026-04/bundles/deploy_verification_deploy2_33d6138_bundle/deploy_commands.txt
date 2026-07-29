@@ -1,0 +1,30 @@
+=== DEPLOY 2 actions ===
+captured_at=2026-04-24T02:43:42Z
+
+NO DEPLOYMENT ACTIONS PERFORMED.
+
+Reason: HARD STOP at preflight.
+
+Per task contract: 'Do NOT improvise fixes if verification fails; stop and report blockers only.'
+
+Blocker (preflight check #7): target commit 33d6138 is NOT cleanly checkout-able.
+  - Host HEAD is already 33d6138, but the worktree is DIRTY:
+    M backend/organism/adaptive_exits.py   (reverts Exp4 chop trailing giveback)
+    M backend/organism/pyramider.py        (reverts G3 NaN/Inf pyramid guard)
+    M scripts/generate_experiment_observation_report.py  (reverts 80 lines obs tooling)
+    M monitoring/memory_monitoring.json    (monitoring threshold change)
+
+  Worktree md5(adaptive_exits.py) == ce06d41 md5. Worktree md5(pyramider.py) == ce06d41 md5.
+  A rebuild from this worktree would deploy a Frankenstein: hardening/alerting/CAP-HALT/H1/H2/H5/G1/G2 from 33d6138
+  but Exp4 and G3 REVERTED. This contradicts the declared deploy scope 'FULL HEAD 33d6138'.
+
+Secondary blockers (preflight checks #8 and #9):
+  - ORGANISM_MAX_NOTIONAL not set in .env or container env (required =0 explicitly).
+  - ORGANISM_MAX_DAILY_LOSS not set in .env or container env (required =0 explicitly).
+  - SLACK_WEBHOOK_URL not set. Alert wiring is the marquee change in 33d6138; webhook required to verify.
+
+Commands NOT executed (would have been run if preflight passed):
+  git stash push -m deploy2_preflight_snapshot   # NOT RUN
+  git checkout 33d6138                           # NOT RUN
+  docker-compose -f docker-compose.paper.yml up -d --build api   # NOT RUN
+  curl -X POST http://localhost:8000/api/v1/organism/save?force=true  # NOT RUN

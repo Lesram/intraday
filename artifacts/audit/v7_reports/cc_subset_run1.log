@@ -1,0 +1,42 @@
+/Users/marselkei/VS/intra/venv/lib/python3.12/site-packages/_hypothesis_pytestplugin.py:481: UserWarning: Skipping collection of '.hypothesis' directory - this usually means you've explicitly set the `norecursedirs` pytest config option, replacing rather than extending the default ignores.
+  warnings.warn(
+........................FFF.............FFFFF........................... [ 24%]
+............F........................................................... [ 48%]
+........................................................................ [ 72%]
+.............................................................FF.........F.F.....                                                                   [100%]
+============================= slowest 20 durations =============================
+15.11s call     tests/test_replay_simulator.py::test_replay_no_throttle_blocking
+15.01s call     tests/test_replay_simulator.py::test_replay_intraday_timeframe_uses_tight_stops
+15.00s call     tests/test_replay_simulator.py::test_replay_trades_have_valid_pnl
+15.00s call     tests/test_replay_simulator.py::test_replay_completes_100_ticks
+11.40s call     tests/test_replay_simulator.py::test_replay_daily_timeframe_uses_wider_stops
+11.24s call     tests/test_replay_simulator.py::test_replay_with_crash_data
+4.12s call     tests/test_replay_simulator.py::test_replay_regime_history_populated
+2.02s call     tests/test_replay_simulator.py::test_replay_equity_monotonic_start
+0.22s call     tests/test_replay_simulator_errors.py::test_from_alpaca_raises_when_keys_missing
+0.21s call     tests/test_apr7_p0_p1_fixes.py::test_update_watchdog_c1_fires_critical_when_truly_idle
+0.13s call     tests/test_apr7_p0_p1_fixes.py::test_update_watchdog_c1_stays_quiet_while_orders_flow
+0.07s call     tests/test_numerical_properties_v6.py::test_cumulative_pnl_roundtrip_property
+0.03s call     tests/test_alpaca_broker_comprehensive.py::TestRetryOnTransientError::test_max_retries_exhausted
+0.02s call     tests/test_alpaca_broker_comprehensive.py::TestAlpacaBrokerClientInit::test_init_paper_mode
+0.02s call     tests/test_numerical_properties_v6.py::test_sharpe_property_finite_or_zero
+0.02s call     tests/test_apr10_patch_f4_forensic_guard.py::test_bypass_audit_manifest_write_callsites
+0.02s call     tests/test_apr10_patch_f1_guarded_helper.py::test_write_manifest_guarded_blocks_trained_overwrite
+0.02s call     tests/test_apr10_patch_f1_guarded_helper.py::test_save_early_guard_blocks_via_shared_check
+0.02s call     tests/test_apr10_patch_f4_forensic_guard.py::test_full_stack_wipe_simulation
+0.02s call     tests/test_apr10_patch_f1_guarded_helper.py::test_write_manifest_guarded_force_passes
+=========================== short test summary info ============================
+FAILED tests/test_audit_patch_queue_b2.py::TestMLConfidenceLeakage::test_learning_mode_ignores_ml_confidence
+FAILED tests/test_audit_patch_queue_b2.py::TestMLConfidenceLeakage::test_learning_mode_uses_composite_score
+FAILED tests/test_audit_patch_queue_b2.py::TestMLConfidenceLeakage::test_production_mode_uses_ml_confidence
+FAILED tests/test_audit_patch_queue_d1.py::TestValidateNewModelEconomic::test_acceptance_rejects_negative_edge
+FAILED tests/test_audit_patch_queue_d1.py::TestValidateNewModelEconomic::test_acceptance_accepts_positive_edge
+FAILED tests/test_audit_patch_queue_d1.py::TestValidateNewModelEconomic::test_poor_model_rejected
+FAILED tests/test_audit_patch_queue_d1.py::TestValidateNewModelEconomic::test_improved_model_accepted
+FAILED tests/test_audit_patch_queue_d1.py::TestValidateNewModelEconomic::test_improved_but_negative_edge_rejected
+FAILED tests/test_apr7_p0_p1_fixes.py::test_submit_entry_order_counters_increment
+FAILED tests/test_replay_simulator.py::test_replay_completes_100_ticks - Fail...
+FAILED tests/test_replay_simulator.py::test_replay_trades_have_valid_pnl - Fa...
+FAILED tests/test_replay_simulator.py::test_replay_no_throttle_blocking - Fai...
+FAILED tests/test_replay_simulator.py::test_replay_intraday_timeframe_uses_tight_stops
+13 failed, 283 passed in 91.35s (0:01:31)

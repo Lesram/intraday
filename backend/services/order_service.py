@@ -18,6 +18,9 @@ if TYPE_CHECKING:
     from redis.asyncio import Redis
     from sqlalchemy.ext.asyncio import AsyncSession
 
+# V7 FF-1 / Wave-25 (2026-05-03): HTTPException for input validation.
+from fastapi import HTTPException
+
 try:
     import redis.asyncio as aioredis
     REDIS_AVAILABLE = True
@@ -360,14 +363,42 @@ class CircuitBreaker:
         self._opened_at_mono = time.monotonic()
         logger.warning(f"Circuit breaker OPEN: {reason}")
 
-        # Trigger alert
+        # Trigger alert.
+        # V6 V-T-1 / Wave-20a (2026-05-03): wave-12f shipped this site
+        # using the broken wave-8c anti-pattern (`get_running_loop` +
+        # `call_soon_threadsafe` with `asyncio.run` fallback). V5
+        # demonstrated that `get_running_loop()` ALWAYS raises in worker
+        # threads — by definition, since worker threads have no running
+        # loop. Wave-17a fixed 3 sites with the canonical
+        # dispatch_alert_from_thread helper but missed this one (its
+        # same-class scan was incomplete). Result: every "Circuit
+        # Breaker Tripped" alert from a worker-thread caller has been
+        # silently dropped since wave-12f shipped. Use the canonical
+        # cross-thread dispatcher.
         try:
-            alert_manager = get_alert_manager()
-            if alert_manager:
-                alert_manager.critical(
-                    title="Circuit Breaker Tripped",
-                    message=f"Order flow halted: {reason}",
-                    context={"failures": len(self._failures), "daily_pnl": self._daily_pnl}
+            from backend.infra.alerting import (
+                AlertCategory, AlertSeverity, send_alert,
+                dispatch_alert_from_thread,
+            )
+            _r = reason
+            _failures = len(self._failures)
+            _daily_pnl = self._daily_pnl
+            ok = dispatch_alert_from_thread(
+                lambda: send_alert(
+                    AlertCategory.SYSTEM_ERROR,
+                    AlertSeverity.CRITICAL,
+                    "Circuit Breaker Tripped",
+                    f"Order flow halted: {_r}",
+                    details={
+                        "failures": _failures,
+                        "daily_pnl": _daily_pnl,
+                    },
+                )
+            )
+            if not ok:
+                logger.warning(
+                    "Circuit Breaker Tripped alert dropped (no main "
+                    "loop ref): %s", _r,
                 )
         except Exception as e:
             logger.error(f"Failed to send circuit breaker alert: {e}")
@@ -719,11 +750,63 @@ class OrderService:
             reduce_only: If True, bypass PnL circuit breaker (exit/risk-reducing orders)
 
         Returns:
-            Order submission result
+            Order submission result. Shape on success::
+
+                {
+                    "order_id":         str,  # internal DB UUID
+                    "symbol":           str,
+                    "side":             "buy" | "sell",
+                    "qty":              str,
+                    "status":           "submitted" | "rejected" | "deferred",
+                    "idempotency_key":  str,
+                }
+
+            V4 H-2 / Wave-16c (2026-05-02): the result deliberately does
+            NOT carry `filled_qty` or `avg_fill_price`. Broker submission
+            is asynchronous: this method enqueues to the outbox and
+            returns; the actual fill arrives later via the WebSocket
+            (alpaca_stream._on_trade_update) and is written to the
+            `orders.filled_qty` / `orders.avg_fill_price` columns. Read
+            those from the DB if you need fill data, or wait for the
+            tick-loop reconciliation to surface them.
 
         Raises:
             RuntimeError: If circuit breaker is tripped (and not reduce_only)
         """
+        # V7 FF-1 / Wave-25 (2026-05-03): validate inputs at the gate.
+        # Track FF found that submit_symbol_order did NOT call validate_order;
+        # qty=0, qty=-1, symbol-injection all reached the outbox unchecked.
+        # Inline the critical validations before any state mutation.
+        if not isinstance(symbol, str) or not symbol or not symbol.replace("-", "").replace(".", "").isalnum():
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid symbol: {symbol!r}",
+            )
+        if side not in ("buy", "sell"):
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid side: {side!r}",
+            )
+        try:
+            _qty_f = float(qty)
+        except (TypeError, ValueError):
+            raise HTTPException(status_code=400, detail=f"Invalid qty type: {qty!r}")
+        if _qty_f <= 0 or not (_qty_f == _qty_f) or _qty_f == float("inf"):
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid qty value: {qty!r} (must be positive finite)",
+            )
+        if order_type not in ("market", "limit", "stop", "stop_limit"):
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid order_type: {order_type!r}",
+            )
+        if tif not in ("day", "gtc", "ioc", "fok", "opg", "cls"):
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid tif: {tif!r}",
+            )
+
         # If repos are missing but sessionmaker is available, use per-call session
         if self.orders_repo is None and self.sessionmaker is not None:
             return await self._submit_symbol_order_with_session(
@@ -764,10 +847,38 @@ class OrderService:
                 symbol_lock = self._symbol_locks[symbol]
 
             async with symbol_lock:
-                # Check if this idempotency key is already being processed
+                # Check if this idempotency key is already being processed.
+                # V7 FF-2 / Wave-25 (2026-05-03): the previous behavior
+                # returned the cached result without verifying that the
+                # current call's body matched. A buggy caller reusing
+                # the same key for a different (symbol, side, qty)
+                # would silently get back the prior response — a real
+                # idempotency violation. Now: verify body fingerprint;
+                # mismatch raises 409 instead of returning cached.
                 if idempotency_key in self._async_submitted_orders:
                     entry = self._async_submitted_orders[idempotency_key]
                     existing_result = entry[1] if isinstance(entry, tuple) else entry
+                    _cached_sym = existing_result.get("symbol") if isinstance(existing_result, dict) else None
+                    _cached_side = existing_result.get("side") if isinstance(existing_result, dict) else None
+                    _cached_qty = existing_result.get("qty") if isinstance(existing_result, dict) else None
+                    if (
+                        _cached_sym is not None
+                        and _cached_side is not None
+                        and _cached_qty is not None
+                        and (
+                            _cached_sym != symbol
+                            or _cached_side != side
+                            or str(_cached_qty) != str(qty)
+                        )
+                    ):
+                        raise HTTPException(
+                            status_code=409,
+                            detail=(
+                                f"idempotency_key collision: key {idempotency_key[:8]}... "
+                                f"was previously used for ({_cached_sym}, {_cached_side}, {_cached_qty}); "
+                                f"current request is ({symbol}, {side}, {qty})"
+                            ),
+                        )
                     logger.info(f"Returning cached order result for key {idempotency_key[:8]}...")
                     return existing_result
 
@@ -1119,9 +1230,17 @@ class OrderService:
         import asyncio
         from datetime import datetime
         
-        # M-12 FIX: Get or create per-order lock to prevent race conditions
+        # M-12 FIX: Get or create per-order lock to prevent race conditions.
+        # Audit-J finding J-7 (2026-05-02): _cancel_locks used to grow
+        # without bound (one Lock per order_id, forever). Cap at 1024
+        # entries; evict oldest when the cap is reached. Cancellations
+        # are typically completed within seconds, so a small cap is fine.
         async with self._cancel_locks_lock:
             if order_id not in self._cancel_locks:
+                if len(self._cancel_locks) >= 1024:
+                    # Drop oldest entry (insertion-ordered dict)
+                    oldest_id = next(iter(self._cancel_locks))
+                    self._cancel_locks.pop(oldest_id, None)
                 self._cancel_locks[order_id] = asyncio.Lock()
             order_lock = self._cancel_locks[order_id]
         
@@ -1159,20 +1278,69 @@ class OrderService:
                         "cancelled_at": None
                     }
 
-                # Try to cancel with broker if we have a broker connection
-                broker_order_id = order_id
+                # Audit-H finding H-5 (2026-05-02): if broker_order_id is None
+                # (outbox hasn't written it yet — race with same-tick cancel),
+                # the previous code passed the internal UUID to the broker
+                # which 404'd, the exception was swallowed, and the DB was
+                # marked cancelled — leaving a real broker position orphaned.
+                # Refuse to cancel until broker_order_id is available; caller
+                # can retry next tick.
+                broker_order_id = None
                 if order and hasattr(order, 'broker_order_id') and order.broker_order_id:
                     broker_order_id = order.broker_order_id
+                if broker_order_id is None:
+                    logger.warning(
+                        f"cancel_order deferred for {order_id}: "
+                        f"broker_order_id not yet available (outbox race). "
+                        f"Caller should retry next tick."
+                    )
+                    return {
+                        "status": "deferred",
+                        "order_id": order_id,
+                        "reason": "broker_order_id not available; retry next tick",
+                        "cancelled_at": None,
+                    }
 
+                # Audit-H finding H-4 (2026-05-02): broker may return 422
+                # ("cannot cancel — order already filled") between cancel
+                # request and broker-side fill. The previous code caught
+                # any exception and proceeded to mark DB cancelled — but
+                # the position was real. Now: distinguish 422-already-filled
+                # from other errors; on 422 do NOT mark cancelled, instead
+                # return reconciliation status.
+                _broker_says_filled = False
                 if self.broker and hasattr(self.broker, 'cancel_order'):
                     try:
                         await self.broker.cancel_order(broker_order_id)
                         logger.info(f"Order {order_id} cancelled with broker")
                     except Exception as e:
-                        # Log but don't fail - broker might already have cancelled it
-                        logger.warning(f"Broker cancel call for {order_id} failed: {e}")
+                        _err_str = str(e).lower()
+                        # Detect "already filled" / 422 / "cannot cancel"
+                        if any(s in _err_str for s in (
+                            "422", "already filled", "cannot cancel",
+                            "filled", "completed",
+                        )):
+                            _broker_says_filled = True
+                            logger.warning(
+                                f"Broker says order {order_id} already filled "
+                                f"(cancel race): {e}. NOT marking DB cancelled "
+                                f"— reconciliation will adopt the position."
+                            )
+                        else:
+                            logger.warning(
+                                f"Broker cancel call for {order_id} failed: {e}"
+                            )
 
-                # Update database status
+                if _broker_says_filled:
+                    # Don't mark DB cancelled — leave for reconciliation
+                    return {
+                        "status": "filled_during_cancel",
+                        "order_id": order_id,
+                        "reason": "Broker filled before cancel; not marking DB cancelled",
+                        "cancelled_at": None,
+                    }
+
+                # Update database status (only when cancel actually succeeded)
                 if order and self.orders_repo and hasattr(self.orders_repo, 'update_status'):
                     try:
                         await self.orders_repo.update_status(order.id, "cancelled")
@@ -1214,10 +1382,12 @@ class OrderService:
                     order_uuid = uuid.UUID(order_id)
                     order = await self.orders_repo.get_by_id(order_uuid)
                     if order:
+                        owner = getattr(order, 'user_id', None)
                         # Convert database order object to API response format
                         return {
                             "order_id": str(order.id),
                             "client_order_id": getattr(order, 'client_order_id', None),
+                            "user_id": str(owner) if owner is not None else None,
                             "status": order.status,
                             "symbol": order.symbol,
                             "side": order.side,

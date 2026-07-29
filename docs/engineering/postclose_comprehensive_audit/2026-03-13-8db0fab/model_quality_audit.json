@@ -1,0 +1,62 @@
+{
+  "date": "2026-03-13",
+  "head_sha": "8db0fab",
+
+  "ml_status": "DISABLED (learning mode)",
+
+  "training_activity": {
+    "jobs_submitted_today": 2,
+    "jobs_rejected_today": 2,
+    "total_jobs_lifetime": 23,
+    "total_accepted_lifetime": 0,
+    "acceptance_rate": "0%"
+  },
+
+  "job_details": [
+    {
+      "job_id": 22,
+      "composite_score": 0.355,
+      "threshold": 0.35,
+      "passed_score": true,
+      "precision": 0.471,
+      "calibration_error": 0.238,
+      "calibration_monotonicity": false,
+      "final_verdict": "REJECTED",
+      "rejection_reason": "calibration_monotonicity=False",
+      "note": "CLOSEST JOB TO ACCEPTANCE EVER. Score exceeded threshold. Precision at 47.1% is strong. Failed only on calibration monotonicity — model confidence does not monotonically increase with predicted probability."
+    },
+    {
+      "job_id": 23,
+      "composite_score": 0.318,
+      "threshold": 0.35,
+      "passed_score": false,
+      "precision": 0.352,
+      "calibration_error": 0.339,
+      "calibration_monotonicity": false,
+      "final_verdict": "REJECTED",
+      "rejection_reason": "score < threshold AND calibration_monotonicity=False",
+      "note": "Regression from job #22. Lower precision, higher calibration error."
+    }
+  ],
+
+  "training_trajectory": {
+    "trend": "IMPROVING with variance",
+    "best_score_ever": 0.355,
+    "best_precision_ever": 0.471,
+    "observations": [
+      "Job #22 was the strongest model attempt to date",
+      "Precision has improved significantly (from ~30% range to 47.1%)",
+      "Calibration monotonicity remains the hardest quality gate to pass",
+      "Score variance between consecutive jobs (0.355 → 0.318) suggests training data sensitivity"
+    ]
+  },
+
+  "when_ml_will_activate": {
+    "requirement_1": "A training job must pass ALL quality gates (score >= 0.35, calibration_monotonicity=True)",
+    "requirement_2": "Organism must still be in learning mode (< 200 trades for H3 gate)",
+    "current_state": "158 trades — ML could activate before learning mode ends if a job passes",
+    "risk_if_ml_activates": "LOW — production formula gives ML 50% weight, which would diversify away from pure breakout reliance"
+  },
+
+  "recommendation": "No changes to ML training or acceptance criteria. Job #22's near-pass is encouraging. The training pipeline is working — model quality is improving. Calibration monotonicity is the correct quality bar to maintain."
+}

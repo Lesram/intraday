@@ -12,7 +12,7 @@ Phase 7 - Market Data & Charting
 Created: October 18, 2025
 """
 
-from datetime import datetime
+from datetime import UTC, datetime
 import logging
 from typing import Any
 
@@ -154,8 +154,8 @@ async def get_preset_templates():
             "settings": preset["settings"],
             "is_default": False,
             "is_preset": True,
-            "created_at": datetime.utcnow(),
-            "updated_at": datetime.utcnow()
+            "created_at": datetime.now(UTC),
+            "updated_at": datetime.now(UTC)
         })
 
     return presets
@@ -301,7 +301,7 @@ async def update_chart_template(
     if request.is_default is not None:
         template.is_default = request.is_default
 
-    template.updated_at = datetime.utcnow()
+    template.updated_at = datetime.now(UTC)
     await db.commit()
     await db.refresh(template)
 
@@ -375,7 +375,7 @@ async def apply_chart_template(
             detail=f"Chart template {template_id} not found"
         )
 
-    template.last_used_at = datetime.utcnow()
+    template.last_used_at = datetime.now(UTC)
     await db.commit()
 
     logger.info(f"User {current_user.id} applied chart template {template_id}")

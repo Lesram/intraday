@@ -1589,3 +1589,82 @@ class TestAlpacaStreamProcessTradeUpdateComplete:
                         call_kwargs = mock_orders_repo.attach_broker_result.call_args
                         from decimal import Decimal
                         assert call_kwargs.kwargs["avg_fill_price"] == Decimal("150.50")
+
+    @pytest.mark.asyncio
+    async def test_filled_trade_update_syncs_local_positions(self, mock_env_vars):
+        """Terminal fills should refresh the local positions table from broker truth."""
+        with patch("backend.integrations.alpaca_stream.get_settings") as mock_get:
+            mock_get.return_value = MagicMock()
+
+            from backend.integrations.alpaca_stream import AlpacaStreamClient
+
+            client = AlpacaStreamClient()
+
+            mock_order = MagicMock()
+            mock_order.id = "order-123"
+            mock_order.symbol = "AMD"
+            mock_order.side = "sell"
+            mock_order.qty = 3
+            mock_order.order_type = "market"
+            mock_order.submitted_at = None
+            mock_order.filled_qty = 0
+
+            mock_session = MagicMock()
+            mock_session.commit = AsyncMock()
+
+            mock_orders_repo = MagicMock()
+            mock_orders_repo.get_by_broker_order_id = AsyncMock(return_value=mock_order)
+            mock_orders_repo.attach_broker_result = AsyncMock()
+
+            update = {
+                "data": {
+                    "order": {
+                        "id": "broker-123",
+                        "client_order_id": "client-123",
+                        "status": "filled",
+                        "filled_qty": "3",
+                        "filled_avg_price": "416.31",
+                    }
+                },
+                "event": "fill",
+            }
+
+            class MockAsyncContextManager:
+                async def __aenter__(self):
+                    return mock_session
+
+                async def __aexit__(self, *args):
+                    return None
+
+            with patch(
+                "backend.integrations.alpaca_stream.get_session_context",
+                return_value=MockAsyncContextManager(),
+            ):
+                with patch(
+                    "backend.integrations.alpaca_stream.OrdersRepo",
+                    return_value=mock_orders_repo,
+                ):
+                    with patch(
+                        "backend.integrations.alpaca_stream.apply_incremental_fill_accounting",
+                        new_callable=AsyncMock,
+                    ) as mock_accounting:
+                        mock_accounting.return_value = {
+                            "applied": False,
+                            "reason": "duplicate_or_no_incremental_fill",
+                        }
+                        with patch(
+                            "backend.integrations.alpaca_stream.AlpacaStreamClient."
+                            "_sync_positions_after_terminal_fill",
+                            new_callable=AsyncMock,
+                        ) as mock_sync:
+                            with patch(
+                                "backend.api.socketio_server.broadcast_order_update",
+                                new_callable=AsyncMock,
+                            ):
+                                await client._process_trade_update(update)
+
+            mock_sync.assert_awaited_once_with(
+                order_id="order-123",
+                broker_order_id="broker-123",
+                symbol="AMD",
+            )

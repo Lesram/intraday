@@ -1,0 +1,36 @@
+{
+  "audit_date": "2026-03-11",
+  "head_sha": "8db0fab",
+
+  "today_trades": {
+    "today_trades_count": 0,
+    "today_realized_pnl": 0.0,
+    "today_unrealized_pnl": 0.0,
+    "today_unrealized_pnl_note": "No open positions",
+    "today_entry_breakdown": {},
+    "today_exit_breakdown": {},
+    "today_order_counts": {
+      "submitted": 0,
+      "filled": 0,
+      "cancelled": 0,
+      "rejected": 0,
+      "stale_accepted": 0
+    },
+    "today_symbol_breakdown": {},
+    "today_top_winners": [],
+    "today_top_losers": [],
+    "note": "ZERO trades today. No candidates passed the confidence gate across all 362+ ticks."
+  },
+
+  "context": {
+    "market_open_since": "09:30 ET (13:30 UTC)",
+    "audit_time": "14:58 ET (18:58 UTC)",
+    "trading_hours_elapsed": "5h 28m",
+    "total_ticks_today": 362,
+    "signals_generated": 0,
+    "orders_generated": 0,
+    "open_positions": 0,
+    "regime_changes": 4,
+    "regime_instability": "HIGH"
+  }
+}

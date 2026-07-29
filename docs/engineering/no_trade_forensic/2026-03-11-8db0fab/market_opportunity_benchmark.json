@@ -1,0 +1,73 @@
+{
+  "date": "2026-03-11",
+  "head_sha": "8db0fab",
+  "data_source": "Alpaca Markets API (screener + bars)",
+
+  "top_intraday_gainers_liquid": [
+    {"symbol": "HIMS", "change_pct": 11.94, "range_pct": 20.46, "volume": 111779048, "in_universe": false},
+    {"symbol": "PATH", "change_pct": 3.17, "range_pct": 6.37, "volume": 120194156, "in_universe": false},
+    {"symbol": "INTC", "change_pct": 2.49, "range_pct": 4.64, "volume": 72494545, "in_universe": false},
+    {"symbol": "XOM", "change_pct": 2.43, "range_pct": 2.80, "volume": 15307490, "in_universe": true},
+    {"symbol": "XLE", "change_pct": 2.43, "range_pct": 2.70, "volume": 48746482, "in_universe": true},
+    {"symbol": "MU", "change_pct": 1.93, "range_pct": 4.13, "volume": 30214098, "in_universe": false},
+    {"symbol": "TSLA", "change_pct": 1.38, "range_pct": 3.54, "volume": 62908620, "in_universe": true},
+    {"symbol": "SOXL", "change_pct": 1.06, "range_pct": 4.31, "volume": 83017084, "in_universe": false},
+    {"symbol": "SNOW", "change_pct": 1.00, "range_pct": 3.63, "volume": 3488024, "in_universe": true},
+    {"symbol": "SOFI", "change_pct": 0.76, "range_pct": 4.79, "volume": 59437930, "in_universe": false}
+  ],
+
+  "top_intraday_losers_liquid": [
+    {"symbol": "NIO", "change_pct": -3.87, "range_pct": 7.73, "volume": 78329123, "in_universe": false},
+    {"symbol": "NFLX", "change_pct": -2.59, "range_pct": 3.40, "volume": 33996031, "in_universe": false},
+    {"symbol": "SNAP", "change_pct": -2.02, "range_pct": 5.24, "volume": 51555547, "in_universe": false},
+    {"symbol": "ORCL", "change_pct": -1.96, "range_pct": 6.72, "volume": 83337667, "in_universe": false},
+    {"symbol": "BA", "change_pct": -1.76, "range_pct": 2.02, "volume": 7940974, "in_universe": false},
+    {"symbol": "WMT", "change_pct": -1.45, "range_pct": 1.95, "volume": 18196155, "in_universe": true},
+    {"symbol": "AMZN", "change_pct": -1.42, "range_pct": 2.62, "volume": 34249401, "in_universe": true},
+    {"symbol": "CRM", "change_pct": -1.16, "range_pct": 4.21, "volume": 9584119, "in_universe": true},
+    {"symbol": "CAT", "change_pct": -0.83, "range_pct": 2.35, "volume": 1958097, "in_universe": true}
+  ],
+
+  "top_volume_names": [
+    {"symbol": "NVDA", "volume": 145930960, "change_pct": 0.06, "in_universe": true},
+    {"symbol": "PATH", "volume": 120194156, "change_pct": 3.17, "in_universe": false},
+    {"symbol": "HIMS", "volume": 111779048, "change_pct": 11.94, "in_universe": false},
+    {"symbol": "TQQQ", "volume": 91111405, "change_pct": -0.66, "in_universe": false},
+    {"symbol": "AAL", "volume": 91026857, "change_pct": -0.72, "in_universe": false},
+    {"symbol": "ORCL", "volume": 83337667, "change_pct": -1.96, "in_universe": false},
+    {"symbol": "SOXL", "volume": 83017084, "change_pct": 1.06, "in_universe": false},
+    {"symbol": "NIO", "volume": 78329123, "change_pct": -3.87, "in_universe": false},
+    {"symbol": "INTC", "volume": 72494545, "change_pct": 2.49, "in_universe": false},
+    {"symbol": "SPY", "volume": 68543804, "change_pct": -0.18, "in_universe": true}
+  ],
+
+  "benchmark_top_20_interesting": [
+    {"rank": 1, "symbol": "HIMS", "score_reason": "+11.94%, 112M vol, strong momentum", "in_universe": false},
+    {"rank": 2, "symbol": "PATH", "score_reason": "+3.17%, 120M vol, breakout", "in_universe": false},
+    {"rank": 3, "symbol": "INTC", "score_reason": "+2.49%, 72M vol, semi-sector strength", "in_universe": false},
+    {"rank": 4, "symbol": "XOM", "score_reason": "+2.43%, 15M vol, energy sector leader", "in_universe": true},
+    {"rank": 5, "symbol": "XLE", "score_reason": "+2.43%, 49M vol, energy ETF", "in_universe": true},
+    {"rank": 6, "symbol": "MU", "score_reason": "+1.93%, 30M vol, semi strength", "in_universe": false},
+    {"rank": 7, "symbol": "ORCL", "score_reason": "-1.96%, 83M vol, 6.7% range, post-earnings", "in_universe": false},
+    {"rank": 8, "symbol": "TSLA", "score_reason": "+1.38%, 63M vol, 3.5% range", "in_universe": true},
+    {"rank": 9, "symbol": "NFLX", "score_reason": "-2.59%, 34M vol, clear downtrend", "in_universe": false},
+    {"rank": 10, "symbol": "SOFI", "score_reason": "+0.76%, 59M vol, 4.8% range", "in_universe": false},
+    {"rank": 11, "symbol": "NIO", "score_reason": "-3.87%, 78M vol (but long-only organism)", "in_universe": false},
+    {"rank": 12, "symbol": "SOXL", "score_reason": "+1.06%, 83M vol, semi ETF", "in_universe": false},
+    {"rank": 13, "symbol": "SNOW", "score_reason": "+1.00%, 3.5M vol, 3.6% range", "in_universe": true},
+    {"rank": 14, "symbol": "AMZN", "score_reason": "-1.42%, 34M vol, 2.6% range", "in_universe": true},
+    {"rank": 15, "symbol": "CRM", "score_reason": "-1.16%, 9.6M vol, 4.2% range", "in_universe": true},
+    {"rank": 16, "symbol": "WMT", "score_reason": "-1.45%, 18M vol, consumer weakness", "in_universe": true},
+    {"rank": 17, "symbol": "AMD", "score_reason": "-0.14%, 23M vol, 2.7% range", "in_universe": true},
+    {"rank": 18, "symbol": "PLTR", "score_reason": "+0.15%, 34M vol, 2.5% range", "in_universe": false},
+    {"rank": 19, "symbol": "AAL", "score_reason": "-0.72%, 91M vol, airline weakness", "in_universe": false},
+    {"rank": 20, "symbol": "COIN", "score_reason": "+0.57%, 9.5M vol, 5.4% range", "in_universe": false}
+  ],
+
+  "universe_coverage": {
+    "benchmark_in_universe": 8,
+    "benchmark_out_of_universe": 12,
+    "coverage_pct": 40,
+    "note": "8 of the top 20 benchmark names were in the 22-symbol universe. The top 3 (HIMS +12%, PATH +3.2%, INTC +2.5%) were all outside."
+  }
+}

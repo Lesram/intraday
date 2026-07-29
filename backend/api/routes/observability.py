@@ -13,6 +13,12 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, Query
 
+from fastapi import HTTPException, status
+
+from backend.infra.security import (
+    AuthenticatedUser,
+    get_authenticated_user,
+)
 from backend.services.observability_service import (
     HealthStatus,
     ObservabilityService,
@@ -84,6 +90,9 @@ async def get_metrics(
         description="Time window in seconds",
     ),
     service: ObservabilityService = Depends(get_service),
+    # V7 AA-H-2 / Wave-23c (2026-05-03): require auth. Internal
+    # observability data is not for anonymous consumption.
+    current_user=Depends(get_authenticated_user),
 ) -> dict[str, Any]:
     """
     Get system metrics for the specified time window.
@@ -129,6 +138,8 @@ async def get_trading_metrics(
         description="Time window in seconds",
     ),
     service: ObservabilityService = Depends(get_service),
+    # V7 AA-H-2 / Wave-23c (2026-05-03): require auth.
+    current_user=Depends(get_authenticated_user),
 ) -> dict[str, Any]:
     """
     Get trading-specific metrics.
@@ -159,6 +170,8 @@ async def get_trading_metrics(
 @router.get("/dashboard")
 async def get_dashboard_data(
     service: ObservabilityService = Depends(get_service),
+    # V7 AA-H-2 / Wave-23c (2026-05-03): require auth.
+    current_user=Depends(get_authenticated_user),
 ) -> dict[str, Any]:
     """
     Get all data needed for the observability dashboard.
@@ -175,6 +188,8 @@ async def get_dashboard_data(
 @router.get("/alerts")
 async def get_alerts(
     service: ObservabilityService = Depends(get_service),
+    # V7 AA-H-2 / Wave-23c (2026-05-03): require auth.
+    current_user=Depends(get_authenticated_user),
 ) -> dict[str, Any]:
     """
     Get active alerts based on threshold violations.
@@ -195,7 +210,18 @@ async def update_threshold(
     metric: str,
     value: float = Query(..., gt=0, description="New threshold value"),
     service: ObservabilityService = Depends(get_service),
+    # Audit-I finding I-1 (2026-05-02): require authentication for state-
+    # mutating threshold updates. Was previously NO auth.
+    # NOTE: `require_roles(...)` factory has a wiring bug that causes the
+    # check to be silently bypassed; using get_authenticated_user (which
+    # raises 401 cleanly) + inline role check instead.
+    current_user: AuthenticatedUser = Depends(get_authenticated_user),
 ) -> dict[str, Any]:
+    if "admin" not in current_user.roles and "operator" not in current_user.roles:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Updating thresholds requires admin or operator role",
+        )
     """
     Update an alert threshold.
 

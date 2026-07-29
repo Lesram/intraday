@@ -69,11 +69,24 @@ services:
       - ORGANISM_MAX_POSITIONS=${ORGANISM_MAX_POSITIONS:-15}
       - ORGANISM_LONG_ONLY=${ORGANISM_LONG_ONLY:-true}
       - ORGANISM_RETRAIN_INTERVAL=${ORGANISM_RETRAIN_INTERVAL:-600}
-      - ORGANISM_FREEZE_ADAPTATION=${ORGANISM_FREEZE_ADAPTATION:-1}
+      # Audit-L finding L-2 (2026-05-02): default flipped 1→0 to match code
+      # default (`ORGANISM_FREEZE_ADAPTATION=0` means active/unfrozen).
+      # The previous default 1 silently froze adaptation in dev when .env
+      # was missing — exactly the wrong direction for a dev environment.
+      - ORGANISM_FREEZE_ADAPTATION=${ORGANISM_FREEZE_ADAPTATION:-0}
       - ORGANISM_USE_STREAMING=${ORGANISM_USE_STREAMING:-0}
       - ORGANISM_TRAIN_WINDOW=${ORGANISM_TRAIN_WINDOW:-100}
-      - ORGANISM_DRAWDOWN_COOLDOWN_S=${ORGANISM_DRAWDOWN_COOLDOWN_S:-300}
-      - ORGANISM_DRAWDOWN_KILL_PCT=${ORGANISM_DRAWDOWN_KILL_PCT:-0.03}
+      - ORGANISM_DRAWDOWN_COOLDOWN_S=${ORGANISM_DRAWDOWN_COOLDOWN_S:-3600}
+      # V11 CCC-2 / Wave-68 (2026-05-03): kill-switch alignment.
+      # Code default + dev compose: 0.05.  Paper compose: 0.05 (same).
+      # Production compose: 0.08 (slightly more permissive — see
+      # docker-compose.production.yml).  All three honor .env override.
+      - ORGANISM_DRAWDOWN_KILL_PCT=${ORGANISM_DRAWDOWN_KILL_PCT:-0.05}
+      # V11 CCC-2: also wire daily-loss + notional caps so they aren't
+      # silently disabled when .env is missing.  Code defaults are 0
+      # (=disabled); explicit conservative fallbacks here.
+      - ORGANISM_MAX_DAILY_LOSS=${ORGANISM_MAX_DAILY_LOSS:-5500}
+      - ORGANISM_MAX_NOTIONAL=${ORGANISM_MAX_NOTIONAL:-2000}
       - ORGANISM_MAX_CHANGES_PER_DAY=${ORGANISM_MAX_CHANGES_PER_DAY:-500}
       - ORGANISM_ML_DECAY_RATE=${ORGANISM_ML_DECAY_RATE:-0.005}
       - ORGANISM_MAX_PER_SECTOR=${ORGANISM_MAX_PER_SECTOR:-4}

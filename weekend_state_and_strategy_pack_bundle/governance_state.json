@@ -1,0 +1,13 @@
+{
+  "frozen": false,
+  "trading_halted": false,
+  "disabled_strategies": [],
+  "change_count": 1,
+  "last_reset_date": "2026-03-31",
+  "policy_version": "",
+  "config_hash": "",
+  "effective_cooldown_s": 300,
+  "drawdown_limit": 0.2,
+  "max_changes_per_day": 500,
+  "drawdown_triggered_at": null
+}

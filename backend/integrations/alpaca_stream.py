@@ -13,12 +13,17 @@ Key Features:
 """
 
 import asyncio
+import ast
 from datetime import UTC, datetime
+from decimal import Decimal, InvalidOperation
 import json
 import os
 import time
+from pathlib import Path
 from typing import Any
 
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
 import websockets
 from websockets.exceptions import ConnectionClosed, WebSocketException
 
@@ -28,6 +33,336 @@ from backend.infra.repositories.orders import OrdersRepo
 from backend.utils.logger import get_structured_logger
 
 logger = get_structured_logger(__name__)
+
+
+def _decimal_or_none(value: Any) -> Decimal | None:
+    if value is None or value == "":
+        return None
+    try:
+        return Decimal(str(value))
+    except (InvalidOperation, TypeError, ValueError):
+        return None
+
+
+def _dict_or_empty(value: Any) -> dict[str, Any]:
+    if isinstance(value, dict):
+        return value
+    if not isinstance(value, str) or not value.strip():
+        return {}
+    try:
+        parsed = json.loads(value)
+    except json.JSONDecodeError:
+        try:
+            parsed = ast.literal_eval(value)
+        except (SyntaxError, ValueError):
+            return {}
+    return parsed if isinstance(parsed, dict) else {}
+
+
+def _order_attributes(order: Any) -> dict[str, Any]:
+    attrs = getattr(order, "attributes", None)
+    return attrs if isinstance(attrs, dict) else {}
+
+
+def _alpaca_response(order: Any) -> dict[str, Any]:
+    return _dict_or_empty(_order_attributes(order).get("alpaca_response"))
+
+
+def _position_intent(
+    order: Any,
+    *,
+    broker_order_data: dict[str, Any] | None = None,
+) -> str:
+    broker_intent = _dict_or_empty(broker_order_data).get("position_intent")
+    if isinstance(broker_intent, str) and broker_intent:
+        return broker_intent
+
+    attrs = _order_attributes(order)
+    direct = attrs.get("position_intent")
+    if isinstance(direct, str) and direct:
+        return direct
+
+    response_intent = _alpaca_response(order).get("position_intent")
+    if isinstance(response_intent, str) and response_intent:
+        return response_intent
+
+    side = str(getattr(order, "side", "")).lower()
+    return "buy_to_open" if side == "buy" else "sell_to_close"
+
+
+def _accounting_action(
+    order: Any,
+    *,
+    broker_order_data: dict[str, Any] | None = None,
+) -> str:
+    intent = _position_intent(order, broker_order_data=broker_order_data)
+    side = str(getattr(order, "side", "")).lower()
+    if intent == "sell_to_open":
+        return "open_short"
+    if intent == "buy_to_close":
+        return "close_short"
+    if intent == "buy_to_open":
+        return "open_long"
+    if intent == "sell_to_close":
+        return "close_long"
+    if side == "buy":
+        return "open_long"
+    if side == "sell":
+        return "close_long"
+    return f"unsupported:{side}"
+
+
+def _order_user_id(order: Any) -> str:
+    return (
+        _order_attributes(order).get("user_id")
+        or getattr(order, "user_id", None)
+        or "system"
+    )
+
+
+async def _close_position_lots_fifo(
+    session: AsyncSession,
+    *,
+    user_id: str,
+    symbol: str,
+    qty_to_close: Decimal,
+    close_price: Decimal,
+    close_order_id: Any,
+    close_date: datetime,
+    open_side: str,
+    position_side: str,
+) -> list[Any]:
+    from backend.infra.schemas import Order, PositionLot, RealizedTrade
+
+    stmt = (
+        select(PositionLot)
+        .join(Order, PositionLot.order_id == Order.id)
+        .where(
+            PositionLot.user_id == user_id,
+            PositionLot.symbol == symbol,
+            PositionLot.status == "open",
+            PositionLot.remaining_qty > 0,
+            Order.side == open_side,
+        )
+        .order_by(PositionLot.open_date.asc())
+        .with_for_update()
+    )
+    result = await session.execute(stmt)
+    open_lots = list(result.scalars().all())
+    if not open_lots:
+        raise ValueError(
+            f"No open {position_side} lots found for "
+            f"{user_id}/{symbol} to close {qty_to_close} shares"
+        )
+
+    total_available = sum(lot.remaining_qty for lot in open_lots)
+    if total_available < qty_to_close:
+        raise ValueError(
+            f"Insufficient {position_side} lots for {user_id}/{symbol}: "
+            f"need {qty_to_close}, available {total_available}"
+        )
+
+    remaining_to_close = qty_to_close
+    realized_trades = []
+    for lot in open_lots:
+        if remaining_to_close <= 0:
+            break
+
+        qty_from_lot = min(lot.remaining_qty, remaining_to_close)
+        if position_side == "short":
+            realized_pnl = qty_from_lot * (lot.cost_basis - close_price)
+            realized_pnl_percent = (
+                ((lot.cost_basis - close_price) / lot.cost_basis * 100)
+                if lot.cost_basis != 0
+                else Decimal("0")
+            )
+            attributes = {"position_side": "short"}
+        else:
+            realized_pnl = qty_from_lot * (close_price - lot.cost_basis)
+            realized_pnl_percent = (
+                ((close_price - lot.cost_basis) / lot.cost_basis * 100)
+                if lot.cost_basis != 0
+                else Decimal("0")
+            )
+            attributes = {}
+
+        realized_trade = RealizedTrade(
+            user_id=user_id,
+            symbol=symbol,
+            qty=qty_from_lot,
+            open_price=lot.cost_basis,
+            close_price=close_price,
+            realized_pnl=realized_pnl,
+            realized_pnl_percent=realized_pnl_percent,
+            open_order_id=lot.order_id,
+            close_order_id=close_order_id,
+            lot_id=lot.id,
+            open_date=lot.open_date,
+            close_date=close_date,
+            attributes=attributes,
+        )
+        session.add(realized_trade)
+        realized_trades.append(realized_trade)
+
+        lot.remaining_qty -= qty_from_lot
+        if lot.remaining_qty == 0:
+            lot.status = "closed"
+        remaining_to_close -= qty_from_lot
+
+    await session.flush()
+    return realized_trades
+
+
+async def apply_incremental_fill_accounting(
+    session: AsyncSession,
+    order: Any,
+    *,
+    previous_filled_qty: Any,
+    cumulative_filled_qty: Any,
+    avg_fill_price: Any,
+    status: str,
+    fill_time: datetime | None = None,
+    venue: str = "alpaca",
+    broker_order_data: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Persist execution + lot accounting for the positive incremental fill.
+
+    Alpaca reports cumulative ``filled_qty``.  This helper is intentionally
+    side-effect-free for duplicate/stale updates and records exactly the
+    delta that has not already been represented by execution rows.
+    """
+    if status not in ("filled", "partially_filled"):
+        return {"applied": False, "reason": "non_fill_status"}
+
+    cumulative = _decimal_or_none(cumulative_filled_qty)
+    previous = _decimal_or_none(previous_filled_qty) or Decimal("0")
+    price = _decimal_or_none(avg_fill_price)
+
+    if cumulative is None or cumulative <= 0:
+        return {"applied": False, "reason": "missing_cumulative_fill_qty"}
+    if price is None or price <= 0:
+        return {"applied": False, "reason": "missing_avg_fill_price"}
+    if not getattr(order, "id", None):
+        return {"applied": False, "reason": "missing_order_id"}
+    if not getattr(order, "symbol", None) or not getattr(order, "side", None):
+        return {"applied": False, "reason": "missing_symbol_or_side"}
+    side = str(order.side).lower()
+    if side not in ("buy", "sell"):
+        return {"applied": False, "reason": f"unsupported_side:{order.side}"}
+    action = _accounting_action(order, broker_order_data=broker_order_data)
+
+    from backend.infra.schemas import Execution, PositionLot
+
+    existing_stmt = select(func.coalesce(func.sum(Execution.fill_qty), 0)).where(
+        Execution.order_id == order.id
+    )
+    existing_result = await session.execute(existing_stmt)
+    existing_execution_qty = (
+        _decimal_or_none(existing_result.scalar_one_or_none()) or Decimal("0")
+    )
+    effective_previous = (
+        existing_execution_qty
+        if existing_execution_qty > previous
+        else previous
+    )
+    incremental = cumulative - effective_previous
+    if incremental <= 0:
+        return {
+            "applied": False,
+            "reason": "duplicate_or_stale_fill",
+            "previous_filled_qty": str(previous),
+            "existing_execution_qty": str(existing_execution_qty),
+            "cumulative_filled_qty": str(cumulative),
+        }
+
+    fill_dt = (
+        fill_time
+        or getattr(order, "filled_at", None)
+        or getattr(order, "submitted_at", None)
+        or datetime.now(UTC)
+    )
+    execution = Execution(
+        order_id=order.id,
+        fill_qty=incremental,
+        fill_price=price,
+        ts=fill_dt,
+        venue=venue,
+    )
+    session.add(execution)
+
+    from backend.services.lot_tracker_service import LotTracker
+
+    lot_tracker = LotTracker(session)
+    user_id = _order_user_id(order)
+
+    realized = []
+    if action == "open_long":
+        await lot_tracker.create_lot(
+            user_id=user_id,
+            symbol=order.symbol,
+            qty=incremental,
+            cost_basis=price,
+            order_id=order.id,
+            open_date=fill_dt,
+        )
+        position_side = "long"
+    elif action == "close_long":
+        realized = await _close_position_lots_fifo(
+            session,
+            user_id=user_id,
+            symbol=order.symbol,
+            qty_to_close=incremental,
+            close_price=price,
+            close_order_id=order.id,
+            close_date=fill_dt,
+            open_side="buy",
+            position_side="long",
+        )
+        position_side = "long"
+    elif action == "open_short":
+        lot = PositionLot(
+            user_id=user_id,
+            symbol=order.symbol,
+            qty=incremental,
+            remaining_qty=incremental,
+            cost_basis=price,
+            order_id=order.id,
+            open_date=fill_dt,
+            status="open",
+        )
+        session.add(lot)
+        position_side = "short"
+    elif action == "close_short":
+        realized = await _close_position_lots_fifo(
+            session,
+            user_id=user_id,
+            symbol=order.symbol,
+            qty_to_close=incremental,
+            close_price=price,
+            close_order_id=order.id,
+            close_date=fill_dt,
+            open_side="sell",
+            position_side="short",
+        )
+        position_side = "short"
+    else:
+        return {"applied": False, "reason": f"unsupported_action:{action}"}
+
+    await session.flush()
+    return {
+        "applied": True,
+        "side": side,
+        "action": action,
+        "position_side": position_side,
+        "incremental_qty": str(incremental),
+        "price": str(price),
+        "execution_id": str(execution.id),
+        "realized_count": len(realized),
+        "realized_pnl": str(sum(t.realized_pnl for t in realized)),
+        "previous_filled_qty": str(previous),
+        "existing_execution_qty": str(existing_execution_qty),
+        "cumulative_filled_qty": str(cumulative),
+    }
 
 
 class AlpacaStreamClient:
@@ -76,6 +411,18 @@ class AlpacaStreamClient:
         self._queue_high_water_mark = 0
         self._queue_overflow_count = 0
 
+        # REMEDIATION: Track order IDs that reached terminal state
+        # (rejected/cancelled/expired) so the engine can clear pending entries early.
+        self._terminal_order_ids: set[str] = set()
+
+        # B1: Dead-letter queue for permanently failed trade updates
+        self._dlq_path = Path(os.getenv("INTRA_DLQ_PATH", "/tmp/intra_trade_update_dlq.jsonl"))
+        self._dlq_count: int = 0
+
+        # B2: Track connection timestamps and reconnect count for gap-fill
+        self._last_connected_at: float = 0.0
+        self._reconnect_count: int = 0
+
         # Heartbeat configuration
         self.heartbeat_interval = 30.0
         self.last_heartbeat = time.time()
@@ -109,6 +456,7 @@ class AlpacaStreamClient:
 
             self.is_connected = True
             self.reconnect_attempts = 0
+            self._last_connected_at = time.time()
 
             logger.info("Connected to Alpaca WebSocket stream")
 
@@ -342,12 +690,14 @@ class AlpacaStreamClient:
 
     async def _process_update_queue(self):
         """
-        Process queued trade updates.
+        Process queued trade updates with retry on failure.
 
         This runs in a separate task to handle backpressure and ensure
         database updates don't block the WebSocket message loop.
+        EXEC-001 FIX: Retries failed updates up to 3 times with backoff.
         """
         logger.info("Starting update queue processor")
+        MAX_RETRIES = 3
 
         while True:
             try:
@@ -357,18 +707,66 @@ class AlpacaStreamClient:
                     timeout=0.5
                 )
 
-                # Process the update
-                await self._process_trade_update(update)
+                # EXEC-001: Retry loop for transient failures
+                last_error = None
+                for attempt in range(1, MAX_RETRIES + 1):
+                    try:
+                        await self._process_trade_update(update)
+                        last_error = None
+                        break
+                    except Exception as e:
+                        last_error = e
+                        if attempt < MAX_RETRIES:
+                            backoff = 0.5 * (2 ** (attempt - 1))  # 0.5s, 1s
+                            logger.warning(
+                                "Trade update processing failed (attempt %d/%d), retrying in %.1fs",
+                                attempt, MAX_RETRIES, backoff,
+                                error=str(e),
+                                error_type=type(e).__name__,
+                            )
+                            await asyncio.sleep(backoff)
+
+                if last_error is not None:
+                    logger.error(
+                        "Trade update PERMANENTLY FAILED after %d attempts — writing to DLQ",
+                        MAX_RETRIES,
+                        error=str(last_error),
+                        error_type=type(last_error).__name__,
+                        update_summary=str(update)[:200],
+                    )
+                    # B1: Write to dead-letter queue file
+                    self._write_to_dlq(update, MAX_RETRIES, last_error)
 
             except TimeoutError:
                 # No update in queue, continue
                 continue
 
             except Exception as e:
-                logger.error("Error processing trade update",
+                logger.error("Unexpected error in update queue processor",
                            error=str(e),
                            error_type=type(e).__name__)
                 continue
+
+    def _write_to_dlq(self, update: dict[str, Any], attempts: int, error: Exception) -> None:
+        """B1: Append a permanently failed trade update to the dead-letter queue file."""
+        try:
+            dlq_record = {
+                "timestamp": datetime.now(UTC).isoformat(),
+                "attempt_count": attempts,
+                "error": str(error),
+                "error_type": type(error).__name__,
+                "update": update,
+            }
+            with open(self._dlq_path, "a") as f:
+                f.write(json.dumps(dlq_record, default=str) + "\n")
+            self._dlq_count += 1
+            logger.warning(
+                "Trade update written to DLQ (total=%d): %s",
+                self._dlq_count,
+                self._dlq_path,
+            )
+        except Exception as dlq_err:
+            logger.error("Failed to write to DLQ file: %s", dlq_err)
 
     async def _process_trade_update(self, update: dict[str, Any]):
         """
@@ -391,8 +789,30 @@ class AlpacaStreamClient:
             broker_order_id = order_data.get("id")
             client_order_id = order_data.get("client_order_id")
             status = order_data.get("status")
-            filled_qty = float(order_data.get("filled_qty", 0))
-            avg_fill_price = float(order_data.get("filled_avg_price") or order_data.get("avg_fill_price") or 0) or None
+            # V7 FF-3 / Wave-25 (2026-05-03): the previous
+            # `float(order_data.get("filled_qty", 0))` raised TypeError
+            # when the broker sent JSON `null` for filled_qty (Python
+            # `None`). The outer `except Exception` swallowed the
+            # message → state divergence (DB never learns about the
+            # update). Coerce explicitly: None / "" / missing → 0.
+            _raw_qty = order_data.get("filled_qty")
+            if _raw_qty is None or _raw_qty == "":
+                filled_qty = 0.0
+            else:
+                try:
+                    filled_qty = float(_raw_qty)
+                except (TypeError, ValueError):
+                    logger.warning(
+                        "FF-3: malformed filled_qty in trade update — "
+                        "defaulting to 0; raw=%r broker_oid=%s",
+                        _raw_qty, broker_order_id,
+                    )
+                    filled_qty = 0.0
+            _raw_price = order_data.get("filled_avg_price") or order_data.get("avg_fill_price")
+            try:
+                avg_fill_price = float(_raw_price or 0) or None
+            except (TypeError, ValueError):
+                avg_fill_price = None
 
             if not broker_order_id or not status:
                 logger.warning("Missing required fields in trade update",
@@ -440,6 +860,18 @@ class AlpacaStreamClient:
                                  client_order_id=client_order_id)
                     return
 
+                # V9 DD3-2 / Wave-43 (2026-05-03): capture previous cumulative
+                # filled_qty BEFORE updating, so the LotTracker block below
+                # can compute the INCREMENTAL fill (filled_qty is cumulative
+                # in Alpaca's semantics; calling create_lot with the cumulative
+                # value on every partially_filled event creates duplicate
+                # position_lots rows).
+                _prev_filled_qty_raw = getattr(order, "filled_qty", None) or 0
+                try:
+                    _prev_filled_qty = float(_prev_filled_qty_raw)
+                except (TypeError, ValueError):
+                    _prev_filled_qty = 0.0
+
                 # Update order status and fill information
                 from decimal import Decimal
                 await orders_repo.attach_broker_result(
@@ -455,6 +887,114 @@ class AlpacaStreamClient:
                            broker_order_id=broker_order_id,
                            new_status=internal_status,
                            filled_qty=filled_qty)
+
+                try:
+                    accounting = await apply_incremental_fill_accounting(
+                        session,
+                        order,
+                        previous_filled_qty=_prev_filled_qty,
+                        cumulative_filled_qty=filled_qty,
+                        avg_fill_price=avg_fill_price,
+                        status=internal_status,
+                        broker_order_data=order_data,
+                    )
+                    if accounting["applied"]:
+                        logger.info(
+                            "BB-8 / DD3-2: fill accounting persisted",
+                            order_id=order.id,
+                            broker_order_id=broker_order_id,
+                            side=accounting["side"],
+                            incremental_qty=accounting["incremental_qty"],
+                            execution_id=accounting["execution_id"],
+                        )
+                        if accounting["side"] == "sell":
+                            # V10 YY-2 / Wave-52 (2026-05-03): emit
+                            # ORDER_FILLED audit row for realized exits.
+                            try:
+                                from backend.services.audit_service import (
+                                    AuditAction, AuditEntity,
+                                    ComplianceAuditService,
+                                )
+                                _audit = ComplianceAuditService(session)
+                                await _audit.log(
+                                    action=AuditAction.ORDER_FILLED,
+                                    entity=AuditEntity.ORDER,
+                                    entity_id=str(order.id),
+                                    actor="system:alpaca_stream",
+                                    payload={
+                                        "symbol": order.symbol,
+                                        "side": order.side,
+                                        "qty": float(accounting["incremental_qty"]),
+                                        "price": float(accounting["price"]),
+                                        "status": internal_status,
+                                        "broker_order_id": broker_order_id,
+                                    },
+                                )
+                            except Exception as _audit_err:
+                                logger.debug(
+                                    "YY-2: ORDER_FILLED audit dispatch "
+                                    "skipped: %s", _audit_err,
+                                )
+                        await session.commit()
+                    elif accounting["reason"] != "non_fill_status":
+                        logger.debug(
+                            "Fill accounting skipped for order %s: %s",
+                            order.id,
+                            accounting,
+                        )
+                except Exception as _accounting_err:
+                    # Don't fail order processing on accounting failure.
+                    logger.warning(
+                        "BB-8: fill accounting failed for order %s: %s",
+                        order.id, _accounting_err,
+                        exc_info=True,
+                    )
+                    try:
+                        await session.rollback()
+                    except Exception as _rb_err:
+                        logger.error(
+                            "UU2-C: db.rollback() after accounting failure "
+                            "also failed for order %s: %s — session may be poisoned",
+                            order.id, _rb_err,
+                        )
+
+                if internal_status == "filled":
+                    await self._sync_positions_after_terminal_fill(
+                        order_id=str(order.id),
+                        broker_order_id=broker_order_id,
+                        symbol=str(order.symbol),
+                    )
+
+                # REMEDIATION: Track terminal order statuses for early pending-entry cleanup.
+                # V4 H-1 / Wave-16d (2026-05-02): record BOTH the broker
+                # `order_data["id"]` AND the internal DB UUID
+                # `str(order.id)`. The previous code only stored the
+                # broker id, but live_engine._pending_entry_order_ids[sym]
+                # tracks the internal DB UUID — `is_order_terminal(uuid)`
+                # therefore never matched, and the early-clear path was
+                # dead. Symbols stayed locked for the full 30-tick
+                # cooldown after every reject. With both ids in the
+                # set, `is_order_terminal()` answers correctly regardless
+                # of which id the caller has. The cap doubles to 2000-keep-1000
+                # to preserve the previous effective horizon (~500 orders).
+                if internal_status in ("rejected", "cancelled", "expired"):
+                    broker_oid = order_data.get("id", "")
+                    if broker_oid:
+                        self._terminal_order_ids.add(broker_oid)
+                    try:
+                        # `order.id` is the internal DB UUID. Store as
+                        # str so set lookups by either form match.
+                        if order is not None and getattr(order, "id", None):
+                            self._terminal_order_ids.add(str(order.id))
+                    except Exception:
+                        # Defensive: never let a tracking failure break
+                        # the WS handler.
+                        pass
+                    # Cap set size to prevent unbounded growth.
+                    if len(self._terminal_order_ids) > 2000:
+                        self._terminal_order_ids = set(
+                            list(self._terminal_order_ids)[-1000:]
+                        )
 
                 # ✅ FIX: Broadcast order update to frontend via WebSocket
                 try:
@@ -500,6 +1040,220 @@ class AlpacaStreamClient:
                         update=update,
                         error=str(e),
                         error_type=type(e).__name__)
+
+    async def _sync_positions_after_terminal_fill(
+        self,
+        *,
+        order_id: str,
+        broker_order_id: str,
+        symbol: str,
+    ) -> None:
+        """Refresh local positions after a broker-confirmed terminal fill."""
+        try:
+            from backend.services.portfolio_sync_service import get_portfolio_sync_service
+
+            sync_service = get_portfolio_sync_service()
+            result = await sync_service.sync_full_portfolio("system:alpaca_stream")
+            if result.get("success"):
+                positions = result.get("positions") or []
+                logger.info(
+                    "P7.6: local positions synced after filled trade update",
+                    order_id=order_id,
+                    broker_order_id=broker_order_id,
+                    symbol=symbol,
+                    position_count=len(positions),
+                )
+            else:
+                logger.warning(
+                    "P7.6: post-fill local position sync returned failure",
+                    order_id=order_id,
+                    broker_order_id=broker_order_id,
+                    symbol=symbol,
+                    error=result.get("error"),
+                )
+        except Exception as exc:
+            logger.warning(
+                "P7.6: post-fill local position sync failed for order %s "
+                "(broker=%s, symbol=%s): %s",
+                order_id,
+                broker_order_id,
+                symbol,
+                exc,
+            )
+
+    def is_order_terminal(self, order_id: str) -> bool:
+        """Check if an order reached terminal state (rejected/cancelled/expired).
+
+        Accepts EITHER the broker `order_id` (Alpaca's id) or the internal
+        DB UUID (`Order.id`). V4 H-1 / Wave-16d (2026-05-02): the
+        `_on_trade_update` recorder pushes both forms into
+        `_terminal_order_ids` so this lookup answers correctly regardless
+        of which form the caller has — `live_engine` carries the internal
+        UUID; broker / API consumers carry the broker id. Parameter
+        renamed from `broker_order_id` to `order_id` to reflect the
+        unified semantics.
+        """
+        return order_id in self._terminal_order_ids
+
+    async def _gap_fill_after_reconnect(self) -> None:
+        """EXEC-002: Poll recent orders for missed fills after WebSocket reconnect.
+
+        B2: Uses actual gap duration (time since last connection) instead of
+        a fixed 5-minute window. Minimum 5 minutes, capped at 1 hour.
+        """
+        try:
+            from datetime import timedelta
+
+            # B2: Compute actual gap duration
+            if self._last_connected_at > 0:
+                gap_seconds = time.time() - self._last_connected_at
+            else:
+                gap_seconds = 300  # Default 5 minutes if no prior connection
+
+            # Minimum 5 min, extend to cover gap + 1 min buffer, cap at 1 hour
+            lookback_seconds = min(max(gap_seconds + 60, 300), 3600)
+
+            logger.info(
+                "EXEC-002 gap-fill: gap_duration=%.0fs, lookback_window=%.0fs",
+                gap_seconds, lookback_seconds,
+            )
+
+            cutoff = datetime.now(UTC) - timedelta(seconds=lookback_seconds)
+            async with get_session_context() as session:
+                orders_repo = OrdersRepo(session)
+                # Fetch orders that may have changed during the gap
+                recent_orders = await orders_repo.get_orders_since(cutoff)
+                if not recent_orders:
+                    logger.info("EXEC-002 gap-fill: no recent orders to reconcile")
+                    return
+
+                reconciled = 0
+                for order in recent_orders:
+                    if not order.broker_order_id:
+                        continue
+                    try:
+                        # Query broker for current status
+                        import httpx
+                        base_url = "https://paper-api.alpaca.markets" if self.is_paper else "https://api.alpaca.markets"
+                        async with httpx.AsyncClient() as client:
+                            resp = await client.get(
+                                f"{base_url}/v2/orders/{order.broker_order_id}",
+                                headers={
+                                    "APCA-API-KEY-ID": self.api_key,
+                                    "APCA-API-SECRET-KEY": self.api_secret,
+                                },
+                                timeout=10.0,
+                            )
+                            if resp.status_code == 200:
+                                broker_data = resp.json()
+                                broker_status = self._map_alpaca_status(broker_data.get("status", ""))
+                                current_db_status = order.status
+                                previous_filled_qty = _decimal_or_none(
+                                    getattr(order, "filled_qty", None)
+                                ) or Decimal("0")
+                                filled_qty = _decimal_or_none(
+                                    broker_data.get("filled_qty")
+                                ) or Decimal("0")
+                                avg_price = _decimal_or_none(
+                                    broker_data.get("filled_avg_price")
+                                )
+                                previous_price = _decimal_or_none(
+                                    getattr(order, "avg_fill_price", None)
+                                )
+                                needs_update = (
+                                    broker_status != current_db_status
+                                    or filled_qty != previous_filled_qty
+                                    or (
+                                        avg_price is not None
+                                        and avg_price != previous_price
+                                    )
+                                )
+                                if needs_update:
+                                    await orders_repo.attach_broker_result(
+                                        order.id,
+                                        status=broker_status,
+                                        filled_qty=filled_qty if filled_qty else None,
+                                        avg_fill_price=avg_price,
+                                    )
+                                    await session.commit()
+                                    try:
+                                        accounting = await apply_incremental_fill_accounting(
+                                            session,
+                                            order,
+                                            previous_filled_qty=previous_filled_qty,
+                                            cumulative_filled_qty=filled_qty,
+                                            avg_fill_price=avg_price,
+                                            status=broker_status,
+                                            broker_order_data=broker_data,
+                                        )
+                                        if accounting["applied"]:
+                                            await session.commit()
+                                            logger.warning(
+                                                "EXEC-002 gap-fill: persisted fill accounting for order %s qty=%s execution=%s",
+                                                order.broker_order_id,
+                                                accounting["incremental_qty"],
+                                                accounting["execution_id"],
+                                            )
+                                        elif accounting["reason"] != "non_fill_status":
+                                            logger.debug(
+                                                "EXEC-002 gap-fill: accounting skipped for %s: %s",
+                                                order.broker_order_id,
+                                                accounting,
+                                            )
+                                    except Exception as accounting_error:
+                                        await session.rollback()
+                                        logger.warning(
+                                            "EXEC-002 gap-fill: accounting failed for order %s: %s",
+                                            order.broker_order_id,
+                                            accounting_error,
+                                            exc_info=True,
+                                        )
+                                    reconciled += 1
+                                    logger.warning(
+                                        "EXEC-002 gap-fill: reconciled order %s: %s -> %s",
+                                        order.broker_order_id, current_db_status, broker_status,
+                                    )
+
+                                    # V5 S-WS-GAP-1 / Wave-17c (2026-05-03):
+                                    # the steady-state path
+                                    # (`_on_trade_update`) records terminal
+                                    # ids into `_terminal_order_ids` so
+                                    # live_engine's early-clear path can
+                                    # un-stick rejected symbols. Across a
+                                    # WS gap, that path doesn't fire — the
+                                    # terminal status was discovered by
+                                    # gap-fill REST polling instead. We
+                                    # must re-populate `_terminal_order_ids`
+                                    # here too, otherwise wave-16d's
+                                    # H-1 unification holds in-process but
+                                    # regresses across every WS reconnect:
+                                    # the symbol stays locked for the full
+                                    # 30-tick TTL after a gap-window reject.
+                                    if broker_status in (
+                                        "rejected", "cancelled", "expired"
+                                    ):
+                                        broker_oid = order.broker_order_id
+                                        if broker_oid:
+                                            self._terminal_order_ids.add(broker_oid)
+                                        try:
+                                            if order.id is not None:
+                                                self._terminal_order_ids.add(str(order.id))
+                                        except Exception:
+                                            pass
+                                        if len(self._terminal_order_ids) > 2000:
+                                            self._terminal_order_ids = set(
+                                                list(self._terminal_order_ids)[-1000:]
+                                            )
+                    except Exception as e:
+                        logger.warning("EXEC-002 gap-fill: failed to reconcile order %s: %s",
+                                      order.broker_order_id, e)
+                        continue
+
+                logger.info("EXEC-002 gap-fill complete: %d orders reconciled out of %d checked",
+                           reconciled, len(recent_orders))
+
+        except Exception as e:
+            logger.error("EXEC-002 gap-fill failed (non-fatal): %s", e)
 
     def _map_alpaca_status(self, alpaca_status: str) -> str:
         """
@@ -589,12 +1343,24 @@ class AlpacaStreamClient:
                     # P&L-033: Reset slow-retry counter on successful connection
                     self._slow_retry_cycles = 0
 
+                    # EXEC-002: Gap-fill after reconnect — check for missed fills
+                    await self._gap_fill_after_reconnect()
+
                     # Listen for messages
                     await self.listen()
 
                 # Connection lost, attempt reconnection
                 if self.should_reconnect:
                     self.reconnect_attempts += 1
+
+                    # B2: Track total reconnect count across the session
+                    self._reconnect_count += 1
+                    if self._reconnect_count > 10:
+                        logger.critical(
+                            "Stream instability: %d reconnects this session — "
+                            "order update reliability degraded",
+                            self._reconnect_count,
+                        )
 
                     if self.reconnect_attempts >= self.max_reconnect_attempts:
                         logger.error("Max reconnection attempts reached, entering cooldown before retry cycle")
@@ -648,14 +1414,24 @@ class AlpacaStreamClient:
         This indicates potential order update loss and requires immediate attention.
         """
         try:
-            # Try to import and use the alert system
+            # V4 P-P0-4 (2026-05-02): the previous code imported
+            # `emit_alert` from backend.monitoring.slo_monitor and
+            # `increment_counter` from backend.observability.metrics —
+            # neither symbol exists. Both `except ImportError: pass`
+            # branches always fired, dropping the alert and skipping
+            # the metric on every WS max-reconnect event. Use the
+            # canonical send_alert API; metric becomes a Prometheus
+            # Counter declared on the global REGISTRY (visible at
+            # /metrics post wave-12e).
             try:
-                from backend.monitoring.slo_monitor import emit_alert
-                await emit_alert(
-                    alert_type="WebSocketMaxReconnects",
-                    severity="critical",
-                    title="Alpaca WebSocket Max Reconnects Reached",
-                    message=(
+                from backend.infra.alerting import (
+                    AlertCategory, AlertSeverity, send_alert,
+                )
+                await send_alert(
+                    AlertCategory.CONNECTIVITY,
+                    AlertSeverity.CRITICAL,
+                    "Alpaca WebSocket Max Reconnects Reached",
+                    (
                         f"WebSocket connection to Alpaca failed after {self.max_reconnect_attempts} "
                         "reconnection attempts. Order updates may be lost. "
                         "Manual intervention required."
@@ -665,20 +1441,31 @@ class AlpacaStreamClient:
                         "max_attempts": self.max_reconnect_attempts,
                         "last_reconnect_delay": self.reconnect_delay,
                         "is_paper": self.is_paper,
-                    }
+                    },
                 )
-            except ImportError:
-                pass  # Alert system not available
-            
-            # Also emit Prometheus metric for alerting
+            except Exception as _alert_err:
+                logger.warning(
+                    "WS max-reconnect alert dispatch failed: %s",
+                    _alert_err,
+                )
+
             try:
-                from backend.observability.metrics import increment_counter
-                increment_counter(
-                    "websocket_max_reconnects_total",
-                    labels={"stream_type": "alpaca_trades", "is_paper": str(self.is_paper)}
-                )
-            except ImportError:
-                pass  # Metrics not available
+                from prometheus_client import Counter
+                global _WS_MAX_RECONNECT_COUNTER
+                try:
+                    _WS_MAX_RECONNECT_COUNTER  # type: ignore[name-defined]
+                except NameError:
+                    _WS_MAX_RECONNECT_COUNTER = Counter(
+                        "websocket_max_reconnects_total",
+                        "Total times the Alpaca WS gave up after max reconnects",
+                        ["stream_type", "is_paper"],
+                    )
+                _WS_MAX_RECONNECT_COUNTER.labels(
+                    stream_type="alpaca_trades",
+                    is_paper=str(self.is_paper),
+                ).inc()
+            except Exception:
+                pass
             
             # Log at critical level for log-based alerting
             logger.critical(

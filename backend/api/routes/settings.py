@@ -18,9 +18,10 @@ import os
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
+from backend.infra.security import AuthenticatedUser, require_admin
 from backend.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -115,8 +116,17 @@ def _get_engine(request: Request) -> Any:
 
 
 @router.get("/organism")
-async def get_organism_settings(request: Request) -> dict[str, Any]:
-    """Get current organism engine configuration."""
+async def get_organism_settings(
+    request: Request,
+    current_user: AuthenticatedUser = Depends(require_admin),
+) -> dict[str, Any]:
+    """Get current organism engine configuration.
+
+    V10 AA4-3 / Wave-50 (2026-05-03): added require_admin.  Previously
+    any registered user could read the live universe, tick interval,
+    max_position_pct, ATR multipliers, etc.  PUT was already gated; GET
+    now matches.
+    """
     from backend.organism.live_engine import (
         LIVE_LOOKBACK, LIVE_TIMEFRAME, MAX_OPEN_POSITIONS,
         RETRAIN_INTERVAL, MIN_BARS, USE_STREAMING,
@@ -144,11 +154,25 @@ async def get_organism_settings(request: Request) -> dict[str, Any]:
     return settings
 
 
+def _check_governance(request: Request) -> None:
+    """H5: Enforce governance controls on settings mutations.
+    Raises HTTPException if organism is frozen or halted."""
+    governance = getattr(request.app.state, "organism_governance", None)
+    if governance:
+        if getattr(governance, "is_frozen", False):
+            raise HTTPException(status_code=403, detail="Organism is frozen — settings changes blocked")
+        if hasattr(governance, "is_trading_halted") and governance.is_trading_halted:
+            raise HTTPException(status_code=403, detail="Trading is halted — settings changes blocked")
+
+
 @router.put("/organism")
 async def update_organism_settings(
     request: Request, body: OrganismSettings,
+    # V7 AA-M-3 / Wave-24 (2026-05-03): admin-only.
+    current_user: AuthenticatedUser = Depends(require_admin),
 ) -> dict[str, Any]:
     """Update organism engine configuration with hot-reload."""
+    _check_governance(request)
     scheduler = _get_scheduler(request)
     config = body.model_dump(exclude_unset=True)
 
@@ -171,8 +195,14 @@ async def update_organism_settings(
 
 
 @router.get("/trading")
-async def get_trading_settings(request: Request) -> dict[str, Any]:
-    """Get current trading parameters."""
+async def get_trading_settings(
+    request: Request,
+    current_user: AuthenticatedUser = Depends(require_admin),
+) -> dict[str, Any]:
+    """Get current trading parameters.
+
+    V10 AA4-3 / Wave-50 (2026-05-03): added require_admin (matches PUT).
+    """
     from backend.organism.live_engine import LONG_ONLY
 
     engine = _get_engine(request)
@@ -197,8 +227,11 @@ async def get_trading_settings(request: Request) -> dict[str, Any]:
 @router.put("/trading")
 async def update_trading_settings(
     request: Request, body: TradingSettings,
+    # V7 AA-M-3 / Wave-24 (2026-05-03): admin-only.
+    current_user: AuthenticatedUser = Depends(require_admin),
 ) -> dict[str, Any]:
     """Update trading parameters with hot-reload."""
+    _check_governance(request)
     scheduler = _get_scheduler(request)
     config = body.model_dump(exclude_unset=True)
 
@@ -218,8 +251,14 @@ async def update_trading_settings(
 
 
 @router.get("/ml")
-async def get_ml_settings(request: Request) -> dict[str, Any]:
-    """Get current ML model parameters."""
+async def get_ml_settings(
+    request: Request,
+    current_user: AuthenticatedUser = Depends(require_admin),
+) -> dict[str, Any]:
+    """Get current ML model parameters.
+
+    V10 AA4-3 / Wave-50 (2026-05-03): added require_admin (matches PUT).
+    """
     from backend.organism.live_engine import RETRAIN_INTERVAL
 
     engine = _get_engine(request)
@@ -240,8 +279,11 @@ async def get_ml_settings(request: Request) -> dict[str, Any]:
 @router.put("/ml")
 async def update_ml_settings(
     request: Request, body: MLSettings,
+    # V7 AA-M-3 / Wave-24 (2026-05-03): admin-only.
+    current_user: AuthenticatedUser = Depends(require_admin),
 ) -> dict[str, Any]:
     """Update ML model parameters with hot-reload."""
+    _check_governance(request)
     scheduler = _get_scheduler(request)
     config = body.model_dump(exclude_unset=True)
 
@@ -261,7 +303,11 @@ async def update_ml_settings(
 
 
 @router.post("/restart-engine")
-async def restart_engine(request: Request) -> dict[str, Any]:
+async def restart_engine(
+    request: Request,
+    # V7 AA-M-4 / Wave-24 (2026-05-03): admin-only.
+    current_user: AuthenticatedUser = Depends(require_admin),
+) -> dict[str, Any]:
     """Safely restart the organism engine with current settings."""
     scheduler = _get_scheduler(request)
     if not scheduler:

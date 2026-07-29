@@ -4,7 +4,7 @@ Handles deterministic signal generation and retrieval operations.
 """
 
 import asyncio
-from datetime import datetime
+from datetime import UTC, datetime
 import time
 from typing import Any
 import uuid
@@ -496,7 +496,7 @@ async def create_signal(
             "confidence": signal_request.confidence,
             "tp_pct": 0.02,  # Default 2% take profit
             "sl_pct": 0.01,  # Default 1% stop loss
-            "timestamp": signal_request.timestamp or datetime.utcnow().isoformat(),
+            "timestamp": signal_request.timestamp or datetime.now(UTC).isoformat(),
             "reason": f"User submitted signal {signal_id}"
         }
 

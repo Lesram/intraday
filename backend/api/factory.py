@@ -241,11 +241,26 @@ def _register_health_endpoints(app) -> None:
         try:
             reg = getattr(app.state, "metrics_registry", None)
             if reg and hasattr(reg, "registry"):
-                content = generate_latest(reg.registry)
+                inner = reg.registry
+                content = generate_latest(inner)
             elif reg:
+                inner = reg
                 content = generate_latest(reg)
             else:
+                inner = None
                 content = generate_latest()
+
+            # V4 P-P0-2 (2026-05-02): also emit module-level metrics
+            # declared on the global prometheus_client.REGISTRY (e.g.
+            # the 12 ORGANISM_* metrics in live_engine.py). Without
+            # this, those metrics are declared but never scraped.
+            try:
+                from prometheus_client import REGISTRY as _GLOBAL_REGISTRY
+                if inner is not _GLOBAL_REGISTRY:
+                    content = (content or b"") + generate_latest(_GLOBAL_REGISTRY)
+            except Exception:
+                pass
+
             return Response(content=content, media_type=CONTENT_TYPE_LATEST)
         except Exception as e:
             return Response(content=f"# Metrics error: {e}\n", media_type="text/plain")

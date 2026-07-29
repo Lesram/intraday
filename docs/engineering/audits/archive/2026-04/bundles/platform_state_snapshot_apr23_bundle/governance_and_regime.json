@@ -1,0 +1,44 @@
+{
+  "governance_state": {
+    "source": "organism_brain/governance_state.json",
+    "frozen": false,
+    "trading_halted": false,
+    "disabled_strategies": [],
+    "change_count": 1,
+    "last_reset_date": "2026-03-31",
+    "effective_cooldown_s": 300,
+    "drawdown_limit": 0.20,
+    "max_changes_per_day": 500,
+    "drawdown_triggered_at": null,
+    "note": "Runtime flags are NOT frozen/halted. Pause for strategy review is operational (out-of-band), not enforced at the governance layer on the running ce06d41 container. 33d6138 adds API-level enforcement (commit c306074, H5)."
+  },
+  "regime_state": {
+    "source": "organism_brain/regime_state.json",
+    "history": [],
+    "smoothed_probs": {},
+    "sma_period": 200,
+    "vol_lookback": 80,
+    "trend_threshold": 0.001013,
+    "churn_window": 80,
+    "smoothing_alpha": 0.3,
+    "note": "History is empty on disk; live regime detection operates from recent bar buffer (not persisted turn-by-turn)."
+  },
+  "extra_counters": {
+    "source": "organism_brain/extra_counters.json",
+    "peak_equity": 111784.74,
+    "tick_count": 26860,
+    "bars_since_retrain": 157,
+    "universe_rotation_count": 85,
+    "active_universe": ["NVDA","SPY","QQQ","XLK","XLE","COST","LLY","PSQ","SH","AAPL","AMD","AMZN","AVGO","CAT","CRM","GOOGL","IWM","META","MSFT","TSLA","WMT","XOM"],
+    "protected_symbols": ["PSQ","SH"],
+    "regime_kelly_stats": {
+      "chop":         {"wins": 64, "losses": 155, "total_pnl":  250.25},
+      "trending_up":  {"wins":  3, "losses":   3, "total_pnl":   87.57},
+      "unknown":     {"wins":  0, "losses":   3, "total_pnl":  -12.81}
+    },
+    "open_entry_timestamps_count": 6,
+    "pending_entry": {},
+    "exit_levels": {},
+    "note": "Current session equity (111529.48) is $255.26 below peak (111784.74); -0.23% drawdown from high water mark. Far below 20% kill threshold."
+  }
+}

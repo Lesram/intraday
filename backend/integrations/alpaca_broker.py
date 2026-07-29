@@ -165,7 +165,34 @@ class AlpacaBrokerClient:
         retryable_status_codes = (429, 500, 502, 503, 504)
         last_exception: Exception | None = None
 
+        # V5 S-NET-CB-1 / Wave-18 (2026-05-03): wrap broker HTTP calls
+        # in the technical-failure circuit breaker. The breaker class
+        # exists in `backend/infra/resilience.py` but was previously
+        # not wired to this path — order_service has only the PnL-based
+        # breaker. Without this, a degraded broker (5xx burst) keeps
+        # being hit on every retry × every tick. The breaker opens
+        # after the configured failure threshold and short-circuits
+        # subsequent calls until cooldown elapses, preventing tick-loop
+        # storm and freeing capacity for exits.
+        try:
+            from backend.infra.resilience import (
+                CircuitBreakerOpenException,
+                get_or_create_circuit_breaker,
+            )
+            _breaker = get_or_create_circuit_breaker("alpaca_broker_http")
+        except Exception:
+            _breaker = None
+
         for attempt in range(max_retries + 1):
+            # Refuse to dispatch when the breaker is open (failure storm).
+            if _breaker is not None and not _breaker.allow_request():
+                raise HTTPException(
+                    status_code=503,
+                    detail=(
+                        "Alpaca broker circuit breaker OPEN — refusing "
+                        "to submit; will resume after cooldown."
+                    ),
+                )
             try:
                 response = await self.client.request(
                     method,
@@ -176,11 +203,18 @@ class AlpacaBrokerClient:
 
                 # Success - return immediately
                 if response.status_code < 400:
+                    if _breaker is not None:
+                        _breaker.record_success()
                     return response
 
                 # Non-retryable client error
                 if 400 <= response.status_code < 500 and response.status_code not in retryable_status_codes:
                     error_detail = response.text
+                    # 4xx is a client-shape error, not a broker-health
+                    # event — don't penalise the breaker. Treat it as
+                    # neutral (record_success keeps failure-rate clean).
+                    if _breaker is not None:
+                        _breaker.record_success()
                     raise HTTPException(
                         status_code=response.status_code,
                         detail=f"Alpaca API error: {error_detail}"
@@ -205,6 +239,11 @@ class AlpacaBrokerClient:
                         await asyncio.sleep(delay)
                         continue
                     else:
+                        # 5xx burst exhausted retries — count as breaker failure.
+                        if _breaker is not None:
+                            _breaker.record_failure(
+                                f"http_{response.status_code}_after_retries"
+                            )
                         raise HTTPException(
                             status_code=response.status_code,
                             detail=f"Alpaca API error after {max_retries} retries: {response.text}"
@@ -212,6 +251,8 @@ class AlpacaBrokerClient:
 
             except httpx.TimeoutException as e:
                 last_exception = e
+                if _breaker is not None and attempt == max_retries:
+                    _breaker.record_failure("timeout")
                 if attempt < max_retries:
                     delay = backoff_factor * (2 ** attempt)
                     logger.warning(
@@ -225,6 +266,8 @@ class AlpacaBrokerClient:
 
             except httpx.ConnectError as e:
                 last_exception = e
+                if _breaker is not None and attempt == max_retries:
+                    _breaker.record_failure("connect_error")
                 if attempt < max_retries:
                     delay = backoff_factor * (2 ** attempt)
                     logger.warning(

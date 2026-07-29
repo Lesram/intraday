@@ -56,7 +56,7 @@ def _state_to_response(state: TradingExecutionModeState) -> TradingExecutionMode
 
 @router.get("/execution-mode", response_model=TradingExecutionModeResponse)
 async def get_execution_mode(
-    current_user: AuthenticatedUser = Depends(require_admin()),
+    current_user: AuthenticatedUser = Depends(require_admin),
 ):
     state = get_trading_execution_mode()
     return _state_to_response(state)
@@ -65,7 +65,7 @@ async def get_execution_mode(
 @router.put("/execution-mode", response_model=TradingExecutionModeResponse)
 async def set_execution_mode(
     request: TradingExecutionModeUpdateRequest,
-    current_user: AuthenticatedUser = Depends(require_admin()),
+    current_user: AuthenticatedUser = Depends(require_admin),
 ):
     state = set_trading_execution_mode_override(request.mode, actor=current_user.username)
     return _state_to_response(state)
@@ -73,7 +73,7 @@ async def set_execution_mode(
 
 @router.delete("/execution-mode", response_model=TradingExecutionModeResponse)
 async def clear_execution_mode_override(
-    current_user: AuthenticatedUser = Depends(require_admin()),
+    current_user: AuthenticatedUser = Depends(require_admin),
 ):
     state = clear_trading_execution_mode_override(actor=current_user.username)
     return _state_to_response(state)

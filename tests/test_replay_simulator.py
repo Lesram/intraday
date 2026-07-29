@@ -24,6 +24,16 @@ from backend.organism.replay_simulator import (
 )
 
 
+def test_replay_engine_constructor_does_not_pollute_replay_mode(monkeypatch):
+    """Constructing a replay object must not leak replay mode to later tests."""
+    monkeypatch.delenv("ORGANISM_REPLAY_MODE", raising=False)
+    bars = make_features_dict(["AAPL"], n=600, seed=42)
+
+    ReplayEngine(bars_by_symbol=bars, initial_cash=100_000)
+
+    assert "ORGANISM_REPLAY_MODE" not in os.environ
+
+
 # ═════════════════════════════════════════════════════════════════════════
 #  SimulatedBroker tests
 # ═════════════════════════════════════════════════════════════════════════
@@ -179,9 +189,15 @@ def test_bar_provider_current_price():
 #  ReplayEngine tests
 # ═════════════════════════════════════════════════════════════════════════
 
+@pytest.mark.timeout(180)
 @pytest.mark.asyncio
 async def test_replay_completes_100_ticks():
-    """Synthetic data, 100 ticks, no crash."""
+    """Synthetic data, 100 ticks, no crash.
+
+    V12 W90 (post-cleanup): bumped per-test timeout from default 15s.
+    V13 cleanup bumped it again to 180s after GitHub's cold runner
+    exceeded 60s in the pandas-heavy feature path.  The test still runs
+    the full 100-tick replay; only the CI budget changed."""
     bars = make_features_dict(
         ["AAPL", "MSFT", "SPY"], n=700, seed=42, trend="up",
     )
@@ -189,6 +205,7 @@ async def test_replay_completes_100_ticks():
         bars_by_symbol=bars,
         initial_cash=100_000,
         slippage_bps=5,
+        lookback=200,
     )
     result = await engine.run(max_ticks=100)
 
@@ -198,13 +215,14 @@ async def test_replay_completes_100_ticks():
     assert result.equity_curve[0] > 0
 
 
+@pytest.mark.timeout(180)
 @pytest.mark.asyncio
 async def test_replay_trades_have_valid_pnl():
     """All trades should have non-NaN PnL."""
     bars = make_features_dict(
         ["AAPL", "MSFT", "SPY"], n=700, seed=42, trend="up",
     )
-    engine = ReplayEngine(bars_by_symbol=bars, initial_cash=100_000)
+    engine = ReplayEngine(bars_by_symbol=bars, initial_cash=100_000, lookback=200)
     result = await engine.run(max_ticks=100)
 
     for trade in result.trades:
@@ -360,32 +378,94 @@ async def test_replay_time_override_uses_bar_time():
     assert sim_dt.tzinfo is not None, "Simulated datetime should be timezone-aware"
 
 
+# wave: V13-W93
+@pytest.mark.timeout(120)
 @pytest.mark.asyncio
 async def test_replay_no_throttle_blocking():
-    """With time overrides, replay should not be throttled by entries-per-hour limit.
+    """With time overrides + adequate initial cash, replay should not be
+    throttled by entries-per-hour limit.
 
-    Without the fix, 89.5% of ticks would be blocked. With it, the engine
-    should submit significantly more than 3 orders across 100 ticks.
+    V13 W93 root-cause investigation (scripts/debug/replay_throttle_diagnose.py):
+    the V12-era xfail was misdiagnosed.  100 ticks at $100k initial cash did
+    produce 42 signals — but every one of them was rejected by the
+    Kelly min-notional floor ($2,000), not by the entries-per-hour throttle.
+
+    Diagnostic:
+      total_signals_generated = 42
+      total_orders_submitted  = 0
+      Kelly skip … notional=1438 < min=2000  (×40+)
+      Confidence reject … eff_conf=0.17 < 0.25  (×2)
+
+    With $100k cash + 0.10% learning-mode risk budget, calculated notionals
+    fall in the $1,300-$1,500 range — below the $2,000 protective floor that
+    prevents micro-positions in production.  Bumping to $1,000,000 keeps
+    the same risk-budget ratio but lifts notionals to ~$13k-$15k, well above
+    the floor.  This is the realistic test setup; the engine semantics are
+    unchanged.
+
+    With this fix the test passes, proving the entries-per-hour throttle is
+    NOT blocking replay at max_entries_per_hour=20.
     """
     bars = make_features_dict(
         ["AAPL", "MSFT", "SPY"], n=700, seed=42, trend="up",
     )
     engine = ReplayEngine(
         bars_by_symbol=bars,
-        initial_cash=100_000,
+        initial_cash=1_000_000,  # V13 W93: lifts Kelly notionals above $2k floor
         slippage_bps=5,
         max_entries_per_hour=20,
+        lookback=200,
     )
     result = await engine.run(max_ticks=100)
 
     assert result.ticks == 100
-    total_orders = sum(r.get("orders_submitted", 0) for r in result.tick_results if isinstance(r, dict))
-    # With time overrides + relaxed throttle, we should get more than the old
-    # production limit of 3 entries per hour (which blocked everything in replay)
-    # Hardening: exploration execution path removed — main-book entries only.
-    # With 3 symbols and bar-boundary gating, expect at least 3 orders.
+    total_orders = sum(
+        r.get("orders_submitted", 0)
+        for r in result.tick_results if isinstance(r, dict)
+    )
+    # With $1M cash, Kelly clears the $2k floor; with max_entries_per_hour=20
+    # the throttle is well above the actual entry rate (replay produces
+    # ~0.4 signals/tick).  Expect > 3 orders.
     assert total_orders >= 3, (
-        f"Only {total_orders} orders in 100 ticks — throttle may still be blocking"
+        f"Only {total_orders} orders in 100 ticks — V13-W93 fix may have regressed"
+    )
+
+
+# wave: V13-W93
+@pytest.mark.timeout(180)
+@pytest.mark.asyncio
+async def test_replay_throttle_actually_blocks_at_low_limit():
+    """Companion test: prove the throttle DOES bite when the limit is low.
+
+    If we set max_entries_per_hour=1, the throttle should cap orders at
+    roughly 1/hour.  100 ticks at 1-min cadence ≈ ~1.6 hours ≈ ≤2 entries.
+    This pairs with test_replay_no_throttle_blocking: together they prove
+    the throttle is responsive to its parameter (not always-block, not
+    always-pass).
+    """
+    bars = make_features_dict(
+        ["AAPL", "MSFT", "SPY"], n=700, seed=42, trend="up",
+    )
+    engine = ReplayEngine(
+        bars_by_symbol=bars,
+        initial_cash=1_000_000,
+        slippage_bps=5,
+        max_entries_per_hour=1,  # tight throttle
+        timeframe="1Min",
+        lookback=200,
+    )
+    result = await engine.run(max_ticks=100)
+    entry_orders = [
+        order for order in result.orders
+        if order.get("side") == "buy"
+    ]
+    # 100 minutes ≈ 1.66 hours, so a 1/hr entry throttle caps at ≤ 2.
+    # We allow up to 3 to absorb edge effects in the throttle window math.
+    # The companion high-throttle test proves replay is not always-blocked;
+    # this low-throttle test proves the cap is honored when entries appear.
+    assert len(entry_orders) <= 3, (
+        "Entry throttle ineffective: got "
+        f"{len(entry_orders)} entry orders with 1/hr cap"
     )
 
 
@@ -414,6 +494,7 @@ async def test_replay_daily_timeframe_uses_wider_stops():
             )
 
 
+@pytest.mark.timeout(180)
 @pytest.mark.asyncio
 async def test_replay_intraday_timeframe_uses_tight_stops():
     """Intraday replay should use intraday exit config (tighter stops, 8% max loss)."""
@@ -425,6 +506,7 @@ async def test_replay_intraday_timeframe_uses_tight_stops():
         initial_cash=100_000,
         slippage_bps=5,
         timeframe="1Min",
+        lookback=200,
     )
     result = await engine.run(max_ticks=50)
 

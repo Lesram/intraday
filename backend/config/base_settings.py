@@ -188,6 +188,10 @@ class AlpacaConfig(BaseSettings):
     @classmethod
     def set_paper_defaults(cls, v):
         """Set environment-specific defaults for paper trading."""
+        env_value = os.getenv("ALPACA_PAPER")
+        if env_value is not None:
+            return env_value.lower() in ("true", "1", "yes", "on")
+
         env = os.getenv("APP_ENVIRONMENT", "development").lower()
         if env == "development":
             return True  # dev: paper trading by default
@@ -278,6 +282,10 @@ class DataConfig(BaseSettings):
     @classmethod
     def set_mock_data_defaults(cls, v):
         """Set environment-specific defaults for mock data usage."""
+        env_value = os.getenv("USE_MOCK_DATA")
+        if env_value is not None:
+            return env_value.lower() in ("true", "1", "yes", "on")
+
         env = os.getenv("APP_ENVIRONMENT", "development").lower()
         if env == "development":
             return True  # dev: USE_MOCK_DATA=True
@@ -920,7 +928,9 @@ class Settings(BaseSettings):
             "ALPACA_API_KEY": "alpaca.api_key",
             "ALPACA_SECRET_KEY": "alpaca.secret_key",
             "ALPACA_BASE_URL": "alpaca.base_url",
+            "ALPACA_PAPER": "alpaca.paper",
             "ALPACA_PAPER_TRADING": "alpaca.paper_trading",
+            "USE_MOCK_BROKER": "alpaca.use_mock_broker",
             # Data mappings
             "DATABASE_URL": "data.database_url",
             "REDIS_URL": "data.redis_url",
@@ -933,6 +943,7 @@ class Settings(BaseSettings):
             "TWITTER_API_KEY": "data.twitter_api_key",
             "TWITTER_API_SECRET": "data.twitter_api_secret",
             "TWITTER_BEARER_TOKEN": "data.twitter_bearer_token",
+            "USE_MOCK_DATA": "data.use_mock_data",
             # Metrics mappings
             "LOG_LEVEL": "metrics.log_level",
             "PROMETHEUS_PORT": "metrics.prometheus_port",
@@ -1742,4 +1753,3 @@ class ConfigWatcher:
 
 # Re-export the compat class under the expected name for tests
 BaseSettings = _CompatBaseSettings  # type: ignore[assignment]
-

@@ -1,0 +1,69 @@
+{
+  "date": "2026-03-11",
+  "head_sha": "8db0fab",
+  "session_utc": "13:43 — ~21:00 (close)",
+  "ticks_analyzed": "~362 (95 in retained log buffer)",
+
+  "pipeline_summary": {
+    "total_candidates_reaching_gate_logging": 27,
+    "total_by_source": {
+      "alpha_breakout": 27,
+      "pure_breakout": 0,
+      "note": "Source not distinguished in gate rejection logs — all logged as 'Entry below main-book threshold'"
+    },
+    "total_passing_all_gates": 0,
+    "orders_submitted": 0
+  },
+
+  "rejections_by_reason": {
+    "confidence_gate": {
+      "total": 27,
+      "sub_reasons": {
+        "eff_conf_0.00_below_0.25_floor": 18,
+        "eff_conf_0.01_to_0.24_below_0.25_floor": 9,
+        "near_miss_0.20_to_0.25": 2
+      }
+    },
+    "trending_down_block": 2,
+    "regime_transition_cooldown": 1,
+    "data_stale_at_startup": 1,
+    "warmup_period": 1,
+    "fitness_gate": 0,
+    "liquidity_gate": 0,
+    "sector_gate": 0,
+    "circuit_breaker": 0,
+    "cooldown": 0,
+    "pending_entry": 0,
+    "bar_boundary": 0,
+    "no_size": 0
+  },
+
+  "confidence_distribution": {
+    "0.00": 18,
+    "0.13": 2,
+    "0.14": 2,
+    "0.15": 1,
+    "0.17": 1,
+    "0.21": 1,
+    "0.22": 1,
+    "max": 0.22,
+    "min": 0.00,
+    "mean": 0.057,
+    "median": 0.00,
+    "gate_floor": 0.25,
+    "closest_to_passing": "TSLA at 0.22 (gap: 0.03)"
+  },
+
+  "symbols_with_repeated_near_miss_rejections": [
+    {"symbol": "XLE", "rejections": 5, "max_eff_conf": 0.21, "regimes": ["trending_up", "trending_down", "high_vol"]},
+    {"symbol": "TSLA", "rejections": 5, "max_eff_conf": 0.22, "regimes": ["trending_up", "trending_down", "high_vol"]},
+    {"symbol": "SNOW", "rejections": 8, "max_eff_conf": 0.00, "regimes": ["trending_up"]},
+    {"symbol": "IWM", "rejections": 3, "max_eff_conf": 0.00, "regimes": ["trending_up", "high_vol"]},
+    {"symbol": "AMD", "rejections": 2, "max_eff_conf": 0.00, "regimes": ["high_vol"]},
+    {"symbol": "GOOGL", "rejections": 2, "max_eff_conf": 0.13, "regimes": ["high_vol"]}
+  ],
+
+  "notable_absence": {
+    "XOM": "XOM moved +2.43% today but was NOT logged in any rejection. This means the alpha/breakout scanner did not produce XOM as a candidate at all — the breakout score computation did not detect XOM's intraday rally. This is the most significant pipeline finding."
+  }
+}

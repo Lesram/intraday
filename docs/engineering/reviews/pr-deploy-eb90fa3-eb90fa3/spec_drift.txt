@@ -1,0 +1,6 @@
+Checking 3-way spec-vs-runtime drift...
+  Parsed 8 constants from mapss.md
+  Runtime snapshot has 36 keys
+  Manifest has 11 constants
+  All 9 core constants agree across all sources.
+No spec drift detected.

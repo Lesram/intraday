@@ -116,31 +116,21 @@ def secure_dumps(obj: Any) -> bytes:
     return length + data + signature
 
 
-def secure_loads(signed_data: bytes, allow_unsigned: bool = False) -> Any:
+def secure_loads(signed_data: bytes) -> Any:
     """
     Securely deserialize bytes with HMAC verification.
-    
+
     Args:
         signed_data: The signed pickle bytes
-        allow_unsigned: If True, attempt to load unsigned pickle (for migration)
-        
+
     Returns:
         The deserialized object
-        
+
     Raises:
         UnsignedPickleError: If data is not in signed format
         TamperedPickleError: If signature verification fails
     """
     if len(signed_data) < HEADER_SIZE + SIGNATURE_LENGTH + 1:
-        if allow_unsigned:
-            # Attempt to load as plain pickle (migration path)
-            import warnings
-            warnings.warn(
-                "Loading unsigned pickle data. Re-save with secure_dump to sign.",
-                RuntimeWarning,
-                stacklevel=2
-            )
-            return pickle.loads(signed_data)
         raise UnsignedPickleError("Data too short to be signed pickle")
 
     # Extract length
@@ -150,14 +140,6 @@ def secure_loads(signed_data: bytes, allow_unsigned: bool = False) -> Any:
     # Validate structure
     expected_total = HEADER_SIZE + data_length + SIGNATURE_LENGTH
     if len(signed_data) != expected_total:
-        if allow_unsigned:
-            import warnings
-            warnings.warn(
-                "Loading unsigned pickle data. Re-save with secure_dump to sign.",
-                RuntimeWarning,
-                stacklevel=2
-            )
-            return pickle.loads(signed_data)
         raise UnsignedPickleError(
             f"Data length mismatch: expected {expected_total}, got {len(signed_data)}"
         )
@@ -186,19 +168,18 @@ def secure_dump(obj: Any, file: BinaryIO) -> None:
     file.write(signed_data)
 
 
-def secure_load(file: BinaryIO, allow_unsigned: bool = False) -> Any:
+def secure_load(file: BinaryIO) -> Any:
     """
     Securely deserialize from a file with HMAC verification.
-    
+
     Args:
         file: Binary file handle open for reading
-        allow_unsigned: If True, attempt to load unsigned pickle
-        
+
     Returns:
         The deserialized object
     """
     signed_data = file.read()
-    return secure_loads(signed_data, allow_unsigned=allow_unsigned)
+    return secure_loads(signed_data)
 
 
 def secure_dump_to_path(obj: Any, path: str | Path) -> None:
@@ -215,19 +196,18 @@ def secure_dump_to_path(obj: Any, path: str | Path) -> None:
         secure_dump(obj, f)
 
 
-def secure_load_from_path(path: str | Path, allow_unsigned: bool = False) -> Any:
+def secure_load_from_path(path: str | Path) -> Any:
     """
     Securely deserialize from a file path.
-    
+
     Args:
         path: File path to read from
-        allow_unsigned: If True, attempt to load unsigned pickle
-        
+
     Returns:
         The deserialized object
     """
     with open(path, 'rb') as f:
-        return secure_load(f, allow_unsigned=allow_unsigned)
+        return secure_load(f)
 
 
 def is_signed_pickle(data: bytes) -> bool:
@@ -257,28 +237,31 @@ def migrate_pickle_file(
     output_path: str | Path | None = None
 ) -> bool:
     """
-    Migrate an unsigned pickle file to signed format.
-    
+    Check if a pickle file is in signed format.
+
+    Unsigned pickle files can no longer be loaded for security reasons.
+    Re-generate the artifact using the code that originally produced it.
+
     Args:
-        input_path: Path to unsigned pickle file
-        output_path: Path for signed output (defaults to input_path)
-        
+        input_path: Path to pickle file
+        output_path: Ignored (kept for API compatibility)
+
     Returns:
-        True if migration was successful
+        True if file is already signed
+
+    Raises:
+        UnsignedPickleError: If file is unsigned and cannot be auto-migrated
     """
     input_path = Path(input_path)
-    output_path = Path(output_path) if output_path else input_path
 
-    # Load unsigned pickle
     with open(input_path, 'rb') as f:
         data = f.read()
 
-    # Check if already signed
     if is_signed_pickle(data):
-        return True  # Already signed
+        return True
 
-    # Load and re-save with signature
-    obj = pickle.loads(data)
-    secure_dump_to_path(obj, output_path)
-
-    return True
+    raise UnsignedPickleError(
+        f"File {input_path} is unsigned pickle. "
+        "Re-generate this artifact with secure_dump_to_path() to sign it. "
+        "Raw pickle loading has been removed for security (COMP-400)."
+    )

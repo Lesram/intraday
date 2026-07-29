@@ -1,0 +1,1 @@
+{"detail":"Authentication required","error":{"type":"http_error","detail":"Authentication required"}}HTTP 401

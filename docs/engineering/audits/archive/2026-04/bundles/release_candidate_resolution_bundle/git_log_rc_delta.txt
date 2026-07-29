@@ -1,0 +1,8 @@
+eb90fa3 fix(compose): align docker-compose.yml drawdown-kill fallback with code default
+0ac6e2d fix(governance): canonical drawdown-kill resolution + startup validator
+33d6138 feat(alerting): wire critical events to Slack/webhook alerts
+c306074 fix(governance): H5 settings API enforces frozen/halted state
+bb5cbb5 feat(risk): per-trade notional cap + daily max-loss circuit breaker
+679ffd2 fix(real-money): H1 production risk-budget cap + H2 feature drift guard
+b97f903 experiment(exits): chop trailing-stop giveback control [Exp 4] + observation tooling giveback section
+15cc0a4 fix(mechanical): G1 exit-level restore warning + G2 cooldown-on-success-only + G3 NaN pyramid guard

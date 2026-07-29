@@ -1,0 +1,36 @@
+commit eaa4b2fe4a2eedbe757dd7375cc950697e14b923
+Author: Marsel Kamberaj <marselkei@Marsels-MacBook-Pro.local>
+Date:   Thu Apr 9 21:38:14 2026 -0700
+
+    fix(brain): introduce _write_manifest_guarded helper, route save() through it [F1/4]
+    
+    Part 1 of 4 of the Full Patch F structural closure.
+    
+    - New _check_trained_overwrite_guard() shared predicate resolves existing
+      state from self._manifest OR on-disk manifest.json OR empty default.
+      Consistent logic across save() and (in F2) save_essential_state().
+    
+    - New _write_manifest_guarded() is the unified manifest write path:
+      computes total_runs from one source (in-memory > on-disk > 0),
+      builds manifest via _apply_live_manifest_fields (Patch B, unchanged),
+      applies trained→fresh guard as defense-in-depth safety net, writes
+      manifest.json, and syncs self._manifest. Returns True/False.
+    
+    - save()'s inline Patch E guard refactored to use the shared check
+      method. Lock-release semantics preserved exactly — the lock.release()
+      on guard-block path stays in save(), not in the helper.
+    
+    - _save_manifest() now delegates to _write_manifest_guarded() with
+      force pass-through from save(). Old inline manifest-build logic
+      removed.
+    
+    - save_essential_state() NOT touched in F1 (deferred to F2).
+    
+    - 7 new tests. All 158 tests pass (7 F1 + 8 Patch E + 3 F-lite +
+      33 Patch A/B/P0/P1 + 107 organism regression subset).
+    
+    Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>
+
+ backend/organism/brain_persistence.py       | 204 ++++++++++++++++-----
+ tests/test_apr10_patch_f1_guarded_helper.py | 265 ++++++++++++++++++++++++++++
+ 2 files changed, 425 insertions(+), 44 deletions(-)

@@ -98,16 +98,23 @@ export const useScannerWebSocket = (autoConnect: boolean = false) => {
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const pingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   
-  // Get WebSocket URL
+  // Get WebSocket URL.
+  // V4 O-6 (2026-05-02): hardcoding ":8000" breaks behind a reverse
+  // proxy (the FE is served at the same origin as the API). Allow
+  // VITE_WS_BASE_URL to fully override; otherwise derive from the
+  // current page origin (no explicit port — the proxy/gateway routes
+  // /api/v1/scanner/ws on the same scheme/host).
   const getWebSocketUrl = useCallback(() => {
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const hostname = window.location.hostname; // Get hostname without port
-    
-    // Get auth token from centralized auth store
     const { useAuthStore } = require('@/store/authStore');
     const token = useAuthStore.getState().accessToken;
-    
-    return `${protocol}//${hostname}:8000/api/v1/scanner/ws${token ? `?token=${token}` : ''}`;
+    const tokenQS = token ? `?token=${token}` : '';
+
+    const override = (import.meta as any).env?.VITE_WS_BASE_URL;
+    if (override) {
+      return `${override.replace(/\/$/, '')}/api/v1/scanner/ws${tokenQS}`;
+    }
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    return `${protocol}//${window.location.host}/api/v1/scanner/ws${tokenQS}`;
   }, []);
   
   // Connect to WebSocket

@@ -1,0 +1,56 @@
+{
+  "wave": 83,
+  "captured_at": "2026-05-04T00:32:00Z",
+  "container_state": {
+    "intra-api-1": "healthy",
+    "trading_platform_db_paper": "healthy",
+    "intra-redis-1": "healthy"
+  },
+  "rebuilt_with_provenance": true,
+  "host_vs_container_byte_parity": {
+    "backend/api/routes/strategy_health.py": {"host_lines": 142, "container_lines": 142, "match": true},
+    "backend/api/routes/deploy_health.py": {"host_lines": 122, "container_lines": 122, "match": true},
+    "backend/organism/live_engine.py": {"host_lines": 7044, "container_lines": 7044, "match": true},
+    "backend/infra/outbox_worker.py": {"host_lines": 1012, "container_lines": 1012, "match": true}
+  },
+  "live_endpoint_probes": {
+    "GET /api/v1/health/strategy": {
+      "status_code": 200,
+      "source": "manifest",
+      "n_trades": 498,
+      "total_pnl": -634.9,
+      "win_rate": 0.3373,
+      "sharpe_ratio_per_trade": -1.0573,
+      "is_profitable": false,
+      "comment": "Auditor's #1 finding now live.  Brain unprofitability exposed at the endpoint."
+    },
+    "GET /api/v1/health/deploy": {
+      "status_code": 200,
+      "source_sha": "97a904a0140d60d9f34f92db601720dab2655cd3",
+      "migration_head": "20260503_000003",
+      "build_time": "2026-05-04T00:31:59Z",
+      "image_sha": "97a904a0140d60d9f34f92db601720dab2655cd3",
+      "runtime_config_hash": "9a5833dff070cf50",
+      "container_hostname": "252de7de2b41",
+      "app_environment": "development"
+    },
+    "GET /api/v1/audit/chain-detail": {
+      "status_code": 200,
+      "rows_returned": "<= limit (live data)",
+      "all_valid_anchored": true
+    }
+  },
+  "outbox_prune_loop_fired": {
+    "log_event": "BB5-F1 outbox prune loop started (retention=30d, interval=86400s)",
+    "first_prune_run_removed": 544,
+    "outbox_count_pre_rebuild": 1398,
+    "outbox_count_post_rebuild": 854,
+    "delta": -544,
+    "comment": "Auditor's BB5-F1 'fix didn't fix' callout: closed.  Live DB row count actually dropped."
+  },
+  "asyncpg_url_translation_fix": {
+    "issue": "Pre-W83 _resolve_migration_head used create_engine on the asyncpg URL, raising and reporting unknown.",
+    "fix": "Translate postgresql+asyncpg:// to postgresql:// before sync-engine connect.",
+    "behavioral_test": "tests/test_v12_w78_deploy_health.py::test_w83_migration_head_translates_asyncpg_url"
+  }
+}

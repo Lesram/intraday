@@ -126,6 +126,10 @@ class AlpacaClient:
         self.test_mode = test_mode
         self.connected = False
 
+        # Consecutive data-fetch error counter for client recycling (A1)
+        self._consecutive_data_errors: int = 0
+        self._RECYCLE_THRESHOLD: int = 5
+
         # Initialize clients
         self._init_clients()
 
@@ -165,6 +169,39 @@ class AlpacaClient:
                 api_key=self.api_key, secret_key=self.secret_key
             )
 
+            # V5 S-NET-T-1 / Wave-18 (2026-05-03): the alpaca-py SDK
+            # constructors accept no explicit HTTP timeout; it calls
+            # `self._session.request(method, url, **opts)` and relies on
+            # opts not carrying a timeout — which means the underlying
+            # requests Session uses no timeout (infinite). A stalled
+            # broker can hang any tick that touches one of these
+            # clients indefinitely. Wrap `_one_request` to inject a
+            # 30-second total timeout if the caller didn't set one.
+            for _client in (
+                self.trading_client,
+                self.stock_data_client,
+                self.crypto_data_client,
+            ):
+                _orig = getattr(_client, "_one_request", None)
+                if _orig is None:
+                    continue
+
+                def _make_wrapper(original_one_request):
+                    def _bounded_one_request(method, url, opts, retry):
+                        if isinstance(opts, dict) and "timeout" not in opts:
+                            opts = dict(opts)
+                            opts["timeout"] = 30.0
+                        return original_one_request(method, url, opts, retry)
+                    return _bounded_one_request
+
+                # Bind via the instance dict so the original method
+                # still resolves through the SDK's MRO when we call it
+                # via `original_one_request(...)`.
+                try:
+                    _client._one_request = _make_wrapper(_orig)  # type: ignore[attr-defined]
+                except Exception:
+                    pass
+
             # Attempt a lightweight connection test unless in test mode
             if not self.test_mode:
                 try:
@@ -202,6 +239,19 @@ class AlpacaClient:
                 self.logger.warning(
                     "Test mode: continuing despite initialization error; marked as disconnected"
                 )
+
+    def _recycle_clients(self) -> None:
+        """Recreate Alpaca SDK client instances to recover from dead connections.
+
+        Called automatically after ``_RECYCLE_THRESHOLD`` consecutive data
+        errors (A1 incident recovery).
+        """
+        self.logger.warning(
+            "Recycling Alpaca clients after %d consecutive data errors",
+            self._consecutive_data_errors,
+        )
+        self._init_clients()
+        self._consecutive_data_errors = 0
 
     async def connect_data_stream(
         self,
@@ -363,9 +413,24 @@ class AlpacaClient:
                 end=end,
             )
 
+            # A1: successful fetch resets consecutive error counter
+            self._consecutive_data_errors = 0
             return df
 
         except Exception as e:
+            # A1: track consecutive data errors for client recycling
+            exc_str = str(e).lower()
+            is_connection_error = (
+                "timeout" in exc_str
+                or "connect" in exc_str
+                or "connection" in exc_str
+                or "refused" in exc_str
+            )
+            if is_connection_error:
+                self._consecutive_data_errors += 1
+                if self._consecutive_data_errors >= self._RECYCLE_THRESHOLD:
+                    self._recycle_clients()
+
             self.logger.error(
                 "Failed to get historical data", symbol=symbol, error=str(e)
             )
@@ -419,7 +484,7 @@ class AlpacaClient:
                     raise ValueError(f"Invalid symbol format: {symbol}")
 
                 # Rate limiting
-                self._rate_limit()
+                await self._async_rate_limit()
 
                 # Convert string enums
                 side_enum = OrderSide.BUY if side.lower() == "buy" else OrderSide.SELL
@@ -570,7 +635,7 @@ class AlpacaClient:
             {"alpaca.operation": "cancel_order", "alpaca.order_id": order_id},
         ) as span:
             try:
-                self._rate_limit()
+                await self._async_rate_limit()
 
                 # Cancel order with API call timing (async wrapper for sync API)
                 api_start_time = time.time()
@@ -635,7 +700,7 @@ class AlpacaClient:
             Dictionary with account information
         """
         try:
-            self._rate_limit()
+            await self._async_rate_limit()
 
             # Get account info (async wrapper for sync API)
             account = await asyncio.to_thread(self.trading_client.get_account)
@@ -712,7 +777,7 @@ class AlpacaClient:
             List of order dictionaries
         """
         try:
-            self._rate_limit()
+            await self._async_rate_limit()
 
             # Get orders (async wrapper for sync API)
             # Some test doubles expect simple kwargs; keep it minimal/compatible
@@ -835,6 +900,13 @@ class AlpacaClient:
 
         Use this in async code paths instead of _rate_limit() to avoid
         blocking the event loop.
+
+        V9 TT-4 / Wave-47 (2026-05-03): the 4 async methods (submit_order,
+        cancel_order, get_account_status, get_recent_orders) previously
+        called sync `self._rate_limit()` which blocked the event loop
+        on `time.sleep()`.  All 4 sites migrated to await this method.
+        Sync methods (get_historical_data, get_current_price) still use
+        the sync version.
         """
         current_time = time.time()
         elapsed = current_time - self.last_request_time
@@ -900,7 +972,7 @@ class AlpacaClient:
 
     def __del__(self):
         """Cleanup on destruction."""
-        if self.connected:
+        if getattr(self, "connected", False):
             self.disconnect()
 
     def get_bars(self, *args, **kwargs) -> pd.DataFrame:

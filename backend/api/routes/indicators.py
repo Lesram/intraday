@@ -74,6 +74,87 @@ class IndicatorsListResponse(BaseModel):
     indicators: list[IndicatorInfo]
 
 
+# V11 prep / Wave-63 (HH2-N-1 partial closure, 2026-05-03): the
+# `calculate_indicator` route was 614 LOC of intermixed concerns —
+# auth, Alpaca timeframe lookup, date-range coercion, paper-trading
+# restriction handling, indicator dispatch, and response assembly.
+# Extracted: Alpaca timeframe / date-range resolution as a pure
+# helper.  Function shrinks ~55 LOC.  Remaining stages identified
+# in docs/architecture/HH2_N1_INDICATOR_SPLIT_PLAN.md (future
+# wave).
+def _resolve_alpaca_date_range(
+    request: "IndicatorRequest",
+):
+    """V11 prep / Wave-63: pure helper extracted from calculate_indicator.
+
+    Returns (start_date, end_date, alpaca_timeframe, limit).
+    Pure function; no I/O.
+
+    Encapsulates:
+      - timeframe string → Alpaca TimeFrame mapping
+      - paper-trading 15-day-old data restriction (intraday only)
+      - default-window logic when request omits start/end
+      - tz-naive normalization for comparison with datetime.now(UTC)
+    """
+    from datetime import UTC, datetime, timedelta
+    from alpaca.data.timeframe import TimeFrame, TimeFrameUnit
+    from dateutil import parser
+
+    timeframe_map = {
+        '1m': TimeFrame(1, TimeFrameUnit.Minute),
+        '5m': TimeFrame(5, TimeFrameUnit.Minute),
+        '15m': TimeFrame(15, TimeFrameUnit.Minute),
+        '30m': TimeFrame(30, TimeFrameUnit.Minute),
+        '1h': TimeFrame(1, TimeFrameUnit.Hour),
+        '4h': TimeFrame(4, TimeFrameUnit.Hour),
+        '1D': TimeFrame(1, TimeFrameUnit.Day),
+        '1W': TimeFrame(1, TimeFrameUnit.Week),
+        '1M': TimeFrame(1, TimeFrameUnit.Month),
+    }
+    alpaca_timeframe = timeframe_map.get(
+        request.timeframe or '1D', TimeFrame(1, TimeFrameUnit.Day)
+    )
+    limit = 1000
+
+    if request.start and request.end:
+        start_date = (
+            parser.parse(request.start)
+            if isinstance(request.start, str) else request.start
+        )
+        end_date = (
+            parser.parse(request.end)
+            if isinstance(request.end, str) else request.end
+        )
+        if start_date.tzinfo is not None:
+            start_date = start_date.replace(tzinfo=None)
+        if end_date.tzinfo is not None:
+            end_date = end_date.replace(tzinfo=None)
+        if alpaca_timeframe.unit in [TimeFrameUnit.Minute, TimeFrameUnit.Hour]:
+            max_end_date = datetime.now(UTC) - timedelta(days=15)
+            if end_date > max_end_date:
+                logger.warning(
+                    f"Adjusting end date from {end_date} to {max_end_date} "
+                    f"due to Alpaca paper trading limitations"
+                )
+                end_date = max_end_date
+            min_start_date = end_date - timedelta(days=180)
+            if start_date > min_start_date:
+                logger.warning(
+                    f"Adjusting start date from {start_date} to {min_start_date} "
+                    f"to ensure enough data"
+                )
+                start_date = min_start_date
+        logger.info(f"Using provided date range: {start_date} to {end_date}")
+    else:
+        end_date = datetime.now(UTC)
+        if alpaca_timeframe.unit in [TimeFrameUnit.Minute, TimeFrameUnit.Hour]:
+            end_date = end_date - timedelta(days=15)
+        start_date = end_date - timedelta(days=180)
+        logger.info(f"Using default date range: {start_date} to {end_date}")
+
+    return start_date, end_date, alpaca_timeframe, limit
+
+
 @router.post("/calculate", response_model=IndicatorResponse)
 async def calculate_indicator(
     request: IndicatorRequest,
@@ -105,12 +186,11 @@ async def calculate_indicator(
 
         # ✅ REAL DATA: Fetch bars from Alpaca if symbol provided
         if request.symbol and not request.bars:
-            from datetime import datetime, timedelta
             import os
 
             from alpaca.data.historical import StockHistoricalDataClient
             from alpaca.data.requests import StockBarsRequest
-            from alpaca.data.timeframe import TimeFrame, TimeFrameUnit
+            from alpaca.data.timeframe import TimeFrameUnit
 
             # Initialize Alpaca client
             alpaca_client = StockHistoricalDataClient(
@@ -118,61 +198,11 @@ async def calculate_indicator(
                 secret_key=os.getenv('ALPACA_API_SECRET_KEY')
             )
 
-            # Map timeframe to Alpaca TimeFrame
-            timeframe_map = {
-                '1m': TimeFrame(1, TimeFrameUnit.Minute),
-                '5m': TimeFrame(5, TimeFrameUnit.Minute),
-                '15m': TimeFrame(15, TimeFrameUnit.Minute),
-                '30m': TimeFrame(30, TimeFrameUnit.Minute),
-                '1h': TimeFrame(1, TimeFrameUnit.Hour),
-                '4h': TimeFrame(4, TimeFrameUnit.Hour),
-                '1D': TimeFrame(1, TimeFrameUnit.Day),
-                '1W': TimeFrame(1, TimeFrameUnit.Week),
-                '1M': TimeFrame(1, TimeFrameUnit.Month)
-            }
-
-            alpaca_timeframe = timeframe_map.get(request.timeframe or '1D', TimeFrame(1, TimeFrameUnit.Day))
-
-            # Use provided date range or default to last 6 months
-            limit = 1000
-
-            if request.start and request.end:
-                # Use provided dates
-                from dateutil import parser
-                start_date = parser.parse(request.start) if isinstance(request.start, str) else request.start
-                end_date = parser.parse(request.end) if isinstance(request.end, str) else request.end
-
-                # Ensure both dates are timezone-naive for comparison with utcnow()
-                if start_date.tzinfo is not None:
-                    start_date = start_date.replace(tzinfo=None)
-                if end_date.tzinfo is not None:
-                    end_date = end_date.replace(tzinfo=None)
-
-                # Alpaca paper trading limitation: Can't access very recent intraday data
-                # For intraday timeframes (< 1 day), limit to 15+ days ago minimum
-                if alpaca_timeframe.unit in [TimeFrameUnit.Minute, TimeFrameUnit.Hour]:
-                    max_end_date = datetime.utcnow() - timedelta(days=15)
-                    if end_date > max_end_date:
-                        logger.warning(f"Adjusting end date from {end_date} to {max_end_date} due to Alpaca paper trading limitations")
-                        end_date = max_end_date
-
-                    # Ensure we have enough data for indicators
-                    min_start_date = end_date - timedelta(days=180)
-                    if start_date > min_start_date:
-                        logger.warning(f"Adjusting start date from {start_date} to {min_start_date} to ensure enough data")
-                        start_date = min_start_date
-
-                logger.info(f"Using provided date range: {start_date} to {end_date}")
-            else:
-                # Default to last 6 months for indicators
-                end_date = datetime.utcnow()
-
-                # For intraday data, go back 15+ days to avoid subscription restrictions
-                if alpaca_timeframe.unit in [TimeFrameUnit.Minute, TimeFrameUnit.Hour]:
-                    end_date = end_date - timedelta(days=15)
-
-                start_date = end_date - timedelta(days=180)
-                logger.info(f"Using default date range: {start_date} to {end_date}")
+            # V11 prep / Wave-63 (HH2-N-1 partial): timeframe + date-range
+            # resolution extracted to pure helper.
+            start_date, end_date, alpaca_timeframe, limit = (
+                _resolve_alpaca_date_range(request)
+            )
 
             # Fetch real bars from Alpaca with error handling
             # IMPORTANT: Alpaca paper trading has severe restrictions on recent SIP data
@@ -201,9 +231,18 @@ async def calculate_indicator(
                 try:
                     logger.warning("IEX feed failed, trying with older date range (15+ days ago)")
 
+                    # V12 W75 (UU3-2 / F821): import the names this block
+                    # uses.  Pre-V12 ``TimeFrame``, ``datetime``, ``UTC``,
+                    # and ``timedelta`` were referenced but never imported
+                    # at this scope — the fallback would always raise
+                    # NameError, leaving the user with the original IEX
+                    # error rather than a daily-bars retry.
+                    from datetime import UTC, datetime, timedelta
+                    from alpaca.data.timeframe import TimeFrame
+
                     # Use daily timeframe with data ending 15 days ago
                     alpaca_timeframe = TimeFrame(1, TimeFrameUnit.Day)
-                    fallback_end = datetime.utcnow() - timedelta(days=15)  # End 15 days ago
+                    fallback_end = datetime.now(UTC) - timedelta(days=15)  # End 15 days ago
                     fallback_start = fallback_end - timedelta(days=365)     # Get 1 year of data
 
                     logger.info(f"Fallback: Fetching daily bars from {fallback_start} to {fallback_end}")

@@ -1,0 +1,33 @@
+=== Patch D: script default ===
+/app/scripts/run_hft_organism.py:1052:        "--brain-dir", type=str, default="organism_brain_sandbox",
+/app/scripts/run_hft_organism.py:1053:        help="Directory for brain persistence (default: organism_brain_sandbox)",
+/app/scripts/run_breakout_organism.py:1632:        "--brain-dir", type=str, default="organism_brain_sandbox",
+/app/scripts/run_breakout_organism.py:1633:        help="Directory for brain persistence (default: organism_brain_sandbox)",
+
+=== Patch E: trained-state overwrite guard ===
+275:            existing_trained = bool(self._manifest.get("ml_is_trained", False))
+281:            incoming_trained = bool(getattr(signal_gen, "_is_trained", False))
+284:                and (existing_trades > 0 or existing_trained)
+286:                and not incoming_trained
+289:                    "BRAIN SAVE BLOCKED: refusing to overwrite trained manifest "
+294:                    existing_trades, existing_trained,
+
+=== Patches A/B/C still present ===
+/app/backend/organism/brain_persistence.py:254:        is set by ``LiveEngine.force_save_brain()`` to signal an explicit
+/app/backend/organism/brain_persistence.py:615:            self._apply_live_manifest_fields(manifest, signal_gen, learner)
+/app/backend/organism/brain_persistence.py:633:    def _apply_live_manifest_fields(
+/app/backend/organism/brain_persistence.py:704:        self._apply_live_manifest_fields(manifest, signal_gen, learner)
+/app/backend/organism/live_engine.py:4279:    def force_save_brain(self) -> dict:
+/app/backend/organism/live_engine.py:4360:            logger.error("force_save_brain failed: %s", e, exc_info=True)
+
+=== Boot log excerpt ===
+{"timestamp": "2026-04-09T04:17:48", "level": "INFO", "logger": "backend.organism.scheduler", "message": "{"event": "Organism scheduler loop exiting", "logger": "backend.organism.scheduler", "level": "info", "timestamp": "2026-04-09T04:17:48.516926Z"}", "module": "scheduler", "function": "_run_loop", "line": 388}
+{"timestamp": "2026-04-09T04:17:48", "level": "INFO", "logger": "backend.organism.scheduler", "message": "{"event": "Organism scheduler stopped", "logger": "backend.organism.scheduler", "level": "info", "timestamp": "2026-04-09T04:17:48.615352Z"}", "module": "scheduler", "function": "stop", "line": 226}
+{"timestamp": "2026-04-09T04:17:48", "level": "INFO", "logger": "backend.api.lifespan", "message": "{"event": "Organism scheduler stopped", "logger": "backend.api.lifespan", "level": "info", "timestamp": "2026-04-09T04:17:48.615420Z"}", "module": "lifespan", "function": "shutdown", "line": 321}
+{"timestamp": "2026-04-09T04:17:57", "level": "INFO", "logger": "backend.organism.brain_persistence", "message": "Brain loaded: gen=27, runs=107, trades=204", "module": "brain_persistence", "function": "load", "line": 219}
+{"timestamp": "2026-04-09T04:17:57", "level": "INFO", "logger": "backend.organism.brain_persistence", "message": "Learner state restored: gen=27, trades=204", "module": "brain_persistence", "function": "apply_to_learner", "line": 531}
+{"timestamp": "2026-04-09T04:17:57", "level": "INFO", "logger": "backend.organism.live_engine", "message": "{"event": "Organism live engine initialized from brain: gen=27, trades=204", "logger": "backend.organism.live_engine", "level": "info", "timestamp": "2026-04-09T04:17:57.086394Z"}", "module": "live_engine", "function": "initialize", "line": 898}
+{"timestamp": "2026-04-09T04:17:57", "level": "INFO", "logger": "backend.organism.trading_phase", "message": "Trading phase: production_frozen (trades=204, ML_isolation_exit=0, freeze_exit=96)", "module": "trading_phase", "function": "log_trading_phase", "line": 75}
+{"timestamp": "2026-04-09T04:17:57", "level": "INFO", "logger": "backend.organism.live_engine", "message": "{"event": "PREFLIGHT: 16/18 checks passed (0 critical failures, 2 warnings)", "logger": "backend.organism.live_engine", "level": "info", "timestamp": "2026-04-09T04:17:57.477146Z"}", "module": "live_engine", "function": "initialize", "line": 966}
+{"timestamp": "2026-04-09T04:17:57", "level": "INFO", "logger": "backend.organism.scheduler", "message": "{"event": "Organism scheduler starting: tick_interval=10s, brain_loaded=True, streaming=True", "logger": "backend.organism.scheduler", "level": "info", "timestamp": "2026-04-09T04:17:57.477983Z"}", "module": "scheduler", "function": "start", "line": 188}
+{"timestamp": "2026-04-09T04:17:57", "level": "INFO", "logger": "backend.organism.scheduler", "message": "{"event": "Organism scheduler loop started", "logger": "backend.organism.scheduler", "level": "info", "timestamp": "2026-04-09T04:17:57.489603Z"}", "module": "scheduler", "function": "_run_loop", "line": 303}

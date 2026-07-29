@@ -21,8 +21,18 @@ interface ProtectedRouteProps {
  * a real JWT — all API calls work normally.
  *
  * To disable: remove or set VITE_DEV_BYPASS_AUTH=false in .env.local
+ *
+ * V13 W98 (Lens 7) build-fence: in production-mode builds, the
+ * bypass is hard-OFF regardless of env so a stray .env.production
+ * with VITE_DEV_BYPASS_AUTH=true cannot enable admin auto-login.
+ * Vite's import.meta.env.MODE === 'development' is the build-time
+ * mode (set by --mode), distinct from NODE_ENV.  The MODE check is
+ * also DEV-tree-shakeable: in production builds the second `&&`
+ * operand is dropped at compile time.
  */
-const DEV_BYPASS_AUTH = import.meta.env.VITE_DEV_BYPASS_AUTH === 'true';
+const DEV_BYPASS_AUTH =
+  import.meta.env.MODE === 'development' &&
+  import.meta.env.VITE_DEV_BYPASS_AUTH === 'true';
 
 const ProtectedRoute = ({ children, requiredRoles }: ProtectedRouteProps) => {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);

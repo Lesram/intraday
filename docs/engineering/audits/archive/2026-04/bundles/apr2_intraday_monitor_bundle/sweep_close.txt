@@ -1,0 +1,63 @@
+=== POST-CLOSE SWEEP 201951 UTC ===
+{"status":"ok","version":"1.0.0","timestamp":"2026-04-02T20:19:51.025154+00:00"}
+--- MANIFEST ---
+{
+  "brain_format_version": 2,
+  "saved_at": "2026-04-02T19:59:58.199130+00:00",
+  "generation": 9,
+  "total_runs": 97,
+  "total_trades": 181,
+  "cumulative_pnl": -635.81,
+  "best_sharpe": 2.7765,
+  "ml_is_trained": true,
+  "feature_count": 79
+}
+--- ACCOUNT ---
+equity=111690 status=ACTIVE blocked=False
+--- POSITIONS ---
+FLAT
+--- ALL ORDERS TODAY ---
+Total: 54, Filled: 54, Canceled: 0
+  2026-04-02T19:51:06 PSQ    sell qty=105 fill=     31.82 status=filled
+  2026-04-02T19:43:12 PSQ    buy  qty=105 fill=     31.88 status=filled
+  2026-04-02T19:02:04 SH     sell qty= 88 fill=     37.68 status=filled
+  2026-04-02T19:01:12 SH     buy  qty= 88 fill=     37.69 status=filled
+  2026-04-02T18:58:04 XOM    sell qty= 20 fill=    160.81 status=filled
+  2026-04-02T18:56:13 NVDA   sell qty=  4 fill=   176.975 status=filled
+  2026-04-02T18:55:11 NVDA   sell qty=  9 fill=    176.92 status=filled
+  2026-04-02T18:52:06 XOM    buy  qty= 20 fill=    160.96 status=filled
+  2026-04-02T18:51:04 NVDA   sell qty=  5 fill=    176.97 status=filled
+  2026-04-02T18:42:12 NVDA   buy  qty= 18 fill=    176.97 status=filled
+  2026-04-02T18:11:33 XOM    sell qty= 24 fill=    160.67 status=filled
+  2026-04-02T18:10:56 XOM    sell qty=  9 fill=    160.64 status=filled
+  2026-04-02T18:09:03 XOM    buy  qty=  3 fill=    160.68 status=filled
+  2026-04-02T18:01:13 XOM    buy  qty= 10 fill=    160.48 status=filled
+  2026-04-02T17:54:11 XOM    buy  qty= 20 fill=  160.1555 status=filled
+  2026-04-02T17:46:05 XLK    sell qty= 24 fill=135.229166 status=filled
+  2026-04-02T17:39:08 XLK    buy  qty= 24 fill=135.380417 status=filled
+  2026-04-02T17:29:01 XLK    sell qty= 40 fill=    135.47 status=filled
+  2026-04-02T17:26:08 XLK    buy  qty=  4 fill=    135.46 status=filled
+  2026-04-02T17:19:08 XLK    buy  qty= 12 fill=    135.42 status=filled
+--- TRADE HISTORY ---
+20
+trades persisted for Apr 2
+     182 /Users/marselkei/VS/intra/organism_brain/trade_history.csv
+--- SAVE EVENTS (full session) ---
+     301 /Users/marselkei/VS/intra/apr2_intraday_monitor_bundle/save_events_apr2.txt
+save events during session
+0
+0
+essential saves
+301
+full saves
+--- WATCHDOG ---
+       1
+C4 watchdog events
+--- RECONCILIATION ---
+{"timestamp": "2026-04-02T14:07:19", "level": "WARNING", "logger": "backend.organism.live_engine", "message": "{"event": "INVARIANT: orphan_state_purged for AMZN (exit_levels existed, no metadata, no broker position)", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-04-02T14:07:19.307541Z"}", "module": "live_engine", "function": "_check_tick_invariants", "line": 2956}
+--- ERRORS ---
+{"timestamp": "2026-04-02T14:06:41", "level": "ERROR", "logger": "backend.organism.live_engine", "message": "{"event": "Zero shares for closed position AMZN \u2014 skipping trade record", "logger": "backend.organism.live_engine", "level": "error", "timestamp": "2026-04-02T14:06:41.121556Z"}", "module": "live_engine", "function": "_reconcile_fills", "line": 3601}
+{"timestamp": "2026-04-02T14:06:53", "level": "ERROR", "logger": "backend.organism.live_engine", "message": "{"event": "Zero shares for closed position AMZN \u2014 skipping trade record", "logger": "backend.organism.live_engine", "level": "error", "timestamp": "2026-04-02T14:06:53.717437Z"}", "module": "live_engine", "function": "_reconcile_fills", "line": 3601}
+{"timestamp": "2026-04-02T14:07:06", "level": "ERROR", "logger": "backend.organism.live_engine", "message": "{"event": "Zero shares for closed position AMZN \u2014 skipping trade record", "logger": "backend.organism.live_engine", "level": "error", "timestamp": "2026-04-02T14:07:06.501584Z"}", "module": "live_engine", "function": "_reconcile_fills", "line": 3601}
+{"timestamp": "2026-04-02T14:07:19", "level": "ERROR", "logger": "backend.organism.live_engine", "message": "{"event": "Zero shares for closed position AMZN \u2014 skipping trade record", "logger": "backend.organism.live_engine", "level": "error", "timestamp": "2026-04-02T14:07:19.138021Z"}", "module": "live_engine", "function": "_reconcile_fills", "line": 3601}
+{"timestamp": "2026-04-02T20:05:08", "level": "INFO", "logger": "backend.organism.diagnostic_scheduler", "message": "{"event": "Scheduled diagnostics [post_close]: 32/36 passed (0 critical, 3 warnings)", "logger": "backend.organism.diagnostic_scheduler", "level": "info", "timestamp": "2026-04-02T20:05:08.805394Z"}", "module": "diagnostic_scheduler", "function": "_run_scheduled", "line": 186}

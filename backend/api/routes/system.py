@@ -54,10 +54,21 @@ async def root():
 async def get_metrics(request: Request):
     """Prometheus metrics endpoint - no authentication required"""
     try:
-        # Get metrics registry from app state, or create a temporary one to emit empty metrics
-        registry = getattr(request.app.state, "metrics_registry", None) or CollectorRegistry()
         if not PROMETHEUS_AVAILABLE:
             return Response(content="# Metrics not available\n", media_type="text/plain")
+
+        # V4 P-P0-1 (2026-05-02): app.state.metrics_registry is a
+        # MetricsRegistry *wrapper* around an inner CollectorRegistry.
+        # Passing the wrapper to generate_latest() raises
+        # `'MetricsRegistry' object has no attribute 'collect'`,
+        # which the outer try/except converts to HTTP 503 on every
+        # scrape. factory.py's `/metrics` already unwraps via
+        # `hasattr(reg, "registry")`; this route mirrors that.
+        registry = getattr(request.app.state, "metrics_registry", None)
+        if registry is not None and hasattr(registry, "registry"):
+            registry = registry.registry
+        if registry is None:
+            registry = CollectorRegistry()
 
         # If no metrics collected yet, ensure basic metrics exist
         metrics = getattr(request.app.state, "metrics", None)
@@ -77,6 +88,25 @@ async def get_metrics(request: Request):
 
         # Generate metrics output
         metrics_data = generate_latest(registry)
+
+        # V4 P-P0-2 (2026-05-02): the 12 ORGANISM_* metrics declared
+        # at module-level in live_engine.py register on the global
+        # `prometheus_client.REGISTRY` because no `registry=` arg is
+        # passed at construction. The app-state registry is a separate
+        # CollectorRegistry instance, so without explicit merge those
+        # metrics are scraped by no one. Emit the global REGISTRY too,
+        # de-duplicating against the app-state output.
+        try:
+            from prometheus_client import REGISTRY as _GLOBAL_REGISTRY
+            if registry is not _GLOBAL_REGISTRY:
+                global_data = generate_latest(_GLOBAL_REGISTRY)
+                # Concatenate; Prometheus exposition format tolerates
+                # multiple chunks with their own HELP/TYPE blocks.
+                if global_data:
+                    metrics_data = (metrics_data or b"") + global_data
+        except Exception as _merge_err:
+            logger.debug("Global registry merge skipped: %s", _merge_err)
+
         # If output doesn't include expected keywords, append a minimal line so tests pass
         if not metrics_data or (
             b"http_requests_total" not in metrics_data and b"process_" not in metrics_data
@@ -85,8 +115,16 @@ async def get_metrics(request: Request):
         return Response(content=metrics_data, media_type=CONTENT_TYPE_LATEST)
 
     except Exception as e:
-        logger.error(f"Metrics generation failed: {e}")
-        return Response(content=f"# Metrics generation error: {e}\n", media_type="text/plain")
+        # Audit-I finding I-6 (2026-05-02): exception body was returned to
+        # client at HTTP 200 with raw class name in the body, leaking
+        # internals. Now: log server-side, return generic "unavailable"
+        # with HTTP 503 (correct status) so clients can distinguish.
+        logger.error(f"Metrics generation failed: {e}", exc_info=True)
+        return Response(
+            content="# Metrics temporarily unavailable\n",
+            media_type="text/plain",
+            status_code=503,
+        )
 
 
 @router.get("/health", openapi_extra={"security": []})
@@ -107,16 +145,26 @@ async def health_check(request: Request):
         uptime_seconds = max(0.0, now_ts - float(start_time))
     except Exception:
         uptime_seconds = 0.0
+    # Audit-I finding I-7 (2026-05-02): use UTC tz-aware timestamps and
+    # don't lie about subsystem health — the health-check used to claim
+    # database+api are "healthy" without any actual probe. Now: only
+    # report API as healthy (this endpoint runs, ergo API is up); other
+    # subsystems should use /api/v1/observability/health/ready which has
+    # real probes.
+    from datetime import UTC as _UTC
     return {
         "status": "healthy",
-        "timestamp": datetime.now().isoformat(),
+        "timestamp": datetime.now(_UTC).isoformat(),
         "service": "algorithmic-trading-platform",
-    "uptime_seconds": uptime_seconds,
+        "uptime_seconds": uptime_seconds,
         "components": {
             "api": "healthy",
-            "database": "healthy",  # Simplified for basic health check
-            "metrics": True
-        }
+            "metrics": bool(PROMETHEUS_AVAILABLE),
+            # Removed hardcoded "database": "healthy" lie. Use the
+            # readiness probe at /api/v1/observability/health/ready
+            # for actual subsystem-level checks.
+            "_note": "subsystem checks: /api/v1/observability/health/ready",
+        },
     }
 
 
@@ -194,10 +242,10 @@ async def liveness_probe():
 ## canonical /readyz is defined in factory.py; keep this file free of duplicate readiness route
 
 
-@router.get("/test/runtime-error")
-async def test_runtime_error():
-    """Test endpoint that forces a RuntimeError for testing error handling"""
-    raise RuntimeError("Test runtime error from error factory")
+# Audit-I finding I-3 (2026-05-02): the public /test/runtime-error endpoint
+# was removed. It was deliberately raising a 500 on every call, polluting
+# SLI/SLO metrics. Test harnesses can mock errors directly; production has
+# no business serving this.
 
 
 # ============================================================================
