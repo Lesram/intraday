@@ -32,7 +32,14 @@ from pathlib import Path
 
 EVIDENCE = Path("organism_brain/strategy_evidence_events.jsonl")
 TRADES = Path("organism_brain/trade_history.csv")
-LOG = Path("logs/application.log")
+# Finalization 2026-07-29 item 1: the app log rotates at ~50MB (it did on
+# 2026-07-07 — application.log.1 ends that day). A session whose lines were
+# rotated out of the head file would silently zero every log-derived column, so
+# scan the head plus the two most recent rotations. Every line is date-matched,
+# so scan order is irrelevant.
+LOGS = [Path("logs/application.log"),
+        Path("logs/application.log.1"),
+        Path("logs/application.log.2")]
 SESSION_CLOSE_UTC = (20, 5)  # 20:05Z ≈ 16:05 ET — after the 20:00Z close
 
 
@@ -85,9 +92,11 @@ def main() -> int:
     stale_syms: Counter = Counter()
     liquidity = 0
     orders = 0
-    if LOG.is_file():
-        stale_re = re.compile(r"Streaming bars REJECTED for ([A-Z]+)")
-        for line in LOG.open(errors="replace"):
+    stale_re = re.compile(r"Streaming bars REJECTED for ([A-Z]+)")
+    for log_path in LOGS:
+        if not log_path.is_file():
+            continue
+        for line in log_path.open(errors="replace"):
             if date not in line:
                 continue
             if "no stocks passed initial filters" in line:
@@ -99,7 +108,16 @@ def main() -> int:
                     stale_syms[m.group(1)] += 1
             elif "Liquidity gate blocked" in line:
                 liquidity += 1
-            elif re.search(r"submit_entry|order submitted|placing order", line, re.I):
+            elif "Order submitted successfully" in line:
+                # Finalization 2026-07-29 item 2 — verified against the FIRST
+                # real forward submission (SH 2026-07-27): every broker
+                # submission emits exactly ONE such line from
+                # backend.services.order_service.submit_symbol_order (entry
+                # 14:47:06Z buy limit + stop_loss exit 14:53:08Z sell market =
+                # 2 lines, 2 real orders). The previous heuristic regex
+                # (submit_entry|order submitted|placing order) triple-counted:
+                # the outbox and broker layers each log the same submission.
+                # Counts entries AND exits — a round-trip session reads 2.
                 orders += 1
 
     # ── fills ──
