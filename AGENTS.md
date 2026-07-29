@@ -136,3 +136,34 @@ The `paper-postclose-audit` workflow runs daily at 22:15 UTC and automatically o
 - Trading invariant grep checks fail
 - Runtime snapshot cannot be generated
 - Exploration is enabled (should always be disabled)
+
+## FROZEN-SURFACE REGIME (from 2026-07-29)
+
+The platform is DONE and the repo is **research-only**. The decision surface is
+FROZEN at `FROZEN_AT=2026-07-07T20:36:49Z` (`artifacts/phase2/param_freeze.json`;
+check with `python scripts/phase2_freeze.py --verify` — run it after ANY change,
+it must exit 0). Any change to the six hashed functions (entry direction, exit
+engine, regime detector, Kelly sizer, `_live_tick_inner`, selector routing),
+`exit_env`, `regime_policy`, `routing_data_env` (including the data feed), or
+`strategy_config` RESETS the forward verdict clock and requires **Marsel's
+explicit sign-off first** — never as a side effect.
+
+Allowed WITHOUT sign-off:
+- Session rows for the stand-down table, generated at session close only:
+  `python scripts/ops/standdown_session_row.py`
+- Research scripts under `scripts/research/` (read-only vs the platform; see
+  its README)
+- NEW strategy modules entering through the Strategy registry, **shadow-first
+  under Rule A** — no live capital until the pre-registered gate passes
+- Docs and reports
+
+Explicitly PARKED until post-verdict (do not pick these up):
+- `live_engine.py` decomposition
+- OrganismBrain env-aware default (flagged chip)
+- CI trio cleanup (frontend npm-audit, bandit, Quality Summary)
+- Any tuning of frozen parameters
+
+Certification chain: the three red-team verdicts under `reports/`
+(`REDTEAM_ROUND2_REMEDIATION_VERDICT_2026-07-24.md`,
+`REDTEAM_ROUND3_CLOSEOUT_CERTIFICATION_2026-07-24.md`, and the round-1 verdict
+recorded in `OPS_WORKORDER_COMPLETION_2026-07-23.md`).
