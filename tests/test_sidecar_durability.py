@@ -239,3 +239,77 @@ class TestRealCloseGuard:
         assert len(rec.rows) == 1
         assert rec.rows[0]["symbol"] == "X"
         assert rec.rows[0]["qty"] == 3.0
+
+
+# ── Finalization 2026-07-29 item 3(b): non-armed real close emits its row ──
+# Regression scenario = the first forward fill (SH 2026-07-27): a real position
+# went straight to its stop, the retracement shadow never armed (no
+# _shadow_pending entry), the reconcile branch hardcoded qty=0.0, and the
+# qty>0 real-close guard silently suppressed the row. Fixed by capturing qty
+# from live positions while the position is OPEN (_shadow_obs_qty).
+
+
+def _make_two_tick_host(recorder, open_qty):
+    """Host for a two-tick run: tick 1 sym open (never triggers the shadow),
+    tick 2 sym gone → reconcile. Mirrors the real mixin lifecycle."""
+    shadow_levels = SimpleNamespace(
+        entry_price=33.59, direction=1.0, highest_favorable=33.60, bars_held=1,
+    )
+    return SimpleNamespace(
+        _shadow_exit=recorder,
+        _shadow_engine=SimpleNamespace(
+            learning_mode=False, alt_policy="retracement",
+            alt_retrace_frac=0.6, alt_min_fav_r=1.0,
+            # Never arms — the straight-to-stop case.
+            check_exit=lambda *a, **k: SimpleNamespace(should_exit=False, reason=""),
+        ),
+        exit_engine=SimpleNamespace(learning_mode=False),
+        _last_prices={"SH": 33.55},
+        _last_regime="chop",
+        _last_positions={"SH": {"qty": open_qty}},
+        _last_bar_times={},
+        _tick_count=89501,
+        _now_fn=lambda: datetime(2026, 7, 27, tzinfo=timezone.utc),
+        _exit_levels={"SH": shadow_levels},   # OPEN at tick 1
+        _shadow_levels={},
+        _shadow_pending={},
+        _shadow_prev_syms=set(),
+        _shadow_last_price={},
+        _shadow_bar_seen={},
+        _symbol_exit_type={"SH": "stop_loss"},
+    )
+
+
+class TestNonArmedRealCloseEmits:
+    def test_real_close_without_shadow_trigger_emits_exactly_one_row(self):
+        rec = _FakeRecorder()
+        host = _make_two_tick_host(rec, open_qty=59)
+        # Tick 1: position open, shadow observes qty but never arms.
+        _ShadowExitMixin._shadow_evaluate_exits(host, None)
+        assert rec.rows == []
+        # Tick 2: position closed (stop_loss) → reconcile must emit ONE row.
+        host._exit_levels = {}
+        host._last_positions = {}
+        _ShadowExitMixin._shadow_evaluate_exits(host, None)
+        assert len(rec.rows) == 1, "real non-armed close must emit its row"
+        row = rec.rows[0]
+        assert row["symbol"] == "SH"
+        assert row["qty"] == 59.0
+        assert row["shadow_triggered"] is False
+        assert row["shadow_reason"] == "agreed_held_to_real_close"
+        assert row["real_exit_reason"] == "stop_loss"
+        # Agreement row: shadow held to the real close → delta is zero.
+        assert row["delta_gross"] == 0.0
+        # Tracking state fully cleared (incl. the observed-qty map).
+        assert host._shadow_obs_qty == {}
+
+    def test_never_held_symbol_still_suppressed(self):
+        """Replay/test symbols that never held shares must stay suppressed —
+        the original Task-2 pollution class."""
+        rec = _FakeRecorder()
+        host = _make_two_tick_host(rec, open_qty=0)   # tracked but never held
+        _ShadowExitMixin._shadow_evaluate_exits(host, None)
+        host._exit_levels = {}
+        host._last_positions = {}
+        _ShadowExitMixin._shadow_evaluate_exits(host, None)
+        assert rec.rows == [], "qty=0 synthetic reconciliation must not emit"

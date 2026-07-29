@@ -1,5 +1,19 @@
 # Ops recovery work order — completion report
 
+**Finalization item 3 finding (2026-07-29) — the missing 07-27 shadow-exit row was
+case (b), a gap:** the reconcile branch emits a row for every real close, but it
+learns qty only from `_shadow_pending` (trigger-time); the straight-to-stop SH trade
+never armed the retracement shadow (needs ≥1R favorable first), so its row carried
+qty=0.0 and the Task-2 qty>0 guard suppressed it — log evidence: container up 5 days
+(no restart between entry 14:47:06Z and close 14:53:08Z, ruling out (c)), policy
+`retracement` set, zero shadow eval/reconcile errors on 07-27, shadow file mtime
+unchanged since the 07-23 restore. Fixed shadow-path-only (`_shadow_obs_qty` captures
+qty while the position is open; guard retained; never-held replay symbols still
+suppressed) + emission contract documented in the mixin docstring + two-tick unit
+tests. Evidence-rate fact for Marsel: counterfactual shadow **deltas** only accrue on
+trades that reach ≥1R favorable — straight-to-stop trades now contribute agreement
+rows (`delta=0`), not counterfactual PnL.
+
 **Date:** 2026-07-23 · **Branch:** `intra-2.0-phase1` · **Executed by:** Claude Code
 **FROZEN_AT held at 2026-07-07T20:36:49.008305+00:00 throughout** (drift-verify green
 after every task). No decision-surface edit. `_live_tick_inner` untouched.

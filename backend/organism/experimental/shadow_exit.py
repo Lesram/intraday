@@ -95,7 +95,18 @@ class _ShadowExitMixin:
     Host must set, when the shadow is enabled: ``_shadow_exit`` (recorder or
     None), ``_shadow_engine`` (AltExitEngine), ``_shadow_levels``,
     ``_shadow_pending``, ``_shadow_prev_syms``, ``_shadow_last_price``,
-    ``_shadow_bar_seen``.
+    ``_shadow_bar_seen``. (``_shadow_obs_qty`` is lazily created here.)
+
+    EMISSION CONTRACT (finalization 2026-07-29 item 3): exactly ONE telemetry
+    row per REAL closed position — whether or not the shadow policy armed. A
+    non-armed close emits ``shadow_triggered=false`` /
+    ``shadow_reason="agreed_held_to_real_close"`` with the qty observed while
+    the position was open. Symbols that never held shares (replay/test
+    reconciliations) observe qty=0 and are suppressed by the real-close guard.
+    Consequence for evidence rates: shadow-vs-real DELTAS only accrue on
+    trades where the policy arms (retracement needs >=min_fav_R favorable
+    movement first); straight-to-stop trades contribute agreement rows, not
+    counterfactual PnL.
     """
 
     def _shadow_evaluate_exits(self, result: Any) -> None:
@@ -119,6 +130,19 @@ class _ShadowExitMixin:
         live_levels_map = dict(self._exit_levels)
         current_syms = set(live_levels_map)
 
+        # Finalization 2026-07-29 item 3(b): observed-qty capture. The
+        # reconcile branch below can only learn qty from _shadow_pending
+        # (recorded at shadow-trigger time) — but a trade that never arms the
+        # shadow (e.g. straight to its stop, like the first forward fill:
+        # SH 2026-07-27) has no pending entry, so its reconciliation row got
+        # qty=0.0 and the qty>0 real-close guard silently suppressed it.
+        # Capture qty from the live positions WHILE the position is open;
+        # replay/test symbols that never held shares still observe 0 and stay
+        # suppressed. Lazily initialized so the host needs no __init__ change.
+        obs_qty = getattr(self, "_shadow_obs_qty", None)
+        if obs_qty is None:
+            obs_qty = self._shadow_obs_qty = {}
+
         # 1) Advance the shadow eval for every open position.
         for sym, live_levels in live_levels_map.items():
             try:
@@ -128,6 +152,10 @@ class _ShadowExitMixin:
                 shadow_levels = self._shadow_levels[sym]
                 price = prices.get(sym, shadow_levels.highest_favorable)
                 self._shadow_last_price[sym] = price
+
+                _live_qty = abs(float((positions.get(sym) or {}).get("qty", 0)))
+                if _live_qty > 0:
+                    obs_qty[sym] = _live_qty
 
                 bar_t = bar_times.get(sym, "")
                 is_new_bar = bool(bar_t) and self._shadow_bar_seen.get(sym) != bar_t
@@ -167,7 +195,12 @@ class _ShadowExitMixin:
                 )
                 entry = float(getattr(shadow_levels, "entry_price", 0.0)) if shadow_levels else 0.0
                 d = float(getattr(shadow_levels, "direction", 1.0)) if shadow_levels else 1.0
-                qty = pend["qty"] if pend else 0.0
+                # Item 3(b): prefer trigger-time qty; fall back to the qty
+                # observed while the position was open, so a real close whose
+                # shadow never armed still emits its reconciliation row
+                # (shadow_triggered=false). Never-held symbols observe nothing
+                # and remain 0 → suppressed by the guard below.
+                qty = (pend["qty"] if pend else 0.0) or obs_qty.get(sym, 0.0)
                 real_per_share = (real_exit_price - entry) * d
                 real_pnl = real_per_share * qty
                 shadow_triggered = pend is not None
@@ -211,5 +244,6 @@ class _ShadowExitMixin:
                 self._shadow_pending.pop(sym, None)
                 self._shadow_last_price.pop(sym, None)
                 self._shadow_bar_seen.pop(sym, None)
+                obs_qty.pop(sym, None)
 
         self._shadow_prev_syms = current_syms
