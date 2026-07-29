@@ -21,6 +21,21 @@
 > LaunchAgent install, data-feed decision (clock reset now costs n=1),
 > evidence-admission, PR #9 merge timing, `_to_delete/` cleanup, and one
 > `make rebuild-paper` at convenience to activate the shadow fix.
+>
+> **ACTIVATED 2026-07-29T06:48Z** — container rebuilt to image `9697cd5` in a
+> market-closed window; validation green (healthy, RestartCount=0; shadow contract +
+> bounded-skip + lazy brain_dir all present in image; brain byte-stable gen 389 /
+> 583 / −676.26; sidecars unchanged; 0 corrupt heads; `.save_complete` advanced;
+> boot reconciles drift=$0.00; drift-verify green after — running == frozen).
+> Found-and-handled during preconditions: 10 Jan-2026 replay rows had landed in
+> `shadow_exit_telemetry.jsonl` from the 07-29 finalization test runs — the
+> `ORGANISM_SHADOW_EXIT_TELEMETRY_PATH` default bypasses the conftest brain-dir
+> redirect, and the item-3 qty capture re-opened the replay channel the old qty=0
+> fallback had incidentally suppressed. Rows quarantined (head back to the 1
+> faithful META row; snapshot on Desktop); code fix flagged for Marsel's sign-off
+> as a regime exception. Uptime install (§5) remains manual per Marsel's
+> instruction. Standing observation: next real close must emit exactly one shadow
+> row — none appearing is a red flag.
 
 **Finalization item 3 finding (2026-07-29) — the missing 07-27 shadow-exit row was
 case (b), a gap:** the reconcile branch emits a row for every real close, but it
