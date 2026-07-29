@@ -1,5 +1,27 @@
 # Ops recovery work order — completion report
 
+> ## PLATFORM FINAL — 2026-07-29
+> The ops arc was certified closed by red-team round 3 (2026-07-24) and the platform
+> then **proved itself in production**: engine up 2026-07-24→07-28 without human
+> action, **18 bounded-skip full saves landed** (`gated_save=true` — the pre-fix code
+> had zero, ever), zero corruption events, and on **2026-07-27 the first
+> forward-corpus fill** (SH, alpha+breakout, −$2.95, stop_loss; forward n=1) with the
+> pnl ledger reconciling exactly through it (−673.311657 − 2.95 = −676.26 on the
+> manifest). Sessions 2–4 are recorded and the stand-down table is COMPLETE
+> (`ENTRY_STANDDOWN_DIAGNOSIS.md` — four-session verdict: live path proven
+> end-to-end; ~0.25 fills/session at IEX data quality ⇒ the n=60 verdict needs ~a
+> year, which is the quantified case for the data-feed decision). Final commits:
+> rotation-aware session tooling + validated orders counter, the item-3(b)
+> shadow-reconciliation fix (NOTE: committed but live only after the next container
+> rebuild — image is still `d2548b8`), and the research-only regime written into
+> AGENTS.md. Final suite: 7,726 passed / 7 failed — all seven the individually
+> adjudicated pre-existing set; drift-verify green; ratchet green; FROZEN_AT
+> unmoved at 2026-07-07T20:36:49Z. **The repo is now research-only per AGENTS.md
+> "FROZEN-SURFACE REGIME" — no further platform commits.** Marsel's open list:
+> LaunchAgent install, data-feed decision (clock reset now costs n=1),
+> evidence-admission, PR #9 merge timing, `_to_delete/` cleanup, and one
+> `make rebuild-paper` at convenience to activate the shadow fix.
+
 **Finalization item 3 finding (2026-07-29) — the missing 07-27 shadow-exit row was
 case (b), a gap:** the reconcile branch emits a row for every real close, but it
 learns qty only from `_shadow_pending` (trigger-time); the straight-to-stop SH trade
