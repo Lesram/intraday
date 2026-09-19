@@ -20,6 +20,8 @@ Run with:
 """
 from __future__ import annotations
 
+import sys
+
 import subprocess
 from pathlib import Path
 
@@ -120,7 +122,7 @@ def test_w81_enforcer_passes_v12_commit_history():
     Pre-W81 it failed 2 commits because the regex didn't match
     ``DD5-*``/``BB5-*`` style IDs.  Post-W81 it must pass."""
     proc = subprocess.run(
-        [str(REPO_ROOT / "venv" / "bin" / "python"), str(ENFORCER),
+        [sys.executable, str(ENFORCER),
          "--base", "38d1b74", "--head", "HEAD"],
         capture_output=True, text=True, timeout=60, cwd=REPO_ROOT,
     )
@@ -196,7 +198,7 @@ def test_w81_enforcer_invocation_with_strict_flag(tmp_path: Path):
     """Behavioral: invoke the enforcer with ``--strict`` and confirm
     the CLI accepts the flag (no argparse error)."""
     proc = subprocess.run(
-        [str(REPO_ROOT / "venv" / "bin" / "python"), str(ENFORCER),
+        [sys.executable, str(ENFORCER),
          "--strict", "--base", "HEAD~1", "--head", "HEAD"],
         capture_output=True, text=True, timeout=30, cwd=REPO_ROOT,
     )

@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import os
 import subprocess
+import sys
 
 import pytest
 
@@ -24,7 +25,7 @@ def test_migration_smoke_script_exists_and_runs():
         "Wave-37 regression: migration smoke checker script missing."
     )
     proc = subprocess.run(
-        ["./venv/bin/python", "scripts/ci/check_migrations.py"],
+        [sys.executable, "scripts/ci/check_migrations.py"],
         capture_output=True, text=True, timeout=30,
     )
     assert proc.returncode == 0, (
