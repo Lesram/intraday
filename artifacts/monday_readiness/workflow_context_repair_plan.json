@@ -1,0 +1,13 @@
+{
+  "task_id": "workflow-context-repair",
+  "trigger": "GitHub invalid workflow on source b9b87be",
+  "root_cause": "runner context unavailable in job-level env",
+  "files": [
+    ".github/workflows/paper-postclose-audit.yml",
+    ".github/workflows/nightly.yml",
+    ".github/workflows/paper-readiness.yml",
+    "tests/test_monday_ci_workflows.py"
+  ],
+  "scope": "Export identical isolated test paths using runner environment inside a step; add regression for pre-run expression contexts.",
+  "external_changes": false
+}

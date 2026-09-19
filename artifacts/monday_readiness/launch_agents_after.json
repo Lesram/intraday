@@ -1,0 +1,85 @@
+{
+  "at": "2026-09-19T19:37:10.317112+00:00",
+  "host_helper_source_sha": "0d1c93d53d912d906440b679e70be20b4739d0b0",
+  "jobs": [
+    {
+      "label": "com.intra.paper",
+      "loaded": true,
+      "plist_sha256": "1a40aba07426b9df481e50d8632306c44d1009d8a870d1cccc020e4c5cbef4a9",
+      "run_at_load": true,
+      "start_interval_seconds": null,
+      "calendar_local_time": null,
+      "notify_local": false,
+      "docker_reopen": false
+    },
+    {
+      "label": "com.intra.paper.watchdog",
+      "loaded": true,
+      "plist_sha256": "07228838aef8fdc1f4ebc557d56aa6be802e969462d9365c9668505b7227a356",
+      "run_at_load": true,
+      "start_interval_seconds": 300,
+      "calendar_local_time": null,
+      "notify_local": true,
+      "docker_reopen": true,
+      "check_backups": true
+    },
+    {
+      "label": "com.intra.brain-backup",
+      "loaded": true,
+      "plist_sha256": "66860ed45e707576564ce4dba9f85cebba66fbcd277babbb0aec39c23ef14a4b",
+      "run_at_load": true,
+      "start_interval_seconds": null,
+      "calendar_local_time": {
+        "Hour": 16,
+        "Minute": 30
+      },
+      "notify_local": false,
+      "docker_reopen": false
+    },
+    {
+      "label": "com.intra.postgres-backup",
+      "loaded": true,
+      "plist_sha256": "3809b393e4a8fdeadf8098bf9376a9434784b774af204fba5ece41c0bddc7619",
+      "run_at_load": true,
+      "start_interval_seconds": null,
+      "calendar_local_time": {
+        "Hour": 16,
+        "Minute": 45
+      },
+      "notify_local": false,
+      "docker_reopen": false
+    }
+  ],
+  "watchdog_healthy": true,
+  "watchdog_paused": false,
+  "brain_backup": {
+    "path": "/Users/marselkei/VS/intra/organism_brain_archive/2026-09-19T191348.033006Z",
+    "created_at": "2026-09-19T19:13:48.105671+00:00",
+    "source_saved_at": "2026-09-19T19:12:35.542579+00:00",
+    "file_count": 26
+  },
+  "backup_restore_test": "prechange PostgreSQL dump restored27tables in isolatedownedcontainer",
+  "limitations": [
+    "Mac login and Docker availability required",
+    "Notification submission succeeded; visible delivery may depend on macOS settings",
+    "Backup monitor flags invalid publications or age over26h, not every failed attempt while a recent valid copy exists",
+    "No external alert destination configured"
+  ],
+  "backup_monitor": {
+    "enabled": true,
+    "max_age_seconds": 93600,
+    "backups": {
+      "brain": {
+        "status": "ok",
+        "files_verified": 26,
+        "age_seconds": 1361.2446751594543
+      },
+      "postgres": {
+        "status": "ok",
+        "files_verified": 1,
+        "age_seconds": 1361.0237431526184
+      }
+    },
+    "problems": []
+  }
+}

@@ -343,3 +343,34 @@ def test_quick_failure_is_not_reported_as_passed_checks(generator, monkeypatch, 
 def test_invalid_mode_never_reuses_stale_evidence(generator):
     assert generator.main("typo") == 2
     assert not (generator.ART / "task_report.json").exists()
+
+
+def test_replay_retains_case_progress_durations_and_existing_case_deadline(generator, monkeypatch):
+    _test_file(generator, "def test_first(): assert True\ndef test_second(): assert True\n",
+               path="tests/test_replay_simulator.py")
+    observed = {}
+    run_command = generator.run_command
+
+    def capture_command(cmd, *, timeout):
+        observed.update(command=cmd, timeout=timeout)
+        return run_command(cmd, timeout=timeout)
+
+    monkeypatch.setattr(generator, "run_command", capture_command)
+    generator.gen_replay_summary()
+
+    result = json.loads((generator.ART / "replay_summary.json").read_text())
+    output = (generator.ART / "replay_simulator.log").read_text()
+    assert result["status"] == "pass" and result["passed"] == 2
+    assert "test_first PASSED" in output and "test_second PASSED" in output
+    assert "slowest durations" in output
+    assert "--timeout=120" in observed["command"]
+    assert observed["timeout"] == 1200
+
+
+def test_verbose_wall_timeout_identifies_running_case_and_still_fails(generator):
+    path = _test_file(generator, "import time\ndef test_running_case(): time.sleep(30)\n")
+    result = generator.run_pytest("progress", path, timeout=4, verbose=True)
+
+    assert result["status"] == "fail" and result["timed_out"]
+    assert "invalid pytest evidence" in result["error"]
+    assert "test_running_case" in (generator.ART / "progress.log").read_text()

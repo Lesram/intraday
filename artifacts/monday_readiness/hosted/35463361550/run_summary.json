@@ -1,0 +1,69 @@
+{
+  "id": 35463361550,
+  "name": "Nightly Deep Tests",
+  "head_sha": "dead82a4d3d110afe811ed91b59959e76bfd9ce6",
+  "head_branch": "codex/monday-paper-readiness",
+  "event": "workflow_dispatch",
+  "status": "completed",
+  "conclusion": "failure",
+  "run_started_at": "2026-09-19T19:07:40Z",
+  "updated_at": "2026-09-19T19:12:18Z",
+  "html_url": "https://github.com/Lesram/intraday/actions/runs/35463361550",
+  "jobs": [
+    {
+      "name": "Deep testing suite",
+      "status": "completed",
+      "conclusion": "failure",
+      "started_at": "2026-09-19T19:07:43Z",
+      "completed_at": "2026-09-19T19:12:08Z",
+      "html_url": "https://github.com/Lesram/intraday/actions/runs/35463361550/job/105951073490",
+      "failed_steps": [
+        {
+          "name": "Run deep test suite once and retain output",
+          "conclusion": "failure"
+        }
+      ]
+    },
+    {
+      "name": "Preserve workflow result and optionally notify",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-09-19T19:12:12Z",
+      "completed_at": "2026-09-19T19:12:17Z",
+      "html_url": "https://github.com/Lesram/intraday/actions/runs/35463361550/job/105951705226",
+      "failed_steps": []
+    }
+  ],
+  "artifacts": [
+    {
+      "id": 10590627680,
+      "name": "nightly-workflow-status",
+      "size_in_bytes": 374,
+      "expired": false
+    },
+    {
+      "id": 10590307969,
+      "name": "deep-test-results",
+      "size_in_bytes": 5479,
+      "expired": false
+    }
+  ],
+  "xml_summaries": [
+    {
+      "artifact": "deep-test-results",
+      "path": "test_reports/nightly.xml",
+      "suites": [
+        {
+          "name": "pytest",
+          "tests": "1",
+          "failures": "0",
+          "errors": "1",
+          "skipped": "0",
+          "time": "22.101"
+        }
+      ],
+      "failed_cases": 1
+    }
+  ],
+  "retention_note": "Compact source/provenance/status summaries, selected log tails and failed-case XML only. Complete artifact downloads remain on GitHub. Text snippets may be truncated."
+}

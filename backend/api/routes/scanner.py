@@ -804,6 +804,9 @@ async def scanner_websocket(
     try:
         from backend.infra.security import decode_token
         claims = decode_token(token)
+        if "paper_monitor" in claims.get("roles", []):
+            await websocket.close(code=4003, reason="Monitoring token scope excludes WebSockets")
+            return
         user_id = claims.get("sub", "anonymous")
         client_id = f"scanner_{user_id}_{id(websocket)}"
     except Exception:  # noqa: BLE001 - any token decode failure closes the socket.

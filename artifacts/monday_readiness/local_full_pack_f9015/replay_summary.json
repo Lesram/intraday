@@ -1,0 +1,128 @@
+{
+  "status": "pass",
+  "passed": 28,
+  "failed": 0,
+  "errors": 0,
+  "skipped": 0,
+  "total": 28,
+  "tests": [
+    {
+      "name": "test_replay_engine_constructor_does_not_pollute_replay_mode",
+      "status": "passed"
+    },
+    {
+      "name": "test_simulated_broker_fills_correctly",
+      "status": "passed"
+    },
+    {
+      "name": "test_replay_slippage_applied",
+      "status": "passed"
+    },
+    {
+      "name": "test_simulated_broker_portfolio_value",
+      "status": "passed"
+    },
+    {
+      "name": "test_bar_provider_advances_correctly",
+      "status": "passed"
+    },
+    {
+      "name": "test_bar_provider_returns_correct_window",
+      "status": "passed"
+    },
+    {
+      "name": "test_bar_provider_exhaustion",
+      "status": "passed"
+    },
+    {
+      "name": "test_bar_provider_current_price",
+      "status": "passed"
+    },
+    {
+      "name": "test_replay_completes_100_ticks",
+      "status": "passed"
+    },
+    {
+      "name": "test_replay_trades_have_valid_pnl",
+      "status": "passed"
+    },
+    {
+      "name": "test_replay_equity_monotonic_start",
+      "status": "passed"
+    },
+    {
+      "name": "test_replay_regime_history_populated",
+      "status": "passed"
+    },
+    {
+      "name": "test_replay_with_crash_data",
+      "status": "passed"
+    },
+    {
+      "name": "test_replay_result_summary",
+      "status": "passed"
+    },
+    {
+      "name": "test_replay_result_metrics",
+      "status": "passed"
+    },
+    {
+      "name": "test_from_csv_loads_correctly",
+      "status": "passed"
+    },
+    {
+      "name": "test_make_price_df_trends",
+      "status": "passed"
+    },
+    {
+      "name": "test_make_features_dict",
+      "status": "passed"
+    },
+    {
+      "name": "test_replay_time_override_uses_bar_time",
+      "status": "passed"
+    },
+    {
+      "name": "test_replay_no_throttle_blocking",
+      "status": "passed"
+    },
+    {
+      "name": "test_replay_throttle_actually_blocks_at_low_limit",
+      "status": "passed"
+    },
+    {
+      "name": "test_replay_daily_timeframe_uses_wider_stops",
+      "status": "passed"
+    },
+    {
+      "name": "test_replay_intraday_timeframe_uses_tight_stops",
+      "status": "passed"
+    },
+    {
+      "name": "test_bar_provider_lookback_200_gives_more_ticks",
+      "status": "passed"
+    },
+    {
+      "name": "test_replay_engine_daily_default_lookback",
+      "status": "passed"
+    },
+    {
+      "name": "test_replay_engine_intraday_default_lookback",
+      "status": "passed"
+    },
+    {
+      "name": "test_replay_engine_custom_lookback",
+      "status": "passed"
+    },
+    {
+      "name": "test_replay_seasonality_uses_bar_time",
+      "status": "passed"
+    }
+  ],
+  "exit_code": 0,
+  "timed_out": false,
+  "error": "",
+  "output_file": "artifacts/replay_simulator.log",
+  "output_tail": "............................                                             [100%]\n=============================== warnings summary ===============================\ntests/test_replay_simulator.py::test_replay_completes_100_ticks\n  <string>:15: RuntimeWarning: SECRET_KEY not set \u2014 using generated ephemeral key. Set SECRET_KEY env var for production.\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n28 passed, 1 warning in 139.42s (0:02:19)\n",
+  "junit_file": "artifacts/replay_simulator.junit.xml"
+}

@@ -1,0 +1,14 @@
+{
+  "focused_tests_passed": 124,
+  "focused_tests_failed": 0,
+  "test_log": "focused.log",
+  "junit": "focused.xml",
+  "freeze_status": "pass",
+  "freeze_log": "freeze.log",
+  "actionlint": "1.7.12 passed on paper-postclose, paper-readiness, pr-verify, nightly and artifact-reporting workflows",
+  "ruff": "passed generator and two affected test modules",
+  "diff_check": "passed source and docs; prior raw evidence unchanged",
+  "canonical_runtime_and_fullpack_snapshots": "not regenerated or modified",
+  "hosted_acceptance": "pending actual source-pinned post-close and required operational-safety at new commit",
+  "review": "independent artifact_review requested before commit"
+}

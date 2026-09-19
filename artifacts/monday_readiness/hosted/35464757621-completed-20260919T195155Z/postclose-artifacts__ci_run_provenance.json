@@ -1,0 +1,8 @@
+{
+  "source_sha": "0d1c93d53d912d906440b679e70be20b4739d0b0",
+  "caller_sha": "0d1c93d53d912d906440b679e70be20b4739d0b0",
+  "started_at_epoch": 1789846471.418875,
+  "run_id": "35464757621",
+  "run_attempt": "1",
+  "scope": "secret-free CI; not live broker/runtime verification"
+}

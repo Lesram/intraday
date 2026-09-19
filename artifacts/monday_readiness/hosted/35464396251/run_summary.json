@@ -1,0 +1,169 @@
+{
+  "id": 35464396251,
+  "name": "paper-postclose-audit",
+  "head_sha": "9441ca7d23288249a41606356730d5fa4d225384",
+  "head_branch": "codex/monday-paper-readiness",
+  "event": "workflow_dispatch",
+  "status": "completed",
+  "conclusion": "success",
+  "run_started_at": "2026-09-19T19:27:22Z",
+  "updated_at": "2026-09-19T19:41:09Z",
+  "html_url": "https://github.com/Lesram/intraday/actions/runs/35464396251",
+  "jobs": [
+    {
+      "name": "collect-and-audit",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-09-19T19:27:25Z",
+      "completed_at": "2026-09-19T19:41:02Z",
+      "html_url": "https://github.com/Lesram/intraday/actions/runs/35464396251/job/105953914835",
+      "failed_steps": []
+    },
+    {
+      "name": "Preserve workflow result and optionally notify",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-09-19T19:41:04Z",
+      "completed_at": "2026-09-19T19:41:08Z",
+      "html_url": "https://github.com/Lesram/intraday/actions/runs/35464396251/job/105955863635",
+      "failed_steps": []
+    }
+  ],
+  "artifacts": [
+    {
+      "id": 10590792924,
+      "name": "postclose-artifacts",
+      "size_in_bytes": 771020,
+      "expired": false
+    },
+    {
+      "id": 10590253397,
+      "name": "postclose-workflow-status",
+      "size_in_bytes": 348,
+      "expired": false
+    }
+  ],
+  "xml_summaries": [
+    {
+      "artifact": "postclose-artifacts",
+      "path": "artifacts/algorithm_improvements.junit.xml",
+      "suites": [
+        {
+          "name": "pytest",
+          "tests": "58",
+          "failures": "0",
+          "errors": "0",
+          "skipped": "0",
+          "time": "2.206"
+        }
+      ],
+      "failed_cases": 0
+    },
+    {
+      "artifact": "postclose-artifacts",
+      "path": "artifacts/multi_tick_state.junit.xml",
+      "suites": [
+        {
+          "name": "pytest",
+          "tests": "9",
+          "failures": "0",
+          "errors": "0",
+          "skipped": "0",
+          "time": "2.355"
+        }
+      ],
+      "failed_cases": 0
+    },
+    {
+      "artifact": "postclose-artifacts",
+      "path": "artifacts/organism_engine_scenarios.junit.xml",
+      "suites": [
+        {
+          "name": "pytest",
+          "tests": "31",
+          "failures": "0",
+          "errors": "0",
+          "skipped": "0",
+          "time": "117.843"
+        }
+      ],
+      "failed_cases": 0
+    },
+    {
+      "artifact": "postclose-artifacts",
+      "path": "artifacts/organism_live_engine.junit.xml",
+      "suites": [
+        {
+          "name": "pytest",
+          "tests": "26",
+          "failures": "0",
+          "errors": "0",
+          "skipped": "0",
+          "time": "46.414"
+        }
+      ],
+      "failed_cases": 0
+    },
+    {
+      "artifact": "postclose-artifacts",
+      "path": "artifacts/replay_simulator.junit.xml",
+      "suites": [
+        {
+          "name": "pytest",
+          "tests": "28",
+          "failures": "0",
+          "errors": "0",
+          "skipped": "0",
+          "time": "456.236"
+        }
+      ],
+      "failed_cases": 0
+    },
+    {
+      "artifact": "postclose-artifacts",
+      "path": "artifacts/safety_invariants.junit.xml",
+      "suites": [
+        {
+          "name": "pytest",
+          "tests": "29",
+          "failures": "0",
+          "errors": "0",
+          "skipped": "0",
+          "time": "2.488"
+        }
+      ],
+      "failed_cases": 0
+    },
+    {
+      "artifact": "postclose-artifacts",
+      "path": "artifacts/self_evolution.junit.xml",
+      "suites": [
+        {
+          "name": "pytest",
+          "tests": "15",
+          "failures": "0",
+          "errors": "0",
+          "skipped": "0",
+          "time": "1.385"
+        }
+      ],
+      "failed_cases": 0
+    },
+    {
+      "artifact": "postclose-artifacts",
+      "path": "artifacts/semantic_invariants.junit.xml",
+      "suites": [
+        {
+          "name": "pytest",
+          "tests": "20",
+          "failures": "0",
+          "errors": "0",
+          "skipped": "0",
+          "time": "2.566"
+        }
+      ],
+      "failed_cases": 0
+    }
+  ],
+  "retention_note": "Compact source/provenance/status summaries, selected log tails and failed-case XML only. Complete artifact downloads remain on GitHub. Text snippets may be truncated."
+}

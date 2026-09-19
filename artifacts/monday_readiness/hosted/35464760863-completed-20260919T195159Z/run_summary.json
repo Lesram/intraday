@@ -1,0 +1,159 @@
+{
+  "id": 35464760863,
+  "name": "paper-readiness",
+  "head_sha": "0d1c93d53d912d906440b679e70be20b4739d0b0",
+  "head_branch": "codex/monday-paper-readiness",
+  "event": "pull_request",
+  "status": "completed",
+  "conclusion": "failure",
+  "run_started_at": "2026-09-19T19:34:28Z",
+  "updated_at": "2026-09-19T19:51:59Z",
+  "html_url": "https://github.com/Lesram/intraday/actions/runs/35464760863",
+  "jobs": [
+    {
+      "name": "operational-safety",
+      "status": "completed",
+      "conclusion": "failure",
+      "started_at": "2026-09-19T19:34:30Z",
+      "completed_at": "2026-09-19T19:51:58Z",
+      "html_url": "https://github.com/Lesram/intraday/actions/runs/35464760863/job/105954966661",
+      "failed_steps": [
+        {
+          "name": "Full safety and replay artifact pack",
+          "conclusion": "failure"
+        }
+      ]
+    }
+  ],
+  "artifacts": [
+    {
+      "id": 10590828517,
+      "name": "paper-readiness-evidence",
+      "size_in_bytes": 719581,
+      "expired": false
+    }
+  ],
+  "xml_summaries": [
+    {
+      "artifact": "paper-readiness-evidence",
+      "path": "artifacts/algorithm_improvements.junit.xml",
+      "suites": [
+        {
+          "name": "pytest",
+          "tests": "58",
+          "failures": "0",
+          "errors": "0",
+          "skipped": "0",
+          "time": "2.649"
+        }
+      ],
+      "failed_cases": 0
+    },
+    {
+      "artifact": "paper-readiness-evidence",
+      "path": "artifacts/monday_readiness/github_operational.xml",
+      "suites": [
+        {
+          "name": "pytest",
+          "tests": "389",
+          "failures": "0",
+          "errors": "0",
+          "skipped": "0",
+          "time": "26.275"
+        }
+      ],
+      "failed_cases": 0
+    },
+    {
+      "artifact": "paper-readiness-evidence",
+      "path": "artifacts/multi_tick_state.junit.xml",
+      "suites": [
+        {
+          "name": "pytest",
+          "tests": "9",
+          "failures": "0",
+          "errors": "0",
+          "skipped": "0",
+          "time": "2.657"
+        }
+      ],
+      "failed_cases": 0
+    },
+    {
+      "artifact": "paper-readiness-evidence",
+      "path": "artifacts/organism_engine_scenarios.junit.xml",
+      "suites": [
+        {
+          "name": "pytest",
+          "tests": "31",
+          "failures": "0",
+          "errors": "0",
+          "skipped": "0",
+          "time": "163.844"
+        }
+      ],
+      "failed_cases": 0
+    },
+    {
+      "artifact": "paper-readiness-evidence",
+      "path": "artifacts/organism_live_engine.junit.xml",
+      "suites": [
+        {
+          "name": "pytest",
+          "tests": "26",
+          "failures": "0",
+          "errors": "0",
+          "skipped": "0",
+          "time": "61.395"
+        }
+      ],
+      "failed_cases": 0
+    },
+    {
+      "artifact": "paper-readiness-evidence",
+      "path": "artifacts/safety_invariants.junit.xml",
+      "suites": [
+        {
+          "name": "pytest",
+          "tests": "29",
+          "failures": "0",
+          "errors": "0",
+          "skipped": "0",
+          "time": "2.742"
+        }
+      ],
+      "failed_cases": 0
+    },
+    {
+      "artifact": "paper-readiness-evidence",
+      "path": "artifacts/self_evolution.junit.xml",
+      "suites": [
+        {
+          "name": "pytest",
+          "tests": "15",
+          "failures": "0",
+          "errors": "0",
+          "skipped": "0",
+          "time": "1.592"
+        }
+      ],
+      "failed_cases": 0
+    },
+    {
+      "artifact": "paper-readiness-evidence",
+      "path": "artifacts/semantic_invariants.junit.xml",
+      "suites": [
+        {
+          "name": "pytest",
+          "tests": "20",
+          "failures": "0",
+          "errors": "0",
+          "skipped": "0",
+          "time": "2.915"
+        }
+      ],
+      "failed_cases": 0
+    }
+  ],
+  "retention_note": "Compact source/provenance/status summaries, selected log tails and failed-case XML only. Complete artifact downloads remain on GitHub. Text snippets may be truncated."
+}

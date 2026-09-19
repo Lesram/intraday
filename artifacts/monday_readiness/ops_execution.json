@@ -1,0 +1,56 @@
+{
+  "task_id": "monday-readiness-ops",
+  "status": "implementation_and_isolated_verification_complete",
+  "files_changed": [
+    "scripts/ops/paper_watchdog.sh",
+    "scripts/ops/paper_watchdog.py",
+    "ops/launchd/com.intra.paper.watchdog.plist",
+    "scripts/runtime/rotate_brain_backup.py",
+    "scripts/runtime/backup/paper_database.py",
+    "ops/launchd/com.intra.postgres-backup.plist",
+    "scripts/runtime/com.intra.brain-backup.plist",
+    "docs/runbooks/PAPER_UPTIME.md",
+    "docs/runbooks/PAPER_BACKUP_RECOVERY.md",
+    "tests/test_paper_watchdog.py",
+    "tests/test_paper_backup_recovery.py",
+    "scripts/runtime/INSTALL_BRAIN_BACKUP.md"
+  ],
+  "tests": {
+    "passed": 69,
+    "failed": 0,
+    "network_denied": true,
+    "duration_seconds": 0.27,
+    "warning": "asyncio_mode unknown because unrelated plugin autoload is disabled"
+  },
+  "checks": {
+    "ruff": "passed",
+    "git_diff_check": "passed",
+    "launchd_plist_lint": "passed",
+    "shell_syntax": "passed"
+  },
+  "restore": {
+    "report": "artifacts/monday_readiness/restore_verification.json",
+    "verified": true,
+    "table_count": 27,
+    "cleanup_succeeded": true,
+    "remaining_rehearsal_containers": 0,
+    "live_database_modified": false
+  },
+  "production_service_restarts": 0,
+  "production_schedule_installations": 0,
+  "frozen_surface_changed": false,
+  "follow_ups": [
+    "Root deploys reviewed source and installs schedules after combined checks.",
+    "Verify visible macOS notification delivery and permissions on the operator session.",
+    "Root runs consolidated safety/regression, freeze verification and full artifact pack.",
+    "Root reviews and deploys the opt-in backup monitor; individual scheduled failures remain in launchd logs while a recent valid backup exists."
+  ],
+  "backup_monitor": {
+    "opt_in": "--check-backups",
+    "template_enabled": true,
+    "max_age_hours": 26,
+    "actual_read_only_archive_verification": "artifacts/monday_readiness/backup_monitor_verification.json",
+    "actual_status": "both_ok",
+    "deployed": false
+  }
+}

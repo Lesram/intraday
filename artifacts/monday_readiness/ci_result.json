@@ -1,0 +1,41 @@
+{
+  "task_id": "monday-ci-readiness",
+  "status": "implemented_for_root_review",
+  "owned_files": [
+    ".github/workflows/paper-postclose-audit.yml",
+    ".github/workflows/nightly.yml",
+    ".github/workflows/artifact-reporting.yml",
+    "scripts/ci/check_kpi_thresholds.py",
+    "tests/test_postclose_kpi_reporting.py",
+    "tests/test_monday_ci_workflows.py",
+    "docs/engineering/MONDAY_CI_READINESS.md"
+  ],
+  "tests_passed": 111,
+  "tests_failed": 0,
+  "test_evidence": [
+    "artifacts/monday_readiness/ci_tests.xml",
+    "artifacts/monday_readiness/ci_tests.log"
+  ],
+  "lint": "targeted Ruff passed",
+  "diff_check": "passed",
+  "runtime_behavior_changed": false,
+  "external_mutations": false,
+  "frozen_surfaces_changed": false,
+  "root_followups": [
+    "Review combined source; run freeze verification and required regression/full pack",
+    "Review/open active repair PR; run real workflow with explicit source SHA and notify_issues=false",
+    "Fill REVIEWED_SHA in /tmp/intra-main-scheduler-bridge templates using accepted repair SHA, review tiny main-only bridge PR, enable automatic issues per AGENTS",
+    "Leave parked CI trio unchanged; preserve baseline nightly failures truthfully"
+  ],
+  "limitations": [
+    "Hosted CI tests use mock/shadow settings and are not live database/broker health verification",
+    "GitHub infrastructure outage can prevent even the independent reporting job",
+    "No manual synthetic issue sent; real issue delivery remains for root approval/real failure validation"
+  ],
+  "secret_alert_recommendation": {
+    "alert": 1,
+    "proposed_resolution": "used_in_tests",
+    "evidence": "Historical redaction fixture and JUnit copies, obvious ascending placeholder pattern, provider validity unknown",
+    "closed": false
+  }
+}

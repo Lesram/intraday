@@ -71,6 +71,8 @@ async def connect(sid: str, environ: dict, auth: dict | None):
             claims = decode_token(token)
             user_id = claims.get('sub')
             roles = claims.get('roles', [])
+            if "paper_monitor" in roles:
+                return False  # Scoped monitoring tokens cannot open Socket.IO sessions.
 
             logger.info(f"[AUTH] JWT decoded - user_id: '{user_id}', roles: {roles}")
             logger.info(f"Client connected: {sid} (user: {user_id}, roles: {roles})")

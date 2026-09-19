@@ -1,0 +1,17 @@
+{
+  "paper_broker": true,
+  "account_status": "ACTIVE",
+  "trading_blocked": false,
+  "account_blocked": false,
+  "open_positions": 0,
+  "open_orders": 0,
+  "clock": {
+    "is_open": false,
+    "next_close": "2026-09-21T16:00:00-04:00",
+    "next_open": "2026-09-21T09:30:00-04:00",
+    "timestamp": "2026-09-19T15:08:38.262180427-04:00"
+  },
+  "requests": "GET only",
+  "credentials_or_account_id_saved": false,
+  "observed_at": "2026-09-19T19:08:38.281117+00:00"
+}

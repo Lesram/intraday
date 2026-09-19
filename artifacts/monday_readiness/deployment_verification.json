@@ -1,0 +1,50 @@
+{
+  "source_sha": "dead82a4d3d110afe811ed91b59959e76bfd9ce6",
+  "at": "2026-09-19T19:13:22.230396+00:00",
+  "containers": {
+    "/intra-api-1": {
+      "healthy": true,
+      "environment_changed_keys": [
+        "BUILD_TIME",
+        "GIT_SHA",
+        "IMAGE_SHA"
+      ],
+      "mounts_preserved": true,
+      "ports": {
+        "8000/tcp": [
+          {
+            "HostIp": "127.0.0.1",
+            "HostPort": "8000"
+          }
+        ]
+      }
+    },
+    "/trading_platform_db_paper": {
+      "healthy": true,
+      "environment_changed_keys": [],
+      "mounts_preserved": true,
+      "ports": {
+        "5432/tcp": [
+          {
+            "HostIp": "127.0.0.1",
+            "HostPort": "5432"
+          }
+        ]
+      }
+    },
+    "/intra-redis-1": {
+      "healthy": true,
+      "environment_changed_keys": [],
+      "mounts_preserved": true,
+      "ports": {
+        "6379/tcp": [
+          {
+            "HostIp": "127.0.0.1",
+            "HostPort": "6379"
+          }
+        ]
+      }
+    }
+  },
+  "no_trading_configuration_changes": true
+}

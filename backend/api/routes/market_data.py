@@ -95,6 +95,9 @@ async def market_data_websocket(
 
         # Decode and validate JWT token
         payload = decode_token(token)
+        if "paper_monitor" in payload.get("roles", []):
+            await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+            return
         user_id = payload.get("sub") or payload.get("user_id")
 
         if not user_id:

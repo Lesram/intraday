@@ -1,0 +1,208 @@
+{
+  "task_id": "replay-ci-cpu-diagnostic",
+  "scope": "Read-only source inspection and bounded offline local profiles; no repository source, frozen code, runtime, or credentials changed.",
+  "platform": {
+    "system": "Darwin",
+    "machine": "arm64",
+    "python": "3.12.12"
+  },
+  "package_versions": {
+    "numpy": "2.4.2",
+    "pandas": "3.0.1",
+    "xgboost": "3.2.0",
+    "scikit-learn": "1.8.0",
+    "scipy": "1.17.0",
+    "pytest": "9.0.2",
+    "threadpoolctl": "3.6.0"
+  },
+  "local_junit": {
+    "replay_simulator": {
+      "seconds": 140.466,
+      "tests": 28,
+      "slowest_tests": [
+        {
+          "name": "test_replay_completes_100_ticks",
+          "seconds": 25.804
+        },
+        {
+          "name": "test_replay_trades_have_valid_pnl",
+          "seconds": 24.772
+        },
+        {
+          "name": "test_replay_no_throttle_blocking",
+          "seconds": 24.752
+        },
+        {
+          "name": "test_replay_throttle_actually_blocks_at_low_limit",
+          "seconds": 24.713
+        },
+        {
+          "name": "test_replay_with_crash_data",
+          "seconds": 11.387
+        },
+        {
+          "name": "test_replay_daily_timeframe_uses_wider_stops",
+          "seconds": 11.29
+        }
+      ]
+    },
+    "organism_engine_scenarios": {
+      "seconds": 40.079,
+      "tests": 31,
+      "slowest_tests": [
+        {
+          "name": "test_brain_save_interval_20_ticks",
+          "seconds": 10.151
+        },
+        {
+          "name": "test_regime_stability_over_20_ticks",
+          "seconds": 7.987
+        },
+        {
+          "name": "test_tick_count_and_state_survive_restart",
+          "seconds": 4.062
+        },
+        {
+          "name": "test_entry_with_partial_fill_tracked_correctly",
+          "seconds": 4.033
+        },
+        {
+          "name": "test_untrained_ml_doesnt_block_all_entries",
+          "seconds": 2.426
+        },
+        {
+          "name": "test_entries_blocked_during_warmup",
+          "seconds": 2.399
+        }
+      ]
+    }
+  },
+  "suite_tick_count": 580,
+  "next_test_after_22_completions": {
+    "ordinal": 23,
+    "name": "test_replay_intraday_timeframe_uses_tight_stops",
+    "source": "tests/test_replay_simulator.py:499",
+    "ticks": 50,
+    "symbols": 3,
+    "lookback": 200,
+    "trend": "down",
+    "per_test_deadline_seconds": 180
+  },
+  "profile": {
+    "case": "same setup as test23, complete50ticks",
+    "network_isolation": "OS sandbox denies all network plus socket.connect audit rejection",
+    "network_attempts": 0,
+    "wall_seconds": 26.92651316699994,
+    "process_cpu_seconds": 26.876783,
+    "profiler_overhead_present": true,
+    "functions": [
+      {
+        "name": "autocorr",
+        "file": "venv/lib/python3.12/site-packages/pandas/core/series.py",
+        "line": 2921,
+        "calls": 94725,
+        "cumulative_seconds": 10.2498
+      },
+      {
+        "name": "_compute_features_sync",
+        "file": "backend/organism/live_engine_data.py",
+        "line": 56,
+        "calls": 150,
+        "cumulative_seconds": 24.9052
+      },
+      {
+        "name": "submit_retrain",
+        "file": "backend/organism/background_trainer.py",
+        "line": 366,
+        "calls": 1,
+        "cumulative_seconds": 0.0002
+      },
+      {
+        "name": "_save_brain",
+        "file": "backend/organism/live_engine.py",
+        "line": 7349,
+        "calls": 3,
+        "cumulative_seconds": 0.0255
+      },
+      {
+        "name": "corrcoef",
+        "file": "venv/lib/python3.12/site-packages/numpy/lib/_function_base_impl.py",
+        "line": 2897,
+        "calls": 135625,
+        "cumulative_seconds": 3.3546
+      },
+      {
+        "name": "initialize",
+        "file": "backend/organism/live_engine.py",
+        "line": 1684,
+        "calls": 1,
+        "cumulative_seconds": 0.0134
+      },
+      {
+        "name": "compute_ml_features",
+        "file": "backend/organism/ml_features.py",
+        "line": 117,
+        "calls": 150,
+        "cumulative_seconds": 22.1946
+      }
+    ],
+    "raw_evidence_directory": "/var/folders/52/1b3lnm3n5252r2cynmqgzhlc0000gn/T/intra-replay-full-profile-jiqhpcm2"
+  },
+  "source_findings": [
+    {
+      "path": "backend/organism/live_engine_data.py:96",
+      "finding": "Non-streaming feature computation executes synchronously for each symbol despite asyncio.gather; full features rebuilt every tick."
+    },
+    {
+      "path": "backend/organism/ml_features.py:414",
+      "finding": "Three rolling autocorrelation calculations use pandas apply(raw=False); 50-tick profile records94725 autocorr calls."
+    },
+    {
+      "path": "backend/organism/replay_simulator.py:692",
+      "finding": "Scanner disabled before ticks; injected historical provider and simulated broker; normal exit awaits engine.shutdown."
+    },
+    {
+      "path": "tests/test_organism_engine_scenarios.py:72",
+      "finding": "Scenario factory disables scanner, uses synthetic bars and temporary brain. Engines are not explicitly shut down in this suite, an unproven cleanup gap rather than demonstrated timeout cause."
+    },
+    {
+      "path": "backend/organism/live_engine.py:2159",
+      "finding": "Initializes a one-worker background executor. Exact50tick profile observes one submit_retrain call taking0.0002s in parent; no expensive constructor in observed parent profile."
+    }
+  ],
+  "interpretation": {
+    "supported": "Local test23 is CPU-dominated, with24.9052s out of26.9265s profiled wall in feature computation and zero network attempts. Existing local full suite is already140.466s. Progress stopping after22dots can be cumulative suite-budget exhaustion rather than a distinct test23 hang.",
+    "not_established": [
+      "Hosted CPU quota/steal time or exact hardware difference; no hosted metadata measured by this investigation.",
+      "Native-thread oversubscription as cause; github agent reported negligible local A/B benefit.",
+      "All child-process CPU costs; cProfile data describes measured process."
+    ],
+    "recommended_boundary": "Preserve frozen feature/engine code and replay coverage. Capture verbose progress, durations and runner resource metadata; size the aggregate suite budget consistently with the unchanged per-case deadlines."
+  },
+  "cross_agent_evidence": {
+    "attribution": "github_readiness reported hosted timings and a separate A/B; those measurements were not run by this worker, and the A/B platform is not independently verified here.",
+    "hosted_replay_seconds": [
+      283.471,
+      456.236,
+      600.0
+    ],
+    "hosted_latest_outcome": "outer process deadline reached after22completed tests; no final JUnit",
+    "hosted_scenario_seconds_approx": [
+      74.37,
+      117.84,
+      163.0
+    ],
+    "thread_cap_case23_ab_seconds": {
+      "default": 12.37,
+      "one_thread": 11.95
+    }
+  },
+  "failed_experiments": [
+    {
+      "attempt": "initial10tick profile launch",
+      "outcome": "failed before execution because temporary script named profile.py shadowed Python profile module",
+      "resolution": "renamed private script measure_replay.py and reran successfully",
+      "impact": "no replay or runtime mutation in failed attempt"
+    }
+  ]
+}

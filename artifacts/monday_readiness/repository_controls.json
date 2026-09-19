@@ -1,0 +1,47 @@
+{
+  "at": "2026-09-19T19:29:36.533100+00:00",
+  "branches": {
+    "intra-2.0-phase1": {
+      "enforce_admins": true,
+      "required_status_checks": {
+        "url": "https://api.github.com/repos/Lesram/intraday/branches/intra-2.0-phase1/protection/required_status_checks",
+        "strict": true,
+        "contexts": [
+          "operational-safety"
+        ],
+        "contexts_url": "https://api.github.com/repos/Lesram/intraday/branches/intra-2.0-phase1/protection/required_status_checks/contexts",
+        "checks": [
+          {
+            "context": "operational-safety",
+            "app_id": 15368
+          }
+        ]
+      },
+      "required_pull_request_reviews": {
+        "url": "https://api.github.com/repos/Lesram/intraday/branches/intra-2.0-phase1/protection/required_pull_request_reviews",
+        "dismiss_stale_reviews": true,
+        "require_code_owner_reviews": false,
+        "require_last_push_approval": false,
+        "required_approving_review_count": 0
+      },
+      "allow_force_pushes": false,
+      "allow_deletions": false,
+      "required_conversation_resolution": true
+    },
+    "main": {
+      "enforce_admins": true,
+      "required_status_checks": null,
+      "required_pull_request_reviews": {
+        "url": "https://api.github.com/repos/Lesram/intraday/branches/main/protection/required_pull_request_reviews",
+        "dismiss_stale_reviews": true,
+        "require_code_owner_reviews": false,
+        "require_last_push_approval": false,
+        "required_approving_review_count": 0
+      },
+      "allow_force_pushes": false,
+      "allow_deletions": false,
+      "required_conversation_resolution": true
+    }
+  },
+  "review_qualification": "Pull requests enforced; approval count is0 because owner is sole collaborator. Independent agent review retained in artifact; GitHub human approval is not claimed."
+}

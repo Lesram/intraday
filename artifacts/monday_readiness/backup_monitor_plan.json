@@ -1,0 +1,29 @@
+{
+  "task_id": "watchdog-backup-monitor",
+  "scope": "Read-only bounded opt-in receipt freshness and integrity monitor with existing local notice dedup/retry.",
+  "files": [
+    "scripts/ops/paper_watchdog.py",
+    "ops/launchd/com.intra.paper.watchdog.plist",
+    "tests/test_paper_watchdog.py",
+    "docs/runbooks/PAPER_UPTIME.md",
+    "docs/runbooks/PAPER_BACKUP_RECOVERY.md"
+  ],
+  "tests": [
+    "tests/test_paper_watchdog.py",
+    "tests/test_paper_backup_recovery.py"
+  ],
+  "limits": {
+    "freshness_hours": 26,
+    "hash_bytes": 536870912,
+    "check_seconds": 10,
+    "brain_files": 1024,
+    "directory_entries": 4096,
+    "receipt_bytes": 1048576
+  },
+  "constraints": [
+    "No recovery, deletion or restore for backup issues.",
+    "No host backup access without opt-in; synthetic paths only in tests.",
+    "No requirement for source_saved_at to advance on closed markets.",
+    "Root reviews and deploys; no commit or deployment by worker."
+  ]
+}

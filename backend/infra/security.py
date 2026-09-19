@@ -756,10 +756,26 @@ async def get_current_user(
                     "AA3-1: blacklist check failed (allowing token): %s",
                     _bl_err,
                 )
+            # A dedicated observer token must not inherit permission from
+            # legacy routes that require authentication but no trading role.
+            # Enforce its scope centrally before any route receives a user.
+            if "paper_monitor" in claims.roles:
+                monitor_scope = {
+                    ("GET", "/api/v1/paper-monitor/organism/status"),
+                    ("GET", "/api/v1/paper-monitor/deploy"),
+                    ("GET", "/api/v1/paper-monitor/data-integrity"),
+                    ("GET", "/api/v1/paper-monitor/edge"),
+                    ("GET", "/api/v1/auth/me"),
+                    ("POST", "/api/v1/auth/logout"),
+                }
+                if (request.method, request.url.path) not in monitor_scope:
+                    raise HTTPException(status_code=403, detail="paper_monitor_scope")
             return AuthenticatedUser(
                 username=claims.sub, roles=claims.roles, token_id=claims.jti
             )
         except HTTPException as e:
+            if e.detail == "paper_monitor_scope":
+                raise  # Do not fall back to a different authentication method.
             # Re-raise specific JWT errors (expired, invalid signature, etc.)
             if any(term in str(e.detail).lower() for term in ["expired", "signature", "invalid token", "revoked"]):
                 raise

@@ -1,13 +1,143 @@
 {
   "source": "live_process",
-  "snapshot_taken_at": "2026-09-19T18:17:34Z",
+  "snapshot_taken_at": "2026-09-19T19:39:38Z",
   "container": "intra-api-1",
-  "reachable": false,
-  "organism_status": null,
+  "reachable": true,
+  "organism_status": {
+    "enabled": true,
+    "governance": {
+      "frozen": false,
+      "trading_halted": false,
+      "halted": false,
+      "drawdown_triggered": false,
+      "disabled_strategies": [],
+      "policy_version": "",
+      "config_hash": "",
+      "change_count_today": 0,
+      "max_changes_per_day": 500,
+      "change_budget_remaining": 500
+    },
+    "regime": {
+      "last_regime": ""
+    },
+    "promotion": null,
+    "policy_weights": {
+      "momentum": 1.0023455365351297,
+      "mean_reversion": 2.5,
+      "stat_arb": 2.5,
+      "regime_momentum": 1.7562395161534294,
+      "breakout": 2.5,
+      "ensemble": 1.0,
+      "order_flow": 2.5,
+      "vol_structure": 1.060594946053946,
+      "cross_momentum": 1.0,
+      "microstructure": 0.1,
+      "adaptive_regime": 1.6161843624050236
+    },
+    "tick_count": 114480,
+    "live_engine": {
+      "running": true,
+      "tick_interval_s": 10,
+      "last_tick": null,
+      "tick_history": [],
+      "engine": {
+        "initialized": true,
+        "tick_count": 114480,
+        "total_trades": 610,
+        "brain_generation": 389,
+        "brain_total_runs": 6130,
+        "evolved_generation": 143,
+        "evolved_adaptations": 143,
+        "peak_equity": 100093.67,
+        "current_equity": 100055.55,
+        "governance": {
+          "frozen": false,
+          "trading_halted": false,
+          "halted": false,
+          "drawdown_triggered": false,
+          "disabled_strategies": [],
+          "policy_version": "",
+          "config_hash": "",
+          "change_count_today": 8,
+          "max_changes_per_day": 500,
+          "change_budget_remaining": 492
+        },
+        "universe_size": 20,
+        "universe_symbols": [
+          "NVDA",
+          "XLK",
+          "COST",
+          "AMD",
+          "IWM",
+          "MSFT",
+          "WMT",
+          "QQQ",
+          "AAPL",
+          "AMZN",
+          "AVGO",
+          "CAT",
+          "CRM",
+          "GOOGL",
+          "LLY",
+          "META",
+          "SPY",
+          "TSLA",
+          "XLE",
+          "XOM"
+        ],
+        "positions_tracked": 0,
+        "cumulative_pnl": -588.39,
+        "win_rate": 0.3393,
+        "winning_trades": 207,
+        "losing_trades": 399,
+        "avg_win": 10.98,
+        "avg_loss": -7.17,
+        "strategy_total_trades": 602,
+        "strategy_cumulative_pnl": -726.79,
+        "strategy_win_rate": 0.3355,
+        "strategy_sharpe_ratio_per_trade": -1.2628,
+        "ml_accuracy": 0.0,
+        "ml_trained": true,
+        "training_history": [],
+        "regime": "unknown",
+        "shorts_enabled": false,
+        "data_stale": false,
+        "learning_mode": false,
+        "trading_phase": "production_guarded",
+        "guarded_mode": true,
+        "ml_influence_enabled": false,
+        "fixed_risk_sizing": true,
+        "promotion_blockers": [
+          "total_pnl -726.79 < floor 0.00",
+          "sharpe_ratio_per_trade -1.2628 < floor 0.0000"
+        ],
+        "watchdog": {
+          "no_trade": {
+            "state": "OK",
+            "ticks_since_last_order": 0,
+            "zero_candidate_ticks": 0
+          },
+          "equity_fallback": {
+            "total_fallback_count": 0,
+            "current_streak": 0
+          },
+          "universe_drift": {},
+          "brain_save": {
+            "ticks_since_last_save": 0,
+            "healthy": true
+          }
+        },
+        "scanner_enabled": true,
+        "scanner_scan_count": 0,
+        "scanner_candidates_count": 0,
+        "scanner_last_scan_time": 0.0
+      }
+    }
+  },
   "brain_state": {
     "brain_format_version": 2,
-    "saved_at": "2026-09-19T17:00:22.294372+00:00",
-    "total_runs": 6128,
+    "saved_at": "2026-09-19T19:12:35.542579+00:00",
+    "total_runs": 6130,
     "generation": 389,
     "total_trades": 609,
     "cumulative_pnl": -588.39,
@@ -774,9 +904,9 @@
     }
   },
   "process_env": {
-    "GIT_SHA": "9697cd59e8add11dbc96080aaec0f4c21def4292",
-    "BUILD_TIME": "2026-07-29T06:46:33Z",
-    "IMAGE_SHA": "9697cd59e8add11dbc96080aaec0f4c21def4292",
+    "GIT_SHA": "dead82a4d3d110afe811ed91b59959e76bfd9ce6",
+    "BUILD_TIME": "2026-09-19T19:09:00Z",
+    "IMAGE_SHA": "dead82a4d3d110afe811ed91b59959e76bfd9ce6",
     "APP_ENVIRONMENT": "development",
     "ALPACA_PAPER": "true",
     "ORGANISM_DRAWDOWN_KILL_PCT": "0.10",
@@ -790,11 +920,54 @@
     "ORGANISM_STRATEGY_EVIDENCE_TELEMETRY_ENABLED": "true",
     "ORGANISM_PHASE9_SHADOW_ENGINES_ENABLED": "false"
   },
-  "source_annotations": {},
-  "unreachable_reason": "organism status endpoint returned no data or is not responding",
-  "container_started_at": "2026-09-19T17:00:35.949723Z",
-  "live": {},
+  "source_annotations": {
+    "tick_count": "api_top_level.tick_count",
+    "trade_count": "engine_memory.total_trades",
+    "open_positions": "engine_memory.positions_tracked",
+    "is_learning_mode": "engine_memory.learning_mode",
+    "trading_phase": "engine_memory.trading_phase",
+    "guarded_mode": "engine_memory.guarded_mode",
+    "ml_influence_enabled": "engine_memory.ml_influence_enabled",
+    "fixed_risk_sizing": "engine_memory.fixed_risk_sizing",
+    "promotion_blockers": "engine_memory.promotion_blockers",
+    "brain_generation": "engine_memory.brain_generation",
+    "regime": "api_top_level.regime.last_regime",
+    "equity": "engine_memory.current_equity",
+    "ml_trained": "engine_memory.ml_trained",
+    "win_rate": "engine_memory.win_rate",
+    "cumulative_pnl": "engine_memory.cumulative_pnl",
+    "universe_size": "engine_memory.universe_size",
+    "scanner_candidates_count": "engine_memory.scanner_candidates_count"
+  },
+  "container_started_at": "2026-09-19T19:12:46.78645868Z",
+  "live": {
+    "tick_count": 114480,
+    "trade_count": 610,
+    "open_positions": 0,
+    "is_learning_mode": false,
+    "trading_phase": "production_guarded",
+    "guarded_mode": true,
+    "ml_influence_enabled": false,
+    "fixed_risk_sizing": true,
+    "promotion_blockers": [
+      "total_pnl -726.79 < floor 0.00",
+      "sharpe_ratio_per_trade -1.2628 < floor 0.0000"
+    ],
+    "brain_generation": 389,
+    "uptime_seconds": null,
+    "last_tick_at": null,
+    "idle_reason": "market_closed_or_no_ticks_yet",
+    "regime": "idle",
+    "drawdown_pct": null,
+    "equity": 100055.55,
+    "ml_trained": true,
+    "win_rate": 0.3393,
+    "cumulative_pnl": -588.39,
+    "universe_size": 20,
+    "scanner_candidates_count": 0,
+    "running": true
+  },
   "coherence_notes": [
-    "All cross-source values are consistent."
+    "brain_state.total_trades=609 vs live.trade_count=610: the counters can have different accounting scopes or save times. This comparison alone does not establish missing trades or unsaved activity; reconcile ledger attribution before changing either counter."
   ]
 }

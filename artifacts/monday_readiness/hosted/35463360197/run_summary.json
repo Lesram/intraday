@@ -1,0 +1,148 @@
+{
+  "id": 35463360197,
+  "name": "paper-postclose-audit",
+  "head_sha": "dead82a4d3d110afe811ed91b59959e76bfd9ce6",
+  "head_branch": "codex/monday-paper-readiness",
+  "event": "workflow_dispatch",
+  "status": "completed",
+  "conclusion": "failure",
+  "run_started_at": "2026-09-19T19:07:38Z",
+  "updated_at": "2026-09-19T19:18:43Z",
+  "html_url": "https://github.com/Lesram/intraday/actions/runs/35463360197",
+  "jobs": [
+    {
+      "name": "collect-and-audit",
+      "status": "completed",
+      "conclusion": "failure",
+      "started_at": "2026-09-19T19:07:41Z",
+      "completed_at": "2026-09-19T19:18:37Z",
+      "html_url": "https://github.com/Lesram/intraday/actions/runs/35463360197/job/105951069418",
+      "failed_steps": [
+        {
+          "name": "Generate full artifact pack",
+          "conclusion": "failure"
+        },
+        {
+          "name": "Check KPI evidence and write durable report",
+          "conclusion": "failure"
+        }
+      ]
+    },
+    {
+      "name": "Preserve workflow result and optionally notify",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-09-19T19:18:39Z",
+      "completed_at": "2026-09-19T19:18:43Z",
+      "html_url": "https://github.com/Lesram/intraday/actions/runs/35463360197/job/105952625502",
+      "failed_steps": []
+    }
+  ],
+  "artifacts": [
+    {
+      "id": 10591001537,
+      "name": "postclose-artifacts",
+      "size_in_bytes": 767290,
+      "expired": false
+    },
+    {
+      "id": 10590038783,
+      "name": "postclose-workflow-status",
+      "size_in_bytes": 373,
+      "expired": false
+    }
+  ],
+  "xml_summaries": [
+    {
+      "artifact": "postclose-artifacts",
+      "path": "artifacts/algorithm_improvements.junit.xml",
+      "suites": [
+        {
+          "name": "pytest",
+          "tests": "58",
+          "failures": "0",
+          "errors": "0",
+          "skipped": "0",
+          "time": "2.147"
+        }
+      ],
+      "failed_cases": 0
+    },
+    {
+      "artifact": "postclose-artifacts",
+      "path": "artifacts/multi_tick_state.junit.xml",
+      "suites": [
+        {
+          "name": "pytest",
+          "tests": "9",
+          "failures": "0",
+          "errors": "0",
+          "skipped": "0",
+          "time": "2.155"
+        }
+      ],
+      "failed_cases": 0
+    },
+    {
+      "artifact": "postclose-artifacts",
+      "path": "artifacts/organism_live_engine.junit.xml",
+      "suites": [
+        {
+          "name": "pytest",
+          "tests": "26",
+          "failures": "0",
+          "errors": "0",
+          "skipped": "0",
+          "time": "48.876"
+        }
+      ],
+      "failed_cases": 0
+    },
+    {
+      "artifact": "postclose-artifacts",
+      "path": "artifacts/safety_invariants.junit.xml",
+      "suites": [
+        {
+          "name": "pytest",
+          "tests": "29",
+          "failures": "0",
+          "errors": "0",
+          "skipped": "0",
+          "time": "2.254"
+        }
+      ],
+      "failed_cases": 0
+    },
+    {
+      "artifact": "postclose-artifacts",
+      "path": "artifacts/self_evolution.junit.xml",
+      "suites": [
+        {
+          "name": "pytest",
+          "tests": "15",
+          "failures": "0",
+          "errors": "0",
+          "skipped": "0",
+          "time": "1.285"
+        }
+      ],
+      "failed_cases": 0
+    },
+    {
+      "artifact": "postclose-artifacts",
+      "path": "artifacts/semantic_invariants.junit.xml",
+      "suites": [
+        {
+          "name": "pytest",
+          "tests": "20",
+          "failures": "0",
+          "errors": "0",
+          "skipped": "0",
+          "time": "2.368"
+        }
+      ],
+      "failed_cases": 0
+    }
+  ],
+  "retention_note": "Compact source/provenance/status summaries, selected log tails and failed-case XML only. Complete artifact downloads remain on GitHub. Text snippets may be truncated."
+}

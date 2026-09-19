@@ -1,0 +1,648 @@
+{
+  "overall": "fail",
+  "suites": {
+    "organism_live_engine": {
+      "status": "pass",
+      "passed": 26,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "total": 26,
+      "tests": [
+        {
+          "name": "test_initialize_fresh",
+          "status": "passed"
+        },
+        {
+          "name": "test_live_tick_runs",
+          "status": "passed"
+        },
+        {
+          "name": "test_live_tick_governance_halt",
+          "status": "passed"
+        },
+        {
+          "name": "test_status",
+          "status": "passed"
+        },
+        {
+          "name": "test_shutdown_saves_brain",
+          "status": "passed"
+        },
+        {
+          "name": "test_multiple_ticks",
+          "status": "passed"
+        },
+        {
+          "name": "test_tick_result_dict",
+          "status": "passed"
+        },
+        {
+          "name": "test_start_stop",
+          "status": "passed"
+        },
+        {
+          "name": "test_state",
+          "status": "passed"
+        },
+        {
+          "name": "test_double_start",
+          "status": "passed"
+        },
+        {
+          "name": "test_passes_sessionmaker_to_live_engine",
+          "status": "passed"
+        },
+        {
+          "name": "test_position_close_creates_trade_record",
+          "status": "passed"
+        },
+        {
+          "name": "test_reconstructs_existing_positions",
+          "status": "passed"
+        },
+        {
+          "name": "test_reconstruction_fallback_when_no_data",
+          "status": "passed"
+        },
+        {
+          "name": "test_safety_net_triggers_without_exit_levels",
+          "status": "passed"
+        },
+        {
+          "name": "test_gate_passes_with_good_performance",
+          "status": "passed"
+        },
+        {
+          "name": "test_gate_fails_on_regression",
+          "status": "passed"
+        },
+        {
+          "name": "test_gate_passes_with_no_baseline",
+          "status": "passed"
+        },
+        {
+          "name": "test_gate_passes_with_insufficient_trades",
+          "status": "passed"
+        },
+        {
+          "name": "test_brain_persistence_across_runs",
+          "status": "passed"
+        },
+        {
+          "name": "test_full_cycle",
+          "status": "passed"
+        },
+        {
+          "name": "test_exit_check_on_open_positions",
+          "status": "passed"
+        },
+        {
+          "name": "test_generate_trading_signals",
+          "status": "passed"
+        },
+        {
+          "name": "test_empty_universe",
+          "status": "passed"
+        },
+        {
+          "name": "test_data_client_failure",
+          "status": "passed"
+        },
+        {
+          "name": "test_live_tick_result_serializable",
+          "status": "passed"
+        }
+      ],
+      "exit_code": 0,
+      "timed_out": false,
+      "error": "",
+      "output_file": "artifacts/organism_live_engine.log",
+      "output_tail": "..........................                                               [100%]\n=============================== warnings summary ===============================\ntests/test_organism_live_engine.py::TestOrganismLiveEngine::test_initialize_fresh\n  <string>:15: RuntimeWarning: SECRET_KEY not set \u2014 using generated ephemeral key. Set SECRET_KEY env var for production.\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n26 passed, 1 warning in 48.88s\n",
+      "junit_file": "artifacts/organism_live_engine.junit.xml"
+    },
+    "organism_engine_scenarios": {
+      "status": "fail",
+      "passed": 0,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "total": 0,
+      "tests": [],
+      "exit_code": -9,
+      "timed_out": true,
+      "error": "command timed out after 120s; invalid pytest evidence: [Errno 2] No such file or directory: '/home/runner/work/intraday/intraday/artifacts/organism_engine_scenarios.junit.xml'",
+      "output_file": "artifacts/organism_engine_scenarios.log",
+      "output_tail": "..............................",
+      "junit_file": "artifacts/organism_engine_scenarios.junit.xml"
+    },
+    "multi_tick_state": {
+      "status": "pass",
+      "passed": 9,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "total": 9,
+      "tests": [
+        {
+          "name": "test_position_closes_no_duplicate_exit",
+          "status": "passed"
+        },
+        {
+          "name": "test_no_short_created_across_ticks",
+          "status": "passed"
+        },
+        {
+          "name": "test_internal_state_synced_with_broker",
+          "status": "passed"
+        },
+        {
+          "name": "test_kelly_reduced_when_ml_untrained",
+          "status": "passed"
+        },
+        {
+          "name": "test_universe_observation_gate",
+          "status": "passed"
+        },
+        {
+          "name": "test_pending_exit_prevents_re_exit",
+          "status": "passed"
+        },
+        {
+          "name": "test_pending_exit_breach_triggers_safety_net",
+          "status": "passed"
+        },
+        {
+          "name": "test_movers_filtered_by_volume",
+          "status": "passed"
+        },
+        {
+          "name": "test_exit_uses_day_tif",
+          "status": "passed"
+        }
+      ],
+      "exit_code": 0,
+      "timed_out": false,
+      "error": "",
+      "output_file": "artifacts/multi_tick_state.log",
+      "output_tail": ".........                                                                [100%]\n=============================== warnings summary ===============================\ntests/test_multi_tick_state.py::TestMultiTickState::test_position_closes_no_duplicate_exit\n  <string>:15: RuntimeWarning: SECRET_KEY not set \u2014 using generated ephemeral key. Set SECRET_KEY env var for production.\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n9 passed, 1 warning in 2.15s\n",
+      "junit_file": "artifacts/multi_tick_state.junit.xml"
+    },
+    "safety_invariants": {
+      "status": "pass",
+      "passed": 29,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "total": 29,
+      "tests": [
+        {
+          "name": "test_insufficient_features_still_processes_exits",
+          "status": "passed"
+        },
+        {
+          "name": "test_entries_blocked_still_exports_metrics_and_runs_exits",
+          "status": "passed"
+        },
+        {
+          "name": "test_sector_gate_blocks_excess_same_sector_entries",
+          "status": "passed"
+        },
+        {
+          "name": "test_sector_gate_unknown_sector_always_passes",
+          "status": "passed"
+        },
+        {
+          "name": "test_sector_gate_planned_symbols_none",
+          "status": "passed"
+        },
+        {
+          "name": "test_apply_evolved_params_default_scale_matches_intraday_baseline",
+          "status": "passed"
+        },
+        {
+          "name": "test_apply_evolved_params_with_scaled_values",
+          "status": "passed"
+        },
+        {
+          "name": "test_order_service_default_tif_is_day",
+          "status": "passed"
+        },
+        {
+          "name": "test_order_service_explicit_tif_honored",
+          "status": "passed"
+        },
+        {
+          "name": "test_reconciliation_scheduler_importable",
+          "status": "passed"
+        },
+        {
+          "name": "test_reconciliation_scheduler_status_before_start",
+          "status": "passed"
+        },
+        {
+          "name": "test_reconciliation_scheduler_start_stop",
+          "status": "passed"
+        },
+        {
+          "name": "test_reconciliation_scheduler_wired_in_lifespan",
+          "status": "passed"
+        },
+        {
+          "name": "test_long_only_exit_blocks_sell_when_no_broker_position",
+          "status": "passed"
+        },
+        {
+          "name": "test_long_only_exit_clamps_shares_to_broker_qty",
+          "status": "passed"
+        },
+        {
+          "name": "test_long_only_exit_blocks_sell_on_short_position",
+          "status": "passed"
+        },
+        {
+          "name": "test_long_only_exit_loop_skips_short_positions",
+          "status": "passed"
+        },
+        {
+          "name": "test_long_only_orphan_adoption_skips_shorts",
+          "status": "passed"
+        },
+        {
+          "name": "test_exit_idempotency_key_uses_tick_count",
+          "status": "passed"
+        },
+        {
+          "name": "test_entry_idempotency_key_uses_tick_count",
+          "status": "passed"
+        },
+        {
+          "name": "test_profit_lock_at_2r_long",
+          "status": "passed"
+        },
+        {
+          "name": "test_profit_lock_at_2r_short",
+          "status": "passed"
+        },
+        {
+          "name": "test_profit_lock_one_shot",
+          "status": "passed"
+        },
+        {
+          "name": "test_profit_lock_never_downgrades_stop",
+          "status": "passed"
+        },
+        {
+          "name": "test_profit_lock_in_check_exit",
+          "status": "passed"
+        },
+        {
+          "name": "test_partial_tp_does_not_downgrade_profit_lock",
+          "status": "passed"
+        },
+        {
+          "name": "test_spy_filter_blocks_below_ma",
+          "status": "passed"
+        },
+        {
+          "name": "test_spy_filter_allows_above_ma",
+          "status": "passed"
+        },
+        {
+          "name": "test_spy_filter_skips_insufficient_data",
+          "status": "passed"
+        }
+      ],
+      "exit_code": 0,
+      "timed_out": false,
+      "error": "",
+      "output_file": "artifacts/safety_invariants.log",
+      "output_tail": ".............................                                            [100%]\n=============================== warnings summary ===============================\ntests/test_safety_invariants.py::TestSafetyInvariants::test_insufficient_features_still_processes_exits\n  <string>:15: RuntimeWarning: SECRET_KEY not set \u2014 using generated ephemeral key. Set SECRET_KEY env var for production.\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n29 passed, 1 warning in 2.25s\n",
+      "junit_file": "artifacts/safety_invariants.junit.xml"
+    },
+    "self_evolution": {
+      "status": "pass",
+      "passed": 15,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "total": 15,
+      "tests": [
+        {
+          "name": "test_defaults_are_valid",
+          "status": "passed"
+        },
+        {
+          "name": "test_serialisation_roundtrip",
+          "status": "passed"
+        },
+        {
+          "name": "test_feature_selection_threshold",
+          "status": "passed"
+        },
+        {
+          "name": "test_feature_selection_safety_floor",
+          "status": "passed"
+        },
+        {
+          "name": "test_evolve_changes_params",
+          "status": "passed"
+        },
+        {
+          "name": "test_evolve_tolerates_legacy_non_string_entry_source",
+          "status": "passed"
+        },
+        {
+          "name": "test_skips_with_few_trades",
+          "status": "passed"
+        },
+        {
+          "name": "test_symbol_fitness_updated",
+          "status": "passed"
+        },
+        {
+          "name": "test_regime_scales_adapted",
+          "status": "passed"
+        },
+        {
+          "name": "test_multiple_evolution_steps",
+          "status": "passed"
+        },
+        {
+          "name": "test_evolution_is_gradual",
+          "status": "passed"
+        },
+        {
+          "name": "test_apply_to_alpha_scanner",
+          "status": "passed"
+        },
+        {
+          "name": "test_apply_to_exit_engine",
+          "status": "passed"
+        },
+        {
+          "name": "test_apply_to_signal_gen",
+          "status": "passed"
+        },
+        {
+          "name": "test_apply_to_kelly_sizer",
+          "status": "passed"
+        }
+      ],
+      "exit_code": 0,
+      "timed_out": false,
+      "error": "",
+      "output_file": "artifacts/self_evolution.log",
+      "output_tail": "...............                                                          [100%]\n15 passed in 1.28s\n",
+      "junit_file": "artifacts/self_evolution.junit.xml"
+    },
+    "algorithm_improvements": {
+      "status": "pass",
+      "passed": 58,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "total": 58,
+      "tests": [
+        {
+          "name": "test_weights_shape_matches_n",
+          "status": "passed"
+        },
+        {
+          "name": "test_newest_sample_has_highest_weight",
+          "status": "passed"
+        },
+        {
+          "name": "test_weights_monotonically_increase",
+          "status": "passed"
+        },
+        {
+          "name": "test_mean_weight_is_one",
+          "status": "passed"
+        },
+        {
+          "name": "test_recent_vs_oldest_ratio",
+          "status": "passed"
+        },
+        {
+          "name": "test_single_sample",
+          "status": "passed"
+        },
+        {
+          "name": "test_empty_sample",
+          "status": "passed"
+        },
+        {
+          "name": "test_record_trade_creates_stats",
+          "status": "passed"
+        },
+        {
+          "name": "test_record_trade_loss",
+          "status": "passed"
+        },
+        {
+          "name": "test_get_regime_kelly_insufficient_data",
+          "status": "passed"
+        },
+        {
+          "name": "test_get_regime_kelly_with_data",
+          "status": "passed"
+        },
+        {
+          "name": "test_get_regime_kelly_unknown_regime",
+          "status": "passed"
+        },
+        {
+          "name": "test_regime_stats_persistence",
+          "status": "passed"
+        },
+        {
+          "name": "test_record_prediction_outcome",
+          "status": "passed"
+        },
+        {
+          "name": "test_calibrate_confidence_default",
+          "status": "passed"
+        },
+        {
+          "name": "test_update_calibration_map_insufficient_data",
+          "status": "passed"
+        },
+        {
+          "name": "test_update_calibration_map_with_data",
+          "status": "passed"
+        },
+        {
+          "name": "test_calibration_persistence",
+          "status": "passed"
+        },
+        {
+          "name": "test_calibrate_confidence_capped_at_one",
+          "status": "passed"
+        },
+        {
+          "name": "test_get_sector_known_symbol",
+          "status": "passed"
+        },
+        {
+          "name": "test_get_sector_unknown_symbol",
+          "status": "passed"
+        },
+        {
+          "name": "test_count_sector_positions",
+          "status": "passed"
+        },
+        {
+          "name": "test_sector_gate_allows_under_limit",
+          "status": "passed"
+        },
+        {
+          "name": "test_sector_gate_blocks_at_limit",
+          "status": "passed"
+        },
+        {
+          "name": "test_sector_gate_allows_unknown_symbol",
+          "status": "passed"
+        },
+        {
+          "name": "test_sector_gate_different_sector_allowed",
+          "status": "passed"
+        },
+        {
+          "name": "test_autocorrelation_features_exist",
+          "status": "passed"
+        },
+        {
+          "name": "test_hurst_exponent_feature_exists",
+          "status": "passed"
+        },
+        {
+          "name": "test_autocorrelation_values_bounded",
+          "status": "passed"
+        },
+        {
+          "name": "test_features_in_feature_columns_list",
+          "status": "passed"
+        },
+        {
+          "name": "test_seasonality_reduces_shares",
+          "status": "passed"
+        },
+        {
+          "name": "test_seasonality_minimum_one_share",
+          "status": "passed"
+        },
+        {
+          "name": "test_reversal_creates_partial_exit",
+          "status": "passed"
+        },
+        {
+          "name": "test_reversal_exit_signal_dict",
+          "status": "passed"
+        },
+        {
+          "name": "test_no_reversal_on_same_direction",
+          "status": "passed"
+        },
+        {
+          "name": "test_reversal_detected_on_opposite_direction",
+          "status": "passed"
+        },
+        {
+          "name": "test_low_confidence_reversal_ignored",
+          "status": "passed"
+        },
+        {
+          "name": "test_update_levels_for_pyramid_tightens_stop",
+          "status": "passed"
+        },
+        {
+          "name": "test_update_levels_preserves_partial_tp_taken",
+          "status": "passed"
+        },
+        {
+          "name": "test_pyramid_layer_count_prevents_repeated_adds",
+          "status": "passed"
+        },
+        {
+          "name": "test_min_hold_blocks_early_profit_exit",
+          "status": "passed"
+        },
+        {
+          "name": "test_min_hold_allows_stop_loss",
+          "status": "passed"
+        },
+        {
+          "name": "test_min_hold_allows_max_loss",
+          "status": "passed"
+        },
+        {
+          "name": "test_profit_exit_fires_after_min_hold",
+          "status": "passed"
+        },
+        {
+          "name": "test_high_vol_stop_uses_4x_atr",
+          "status": "passed"
+        },
+        {
+          "name": "test_high_vol_trail_uses_4_5x_atr",
+          "status": "passed"
+        },
+        {
+          "name": "test_entries_blocked_before_10am",
+          "status": "passed"
+        },
+        {
+          "name": "test_entries_allowed_after_10am",
+          "status": "passed"
+        },
+        {
+          "name": "test_low_volume_blocked",
+          "status": "passed"
+        },
+        {
+          "name": "test_high_volume_allowed",
+          "status": "passed"
+        },
+        {
+          "name": "test_missing_data_fails_closed",
+          "status": "passed"
+        },
+        {
+          "name": "test_ml_floor_suppressed_when_regime_losing",
+          "status": "passed"
+        },
+        {
+          "name": "test_ml_floor_applies_when_regime_positive",
+          "status": "passed"
+        },
+        {
+          "name": "test_high_vol_regime_scale_is_0_8",
+          "status": "passed"
+        },
+        {
+          "name": "test_high_vol_regime_score_is_neutral",
+          "status": "passed"
+        },
+        {
+          "name": "test_stress_regime_score_stays_low",
+          "status": "passed"
+        },
+        {
+          "name": "test_high_vol_threshold_0_25",
+          "status": "passed"
+        },
+        {
+          "name": "test_fitness_gate_blocks_marginal_symbols",
+          "status": "passed"
+        }
+      ],
+      "exit_code": 0,
+      "timed_out": false,
+      "error": "",
+      "output_file": "artifacts/algorithm_improvements.log",
+      "output_tail": "..........................................................               [100%]\n58 passed in 2.15s\n",
+      "junit_file": "artifacts/algorithm_improvements.junit.xml"
+    }
+  }
+}

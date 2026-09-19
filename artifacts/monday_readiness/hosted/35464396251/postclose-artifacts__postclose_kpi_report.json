@@ -1,0 +1,10 @@
+{
+  "generated_at": "2026-09-19T19:40:58.037039+00:00",
+  "status": "pass",
+  "source_sha": "9441ca7d23288249a41606356730d5fa4d225384",
+  "run_id": "35464396251",
+  "run_attempt": "1",
+  "scope": "CI evidence only; no live account or strategy-edge certification",
+  "breaches": [],
+  "notification": "workflow-managed; no send attempted by checker"
+}

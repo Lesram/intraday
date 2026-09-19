@@ -1,0 +1,31 @@
+{
+  "task_id": "evidence-repair",
+  "summary": "Merge 69949da9af1ed342d65e37e79264a3c4bd143964 into b2785b66bf39192273a115f002c498f2f159bdcb",
+  "sha": "cc7bc4bb9a0b331103967965b11fb375c914d350",
+  "branch": "HEAD",
+  "tests_passed": [
+    "organism_live_engine",
+    "organism_engine_scenarios",
+    "multi_tick_state",
+    "safety_invariants",
+    "self_evolution",
+    "algorithm_improvements",
+    "semantic_invariants",
+    "replay_simulator"
+  ],
+  "tests_failed": [],
+  "artifact_pack_status": "pass",
+  "artifact_pack_errors": [],
+  "runtime_behavior_changed": [
+    "backend/api/routes/market_data.py",
+    "backend/api/routes/paper_monitor.py",
+    "backend/api/routes/scanner.py",
+    "backend/api/routes_setup.py",
+    "backend/api/socketio_server.py",
+    "backend/infra/security.py"
+  ],
+  "risks": [
+    "6 backend runtime file(s) changed \u2014 targeted verification required",
+    "1 config file(s) changed \u2014 runtime drift check required"
+  ]
+}

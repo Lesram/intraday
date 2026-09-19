@@ -1,0 +1,33 @@
+{
+  "task_id": "postclose-environment-and-bounded-ci-headroom",
+  "evidence": {
+    "failing_postclose": 35463360197,
+    "passing_readiness": 35463347099,
+    "postclose_dependencies": "every requirements.lock pin matches downloaded freeze; no dependency pin mismatch",
+    "scenario_readiness_seconds": 74.37,
+    "replay_readiness_seconds": 283.47,
+    "timeout_limits_seconds": [
+      120,
+      300
+    ]
+  },
+  "affected_files": [
+    ".github/workflows/paper-postclose-audit.yml",
+    ".github/workflows/nightly.yml",
+    "tests/test_monday_ci_workflows.py",
+    ".github/workflows/paper-readiness.yml",
+    ".github/workflows/pr-verify.yml",
+    "scripts/ci/generate_artifacts.py",
+    "tests/test_artifact_workflow_contract.py",
+    "docs/engineering/MONDAY_CI_READINESS.md"
+  ],
+  "change": "Align safe test JWT/HMAC stubs, PYTHONPATH and four isolated telemetry paths with passing operational-safety job; raise suite subprocess caps to 180s ordinary/semantic and 600s replay, keep per-test limits and fail-closed process-group termination; raise all full-pack consumer budgets",
+  "limits": "No application, frozen decision, dependency pin, test selection or per-test timeout changes. Parent explicitly approved bounded headroom from measured 283.47s replay pass and 300s timeout at identical source.",
+  "deployed_app_sha": "dead82a4d3d110afe811ed91b59959e76bfd9ce6",
+  "tests": [
+    "117 existing focused reporting/workflow/artifact tests plus expanded full-consumer budget cases",
+    "actionlint all affected workflows",
+    "root full safety pack and frozen-surface verification",
+    "hosted source-pinned postclose and nightly notify_issues=false"
+  ]
+}

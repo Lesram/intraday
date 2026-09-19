@@ -1,0 +1,5 @@
+{
+  "source_sha": "0d1c93d53d912d906440b679e70be20b4739d0b0",
+  "exit_code": 0,
+  "output": "DRIFT-VERIFY OK: decision surface matches freeze (FROZEN_AT=2026-07-07T20:36:49.008305+00:00)\n"
+}

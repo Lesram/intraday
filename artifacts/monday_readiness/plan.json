@@ -1,0 +1,44 @@
+{
+  "task_id": "monday-paper-readiness-2026-09-21",
+  "objective": "Repair and verify operational readiness for supervised paper trading at the next market open",
+  "branch": "codex/monday-paper-readiness",
+  "base": "codex/fix-artifact-reporting@02eaa450a2626bc3683a7cc0141f51d2c57e4d26",
+  "scope": [
+    "scheduled checks and failure reporting",
+    "startup watchdog and alert delivery",
+    "authenticated read-only application access",
+    "fresh backups and isolated restore validation",
+    "paper order lifecycle verification",
+    "broker-fill and research-evidence reconciliation",
+    "bounded repository/security controls"
+  ],
+  "protected": [
+    "six frozen functions and frozen configuration/feed",
+    "forward verdict clock and original evidence corpus",
+    "parked CI trio and refactors",
+    "real-money broker access"
+  ],
+  "candidate_files": [
+    ".github/workflows/nightly.yml",
+    ".github/workflows/paper-postclose-audit.yml",
+    "scripts/ci/check_kpi_thresholds.py",
+    "scripts/ops/",
+    "ops/launchd/",
+    "docs/runbooks/PAPER_UPTIME.md",
+    "docs/runbooks/PAPER_TRADING_ROLLOUT.md",
+    "scripts/research/",
+    "tests for scoped repairs"
+  ],
+  "validation": [
+    "freeze before/after",
+    "targeted isolated tests",
+    "required safety, state, sizing, replay and configuration suites",
+    "full artifact pack and current runtime snapshot",
+    "audit index",
+    "independent review and GitHub checks",
+    "read-only application and broker probes",
+    "isolated backup restore",
+    "paper-only end-to-end acceptance with no speculative orders"
+  ],
+  "execution_policy": "Stage, review, test and commit repairs in isolated worktree; apply reversible paper-operation changes after concrete verification; do not alter frozen trading decisions. No credentials in artifacts."
+}

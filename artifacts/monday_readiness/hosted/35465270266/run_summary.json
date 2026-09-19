@@ -1,0 +1,33 @@
+{
+  "id": 35465270266,
+  "name": "scheduler-bridge-check",
+  "head_sha": "6d6a4e337dc8dc46b55d6dd1995dede44d9b5ada",
+  "head_branch": "codex/paper-scheduler-bridge",
+  "event": "pull_request",
+  "status": "completed",
+  "conclusion": "success",
+  "run_started_at": "2026-09-19T19:44:26Z",
+  "updated_at": "2026-09-19T19:44:40Z",
+  "html_url": "https://github.com/Lesram/intraday/actions/runs/35465270266",
+  "jobs": [
+    {
+      "name": "scheduler-bridge-check",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-09-19T19:44:29Z",
+      "completed_at": "2026-09-19T19:44:40Z",
+      "html_url": "https://github.com/Lesram/intraday/actions/runs/35465270266/job/105956341010",
+      "failed_steps": []
+    }
+  ],
+  "artifacts": [
+    {
+      "id": 10590453473,
+      "name": "scheduler-bridge-evidence",
+      "size_in_bytes": 1913,
+      "expired": false
+    }
+  ],
+  "xml_summaries": [],
+  "retention_note": "Compact source/provenance/status summaries, selected log tails and failed-case XML only. Complete artifact downloads remain on GitHub. Text snippets may be truncated."
+}

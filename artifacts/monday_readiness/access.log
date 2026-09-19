@@ -1,0 +1,17 @@
+........................................................................ [ 46%]
+........................................................................ [ 92%]
+............                                                             [100%]
+=============================== warnings summary ===============================
+tests/test_paper_monitor_access.py::test_authentication_and_dedicated_role_required[None-401]
+  <string>:15: RuntimeWarning: SECRET_KEY not set — using generated ephemeral key. Set SECRET_KEY env var for production.
+
+tests/test_websocket_and_signal_service.py::TestSignalService::test_generate_signal
+  /Users/marselkei/.codex/worktrees/intra-monday-readiness/intra/tests/test_websocket_and_signal_service.py:70: DeprecationWarning: SignalService.generate_signal() returns cached/stale data. Use MultiStrategyLiveRunner for real-time signal generation.
+    signal = await service.generate_signal("MSFT", data)
+
+tests/test_websocket_and_signal_service.py::TestSignalService::test_generate_signal_with_empty_data
+  /Users/marselkei/.codex/worktrees/intra-monday-readiness/intra/tests/test_websocket_and_signal_service.py:81: DeprecationWarning: SignalService.generate_signal() returns cached/stale data. Use MultiStrategyLiveRunner for real-time signal generation.
+    signal = await service.generate_signal("TSLA", {})
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+156 passed, 3 warnings in 3.72s

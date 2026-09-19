@@ -1,0 +1,17 @@
+............................                                             [100%]
+=============================== warnings summary ===============================
+tests/test_replay_simulator.py::test_replay_completes_100_ticks
+  <string>:15: RuntimeWarning: SECRET_KEY not set — using generated ephemeral key. Set SECRET_KEY env var for production.
+
+tests/test_replay_simulator.py::test_replay_completes_100_ticks
+tests/test_replay_simulator.py::test_replay_trades_have_valid_pnl
+tests/test_replay_simulator.py::test_replay_with_crash_data
+tests/test_replay_simulator.py::test_replay_no_throttle_blocking
+tests/test_replay_simulator.py::test_replay_throttle_actually_blocks_at_low_limit
+tests/test_replay_simulator.py::test_replay_daily_timeframe_uses_wider_stops
+tests/test_replay_simulator.py::test_replay_intraday_timeframe_uses_tight_stops
+  /opt/hostedtoolcache/Python/3.12.14/x64/lib/python3.12/multiprocessing/popen_fork.py:66: DeprecationWarning: This process (pid=2779) is multi-threaded, use of fork() may lead to deadlocks in the child.
+    self.pid = os.fork()
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+28 passed, 8 warnings in 456.23s (0:07:36)
