@@ -190,3 +190,19 @@ def test_runner_paths_are_configured_only_after_job_starts(name, job_name, tmp_p
     tests_index = next(i for i, candidate in enumerate(job["steps"])
                        if "pytest" in candidate.get("run", "") or "generate_artifacts.py full" in candidate.get("run", ""))
     assert setup_index < tests_index
+
+
+def test_nightly_database_driver_matches_async_tests_and_migrations_really_run():
+    job = _load("nightly.yml")["jobs"]["deep-tests"]
+    assert job["env"]["DATABASE_URL"].startswith("postgresql+asyncpg://")
+    setup = next(step for step in job["steps"] if step.get("name") == "Set up isolated test database")
+    assert setup["run"].strip() == "python -m alembic upgrade head"
+    assert setup.get("continue-on-error", False) is False
+    # Resolve the checked-in migration location rather than silently checking
+    # a conventional directory that is absent from this repository.
+    import configparser
+    config = configparser.ConfigParser(defaults={"here": str(ROOT)})
+    config.read(ROOT / "alembic.ini")
+    migration_env = Path(config["alembic"]["script_location"]) / "env.py"
+    assert migration_env.is_file()
+    assert "postgresql+psycopg2://" in migration_env.read_text()

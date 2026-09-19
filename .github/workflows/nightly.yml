@@ -41,7 +41,7 @@ jobs:
       USE_MOCK_DATA: 'true'
       TRADING_EXECUTION_MODE: shadow
       PYTHONDONTWRITEBYTECODE: '1'
-      DATABASE_URL: postgresql://testuser:testpass@localhost:5432/testdb
+      DATABASE_URL: postgresql+asyncpg://testuser:testpass@localhost:5432/testdb
       REDIS_URL: redis://localhost:6379/0
       TEST_SEED: '42'
       PYTHONPATH: .
@@ -125,10 +125,9 @@ jobs:
           python -m pip freeze > artifacts/ci_resolved_dependencies.txt
       - name: Set up isolated test database
         timeout-minutes: 2
-        run: |
-          if [ -f alembic/env.py ]; then
-            python -m alembic upgrade head
-          fi
+        # alembic.ini points to backend/migrations/env.py, which converts the
+        # async test URL to psycopg2 for the migration connection.
+        run: python -m alembic upgrade head
       - name: Run deep test suite once and retain output
         timeout-minutes: 45
         shell: bash
