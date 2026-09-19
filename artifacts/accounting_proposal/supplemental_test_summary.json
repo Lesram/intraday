@@ -1,0 +1,41 @@
+{
+  "focused": {
+    "tests": 39,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "source": "artifacts/accounting_proposal_focused.xml"
+  },
+  "regression": {
+    "tests": 208,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "source": "artifacts/accounting_proposal_targeted.xml"
+  },
+  "order_reconciliation": {
+    "tests": 76,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "source": "artifacts/accounting_proposal/reconciliation.xml",
+    "classes": [
+      "tests.test_order_integrity_comprehensive.TestAuditLogEntry",
+      "tests.test_order_integrity_comprehensive.TestAuditLogger",
+      "tests.test_order_integrity_comprehensive.TestIdempotencyManager",
+      "tests.test_order_integrity_comprehensive.TestOrderEventSchema",
+      "tests.test_order_integrity_comprehensive.TestOrderEventType",
+      "tests.test_order_integrity_comprehensive.TestOrderIntegrationScenarios",
+      "tests.test_order_integrity_comprehensive.TestOrderIntegrityService",
+      "tests.test_order_integrity_comprehensive.TestOrderSnapshot",
+      "tests.test_order_integrity_comprehensive.TestOrderState",
+      "tests.test_order_integrity_comprehensive.TestOrderStateMachine",
+      "tests.test_order_integrity_comprehensive.TestTransitionTrigger",
+      "tests.test_order_integrity_comprehensive.TestValidTransitions",
+      "tests.test_position_reconciliation_comprehensive.TestGetPositionStatusForOrders",
+      "tests.test_position_reconciliation_comprehensive.TestGetReconciliationSummary",
+      "tests.test_position_reconciliation_comprehensive.TestMultipleOrdersSameSymbol",
+      "tests.test_position_reconciliation_comprehensive.TestPositionReconciliationInit"
+    ]
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "base": "b2785b6",
+  "proposal_source_sha": "75b1775fdf9ced011e83d37261b056aa6b692b1c",
+  "functions": {
+    "backend/organism/live_engine.py": {
+      "changed_or_added_functions": [
+        "_reconcile_fills"
+      ],
+      "removed_functions": [],
+      "module_ast_unchanged": false
+    },
+    "backend/organism/live_engine_fills.py": {
+      "changed_or_added_functions": [
+        "_closed_position_fills",
+        "utc",
+        "decimal",
+        "_lookup_closed_position_fills_from_db"
+      ],
+      "removed_functions": [],
+      "module_ast_unchanged": false
+    },
+    "backend/organism/continuous_learner.py": {
+      "changed_or_added_functions": [],
+      "removed_functions": [],
+      "module_ast_unchanged": true
+    }
+  },
+  "freeze_sha256": "0f2e6048cd08df5d113fc4f7613fe4beea242cf020552d6070e471c78a0c6697",
+  "deployment_performed": false,
+  "clock_change_performed": false
+}

@@ -1,0 +1,113 @@
+{
+  "recorded_at": "2026-09-19T19:09:44.774250+00:00",
+  "reviewer": "/root/artifact_review",
+  "scope": "Independent source review of the accounting proposal; not deployment, profitability, or forward-clock approval",
+  "source_sha": "75b1775fdf9ced011e83d37261b056aa6b692b1c",
+  "source_files_sha256": {
+    "backend/organism/live_engine.py": "921fd933db1e0a1c7a132154667e028c298ff9da8c2c507879b63fe363b4d6a7",
+    "backend/organism/live_engine_fills.py": "9267e7a341c3e414b28b5061bcfcb79941413c1f162a66b700563049070f5750",
+    "backend/organism/continuous_learner.py": "2c235f704cc57fb6c12113e762e6cf4775ea2195c79e165f4c0d87013b8d5bee"
+  },
+  "resolved_finding": "Pre-entry active or late-updated filled orders could be omitted by lifetime query; separate read-only ambiguity query and DB wrapper regressions added.",
+  "reviewer_verdict": "Rechecked the separate ambiguity query and both actual DB-wrapper cases: the pre-anchor active/late-updated fill attribution finding is resolved. No further concrete quantity/arithmetic blocker in current diff.",
+  "retained_qualifications": [
+    "Unavailable complete evidence records legacy approximate PnL once and still feeds normal risk/learner paths; no retry is added.",
+    "Restart artifact classification is preserved and tested.",
+    "Approval remains for a concrete undeployed proposal, not activation or a freeze-clock decision."
+  ],
+  "record_provenance": "Earlier message-based source review retained; this update was written directly by the independent reviewer after inspecting the final committed source, behavioral tests, sanitized replay fixture, report and validation evidence.",
+  "reviewed_at_utc": "2026-09-19T19:11:49.142085+00:00",
+  "reviewed_file_sha256": {
+    "artifacts/accounting_proposal_plan.json": "98f0a4dc73c8df209b8a1504af9c1cb7253c1b428130757771146be7251441fd",
+    "backend/organism/continuous_learner.py": "2c235f704cc57fb6c12113e762e6cf4775ea2195c79e165f4c0d87013b8d5bee",
+    "backend/organism/live_engine.py": "921fd933db1e0a1c7a132154667e028c298ff9da8c2c507879b63fe363b4d6a7",
+    "backend/organism/live_engine_fills.py": "9267e7a341c3e414b28b5061bcfcb79941413c1f162a66b700563049070f5750",
+    "reports/PAPER_PARTIAL_FILL_ACCOUNTING_PROPOSAL_2026-09-19.md": "b4f1cbcc50968a4ef4b05c4ddea1454e167be96657dc75fb91fcf6e5d6b9aff3",
+    "tests/fixtures/paper_fill_accounting_forward_20260919.json": "bbdd83aff5b48daa7cf806ba179b591574aabb3a3a0011ca197e18451c0b4a37",
+    "tests/test_live_engine_fill_accounting.py": "6547fe52de926e9605812f297df5042d5a035dcbc9eb27a3fa1ba1b9084f3552"
+  },
+  "verdict": "approve_undeployed_proposal_source_report_and_completed_local_validation",
+  "blocking_source_findings": [],
+  "report_review": "The final report accurately limits db_position_fills to attributed database-order cash flows, discloses fallback and concurrent/late-data limits, enumerates future learner/risk impact, preserves historical state, and presents cohort treatment as an unimplemented decision for Marsel. Review does not approve that activation or statistical-cohort decision.",
+  "independent_validation_review": {
+    "artifacts/accounting_proposal_focused.xml": {
+      "tests": 39,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "artifacts/accounting_proposal_targeted.xml": {
+      "tests": 208,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "artifacts/accounting_proposal/reconciliation.xml": {
+      "tests": 76,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    }
+  },
+  "validation_qualifications": [
+    "The 208-test broader run includes 38 focused cases; the final 39-case focused run adds the all-27-position accounting replay. These and the full pack overlap and must not be summed as unique coverage.",
+    "The sanitized accounting replay covers 27 historical positions / 61 orders and reproduces gross $89.819991 plus seven partial positions without input mutation. It is accounting replay, not strategy expectancy or a forward significance test.",
+    "The order/reconciliation group has 76 collected tests. Its base-version tests/test_position_reconciliation.py still contains a manual program with zero pytest cases; that file is repaired separately by the operational-readiness branch. No zero-case file is represented as a passed suite.",
+    "Freeze verification and unchanged freeze-file SHA are present; a matching six-function freeze does not authorize the changed future learner/risk values.",
+    "Reviewer inspected source and evidence read-only and did not call a broker, execute orders, mutate runtime state, merge or deploy.",
+    "Completed isolated full pack cannot observe the actual paper service: live-process reachable=false is expected under network denial and is not a live-health or live-configuration conclusion. Actual-runtime observation remains required before any authorized activation."
+  ],
+  "runtime_behavior_changed": true,
+  "invariants_review": {
+    "learning_mode_ml_ranking_confidence_sizing_influence_added": false,
+    "learning_mode_kelly_sizing_reintroduced": false,
+    "order_submission_logic_changed": false,
+    "frozen_function_or_configuration_change": false,
+    "runtime_constants_changed": false,
+    "continuous_learner_executable_ast_changed": false,
+    "historical_state_migration": false,
+    "clock_reset_performed": false
+  },
+  "remaining_gates": [
+    "Package and retain the completed exact-source evidence, final secret-scan result, current review binding and audit-index PR reference.",
+    "Open the proposal PR and validate against the accepted operational base, retaining current required checks and the repaired reconciliation acceptance tests.",
+    "Obtain Marsel explicit approval of a concrete activation commit, inherited-state handling, cost policy and forward-cohort/clock treatment before merge/activation; neither this review nor an unchanged freeze hash supplies that decision.",
+    "If later authorized, preserve verified brain/database/config state and use a reviewed paper-only broker-flat maintenance window with no outstanding orders; perform post-deployment read-only broker/ledger verification."
+  ],
+  "excluded_authorizations": [
+    "Deployment or merge",
+    "Historical ledger/learner/corpus rewrite",
+    "Frozen parameter/data-feed/strategy change",
+    "Forward-clock reset or cohort activation",
+    "Test orders or real-money promotion"
+  ],
+  "full_pack_completion_review": {
+    "reviewed_at_utc": "2026-09-19T19:15:26.974167+00:00",
+    "source_sha": "75b1775fdf9ced011e83d37261b056aa6b692b1c",
+    "exit_code": 0,
+    "duration_seconds": 222.81,
+    "passed_counts": {
+      "core": 168,
+      "replay": 28,
+      "semantic": 20
+    },
+    "grep_assertions": "pass",
+    "spec_drift": "pass; zero reported drifts",
+    "lint_ratchet": "pass; no new violations",
+    "network_denied": true,
+    "real_checkout_writes_denied": true,
+    "real_env_and_brain_reads_denied": true,
+    "audit_index": "Generated for source 75b1775; draft PR link may be added during packaging.",
+    "runtime_source_hashes_unchanged": true,
+    "report_verification_section_reviewed": true,
+    "evidence_sha256": {
+      "artifacts/accounting_proposal/full.json": "049482c676bd31d99190fde505caaf95660d84a6e5d32515c79b93ff4b141665",
+      "artifacts/test_summary.json": "ba0683626b0daf515d872c3c52e3c738c43845f7f6a0d099251e4b599a686b87",
+      "artifacts/replay_summary.json": "ad202561701fadcf245baf2e169884a0f413a38d5ad7c97c1b2ca17f45c8a29f",
+      "artifacts/semantic_invariants_summary.json": "a8f2c85e152394012eaf6f4505ff189be0633a3aaae584dca8ff2990cdab763b",
+      "artifacts/grep_assertions.json": "13b217728c525bc2ca429e2653186ccb607591e6f7c756f6be6936bac3f5cb7b",
+      "artifacts/spec_drift_summary.json": "10edba1a3b542b45844267bdd1efa759dc8bb77dbcc5a238a3009cf24c5b1ab5",
+      "artifacts/accounting_proposal/lint_ratchet.log": "54baf47f0cb4fc01ddf408bba1c6896811197ca0a3d2f0f2d96c23f77be3e8bc"
+    }
+  }
+}

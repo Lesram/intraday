@@ -1,0 +1,7 @@
+Lint ratchet — current=3687, baseline=3690
+
+Fixed: 3 violation(s) cleared since baseline.
+  -    2  scripts/ci/generate_artifacts.py::BLE001
+  -    1  scripts/ci/generate_artifacts.py::F841
+
+Lint ratchet PASS: no new violations vs baseline.

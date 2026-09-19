@@ -1,0 +1,26 @@
+{
+  "source": "existing freeze artifact; values injected only into verifier subprocess",
+  "environment": {
+    "ORGANISM_EXIT_ATR_MULT": null,
+    "ORGANISM_EXIT_DECAY_START": null,
+    "ORGANISM_EXIT_DECAY_START_MULT": null,
+    "ORGANISM_EXIT_MAX_BARS": null,
+    "ORGANISM_EXIT_MAX_BARS_MULT": null,
+    "ORGANISM_EXIT_PARTIAL_TP_PCT": null,
+    "ORGANISM_EXIT_PARTIAL_TP_R": null,
+    "ORGANISM_EXIT_PROFIT_LOCK_R": null,
+    "ORGANISM_EXIT_PROFIT_R": null,
+    "ORGANISM_EXIT_STOP_ATR_MULT": null,
+    "ORGANISM_EXIT_TRAIL_ATR_MULT": null,
+    "ORGANISM_EXIT_TRAIL_DIST_ATR": null,
+    "ORGANISM_EXIT_TRAIL_START_ATR": null,
+    "ALPACA_DATA_FEED": "iex",
+    "ORGANISM_FRAMEWORK_ROUTING": null,
+    "ORGANISM_FRAMEWORK_ROUTING_V2": "true",
+    "ORGANISM_MIN_AVG_DOLLAR_VOLUME": "50000",
+    "ORGANISM_ROUTING_RANK_POLICY": "flat_policy"
+  },
+  "verification_exit_code": 0,
+  "freeze_bytes_unchanged": true,
+  "freeze_sha256": "0f2e6048cd08df5d113fc4f7613fe4beea242cf020552d6070e471c78a0c6697"
+}

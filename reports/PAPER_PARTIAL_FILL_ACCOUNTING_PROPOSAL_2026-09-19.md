@@ -121,9 +121,31 @@ orders**. It reproduces gross **$89.819991** and seven partial positions without
 mutating its input. This replays accounting only, not a counterfactual strategy,
 execution path, expectancy or forward significance result.
 
-The required organism/state/exits/sizing/replay regression and artifact-pack
-results are recorded under `artifacts/`; final run status is added after the
-pack completes. Initial focused test development failures were fixture errors
+The broader organism/state/exits/sizing/replay run passed **208 tests**. It
+included 38 focused cases; the extra all-27 historical accounting replay was
+then added and the final focused run passed all 39. The required order integrity
+and reconciliation files passed **76 collected tests**; the legacy
+`test_position_reconciliation.py` at this proposal's base defines no pytest
+tests. Its four replacement acceptance tests belong to the separate Monday
+operational repair, not this branch. The new database/reconciliation regressions
+here exercise this correction directly.
+
+The full artifact pack exited 0: **168 core tests, 28 replay tests and 20
+semantic-invariant tests** passed, as did grep assertions and spec-drift checks.
+Counts describe separate runs and must not be added as unique coverage. The
+repository lint ratchet also passes with no new violations. Results are in
+`artifacts/`, with supplemental evidence and the independent source-review
+record in `artifacts/accounting_proposal/`.
+
+The full pack and reconciliation run denied network access and access to the
+original `.env`/brain, denied writes to the original checkout, and used isolated
+test storage. Consequently the generated live-process snapshot is explicitly
+**unreachable**, while code-default and resolved test-context snapshots are
+available. This is not an observation that the running paper service is down
+and is not evidence of live configuration coherence. A separately observed
+actual runtime snapshot remains an activation requirement.
+
+Initial focused test development failures were fixture errors
 (SQLite UUID affinity and fixture argument names), corrected before acceptance.
 The unchanged legacy lookup helpers retain two pre-existing Ruff BLE001
 warnings; the new helper/test code adds no Ruff findings.

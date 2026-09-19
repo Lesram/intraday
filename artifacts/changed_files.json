@@ -1,24 +1,30 @@
 {
   "scope": "base",
-  "ref": "intra-2.0-phase1...HEAD",
+  "ref": "origin/intra-2.0-phase1...HEAD",
   "total": 7,
   "all": [
-    ".github/workflows/artifact-reporting.yml",
-    ".github/workflows/paper-postclose-audit.yml",
-    ".github/workflows/pr-verify.yml",
-    "docs/engineering/ARTIFACT_REPORTING.md",
-    "scripts/ci/generate_artifacts.py",
-    "tests/test_artifact_workflow_contract.py",
-    "tests/test_generate_artifacts.py"
+    "artifacts/accounting_proposal_plan.json",
+    "backend/organism/continuous_learner.py",
+    "backend/organism/live_engine.py",
+    "backend/organism/live_engine_fills.py",
+    "reports/PAPER_PARTIAL_FILL_ACCOUNTING_PROPOSAL_2026-09-19.md",
+    "tests/fixtures/paper_fill_accounting_forward_20260919.json",
+    "tests/test_live_engine_fill_accounting.py"
   ],
-  "backend": [],
-  "organism": [],
+  "backend": [
+    "backend/organism/continuous_learner.py",
+    "backend/organism/live_engine.py",
+    "backend/organism/live_engine_fills.py"
+  ],
+  "organism": [
+    "backend/organism/continuous_learner.py",
+    "backend/organism/live_engine.py",
+    "backend/organism/live_engine_fills.py"
+  ],
   "tests": [
-    "tests/test_artifact_workflow_contract.py",
-    "tests/test_generate_artifacts.py"
+    "tests/fixtures/paper_fill_accounting_forward_20260919.json",
+    "tests/test_live_engine_fill_accounting.py"
   ],
   "config": [],
-  "docs": [
-    "docs/engineering/ARTIFACT_REPORTING.md"
-  ]
+  "docs": []
 }
