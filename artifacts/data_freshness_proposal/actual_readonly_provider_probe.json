@@ -1,0 +1,17 @@
+{
+  "checked_at": "2026-09-19T20:33:00.504116+00:00",
+  "symbol": "AAPL",
+  "rows": 500,
+  "first_timestamp": "2026-09-17T18:26:00+00:00",
+  "last_timestamp": "2026-09-18T19:59:00+00:00",
+  "chronological": true,
+  "unique_timestamps": true,
+  "feed": "iex",
+  "timeframe": "1Min",
+  "source_sha": "c66bb2d8128d7105023a1c323b97981dda2f612a",
+  "source_file_sha256": "cd4e8b8904dacb37f7ebf16469495daf7f6e7360327c35815bf221e0ead37c5a",
+  "scope": "read-only proposed data client in separate container; API engine remains stopped",
+  "credentials_disclosed": false,
+  "orders_submitted": false,
+  "initial_probe": "First attempt stopped before network at read-only logger file; corrected probe working directory to ephemeral tmpfs"
+}

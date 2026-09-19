@@ -2,6 +2,8 @@
 
 The installed paper data client returned 500 AAPL bars ending **2026-09-16 16:34 UTC**, although a read-only descending query against the same IEX feed and split adjustment returned **2026-09-18 19:59 UTC**. The active streaming prefill and REST fallback both use this client. The sanitized installed-runtime observation is in `artifacts/data_freshness/actual_runtime_observation.json`; it is separate from isolated test runtime snapshots.
 
+A separate read-only candidate probe on `c66bb2d` returned **500 unique chronological IEX 1-minute AAPL bars from 2026-09-17 18:26 UTC through 2026-09-18 19:59 UTC**. It ran only the proposed client in a separate ephemeral container, with the paper API engine stopped and no orders submitted. Evidence: `artifacts/data_freshness_proposal/actual_readonly_provider_probe.json`. This validates current provider retrieval; it is not deployment or a natural-session test. The first probe stopped at a read-only logger path before network access; the working directory was corrected to temporary memory storage.
+
 The old request selected the oldest first page of a five-day window, then retained its last 500 rows without following pagination. A date-only end also excluded the current intraday session. Historical prefill labeled those old bars fresh using arrival time. Existing streaming warmup and receipt-time gates still apply; this observation does not establish that a particular bad order occurred or predict a Monday order.
 
 ## Proposed correction
@@ -15,6 +17,8 @@ The shared current-time end also affects daily and other higher-timeframe caller
 This is not a continuity guarantee: market closures, IEX no-trade minutes and outages may legitimately produce gaps. The current fixed history window can return fewer bars than requested if fewer are available. Existing streamed callback receipt semantics and handling of later out-of-order WebSocket events are outside this correction; this change does not retune gates or route trades.
 
 ## Evidence and acceptance
+
+Final local validation: **417 distinct tests pass** (77 focused data/provider/wave-45, 80 order/reconciliation, 44 workflow contracts, 168 ordinary organism regressions, 28 replay and 20 semantic invariants). The full artifact pack passes in 215.09 seconds on `47ad8c9`; active-base merge `c66bb2d` has the identical Git tree. Workflow lint and read-only freeze verification pass. The reviewer’s daily start-boundary finding was fixed with both public API regressions. An earlier run was deliberately interrupted for that fix and is preserved as non-acceptance evidence under `interrupted_pre_review_pack`; it is not counted as a final test failure. Hosted validation is a separate acceptance gate.
 
 Deterministic network-free tests reproduce a window larger than the former page, exact latest-500 selection, current-session UTC bounds, multi-page overlap, token/error bounds, malformed/future timestamps, stale historical freshness, chronological ordering, global freshness and concurrent stream preservation. Existing behavioral assertions remain; obsolete ascending/date-only query assertions and stale naive fixtures were updated to the new contract.
 

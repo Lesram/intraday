@@ -1,0 +1,15 @@
+{
+  "status": "fail",
+  "passed": 0,
+  "failed": 0,
+  "errors": 0,
+  "skipped": 0,
+  "total": 0,
+  "tests": [],
+  "exit_code": -15,
+  "timed_out": false,
+  "error": "invalid pytest evidence: [Errno 2] No such file or directory: '/Users/marselkei/.codex/worktrees/intra-paper-data-freshness/intra/artifacts/replay_simulator.junit.xml'",
+  "output_file": "artifacts/replay_simulator.log",
+  "output_tail": "35%]\ntests/test_replay_simulator.py::test_replay_equity_monotonic_start PASSED [ 39%]\ntests/test_replay_simulator.py::test_replay_regime_history_populated PASSED [ 42%]\ntests/test_replay_simulator.py::test_replay_with_crash_data PASSED       [ 46%]\ntests/test_replay_simulator.py::test_replay_result_summary PASSED        [ 50%]\ntests/test_replay_simulator.py::test_replay_result_metrics PASSED        [ 53%]\ntests/test_replay_simulator.py::test_from_csv_loads_correctly PASSED     [ 57%]\ntests/test_replay_simulator.py::test_make_price_df_trends PASSED         [ 60%]\ntests/test_replay_simulator.py::test_make_features_dict PASSED           [ 64%]\ntests/test_replay_simulator.py::test_replay_time_override_uses_bar_time PASSED [ 67%]\ntests/test_replay_simulator.py::test_replay_no_throttle_blocking ",
+  "junit_file": "artifacts/replay_simulator.junit.xml"
+}

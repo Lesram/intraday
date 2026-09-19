@@ -123,6 +123,6 @@
   "timed_out": false,
   "error": "",
   "output_file": "artifacts/replay_simulator.log",
-  "output_tail": "............................                                             [100%]\n=============================== warnings summary ===============================\ntests/test_replay_simulator.py::test_replay_completes_100_ticks\n  <string>:15: RuntimeWarning: SECRET_KEY not set \u2014 using generated ephemeral key. Set SECRET_KEY env var for production.\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n28 passed, 1 warning in 140.54s (0:02:20)\n",
+  "output_tail": "tests/test_replay_simulator.py::test_make_price_df_trends\n0.00s teardown tests/test_replay_simulator.py::test_replay_engine_daily_default_lookback\n0.00s teardown tests/test_replay_simulator.py::test_bar_provider_returns_correct_window\n0.00s teardown tests/test_replay_simulator.py::test_replay_engine_intraday_default_lookback\n0.00s teardown tests/test_replay_simulator.py::test_make_features_dict\n0.00s teardown tests/test_replay_simulator.py::test_bar_provider_current_price\n0.00s teardown tests/test_replay_simulator.py::test_bar_provider_advances_correctly\n0.00s teardown tests/test_replay_simulator.py::test_replay_engine_custom_lookback\n0.00s teardown tests/test_replay_simulator.py::test_bar_provider_exhaustion\n================== 28 passed, 1 warning in 144.72s (0:02:24) ===================\n",
   "junit_file": "artifacts/replay_simulator.junit.xml"
 }

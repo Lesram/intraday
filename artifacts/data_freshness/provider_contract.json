@@ -1,0 +1,12 @@
+{
+  "checked_at_utc_date": "2026-09-19",
+  "source": "https://docs.alpaca.markets/us/reference/stockbarsingle-1",
+  "claims": {
+    "sort": "Single-symbol endpoint supports descending timestamp order.",
+    "bounds": "Start and end are inclusive; RFC-3339 timestamps are accepted.",
+    "limit": "Each response page is capped between 1 and 10000 points and may return fewer points while more remain.",
+    "pagination": "next_page_token provides the next page.",
+    "adjustment": "split adjusts price and volume for stock splits."
+  },
+  "implementation_scope": "Preserve configured feed and split adjustment; request latest available bars in the retained fixed calendar window."
+}

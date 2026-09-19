@@ -1,0 +1,15 @@
+{
+  "source": "live_process",
+  "snapshot_taken_at": "2026-09-19T20:24:44Z",
+  "container": null,
+  "reachable": false,
+  "organism_status": null,
+  "brain_state": null,
+  "process_env": null,
+  "source_annotations": {},
+  "unreachable_reason": "organism status endpoint returned no data or is not responding",
+  "live": {},
+  "coherence_notes": [
+    "All cross-source values are consistent."
+  ]
+}

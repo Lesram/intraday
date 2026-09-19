@@ -1,0 +1,47 @@
+{
+  "task_id": "paper-data-freshness-2026-09-19",
+  "summary": "Undeployed latest market-data and historical prefill correction proposal",
+  "sha": "47ad8c9cf57799b787f919e25e6c82551fb0226a",
+  "branch": "codex/paper-data-freshness",
+  "change_scope": "base",
+  "change_ref": "d7c3c6c047d97a4f925c7b66c7f121e3ee10cd4d...HEAD",
+  "files_changed": [
+    ".github/workflows/paper-readiness.yml",
+    "artifacts/data_freshness/plan.json",
+    "backend/integrations/alpaca_data.py",
+    "backend/organism/streaming_data_provider.py",
+    "reports/PAPER_DATA_FRESHNESS_PROPOSAL_2026-09-19.md",
+    "tests/test_monday_ci_workflows.py",
+    "tests/unit/test_alpaca_data_comprehensive.py",
+    "tests/unit/test_paper_data_freshness.py",
+    "tests/unit/test_streaming_data_provider.py"
+  ],
+  "commands": [
+    "python scripts/runtime/write_runtime_snapshot.py",
+    "python scripts/ci/generate_artifacts.py full",
+    "python -m pytest tests/test_semantic_invariants.py -v --timeout=30",
+    "python scripts/ci/check_spec_drift.py --json"
+  ],
+  "tests_passed": [
+    "organism_live_engine",
+    "organism_engine_scenarios",
+    "multi_tick_state",
+    "safety_invariants",
+    "self_evolution",
+    "algorithm_improvements",
+    "semantic_invariants",
+    "replay_simulator"
+  ],
+  "tests_failed": [],
+  "runtime_behavior_changed": [
+    "backend/integrations/alpaca_data.py",
+    "backend/organism/streaming_data_provider.py"
+  ],
+  "docs_updated": [],
+  "risks": [
+    "1 organism file(s) changed \u2014 replay verification required"
+  ],
+  "follow_ups": [],
+  "artifact_pack_status": "pass",
+  "artifact_pack_errors": []
+}
