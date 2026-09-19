@@ -248,13 +248,13 @@ class TradeRecord:
     # ml_spoke: True only when the value came from the ML model rather
     #   than a heuristic default — the correct exclusion filter for
     #   corr(predicted, actual).
-    # price_source: which rung of the exit-price fallback ladder priced
-    #   this row ("fill"/"db_fill" = broker reality; "bar_close"/"quote_*"
-    #   = approximation that may diverge from realized PnL).
+    # price_source: "db_position_fills" means attributed, quantity-conserved
+    #   DB order cash flows. Legacy "fill"/"db_fill" only identify the final
+    #   price; "fill_approximate"/"db_fill_approximate" explicitly retain that
+    #   uncertainty. "bar_close"/"quote_*" use observed prices, not fills.
     # had_partial_exits: True when the position scaled out in pieces
-    #   before final close. KNOWN LIMITATION: such rows record the FULL
-    #   share count at the FINAL exit price (no per-leg accounting yet),
-    #   so their per-trade pnl is approximate — segregate in analysis.
+    #   before final close. Full-position PnL is supported only for
+    #   db_position_fills; historical/fallback partial rows remain approximate.
     predicted_return_signed: "float | None" = None
     ml_spoke: bool = False
     price_source: str = ""
