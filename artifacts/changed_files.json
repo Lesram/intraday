@@ -1,0 +1,44 @@
+{
+  "scope": "audit_reports_only",
+  "ref": "4a8e0e713d8fd0b2e0b87b077d616f4773304d0f",
+  "total": 26,
+  "all": [
+    "artifacts/changed_files.json",
+    "artifacts/grep_assertions.json",
+    "artifacts/replay_summary.json",
+    "artifacts/resumption_readiness_2026-09-19/artifact_pack_audit.json",
+    "artifacts/resumption_readiness_2026-09-19/audit_plan.json",
+    "artifacts/resumption_readiness_2026-09-19/dependency_audit.json",
+    "artifacts/resumption_readiness_2026-09-19/development_readiness.json",
+    "artifacts/resumption_readiness_2026-09-19/freeze_verification.json",
+    "artifacts/resumption_readiness_2026-09-19/generator_failure_probe.json",
+    "artifacts/resumption_readiness_2026-09-19/github_access.json",
+    "artifacts/resumption_readiness_2026-09-19/grep_assertions.json",
+    "artifacts/resumption_readiness_2026-09-19/replay_summary.json",
+    "artifacts/resumption_readiness_2026-09-19/runtime_access.json",
+    "artifacts/resumption_readiness_2026-09-19/sandbox.sb",
+    "artifacts/resumption_readiness_2026-09-19/semantic_invariants_summary.json",
+    "artifacts/resumption_readiness_2026-09-19/spec_drift_summary.json",
+    "artifacts/resumption_readiness_2026-09-19/strategy_evidence.json",
+    "artifacts/resumption_readiness_2026-09-19/summary.json",
+    "artifacts/resumption_readiness_2026-09-19/test_summary.json",
+    "artifacts/runtime_config_snapshot.json",
+    "artifacts/semantic_invariants_summary.json",
+    "artifacts/spec_drift_summary.json",
+    "artifacts/task_report.json",
+    "artifacts/test_summary.json",
+    "reports/RESUMPTION_READINESS_AUDIT_2026-09-19.md",
+    "docs/engineering/LIVE_AUDIT_INDEX.md"
+  ],
+  "backend": [],
+  "organism": [],
+  "tests": [],
+  "config": [],
+  "docs": [
+    "reports/RESUMPTION_READINESS_AUDIT_2026-09-19.md",
+    "docs/engineering/LIVE_AUDIT_INDEX.md"
+  ],
+  "excluded_preexisting_user_changes": [
+    ".claude/settings.local.json"
+  ]
+}

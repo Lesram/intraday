@@ -1,0 +1,56 @@
+{
+  "safe_container_environment": {
+    "GIT_SHA": "9697cd59e8add11dbc96080aaec0f4c21def4292",
+    "ALPACA_PAPER": "true",
+    "ALPACA_BASE_URL": "https://paper-api.alpaca.markets",
+    "ALPACA_DATA_URL": "https://data.alpaca.markets/v2",
+    "ALPACA_DATA_FEED": "iex",
+    "TRADING_EXECUTION_MODE": "paper",
+    "USE_MOCK_BROKER": "false",
+    "ORGANISM_EXPLORATION_ENABLED": "false",
+    "ORGANISM_FREEZE_ADAPTATION": "0",
+    "ORGANISM_ENABLED": "1",
+    "ENABLE_ORGANISM_SCHEDULER": "1",
+    "ORGANISM_SHADOW_EXIT_POLICY": "retracement",
+    "ORGANISM_FRAMEWORK_ROUTING_V2": "true",
+    "ORGANISM_COST_BPS": "3.0",
+    "ORGANISM_PYRAMID_ENABLED": "false",
+    "ORGANISM_ML_RETRAIN_ENABLED": "false",
+    "ORGANISM_DRAWDOWN_KILL_PCT": "0.10",
+    "ORGANISM_MAX_DAILY_LOSS": "1100",
+    "ORGANISM_MAX_NOTIONAL": "2000",
+    "ORGANISM_LONG_ONLY": "true",
+    "ORGANISM_DROP_ML_FROM_GATE": "true"
+  },
+  "started_at": "2026-09-19T17:00:35.949723Z",
+  "restart_count": 0,
+  "health": "healthy",
+  "image_id": "sha256:5911350d74ab0a546afd3526558025d7d79e69cc92c4055e4376c1efcc3087fe",
+  "brain_summary": {
+    "saved_at": "2026-09-19T17:00:22.294372+00:00",
+    "generation": 389,
+    "total_trades": 609,
+    "cumulative_pnl": -588.39,
+    "ml_is_trained": true
+  },
+  "authenticated_application_api": "unverified: protected endpoints returned 401; INTRA_API_USER/INTRA_API_PASSWORD unavailable",
+  "broker_read_checks": {
+    "paper_account_http": 200,
+    "account_status": "ACTIVE",
+    "positions_count": 0,
+    "open_orders_count": 0,
+    "iex_recent_minute_bars_http": 200,
+    "iex_sample_bars": 10
+  },
+  "database_read_checks": {
+    "read_only_transaction": "passed",
+    "migration": "20260503_000003",
+    "public_tables": 27
+  },
+  "redis_authenticated_ping": "passed",
+  "local_file_write_read_delete": "passed",
+  "startup_and_watchdog_launchagents": "installed and loaded, last exit 0",
+  "postgres_backup_latest_observed": "2026-05-02",
+  "alert_delivery": "no configured channel found; ALERT-NO-CHANNELS observed",
+  "mac_docker_login_preference": "not verified: settings file read did not complete; probe interrupted"
+}

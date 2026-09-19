@@ -1,0 +1,11 @@
+{
+  "injected_pytest_exit": 1,
+  "injected_pytest_output": "1 failed in 0.01s",
+  "actual_generated_summary": {
+    "status": "pass",
+    "passed": 0,
+    "failed": 0,
+    "output_tail": ""
+  },
+  "source_modified": false
+}

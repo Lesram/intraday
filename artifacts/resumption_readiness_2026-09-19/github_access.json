@@ -1,0 +1,51 @@
+{
+  "audited_repository": "Lesram/intraday",
+  "authenticated_identity": "Lesram",
+  "read_access_verified": true,
+  "declared_permissions": [
+    "admin",
+    "maintain",
+    "push",
+    "pull",
+    "triage"
+  ],
+  "missing_scope": "admin:repo_hook",
+  "active_branch": "intra-2.0-phase1",
+  "active_sha": "4a8e0e713d8fd0b2e0b87b077d616f4773304d0f",
+  "remote_main": "32a3474",
+  "ahead_main": 452,
+  "main_protected": false,
+  "active_branch_protected": false,
+  "rulesets": 0,
+  "open_prs_at_initial_audit": 7,
+  "open_issues_at_initial_audit": 0,
+  "recent_100_runs": {
+    "nightly_failures": 52,
+    "postclose_cancellations": 38
+  },
+  "nightly_run": "https://github.com/Lesram/intraday/actions/runs/35415312971",
+  "postclose_run": "https://github.com/Lesram/intraday/actions/runs/35401191697",
+  "active_pr": "https://github.com/Lesram/intraday/pull/9",
+  "active_pr_draft": true,
+  "active_pr_changed_files": 1560,
+  "active_pr_reviews": 0,
+  "historical_verification_run": "https://github.com/Lesram/intraday/actions/runs/30430956736",
+  "historical_merge_ref": "08f3421",
+  "historical_artifact_download_verified": true,
+  "historical_artifact_scheduled_expiry": "2026-10-27",
+  "historical_secret_alert": {
+    "url": "https://github.com/Lesram/intraday/security/secret-scanning/1",
+    "state": "open",
+    "validity": "unknown",
+    "context": "historical redaction fixture and JUnit artifacts; possible synthetic value; no credential usability conclusion"
+  },
+  "unexercised": [
+    "review_submission",
+    "workflow_dispatch",
+    "deployment",
+    "settings_mutation"
+  ],
+  "branch_push_verified": true,
+  "pull_request_creation_verified": true,
+  "audit_pr": "https://github.com/Lesram/intraday/pull/10"
+}

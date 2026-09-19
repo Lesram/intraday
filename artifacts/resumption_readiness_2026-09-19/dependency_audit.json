@@ -1,0 +1,60 @@
+{
+  "source_sha": "4a8e0e713d8fd0b2e0b87b077d616f4773304d0f",
+  "system_python": "3.9.6",
+  "repo_python": "3.12.12",
+  "minimum_python": "3.11",
+  "repo_python_command": "/Users/marselkei/VS/intra/venv/bin/python",
+  "pip_check": "No broken requirements found.",
+  "node": "v25.5.0",
+  "npm": "11.8.0",
+  "npm_ls_exit": 0,
+  "frontend_typechecks": {
+    "tsconfig.app.json": 0,
+    "tsconfig.node.json": 0
+  },
+  "ruff": "0.15.12",
+  "requirements": [
+    {
+      "manifest": "requirements.txt",
+      "checked": 57,
+      "missing": [
+        "pytest-xdist"
+      ],
+      "mismatch": []
+    },
+    {
+      "manifest": "requirements-dev.txt",
+      "checked": 37,
+      "missing": [
+        "codecov",
+        "diff-cover",
+        "factory-boy",
+        "faker",
+        "flake8",
+        "freezegun",
+        "ipdb",
+        "ipykernel",
+        "jupyter",
+        "locust",
+        "matplotlib",
+        "memory-profiler",
+        "pandas-stubs",
+        "pre-commit",
+        "py-spy",
+        "pylint",
+        "pytest-postgresql",
+        "responses",
+        "seaborn",
+        "sphinx",
+        "sphinx-rtd-theme"
+      ],
+      "mismatch": []
+    },
+    {
+      "manifest": "requirements.lock",
+      "checked": 173,
+      "missing": [],
+      "mismatch": []
+    }
+  ]
+}
